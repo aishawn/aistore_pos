@@ -52,7 +52,7 @@ export function FilterSelect({
           <select
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
-            className="min-h-11 w-full appearance-none rounded-md border border-[var(--oh-border)] bg-white px-2.5 pr-8 text-[13px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+className="min-h-11 w-full appearance-none rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 pr-8 text-[13px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
           >
             <option value="">{placeholder}</option>
             {uniqueOptions.map((o) => (
@@ -61,7 +61,7 @@ export function FilterSelect({
               </option>
             ))}
           </select>
-          <SelectChevronIcon size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+<SelectChevronIcon size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
         </div>
       </label>
     );
@@ -72,9 +72,9 @@ export function FilterSelect({
       {label ? (
         <span className="mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
       ) : null}
-      <span className="flex min-h-11 items-center justify-between rounded-md border border-[var(--oh-border)] px-2.5 text-[13px] text-neutral-400">
+<span className="flex min-h-11 items-center justify-between rounded-md border border-[var(--oh-border)] px-2.5 text-[13px] text-[var(--oh-muted)]">
         {placeholder}
-        <SelectChevronIcon size={14} className="text-neutral-500" />
+<SelectChevronIcon size={14} className="text-[var(--oh-muted)]" />
       </span>
     </label>
   );

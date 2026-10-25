@@ -79,17 +79,17 @@ export function FilterDropdownSelect({
               setOpen(true);
             }
           }}
-          className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[14px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+          className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
           <span className={value ? "truncate text-[var(--oh-text)]" : "truncate text-[var(--oh-placeholder)]"}>{display}</span>
-          <SelectChevronIcon size={14} className="shrink-0 text-neutral-500" />
+          <SelectChevronIcon size={14} className="shrink-0 text-[var(--oh-muted)]" />
         </button>
         {value && (
           <button
             type="button"
             aria-label={`Clear ${label}`}
             onClick={() => onChange("")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <XIcon size={14} />
           </button>
@@ -97,7 +97,7 @@ export function FilterDropdownSelect({
       </div>
 
       {open && (
-        <div id={listboxId} role="listbox" aria-label={label} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white py-1 shadow-lg">
+        <div id={listboxId} role="listbox" aria-label={label} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-lg">
           {uniqueOptions.map((o, index) => (
             <button
               key={o.value}
@@ -130,8 +130,8 @@ export function FilterDropdownSelect({
                 closeMenu();
               }}
               className={cn(
-                "flex min-h-11 w-full items-center px-3 py-2 text-left text-[14px] text-[var(--oh-text)] hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
-                value === o.value && "bg-neutral-50 font-medium",
+                "flex min-h-11 w-full items-center px-3 py-2 text-left text-[14px] text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
+                value === o.value && "bg-[var(--oh-surface-muted)] font-medium",
               )}
             >
               {o.label}

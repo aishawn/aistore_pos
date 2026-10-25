@@ -3,7 +3,7 @@ import { TagIcon, AwardIcon } from "@/components/icons";
 
 export default function ShelfTicketsPage() {
   return (
-    <div className="flex h-full items-center justify-center overflow-auto bg-white font-sans">
+    <div className="flex h-full items-center justify-center overflow-auto bg-[var(--oh-surface)] font-sans">
       <div className="w-full max-w-4xl">
         <CardHub
           cards={[

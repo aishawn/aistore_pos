@@ -11,16 +11,16 @@ const SESSION_COOKIE = "orithos_odoo_session";
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const productId = Number((await context.params).id);
   if (!Number.isSafeInteger(productId) || productId < 1) return NextResponse.json({ message: "Invalid product" }, { status: 400 });
   const correlationId = request.headers.get("x-correlation-id");
@@ -33,11 +33,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const info = await infoResponse.json() as { result?: { uid?: number; user_context?: { allowed_company_ids?: number[] } }; error?: unknown };
-    if (!infoResponse.ok || info.error || !info.result?.uid) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+    if (!infoResponse.ok || info.error || !info.result?.uid) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
     const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanies);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
-    if (!forced.companyIds.length) return NextResponse.json({ message: "No accessible Odoo company is mapped to this store." }, { status: 403 });
+    if (!forced.companyIds.length) return NextResponse.json({ message: "No accessible Orithos company is mapped to this store." }, { status: 403 });
 
     const response = await fetch(`${baseUrl}/web/dataset/call_kw`, {
       method: "POST", headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const payload = await response.json() as { result?: Array<{ image_128?: string | false }>; error?: { message?: string } };
-    if (!response.ok || payload.error) return NextResponse.json({ message: "Odoo product image is unavailable" }, { status: 502 });
+    if (!response.ok || payload.error) return NextResponse.json({ message: "Orithos product image is unavailable" }, { status: 502 });
     const encoded = payload.result?.[0]?.image_128;
     if (!encoded || typeof encoded !== "string") return new NextResponse(null, { status: 404, headers: { "Cache-Control": "no-store" } });
     const bytes = Buffer.from(encoded, "base64");
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!contentType) return new NextResponse(null, { status: 404, headers: { "Cache-Control": "no-store" } });
     return new NextResponse(bytes, { status: 200, headers: { "Content-Type": contentType, "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

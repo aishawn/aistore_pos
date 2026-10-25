@@ -163,10 +163,10 @@ function correlationHeaders(sessionId: string, correlationId?: string | null) {
 
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error("Odoo connection must use HTTPS");
+    throw new Error("Orithos connection must use HTTPS");
   }
   return value;
 }
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
 
   const type = body.type as RecordType | undefined;
   if (!type || !(type in RECORD_TYPES)) {
-    return NextResponse.json({ message: "Unsupported Odoo record type" }, { status: 400 });
+    return NextResponse.json({ message: "Unsupported Orithos record type" }, { status: 400 });
   }
   const config = RECORD_TYPES[type];
   const requestedLimit = body.limit === undefined ? 40 : Number(body.limit);
@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
       error?: unknown;
     };
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) {
-      return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
     }
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
@@ -316,7 +316,7 @@ export async function POST(request: NextRequest) {
     }
     const companyIds = forced.companyIds;
     if (!companyIds.length) {
-      return NextResponse.json({ message: "No accessible Odoo company is mapped to this store." }, { status: 403 });
+      return NextResponse.json({ message: "No accessible Orithos company is mapped to this store." }, { status: 403 });
     }
     const context = odooCompanyContext(companyIds);
 
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok) return NextResponse.json({ message: "Odoo records are unavailable" }, { status: 502 });
+    if (!response.ok) return NextResponse.json({ message: "Orithos records are unavailable" }, { status: 502 });
     const payload = (await response.json()) as {
       result?: unknown[];
       error?: { message?: string; data?: { message?: string } };
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
         && !/pos\.session/i.test(detail)
         ? 401
         : 502;
-      return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
+      return NextResponse.json({ message: status === 401 ? "Orithos session expired" : "Orithos could not load records" }, { status });
     }
     const rawItems = payload.result ?? [];
     const hasNext = rawItems.length > limit;
@@ -376,7 +376,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ items, limit, offset, hasNext }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

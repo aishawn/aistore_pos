@@ -16,9 +16,9 @@ type RpcEnvelope<T> = { result?: T; error?: RpcError };
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -36,13 +36,13 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new PurchaseRequestError("Odoo purchase records are unavailable", 502);
+  if (!response.ok) throw new PurchaseRequestError("Orithos purchase records are unavailable", 502);
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new PurchaseRequestError("Your Odoo account does not have permission to view purchase records.", 403);
-    throw new PurchaseRequestError("Odoo could not load these purchase records.", 502);
+    if (/session|authenticate|log in/i.test(detail)) throw new PurchaseRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new PurchaseRequestError("Your Orithos account does not have permission to view purchase records.", 403);
+    throw new PurchaseRequestError("Orithos could not load these purchase records.", 502);
   }
   return payload.result as T;
 }
@@ -56,18 +56,18 @@ async function getCompanies(request: NextRequest, sessionId: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (!response.ok) throw new PurchaseRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
-  if (payload.error || !payload.result?.uid) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (payload.error || !payload.result?.uid) throw new PurchaseRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new PurchaseRequestError(forced.error, forced.status);
-  if (!forced.companyIds.length) throw new PurchaseRequestError("No Odoo companies are available to this user.", 403);
+  if (!forced.companyIds.length) throw new PurchaseRequestError("No Orithos companies are available to this user.", 403);
   return forced.companyIds;
 }
 
 function errorResponse(error: unknown) {
-  const message = error instanceof Error ? error.message : "Odoo is unavailable";
+  const message = error instanceof Error ? error.message : "Orithos is unavailable";
   const status = error instanceof PurchaseRequestError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
   const response = NextResponse.json({ message }, { status });
   if (status === 401) response.cookies.delete(SESSION_COOKIE);
@@ -77,7 +77,7 @@ function errorResponse(error: unknown) {
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
 
   const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 120) ?? "";
   const requestedState = request.nextUrl.searchParams.get("state") ?? "all";

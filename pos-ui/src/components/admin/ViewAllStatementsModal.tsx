@@ -93,26 +93,26 @@ export function ViewAllStatementsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-[420px] rounded-lg bg-white px-8 pb-8 pt-14 shadow-2xl"
+        className="relative w-full max-w-[420px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-8 pb-8 pt-14 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute left-1/2 top-0 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#5cb3e0]">
           <QuestionIcon size={36} className="text-white" strokeWidth={1.5} />
         </div>
 
-        <h2 id={titleId} className="text-center text-[22px] font-bold text-black">View Statement</h2>
+        <h2 id={titleId} className="text-center text-[22px] font-bold text-[var(--oh-text)]">View Statement</h2>
         {customerName && (
           <p className="mt-2 text-center text-[15px] text-neutral-600">{customerName}</p>
         )}
 
-        <label className="mt-6 block text-[15px] text-black">
+        <label className="mt-6 block text-[15px] text-[var(--oh-text-secondary)]">
           Date Range
           <div className="mt-1">
             <FormDateRangePicker start={range.start} end={range.end} onChange={setRange} />
           </div>
         </label>
 
-        <label className="mt-4 block text-[15px] text-black">
+        <label className="mt-4 block text-[15px] text-[var(--oh-text-secondary)]">
           Statement Template
           <ClassificationFormSelect
             value={statementTemplateId}
@@ -132,7 +132,7 @@ export function ViewAllStatementsModal({
             ref={cancelRef}
             type="button"
             onClick={close}
-            className="flex-1 rounded border border-neutral-300 bg-white py-2.5 text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+            className="flex-1 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2.5 text-[15px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface-muted)]"
           >
             Cancel
           </button>

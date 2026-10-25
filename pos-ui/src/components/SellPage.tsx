@@ -360,7 +360,7 @@ function MoreActionsPanel() {
         }
         return;
       case "reload-invoice":
-        router.push("/history/odoo");
+        router.push("/history");
         return;
       case "gift-card":
         router.push("/giftcards");

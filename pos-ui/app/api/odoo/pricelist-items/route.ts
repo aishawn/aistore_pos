@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
         productId: Array.isArray(rule.product_id) ? rule.product_id[0] : templateId,
         productName: product?.name ?? (Array.isArray(rule.product_tmpl_id) ? rule.product_tmpl_id[1] : "Product"),
         sku: product?.default_code || "",
-        priceSetName: Array.isArray(rule.pricelist_id) ? rule.pricelist_id[1] : "Odoo price list",
-        source: "Odoo price rule",
+        priceSetName: Array.isArray(rule.pricelist_id) ? rule.pricelist_id[1] : "Orithos price list",
+        source: "Orithos price rule",
         sourceType: "PROVIDED",
         startDate: asDate(rule.date_start),
         endDate: asDate(rule.date_end),
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json({ items, limit, offset, hasNext: (rules?.length ?? 0) > limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo price rules are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos price rules are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

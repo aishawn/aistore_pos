@@ -358,7 +358,7 @@ export function FormDateRangePicker({
         className={cn(
           "flex w-full items-center text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
           compact
-            ? "min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px]"
+            ? "min-h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 text-[13px] text-[var(--oh-text)]"
             : "h-10 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px]",
           start || end ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]",
         )}
@@ -367,7 +367,7 @@ export function FormDateRangePicker({
       </button>
 
       {open && (
-        <div role="dialog" aria-label={`${ariaLabel ?? placeholder} calendar`} className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+        <div role="dialog" aria-label={`${ariaLabel ?? placeholder} calendar`} className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

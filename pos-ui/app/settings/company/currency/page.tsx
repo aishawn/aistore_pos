@@ -20,7 +20,7 @@ const currencyBehaviors = [
   {
     title: "Cash rounding",
     value: "Register setting",
-    detail: "Odoo checkout applies the selected POS register’s rounding rule when enabled, and can limit it to cash. The legacy checkout path rounds cash to the nearest $0.05.",
+    detail: "Orithos checkout applies the selected POS register’s rounding rule when enabled, and can limit it to cash. The legacy checkout path rounds cash to the nearest $0.05.",
     icon: Banknote,
   },
 ];

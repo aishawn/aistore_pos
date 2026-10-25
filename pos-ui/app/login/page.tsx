@@ -133,7 +133,7 @@ export default function LoginPage() {
         <OrithosLogo />
       </div>
 
-      <section className="relative z-10 grid w-full max-w-[760px] overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] md:grid-cols-2">
+      <section className="relative z-10 grid w-full max-w-[760px] overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] md:grid-cols-2">
         <form method="post" onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-6 sm:p-8 lg:p-10" aria-labelledby="login-title">
           <div>
             <h1 id="login-title" className="text-xl font-semibold tracking-tight text-[var(--oh-text)]">Sign in</h1>
@@ -158,13 +158,13 @@ export default function LoginPage() {
               required
               maxLength={120}
               placeholder="Username"
-              className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+              className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
             />
           </div>
 
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">Password</label>
-            <span className="flex h-11 w-full items-center rounded-md border border-[var(--oh-border-strong)] bg-white pr-1 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/20">
+            <span className="flex h-11 w-full items-center rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] pr-1 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/20">
               <input
                 id="password"
                 name="password"
@@ -206,13 +206,13 @@ export default function LoginPage() {
           </div>
 
           {passwordResetNotice && !error && (
-            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900" role="status">
+            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200" role="status">
               Password updated. Sign in with your new password.
             </p>
           )}
 
           {error && (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200" role="alert">
               {error}
             </p>
           )}

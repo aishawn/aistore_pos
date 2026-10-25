@@ -7,7 +7,7 @@ const ruleStatuses = [
     title: "Refund reasons",
     description: "The previous switch was an example only. This page does not save a rule or require a reason during refunds.",
     icon: ShieldAlert,
-    action: { label: "Review sales history", href: "/history/odoo" },
+    action: { label: "Review sales history", href: "/history" },
   },
   {
     title: "Manager approval for voids",

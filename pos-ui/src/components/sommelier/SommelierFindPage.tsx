@@ -222,7 +222,7 @@ export function SommelierFindPage() {
             value={foodOther}
             onChange={(e) => setFoodOther(e.target.value)}
             placeholder="Other, e.g. Chinese BBQ"
-            className="mt-3 min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
+            className="mt-3 min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
           />
         </StepFrame>
       )}
@@ -246,7 +246,7 @@ export function SommelierFindPage() {
       {step === "results" && (
         <div className="space-y-4">
           {emptyReason && cards.length === 0 ? (
-            <p className="rounded-xl border border-[var(--oh-border)] bg-white p-4 text-[14px] text-[var(--oh-text)]">{emptyReason}</p>
+            <p className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 text-[14px] text-[var(--oh-text)]">{emptyReason}</p>
           ) : null}
           {cards.map((card) => (
             <WineCard
@@ -258,7 +258,7 @@ export function SommelierFindPage() {
           <button
             type="button"
             onClick={() => go("type")}
-            className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
+            className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
           >
             Start over
           </button>
@@ -304,7 +304,7 @@ function chipClass(active: boolean) {
     "rounded-xl border px-3 py-3 text-left text-[14px] transition",
     active
       ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-primary)]"
-      : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-slate-50",
+      : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-slate-50",
   ].join(" ");
 }
 
@@ -352,7 +352,7 @@ function StepFrame({
           <button
             type="button"
             onClick={onBack}
-            className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
           >
             Back
           </button>

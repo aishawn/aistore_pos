@@ -178,7 +178,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
   if (loading) {
     return (
-      <div role="status" aria-live="polite" className="flex h-full items-center justify-center bg-white text-[16px] text-neutral-500">
+      <div role="status" aria-live="polite" className="flex h-full items-center justify-center bg-[var(--oh-surface)] text-[16px] text-[var(--oh-muted)]">
         Loading report…
       </div>
     );
@@ -186,10 +186,10 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
   if (error || !data) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 bg-white px-6 text-center text-[16px] text-neutral-500">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[var(--oh-surface)] px-6 text-center text-[16px] text-[var(--oh-muted)]">
         <p role="alert">{error || "Report not found."}</p>
         {error && (
-          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 py-2 font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 py-2 font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             <RefreshIcon size={16} /> Retry report
           </button>
         )}
@@ -206,31 +206,31 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
       : slots.from || "Current";
 
   return (
-    <div className="h-full overflow-auto bg-white p-4 font-sans">
-      <div className="flex items-center gap-3 rounded-lg border border-neutral-300 px-4 py-2">
-        <code className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[15px] text-neutral-700">
+    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-4 font-sans">
+      <div className="flex items-center gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2">
+        <code className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[15px] text-[var(--oh-text)]">
           {data.question || data.title || "AI report"}
         </code>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-px bg-neutral-300">
-        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[#5f636b] px-4 py-3 text-white">
+      <div className="mt-4 flex flex-wrap gap-px border border-[var(--oh-border)] bg-[var(--oh-border)]">
+        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[var(--oh-surface-muted)] px-4 py-3 text-[var(--oh-text)]">
           <span>
-            <span className="block text-[14px] opacity-80">Report Type</span>
+            <span className="block text-[14px] text-[var(--oh-muted)]">Report Type</span>
             <span className="text-[20px]">{intentLabel(data.intent)}</span>
           </span>
           <SelectChevronIcon size={18} />
         </div>
-        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[#5f636b] px-4 py-3 text-white">
+        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[var(--oh-surface-muted)] px-4 py-3 text-[var(--oh-text)]">
           <span>
-            <span className="block text-[14px] opacity-80">Date Range</span>
+            <span className="block text-[14px] text-[var(--oh-muted)]">Date Range</span>
             <span className="text-[20px]">{range}</span>
           </span>
           <SelectChevronIcon size={18} />
         </div>
-        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[#5f636b] px-4 py-3 text-white">
+        <div className="flex min-w-[280px] flex-1 items-center justify-between bg-[var(--oh-surface-muted)] px-4 py-3 text-[var(--oh-text)]">
           <span>
-            <span className="block text-[14px] opacity-80">Rows</span>
+            <span className="block text-[14px] text-[var(--oh-muted)]">Rows</span>
             <span className="text-[20px]">{allRows.length}</span>
           </span>
           <SelectChevronIcon size={18} />
@@ -238,10 +238,10 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
       </div>
 
       {data.title && (
-        <p className="mt-4 text-[16px] text-neutral-700">{data.title}</p>
+        <p className="mt-4 text-[16px] text-[var(--oh-text-secondary)]">{data.title}</p>
       )}
 
-      <div className="mt-4 flex items-stretch gap-px border border-neutral-300">
+      <div className="mt-4 flex items-stretch gap-px border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
         <input
           aria-label="Search report results"
           value={search}
@@ -262,21 +262,21 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
                 rows,
               )
             }
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-[#5cb3e0] px-5 py-2.5 font-semibold text-[var(--sf-tab-blue)]"
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-primary)] px-5 py-2.5 font-semibold text-[var(--oh-primary)]"
           >
             <ExportIcon size={18} /> Export
           </button>
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-[#5cb3e0] px-5 py-2.5 font-semibold text-[var(--sf-tab-blue)]"
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-primary)] px-5 py-2.5 font-semibold text-[var(--oh-primary)]"
           >
             <PrinterIcon size={18} /> Print
           </button>
           <button
             type="button"
             disabled
-            className="flex items-center gap-2 rounded-md border border-neutral-200 px-5 py-2.5 font-semibold text-neutral-400"
+            className="flex items-center gap-2 rounded-md border border-[var(--oh-border)] px-5 py-2.5 font-semibold text-[var(--oh-muted)]"
           >
             <SaveIcon size={18} /> Save
           </button>
@@ -287,7 +287,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             aria-expanded={columnMenuOpen}
             aria-controls="ai-report-columns-menu"
             onClick={() => setColumnMenuOpen((open) => !open)}
-            className="flex min-h-11 items-center gap-2 rounded-md border border-[#5cb3e0] px-5 py-2.5 font-semibold text-[var(--sf-tab-blue)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+            className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-primary)] px-5 py-2.5 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <ColumnsIcon size={18} /> Columns
           </button>
@@ -296,15 +296,15 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
               id="ai-report-columns-menu"
               role="group"
               aria-label="Visible report columns"
-              className="absolute right-0 top-full z-20 mt-2 w-64 rounded-md border border-neutral-300 bg-white p-3 shadow-lg"
+              className="absolute right-0 top-full z-20 mt-2 w-64 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 shadow-lg"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Visible columns</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Visible columns</p>
                 <button
                   type="button"
                   onClick={showAllColumns}
                   disabled={hiddenColumns.size === 0}
-                  className="min-h-11 rounded px-2 text-xs font-semibold text-[var(--sf-tab-blue)] hover:bg-sky-50 disabled:cursor-default disabled:text-neutral-400"
+                  className="min-h-11 rounded px-2 text-xs font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] disabled:cursor-default disabled:text-[var(--oh-muted)]"
                 >
                   Show all
                 </button>
@@ -313,7 +313,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
                 {columns.map((column) => {
                   const checked = !hiddenColumns.has(column);
                   return (
-                    <label key={column} className="flex min-h-11 items-center gap-3 rounded px-2 text-sm text-neutral-800 hover:bg-neutral-50">
+                    <label key={column} className="flex min-h-11 items-center gap-3 rounded px-2 text-sm text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)]">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -335,7 +335,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
         <div className="overflow-hidden rounded-md">
         <table aria-label="AI report results" className="w-full table-fixed border-collapse font-sans text-[13px]">
           <thead>
-            <tr className="bg-black text-[13px] font-bold text-white">
+            <tr className="bg-[var(--oh-surface-inverse)] text-[13px] font-bold text-[var(--oh-on-inverse)]">
               {visibleColumns.map((col, i) => (
                 <th key={col} scope="col" className="px-2 py-2 text-center">
                   <span className="inline-flex items-center justify-center gap-1">
@@ -359,7 +359,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
               <tr>
                 <td
                   colSpan={Math.max(visibleColumns.length, 1)}
-                  className="px-3 py-8 text-center text-[13px] text-neutral-500"
+                  className="px-3 py-8 text-center text-[13px] text-[var(--oh-muted)]"
                 >
                   No matching rows.
                 </td>
@@ -368,10 +368,10 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
               rows.map((row, ri) => (
                 <tr
                   key={ri}
-                  className={ri % 2 === 0 ? "bg-white" : "bg-[#f3f3f3]"}
+                  className={ri % 2 === 0 ? "bg-[var(--oh-surface-elevated)]" : "bg-[var(--oh-surface-muted)]"}
                 >
                   {visibleColumns.map((col) => (
-                    <td key={col} className="px-2 py-2 text-center text-[13px] text-black">
+                    <td key={col} className="px-2 py-2 text-center text-[13px] text-[var(--oh-text)]">
                       {cellText(row[col])}
                     </td>
                   ))}

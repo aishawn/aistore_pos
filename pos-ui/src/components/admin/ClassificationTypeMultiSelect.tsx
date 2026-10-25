@@ -62,7 +62,7 @@ export function ClassificationTypeMultiSelect({
       className={
         embedded
           ? "mt-1.5 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-tile-blue-bg)] py-1"
-          : "absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]"
+: "absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]"
       }
     >
       {CLASSIFICATION_TYPE_OPTIONS.map((option) => (

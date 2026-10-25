@@ -55,10 +55,10 @@ type OdooCashRounding = { id: number; rounding: number; rounding_method: "UP" | 
 
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error("Odoo connection must use HTTPS");
+    throw new Error("Orithos connection must use HTTPS");
   }
   return value;
 }
@@ -78,12 +78,12 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Odoo POS configuration is unavailable");
+  if (!response.ok) throw new Error("Orithos POS configuration is unavailable");
   const payload = (await response.json()) as OdooRpcEnvelope<T>;
   if (payload.error) {
-    const message = payload.error.data?.message || payload.error.message || "Odoo request failed";
+    const message = payload.error.data?.message || payload.error.message || "Orithos request failed";
     if (/session|log in|authenticate/i.test(message)) throw new OdooSessionExpiredError();
-    throw new Error("Odoo could not load POS configuration");
+    throw new Error("Orithos could not load POS configuration");
   }
   return payload.result;
 }
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   try {
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
     }
     const companyIds = forced.companyIds;
     if (!companyIds.length) {
-      return NextResponse.json({ configs: [], activeSessionId: null, message: "No accessible Odoo companies are assigned to this user." }, { status: 200 });
+      return NextResponse.json({ configs: [], activeSessionId: null, message: "No accessible Orithos companies are assigned to this user." }, { status: 200 });
     }
 
     const configs = (await rpc<OdooConfig[]>(sessionId, "pos.config", "search_read", [[
@@ -218,11 +218,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ configs: data, activeSessionId }, { status: 200 });
   } catch (error) {
     if (error instanceof OdooSessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

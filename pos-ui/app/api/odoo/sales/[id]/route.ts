@@ -14,9 +14,9 @@ type RpcEnvelope<T> = { result?: T; error?: { message?: string; data?: { message
 
 function baseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -30,11 +30,11 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Odoo sales are unavailable");
+  if (!response.ok) throw new Error("Orithos sales are unavailable");
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
     if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new SaleSessionExpiredError();
-    throw new Error("Odoo could not load the sale details");
+    throw new Error("Orithos could not load the sale details");
   }
   return payload.result;
 }
@@ -44,7 +44,7 @@ class SaleSessionExpiredError extends Error {}
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const { id: rawId } = await context.params;
   const saleId = Number(rawId);
   if (!Number.isSafeInteger(saleId) || saleId < 1) return NextResponse.json({ message: "Invalid sale id" }, { status: 400 });
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyIds = forced.companyIds;
-    if (!companyIds.length) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
+    if (!companyIds.length) return NextResponse.json({ message: "No Orithos companies are available to this user." }, { status: 403 });
 
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [[
       ["id", "=", saleId], ["company_id", "in", companyIds],
@@ -107,11 +107,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SaleSessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

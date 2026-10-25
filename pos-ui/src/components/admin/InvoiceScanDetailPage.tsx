@@ -85,7 +85,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         searchOdooRecords<Named>("outlets", { limit: 100 }).catch(() => ({ items: [] as Named[] })),
       ]);
       if (!sessionInfo) {
-        setNotice("Connect your Odoo staff account before confirming into purchases.");
+        setNotice("Connect your Orithos staff account before confirming into purchases.");
       }
       let next = detail;
       if (!detail.odooSupplierId && detail.supplierAbn) {
@@ -307,7 +307,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     } catch (cause) {
       const message = cause instanceof OdooApiError
         ? cause.message
-        : apiFailureMessage(cause, "Could not confirm this invoice into Odoo.", "Please sign in again.");
+        : apiFailureMessage(cause, "Could not confirm this invoice into Orithos.", "Please sign in again.");
       setError(message);
       try {
         const linked = await linkInvoiceScanPurchase(session.id, {
@@ -345,7 +345,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       setSession(linked);
       setNotice(
         receiveResult.status === "received"
-          ? `Received ${receiveResult.pickingName || session.odooPoName}. Stock is now in Odoo.`
+          ? `Received ${receiveResult.pickingName || session.odooPoName}. Stock is now in Orithos.`
           : "Could not auto-receive. Open Purchases to validate the picking manually.",
       );
     } catch (cause) {
@@ -395,7 +395,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     if (!window.confirm("Discard this draft invoice scan?")) return;
     try {
       await discardInvoiceScan(session.id);
-      router.push("/purchases/odoo?tab=invoices");
+      router.push("/purchases?tab=invoices");
     } catch (cause) {
       setError(apiFailureMessage(cause, "Could not discard this draft.", "Please sign in again."));
     }
@@ -413,8 +413,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] px-4 text-center">
         <div>
-          <p className="text-sm text-rose-800">{error || "Invoice scan not found."}</p>
-          <Link href="/purchases/odoo?tab=invoices" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
+          <p className="text-sm text-[var(--oh-tile-red-text)]">{error || "Invoice scan not found."}</p>
+          <Link href="/purchases?tab=invoices" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
         </div>
       </main>
     );
@@ -424,7 +424,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -432,7 +432,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{session.invoiceNumber || `Scan #${session.id}`}</h1>
               <p className="mt-1 text-sm text-[var(--oh-muted)]">{statusLabel(String(session.status))}</p>
             </div>
-            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
+            <Link href="/purchases?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
           </div>
           <InvoiceWorkflowSteps active={step} />
         </div>
@@ -440,10 +440,10 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-          {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>}
-          {notice && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</div>}
+          {error && <div role="alert" className="rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-3 text-sm text-[var(--oh-tile-red-text)]">{error}</div>}
+          {notice && <div role="status" className="rounded-lg border border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] px-4 py-3 text-sm text-[var(--oh-tile-green-text)]">{notice}</div>}
           {session.duplicateIds && session.duplicateIds.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <div className="rounded-lg border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-4 py-3 text-sm text-[var(--oh-tile-orange-text)]">
               Possible duplicate invoice number. Existing scans: {session.duplicateIds.map((id) => (
                 <Link key={id} href={`/invoices/${id}`} className="mx-1 font-semibold underline">#{id}</Link>
               ))}
@@ -452,24 +452,24 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
           )}
 
           {done && (
-            <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-[var(--oh-shadow-card)]">
+            <section className="rounded-xl border border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] p-4 shadow-[var(--oh-shadow-card)]">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-700" size={22} />
+                <CheckCircle2 className="mt-0.5 shrink-0 text-[var(--oh-tile-green-text)]" size={22} />
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-semibold text-emerald-950">Stock received</h2>
-                  <p className="mt-1 text-sm text-emerald-900">
+                  <h2 className="text-sm font-semibold text-[var(--oh-tile-green-text)]">Stock received</h2>
+                  <p className="mt-1 text-sm text-[var(--oh-tile-green-text)]">
                     {session.odooPoName || "Purchase"} is confirmed
                     {session.odooPickingName ? ` · ${session.odooPickingName}` : ""}.
-                    On-hand quantities are updated in Odoo for matched products only — unmatched/skipped lines were not received.
+                    On-hand quantities are updated in Orithos for matched products only — unmatched/skipped lines were not received.
                   </p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <Link href="/purchases/odoo" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900">
+                    <Link href="/purchases" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-success)] px-4 text-sm font-semibold text-white hover:opacity-90">
                       <ShoppingCart size={16} /> Open Purchases
                     </Link>
-                    <Link href="/products" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-100">
+                    <Link href="/products" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--oh-tile-green-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-tile-green-text)] hover:bg-[var(--oh-tile-green-bg)]">
                       <Package size={16} /> Check Products stock
                     </Link>
-                    <Link href="/invoices/new" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-100">
+                    <Link href="/invoices/new" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-tile-green-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-tile-green-text)] hover:bg-[var(--oh-tile-green-bg)]">
                       Scan another
                     </Link>
                   </div>
@@ -478,7 +478,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
             </section>
           )}
 
-          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-sm font-semibold text-[var(--oh-text)]">Header</h2>
               <p className="text-xs text-[var(--oh-muted)]">
@@ -518,7 +518,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm"><p className="text-xs text-[var(--oh-muted)]">ABN</p><p className="mt-1">{session.supplierAbn || "—"}</p></div>
               {(session.odooPoName || session.odooPickingName) && (
                 <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm sm:col-span-2">
-                  <p className="text-xs text-[var(--oh-muted)]">Odoo documents</p>
+                  <p className="text-xs text-[var(--oh-muted)]">Orithos documents</p>
                   <p className="mt-1 font-medium">
                     {session.odooPoName || "—"}
                     {session.odooPickingName ? ` · ${session.odooPickingName}` : ""}
@@ -528,7 +528,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
             <header className="border-b border-[var(--oh-border)] px-4 py-3">
               <h2 className="text-sm font-semibold text-[var(--oh-text)]">Match lines to Products</h2>
               <p className="mt-1 text-xs text-[var(--oh-muted)]">
@@ -544,7 +544,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                     key={line.id ?? index}
                     className={[
                       "space-y-3 p-4",
-                      needsAttention ? "bg-amber-50/40" : "",
+                      needsAttention ? "bg-[var(--oh-tile-orange-bg)]/40" : "",
                       lowConfidence ? "ring-1 ring-inset ring-amber-200" : "",
                     ].join(" ")}
                   >
@@ -578,7 +578,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                           <input
                             value={productQuery[index] ?? ""}
                             onChange={(e) => searchProducts(index, e.target.value)}
-                            placeholder="Search purchasable Odoo products…"
+                            placeholder="Search purchasable Orithos products…"
                             className="h-11 w-full rounded-lg border border-[var(--oh-border)] pl-9 pr-3 text-sm"
                           />
                         </label>
@@ -588,7 +588,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                               <li key={hit.id}>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-white"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--oh-surface-muted)]"
                                   onClick={() => {
                                     patchLine(index, {
                                       odooProductId: hit.id,
@@ -607,7 +607,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                         )}
                         <div className="flex flex-wrap gap-2">
                           {line.odooProductName && (
-                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-900">
+                            <span className="rounded-full bg-[var(--oh-tile-green-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-tile-green-text)]">
                               {line.matchStatus === "suggested" ? "Suggested: " : "Matched: "}
                               {line.odooProductName}
                             </span>
@@ -616,7 +616,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                             <button
                               type="button"
                               onClick={() => patchLine(index, { matchStatus: "confirmed" })}
-                              className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-950"
+                              className="rounded-md border border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-tile-green-text)]"
                             >
                               Accept suggestion
                             </button>
@@ -648,8 +648,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
 
       {confirmOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-invoice-title">
-          <div className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-xl">
-            <h2 id="confirm-invoice-title" className="text-base font-semibold text-[var(--oh-text)]">Confirm into Odoo stock?</h2>
+          <div className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-xl">
+            <h2 id="confirm-invoice-title" className="text-base font-semibold text-[var(--oh-text)]">Confirm into Orithos stock?</h2>
             <p className="mt-2 text-sm text-[var(--oh-muted)]">
               This creates a draft RFQ, confirms the purchase order, then receives stock for {confirmedLines.length} matched line{confirmedLines.length === 1 ? "" : "s"}
               {skippedCount ? ` (${skippedCount} skipped)` : ""}.
@@ -672,16 +672,16 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         </div>
       )}
 
-      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 sm:flex-row sm:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row">
             {editable && (
-              <button type="button" onClick={() => void onDiscard()} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-rose-200 px-4 text-sm font-semibold text-rose-800 hover:bg-rose-50">
+              <button type="button" onClick={() => void onDiscard()} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-tile-red-border)] px-4 text-sm font-semibold text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)]">
                 Discard draft
               </button>
             )}
             {(session.odooPoId || done || canFinishReceive) && (
-              <Link href="/purchases/odoo" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">
+              <Link href="/purchases" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">
                 Open Purchases
               </Link>
             )}
@@ -717,12 +717,12 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         {editable && !canConfirm && (
           <p className="mx-auto mt-2 w-full max-w-5xl text-xs text-[var(--oh-muted)]">
             {!session.odooSupplierId
-              ? "Select an Odoo supplier first."
+              ? "Select an Orithos supplier first."
               : openLines.length > 0
                 ? `${openLines.length} line${openLines.length === 1 ? "" : "s"} still need a match or skip.`
                 : confirmedLines.length === 0
                   ? "Confirm at least one matched line with quantity."
-                  : "Select an Odoo supplier and match or skip every line before confirming."}
+                  : "Select an Orithos supplier and match or skip every line before confirming."}
           </p>
         )}
       </footer>

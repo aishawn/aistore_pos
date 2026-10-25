@@ -44,14 +44,14 @@ export default function SurchargingPage() {
     >
       <section
         role="status"
-        className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5"
+        className="flex items-start gap-3 rounded-xl border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] p-4 sm:p-5"
       >
-        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-200/80">
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-tile-orange-text)] shadow-sm ring-1 ring-[var(--oh-tile-orange-border)]">
           <AlertTriangle size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-amber-950">Surcharge settings are not connected here</h2>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">
+          <h2 className="text-sm font-semibold text-[var(--oh-tile-orange-text)]">Surcharge settings are not connected here</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--oh-tile-orange-text)] opacity-90">
             The rates and switches previously shown were examples. This page does not load or save surcharge rules, and its values do not change checkout totals.
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function SurchargingPage() {
 
         <ul className="grid gap-3 sm:grid-cols-2">
           {surchargeSettings.map(({ title, detail, status, icon: Icon }) => (
-            <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+            <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
                 <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
               </span>

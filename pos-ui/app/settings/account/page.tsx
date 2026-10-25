@@ -49,14 +49,14 @@ export default function AccountSecurityPage() {
       <header>
         <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-primary)]">Your account</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Profile &amp; security</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage your Orithos sign-in and password. Odoo uses a separate staff account connected under Integrations.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage your Orithos sign-in and password. Orithos uses a separate staff account connected under Integrations.</p>
       </header>
 
-      {user?.pendingPasswordReset && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Your administrator asked you to change your password before continuing.</div>}
+      {user?.pendingPasswordReset && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Your administrator asked you to change your password before continuing.</div>}
 
-      <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
+      <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-sky-50 text-[var(--sf-tab-blue)]"><ShieldCheck size={20} /></span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--brand-info-tint)] text-[var(--sf-tab-blue)]"><ShieldCheck size={20} /></span>
           <div>
             <h2 className="text-base font-semibold text-[var(--oh-text)]">Account details</h2>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">Your administrator manages account name, email and store access.</p>
@@ -69,9 +69,9 @@ export default function AccountSecurityPage() {
         </dl>
       </section>
 
-      <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
+      <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#fff2da] text-[#8b4a00]"><KeyRound size={20} /></span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--brand-warning-tint)] text-[var(--oh-warning)]"><KeyRound size={20} /></span>
           <div>
             <h2 className="text-base font-semibold text-[var(--oh-text)]">Change password</h2>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">Use at least 12 characters. Your current password is required to confirm this change.</p>
@@ -80,19 +80,19 @@ export default function AccountSecurityPage() {
 
         <form onSubmit={submit} className="mt-5 grid max-w-2xl gap-4 border-t border-[var(--oh-border)] pt-5">
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">Current password
-            <input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required maxLength={256} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-orange-100" />
+            <input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required maxLength={256} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-[var(--oh-primary)]/20" />
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">New password
-              <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={12} maxLength={72} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-orange-100" />
+              <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={12} maxLength={72} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-[var(--oh-primary)]/20" />
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">Confirm new password
-              <input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={12} maxLength={72} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-orange-100" />
+              <input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={12} maxLength={72} className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-[var(--oh-primary)]/20" />
             </label>
           </div>
 
-          {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{error}</p>}
-          {notice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">{notice}</p>}
+          {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
+          {notice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">{notice}</p>}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-xl text-xs leading-5 text-[var(--oh-muted)]">Forgot your current password? Use Forgot password on the sign-in page, or ask an administrator for a reset link.</p>
         <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">

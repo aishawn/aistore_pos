@@ -14,7 +14,7 @@ export function CartSidebar() {
   const router = useRouter();
   const { whole, cents } = splitMoney(sell.total);
   const hasItems = sell.lines.length > 0;
-  const muted = "text-[rgba(189,189,189,0.7)]";
+  const muted = "text-[var(--oh-text-secondary)]";
 
   return (
     <div className="flex w-full flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] font-sans lg:w-[419px]">
@@ -78,8 +78,8 @@ export function CartSidebar() {
                 }
               }}
               className={cn(
-                "flex cursor-pointer items-center gap-3 border-b border-[#eee] px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
-                selected ? "bg-[rgb(206,229,252)]" : "bg-[var(--oh-surface-elevated)] hover:bg-black/5",
+                "flex cursor-pointer items-center gap-3 border-b border-[var(--oh-border)] px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
+                selected ? "bg-[var(--brand-info-tint)]" : "bg-[var(--oh-surface-elevated)] hover:bg-[var(--oh-surface-muted)]",
               )}
             >
               <span className="w-6 shrink-0 text-[16px] text-[var(--oh-text)]">{line.qty}</span>
@@ -152,7 +152,7 @@ export function CartSidebar() {
             "h-[50px] w-full px-2 py-1 text-center text-[32px] text-[var(--sf-on-dark)] [font-variant:small-caps]",
             hasItems
               ? "cursor-pointer bg-[var(--sf-link-blue)] hover:brightness-95"
-              : "cursor-not-allowed bg-[#bdbdbd]",
+              : "cursor-not-allowed bg-[var(--oh-border-strong)] text-[var(--oh-muted)]",
           )}
         >
           Finalise

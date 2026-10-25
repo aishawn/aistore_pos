@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
       </header>
 
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 items-center py-10">
-        <section className="w-full rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-[var(--oh-shadow-card)] sm:p-8">
+        <section className="w-full rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-[var(--oh-shadow-card)] sm:p-8">
           {done ? (
             <div className="grid gap-4">
               <span className="grid h-12 w-12 place-items-center rounded-lg bg-[var(--oh-tile-blue-bg)] text-[var(--oh-primary)]">
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                     spellCheck={false}
                     required
                     maxLength={120}
-                    className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none transition-shadow placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
+                    className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base font-normal text-[var(--oh-text)] outline-none transition-shadow placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
                   />
                 </label>
 

@@ -7,16 +7,16 @@ const HREF = "/settings/registers/general";
 const registerBehaviors = [
   {
     title: "Safe drop alert",
-    status: "Not in Odoo pilot",
-    detail: "The previous zero-dollar value did not set a drawer threshold. Orithos does not currently provide a safe-drop alert in the Odoo register flow.",
+    status: "Not in Orithos pilot",
+    detail: "The previous zero-dollar value did not set a drawer threshold. Orithos does not currently provide a safe-drop alert in the Orithos register flow.",
     icon: Banknote,
   },
   {
     title: "Default payment method",
-    status: "Odoo POS config",
-    detail: "Available payment methods come from the active Odoo POS configuration. The cashier selects a method at checkout; this page does not set a default.",
+    status: "Orithos POS config",
+    detail: "Available payment methods come from the active Orithos POS configuration. The cashier selects a method at checkout; this page does not set a default.",
     icon: CreditCard,
-    action: { label: "Check Odoo connection", href: "/settings/company/integrations" },
+    action: { label: "Check Orithos connection", href: "/settings/company/integrations" },
   },
   {
     title: "Receipt template",
@@ -58,7 +58,7 @@ export default function RegisterGeneralSettingsPage() {
         <section aria-labelledby="register-general-heading" className="mt-6">
           <div className="mb-3">
             <h2 id="register-general-heading" className="text-sm font-semibold text-[var(--oh-text)]">Register behaviour</h2>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">Current settings and capabilities in the Odoo POS pilot</p>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">Current settings and capabilities in the Orithos POS pilot</p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {registerBehaviors.map(({ title, status, detail, icon: Icon, action }) => (

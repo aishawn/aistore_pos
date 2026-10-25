@@ -7,15 +7,15 @@ const HREF = "/settings/registers/miscellaneous";
 const registerBehaviors = [
   {
     title: "Sale key set",
-    status: "Not used by Odoo Sell",
-    detail: "The pilot register browses Odoo products with search and categories. The sale-key sets page applies only to the legacy register workflow.",
+    status: "Not used by Orithos Sell",
+    detail: "The pilot register browses Orithos products with search and categories. The sale-key sets page applies only to the legacy register workflow.",
     icon: Keyboard,
     action: { label: "View legacy sale keys", href: "/settings/keys" },
   },
   {
     title: "Sale key position",
     status: "No key panel",
-    detail: "There are no sale-key tiles to place on the left or right. Product browsing and the cart use the current Odoo Sell layout.",
+    detail: "There are no sale-key tiles to place on the left or right. Product browsing and the cart use the current Orithos Sell layout.",
     icon: LayoutPanelLeft,
     action: { label: "Open Sell", href: "/" },
   },
@@ -38,7 +38,7 @@ export default function RegisterMiscellaneousSettingsPage() {
           <div>
             <h2 className="text-sm font-semibold text-sky-950">Register layout preferences are not saved here</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
-              The previous sale-key selectors were static examples and do not change the Odoo Sell screen.
+              The previous sale-key selectors were static examples and do not change the Orithos Sell screen.
             </p>
           </div>
         </section>

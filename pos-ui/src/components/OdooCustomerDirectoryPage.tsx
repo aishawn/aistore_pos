@@ -38,7 +38,7 @@ function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClea
         {searching ? "No customers match this search" : "No customers available"}
       </p>
       <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">
-        {searching ? "Try another name, phone number, email or customer code." : "Customer records available to this Odoo account will appear here."}
+        {searching ? "Try another name, phone number, email or customer code." : "Customer records available to this Orithos account will appear here."}
       </p>
       {searching && (
         <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
@@ -124,7 +124,7 @@ export function OdooCustomerDirectoryPage() {
     }).catch((cause) => {
       if (!cancelled) {
         setConnected(false);
-        setError(cause instanceof Error ? cause.message : "Could not check the Odoo connection.");
+        setError(cause instanceof Error ? cause.message : "Could not check the Orithos connection.");
       }
     }).finally(() => {
       if (!cancelled) setCheckingConnection(false);
@@ -176,7 +176,7 @@ export function OdooCustomerDirectoryPage() {
       setHasNext(page.hasNext ?? (page.items.length > PAGE_SIZE));
       setLastLoadedAt(Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo customers.");
+      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos customers.");
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
@@ -234,7 +234,7 @@ export function OdooCustomerDirectoryPage() {
       if (!editingCustomer) setQuery(name);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setCreateError(cause instanceof Error ? cause.message : `Could not ${editingCustomer ? "update" : "create"} this Odoo customer.`);
+      setCreateError(cause instanceof Error ? cause.message : `Could not ${editingCustomer ? "update" : "create"} this Orithos customer.`);
     } finally {
       setCreating(false);
     }
@@ -252,7 +252,7 @@ export function OdooCustomerDirectoryPage() {
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            Odoo customer directory with price lists, groups and receivable balances.
+            Orithos customer directory with price lists, groups and receivable balances.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
         </div>
@@ -269,11 +269,11 @@ export function OdooCustomerDirectoryPage() {
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view customers</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to see customers used by the Odoo register.</p>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view customers</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Orithos staff account to see customers used by the Orithos register.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
-              <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+              <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
             </div>
           </div>
         </section>
@@ -292,7 +292,7 @@ export function OdooCustomerDirectoryPage() {
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section aria-busy={resultsBusy} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:flex-none max-xl:overflow-visible">
-            <table aria-label="Odoo customers" className="hidden w-full min-w-[1100px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Orithos customers" className="hidden w-full min-w-[1100px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Customer</th>
@@ -315,7 +315,7 @@ export function OdooCustomerDirectoryPage() {
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3">
                       <button type="button" onClick={() => setDetail(customer)} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</button>
-                      <span className="ml-6 block text-xs text-[var(--oh-muted)]">Odoo #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</span>
+                      <span className="ml-6 block text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</span>
                     </td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{customer.phone ? <a className="inline-flex items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`tel:${encodeURIComponent(customer.phone)}`}><Phone size={14} />{customer.phone}</a> : "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{customer.email ? <a className="inline-flex max-w-full items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`mailto:${encodeURIComponent(customer.email)}`}><Mail size={14} /><span className="break-all">{customer.email}</span></a> : "—"}</td>
@@ -337,7 +337,7 @@ export function OdooCustomerDirectoryPage() {
                   <header className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <button type="button" onClick={() => setDetail(customer)} className="min-h-11 break-words text-left text-sm font-semibold text-[var(--oh-primary)]">{customer.name}</button>
-                      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</p>
+                      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</p>
                     </div>
                     {canBalance && <p className="shrink-0 text-sm font-semibold text-[var(--oh-text)]">{money(customer.credit)}</p>}
                   </header>
@@ -369,7 +369,7 @@ export function OdooCustomerDirectoryPage() {
       {createOpen && <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creating) { setCreateOpen(false); setEditingCustomer(null); } }}>
         <section role="dialog" aria-modal="true" aria-labelledby="customer-create-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
-            <div><h2 id="customer-create-title" className="text-lg font-semibold text-[var(--oh-text)]">{editingCustomer ? "Edit customer" : "New customer"}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingCustomer ? "Update this customer record in Odoo, including price list and groups." : "Create a contact in Odoo for sales and customer lookup."}</p></div>
+            <div><h2 id="customer-create-title" className="text-lg font-semibold text-[var(--oh-text)]">{editingCustomer ? "Edit customer" : "New customer"}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingCustomer ? "Update this customer record in Orithos, including price list and groups." : "Create a contact in Orithos for sales and customer lookup."}</p></div>
             <button type="button" onClick={() => { setCreateOpen(false); setEditingCustomer(null); }} disabled={creating} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form key={editingCustomer?.id ?? "new-customer"} onSubmit={(event) => void submitCustomer(event)} className="mt-5 grid gap-4">
@@ -422,7 +422,7 @@ export function OdooCustomerDirectoryPage() {
         </section>
       </ModalOverlay>}
       {groupsOpen && <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-2 sm:p-4"><section role="dialog" aria-modal="true" aria-label="Manage customer groups" className="flex max-h-[95dvh] w-full max-w-5xl flex-col overflow-y-auto rounded-xl bg-white"><button type="button" onClick={() => { setGroupsOpen(false); setRefreshKey((value) => value + 1); }} className="m-3 min-h-11 self-end rounded border px-4">Close groups</button><OdooCustomerGroupsPage /></section></ModalOverlay>}
-      {detail && <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40"><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="h-full w-full max-w-lg overflow-y-auto bg-white p-5"><button type="button" onClick={() => setDetail(null)} className="min-h-11 rounded border px-3">Close details</button><h2 id="customer-detail-title" className="mt-4 text-xl font-semibold">{detail.name}</h2><dl className="mt-5 grid gap-3 text-sm">{[["Phone", detail.phone], ["Email", detail.email], ["Customer reference", detail.ref], ["Type", detail.company_type], ["Address", [detail.street, detail.city].filter(Boolean).join(", ")], ["ABN / VAT", detail.vat], ["Groups", groupName(detail.category_id)], ["Price list", Array.isArray(detail.property_product_pricelist) ? detail.property_product_pricelist[1] : "Store default"]].map(([label, value]) => <div key={String(label)}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium">{value || "—"}</dd></div>)}</dl>{canBalance && <div className="mt-5 grid gap-3 rounded-lg border p-3"><p>Current receivable: {money(detail.credit)}</p><Link href={`/customers/balances?customerId=${detail.id}&q=${encodeURIComponent(detail.name)}`} className="min-h-11 text-[var(--oh-primary)] underline">Open unpaid invoices</Link></div>}<div className="mt-5 flex flex-wrap gap-2">{canEdit && <button type="button" onClick={() => { setDetail(null); openEdit(detail); }} className="min-h-11 rounded border px-3">Edit customer</button>}<OdooRecordLink model="res.partner" id={detail.id}>Open in Odoo</OdooRecordLink></div></section></ModalOverlay>}
+      {detail && <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40"><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="h-full w-full max-w-lg overflow-y-auto bg-white p-5"><button type="button" onClick={() => setDetail(null)} className="min-h-11 rounded border px-3">Close details</button><h2 id="customer-detail-title" className="mt-4 text-xl font-semibold">{detail.name}</h2><dl className="mt-5 grid gap-3 text-sm">{[["Phone", detail.phone], ["Email", detail.email], ["Customer reference", detail.ref], ["Type", detail.company_type], ["Address", [detail.street, detail.city].filter(Boolean).join(", ")], ["ABN / VAT", detail.vat], ["Groups", groupName(detail.category_id)], ["Price list", Array.isArray(detail.property_product_pricelist) ? detail.property_product_pricelist[1] : "Store default"]].map(([label, value]) => <div key={String(label)}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium">{value || "—"}</dd></div>)}</dl>{canBalance && <div className="mt-5 grid gap-3 rounded-lg border p-3"><p>Current receivable: {money(detail.credit)}</p><Link href={`/customers/balances?customerId=${detail.id}&q=${encodeURIComponent(detail.name)}`} className="min-h-11 text-[var(--oh-primary)] underline">Open unpaid invoices</Link></div>}<div className="mt-5 flex flex-wrap gap-2">{canEdit && <button type="button" onClick={() => { setDetail(null); openEdit(detail); }} className="min-h-11 rounded border px-3">Edit customer</button>}<OdooRecordLink model="res.partner" id={detail.id}>Open in Orithos</OdooRecordLink></div></section></ModalOverlay>}
     </main>
   );
 }

@@ -4,11 +4,11 @@ export const fetchCache = "force-no-store";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 const companyStatus = [
-  ["Business facts source", "Odoo company, taxes, payment methods, and POS config"],
+  ["Business facts source", "Orithos company, taxes, payment methods, and POS config"],
   ["General company options", "Not connected in Orithos — previous values were examples"],
-  ["Price rounding / cost methods", "Configure in Odoo if required for this store"],
-  ["Cash in / cash out reasons", "Not available here — Manage Cash is not wired to Odoo"],
-  ["Parked sale and refund policy", "Follow Odoo POS and Orithos register behaviour"],
+  ["Price rounding / cost methods", "Configure in Orithos if required for this store"],
+  ["Cash in / cash out reasons", "Not available here — Manage Cash is not wired to Orithos"],
+  ["Parked sale and refund policy", "Follow Orithos POS and Orithos register behaviour"],
 ];
 
 export default function GeneralCompanySettingsPage() {
@@ -18,9 +18,9 @@ export default function GeneralCompanySettingsPage() {
       subtitle="Store configuration status for the Orithos pilot"
     >
       <section role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        <h2 className="font-semibold">These options are not connected to Odoo</h2>
+        <h2 className="font-semibold">These options are not connected to Orithos</h2>
         <p className="mt-1 leading-6">
-          Earlier company settings on this page were sample values and were not saved to Odoo.
+          Earlier company settings on this page were sample values and were not saved to Orithos.
           Use Integrations, Payment Methods, Tax Rates, and Registers &amp; Outlets for live store data.
         </p>
       </section>

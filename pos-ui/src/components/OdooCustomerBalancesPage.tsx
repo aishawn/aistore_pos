@@ -106,11 +106,11 @@ export function OdooCustomerBalancesPage() {
 
   if (connected === false) {
     return (
-      <AdminPageLayout title="Receivables" subtitle="Customer receivable balances from Odoo">
+      <AdminPageLayout title="Receivables" subtitle="Customer receivable balances from Orithos">
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
           <AlertCircle className="mb-2" size={20} />
-          <p className="font-semibold">Connect Odoo to view balances</p>
-          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Odoo</Link>
+          <p className="font-semibold">Connect Orithos to view balances</p>
+          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Orithos</Link>
         </section>
       </AdminPageLayout>
     );
@@ -119,7 +119,7 @@ export function OdooCustomerBalancesPage() {
   return (
     <AdminPageLayout
       title="Receivables"
-      subtitle="Current receivables and open invoices. Record and reconcile payments in Odoo Accounting."
+      subtitle="Current receivables and open invoices. Record and reconcile payments in Orithos Accounting."
       count={loading || error ? undefined : items.length}
       countLabel="Customers on this page"
       actions={
@@ -128,7 +128,7 @@ export function OdooCustomerBalancesPage() {
         </AdminSecondaryButton>
       }
     >
-      <div className="mb-4"><OdooRecordLink model="account.move">Open Odoo Accounting</OdooRecordLink></div>
+      <div className="mb-4"><OdooRecordLink model="account.move">Open Orithos Accounting</OdooRecordLink></div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex h-11 max-w-xl flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
           <Search size={16} className="text-[var(--oh-muted)]" />
@@ -168,7 +168,7 @@ export function OdooCustomerBalancesPage() {
               <tr key={row.id}>
                 <td className="px-4 py-3">
                   <p className="font-medium text-[var(--oh-text)]">{row.name}</p>
-                  <p className="text-xs text-[var(--oh-muted)]">Odoo #{row.id}{row.ref ? ` · ${row.ref}` : ""}</p>
+                  <p className="text-xs text-[var(--oh-muted)]">Orithos #{row.id}{row.ref ? ` · ${row.ref}` : ""}</p>
                 </td>
                 <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{row.pricelist ?? "—"}</td>
                 <td className="px-4 py-3 text-right text-[var(--oh-text-secondary)]">{money(row.totalInvoiced, row.currency)}</td>
@@ -243,7 +243,7 @@ export function OdooCustomerBalancesPage() {
               </ul>
             )}
             {!invoiceLoading && !invoiceError && <div className="mt-4 flex justify-between"><button type="button" disabled={invoiceOffset === 0} onClick={() => void openStatements(selected, Math.max(0, invoiceOffset - 50))} className="min-h-11 disabled:opacity-40">Previous invoices</button><button type="button" disabled={!invoiceHasNext} onClick={() => void openStatements(selected, invoiceOffset + 50)} className="min-h-11 disabled:opacity-40">Next invoices</button></div>}
-            <div className="mt-4"><OdooRecordLink model="res.partner" id={selected.id}>View account in Odoo</OdooRecordLink></div>
+            <div className="mt-4"><OdooRecordLink model="res.partner" id={selected.id}>View account in Orithos</OdooRecordLink></div>
           </section>
         </ModalOverlay>
       )}

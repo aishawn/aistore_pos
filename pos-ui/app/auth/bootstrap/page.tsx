@@ -26,7 +26,13 @@ export default function BootstrapPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      params.delete("token");
+      const query = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+    }
     if (!token) {
       setError("Missing bootstrap token.");
       return;
@@ -34,14 +40,19 @@ export default function BootstrapPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await api.post<BootstrapResponse>("/api/auth/bootstrap", { token });
+        const res = await api.post<BootstrapResponse>("/api/auth/bootstrap", { token }, {
+          signal: AbortSignal.timeout(18_000),
+        });
         if (cancelled) return;
         const user = { ...res.user, id: String(res.user.id) };
         localStorage.setItem(USER_KEY, JSON.stringify(user));
         window.location.replace(storeLandingPath(null, "web", user));
       } catch (err) {
         if (!cancelled) {
-          setError(apiFailureMessage(err, "Could not open your store session.", "Session expired"));
+          const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+          setError(timedOut
+            ? "The store session is taking too long to open. Please sign in again."
+            : apiFailureMessage(err, "Could not open your store session.", "Session expired"));
         }
       }
     })();

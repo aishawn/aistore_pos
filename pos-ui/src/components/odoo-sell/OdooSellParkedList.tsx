@@ -26,7 +26,7 @@ export function OdooSellParkedList({ sales, formatDate, onResume, onDiscard }: O
               0,
             );
             return (
-              <article key={sale.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-3 shadow-sm">
+              <article key={sale.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 shadow-sm">
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
                   <p className="mt-0.5 text-xs text-[var(--oh-text-secondary)]">

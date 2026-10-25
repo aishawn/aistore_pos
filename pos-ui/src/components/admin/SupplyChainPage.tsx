@@ -164,9 +164,9 @@ function quotesOf(line: Line): Quote[] {
 }
 
 function confidenceClass(label: string) {
-  if (label === "High") return "bg-emerald-50 text-emerald-700";
-  if (label === "Medium") return "bg-amber-50 text-amber-700";
-  return "bg-rose-50 text-rose-700";
+  if (label === "High") return "bg-[var(--oh-tile-green-bg)] text-[var(--oh-tile-green-text)]";
+  if (label === "Medium") return "bg-[var(--oh-tile-orange-bg)] text-[var(--oh-tile-orange-text)]";
+  return "bg-[var(--oh-tile-red-bg)] text-[var(--oh-tile-red-text)]";
 }
 
 export function SupplyChainPage() {
@@ -253,7 +253,7 @@ export function SupplyChainPage() {
       }
     >
       {error && (
-        <div className="mb-3 rounded-[var(--oh-radius)] border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+        <div className="mb-3 rounded-[var(--oh-radius)] border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] text-[var(--oh-tile-red-text)]">
           {error}
         </div>
       )}
@@ -261,11 +261,11 @@ export function SupplyChainPage() {
       {settingsOpen ? (
         <SettingsPanel />
       ) : loading ? (
-        <div role="status" aria-live="polite" className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
+        <div role="status" aria-live="polite" className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
           Building this week&apos;s purchase plan…
         </div>
       ) : !plan ? (
-        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
+        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
           The purchase plan did not load.
           <div className="mt-3">
             <AdminPrimaryButton onClick={() => void load()}>Try again</AdminPrimaryButton>
@@ -274,7 +274,7 @@ export function SupplyChainPage() {
       ) : (
         <div className="space-y-4">
           <section className="grid gap-3 xl:grid-cols-[1.4fr_1fr_1fr]">
-            <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+            <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
               <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
                 This week · {plan.weekStart} to {plan.weekEnd}
               </div>
@@ -322,19 +322,19 @@ export function SupplyChainPage() {
                 onClick={() => setSelection({ kind: "other" })}
                 className={`rounded-[var(--oh-radius)] border px-4 py-3 text-left shadow-[var(--oh-shadow-card)] ${
                   selection?.kind === "other"
-                    ? "border-[var(--oh-primary)] bg-white"
-                    : "border-[var(--oh-border)] bg-white"
+                    ? "border-[var(--oh-primary)] bg-[var(--oh-surface-muted)]"
+                    : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]"
                 } min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]`}
                 aria-pressed={selection?.kind === "other"}
               >
-                <div className="text-[13px] font-semibold uppercase tracking-wider text-sky-700">Other purchases</div>
+                <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-info)]">Other purchases</div>
                 <div className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{plan.other.length}</div>
                 <div className="text-[13px] text-[var(--oh-muted)]">Manual tasks with no API or email</div>
               </button>
             </div>
           </section>
 
-          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3">
               <div>
                 <h2 className="text-[15px] font-semibold text-[var(--oh-text)]">{selectionTitle(plan, selection)}</h2>
@@ -426,7 +426,7 @@ export function SupplyChainPage() {
 
       {draft && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDraft(null); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="supply-email-draft-title" className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-white p-5 shadow-xl">
+          <div role="dialog" aria-modal="true" aria-labelledby="supply-email-draft-title" className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] p-5 shadow-xl">
             <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Email draft</div>
             <h3 id="supply-email-draft-title" className="mt-1 text-[16px] font-semibold">{draft.subject}</h3>
             <p className="mt-1 text-[13px] text-[var(--oh-text-secondary)]">To: {draft.toEmail || "No rep email on file"}</p>
@@ -502,8 +502,8 @@ function ChannelCard({
   items: Array<{ key: number; title: string; detail: string; active: boolean; onClick: () => void }>;
 }) {
   return (
-    <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-      <div className={`text-[13px] font-semibold uppercase tracking-wider ${tone === "ready" ? "text-emerald-700" : "text-amber-700"}`}>
+    <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
+      <div className={`text-[13px] font-semibold uppercase tracking-wider ${tone === "ready" ? "text-[var(--oh-tile-green-text)]" : "text-[var(--oh-tile-orange-text)]"}`}>
         {title}
       </div>
       <div className="mt-2 space-y-2">
@@ -568,13 +568,13 @@ function LineRows({
           <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
         </td>
         <td className="px-4 py-3 text-right">
-          <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+          <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-tile-blue-bg)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
             {open ? "Hide details" : "Why this quantity?"}
           </button>
           {line.status !== "ORDERED" && line.status !== "REJECTED" && (
             <div className="mt-1 flex justify-end gap-2">
               {line.status === "NEEDS_REVIEW" && (
-                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
+                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-tile-green-text)] hover:bg-[var(--oh-tile-green-bg)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
                   Approve
                 </button>
               )}
@@ -633,7 +633,7 @@ function LineCard({
 }) {
   const quotes = quotesOf(line);
   return (
-    <li className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+    <li className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.productName}</h3>
@@ -653,12 +653,12 @@ function LineCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] pt-2">
-        <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-tile-blue-bg)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
           {open ? "Hide details" : "Why this quantity?"}
         </button>
         {line.status !== "ORDERED" && line.status !== "REJECTED" && (
           <div className="flex gap-1">
-            {line.status === "NEEDS_REVIEW" && <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Approve</button>}
+            {line.status === "NEEDS_REVIEW" && <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-tile-green-text)] hover:bg-[var(--oh-tile-green-bg)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Approve</button>}
             <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Skip</button>
           </div>
         )}
@@ -747,17 +747,17 @@ function SettingsPanel() {
     }
   }
 
-  const field = "h-9 w-full rounded border border-[var(--oh-border)] px-2 text-[13px]";
+  const field = "h-9 w-full rounded border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-[13px] text-[var(--oh-text)] placeholder:text-[var(--oh-muted)]";
 
   return (
     <div className="space-y-4">
       <p className="text-[13px] text-[var(--oh-text-secondary)]">
         Prices come from what you enter here, or from the last purchase cost already on the product. Regenerate the plan after changing rules.
       </p>
-      {error && <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</div>}
+      {error && <div className="rounded border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] text-[var(--oh-tile-red-text)]">{error}</div>}
       <div className="grid gap-4 xl:grid-cols-2">
         <form
-          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4"
+          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4"
           onSubmit={(e) => e.preventDefault()}
         >
           <h3 className="text-[14px] font-semibold">Preferred supplier</h3>
@@ -796,14 +796,14 @@ function SettingsPanel() {
             {settings?.preferences.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.supplierName} · priority {item.priority} · {item.channel}</span>
-                <button type="button" aria-label={`Remove preference for ${item.supplierName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/preferences/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove preference for ${item.supplierName}`} className="text-[var(--oh-danger)]" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/preferences/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
         </form>
 
         <form
-          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4"
+          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4"
           onSubmit={(e) => e.preventDefault()}
         >
           <h3 className="text-[14px] font-semibold">Supplier case price</h3>
@@ -859,14 +859,14 @@ function SettingsPanel() {
             {settings?.prices.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.productName} · {item.supplierName} · {money(item.basePrice)}</span>
-                <button type="button" aria-label={`Remove price for ${item.productName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/prices/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove price for ${item.productName}`} className="text-[var(--oh-danger)]" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/prices/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
         </form>
 
         <form
-          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4"
+          className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4"
           onSubmit={(e) => e.preventDefault()}
         >
           <h3 className="text-[14px] font-semibold">Deal</h3>
@@ -918,7 +918,7 @@ function SettingsPanel() {
             {settings?.deals.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.name} · {item.supplierName}</span>
-                <button type="button" aria-label={`Remove deal ${item.name}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/deals/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove deal ${item.name}`} className="text-[var(--oh-danger)]" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/deals/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
@@ -926,7 +926,7 @@ function SettingsPanel() {
 
         <div className="space-y-4">
           <form
-            className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4"
+            className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4"
             onSubmit={(e) => e.preventDefault()}
           >
             <h3 className="text-[14px] font-semibold">Product supplier rule</h3>
@@ -963,14 +963,14 @@ function SettingsPanel() {
               {settings?.rules.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.productName} · {item.supplierMode} {item.supplierName || ""}</span>
-                <button type="button" aria-label={`Remove rule for ${item.productName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/rules/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove rule for ${item.productName}`} className="text-[var(--oh-danger)]" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/rules/${item.id}`))}>Remove</button>
                 </li>
               ))}
             </ul>
           </form>
 
           <form
-            className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4"
+            className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4"
             onSubmit={(e) => e.preventDefault()}
           >
             <h3 className="text-[14px] font-semibold">Upcoming holiday</h3>
@@ -998,7 +998,7 @@ function SettingsPanel() {
               {settings?.events.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.eventDate} · {item.name} · +{qty(item.adjustmentPercent)}%</span>
-                <button type="button" aria-label={`Remove holiday ${item.name}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/events/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove holiday ${item.name}`} className="text-[var(--oh-danger)]" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/events/${item.id}`))}>Remove</button>
                 </li>
               ))}
             </ul>

@@ -6,13 +6,13 @@
  */
 export function PageScaffold({ title }: { title: string }) {
   return (
-    <div className="h-full overflow-auto bg-[#f8f8f8] font-sans">
-      <div className="flex h-[60px] items-center border-b border-[#e0e0e0] bg-white px-6">
-        <h1 className="text-[22px] font-medium text-neutral-900">{title}</h1>
+    <div className="h-full overflow-auto bg-[var(--oh-surface)] font-sans">
+      <div className="flex h-[60px] items-center border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6">
+        <h1 className="text-[22px] font-medium text-[var(--oh-text)]">{title}</h1>
       </div>
       <div className="flex flex-col items-center justify-center p-16 text-center">
         <p className="text-[16px] text-[var(--sf-placeholder)]">
-          The <span className="font-semibold text-neutral-700">{title}</span> page is part of the
+          The <span className="font-semibold text-[var(--oh-text)]">{title}</span> page is part of the
           Orithos clone and is being built.
         </p>
       </div>

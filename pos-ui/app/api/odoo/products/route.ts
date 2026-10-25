@@ -25,9 +25,9 @@ function productImage(value: unknown): string | null {
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -45,13 +45,13 @@ async function callOdoo<T>(sessionId: string, method: string, args: unknown[], k
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new OdooRequestError("Odoo could not create this product", 502);
+  if (!response.ok) throw new OdooRequestError("Orithos could not create this product", 502);
   const payload = await response.json() as { result?: T; error?: { message?: string; data?: { message?: string; name?: string } } };
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooRequestError("Your Odoo account does not have permission to create products.", 403);
-    throw new OdooRequestError("Odoo rejected this product. Check the details and your product settings.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new OdooRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooRequestError("Your Orithos account does not have permission to create products.", 403);
+    throw new OdooRequestError("Orithos rejected this product. Check the details and your product settings.", 422);
   }
   return payload.result as T;
 }
@@ -59,7 +59,7 @@ async function callOdoo<T>(sessionId: string, method: string, args: unknown[], k
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -117,13 +117,13 @@ export async function POST(request: NextRequest) {
     if (availableFields && Object.hasOwn(availableFields, "is_storable")) values.is_storable = true;
     else if (availableFields && Object.hasOwn(availableFields, "detailed_type")) values.detailed_type = "product";
     else if (availableFields && Object.hasOwn(availableFields, "type")) values.type = "product";
-    else throw new OdooRequestError("This Odoo product model does not expose an inventory product type.", 422);
+    else throw new OdooRequestError("This Orithos product model does not expose an inventory product type.", 422);
 
     const productId = await callOdoo<number>(sessionId, "create", [values], { context: { allowed_company_ids: [values.company_id], force_company: values.company_id } }, correlationId);
-    if (!Number.isSafeInteger(productId) || productId < 1) throw new OdooRequestError("Odoo did not confirm the new product", 502);
+    if (!Number.isSafeInteger(productId) || productId < 1) throw new OdooRequestError("Orithos did not confirm the new product", 502);
     return NextResponse.json({ id: productId, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooRequestError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

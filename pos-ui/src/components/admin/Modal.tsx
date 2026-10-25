@@ -32,12 +32,12 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[520px] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:items-center sm:px-6 sm:py-4">
-          <h2 id={titleId} className="min-w-0 break-words pt-2 text-lg font-bold text-black sm:pt-0 sm:text-[22px]">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close dialog" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3 sm:items-center sm:px-6 sm:py-4">
+          <h2 id={titleId} className="min-w-0 break-words pt-2 text-lg font-bold text-[var(--oh-text)] sm:pt-0 sm:text-[22px]">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close dialog" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             <XIcon size={22} />
           </button>
         </div>

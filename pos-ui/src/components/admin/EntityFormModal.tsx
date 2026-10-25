@@ -62,7 +62,7 @@ export function EntityFormModal({
       onClose={onClose}
       footer={
         <>
-          <button type="button" onClick={onClose} className="rounded-md border border-neutral-300 px-5 py-2 text-[15px] text-neutral-700">
+<button type="button" onClick={onClose} className="rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-5 py-2 text-[15px] text-[var(--oh-text)]">
             Cancel
           </button>
           <button type="button" onClick={submit} disabled={busy} className="rounded-md bg-[#3aa0e3] px-5 py-2 text-[15px] font-semibold text-white disabled:opacity-60">
@@ -93,7 +93,7 @@ export function EntityFormModal({
                 <select
                   value={String(values[f.name] ?? "")}
                   onChange={(e) => set(f.name, e.target.value)}
-                  className="mt-1 h-[44px] rounded-md border border-neutral-300 px-3 text-[15px] text-black outline-none"
+className="mt-1 h-[44px] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[15px] text-[var(--oh-text)] outline-none"
                 >
                   <option value="">Select…</option>
                   {f.options?.map((o) => (
@@ -108,7 +108,7 @@ export function EntityFormModal({
                   value={String(values[f.name] ?? "")}
                   placeholder={f.placeholder}
                   onChange={(e) => set(f.name, e.target.value)}
-                  className="mt-1 h-[44px] rounded-md border border-neutral-300 px-3 text-[15px] text-black outline-none"
+className="mt-1 h-[44px] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[15px] text-[var(--oh-text)] outline-none"
                 />
               )}
             </label>

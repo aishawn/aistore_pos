@@ -45,7 +45,7 @@ class OdooRequestError extends Error {
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const { id: rawId } = await context.params;
   const productId = Number(rawId);
   if (!Number.isSafeInteger(productId) || productId < 1) return NextResponse.json({ message: "Invalid product" }, { status: 400 });
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ message: "The price changed after review. Refresh and review it again." }, { status: 409 });
     }
     const result = await scope.rpc<boolean>("product.product", "write", [[productId], values]);
-    if (result !== true) return NextResponse.json({ message: "Odoo did not confirm the product update" }, { status: 502 });
+    if (result !== true) return NextResponse.json({ message: "Orithos did not confirm the product update" }, { status: 502 });
     if ("list_price" in values) {
       const after = await scope.rpc<Array<{ list_price: number }>>("product.product", "search_read", [domain], { fields: ["list_price"], limit: 1 });
       if (!after[0] || Math.abs(after[0].list_price - Number(values.list_price)) > 0.000001) {
@@ -126,7 +126,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
     return NextResponse.json({ ok: true, productId, resultState: "confirmed" }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooRequestError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message, resultState: status >= 500 ? "unknown" : "rejected" }, { status });
   }

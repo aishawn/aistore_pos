@@ -260,7 +260,7 @@ export function OdooRegisterPage() {
     } catch (cause) {
       if (revision !== loadRevision.current) return;
       if (initial) setConnected(null);
-      setError(cause instanceof Error ? cause.message : "Could not load the Odoo register.");
+      setError(cause instanceof Error ? cause.message : "Could not load the Orithos register.");
     } finally {
       if (revision === loadRevision.current) {
         setLoading(false);
@@ -383,7 +383,7 @@ export function OdooRegisterPage() {
       }
       setWorkspaceTab("keys");
       setCatalogHome(true);
-      setDraftNotice("Draft restored from this device. Odoo will recheck stock and tax before finalising.");
+      setDraftNotice("Draft restored from this device. Orithos will recheck stock and tax before finalising.");
     } catch {
       setDraftNotice("A saved cart draft could not be read from this device.");
     }
@@ -608,7 +608,7 @@ export function OdooRegisterPage() {
           setQuoteLoading(false);
           setQuoteFailure({
             fingerprint: currentQuoteFingerprint,
-            message: cause instanceof Error ? cause.message : "Odoo could not calculate tax for this cart.",
+            message: cause instanceof Error ? cause.message : "Orithos could not calculate tax for this cart.",
           });
         }
       });
@@ -779,7 +779,7 @@ export function OdooRegisterPage() {
 
   function saveParkedSales(next: ParkedOdooSale[]) {
     if (!odooUserId) {
-      setError("Connect an Odoo staff account before saving a parked sale.");
+      setError("Connect an Orithos staff account before saving a parked sale.");
       return false;
     }
     try {
@@ -943,7 +943,7 @@ export function OdooRegisterPage() {
           setQuote(null); setConfirmedPaymentKey(null); setQuoteRetryKey((value) => value + 1);
         }
       }
-      setError(cause instanceof Error ? cause.message : "Odoo could not confirm the sale. Keep this order open and retry only after checking sales history.");
+      setError(cause instanceof Error ? cause.message : "Orithos could not confirm the sale. Keep this order open and retry only after checking sales history.");
     } finally {
       checkoutBusy.current = false;
       setBusy(false);
@@ -955,27 +955,27 @@ export function OdooRegisterPage() {
     <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
     <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
     <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
-    <Link href="/history/odoo" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
-    <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Odoo before another sale is attempted.</p>
+    <Link href="/history" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
+    <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Orithos before another sale is attempted.</p>
   </main>;
 
   if (loading) return (
     <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col gap-3 overflow-hidden bg-[var(--oh-surface)] p-3 sm:p-4">
       <header className="flex h-12 shrink-0 items-center justify-between gap-3">
         <div className="h-11 w-56 animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
-        <div className="h-4 w-36 animate-pulse rounded bg-slate-200" />
+        <div className="h-4 w-36 animate-pulse rounded bg-[var(--oh-border)]" />
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
         <section className="flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3">
-          <div className="h-11 shrink-0 animate-pulse rounded-md bg-slate-100" />
+          <div className="h-11 shrink-0 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
           <div className="mt-3 grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-slate-50" />)}
+            {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />)}
           </div>
         </section>
         <section className="flex min-h-52 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 xl:w-[400px]">
-          <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+          <div className="h-11 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
           <div className="flex-1" />
-          <div className="h-24 animate-pulse rounded-md bg-slate-100" />
+          <div className="h-24 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
         </section>
       </div>
     </main>
@@ -984,7 +984,7 @@ export function OdooRegisterPage() {
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section role="alert" className="max-w-lg rounded-xl border border-rose-200 bg-[var(--oh-surface-elevated)] p-7 text-center shadow-[var(--oh-shadow-card)]">
         <CircleAlert className="mx-auto text-rose-700" size={30} />
-        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the Odoo register</h1>
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the Orithos register</h1>
         <p className="mt-2 text-sm leading-6 text-rose-800">{error ?? "The register details could not be read."}</p>
         <button type="button" onClick={() => void loadPos(true)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
       </section>
@@ -994,9 +994,9 @@ export function OdooRegisterPage() {
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-7 text-center shadow-[var(--oh-shadow-card)]">
         <CircleAlert className="mx-auto text-amber-600" size={30} />
-        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open the register</h1>
-        <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Sign in with your Odoo staff account in Integrations first. This register reads products, customers, sessions and payments from Odoo.</p>
-        <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Orithos to open the register</h1>
+        <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Sign in with your Orithos staff account in Integrations first. This register reads products, customers, sessions and payments from Orithos.</p>
+        <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Orithos</Link>
       </section>
     </main>
   );
@@ -1043,7 +1043,7 @@ export function OdooRegisterPage() {
   }
 
   const finaliseTitle = canFinalise
-    ? "Complete this sale in Odoo"
+    ? "Complete this sale in Orithos"
     : awaitingCardConfirm
       ? "Review the terminal approval control before finalising"
       : finaliseLabel;
@@ -1247,8 +1247,8 @@ export function OdooRegisterPage() {
 
       {!selectedConfig?.session && (
         <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-          <span>No open session — open one in Odoo, then refresh.</span>
-          <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Odoo POS</a>
+          <span>No open session — open one in Orithos, then refresh.</span>
+          <Link href="/" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Orithos POS</Link>
         </div>
       )}
       {!isOnline && (
@@ -1265,7 +1265,7 @@ export function OdooRegisterPage() {
       )}
       {busy && (
         <div role="status" aria-live="polite" className="slow-status mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-          Odoo is still confirming this sale. Keep this window open and do not submit the sale again.
+          Orithos is still confirming this sale. Keep this window open and do not submit the sale again.
         </div>
       )}
       {error && (
@@ -1518,7 +1518,7 @@ export function OdooRegisterPage() {
       {parkedAction && parkedActionSale && <div role="presentation" className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setParkedAction(null); }}>
         <section role="alertdialog" aria-modal="true" aria-labelledby="parked-action-title" aria-describedby="parked-action-description" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <h2 id="parked-action-title" className="text-lg font-semibold text-[var(--oh-text)]">{parkedAction.type === "resume" ? "Replace the current sale?" : "Discard this parked sale?"}</h2>
-          <p id="parked-action-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{parkedAction.type === "resume" ? "Your current cart will be replaced with the parked sale. The parked sale will be removed from this terminal." : "This removes the saved draft from this terminal. It does not cancel or change any completed Odoo sale."}</p>
+          <p id="parked-action-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{parkedAction.type === "resume" ? "Your current cart will be replaced with the parked sale. The parked sale will be removed from this terminal." : "This removes the saved draft from this terminal. It does not cancel or change any completed Orithos sale."}</p>
           <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`min-h-11 rounded-md px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
         </section>
       </div>}
@@ -1540,9 +1540,9 @@ export function OdooRegisterPage() {
           </header>
           <div className="mt-5 grid gap-4 text-sm leading-6 text-[var(--oh-text-secondary)]">
             <section><h3 className="font-semibold text-[var(--oh-text)]">Payment is still processing</h3><p className="mt-1">Keep this page open and do not submit again. Check Sales History before retrying if the result is unknown.</p></section>
-            <section><h3 className="font-semibold text-[var(--oh-text)]">Tax or total could not be calculated</h3><p className="mt-1">Use Retry quote with the same cart. Finalise stays locked until Odoo returns a fresh total.</p></section>
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Tax or total could not be calculated</h3><p className="mt-1">Use Retry quote with the same cart. Finalise stays locked until Orithos returns a fresh total.</p></section>
             <section><h3 className="font-semibold text-[var(--oh-text)]">Connection is offline</h3><p className="mt-1">The cart remains on this device. Reconnect, wait for the online indicator, then retry the quote before finalising.</p></section>
-            <section><h3 className="font-semibold text-[var(--oh-text)]">Register is closed or products are missing</h3><p className="mt-1">Refresh after opening the matching Odoo POS session. Product availability comes from the selected register&apos;s Odoo inventory context.</p></section>
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Register is closed or products are missing</h3><p className="mt-1">Refresh after opening the matching Orithos POS session. Product availability comes from the selected register&apos;s Orithos inventory context.</p></section>
           </div>
         </section>
       </div>}
@@ -1604,7 +1604,7 @@ export function OdooRegisterPage() {
           >
             <h2 id="clear-sale-title" className="text-lg font-semibold text-[var(--oh-text)]">Clear this sale?</h2>
             <p id="clear-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-              This removes all lines and the selected customer from the cart. It does not change any completed Odoo sale.
+              This removes all lines and the selected customer from the cart. It does not change any completed Orithos sale.
             </p>
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button

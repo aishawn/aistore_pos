@@ -42,7 +42,7 @@ function isAssistantPath(pathname: string): boolean {
   return pathname === "/assistant" || pathname.startsWith("/assistant/");
 }
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
-const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
+const ODOO_REGISTER_PATHS = new Set(["/", "/register"]);
 
 function safeInternalPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -76,8 +76,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, ready, logout } = useAuth();
 
+  const localPreview =
+    typeof document !== "undefined"
+    && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
   const onControlPlaneHost =
-    typeof window !== "undefined" && isControlPlaneHost(window.location.host);
+    typeof window !== "undefined" && !localPreview && isControlPlaneHost(window.location.host);
   // Password reset must work on app.* without the store Sidebar/POS chrome.
   const chromeless =
     CHROMELESS.includes(pathname)
@@ -112,7 +115,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const mode = getUiMode();
     setUiModeState(mode);
     if (!ready) return;
-    const onControlPlane = isControlPlaneHost(window.location.host);
+    // Keep local preview sessions on their requested route even though
+    // localhost is treated as the control plane for normal host routing.
+    const onControlPlane = onControlPlaneHost;
     if (onControlPlane && !isControlPlanePageAllowed(pathname) && !pathname.startsWith("/api/")) {
       router.replace("/platform/stores");
       return;
@@ -175,9 +180,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!user?.pendingPasswordReset && (pathname === "/m" || (uiMode === "mobile" && isMobileAllowedPath(pathname)))) {
-    if (!user) {
-      return null;
-    }
     const onAiHome = pathname === "/m";
     return (
       <UnsavedChangesProvider>

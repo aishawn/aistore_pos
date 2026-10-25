@@ -67,16 +67,16 @@ export function CreatePriceListModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-[420px] rounded-lg bg-white px-8 pb-8 pt-14 shadow-2xl"
+        className="relative w-full max-w-[420px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-8 pb-8 pt-14 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute left-1/2 top-0 flex h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#5cb3e0]">
           <QuestionIcon size={36} className="text-white" strokeWidth={1.5} />
         </div>
 
-        <h2 id={titleId} className="text-center text-[22px] font-bold text-black">Create Price List</h2>
+        <h2 id={titleId} className="text-center text-[22px] font-bold text-[var(--oh-text)]">Create Price List</h2>
 
-        <p className="mt-5 text-[15px] text-black">What should the price list be called?</p>
+        <p className="mt-5 text-[15px] text-[var(--oh-text-secondary)]">What should the price list be called?</p>
 
         <input
           ref={nameInputRef}
@@ -85,7 +85,7 @@ export function CreatePriceListModal({
           onKeyDown={(e) => {
             if (e.key === "Enter") void submit();
           }}
-          className="mt-2 h-[44px] w-full rounded border border-black px-3 text-[15px] text-black outline-none"
+          className="mt-2 h-[44px] w-full rounded border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
         />
 
         {error && <p className="mt-2 text-[13px] text-[#e2231a]">{error}</p>}
@@ -95,7 +95,7 @@ export function CreatePriceListModal({
             type="button"
             onClick={close}
             disabled={busy}
-            className="flex-1 rounded border border-neutral-300 bg-white py-2.5 text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-60"
+            className="flex-1 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2.5 text-[15px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface-muted)] disabled:opacity-60"
           >
             Cancel
           </button>

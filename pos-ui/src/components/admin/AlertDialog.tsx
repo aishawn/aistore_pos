@@ -25,17 +25,17 @@ const VARIANT_STYLES: Record<
     Icon: TriangleAlert,
   },
   danger: {
-    headerBg: "bg-[#fdecea]",
-    headerText: "text-[#c62828]",
-    buttonBg: "bg-[#e2231a]",
-    buttonHover: "hover:bg-[#c91c14]",
+    headerBg: "bg-[var(--brand-danger-tint)]",
+    headerText: "text-[var(--brand-danger)]",
+    buttonBg: "bg-[var(--brand-danger)]",
+    buttonHover: "hover:brightness-95",
     Icon: TriangleAlert,
   },
   info: {
     headerBg: "bg-[var(--oh-tile-blue-bg)]",
     headerText: "text-[var(--oh-tile-blue-text)]",
-    buttonBg: "bg-[#00a3ee]",
-    buttonHover: "hover:bg-[#0090d4]",
+    buttonBg: "bg-[var(--brand-info)]",
+    buttonHover: "hover:brightness-95",
     Icon: InfoIcon,
   },
 };
@@ -66,7 +66,7 @@ export function AlertDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/45 p-4 font-sans backdrop-blur-[2px]"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--oh-scrim)] p-4 font-sans backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
@@ -74,7 +74,7 @@ export function AlertDialog({
         aria-modal="true"
         aria-labelledby={`${dialogId}-title`}
         aria-describedby={`${dialogId}-message`}
-        className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
+        className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center gap-2.5 px-5 py-4 ${styles.headerBg}`}>

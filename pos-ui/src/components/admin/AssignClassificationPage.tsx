@@ -55,7 +55,7 @@ function Toggle({
         }`}
       >
         <span
-          className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+          className={`h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm transition-transform ${
             checked ? "translate-x-5" : "translate-x-0"
           }`}
         />
@@ -76,7 +76,7 @@ function ProductRow({
 }) {
   const isAdd = action === "add";
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-2.5 last:border-b-0 odd:bg-white even:bg-[var(--oh-surface)]">
+    <div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-2.5 last:border-b-0 odd:bg-[var(--oh-surface-elevated)] even:bg-[var(--oh-surface)]">
       <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--oh-text)]">{product.name}</span>
       <button
         type="button"
@@ -104,7 +104,7 @@ function ProductPane({
   emptyText: string;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
       <div className="flex-1 overflow-auto">
         {products.length === 0 ? (
           <p className="px-4 py-8 text-center text-[13px] text-[var(--oh-muted)]">{emptyText}</p>
@@ -256,7 +256,7 @@ export function AssignClassificationPage({
             type="button"
             onClick={() => router.push("/classifications")}
             aria-label="Go back"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] transition-colors hover:bg-white hover:text-[var(--oh-text)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface-muted)] hover:text-[var(--oh-text)]"
           >
             <ArrowLeftIcon size={20} />
           </button>

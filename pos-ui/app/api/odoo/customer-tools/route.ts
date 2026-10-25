@@ -11,6 +11,6 @@ export async function GET(request: NextRequest) {
     const base = process.env.ODOO_BASE_URL!.trim().replace(/\/+$/, "");
     return NextResponse.json({ baseUrl: base }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json({ message: error instanceof Error ? error.message : "Odoo is unavailable" }, { status: error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502 });
+    return NextResponse.json({ message: error instanceof Error ? error.message : "Orithos is unavailable" }, { status: error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502 });
   }
 }

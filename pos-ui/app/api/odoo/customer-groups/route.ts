@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     }));
     return NextResponse.json({ items, limit, offset, hasNext: (rows?.length ?? 0) > limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer groups are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer groups are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }
@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
     }
     const id = await scope.rpc<number>("res.partner.category", "create", [{ name, company_id: scope.companyIds[0] }]);
     if (!Number.isSafeInteger(id) || id < 1) {
-      return NextResponse.json({ message: "Odoo did not confirm the new customer group" }, { status: 502 });
+      return NextResponse.json({ message: "Orithos did not confirm the new customer group" }, { status: 502 });
     }
     return NextResponse.json({ id, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer groups are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer groups are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

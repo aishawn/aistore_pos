@@ -8,14 +8,14 @@ const outletBehaviors = [
   {
     title: "Discounts below cost",
     status: "No outlet rule",
-    detail: "The previous “Allow” value was a static example. The current Odoo Sell flow does not expose a below-cost discount preference here.",
+    detail: "The previous “Allow” value was a static example. The current Orithos Sell flow does not expose a below-cost discount preference here.",
     icon: Percent,
-    action: { label: "Browse Odoo products", href: "/products/odoo" },
+    action: { label: "Browse Orithos products", href: "/products" },
   },
   {
     title: "Sale keys and position",
-    status: "Not in Odoo pilot",
-    detail: "The pilot register uses product search and Odoo categories instead of sale-key tiles, so there is no left/right key layout to configure.",
+    status: "Not in Orithos pilot",
+    detail: "The pilot register uses product search and Orithos categories instead of sale-key tiles, so there is no left/right key layout to configure.",
     icon: Keyboard,
     action: { label: "Open Sell", href: "/" },
   },
@@ -38,7 +38,7 @@ export default function OutletMiscellaneousSettingsPage() {
           <div>
             <h2 className="text-sm font-semibold text-sky-950">Outlet preferences are not saved here</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
-              The previous selections were examples and do not change Odoo pricing or the pilot Sell layout.
+              The previous selections were examples and do not change Orithos pricing or the pilot Sell layout.
             </p>
           </div>
         </section>
@@ -46,7 +46,7 @@ export default function OutletMiscellaneousSettingsPage() {
         <section aria-labelledby="outlet-misc-heading" className="mt-6">
           <div className="mb-3">
             <h2 id="outlet-misc-heading" className="text-sm font-semibold text-[var(--oh-text)]">Pricing and register layout</h2>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">Current behaviour for this outlet in the Odoo pilot</p>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">Current behaviour for this outlet in the Orithos pilot</p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {outletBehaviors.map(({ title, status, detail, icon: Icon, action }) => (

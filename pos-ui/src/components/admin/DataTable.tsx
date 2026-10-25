@@ -50,7 +50,7 @@ export function DataTable({
               <td
                 key={c}
                 className={cn(
-                  "bg-[#f8f8f8] py-2 pl-[10px] pr-2 text-black",
+                  "bg-[var(--oh-surface-elevated)] py-2 pl-[10px] pr-2 text-[var(--oh-text)]",
                   alignCls(columns[c]?.align),
                 )}
               >

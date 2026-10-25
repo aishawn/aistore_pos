@@ -136,7 +136,7 @@ export function CreateClassificationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
+className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -209,7 +209,7 @@ export function CreateClassificationModal({
             type="button"
             onClick={close}
             disabled={busy}
-            className="rounded-[var(--oh-radius)] bg-[#d8d8d8] px-4 py-1.5 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#ccc] disabled:opacity-60"
+className="rounded-[var(--oh-radius)] bg-[var(--oh-surface-muted)] px-4 py-1.5 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-border)] disabled:opacity-60"
           >
             Cancel
           </button>

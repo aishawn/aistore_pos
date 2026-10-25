@@ -60,7 +60,7 @@ const SECTIONS: { id: SectionId; label: string; Icon: typeof PackageIcon }[] = [
 ];
 
 const inputClass =
-  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
+  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
 function RequiredMark() {
   return <span className="ml-0.5 text-[var(--oh-danger)]">*</span>;
@@ -96,7 +96,7 @@ function FormSection({
     <div
       id={`section-${id}`}
       ref={sectionRef}
-      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-sm has-[[data-select-open=true]]:z-30"
+      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-sm has-[[data-select-open=true]]:z-30"
     >
       <button
         type="button"
@@ -154,7 +154,7 @@ function FormSelect({
           type="button"
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span className={selected ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]"}>
             {selected?.label ?? placeholder}
@@ -165,7 +165,7 @@ function FormSelect({
           />
         </button>
         {open && !disabled && (
-          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
             {uniqueOptions.length === 0 ? (
               <li className="px-3 py-2 text-[13px] text-[var(--oh-muted)]">No options available</li>
             ) : (
@@ -414,14 +414,14 @@ export function CreateProductPage() {
   const tagOptions = namedOptions(tagsQuery.data);
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[#555e65]/95 p-4 font-sans md:p-6">
+    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[var(--oh-scrim)] p-4 font-sans md:p-6">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl"
       >
-        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
+        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6 py-4">
           <h1 id={titleId} className="text-center text-[18px] font-semibold text-[var(--oh-muted)] md:text-[20px]">
             {displayName}
           </h1>
@@ -436,7 +436,7 @@ export function CreateProductPage() {
         </div>
 
         <div className="flex min-h-0 flex-1">
-          <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[#eef3f8] md:block">
+          <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[var(--oh-surface-muted)] md:block">
             <ul className="py-2">
               {SECTIONS.map(({ id, label, Icon }) => (
                 <li key={id}>
@@ -446,8 +446,8 @@ export function CreateProductPage() {
                     className={cn(
                       "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium transition-colors",
                       activeSection === id
-                        ? "bg-[#d4e4f4] text-[var(--oh-text)]"
-                        : "text-[var(--oh-text-secondary)] hover:bg-[#e4edf5] hover:text-[var(--oh-text)]",
+                        ? "bg-[var(--oh-orange-light)] text-[var(--oh-text)]"
+                        : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]",
                     )}
                   >
                     <Icon size={16} strokeWidth={1.75} />
@@ -458,7 +458,7 @@ export function CreateProductPage() {
             </ul>
           </nav>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[#555e65] px-4 py-5 md:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--oh-surface)] px-4 py-5 pb-24 md:px-6 md:pb-24">
             <div className="mx-auto max-w-xl space-y-4">
               <FormSection
                 id="general"
@@ -533,7 +533,7 @@ export function CreateProductPage() {
               </FormSection>
 
               {(categoriesQuery.error || familiesQuery.error || tagsQuery.error) && (
-                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
+                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--brand-warning)] bg-[var(--brand-warning-tint)] px-3 py-2.5 text-[13px] text-[var(--brand-warning)]">
                   <span>Some classifications could not be loaded. Your form is preserved.</span>
                   <button
                     type="button"
@@ -542,7 +542,7 @@ export function CreateProductPage() {
                       familiesQuery.reload();
                       tagsQuery.reload();
                     }}
-                    className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                    className="min-h-11 rounded-md border border-[var(--brand-warning)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-text)] hover:bg-[var(--brand-warning-tint)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-warning)]"
                   >
                     Retry
                   </button>
@@ -599,17 +599,17 @@ export function CreateProductPage() {
                 </div>
               </FormSection>
 
-              {error && <p className="text-[14px] text-red-200">{error}</p>}
+              {error && <p className="text-[14px] text-[var(--brand-danger)]">{error}</p>}
             </div>
           </div>
         </div>
 
-        <div className="pointer-events-none absolute bottom-6 right-6 md:bottom-8 md:right-8">
+        <div className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 md:pointer-events-none md:absolute md:bottom-8 md:right-8 md:border-0 md:bg-transparent md:p-0">
           <button
             type="button"
             onClick={() => void save()}
             disabled={busy}
-            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[#3aa0e3] px-5 py-3 text-[15px] font-semibold text-white shadow-lg transition-colors hover:bg-[#3493d4] disabled:opacity-60"
+            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--brand-info)] px-5 py-3 text-[15px] font-semibold text-[var(--brand-on-info)] shadow-lg transition-colors hover:brightness-95 disabled:opacity-60"
           >
             <SaveIcon size={18} />
             {busy ? "Saving…" : "Save"}

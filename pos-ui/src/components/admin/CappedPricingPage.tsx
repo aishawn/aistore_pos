@@ -51,7 +51,7 @@ function marginPct(cost?: number | null, price?: number | null) {
 
 function cellInput(className?: string) {
   return cn(
-    "h-11 w-full rounded border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#6eb5e0]",
+    "h-11 w-full rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-[13px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]",
     className,
   );
 }
@@ -115,7 +115,7 @@ function CappedPriceRowEditor({
   const productLabel = friendlyProductName(row.productName);
 
   return (
-    <div data-testid="capped-pricing-card" className="mb-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded border border-neutral-200 bg-white p-3 text-[13px] text-black xl:mb-0 xl:flex xl:items-start xl:gap-x-0 xl:gap-y-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-2">
+<div data-testid="capped-pricing-card" className="mb-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 text-[13px] text-[var(--oh-text)] xl:mb-0 xl:flex xl:items-start xl:gap-x-0 xl:gap-y-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-2">
       <div className="col-span-2 min-w-0 xl:w-[24%] xl:shrink-0 xl:px-3">
         <div className="text-[13px] text-neutral-500">{row.priceSetName ?? "Default Price Set"}</div>
         <div className="mt-0.5 font-semibold leading-snug" title={row.productName}>{productLabel}</div>
@@ -190,7 +190,7 @@ export function CappedPricingPage() {
     void getOdooPriceRules(debouncedSearch, (page - 1) * PAGE_SIZE, PAGE_SIZE).then((result) => {
       setItems(result.items.map((item) => ({ ...item, id: item.id, productId: String(item.productId), priceId: String(item.productId) })));
       setHasNext(result.hasNext);
-    }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load Odoo price rules.")).finally(() => setLoading(false));
+    }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load Orithos price rules.")).finally(() => setLoading(false));
   }, [debouncedSearch, page]);
   // Data fetching is intentionally tied to the debounced query and page.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -198,11 +198,11 @@ export function CappedPricingPage() {
   const total = (page - 1) * PAGE_SIZE + items.length + (hasNext ? 1 : 0);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-neutral-200 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
-        <h1 className="text-xl font-bold text-black sm:text-[28px]">Product Base Prices</h1>
-        <p className="mt-1 text-sm text-neutral-600">Saving changes the standard shelf price for this product. Member and wholesale rules are managed under Price Lists.</p>
-        <div className="ml-auto flex items-center gap-2 text-xs text-neutral-600 sm:text-[14px]">
+<div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+<div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--oh-border)] px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+<h1 className="text-xl font-bold text-[var(--oh-text)] sm:text-[28px]">Product Base Prices</h1>
+<p className="mt-1 text-sm text-[var(--oh-text-secondary)]">Saving changes the standard shelf price for this product. Member and wholesale rules are managed under Price Lists.</p>
+<div className="ml-auto flex items-center gap-2 text-xs text-[var(--oh-text-secondary)] sm:text-[14px]">
           <span
             className={cn(
               "h-2.5 w-2.5 rounded-full",
@@ -225,7 +225,7 @@ export function CappedPricingPage() {
                 aria-pressed={active}
                 className={cn(
                   "flex min-h-11 items-center gap-2 px-4 py-2.5 text-[14px] font-medium transition-colors sm:px-5",
-                  active ? "bg-[#b8d9eb] text-black" : "bg-white text-neutral-600 hover:bg-neutral-50",
+                  active ? "bg-[var(--oh-orange-light)] text-[var(--oh-orange-dark)]" : "bg-[var(--oh-surface-elevated)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)]",
                 )}
               >
                 {TAB_LABELS[key]}
@@ -234,19 +234,19 @@ export function CappedPricingPage() {
           })}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="sr-only" htmlFor="odoo-price-rule-search">Search Odoo price rules</label>
-          <input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-neutral-300 px-3 text-sm" />
+          <label className="sr-only" htmlFor="odoo-price-rule-search">Search Orithos price rules</label>
+<input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)]" />
           {search.trim() ? (
-            <button type="button" aria-label="Clear price rule search" onClick={() => { setSearch(""); setPage(1); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6eb5e0]"><X size={15} aria-hidden="true" /> Clear</button>
+<button type="button" aria-label="Clear price rule search" onClick={() => { setSearch(""); setPage(1); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={15} aria-hidden="true" /> Clear</button>
           ) : null}
-          <button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-neutral-300 px-3 text-sm font-medium disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
+<button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
         </div>
-        <p className="mt-3 text-sm text-neutral-600">Rules are read from Odoo. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Odoo.</p>
+<p className="mt-3 text-sm text-[var(--oh-text-secondary)]">Rules are read from Orithos. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Orithos.</p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-3 sm:px-6">
         <div data-testid="capped-pricing-table" className="min-w-0 xl:min-w-[1050px]">
-          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-[var(--oh-surface-inverse)] py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[24%] shrink-0 px-3">Product</div>
             <div className="w-[18%] shrink-0 px-3">Capped Pricing</div>
             <div className="w-[9%] shrink-0 px-3">Start Date</div>
@@ -259,8 +259,8 @@ export function CappedPricingPage() {
 
           <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
             {!loading && !error && items.length === 0 ? (
-              <div role="status" className="rounded border border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600">
-                No Odoo price rules are configured for this store yet.
+<div role="status" className="rounded border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 py-8 text-center text-sm text-[var(--oh-text-secondary)]">
+                No Orithos price rules are configured for this store yet.
               </div>
             ) : items.map((row) => (
               <CappedPriceRowEditor

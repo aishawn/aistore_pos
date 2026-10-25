@@ -66,10 +66,10 @@ class OdooCheckoutError extends Error {
 
 function getBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new OdooCheckoutError("Odoo connection is not configured on the POS server.", 503);
+  if (!value) throw new OdooCheckoutError("Orithos connection is not configured on the POS server.", 503);
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new OdooCheckoutError("Odoo connection must use HTTPS.", 503);
+    throw new OdooCheckoutError("Orithos connection must use HTTPS.", 503);
   }
   return value;
 }
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     throw error;
   }
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!odooSession) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!Number.isInteger(body.configId) || !Number.isInteger(body.paymentMethodId)) {
-    return NextResponse.json({ message: "Choose an Odoo register and payment method." }, { status: 400 });
+    return NextResponse.json({ message: "Choose an Orithos register and payment method." }, { status: 400 });
   }
   if (!body.orderUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.orderUuid)) {
     return NextResponse.json({ message: "A valid order id is required so retries cannot create a duplicate sale." }, { status: 400 });
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooCheckoutError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new OdooCheckoutError("This Odoo user has no accessible company.", 403);
+    if (!companyIds.length) throw new OdooCheckoutError("This Orithos user has no accessible company.", 403);
 
     const rpc = <T>(_session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T>(model, method, args, kwargs); };
     const searchRead = <T>(_session: string, model: string, domain: unknown[], fields: string[], limit = 100, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T[]>(model, "search_read", [domain], { fields, limit }); };
@@ -189,8 +189,8 @@ export async function POST(request: NextRequest) {
       ["company_id", "in", companyIds],
     ], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1, correlationId);
     const config = configs[0];
-    if (!config) throw new OdooCheckoutError("This register is not available to your Odoo user.", 403);
-    if (!Array.isArray(config.current_session_id)) throw new OdooCheckoutError("This register has no open POS session. Open a session in Odoo first.", 409);
+    if (!config) throw new OdooCheckoutError("This register is not available to your Orithos user.", 403);
+    if (!Array.isArray(config.current_session_id)) throw new OdooCheckoutError("This register has no open POS session. Open a session in Orithos first.", 409);
     if (!config.payment_method_ids.includes(body.paymentMethodId!)) throw new OdooCheckoutError("That payment method is not enabled for this register.", 403);
     const [sessionId, sessionName] = config.current_session_id;
     const sessions = await searchRead<{ id: number; state: string }>(odooSession, "pos.session", [
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     ], ["id", "state"], 1, correlationId);
     if (!sessions.length) throw new OdooCheckoutError("The POS session has closed. Refresh the register and try again.", 409);
 
-    // The UUID is unique in Odoo. Read it before any pricing or inventory work so
+    // The UUID is unique in Orithos. Read it before any pricing or inventory work so
     // a double click or concurrent retry returns the original order rather than
     // attempting a second sync_from_ui write.
     const existingByUuid = await searchRead<{
@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
       total = roundCashTotal(total, cashRounding);
     }
     if (isRefund && originalOrder && Math.abs(Math.abs(total) - Math.abs(originalOrder.amount_total)) > 0.001) {
-      throw new OdooCheckoutError("The refund total does not match the original sale. Use Odoo POS to complete this refund.", 409);
+      throw new OdooCheckoutError("The refund total does not match the original sale. Use Orithos POS to complete this refund.", 409);
     }
 
     if (!isRefund) {
@@ -452,7 +452,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Odoo records the amount applied to the order separately from cash
+    // Orithos records the amount applied to the order separately from cash
     // handed over. For an overpaid cash sale, amount_return carries the
     // change and amount_paid must remain equal to the order total.
     const paymentAmount = isRefund
@@ -466,7 +466,7 @@ export async function POST(request: NextRequest) {
     const uuid = body.orderUuid;
     const order: Record<string, unknown> = {
       amount_paid: paymentAmount,
-      // Odoo adds the change as an internal payment line. It expects the
+      // Orithos adds the change as an internal payment line. It expects the
       // source amount_return to be negative so that amount_paid remains the
       // order total after that line is applied.
       amount_return: -change,
@@ -495,7 +495,7 @@ export async function POST(request: NextRequest) {
     const synced = await rpc<{
       "pos.order"?: { id: number; name: string; pos_reference?: string; amount_total: number; amount_tax: number; uuid?: string }[];
     }>(odooSession, "pos.order", "sync_from_ui", [[order]], {}, correlationId);
-    // Odoo may return both the original sale and its refund from sync_from_ui.
+    // Orithos may return both the original sale and its refund from sync_from_ui.
     // Never assume the first record is the order just submitted.
     const savedFromSync = synced["pos.order"]?.find((candidate) => candidate.uuid === uuid);
     const saved = savedFromSync ?? (await searchRead<{
@@ -511,9 +511,9 @@ export async function POST(request: NextRequest) {
       ["config_id", "=", config.id],
       ["session_id", "=", sessionId],
     ], ["id", "name", "pos_reference", "amount_total", "amount_tax", "is_refund"], 1, correlationId))[0];
-    if (!saved) throw new OdooCheckoutError("Odoo did not confirm the sale. Check the order history before retrying.", 502);
+    if (!saved) throw new OdooCheckoutError("Orithos did not confirm the sale. Check the order history before retrying.", 502);
     if ("is_refund" in saved && saved.is_refund !== isRefund) {
-      throw new OdooCheckoutError("Odoo returned a different order type than requested. Check the order history before retrying.", 502);
+      throw new OdooCheckoutError("Orithos returned a different order type than requested. Check the order history before retrying.", 502);
     }
     const resultTotal = Math.abs(saved.amount_total);
     const resultTax = Math.abs(saved.amount_tax);
@@ -533,12 +533,12 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     if (error instanceof OdooSessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     const status = error instanceof OdooCheckoutError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
-    const message = error instanceof Error ? error.message : "Odoo checkout failed.";
+    const message = error instanceof Error ? error.message : "Orithos checkout failed.";
     return NextResponse.json({ message }, { status });
   }
 }

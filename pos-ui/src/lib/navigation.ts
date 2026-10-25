@@ -14,7 +14,7 @@ export const NAVIGATION: NavEntry[] = [
       items: [
         { label: "Manage Cash", href: "/manage-cash" },
         { label: "Close Register", href: "/close" },
-        { label: "Sales History", href: "/history/odoo" },
+        { label: "Sales History", href: "/history" },
       ],
     },
   },
@@ -23,9 +23,9 @@ export const NAVIGATION: NavEntry[] = [
     group: {
       label: "Stock",
       items: [
-        { label: "Products", href: "/products/odoo" },
-        { label: "Purchasing", href: "/purchases/odoo" },
-        { label: "Suppliers", href: "/suppliers/odoo" },
+        { label: "Products", href: "/products" },
+        { label: "Purchasing", href: "/purchases" },
+        { label: "Suppliers", href: "/suppliers" },
       ],
     },
   },

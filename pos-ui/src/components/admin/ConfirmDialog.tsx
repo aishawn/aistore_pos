@@ -82,7 +82,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={`${dialogId}-title`}
         aria-describedby={`${dialogId}-message`}
-        className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
+        className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center gap-2.5 px-5 py-4 ${styles.headerBg}`}>
@@ -106,7 +106,7 @@ export function ConfirmDialog({
               maxLength={500}
               required={reasonRequired}
               aria-required={reasonRequired}
-              className="w-full resize-y rounded-md border border-[var(--oh-border-strong)] bg-white px-3 py-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+              className="w-full resize-y rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
             />
           </label>
         ) : null}

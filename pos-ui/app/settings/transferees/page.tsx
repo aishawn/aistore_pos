@@ -15,7 +15,7 @@ export default function TransferListPage() {
         <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
           <div>
-            <h2 className="font-semibold">Transfer locations are not loaded from Odoo here</h2>
+            <h2 className="font-semibold">Transfer locations are not loaded from Orithos here</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6">
               The locations and row actions previously shown were sample placeholders. This page does not create or edit transfer locations, and it does not change stock.
             </p>
@@ -24,7 +24,7 @@ export default function TransferListPage() {
                 Start a stock transfer <ArrowUpRight size={15} aria-hidden="true" />
               </Link>
               <Link href="/settings/registers-outlets" className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-4 text-sm font-medium text-amber-950 hover:bg-amber-100">
-                View Odoo locations <MapPin size={15} aria-hidden="true" />
+                View Orithos locations <MapPin size={15} aria-hidden="true" />
               </Link>
             </div>
           </div>

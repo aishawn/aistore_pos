@@ -107,9 +107,9 @@ function isAuthExemptPath(path: string): boolean {
 
 /** The development preview has no backend session to refresh or expire. */
 export function isLocalPreviewSession(): boolean {
-  return process.env.NODE_ENV === "development"
-    && typeof document !== "undefined"
-    && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  const localHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return localHost && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
 }
 
 function handleAuthFailure(path: string, status: number, code: number) {

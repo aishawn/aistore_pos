@@ -27,7 +27,7 @@ interface Named {
 }
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
+  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 const labelClass = "mb-1.5 block text-sm font-medium text-[var(--oh-text)]";
 const MAX_INVOICE_BYTES = 10 * 1024 * 1024;
 
@@ -91,7 +91,7 @@ export function ScanInvoicePage() {
     setSuppliersError(null);
     try {
       const session = await getOdooSession();
-      if (!session) throw new Error("Connect your Odoo staff account to load suppliers.");
+      if (!session) throw new Error("Connect your Orithos staff account to load suppliers.");
       const page = await searchOdooRecords<Named>("suppliers", { limit: 100 });
       setSuppliers(page.items);
     } catch (cause) {
@@ -107,7 +107,7 @@ export function ScanInvoicePage() {
     setOutletsError(null);
     try {
       const session = await getOdooSession();
-      if (!session) throw new Error("Connect your Odoo staff account to load outlets.");
+      if (!session) throw new Error("Connect your Orithos staff account to load outlets.");
       const page = await searchOdooRecords<Named>("outlets", { limit: 100 });
       setOutlets(page.items);
     } catch (cause) {
@@ -179,7 +179,7 @@ export function ScanInvoicePage() {
       if (e instanceof ApiError && e.code === 41001) {
         setInvoiceWorkflowRetired(true);
         setInvoiceVisionAvailable(false);
-        setError("Invoice capture is not available in this Odoo-only store. Continue in Odoo Purchases or Replenishment.");
+        setError("Invoice capture is not available in this Orithos-only store. Continue in Orithos Purchases or Replenishment.");
       } else {
         setError(apiFailureMessage(e, "Could not read that invoice.", "Please sign in again."));
       }
@@ -276,7 +276,7 @@ export function ScanInvoicePage() {
       : aiEnabled === false
         ? " Store AI is off — upload is unavailable."
         : invoiceVisionAvailable === false
-          ? ` Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
+          ? ` Invoice vision is unavailable for this store — use Orithos Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
           : aiEnabled === true
             ? " Store AI is on — files are read for preview, then you can save a draft and receive stock."
             : "";
@@ -288,7 +288,7 @@ export function ScanInvoicePage() {
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -298,21 +298,21 @@ export function ScanInvoicePage() {
                 Step 1 of 3: capture and review OCR. Saving does not put stock into Products — matching and receive come next.
               </p>
             </div>
-            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+            <Link href="/purchases?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
               Back to Purchasing
             </Link>
           </div>
           <InvoiceWorkflowSteps active="capture" />
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-            OCR drafts stay in Orithos until you match lines and confirm. Confirm creates an Odoo RFQ → PO → receive for matched products only.
-            {invoiceWorkflowRetired && " Invoice capture is retired for this Odoo-only store."}
+          <div className="rounded-lg border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-orange-text)]">
+            OCR drafts stay in Orithos until you match lines and confirm. Confirm creates an Orithos RFQ → PO → receive for matched products only.
+            {invoiceWorkflowRetired && " Invoice capture is retired for this Orithos-only store."}
             {availabilityMessage}
             {capabilityError && (
               <button
                 type="button"
                 onClick={() => void loadCapabilities()}
                 disabled={capabilityLoading}
-                className="ml-2 inline-flex min-h-8 items-center rounded-md border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"
+                className="ml-2 inline-flex min-h-8 items-center rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-2.5 text-xs font-semibold text-[var(--oh-tile-orange-text)] hover:bg-[var(--oh-tile-orange-bg)] disabled:cursor-wait disabled:opacity-60"
               >
                 {capabilityLoading ? "Checking…" : "Retry availability"}
               </button>
@@ -323,7 +323,7 @@ export function ScanInvoicePage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-          <section aria-labelledby="invoice-upload-title" aria-busy={loading} className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white p-4 sm:p-5">
+          <section aria-labelledby="invoice-upload-title" aria-busy={loading} className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] p-4 sm:p-5">
             <input
               ref={fileRef}
               type="file"
@@ -362,7 +362,7 @@ export function ScanInvoicePage() {
                   {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}
                   {loading ? "Reading invoice…" : "Photograph"}
                 </button>
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadDisabled} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60">
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadDisabled} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] disabled:cursor-wait disabled:opacity-60">
                   <FileText size={17} />
                   Upload PDF or image
                 </button>
@@ -386,22 +386,22 @@ export function ScanInvoicePage() {
             ]}
           />
 
-          {loading && <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
+          {loading && <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] px-4 py-3 text-sm text-[var(--oh-tile-blue-text)]"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
           {error && (
-            <div role="alert" className="flex flex-col gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+            <div role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-3 text-sm leading-5 text-[var(--oh-tile-red-text)] sm:flex-row sm:items-center sm:justify-between">
               <span>{error}</span>
-              {!invoiceWorkflowRetired && <button type="button" onClick={() => selectedFile && void scanFile(selectedFile, sourceType)} disabled={loading || !selectedFile} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60">{loading ? "Reading invoice…" : "Retry scan"}</button>}
+              {!invoiceWorkflowRetired && <button type="button" onClick={() => selectedFile && void scanFile(selectedFile, sourceType)} disabled={loading || !selectedFile} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)] disabled:cursor-wait disabled:opacity-60">{loading ? "Reading invoice…" : "Retry scan"}</button>}
             </div>
           )}
 
           {scan && (
             <>
-              <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+              <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
                 <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
                   <h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice details</h2>
                   <p className="mt-1 text-xs text-[var(--oh-muted)]">
                     Check supplier and document totals, then save a draft to continue matching and receiving.
-                    {!lookupsReady && " Lookup lists are unavailable until Odoo options reload."}
+                    {!lookupsReady && " Lookup lists are unavailable until Orithos options reload."}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -444,7 +444,7 @@ export function ScanInvoicePage() {
                 </div>
               </section>
 
-              <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+              <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
                 <header className="border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-2"><ReceiptText size={17} className="text-[var(--oh-primary)]" /><h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice line items</h2></div>
                   <p className="mt-1 text-xs text-[var(--oh-muted)]">Review descriptions and quantities. Product matching continues after you save the draft.</p>
@@ -483,11 +483,11 @@ export function ScanInvoicePage() {
         </div>
       </div>
 
-      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
+      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Next: match each line to Products, then confirm to receive stock." : "Choose a PDF or photo to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Cancel</Link>
+            <Link href="/purchases?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)]">Cancel</Link>
             <button type="button" onClick={() => void saveDraft()} disabled={!scan || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
               {saving ? "Saving…" : "Save draft → match products"}
             </button>

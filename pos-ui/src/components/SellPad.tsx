@@ -64,7 +64,7 @@ export function SellPad() {
         )}
       </div>
       <div className="hidden shrink-0 lg:block">
-        <div className="h-1 w-full bg-[#e0e0e0]">
+        <div className="h-1 w-full bg-[var(--oh-border)]">
           <div
             className="h-full bg-[var(--sf-tab-blue)] transition-all"
             style={{ width: sell.view === "parked" ? "100%" : sell.keypadPage === 1 ? "80%" : "40%" }}
@@ -172,7 +172,7 @@ function SearchDropdown() {
           role="option"
           aria-selected={false}
           onClick={() => sell.pickSearchProduct(p)}
-          className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-black/5"
+          className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-[var(--oh-surface-muted)]"
         >
           <span className="text-[16px] text-[var(--oh-text)]">{p.name}</span>
           <span className="text-[16px] text-[var(--sf-muted)]">${p.price.toFixed(2)}</span>
@@ -185,7 +185,7 @@ function SearchDropdown() {
           role="option"
           aria-selected={false}
           onClick={() => sell.pickSearchCustomer(c)}
-          className="flex w-full cursor-pointer items-center justify-between border-t border-[#eee] px-4 py-3 text-left hover:bg-black/5"
+            className="flex w-full cursor-pointer items-center justify-between border-t border-[var(--oh-border)] px-4 py-3 text-left hover:bg-[var(--oh-surface-muted)]"
         >
           <span>
             <span className="block text-[16px] text-[var(--oh-text)]">{c.name}</span>
@@ -204,7 +204,7 @@ function ParkedSalesPanel() {
   return (
     <div id="parked-sales-panel" className="absolute inset-0 flex flex-col overflow-hidden">
       {sell.lines.length > 0 && (
-        <div className="flex shrink-0 items-center justify-between border-b border-[#eee] bg-[rgb(206,229,252)] px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--oh-border)] bg-[var(--brand-info-tint)] px-4 py-3">
           <span className="text-[15px] text-[var(--oh-text)]">
             Active sale — {sell.itemCount} items, ${sell.total.toFixed(2)}
           </span>
@@ -236,7 +236,7 @@ function ParkedSalesPanel() {
                 type="button"
                 onClick={() => sell.requestResumeParked(String(sale.id))}
                 disabled={sell.busy}
-                className="flex w-full cursor-pointer items-center justify-between border-b border-[#eee] px-4 py-4 text-left hover:bg-black/5 disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center justify-between border-b border-[var(--oh-border)] px-4 py-4 text-left hover:bg-[var(--oh-surface-muted)] disabled:opacity-50"
               >
                 <span>
                   <span className="block text-[18px] text-[var(--oh-text)]">
@@ -408,7 +408,7 @@ function PromotionsPanel() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)]">
-      <div className="flex h-[50px] shrink-0 items-center gap-3 border-b border-[#e0e0e0] px-4">
+      <div className="flex h-[50px] shrink-0 items-center gap-3 border-b border-[var(--oh-border)] px-4">
         <button
           type="button"
           onClick={() => sell.backToKeys()}
@@ -433,8 +433,8 @@ function PromotionsPanel() {
                   type="button"
                   onClick={() => sell.setPromotionPeriod(p)}
                   className={cn(
-                    "block w-full cursor-pointer px-4 py-2 text-left text-[16px] hover:bg-black/5",
-                    sell.promotionPeriod === p ? "bg-[rgb(206,229,252)]" : "text-[var(--oh-text)]",
+            "block w-full cursor-pointer px-4 py-2 text-left text-[16px] hover:bg-[var(--oh-surface-muted)]",
+                    sell.promotionPeriod === p ? "bg-[var(--brand-info-tint)]" : "text-[var(--oh-text)]",
                   )}
                 >
                   {PERIOD_LABELS[p]}
@@ -470,8 +470,8 @@ function PromotionsPanel() {
               type="button"
               onClick={() => sell.pickPromotionProduct(item)}
               className={cn(
-                "flex w-full cursor-pointer items-center justify-between border-b border-[#eee] px-4 py-3 text-left hover:bg-black/5",
-                i % 2 === 0 ? "bg-[#f8f8f8]" : "bg-[var(--oh-surface-elevated)]",
+                "flex w-full cursor-pointer items-center justify-between border-b border-[var(--oh-border)] px-4 py-3 text-left hover:bg-[var(--oh-surface-muted)]",
+                i % 2 === 0 ? "bg-[var(--oh-surface-muted)]" : "bg-[var(--oh-surface-elevated)]",
               )}
             >
               <span className="min-w-0 flex-1">
@@ -481,7 +481,7 @@ function PromotionsPanel() {
                   {item.promotionCategoryName ? ` · ${item.promotionCategoryName}` : ""}
                 </span>
                 {item.discountAmount != null && item.discountAmount > 0 && (
-                  <span className="block text-[13px] text-[#2e7d32]">
+                  <span className="block text-[13px] text-[var(--oh-success)]">
                     Save ${Number(item.discountAmount).toFixed(2)}
                   </span>
                 )}
@@ -502,8 +502,8 @@ function ProductsBrowsePanel() {
   const sell = useSellScreen();
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[#c8c8c8]">
-      <div className="relative flex h-[50px] shrink-0 items-center justify-center border-b border-[#e0e0e0] bg-[var(--oh-surface-elevated)]">
+    <div className="relative flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-muted)]">
+      <div className="relative flex h-[50px] shrink-0 items-center justify-center border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
         <button
           type="button"
           onClick={() => sell.backToKeys()}
@@ -529,7 +529,7 @@ function ProductsBrowsePanel() {
                 key={item.id}
                 type="button"
                 onClick={() => sell.pickBrowseProduct(item)}
-                className="flex min-h-[88px] cursor-pointer items-center justify-center bg-[#4a4a4a] px-2 py-3 text-center transition-colors hover:bg-[#5a5a5a]"
+                className="flex min-h-[88px] cursor-pointer items-center justify-center bg-[var(--oh-surface-inverse)] px-2 py-3 text-center transition-colors hover:bg-[var(--oh-primary)]"
               >
                 <span className="line-clamp-3 text-[13px] leading-tight text-white lg:text-[14px]">
                   {item.name}
@@ -563,7 +563,7 @@ function CustomerPicker() {
           className="h-[50px] w-full border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] px-4 text-[16px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
         />
       </div>
-      <div className="flex h-[48px] shrink-0 items-center gap-6 border-b border-[#e0e0e0] px-4">
+        <div className="flex h-[48px] shrink-0 items-center gap-6 border-b border-[var(--oh-border)] px-4">
         <button
           type="button"
           onClick={() => sell.setView("keys")}
@@ -589,8 +589,8 @@ function CustomerPicker() {
               sell.setView("keys");
             }}
             className={cn(
-              "flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-black/5",
-              i % 2 === 0 ? "bg-[#e0e0e0]" : "bg-[var(--oh-surface-elevated)]",
+              "flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-[var(--oh-surface-muted)]",
+              i % 2 === 0 ? "bg-[var(--oh-surface-muted)]" : "bg-[var(--oh-surface-elevated)]",
             )}
           >
             <span>

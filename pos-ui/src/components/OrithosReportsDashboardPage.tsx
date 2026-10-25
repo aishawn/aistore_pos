@@ -191,7 +191,7 @@ export function OrithosReportsDashboardPage() {
     setError(null);
     setRequestId(null);
     try {
-      // Establish or restore the browser's Odoo cookie before loading the
+      // Establish or restore the browser's Orithos cookie before loading the
       // dashboard, so the first report request does not need a 401 retry.
       await getOdooSessionStatus();
       if (revision !== requestRevision.current) return;
@@ -208,13 +208,13 @@ export function OrithosReportsDashboardPage() {
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
-        // Temporary Odoo outages stay retryable; only a missing/expired session
+        // Temporary Orithos outages stay retryable; only a missing/expired session
         // should send the operator to Integrations.
         setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load overview (${response.status}).`);
       }
       if (!payload || !("revenue" in payload) || !Array.isArray(payload.trend)) {
-        throw new Error("Odoo returned an incomplete overview response.");
+        throw new Error("Orithos returned an incomplete overview response.");
       }
       setNeedsConnection(false);
       setLastLoadedAt(Date.now());
@@ -308,16 +308,16 @@ export function OrithosReportsDashboardPage() {
       <main aria-busy="true" aria-live="polite" aria-label="Loading reports" className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-3.5">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="space-y-2"><div className="h-3 w-44 animate-pulse rounded bg-slate-200" /><div className="h-7 w-52 animate-pulse rounded bg-slate-200" /><div className="h-4 w-40 animate-pulse rounded bg-slate-200" /></div>
-            <div className="h-11 w-52 animate-pulse rounded-lg bg-slate-200" />
+            <div className="space-y-2"><div className="h-3 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="h-7 w-52 animate-pulse rounded bg-[var(--oh-surface-muted)]" /><div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+            <div className="h-11 w-52 animate-pulse rounded-lg bg-[var(--oh-surface-muted)]" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-white p-3"><div className="h-3 w-24 rounded bg-slate-200" /><div className="mt-4 h-6 w-32 rounded bg-slate-200" /><div className="mt-3 h-3 w-40 rounded bg-slate-100" /></div>)}
+            {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3"><div className="h-3 w-24 rounded bg-[var(--oh-border)]" /><div className="mt-4 h-6 w-32 rounded bg-[var(--oh-surface-muted)]" /><div className="mt-3 h-3 w-40 rounded bg-[var(--oh-border)]" /></div>)}
           </div>
-          <div className="h-16 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
-          <div className="h-52 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
-          <div className="grid gap-2 sm:grid-cols-2"><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /></div>
-          <div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
+          <div className="h-16 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
+          <div className="h-52 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
+          <div className="grid gap-2 sm:grid-cols-2"><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" /><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" /></div>
+          <div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
         </div>
       </main>
     );
@@ -328,9 +328,9 @@ export function OrithosReportsDashboardPage() {
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
         <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
           <Store className="mx-auto text-amber-600" size={30} />
-          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open Reports</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Reports reads completed sales and open register sessions from your connected Odoo company.</p>
-          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Orithos to open Reports</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Reports reads completed sales and open register sessions from your connected Orithos company.</p>
+          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Orithos</Link>
         </section>
       </main>
     );
@@ -363,13 +363,13 @@ export function OrithosReportsDashboardPage() {
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">Reports</h1>
               <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
-                {greeting} · Odoo POS activity · {rangeLabel}
+                {greeting} · Orithos POS activity · {rangeLabel}
                 {periodBounds ? <span className="ml-1.5 hidden sm:inline">· {periodBounds}</span> : null}
                 {lastLoadedAt !== null && <span className="ml-1.5">· Last refreshed {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <div role="group" aria-label="Odoo sales reporting range" className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
+              <div role="group" aria-label="Orithos sales reporting range" className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
                 {OVERVIEW_RANGES.map((range) => (
                   <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
                     onClick={() => { setRangeHours(range.hours); void load(true, range.hours); }}
@@ -420,9 +420,9 @@ export function OrithosReportsDashboardPage() {
             </section>
           )}
 
-          <section aria-label={`${rangeLabel} Odoo summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <section aria-label={`${rangeLabel} Orithos summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <KpiCard
-              title="Odoo net sales"
+              title="Orithos net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
               detail="After refunds · incl. tax"
               delta={data && data.compare.revenue >= 50 ? data.compare.revenueDeltaPct : null}
@@ -460,7 +460,7 @@ export function OrithosReportsDashboardPage() {
             <KpiCard
               title="Open registers"
               value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}
-              detail="Across the current Odoo company"
+              detail="Across the current Orithos company"
               icon={<Store size={15} />}
             />
           </section>
@@ -472,12 +472,12 @@ export function OrithosReportsDashboardPage() {
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">R2 · TEST · read-only</span>
               </div>
               <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
-                {r2ArchiveUnavailable ? "Archive temporarily unavailable." : `${r2Receipts.length} latest archived receipts · ${r2ItemsSold} items · excluded from Odoo accounting and stock.`}
+                {r2ArchiveUnavailable ? "Archive temporarily unavailable." : `${r2Receipts.length} latest archived receipts · ${r2ItemsSold} items · excluded from Orithos accounting and stock.`}
               </p>
             </div>
             <div className="flex items-center gap-3">
               {!r2ArchiveUnavailable && <p className="oh-type-label font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(r2Total, currency)}</p>}
-              {r2ArchiveUnavailable ? <button type="button" onClick={() => setR2RetryKey((value) => value + 1)} className="oh-type-meta inline-flex min-h-11 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50"><RefreshCw size={13} /> Retry archive</button> : <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>}
+              {r2ArchiveUnavailable ? <button type="button" onClick={() => setR2RetryKey((value) => value + 1)} className="oh-type-meta inline-flex min-h-11 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50"><RefreshCw size={13} /> Retry archive</button> : <Link href="/history" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>}
             </div>
           </section>
 
@@ -485,9 +485,9 @@ export function OrithosReportsDashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
               <div>
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Top products</h2>
-                <p className="oh-type-meta text-[var(--oh-muted)]">Odoo POS · {rangeLabel}</p>
+                <p className="oh-type-meta text-[var(--oh-muted)]">Orithos POS · {rangeLabel}</p>
               </div>
-              <Link href="/products/odoo" className="oh-type-meta inline-flex min-h-11 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
+              <Link href="/products" className="oh-type-meta inline-flex min-h-11 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
             </div>
             {data?.topProducts.length ? (
               <div className="overflow-x-auto">
@@ -593,9 +593,9 @@ export function OrithosReportsDashboardPage() {
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
                     <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
-                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Odoo sales in this period</p>
+                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Orithos sales in this period</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
-                      No completed Odoo POS orders in {rangeLabel}. R2 archive receipts are shown separately above.
+                      No completed Orithos POS orders in {rangeLabel}. R2 archive receipts are shown separately above.
                       {data?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
@@ -651,9 +651,9 @@ export function OrithosReportsDashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
               <div>
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Recent sales &amp; refunds</h2>
-                <p className="oh-type-meta text-[var(--oh-muted)]">Latest completed Odoo POS orders · {rangeLabel}</p>
+                <p className="oh-type-meta text-[var(--oh-muted)]">Latest completed Orithos POS orders · {rangeLabel}</p>
               </div>
-              <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-[var(--oh-primary)] hover:underline">
+              <Link href="/history" className="oh-type-meta inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-[var(--oh-primary)] hover:underline">
                 View all <ArrowUpRight size={14} />
               </Link>
             </div>
@@ -681,7 +681,7 @@ export function OrithosReportsDashboardPage() {
                 <div>
                   <p className="oh-type-label font-medium text-[var(--oh-text)]">No recent sales</p>
                   <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
-                    No completed Odoo POS orders in {rangeLabel}. Widen the period or open sales history for all-time Odoo rows.
+                    No completed Orithos POS orders in {rangeLabel}. Widen the period or open sales history for all-time Orithos rows.
                   </p>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                     {widerRange ? (
@@ -693,7 +693,7 @@ export function OrithosReportsDashboardPage() {
                         Try {widerRange.label}
                       </button>
                     ) : null}
-                    <Link href="/history/odoo" className="oh-type-label inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
+                    <Link href="/history" className="oh-type-label inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
                       Open sales history
                     </Link>
                   </div>
@@ -740,7 +740,7 @@ export function OrithosReportsDashboardPage() {
               Open point of sale <ArrowRight size={16} />
             </Link>
             <Link
-              href="/history/odoo"
+              href="/history"
               className="oh-type-label mt-1.5 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
             >
               Sales history

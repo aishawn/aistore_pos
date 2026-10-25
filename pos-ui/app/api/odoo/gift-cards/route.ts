@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         available: false,
         state: "not_installed",
         module: null,
-        message: "Gift cards live under Odoo Apps → search “Coupons & Loyalty” (module loyalty), then also install “Point of Sale - Coupons & Loyalty”. There is no separate app named Gift Card.",
+        message: "Gift cards live under Orithos Apps → search “Coupons & Loyalty” (module loyalty), then also install “Point of Sale - Coupons & Loyalty”. There is no separate app named Gift Card.",
         items: [],
         hasNext: false,
       }, { headers: { "Cache-Control": "no-store" } });
@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
       module: modelInfo.model,
       state: programs.length ? (page.length ? "ready" : "empty") : "unconfigured",
       message: programs.length
-        ? `Odoo Loyalty is installed. Gift card program: ${programs.map((p) => p.name).join(", ")}.`
-        : "Odoo Loyalty is installed. Create a Gift Card program in Odoo Sales/Loyalty if you need issued cards listed here.",
+        ? `Orithos Loyalty is installed. Gift card program: ${programs.map((p) => p.name).join(", ")}.`
+        : "Orithos Loyalty is installed. Create a Gift Card program in Orithos Sales/Loyalty if you need issued cards listed here.",
       items: page.map((row) => ({
         currency: (() => { const program = programs.find((p) => Array.isArray(row.program_id) && p.id === row.program_id[0]); return Array.isArray(program?.currency_id) ? program.currency_id[1] : null; })(),
         id: row.id,
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       hasNext: (rows?.length ?? 0) > limit,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo gift cards are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos gift cards are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

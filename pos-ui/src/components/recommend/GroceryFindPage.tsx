@@ -180,7 +180,7 @@ export function GroceryFindPage() {
       {step === "results" ? (
         <div className="grid gap-4">
           {cards.length === 0 ? (
-            <div className="rounded-xl border border-[var(--oh-border)] bg-white p-5 text-[14px] text-[var(--oh-muted)]">
+            <div className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 text-[14px] text-[var(--oh-muted)]">
               {emptyReason ?? "No matching in-stock items."}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -245,7 +245,7 @@ function ChipGrid({
             className={`min-h-11 rounded-lg border px-3.5 py-2.5 text-[14px] font-medium transition ${
               active
                 ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
-                : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-[var(--oh-primary)]"
+                : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] hover:border-[var(--oh-primary)]"
             }`}
           >
             {opt.label}

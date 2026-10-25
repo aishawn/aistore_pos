@@ -48,14 +48,14 @@ function parseCustomerValues(body: Record<string, unknown>) {
     } else if (typeof body.property_product_pricelist === "number" && Number.isSafeInteger(body.property_product_pricelist) && body.property_product_pricelist >= 1) {
       pricelistId = body.property_product_pricelist;
     } else {
-      return { error: NextResponse.json({ message: "Price list must be a valid Odoo id" }, { status: 400 }) };
+      return { error: NextResponse.json({ message: "Price list must be a valid Orithos id" }, { status: 400 }) };
     }
   }
 
   let categoryIds: number[] | undefined;
   if ("category_id" in body) {
     if (!Array.isArray(body.category_id) || body.category_id.some((id) => typeof id !== "number" || !Number.isSafeInteger(id) || id < 1)) {
-      return { error: NextResponse.json({ message: "Customer groups must be a list of Odoo ids" }, { status: 400 }) };
+      return { error: NextResponse.json({ message: "Customer groups must be a list of Orithos ids" }, { status: 400 }) };
     }
     if (body.category_id.length > 40) {
       return { error: NextResponse.json({ message: "Too many customer groups selected" }, { status: 400 }) };
@@ -103,10 +103,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   try {
     const scope = await customerWriteScope(request, parsed.values!, customerId);
     const ok = await scope.rpc<boolean>("res.partner", "write", [[customerId], parsed.values]);
-    if (!ok) return NextResponse.json({ message: "Odoo did not confirm the customer update" }, { status: 502 });
+    if (!ok) return NextResponse.json({ message: "Orithos did not confirm the customer update" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

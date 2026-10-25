@@ -75,7 +75,7 @@ export function ClassificationFormSelect({
             setOpen(true);
           }
         }}
-        className="flex min-h-11 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border-strong)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"
+className="flex min-h-11 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"
       >
         <span className={selected ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]"}>
           {loading ? "Loading…" : selected?.label ?? placeholder}
@@ -86,7 +86,7 @@ export function ClassificationFormSelect({
         />
       </button>
       {open && (
-        <ul id={listboxId} role="listbox" aria-label={placeholder} className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+<ul id={listboxId} role="listbox" aria-label={placeholder} className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
           {loading ? (
             <li className="px-3 py-2 text-[13px] text-[var(--oh-muted)]">Loading…</li>
           ) : options.length === 0 ? (

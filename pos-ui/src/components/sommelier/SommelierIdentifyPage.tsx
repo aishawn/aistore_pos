@@ -116,7 +116,7 @@ export function SommelierIdentifyPage() {
           placeholder="Penfolds Bin 28 or barcode"
           autoFocus
           aria-busy={loading}
-          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="button"
@@ -146,7 +146,7 @@ export function SommelierIdentifyPage() {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={loading || capabilityError || aiEnabled === null || labelVisionAvailable === null || aiEnabled === false || labelVisionAvailable === false}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Camera size={16} />
           Photograph label
@@ -199,7 +199,7 @@ export function SommelierIdentifyPage() {
             <button
               type="button"
               onClick={() => router.push(`/sommelier/wine/${item.productId}`)}
-              className="w-full rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)]"
+              className="w-full rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 text-left shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)]"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[15px] font-semibold text-[var(--oh-text)] sm:text-[16px]">{item.name}</p>

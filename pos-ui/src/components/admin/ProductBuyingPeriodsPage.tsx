@@ -126,12 +126,12 @@ function CreateBuyingPeriodModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded bg-white p-6 shadow-lg"
+        className="w-full max-w-md rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="text-[20px] font-bold text-black">Create Buying Period</h2>
+        <h2 id={titleId} className="text-[20px] font-bold text-[var(--oh-text)]">Create Buying Period</h2>
         <div className="mt-4 space-y-3">
-          <label className="block text-[13px] font-medium text-neutral-700">
+          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
             Start Date
             <div className="mt-1">
               <FormDatePicker
@@ -141,7 +141,7 @@ function CreateBuyingPeriodModal({
               />
             </div>
           </label>
-          <label className="block text-[13px] font-medium text-neutral-700">
+          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
             End Date
             <div className="mt-1">
               <FormDatePicker
@@ -151,7 +151,7 @@ function CreateBuyingPeriodModal({
               />
             </div>
           </label>
-          <label className="block text-[13px] font-medium text-neutral-700">
+          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
             Quantity
             <input
               value={quantity}
@@ -159,7 +159,7 @@ function CreateBuyingPeriodModal({
               className="mt-1 h-[38px] w-full rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
             />
           </label>
-          <label className="block text-[13px] font-medium text-neutral-700">
+          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
             Cost
             <input
               value={cost}
@@ -167,7 +167,7 @@ function CreateBuyingPeriodModal({
               className="mt-1 h-[38px] w-full rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
             />
           </label>
-          {error && <p role="alert" className="text-[13px] text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-[13px] text-[var(--oh-danger)]">{error}</p>}
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -223,17 +223,17 @@ function ProductBuyingPeriodsPageInner() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans md:p-8">
+    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-6 font-sans md:p-8">
       {loading || error ? (
         <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {null}
         </AsyncState>
       ) : empty ? (
         <div className="mt-12 flex items-center justify-center gap-10">
-          <FrownIcon size={160} strokeWidth={1.5} className="shrink-0 text-black" />
+          <FrownIcon size={160} strokeWidth={1.5} className="shrink-0 text-[var(--oh-muted)]" />
           <div>
-            <h2 className="text-[28px] font-bold text-black">No Buying Periods</h2>
-            <p className="mt-2 text-[18px] text-neutral-700">
+            <h2 className="text-[28px] font-bold text-[var(--oh-text)]">No Buying Periods</h2>
+            <p className="mt-2 text-[18px] text-[var(--oh-text-secondary)]">
               There are currently no buying periods defined.
             </p>
             <button
@@ -248,7 +248,7 @@ function ProductBuyingPeriodsPageInner() {
       ) : (
         <div>
           <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-[28px] font-bold text-black">Product Buying Periods</h1>
+            <h1 className="text-[28px] font-bold text-[var(--oh-text)]">Product Buying Periods</h1>
             <button
               type="button"
               onClick={openCreate}

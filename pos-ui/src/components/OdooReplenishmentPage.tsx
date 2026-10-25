@@ -130,7 +130,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load the replenishment plan (${response.status}).`);
       }
-      if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Odoo returned an incomplete replenishment plan.");
+      if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Orithos returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
       setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
@@ -252,7 +252,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
     } catch (cause) {
       if (revision === rfqSupplierRevision.current) {
-        setRfqSupplierError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
+        setRfqSupplierError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers.");
       }
     } finally {
       if (revision === rfqSupplierRevision.current) setRfqLoadingSuppliers(false);
@@ -319,9 +319,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     <Container className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
         <Store className="mx-auto text-amber-600" size={30} />
-        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to plan replenishment</h1>
-        <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">This view uses Odoo POS sales and on-hand stock for your current company.</p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button><Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link></div>
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Orithos to plan replenishment</h1>
+        <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">This view uses Orithos POS sales and on-hand stock for your current company.</p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button><Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link></div>
       </section>
     </Container>
   );
@@ -380,7 +380,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-      {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history/odoo" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Review Odoo sales history</Link></div>}
+      {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Review Orithos sales history</Link></div>}
 
       {createdRfq && (
         <div
@@ -389,17 +389,17 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         >
           <span>
             <strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed.{" "}
-            {createdRfq.warning || (createdRfq.auditSaved ? "Internal approval audit saved to Odoo chatter." : "")}
+            {createdRfq.warning || (createdRfq.auditSaved ? "Internal approval audit saved to Orithos chatter." : "")}
           </span>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={createdRfq ? `/purchases/odoo?orderId=${createdRfq.id}` : "/purchases/odoo"}
+              href={createdRfq ? `/purchases?orderId=${createdRfq.id}` : "/purchases"}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
             >
               View Order
             </Link>
             <a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">
-              Open in Odoo <ExternalLink size={14} />
+              Open in Orithos <ExternalLink size={14} />
             </a>
           </div>
         </div>
@@ -483,8 +483,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     ? "No products need replenishment for this coverage target."
                     : listFilter === "out_of_stock"
                       ? "No out-of-stock products with recent demand."
-                      : "No POS products were returned by Odoo."
-                : "No POS products were returned by Odoo."}
+                      : "No POS products were returned by Orithos."
+                : "No POS products were returned by Orithos."}
             </p>
           ) : filteredItems.map((product) => {
             const label = friendlyProductName(product.name);
@@ -604,8 +604,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                           ? "No products need replenishment for this coverage target."
                           : listFilter === "out_of_stock"
                             ? "No out-of-stock products with recent demand."
-                            : "No POS products were returned by Odoo."
-                      : "No POS products were returned by Odoo."}
+                            : "No POS products were returned by Orithos."
+                      : "No POS products were returned by Orithos."}
                   </td>
                 </tr>
               ) : filteredItems.map((product) => {
@@ -638,7 +638,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <td className={`px-4 py-3 text-right tabular-nums ${product.onHand <= 0 && product.soldUnits > 0 ? "font-semibold text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{number.format(product.onHand)}</td>
                     {showMoreColumns && (
                       <>
-                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Odoo forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Orithos forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                       </>
                     )}
@@ -680,13 +680,13 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </tbody>
           </table>
         </div>
-        {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Showing up to 1,000 products or product demand groups. Narrow the product catalogue in Odoo for a complete plan.</p>}
+        {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Showing up to 1,000 products or product demand groups. Narrow the product catalogue in Orithos for a complete plan.</p>}
       </section>
 
       {auditEntries.length > 0 && (
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
           <h2 className="text-sm font-semibold text-[var(--oh-text)]">Recent draft RFQs</h2>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">The browser shows recent approvals from this device. Each RFQ keeps the forecast method, coverage target, suggested and ordered quantities, and reasons in an internal Odoo chatter note.</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">The browser shows recent approvals from this device. Each RFQ keeps the forecast method, coverage target, suggested and ordered quantities, and reasons in an internal Orithos chatter note.</p>
           <ul className="mt-3 divide-y divide-[var(--oh-border)]">
             {auditEntries.slice(0, 8).map((entry) => {
               const edited = entry.lines.filter((line) => Math.abs(line.orderedQuantity - line.suggestedQuantity) > 0.001).length;
@@ -701,7 +701,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Link href="/purchases/odoo" className="inline-flex items-center text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Purchases</Link>
+                    <Link href="/purchases" className="inline-flex items-center text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Purchases</Link>
                     <a href={entry.rfqUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Open RFQ <ExternalLink size={12} /></a>
                   </div>
                 </li>
@@ -729,7 +729,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               </button>
             </header>
             <p className="mt-3 text-sm leading-6 text-[var(--oh-text-secondary)]">
-              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
+              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
             </p>
             <footer className="mt-5 flex justify-end">
               <button type="button" onClick={() => setMethodOpen(false)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>
@@ -741,14 +741,14 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       {rfqOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !rfqSubmitting) setRfqOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="rfq-title" className="my-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
           <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-5 md:px-6">
-            <div><h2 id="rfq-title" className="text-lg font-semibold text-[var(--oh-text)]">Review draft RFQ</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Choose one supplier and check the quantities before creating a draft in Odoo.</p></div>
+            <div><h2 id="rfq-title" className="text-lg font-semibold text-[var(--oh-text)]">Review draft RFQ</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Choose one supplier and check the quantities before creating a draft in Orithos.</p></div>
             <button type="button" onClick={() => setRfqOpen(false)} disabled={rfqSubmitting} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form onSubmit={(event) => void submitRfq(event)} className="flex min-h-0 flex-1 flex-col">
             <div className="grid min-w-0 gap-4 overflow-y-auto p-5 md:px-6">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Supplier <span className="text-red-700">*</span></span>
                 <select ref={rfqSupplierRef} value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : rfqSupplierError ? "Supplier list unavailable" : "No suppliers available"}</option>
+                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Orithos supplier" : rfqSupplierError ? "Supplier list unavailable" : "No suppliers available"}</option>
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
               </label>
@@ -767,7 +767,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 </div>
               </div>
               {selectedSuggested.length > MAX_RFQ_LINES && <p className="text-xs leading-5 text-amber-900">This RFQ includes the first {MAX_RFQ_LINES} selected suggestions. Create another RFQ for the remaining products.</p>}
-              <div className="rounded-md bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]"><p className="font-semibold text-[var(--oh-text-secondary)]">Draft only</p><p className="mt-1">This creates an Odoo RFQ in draft status. It will not email the supplier or confirm an order. Review the supplier prices, taxes, delivery dates and quantities in Odoo before sending.</p></div>
+              <div className="rounded-md bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]"><p className="font-semibold text-[var(--oh-text-secondary)]">Draft only</p><p className="mt-1">This creates an Orithos RFQ in draft status. It will not email the supplier or confirm an order. Review the supplier prices, taxes, delivery dates and quantities in Orithos before sending.</p></div>
               {rfqError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{rfqError}</p>}
             </div>
             <footer className="flex flex-col gap-2 border-t border-[var(--oh-border)] p-4 sm:flex-row sm:justify-end md:px-6">

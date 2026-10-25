@@ -68,7 +68,7 @@ export function ImportGiftCardsPage() {
       }
     >
       <div className="mx-auto grid w-full max-w-4xl gap-4">
-        <section aria-labelledby="file-format-title" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+<section aria-labelledby="file-format-title" className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
@@ -83,7 +83,7 @@ export function ImportGiftCardsPage() {
               type="button"
               onClick={() => void downloadTemplate()}
               disabled={templateBusy || busy}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"
+className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"
             >
               {templateBusy ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <FileSpreadsheet size={16} aria-hidden="true" />}
               {templateBusy ? "Preparing template…" : "Download template"}
@@ -111,7 +111,7 @@ export function ImportGiftCardsPage() {
             "flex min-h-[240px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-5 py-10 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:min-h-[280px] sm:px-8",
             dragging
               ? "border-[var(--oh-primary)] bg-[var(--oh-primary)]/5"
-              : "border-[var(--oh-border-strong)] bg-white hover:border-[var(--oh-primary)]/60 hover:bg-[var(--oh-surface)]",
+: "border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] hover:border-[var(--oh-primary)]/60 hover:bg-[var(--oh-surface-muted)]",
             busy && "pointer-events-none cursor-wait opacity-60",
           )}
         >

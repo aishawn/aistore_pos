@@ -51,7 +51,7 @@ function SalesChart() {
   const yTicks = [0, 70, 140, 210, 280, 350];
 
   return (
-    <div className="overflow-x-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+<div className="overflow-x-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full min-w-[520px]" aria-label="Sales chart">
         {yTicks.map((tick) => {
           const y = pad.top + innerH - (tick / maxVal) * innerH;
@@ -96,7 +96,7 @@ function SalesChart() {
 
 function ProductRow({ product, onView }: { product: Product; onView: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3 last:border-b-0 odd:bg-white even:bg-[var(--oh-surface)]">
+<div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3 last:border-b-0 odd:bg-[var(--oh-surface-elevated)] even:bg-[var(--oh-surface)]">
       <span className="min-w-0 flex-1 truncate text-[14px] text-[var(--oh-text)]">{product.name}</span>
       <button
         type="button"
@@ -158,14 +158,14 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
 
   return (
     <div className="flex h-full bg-[var(--oh-surface)] font-sans">
-      <aside className="flex w-[260px] shrink-0 flex-col border-r border-[var(--oh-border)] bg-[#eef1f5] px-4 py-5">
+      <aside className="flex w-[260px] shrink-0 flex-col border-r border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 py-5">
         <p className="text-[13px] font-medium text-[var(--oh-muted)]">{typeLabel}</p>
         <h1 className="mt-0.5 text-[22px] font-bold leading-tight text-[var(--oh-text)]">View {title}</h1>
 
         <nav className="mt-6 space-y-1">
           <div
             className={cn(
-              "flex items-start gap-2.5 rounded-[var(--oh-radius)] bg-white px-3 py-2.5 shadow-[var(--oh-shadow-card)]",
+"flex items-start gap-2.5 rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 shadow-[var(--oh-shadow-card)]",
             )}
           >
             <LineChartIcon size={16} className="mt-0.5 shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={1.75} />
@@ -180,7 +180,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
           <button
             type="button"
             onClick={() => router.push(`/classifications/${type}/${id}/assign`)}
-            className="flex w-full items-start gap-2.5 rounded-[var(--oh-radius)] px-3 py-2.5 text-left text-[var(--oh-text-secondary)] transition-colors hover:bg-white/70"
+className="flex w-full items-start gap-2.5 rounded-[var(--oh-radius)] px-3 py-2.5 text-left text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface-muted)]"
           >
             <AssignIcon size={16} className="mt-0.5 shrink-0" strokeWidth={1.75} />
             <div className="min-w-0">
@@ -229,7 +229,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
               emptyText="No products assigned yet."
               onRetry={products.reload}
             >
-              <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+<div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
                 {products.items.map((product) => (
                   <ProductRow
                     key={product.id}

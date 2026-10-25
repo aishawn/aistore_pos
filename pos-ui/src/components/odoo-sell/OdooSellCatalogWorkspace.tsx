@@ -87,7 +87,7 @@ export function OdooSellCatalogWorkspace({
           type="button"
           disabled={!linesLength}
           onClick={onIncrementQty}
-          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           + Qty
         </button>
@@ -95,7 +95,7 @@ export function OdooSellCatalogWorkspace({
           type="button"
           disabled={!linesLength || targetLineQuantity <= 1}
           onClick={onDecrementQty}
-          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           − Qty
         </button>
@@ -104,11 +104,6 @@ export function OdooSellCatalogWorkspace({
   );
 
   if (showCatalogHome) {
-    const dynamicCategoryNames = new Set(categoryTiles.map((category) => friendlyProductName(category.name).trim().toLowerCase()));
-    const quickCategoryShortcuts = SALE_KEY_CATEGORIES.filter((category) => {
-      const label = category.label.trim().toLowerCase();
-      return !dynamicCategoryNames.has(label);
-    });
     return (
       <div className="space-y-4">
         <div>
@@ -123,7 +118,7 @@ export function OdooSellCatalogWorkspace({
                 type="button"
                 onClick={onRetryCategories}
                 disabled={categoriesLoading}
-                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold"
+                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-300 bg-[var(--oh-surface-elevated)] px-2 font-semibold"
               >
                 {categoriesLoading ? "Retrying…" : "Retry categories"}
               </button>
@@ -138,7 +133,7 @@ export function OdooSellCatalogWorkspace({
             >
               All products
             </button>
-            {quickCategoryShortcuts.map((category) => (
+            {(!categoryTiles.length || categoriesError) && SALE_KEY_CATEGORIES.map((category) => (
               <button
                 key={category.id}
                 type="button"
@@ -165,22 +160,19 @@ export function OdooSellCatalogWorkspace({
               );
             })}
           </div>
-          <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
-            Tab focuses each quick key, Enter opens the selected category.
-          </p>
           {categoryTiles.length === 0 && !categoriesLoading && !categoriesError && (
             <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
               <p className="font-medium">No POS category keys yet</p>
               <p className="mt-1 leading-5">
-                Sale Keys come from Odoo POS categories linked on products (<code className="text-[12px]">pos_categ_ids</code>).
+                Sale Keys come from Orithos POS categories linked on products (<code className="text-[12px]">pos_categ_ids</code>).
                 Assign categories in the product catalogue, then refresh this register.
               </p>
-              <Link href="/products/odoo" className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange)] underline underline-offset-2">
+              <Link href="/products" className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange)] underline underline-offset-2">
                 Open product catalogue
               </Link>
             </div>
           )}
-          <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Tap a category to browse products, or search in the cart panel.</p>
+          <p className="mt-3 text-[13px] text-[var(--oh-muted)]">Tap a category to browse products, or search in the cart panel.</p>
         </div>
         {lineQtyControls}
       </div>
@@ -216,7 +208,7 @@ export function OdooSellCatalogWorkspace({
               aria-pressed={catalogDensity === "grid"}
               aria-label="Grid view"
               onClick={() => onCatalogDensityChange("grid")}
-              className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
+              className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
             >
               <LayoutGrid size={16} />
             </button>
@@ -225,7 +217,7 @@ export function OdooSellCatalogWorkspace({
               aria-pressed={catalogDensity === "list"}
               aria-label="List view"
               onClick={() => onCatalogDensityChange("list")}
-              className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
+              className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
             >
               <List size={16} />
             </button>
@@ -236,7 +228,7 @@ export function OdooSellCatalogWorkspace({
         {productsLoading && !products.length ? (
           <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
             {Array.from({ length: 8 }, (_, index) => (
-              <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-white", catalogDensity === "list" ? "h-16" : "min-h-36")} />
+              <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]", catalogDensity === "list" ? "h-16" : "min-h-36")} />
             ))}
           </div>
         ) : productsError && !products.length ? (
@@ -249,7 +241,7 @@ export function OdooSellCatalogWorkspace({
                 type="button"
                 onClick={onRetryProducts}
                 disabled={productsLoading}
-                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold"
+                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold"
               >
                 {productsLoading ? "Retrying…" : "Retry search"}
               </button>
@@ -281,7 +273,7 @@ export function OdooSellCatalogWorkspace({
                       onClick={() => onAddProduct(product)}
                       disabled={disabled}
                       className={cn(
-                        "flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
+                        "flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
                         selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
                       )}
                     >
@@ -313,7 +305,7 @@ export function OdooSellCatalogWorkspace({
                     onClick={() => onAddProduct(product)}
                     disabled={disabled}
                     className={cn(
-                      "flex min-h-[118px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-2.5 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
+                      "flex min-h-[118px] flex-col rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-2.5 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
                       selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
                     )}
                   >
@@ -343,7 +335,7 @@ export function OdooSellCatalogWorkspace({
                   type="button"
                   onClick={onLoadMoreProducts}
                   disabled={productsLoadingMore || productsLoading}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
                 >
                   {productsLoadingMore ? <LoaderCircle size={15} className="animate-spin" /> : null}
                   {productsLoadingMore ? "Loading…" : "Load more products"}

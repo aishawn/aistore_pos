@@ -21,9 +21,9 @@ class OdooExportError extends Error {
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -37,13 +37,13 @@ async function callOdoo<T>(sessionId: string, model: string, method: string, arg
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new OdooExportError("Odoo could not export these products.", 502);
+  if (!response.ok) throw new OdooExportError("Orithos could not export these products.", 502);
   const payload = await response.json() as RpcResult<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new OdooExportError("Your Odoo session has expired. Sign in again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooExportError("Your Odoo account does not have permission to export products.", 403);
-    throw new OdooExportError("Odoo rejected this product export.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new OdooExportError("Your Orithos session has expired. Sign in again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooExportError("Your Orithos account does not have permission to export products.", 403);
+    throw new OdooExportError("Orithos rejected this product export.", 422);
   }
   return payload.result as T;
 }
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     throw error;
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   try {
@@ -87,15 +87,15 @@ export async function GET(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!infoResponse.ok) throw new OdooExportError("Your Odoo session has expired. Sign in again.", 401);
+    if (!infoResponse.ok) throw new OdooExportError("Your Orithos session has expired. Sign in again.", 401);
     const infoPayload = await infoResponse.json() as { result?: { uid?: number; user_context?: Record<string, unknown> }; error?: unknown };
     const info = infoPayload.result;
-    if (infoPayload.error || !info?.uid) throw new OdooExportError("Your Odoo session has expired. Sign in again.", 401);
+    if (infoPayload.error || !info?.uid) throw new OdooExportError("Your Orithos session has expired. Sign in again.", 401);
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooExportError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new OdooExportError("No Odoo company is available to this account.", 403);
+    if (!companyIds.length) throw new OdooExportError("No Orithos company is available to this account.", 403);
     const companyId = companyIds[0];
     const context = { ...(info.user_context ?? {}), allowed_company_ids: companyIds, force_company: companyId };
 
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooExportError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

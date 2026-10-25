@@ -150,7 +150,7 @@ function StepSelect({
         />
       </button>
       {open && !disabled && (
-        <ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+<ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
           {uniqueOptions.length === 0 ? (
             <li className="px-4 py-3 text-[14px] text-[var(--oh-muted)]">No options available</li>
           ) : (
@@ -443,7 +443,7 @@ export function CreateProductWizard({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
+className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onWizardKeyDown}
       >
@@ -549,7 +549,7 @@ export function CreateProductWizard({
                     type="button"
                     onClick={reloadFamilies}
                     disabled={familiesLoading}
-                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"
+className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-danger-text)] disabled:cursor-wait disabled:opacity-60"
                   >
                     <RefreshIcon size={14} /> Retry
                   </button>
@@ -584,7 +584,7 @@ export function CreateProductWizard({
                     type="button"
                     onClick={reloadTags}
                     disabled={tagsLoading}
-                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"
+className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-danger-text)] disabled:cursor-wait disabled:opacity-60"
                   >
                     <RefreshIcon size={14} /> Retry
                   </button>

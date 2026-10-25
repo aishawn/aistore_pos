@@ -16,7 +16,7 @@ export function OverviewLayoutSwitcher({
       role="navigation"
       aria-label="Dashboard layout options"
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full border border-black/[0.06] bg-white/80 p-0.5 shadow-sm backdrop-blur-md",
+        "inline-flex items-center gap-0.5 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-0.5 shadow-sm backdrop-blur-md",
         className,
       )}
     >
@@ -26,7 +26,7 @@ export function OverviewLayoutSwitcher({
         className={cn(
           "oh-type-meta inline-flex min-h-11 items-center rounded-full px-3 font-semibold no-underline transition-colors",
           active === "radial"
-            ? "bg-[var(--oh-text)] text-white"
+            ? "bg-[var(--oh-surface-inverse)] text-[var(--oh-on-inverse)]"
             : "text-[var(--oh-muted)] hover:text-[var(--oh-text)]",
         )}
       >
@@ -38,7 +38,7 @@ export function OverviewLayoutSwitcher({
         className={cn(
           "oh-type-meta inline-flex min-h-11 items-center rounded-full px-3 font-semibold no-underline transition-colors",
           active === "workspace"
-            ? "bg-[var(--oh-text)] text-white"
+            ? "bg-[var(--oh-surface-inverse)] text-[var(--oh-on-inverse)]"
             : "text-[var(--oh-muted)] hover:text-[var(--oh-text)]",
         )}
       >

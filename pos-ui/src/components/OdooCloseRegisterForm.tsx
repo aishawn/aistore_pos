@@ -150,7 +150,7 @@ export function OdooCloseRegisterForm({
       }
     } catch (cause) {
       if (revision === requestRevision.current) {
-        setError(cause instanceof Error ? cause.message : "Could not load Odoo registers.");
+        setError(cause instanceof Error ? cause.message : "Could not load Orithos registers.");
       }
     } finally {
       if (revision === requestRevision.current) setLoading(false);
@@ -312,14 +312,14 @@ export function OdooCloseRegisterForm({
       <div className={cn(isModal ? "grid place-items-center p-6" : "grid h-full place-items-center bg-[var(--oh-surface)] p-6")}>
         <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
           <CircleAlert className="mx-auto text-amber-600" size={30} />
-          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to close a register</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Closing a register ends the open Odoo POS session for that terminal.</p>
+          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Orithos to close a register</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Closing a register ends the open Orithos POS session for that terminal.</p>
           <Link
             href="/settings/integrations"
             onClick={onRequestClose}
             className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
-            Connect Odoo
+            Connect Orithos
           </Link>
         </section>
       </div>
@@ -335,7 +335,7 @@ export function OdooCloseRegisterForm({
               Close register
             </h1>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
-              Reconcile the drawer, then end the open Odoo POS session.
+              Reconcile the drawer, then end the open Orithos POS session.
               {lastLoadedAt !== null && (
                 <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Adelaide")}.</span>
               )}
@@ -381,14 +381,14 @@ export function OdooCloseRegisterForm({
           <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-950">
             <p className="inline-flex items-center gap-2 font-semibold"><Check size={16} /> {result.registerName} · {result.sessionName}</p>
             <p className="mt-1">{result.message}</p>
-            <p className="mt-1 text-xs">Odoo session state: <strong>{result.state}</strong></p>
+            <p className="mt-1 text-xs">Orithos session state: <strong>{result.state}</strong></p>
           </div>
         )}
 
         <section aria-labelledby="close-register-form-heading" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
           <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
             <h2 id="close-register-form-heading" className="text-sm font-semibold text-[var(--oh-text)]">End-of-day checklist</h2>
-            <p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Count the drawer against Odoo expected cash, then review before closing.</p>
+            <p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Count the drawer against Orithos expected cash, then review before closing.</p>
           </div>
 
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
@@ -417,8 +417,8 @@ export function OdooCloseRegisterForm({
 
           {!bootstrap?.configs.length ? (
             <div role="status" className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-5 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
-              <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />No POS registers are available to this Odoo account.</span>
-              <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+              <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />No POS registers are available to this Orithos account.</span>
+              <Link href="/" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Orithos POS</Link>
             </div>
           ) : selected?.session ? (
             <>
@@ -453,7 +453,7 @@ export function OdooCloseRegisterForm({
                 <div className="rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3">
                   <p className="text-xs font-medium text-[var(--oh-muted)]">Expected cash</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(expectedCash)}</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-[var(--oh-muted)]">From Odoo drawer balance</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-[var(--oh-muted)]">From Orithos drawer balance</p>
                 </div>
                 <div className="rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3">
                   <p className="text-xs font-medium text-[var(--oh-muted)]">Counted</p>
@@ -525,7 +525,7 @@ export function OdooCloseRegisterForm({
                   />
                   <span id="counted-cash-help" className="text-xs font-normal leading-5 text-[var(--oh-muted)]">
                     {requiresCashCount
-                      ? "Required for this cash-enabled register. Written to Odoo when you confirm."
+                      ? "Required for this cash-enabled register. Written to Orithos when you confirm."
                       : "This register has no cash payment method, so a cash count is optional."}
                   </span>
                 </label>
@@ -573,7 +573,7 @@ export function OdooCloseRegisterForm({
             <div role="status" className="mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-5 text-amber-950 sm:flex-row sm:items-center">
               <span className="flex items-start gap-2">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                This register has no open session. Open one from Sell or Odoo before closing.
+                This register has no open session. Open one from Sell or Orithos before closing.
               </span>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <Link
@@ -583,7 +583,7 @@ export function OdooCloseRegisterForm({
                 >
                   Go to Sell
                 </Link>
-                <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+                <Link href="/" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Orithos POS</Link>
               </div>
             </div>
           )}
@@ -622,7 +622,7 @@ export function OdooCloseRegisterForm({
             aria-describedby="close-register-description"
             className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl"
           >
-            <h2 id="close-register-title" className="text-lg font-semibold text-[var(--oh-text)]">Close this Odoo session?</h2>
+            <h2 id="close-register-title" className="text-lg font-semibold text-[var(--oh-text)]">Close this Orithos session?</h2>
             <p id="close-register-description" className="mt-2 text-sm leading-6 text-[var(--oh-text-secondary)]">
               This will send the closing request for <strong>{selected.name}</strong> · <strong>{selected.session.name}</strong>.
               Check the cash count and make sure all sales are reconciled before continuing.
@@ -651,7 +651,7 @@ export function OdooCloseRegisterForm({
             </dl>
             <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
               Parked sales on this browser are local drafts and are not uploaded by close.
-              If cash differences remain, finish reconciliation in Odoo.
+              If cash differences remain, finish reconciliation in Orithos.
             </p>
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button

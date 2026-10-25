@@ -90,12 +90,13 @@ export function UserMenu({
         <div className="grid grid-cols-2 gap-2" role="group" aria-label="Appearance">
           <button
             type="button"
+            aria-label="Use light theme"
             aria-pressed={theme === "light"}
             onClick={() => setTheme("light")}
             className={cn(
               "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
               theme === "light"
-                ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-orange-dark)]"
+                ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--brand-control)]"
                 : "border-[var(--oh-border)] text-[var(--oh-text)] hover:bg-[var(--oh-surface)]",
             )}
           >
@@ -104,12 +105,13 @@ export function UserMenu({
           </button>
           <button
             type="button"
+            aria-label="Use dark theme"
             aria-pressed={theme === "dark"}
             onClick={() => setTheme("dark")}
             className={cn(
               "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
               theme === "dark"
-                ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-orange-dark)]"
+                ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--brand-control)]"
                 : "border-[var(--oh-border)] text-[var(--oh-text)] hover:bg-[var(--oh-surface)]",
             )}
           >

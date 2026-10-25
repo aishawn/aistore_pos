@@ -14,9 +14,9 @@ type RpcEnvelope<T> = { result?: T; error?: RpcError };
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -34,13 +34,13 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new PurchaseOrderError("Odoo purchase service is unavailable", 502);
+  if (!response.ok) throw new PurchaseOrderError("Orithos purchase service is unavailable", 502);
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new PurchaseOrderError("Your Odoo account does not have permission to access this purchase order.", 403);
-    throw new PurchaseOrderError("Odoo could not complete this purchase request.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new PurchaseOrderError("Your Orithos session has expired. Sign in to Orithos again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new PurchaseOrderError("Your Orithos account does not have permission to access this purchase order.", 403);
+    throw new PurchaseOrderError("Orithos could not complete this purchase request.", 422);
   }
   return payload.result as T;
 }
@@ -54,18 +54,18 @@ async function getCompanyIds(request: NextRequest, sessionId: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (!response.ok) throw new PurchaseOrderError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
-  if (payload.error || !payload.result?.uid) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (payload.error || !payload.result?.uid) throw new PurchaseOrderError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new PurchaseOrderError(forced.error, forced.status);
-  if (!forced.companyIds.length) throw new PurchaseOrderError("No Odoo companies are available to this user.", 403);
+  if (!forced.companyIds.length) throw new PurchaseOrderError("No Orithos companies are available to this user.", 403);
   return forced.companyIds;
 }
 
 function errorResponse(error: unknown) {
-  const message = error instanceof Error ? error.message : "Odoo is unavailable";
+  const message = error instanceof Error ? error.message : "Orithos is unavailable";
   const status = error instanceof PurchaseOrderError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
   const response = NextResponse.json({ message }, { status });
   if (status === 401) response.cookies.delete(SESSION_COOKIE);
@@ -75,7 +75,7 @@ function errorResponse(error: unknown) {
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const { id: rawId } = await context.params;
   const purchaseId = /^\d+$/.test(rawId) ? Number(rawId) : NaN;
   if (!Number.isSafeInteger(purchaseId) || purchaseId < 1) return NextResponse.json({ message: "Invalid purchase order" }, { status: 400 });
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (orderLineIds.length) {
       const lineFields = await rpc<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] });
       const unitField = lineFields && Object.hasOwn(lineFields, "product_uom") ? "product_uom" : lineFields && Object.hasOwn(lineFields, "product_uom_id") ? "product_uom_id" : null;
-      if (!unitField) throw new PurchaseOrderError("Odoo did not expose a purchase unit field for RFQ lines.", 422);
+      if (!unitField) throw new PurchaseOrderError("Orithos did not expose a purchase unit field for RFQ lines.", 422);
       lines = await rpc<Array<Record<string, unknown>>>(sessionId, "purchase.order.line", "search_read", [[
         ["id", "in", orderLineIds], ["order_id", "=", purchaseId],
       ]], { fields: ["id", "product_id", "name", "product_qty", unitField, "price_unit", "price_subtotal", "qty_received", "date_planned"], limit: 200, context: companyContext }) ?? [];
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
           : Object.hasOwn(pickingFields ?? {}, "move_ids")
             ? "move_ids"
             : null;
-        if (!moveRelationField) throw new PurchaseOrderError("Odoo did not expose stock moves for this receipt.", 422);
+        if (!moveRelationField) throw new PurchaseOrderError("Orithos did not expose stock moves for this receipt.", 422);
         receipts = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.picking", "search_read", [[
           ["id", "in", pickingIds], ["company_id", "in", companyIds],
         ]], {
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
               : Object.hasOwn(moveFields ?? {}, "quantity_done")
                 ? "quantity_done"
                 : null;
-            if (!qtyField) throw new PurchaseOrderError("Odoo did not expose received quantity for this receipt.", 422);
+            if (!qtyField) throw new PurchaseOrderError("Orithos did not expose received quantity for this receipt.", 422);
             const moves = await rpc<Array<{
               [key: string]: unknown;
               id: number;
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try { await requirePermission(request, "stock.purchases"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const { id: rawId } = await context.params;
   const purchaseId = /^\d+$/.test(rawId) ? Number(rawId) : NaN;
   if (!Number.isSafeInteger(purchaseId) || purchaseId < 1) return NextResponse.json({ message: "Invalid purchase order" }, { status: 400 });

@@ -29,6 +29,7 @@
   --brand-danger: #b91c1c;
   --brand-danger-tint: #fef2f2;
   --brand-info: #245be6;
+  --brand-on-info: #ffffff;
   --brand-info-tint: #edf2ff;
   --brand-warning: #92400e;
   --brand-warning-tint: #fffbeb;
@@ -81,6 +82,7 @@
   --brand-danger: #fca5a5;
   --brand-danger-tint: #44272b;
   --brand-info: #93b4ff;
+  --brand-on-info: #111b2c;
   --brand-info-tint: #253653;
   --brand-warning: #fcd38d;
   --brand-warning-tint: #3d321d;

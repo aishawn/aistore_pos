@@ -42,13 +42,13 @@ export function CatalogueProductDetails({ product, categories, onClose, onEdit }
     ["POS visibility", product.available_in_pos ? "Available in POS" : "Hidden from POS"],
   ];
   return createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="catalogue-detail-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl sm:p-6">
+<section role="dialog" aria-modal="true" aria-labelledby="catalogue-detail-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-2xl sm:p-6">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0"><p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Product details</p><h2 id="catalogue-detail-title" className="mt-1 break-words text-lg font-semibold text-[var(--oh-text)]">{name}</h2></div>
         <button type="button" onClick={onClose} aria-label="Close product details" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
       </header>
       <div className="my-5 flex items-center gap-4 rounded-lg bg-[var(--oh-surface)] p-4">
-        <ProductImage productId={product.id} name={name} className="h-20 w-20 shrink-0 border border-[var(--oh-border)] bg-white" />
+<ProductImage productId={product.id} name={name} className="h-20 w-20 shrink-0 border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />
         <div className="min-w-0"><p className="mb-1 text-xs text-[var(--oh-muted)]">Standard sale price · AUD</p><CataloguePrice product={product} /><CatalogueIssues product={product} /></div>
       </div>
       <dl className="divide-y divide-[var(--oh-border)]">{rows.map(([label, value]) => <div key={label} className="grid grid-cols-1 gap-1 py-3 text-sm sm:grid-cols-[140px_1fr]"><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium text-[var(--oh-text)]">{value}</dd></div>)}</dl>

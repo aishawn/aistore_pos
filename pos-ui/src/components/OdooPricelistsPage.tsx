@@ -106,11 +106,11 @@ export function OdooPricelistsPage() {
 
   if (connected === false) {
     return (
-      <AdminPageLayout title="Price Lists" subtitle="Odoo product pricelists used at checkout">
+      <AdminPageLayout title="Price Lists" subtitle="Orithos product pricelists used at checkout">
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
           <AlertCircle className="mb-2" size={20} />
-          <p className="font-semibold">Connect Odoo to manage price lists</p>
-          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Odoo</Link>
+          <p className="font-semibold">Connect Orithos to manage price lists</p>
+          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Orithos</Link>
         </section>
       </AdminPageLayout>
     );
@@ -133,7 +133,7 @@ export function OdooPricelistsPage() {
         </>
       }
     >
-      <p className="mb-4 text-sm text-[var(--oh-muted)]">Select a price list to view its rules and customers. Edit rules in Odoo. <Link href="/stock/capped-pricing" className="underline">Product base prices</Link> affect standard shelf prices.</p>
+      <p className="mb-4 text-sm text-[var(--oh-muted)]">Select a price list to view its rules and customers. Edit rules in Orithos. <Link href="/stock/capped-pricing" className="underline">Product base prices</Link> affect standard shelf prices.</p>
 
       <label className="mb-4 flex h-11 max-w-xl items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
         <Search size={16} className="text-[var(--oh-muted)]" />
@@ -159,7 +159,7 @@ export function OdooPricelistsPage() {
               <tr><td colSpan={5} className="px-4 py-10 text-center text-[var(--oh-muted)]"><Tag className="mx-auto mb-2" size={20} />No price lists found</td></tr>
             ) : items.map((list) => (
               <tr key={list.id}>
-                <td className="px-4 py-3 font-medium text-[var(--oh-text)]"><button type="button" disabled={loading || Boolean(error)} onClick={() => setSelected(list)} className="min-h-11 text-left text-[var(--oh-primary)]">{list.name}</button><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{list.id}</span></td>
+                <td className="px-4 py-3 font-medium text-[var(--oh-text)]"><button type="button" disabled={loading || Boolean(error)} onClick={() => setSelected(list)} className="min-h-11 text-left text-[var(--oh-primary)]">{list.name}</button><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Orithos #{list.id}</span></td>
                 <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{list.currency ?? "—"}</td>
                 <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{list.company}</td>
                 <td className="px-4 py-3">{list.active ? "Active" : "Archived"}</td>
@@ -216,7 +216,7 @@ export function OdooPricelistsPage() {
         <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-4">
           <section role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-xl">
             <h2 className="text-lg font-semibold text-[var(--oh-text)]">Archive price list?</h2>
-            <p className="mt-2 text-sm text-[var(--oh-muted)]">“{archiving.name}” will be deactivated in Odoo so POS configs that still reference it are not broken by a hard delete.</p>
+            <p className="mt-2 text-sm text-[var(--oh-muted)]">“{archiving.name}” will be deactivated in Orithos so POS configs that still reference it are not broken by a hard delete.</p>
             {formError && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{formError}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" disabled={busy} onClick={() => setArchiving(null)} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</button>

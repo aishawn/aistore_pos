@@ -7,20 +7,20 @@ const HREF = "/settings/outlets/gift-cards";
 const giftCardBehaviors = [
   {
     title: "Gift card checkout",
-    status: "Not in Odoo pilot",
-    detail: "The Odoo Sell checkout does not currently issue or redeem gift cards. The old enabled switch did not connect gift cards to this register.",
+    status: "Not in Orithos pilot",
+    detail: "The Orithos Sell checkout does not currently issue or redeem gift cards. The old enabled switch did not connect gift cards to this register.",
     icon: CreditCard,
   },
   {
     title: "Expiry defaults",
     status: "Not applied",
-    detail: "The previous three-year expiry value was an example. Odoo checkout does not read an outlet-level gift card expiry preference from this page.",
+    detail: "The previous three-year expiry value was an example. Orithos checkout does not read an outlet-level gift card expiry preference from this page.",
     icon: CalendarClock,
   },
   {
     title: "Manual expiry changes",
     status: "Not available",
-    detail: "The former adjustment switch did not enable an expiry editing flow for Odoo gift cards.",
+    detail: "The former adjustment switch did not enable an expiry editing flow for Orithos gift cards.",
     icon: SlidersHorizontal,
   },
 ];
@@ -40,7 +40,7 @@ export default function OutletGiftCardsSettingsPage() {
             <CreditCard size={18} aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-sky-950">Gift cards are not connected to the Odoo pilot</h2>
+            <h2 className="text-sm font-semibold text-sky-950">Gift cards are not connected to the Orithos pilot</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
               The previous enabled and expiry values were static examples. They do not change the current checkout.
             </p>

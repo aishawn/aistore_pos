@@ -30,7 +30,7 @@ export function isMobileAllowedPath(pathname: string): boolean {
     path === "/finalise" ||
     path === "/products" ||
     path.startsWith("/products/") ||
-    path === "/purchases/odoo" ||
+    path === "/purchases" ||
     path === "/invoices" ||
     path === "/stock/list" ||
     path.startsWith("/stock/list/") ||

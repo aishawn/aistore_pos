@@ -2,13 +2,13 @@
   "name": "orithos-pos-ui",
   "version": "0.4.0",
   "private": true,
-  "description": "Orithos POS — Australian liquor and specialty retail front-of-house (Next.js, Odoo-backed)",
+  "description": "Orithos POS — Australian liquor and specialty retail front-of-house (Next.js, Orithos backend)",
   "author": "Orithos",
   "license": "UNLICENSED",
   "keywords": [
     "orithos",
     "pos",
-    "odoo",
+    "retail-platform",
     "nextjs",
     "australia",
     "liquor-retail"

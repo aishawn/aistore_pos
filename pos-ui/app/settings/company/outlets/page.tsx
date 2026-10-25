@@ -9,14 +9,14 @@ const outletBehaviors = [
     title: "Parked sales",
     status: "This terminal",
     icon: Monitor,
-    description: "Parked sales are stored in this browser and filtered to the signed-in Odoo user and selected company. The same user can resume them on another register in this browser, but they do not sync to another device.",
+    description: "Parked sales are stored in this browser and filtered to the signed-in Orithos user and selected company. The same user can resume them on another register in this browser, but they do not sync to another device.",
     action: { label: "Open Sell and view Parked", href: "/" },
   },
   {
     title: "Gift cards",
-    status: "Not in Odoo pilot",
+    status: "Not in Orithos pilot",
     icon: CreditCard,
-    description: "Gift card pages and imports belong to the Classic module. The Odoo Sell checkout does not currently offer gift card redemption, and this switch does not enable it.",
+    description: "Gift card pages and imports belong to the Classic module. The Orithos Sell checkout does not currently offer gift card redemption, and this switch does not enable it.",
   },
 ];
 

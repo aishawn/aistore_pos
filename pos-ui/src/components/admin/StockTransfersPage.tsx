@@ -41,7 +41,7 @@ export function StockTransfersPage({ embedded = false }: { embedded?: boolean })
   const items: OdooTransferListItem[] = data?.items ?? [];
   const canCreate = (data?.locations.length ?? 0) >= 2;
 
-  const newHref = embedded ? "/purchases/odoo?tab=transfer-new" : "/stock/transfers/new";
+  const newHref = embedded ? "/purchases?tab=transfer-new" : "/stock/transfers/new";
   const body = (
         <div className={`flex flex-col gap-4 ${embedded ? "" : "mx-auto w-full max-w-6xl"}`}>
           {!embedded && (
@@ -79,22 +79,22 @@ export function StockTransfersPage({ embedded = false }: { embedded?: boolean })
           {error && (
             <div role="alert" className="flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between">
               <span>{error}</span>
-              <button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold">Retry</button>
+              <button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-tile-red-text)]">Retry</button>
             </div>
           )}
 
           {!loading && !error && items.length === 0 && (
-            <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-6 py-12 text-center">
+            <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-6 py-12 text-center">
               <ArrowRightLeft className="mx-auto text-[var(--oh-primary)]" size={28} />
               <h2 className="mt-3 text-sm font-semibold text-[var(--oh-text)]">No internal transfers yet</h2>
               <p className="mt-1 text-sm text-[var(--oh-muted)]">
-                {canCreate ? "Create a move between two warehouse stock locations." : "Add a second warehouse/location in Odoo first."}
+                {canCreate ? "Create a move between two warehouse stock locations." : "Add a second warehouse/location in Orithos first."}
               </p>
             </div>
           )}
 
           {items.length > 0 && (
-            <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+            <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
@@ -128,7 +128,7 @@ export function StockTransfersPage({ embedded = false }: { embedded?: boolean })
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-6xl">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Moves</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Transfers</h1>

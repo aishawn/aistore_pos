@@ -22,11 +22,11 @@ function SettingLabel({
 }) {
   return (
     <div>
-      <span className="flex items-center gap-2 text-[16px] font-semibold text-black">
+      <span className="flex items-center gap-2 text-[16px] font-semibold text-[var(--oh-text)]">
         {label}
-        {showHelp && <HelpIcon size={16} className="text-neutral-400" />}
+        {showHelp && <HelpIcon size={16} className="text-[var(--oh-muted)]" />}
       </span>
-      {description && <p className="mt-1 max-w-3xl text-[14px] leading-snug text-neutral-500">{description}</p>}
+      {description && <p className="mt-1 max-w-3xl text-[14px] leading-snug text-[var(--oh-text-secondary)]">{description}</p>}
     </div>
   );
 }
@@ -34,9 +34,9 @@ function SettingLabel({
 function ToggleSwitch({ on }: { on: boolean }) {
   return (
     <span
-      className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 ${on ? "justify-end bg-[#3aa0e3]" : "bg-neutral-300"}`}
+      className={`flex h-7 w-12 shrink-0 items-center rounded-full p-1 ${on ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]"}`}
     >
-      <span className="h-5 w-5 rounded-full bg-white" />
+      <span className="h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm" />
     </span>
   );
 }
@@ -55,11 +55,11 @@ export function ToggleRow({
 }) {
   if (description) {
     return (
-      <div className="border-b border-neutral-100 py-4 last:border-b-0">
+      <div className="border-b border-[var(--oh-border)] py-4 last:border-b-0">
         <SettingLabel label={label} description={description} />
         <div className="mt-3 flex items-center gap-3">
           <ToggleSwitch on={on} />
-          {statusLabel && <span className="text-[14px] text-neutral-600">{statusLabel}</span>}
+          {statusLabel && <span className="text-[14px] text-[var(--oh-text-secondary)]">{statusLabel}</span>}
         </div>
       </div>
     );
@@ -67,11 +67,11 @@ export function ToggleRow({
 
   return (
     <div className="flex items-center justify-between py-3">
-      <span className="flex items-center gap-3 text-[18px] text-black">
+      <span className="flex items-center gap-3 text-[18px] text-[var(--oh-text)]">
         <ToggleSwitch on={on} />
-        {label} <HelpIcon size={16} className="text-neutral-400" />
+        {label} <HelpIcon size={16} className="text-[var(--oh-muted)]" />
       </span>
-      <span className="text-[14px] text-neutral-400">{STAMP}</span>
+      <span className="text-[14px] text-[var(--oh-muted)]">{STAMP}</span>
     </div>
   );
 }
@@ -88,12 +88,12 @@ export function SelectRow({
 }) {
   if (description) {
     return (
-      <div className="border-b border-neutral-100 py-4 last:border-b-0">
+      <div className="border-b border-[var(--oh-border)] py-4 last:border-b-0">
         <SettingLabel label={label} description={description} />
         <span
-          className={`mt-3 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-4 text-[16px] text-black ${FIELD_WIDTH}`}
+          className={`mt-3 flex h-[52px] items-center justify-between rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] ${FIELD_WIDTH}`}
         >
-          {value} <SelectChevronIcon size={18} className="text-neutral-500" />
+          {value} <SelectChevronIcon size={18} className="text-[var(--oh-muted)]" />
         </span>
       </div>
     );
@@ -102,11 +102,11 @@ export function SelectRow({
   return (
     <div className="py-3">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-[16px] text-black">{label} <HelpIcon size={16} className="text-neutral-400" /></span>
-        <span className="text-[14px] text-neutral-400">{STAMP}</span>
+        <span className="flex items-center gap-2 text-[16px] text-[var(--oh-text)]">{label} <HelpIcon size={16} className="text-[var(--oh-muted)]" /></span>
+        <span className="text-[14px] text-[var(--oh-muted)]">{STAMP}</span>
       </div>
-      <span className={`mt-1 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-4 text-[16px] text-black ${FIELD_WIDTH}`}>
-        {value} <SelectChevronIcon size={18} className="text-neutral-500" />
+      <span className={`mt-1 flex h-[52px] items-center justify-between rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] ${FIELD_WIDTH}`}>
+        {value} <SelectChevronIcon size={18} className="text-[var(--oh-muted)]" />
       </span>
     </div>
   );
@@ -124,11 +124,11 @@ export function TextRow({
 }) {
   if (description) {
     return (
-      <div className="border-b border-neutral-100 py-4 last:border-b-0">
+      <div className="border-b border-[var(--oh-border)] py-4 last:border-b-0">
         <SettingLabel label={label} description={description} />
         <input
           defaultValue={value}
-            className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
+            className={`mt-3 h-[52px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
         />
       </div>
     );
@@ -137,12 +137,12 @@ export function TextRow({
   return (
     <div className="py-3">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-[16px] text-black">{label} <HelpIcon size={16} className="text-neutral-400" /></span>
-        <span className="text-[14px] text-neutral-400">{STAMP}</span>
+        <span className="flex items-center gap-2 text-[16px] text-[var(--oh-text)]">{label} <HelpIcon size={16} className="text-[var(--oh-muted)]" /></span>
+        <span className="text-[14px] text-[var(--oh-muted)]">{STAMP}</span>
       </div>
       <input
         defaultValue={value}
-        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
+        className={`mt-1 h-[52px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
       />
     </div>
   );
@@ -160,12 +160,12 @@ export function NumberRow({
 }) {
   if (description) {
     return (
-      <div className="border-b border-neutral-100 py-4 last:border-b-0">
+      <div className="border-b border-[var(--oh-border)] py-4 last:border-b-0">
         <SettingLabel label={label} description={description} />
         <input
           type="number"
           defaultValue={value}
-            className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
+            className={`mt-3 h-[52px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
         />
       </div>
     );
@@ -174,13 +174,13 @@ export function NumberRow({
   return (
     <div className="py-3">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-[16px] text-black">{label} <HelpIcon size={16} className="text-neutral-400" /></span>
-        <span className="text-[14px] text-neutral-400">{STAMP}</span>
+        <span className="flex items-center gap-2 text-[16px] text-[var(--oh-text)]">{label} <HelpIcon size={16} className="text-[var(--oh-muted)]" /></span>
+        <span className="text-[14px] text-[var(--oh-muted)]">{STAMP}</span>
       </div>
       <input
         type="number"
         defaultValue={value}
-        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
+        className={`mt-1 h-[52px] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[16px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
       />
     </div>
   );
@@ -191,8 +191,8 @@ export function EditReasonsRow({ label }: { label: string }) {
   return (
     <div className="py-3">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-[16px] text-black">{label} <HelpIcon size={16} className="text-neutral-400" /></span>
-        <span className="text-[14px] text-neutral-400">{STAMP}</span>
+        <span className="flex items-center gap-2 text-[16px] text-[var(--oh-text)]">{label} <HelpIcon size={16} className="text-[var(--oh-muted)]" /></span>
+        <span className="text-[14px] text-[var(--oh-muted)]">{STAMP}</span>
       </div>
       <button
         type="button"
@@ -240,7 +240,7 @@ export function SettingsScaffold({
     <div className="h-full overflow-auto bg-[var(--oh-surface)] p-4 font-sans md:p-6">
       <div className="w-full">
         <h1 className="oh-type-display mb-4 text-[var(--oh-text)]">{title}</h1>
-        <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+        <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
           {showSearch && (
             <div className="p-4">
               <input

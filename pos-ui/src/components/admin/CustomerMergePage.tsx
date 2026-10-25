@@ -172,13 +172,13 @@ const MERGE_COLUMN_WIDTH_PX = 320;
 const MERGE_ADD_COLUMN_WIDTH_PX = 280;
 
 const inputClass =
-  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] shadow-sm outline-none placeholder:text-[var(--oh-placeholder)] transition-colors focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]";
+  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px] text-[var(--oh-text)] shadow-sm outline-none placeholder:text-[var(--oh-placeholder)] transition-colors focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]";
 
 const textareaClass =
-  "min-h-[80px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] shadow-sm outline-none placeholder:text-[var(--oh-placeholder)] transition-colors focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]";
+  "min-h-[80px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] shadow-sm outline-none placeholder:text-[var(--oh-placeholder)] transition-colors focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]";
 
 const readOnlyInputClass =
-  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)]/80 bg-white/90 px-3 text-[14px] text-[var(--oh-text)]";
+  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)]/80 bg-[var(--oh-surface-muted)] px-3 text-[14px] text-[var(--oh-text)]";
 
 function buildLabel(firstName: string, lastName: string, company: string, name?: string): string {
   const person = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
@@ -247,7 +247,7 @@ function FieldCheckButton({
         "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border transition-all",
         active
           ? "border-[var(--oh-info)] bg-[var(--oh-info)] text-white shadow-sm"
-          : "border-[#b8d4f0] bg-white text-[#b8d4f0]",
+          : "border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] text-[var(--oh-muted)]",
         disabled
           ? "cursor-default opacity-70"
           : "cursor-pointer hover:scale-105 hover:border-[var(--oh-info)] hover:bg-[var(--oh-info)] hover:text-white",
@@ -439,7 +439,7 @@ function MergeSection({
   groupOptions: { label: string; value: string }[];
 }) {
   return (
-    <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+    <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
       <div
         className={cn(
           "flex items-center justify-between px-4 py-3",
@@ -453,7 +453,7 @@ function MergeSection({
           <button
             type="button"
             onClick={onSelectSection}
-            className="rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-3 py-1.5 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)]"
+            className="rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-[var(--oh-surface-elevated)] px-3 py-1.5 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)]"
           >
             Select Section
           </button>
@@ -516,7 +516,7 @@ function CustomerPickerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-tile-blue-bg)] px-5 py-4">
@@ -527,7 +527,7 @@ function CustomerPickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] hover:bg-white/60"
+            className="flex h-9 w-9 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] hover:bg-[var(--oh-surface-muted)]"
             aria-label="Close"
           >
             <XIcon size={20} />
@@ -545,7 +545,7 @@ function CustomerPickerModal({
               }}
               placeholder="Search customers…"
               ref={searchInputRef}
-              className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white pl-10 pr-3 text-[14px] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
+              className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] pl-10 pr-3 text-[14px] text-[var(--oh-text)] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
             />
           </div>
         </div>
@@ -703,7 +703,7 @@ export function CustomerMergePage() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
       {/* Header */}
-      <div className="shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-5 shadow-sm">
+      <div className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6 py-5 shadow-sm">
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
@@ -759,7 +759,7 @@ export function CustomerMergePage() {
         >
         {/* Results column — sticky on horizontal scroll */}
         <div
-          className="sticky left-4 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card),4px_0_16px_rgba(28,37,54,0.08)] md:left-5"
+          className="sticky left-4 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card),4px_0_16px_rgba(28,37,54,0.08)] md:left-5"
           style={{ width: MERGE_COLUMN_WIDTH_PX }}
         >
           <div className="shrink-0 border-b border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] px-5 py-3.5">
@@ -800,7 +800,7 @@ export function CustomerMergePage() {
         {sources.map((source, index) => (
           <div
             key={source.id}
-            className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]"
+            className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]"
           >
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -850,7 +850,7 @@ export function CustomerMergePage() {
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className="group flex min-h-0 shrink-0 flex-col items-center justify-center self-stretch rounded-[var(--oh-radius)] border-2 border-dashed border-[var(--oh-border-strong)] bg-white/80 p-6 text-center transition-all hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)]/30 hover:shadow-[var(--oh-shadow-card)] md:p-10"
+          className="group flex min-h-0 shrink-0 flex-col items-center justify-center self-stretch rounded-[var(--oh-radius)] border-2 border-dashed border-[var(--oh-border-strong)] bg-[var(--oh-surface-muted)] p-6 text-center transition-all hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)]/30 hover:shadow-[var(--oh-shadow-card)] md:p-10"
         >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-orange)] transition-transform group-hover:scale-105">
               <PlusIcon size={28} strokeWidth={2} />
@@ -859,7 +859,7 @@ export function CustomerMergePage() {
             <span className="mt-2 max-w-[240px] text-[13px] leading-relaxed text-[var(--oh-muted)]">
               Search and select a customer. Use the checkmarks to copy their details into the merged result.
             </span>
-            <span className="mt-5 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors group-hover:bg-[var(--oh-primary)] group-hover:text-white">
+            <span className="mt-5 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-[var(--oh-surface-elevated)] px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors group-hover:bg-[var(--oh-primary)] group-hover:text-white">
             Choose customer
           </span>
         </button>
@@ -867,7 +867,7 @@ export function CustomerMergePage() {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-6 py-4 shadow-[0_-4px_16px_rgba(28,37,54,0.04)]">
+      <div className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6 py-4 shadow-[0_-4px_16px_rgba(28,37,54,0.04)]">
         {error && (
           <div role="alert" aria-live="assertive" className="mb-3 rounded-[var(--oh-radius)] border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2.5 text-[13px] text-[var(--oh-danger)]">
             {error}

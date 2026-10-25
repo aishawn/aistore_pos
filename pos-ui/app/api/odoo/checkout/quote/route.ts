@@ -34,9 +34,9 @@ class QuoteError extends Error { constructor(message: string, public readonly st
 
 function baseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new QuoteError("Odoo connection is not configured on the POS server.", 503);
+  if (!value) throw new QuoteError("Orithos connection is not configured on the POS server.", 503);
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new QuoteError("Odoo connection must use HTTPS.", 503);
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new QuoteError("Orithos connection must use HTTPS.", 503);
   return value;
 }
 
@@ -50,7 +50,7 @@ function roundCashTotal(amount: number, rounding: { rounding: number; rounding_m
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const session = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!session) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!session) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; customerId?: number | null; paymentMethodId?: number; lines?: { productId: number; quantity: number; uomFactor?: number }[] };
@@ -70,19 +70,19 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }), cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const sessionInfo = await sessionInfoResponse.json() as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
-    if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new QuoteError("Odoo session expired", 401);
+    if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new QuoteError("Orithos session expired", 401);
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(session, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new QuoteError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new QuoteError("This Odoo user has no accessible company.", 403);
+    if (!companyIds.length) throw new QuoteError("This Orithos user has no accessible company.", 403);
 
     const rpc = <T>(_session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T>(model, method, args, kwargs); };
     const searchRead = <T>(_session: string, model: string, domain: unknown[], fields: string[], limit = 100, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T[]>(model, "search_read", [domain], { fields, limit }); };
 
     const configs = await searchRead<PosConfig>(session, "pos.config", [["id", "=", body.configId], ["company_id", "in", companyIds]], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1, correlationId);
     const config = configs[0];
-    if (!config) throw new QuoteError("This register is not available to your Odoo user.", 403);
+    if (!config) throw new QuoteError("This register is not available to your Orithos user.", 403);
     if (!Array.isArray(config.current_session_id)) throw new QuoteError("This register has no open POS session.", 409);
     if (!config.payment_method_ids.includes(body.paymentMethodId!)) throw new QuoteError("That payment method is not enabled for this register.", 403);
 
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     const signature = priceSignature({ configId: config.id, paymentMethodId: body.paymentMethodId!, customerId: body.customerId ?? null, lines: body.lines, prices, totals: { subtotal, tax: taxTotal, total: amountDue } });
     return NextResponse.json({ signature, priceSource: prices.priceSourceName, currency: prices.currency, subtotal, tax: taxTotal, total: amountDue, unroundedTotal: total, lines: quotedLines }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo could not calculate the cart total.";
+    const message = error instanceof Error ? error.message : "Orithos could not calculate the cart total.";
     const status = error instanceof QuoteError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

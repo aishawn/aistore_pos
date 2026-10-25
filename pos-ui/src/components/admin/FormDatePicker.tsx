@@ -272,7 +272,7 @@ export function FormDatePicker({
         aria-haspopup="dialog"
         aria-label={ariaLabel}
         className={cn(
-          "flex w-full items-center border border-[var(--oh-border)] bg-white text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
+          "flex w-full items-center border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
             compact
             ? "min-h-11 justify-between rounded-lg px-3 text-[14px]"
             : "h-10 rounded-[var(--oh-radius)] px-3 text-[14px]",
@@ -280,7 +280,7 @@ export function FormDatePicker({
         )}
       >
         <span>{displayValue || placeholder}</span>
-        {compact && <SelectChevronIcon size={14} className="shrink-0 text-neutral-500" />}
+        {compact && <SelectChevronIcon size={14} className="shrink-0 text-[var(--oh-muted)]" />}
       </button>
 
       {open && (
@@ -288,7 +288,7 @@ export function FormDatePicker({
           role="dialog"
           aria-label={`${ariaLabel ?? placeholder} calendar`}
           className={cn(
-            "absolute z-[200] mt-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]",
+            "absolute z-[200] mt-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]",
             currentMonthOnly ? "w-[min(100vw-2rem,320px)]" : "w-[min(100vw-2rem,560px)]",
           )}
         >

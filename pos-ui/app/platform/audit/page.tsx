@@ -154,7 +154,7 @@ export default function PlatformAuditPage() {
   return (
     <AdminPageLayout
       title="Platform audit"
-      subtitle="Search platform administrator actions across stores. Business transactions remain in Odoo."
+      subtitle="Search platform administrator actions across stores. Business transactions remain in Orithos."
       count={data?.total ?? 0}
       countLabel="Events"
       fullBleed

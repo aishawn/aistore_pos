@@ -312,10 +312,10 @@ const GENDER_OPTIONS = [
 ];
 
 const inputClass =
-  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
+  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
 const textareaClass =
-  "min-h-[88px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
+  "min-h-[88px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
 function RequiredMark() {
   return <span className="ml-0.5 text-[var(--oh-danger)]">*</span>;
@@ -351,7 +351,7 @@ function FormSection({
     <div
       id={`section-${id}`}
       ref={sectionRef}
-      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-sm has-[[data-select-open=true]]:z-30"
+      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-sm has-[[data-select-open=true]]:z-30"
     >
       <button
         type="button"
@@ -406,7 +406,7 @@ function FormSelect({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+          className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
           <span className={selected ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]"}>
             {selected?.label ?? placeholder}
@@ -417,7 +417,7 @@ function FormSelect({
           />
         </button>
         {open && (
-          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
             {options.map((o) => (
               <li key={o.value}>
                 <button
@@ -511,7 +511,7 @@ function FormSearchSelect({
               setOpen(true);
               if (!e.target.value.trim()) onChange("");
             }}
-            className="flex h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-0 pl-3 pr-9 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+            className="flex h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] py-0 pl-3 pr-9 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
           />
           <button
             type="button"
@@ -525,7 +525,7 @@ function FormSearchSelect({
           </button>
         </div>
         {open && (
-          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
             {loading ? (
               <li className="px-3 py-2 text-[14px] text-[var(--oh-muted)]">Loading…</li>
             ) : trimmedQuery === "" ? (
@@ -583,7 +583,7 @@ function FormToggle({
           checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
         )}
       >
-        <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+        <span className="h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm" />
       </button>
       <span className="text-[14px] text-[var(--oh-text)]">{label}</span>
     </label>
@@ -840,10 +840,10 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-slate-950/40 p-2 font-sans sm:p-4 md:p-6">
-      <div className="flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl">
+    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-black/50 p-2 font-sans sm:p-4 md:p-6">
+      <div className="flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl">
         {/* Header */}
-        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6 sm:py-4">
           <h1 className="break-words px-10 text-center text-lg font-semibold leading-6 text-[var(--oh-text)] md:text-xl">
             {displayName}
           </h1>
@@ -871,8 +871,8 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                     className={cn(
                       "flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:rounded-none md:px-4 md:py-2.5",
                       activeSection === id
-                        ? "bg-white text-[var(--oh-primary)] shadow-sm md:shadow-none"
-                        : "text-[var(--oh-text-secondary)] hover:bg-white hover:text-[var(--oh-text)]",
+                        ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-primary)] shadow-sm md:shadow-none"
+                        : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] hover:text-[var(--oh-text)]",
                     )}
                   >
                     <Icon size={16} strokeWidth={1.75} />
@@ -1146,7 +1146,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
               </FormSection>
 
               {(groupsQuery.error || priceListsQuery.error) && (
-                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
+                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-3 py-2.5 text-[13px] text-[var(--oh-tile-orange-text)]">
                   <span>Customer groups or price lists could not be loaded. Your form is preserved.</span>
                   <button
                     type="button"
@@ -1154,7 +1154,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                       groupsQuery.reload();
                       priceListsQuery.reload();
                     }}
-                    className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                    className="min-h-11 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold hover:bg-[var(--oh-tile-orange-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                   >
                     Retry
                   </button>
@@ -1219,8 +1219,8 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
         </div>
 
         {/* Persistent form action */}
-        <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--oh-border)] bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
-          {error && <p role="alert" className="min-w-0 text-sm text-red-900 sm:flex-1">{error}</p>}
+        <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
+          {error && <p role="alert" className="min-w-0 text-sm text-[var(--oh-tile-red-text)] sm:flex-1">{error}</p>}
           <button
             type="button"
             onClick={save}

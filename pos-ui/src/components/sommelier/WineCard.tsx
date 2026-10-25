@@ -43,7 +43,7 @@ export function WineCard({
   }
 
   return (
-    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+    <article className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-primary)]">{card.badge}</p>

@@ -56,7 +56,7 @@ function ToggleSwitch({
       className="flex h-11 w-12 shrink-0 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
     >
       <span className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition-colors", checked ? "justify-end bg-[var(--oh-primary)]" : "bg-[var(--oh-border-strong)]")}>
-        <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+        <span className="h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm" />
       </span>
     </button>
   );
@@ -216,15 +216,15 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
   if (error && !session) {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-4 sm:p-6">
-        <section role="alert" className="w-full max-w-lg rounded-xl border border-rose-200 bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
-          <p className="text-sm leading-6 text-rose-800">{error}</p>
+        <section role="alert" className="w-full max-w-lg rounded-xl border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
+          <p className="text-sm leading-6 text-[var(--oh-tile-red-text)]">{error}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {initialStocktakeId && (
 <button type="button" onClick={() => void loadSession(initialStocktakeId)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                 <RefreshCw size={16} /> Retry
               </button>
             )}
-            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Back to stocktakes</Link>
+            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)]">Back to stocktakes</Link>
           </div>
         </section>
       </main>
@@ -241,15 +241,15 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
             <p className="mt-1 text-sm text-[var(--oh-muted)]">Scan a barcode or search products to record this count at {outletLabel}.</p>
           </div>
           <div className="flex items-center gap-2 self-start sm:gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2">
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2">
               <ToggleSwitch checked={showPrices} onChange={setShowPrices} label="Show prices" />
               <span className="pr-2 text-sm font-medium text-[var(--oh-text-secondary)]">Show prices</span>
             </div>
-            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-paper)]">All counts</Link>
+            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)]">All counts</Link>
           </div>
         </header>
 
-        <section aria-label="Search and scan products" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+        <section aria-label="Search and scan products" className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
           <div className="relative">
             <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
             <input
@@ -275,15 +275,15 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
                 }
               }}
               placeholder="Search by product name or scan a barcode"
-              className="h-12 w-full rounded-lg border border-[var(--oh-border-strong)] bg-white pl-10 pr-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-60"
+              className="h-12 w-full rounded-lg border border-[var(--oh-border-strong)] bg-[var(--oh-surface)] pl-10 pr-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface-muted)] disabled:opacity-60"
             />
             {searchLoading && <LoaderCircle size={17} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
           </div>
           <p className="mt-2 text-xs text-[var(--oh-muted)]">Scan a barcode and press Enter, or choose a matching product below.</p>
-          {scanError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{scanError}</p>}
+          {scanError && <p role="alert" className="mt-3 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-red-text)]">{scanError}</p>}
         </section>
 
-        <section aria-label="Stocktake products" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+        <section aria-label="Stocktake products" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
           <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
             <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Counted products</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Products already scanned in this stocktake.</p></div>
             <span className="rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--oh-primary)]">{products.length} {products.length === 1 ? "product" : "products"}</span>
@@ -294,9 +294,9 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
               {searchLoading || query.trim() !== debouncedQuery.trim() ? (
                 <div role="status" className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={17} className="animate-spin" />Searching products…</div>
               ) : searchError ? (
-                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-rose-800">
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-[var(--oh-tile-red-text)]">
                   <span>{searchError}</span>
-<button type="button" onClick={() => setSearchRetryKey((value) => value + 1)} disabled={searchLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
+<button type="button" onClick={() => setSearchRetryKey((value) => value + 1)} disabled={searchLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                     <RefreshCw size={15} /> Retry search
                   </button>
                 </div>

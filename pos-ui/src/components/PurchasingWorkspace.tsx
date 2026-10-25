@@ -24,7 +24,7 @@ export function PurchasingWorkspace() {
   const permitted = transfers ? hasPermission("stock.purchases") : available.some((view) => view.key === requested);
   const active = permitted ? requested : available[0]?.key;
   useEffect(() => {
-    if (ready && !permitted && active) router.replace(`/purchases/odoo?tab=${active}`);
+    if (ready && !permitted && active) router.replace(`/purchases?tab=${active}`);
   }, [ready, permitted, active, router]);
   if (!ready) return <p role="status" className="p-6">Loading purchasing…</p>;
   if (!active) return <p role="alert" className="p-6">You do not have access to purchasing.</p>;
@@ -33,10 +33,10 @@ export function PurchasingWorkspace() {
       <header className="shrink-0 space-y-3 border-b border-[var(--oh-border)] bg-white p-4 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h1 className="oh-type-title text-[var(--oh-text)]">Purchasing</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Plan replenishment, manage orders and receive stock.</p></div>
-          {hasPermission("stock.purchases") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 min-w-48 rounded-lg border bg-white p-2 shadow-lg"><Link className="block rounded px-3 py-2 text-sm" href="/purchases/odoo?tab=transfers">Stock Transfers</Link></div></details>}
+          {hasPermission("stock.purchases") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 min-w-48 rounded-lg border bg-white p-2 shadow-lg"><Link className="block rounded px-3 py-2 text-sm" href="/purchases?tab=transfers">Stock Transfers</Link></div></details>}
         </div>
         <nav aria-label="Purchasing views" className="flex flex-wrap gap-2">
-          {available.map((view) => <Link key={view.key} href={view.key === "orders" ? "/purchases/odoo" : `/purchases/odoo?tab=${view.key}`} aria-current={active === view.key ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${active === view.key ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]"}`}>{view.label}</Link>)}
+          {available.map((view) => <Link key={view.key} href={view.key === "orders" ? "/purchases" : `/purchases?tab=${view.key}`} aria-current={active === view.key ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${active === view.key ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]"}`}>{view.label}</Link>)}
         </nav>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">

@@ -19,10 +19,10 @@ class CloseError extends Error {
 
 function getBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new CloseError("Odoo connection is not configured on the POS server.", 503);
+  if (!value) throw new CloseError("Orithos connection is not configured on the POS server.", 503);
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new CloseError("Odoo connection must use HTTPS.", 503);
+    throw new CloseError("Orithos connection must use HTTPS.", 503);
   }
   return value;
 }
@@ -42,12 +42,12 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new CloseError("Odoo did not accept the close-register request.", 502);
+  if (!response.ok) throw new CloseError("Orithos did not accept the close-register request.", 502);
   const payload = (await response.json()) as RpcResult<T>;
   if (payload.error) {
     const detail = payload.error.data?.message || payload.error.message || "";
     if (/session|log in|authenticate/i.test(detail)) throw new SessionExpiredError();
-    throw new CloseError(detail || "Odoo rejected the close-register request.", 422);
+    throw new CloseError(detail || "Orithos rejected the close-register request.", 422);
   }
   return payload.result;
 }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     throw error;
   }
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!odooSession) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; countedCash?: number | null };
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Invalid close-register request" }, { status: 400 });
   }
   if (!Number.isInteger(body.configId)) {
-    return NextResponse.json({ message: "Choose an Odoo register to close." }, { status: 400 });
+    return NextResponse.json({ message: "Choose an Orithos register to close." }, { status: 400 });
   }
   if (body.countedCash != null && (
     typeof body.countedCash !== "number"
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new CloseError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new CloseError("This Odoo user has no accessible company.", 403);
+    if (!companyIds.length) throw new CloseError("This Orithos user has no accessible company.", 403);
 
     const configs = await rpc<Array<{
       id: number;
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       ["company_id", "in", companyIds],
     ]], { fields: ["id", "name", "current_session_id", "company_id", "payment_method_ids"], limit: 1 }, correlationId);
     const config = configs?.[0];
-    if (!config) throw new CloseError("This register is not available to your Odoo user.", 403);
+    if (!config) throw new CloseError("This register is not available to your Orithos user.", 403);
     const paymentMethods = config.payment_method_ids.length
       ? await rpc<Array<{ id: number; is_cash_count: boolean }>>(odooSession, "pos.payment.method", "search_read", [[
           ["id", "in", config.payment_method_ids],
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         countedCashWritten = true;
       }
 
-      // Prefer the UI closing control used by Odoo POS; fall back to closing control action.
+      // Prefer the UI closing control used by Orithos POS; fall back to closing control action.
       try {
         await rpc(odooSession, "pos.session", "action_pos_session_closing_control", [[sessionId]], {}, correlationId);
       } catch (primary) {
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
             cash_register_balance_end_real: originalCountedCash,
           }], {}, correlationId);
         } catch {
-          throw new CloseError("Register close failed and the counted cash could not be rolled back in Odoo.", 502);
+          throw new CloseError("Register close failed and the counted cash could not be rolled back in Orithos.", 502);
         }
       }
       throw closeError;
@@ -183,16 +183,16 @@ export async function POST(request: NextRequest) {
       sessionName,
       registerName: config.name,
       state: after?.[0]?.state ?? "closing_control",
-      message: "Register close requested in Odoo. Confirm cash differences in Odoo if the session remains in closing control.",
+      message: "Register close requested in Orithos. Confirm cash differences in Orithos if the session remains in closing control.",
     }, { status: 200 });
   } catch (error) {
     if (error instanceof SessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     const status = error instanceof CloseError ? error.status : 502;
-    const message = error instanceof Error ? error.message : "Could not close the Odoo register.";
+    const message = error instanceof Error ? error.message : "Could not close the Orithos register.";
     return NextResponse.json({ message }, { status });
   }
 }

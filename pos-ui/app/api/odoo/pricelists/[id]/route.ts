@@ -52,10 +52,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!owned?.length) return NextResponse.json({ message: "Price list was not found for this store" }, { status: 404 });
 
     const ok = await scope.rpc<boolean>("product.pricelist", "write", [[pricelistId], values]);
-    if (ok !== true) return NextResponse.json({ message: "Odoo did not confirm the price list update" }, { status: 502 });
+    if (ok !== true) return NextResponse.json({ message: "Orithos did not confirm the price list update" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo price lists are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos price lists are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }
@@ -77,10 +77,10 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
     // Soft-deactivate — hard unlink can break POS configs that still reference the list.
     const ok = await scope.rpc<boolean>("product.pricelist", "write", [[pricelistId], { active: false }]);
-    if (ok !== true) return NextResponse.json({ message: "Odoo did not confirm the price list archive" }, { status: 502 });
+    if (ok !== true) return NextResponse.json({ message: "Orithos did not confirm the price list archive" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo price lists are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos price lists are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

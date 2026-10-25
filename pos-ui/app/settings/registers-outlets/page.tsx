@@ -34,7 +34,7 @@ export default function RegistersOutletsPage() {
     void (async () => {
       try {
         const session = await getOdooSession();
-        if (!session) throw new Error("Connect your Odoo staff account to view live stores and registers.");
+        if (!session) throw new Error("Connect your Orithos staff account to view live stores and registers.");
         const [outletResult, registerResult] = await Promise.all([
           searchOdooRecords<OdooOutlet>("outlets", { limit: 100 }),
           searchOdooRecords<OdooRegister>("registers", { limit: 100 }),
@@ -44,7 +44,7 @@ export default function RegistersOutletsPage() {
           setRegisters(registerResult.items);
         }
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load Odoo stores and registers.");
+        if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos stores and registers.");
       } finally {
         if (active) setLoading(false);
       }
@@ -55,7 +55,7 @@ export default function RegistersOutletsPage() {
   return (
     <AdminPageLayout
       title="Registers & Outlets"
-      subtitle="Stores and POS registers assigned to your Odoo account"
+      subtitle="Stores and POS registers assigned to your Orithos account"
       count={loading || error ? undefined : outlets.length + registers.length}
       countLabel="Stores + registers"
       fullBleed
@@ -69,8 +69,8 @@ export default function RegistersOutletsPage() {
     >
       <section aria-label="Store and register source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
-        <div><p className="font-semibold text-[var(--oh-text)]">Live from Odoo <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
-          <p className="mt-1">Create and configure companies and POS registers in Odoo. These lists never write to Classic MySQL.</p></div>
+        <div><p className="font-semibold text-[var(--oh-text)]">Live from Orithos <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
+          <p className="mt-1">Create and configure companies and POS registers in Orithos. These lists never write to Classic MySQL.</p></div>
       </section>
 
       {error ? (
@@ -82,7 +82,7 @@ export default function RegistersOutletsPage() {
           </div>
         </div>
       ) : loading ? (
-        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Odoo stores and registers" className="grid gap-5">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Orithos stores and registers" className="grid gap-5">
           {Array.from({ length: 2 }, (_, section) => <section key={section} className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
             <div className="h-5 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -99,18 +99,18 @@ export default function RegistersOutletsPage() {
                 <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
                   {outlets.map((outlet) => <article key={outlet.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
                     <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{outlet.name}</h3><span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">{Array.isArray(outlet.currency_id) ? outlet.currency_id[1] : "No currency"}</span></div>
-                    <p className="mt-2 text-xs text-[var(--oh-muted)]">Odoo company</p>
+                    <p className="mt-2 text-xs text-[var(--oh-muted)]">Orithos company</p>
                   </article>)}
                 </div>
                 <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
-            <table aria-label="Odoo stores and registers" className="w-full border-collapse text-left text-sm">
+            <table aria-label="Orithos stores and registers" className="w-full border-collapse text-left text-sm">
                     <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Currency</th></tr></thead>
                     <tbody className="divide-y divide-[var(--oh-border)]">{outlets.map((outlet) => <tr key={outlet.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{outlet.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(outlet.currency_id) ? outlet.currency_id[1] : "—"}</td></tr>)}</tbody>
                   </table>
                 </div>
               </>
             ) : (
-              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Odoo companies are available to this account.</p>
+              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Orithos companies are available to this account.</p>
             )}
           </section>
 
@@ -133,7 +133,7 @@ export default function RegistersOutletsPage() {
                 </div>
               </>
             ) : (
-              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Odoo POS registers are available to this account.</p>
+              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Orithos POS registers are available to this account.</p>
             )}
           </section>
         </div>

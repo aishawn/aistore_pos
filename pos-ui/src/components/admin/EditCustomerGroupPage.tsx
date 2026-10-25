@@ -148,7 +148,7 @@ function FormSelect({
         />
       </button>
       {open && (
-        <ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+        <ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
           <li>
             <button
               type="button"
@@ -209,7 +209,7 @@ function ToggleSwitch({
         checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
       )}
     >
-      <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+      <span className="h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm" />
     </button>
   );
 }
@@ -409,7 +409,7 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
       </h1>
 
       <div className="mx-auto mt-5 max-w-5xl">
-        <div className="flex flex-wrap gap-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white/60 p-1 shadow-[var(--oh-shadow-card)]">
+        <div className="flex flex-wrap gap-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-1 shadow-[var(--oh-shadow-card)]">
           {TABS.map(({ id, label, Icon }) => {
             const active = tab === id;
             return (
@@ -420,8 +420,8 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
                   active
-                    ? "bg-white text-[var(--oh-text)] shadow-sm"
-                    : "text-[var(--oh-muted)] hover:bg-white/80 hover:text-[var(--oh-text-secondary)]",
+                    ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] shadow-sm"
+                    : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text-secondary)]",
                 )}
               >
                 <Icon size={14} strokeWidth={1.75} />
@@ -433,7 +433,7 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
 
         <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {form && (
-            <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
+            <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
               <AsyncDependencyNotice
                 dependencies={[
                   { label: "Price lists", error: priceLists.error, loading: priceLists.loading, onRetry: priceLists.reload },

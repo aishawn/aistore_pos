@@ -111,8 +111,8 @@ const ACTION_LABELS: Record<string, string> = {
   OWNER_RESET_ISSUED: "Owner reset issued",
   OWNER_REINVITED: "Owner re-invited",
   OWNER_BOOTSTRAP_ISSUED: "Owner sign-in link issued",
-  ODOO_PROVISION_RETRIED: "Odoo provisioning retried",
-  ODOO_BINDING_CHANGED: "Odoo binding changed",
+  ODOO_PROVISION_RETRIED: "Orithos provisioning retried",
+  ODOO_BINDING_CHANGED: "Orithos binding changed",
 };
 
 function utcDate(value: string | null | undefined): string {
@@ -306,7 +306,7 @@ export default function PlatformStoreDetailPage() {
   return (
     <AdminPageLayout
       title={store?.name || "Store"}
-      subtitle="Platform lifecycle, owner recovery, and Odoo binding"
+      subtitle="Platform lifecycle, owner recovery, and Orithos binding"
       actions={
         <div className="flex flex-wrap gap-2">
           <Link href="/platform/stores" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
@@ -416,10 +416,10 @@ export default function PlatformStoreDetailPage() {
           </section>
 
           <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Outlet & Odoo</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Outlet & Orithos</h2>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
               <div><dt className="text-[var(--oh-muted)]">Outlet id</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.outletId ?? "—"}</dd></div>
-              <div><dt className="text-[var(--oh-muted)]">Odoo company</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.odooBinding?.odooCompanyId ?? store.odooCompanyId ?? "—"}</dd></div>
+              <div><dt className="text-[var(--oh-muted)]">Orithos company</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.odooBinding?.odooCompanyId ?? store.odooCompanyId ?? "—"}</dd></div>
               <div><dt className="text-[var(--oh-muted)]">POS config</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.odooBinding?.odooPosConfigId ?? "—"}</dd></div>
               <div><dt className="text-[var(--oh-muted)]">Provision</dt><dd className="mt-0.5 capitalize text-[var(--oh-text)]">{store.odooBinding?.odooProvisionStatus || store.odooProvisionStatus || "unmapped"}</dd></div>
               <div className="sm:col-span-2"><dt className="text-[var(--oh-muted)]">R2 prefix</dt><dd className="mt-0.5 font-mono text-xs text-[var(--oh-text)]">{store.odooBinding?.r2Prefix || "—"}</dd></div>
@@ -434,7 +434,7 @@ export default function PlatformStoreDetailPage() {
             {store.platformOperator ? (
               <p className="mt-3 text-sm text-[var(--oh-muted)]">Lifecycle changes are blocked on the platform operator store.</p>
             ) : store.status.toLowerCase() === "deleted" ? (
-              <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Odoo sales and audit history are retained.</p>
+              <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Orithos sales and audit history are retained.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
 {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>}
@@ -447,9 +447,9 @@ export default function PlatformStoreDetailPage() {
 <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
                   </>
                 ) : null}
-<button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
+<button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "odoo", title: "Retry Orithos provision?", message: "Creates or refreshes the Orithos company / POS config mapping for this store." })}>Retry Orithos provision</button>
                 {store.status.toLowerCase() === "trial" ? (
-<button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700" onClick={() => askConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
+<button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700" onClick={() => askConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Orithos sales and audit history are retained." })}>Delete trial store</button>
                 ) : null}
               </div>
             )}
@@ -475,8 +475,8 @@ export default function PlatformStoreDetailPage() {
       </section> : null}
       {store ? <section className="mx-auto mb-6 max-w-3xl rounded-lg border border-[var(--oh-border)] bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Odoo setup attempts</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Each retry is retained with stage results and request identity.</p></div>
-<button type="button" onClick={() => void load()} disabled={provisionLoading} aria-label="Refresh Odoo setup attempts" title="Refresh setup attempts" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={16} className={provisionLoading ? "animate-spin" : ""} aria-hidden="true" /></button>
+          <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Orithos setup attempts</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Each retry is retained with stage results and request identity.</p></div>
+<button type="button" onClick={() => void load()} disabled={provisionLoading} aria-label="Refresh Orithos setup attempts" title="Refresh setup attempts" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={16} className={provisionLoading ? "animate-spin" : ""} aria-hidden="true" /></button>
         </div>
         {provisionError ? <p role="alert" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{provisionError}</p> : null}
         {provisionLoading && provisionAttempts.length === 0 ? <p role="status" className="py-8 text-center text-sm text-[var(--oh-muted)]">Loading setup attempts…</p> : provisionAttempts.length === 0 ? <p className="py-8 text-center text-sm text-[var(--oh-muted)]">{provisionError ? "Setup attempt history is unavailable." : "No setup attempts recorded."}</p> : <ol className="mt-4 divide-y divide-[var(--oh-border)]">

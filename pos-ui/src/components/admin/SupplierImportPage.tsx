@@ -46,10 +46,10 @@ export function SupplierImportPage() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-6 font-sans md:p-8">
+<div className="h-full overflow-auto bg-[var(--oh-surface)] pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-6 font-sans md:p-8">
       <div className="mx-auto max-w-3xl">
-        <h1 className="text-[28px] font-bold text-black">Supplier Import</h1>
-        <p className="mt-3 text-[14px] leading-relaxed text-neutral-700">
+<h1 className="text-[28px] font-bold text-[var(--oh-text)]">Supplier Import</h1>
+<p className="mt-3 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
           This will import all products provided from the Master Database, if the products already exist in
           your file they will be ignored. Please provide one supplier code per line.
         </p>
@@ -66,13 +66,13 @@ export function SupplierImportPage() {
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-[14px] font-bold text-black">Product List</span>
+<span className="mb-1 block text-[14px] font-bold text-[var(--oh-text)]">Product List</span>
             <textarea
               aria-label="Product codes to import"
               value={productList}
               onChange={(e) => setProductList(e.target.value)}
               rows={12}
-              className="w-full resize-y rounded border border-neutral-300 px-3 py-2.5 text-[14px] text-black outline-none focus:border-[#6eb5e0]"
+className="w-full resize-y rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
             />
           </label>
 
@@ -83,7 +83,7 @@ export function SupplierImportPage() {
           )}
 
           {result && (
-            <div role="status" aria-live="polite" className="rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-[14px] text-neutral-800">
+<div role="status" aria-live="polite" className="rounded border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 py-3 text-[14px] text-[var(--oh-text)]">
               Imported {result.imported} product{result.imported === 1 ? "" : "s"}, skipped {result.skipped}.
               {result.errors.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 text-[#e2231a]">

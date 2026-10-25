@@ -39,8 +39,8 @@ const STATUS_STYLES: Record<string, string> = {
   OPEN: "border border-blue-200 bg-blue-50 text-blue-700",
   SENT: "border border-indigo-200 bg-indigo-50 text-indigo-700",
   RECEIVED: "border border-emerald-200 bg-emerald-50 text-emerald-700",
-  CANCELLED: "border border-neutral-200 bg-neutral-100 text-neutral-600",
-  OUTSTANDING: "border border-amber-200 bg-amber-50 text-amber-800",
+  CANCELLED: "border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] text-[var(--oh-muted)]",
+  OUTSTANDING: "border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] text-[var(--oh-tile-orange-text)]",
 };
 
 function money(x?: number | null) {
@@ -74,7 +74,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
@@ -91,7 +91,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
               </h1>
               {order?.status && (
                 <span
-                  className={`inline-flex min-h-6 items-center rounded-full px-2.5 text-[11px] font-bold tracking-wide ${STATUS_STYLES[order.status] ?? "border border-neutral-200 bg-neutral-100 text-neutral-700"}`}
+                  className={`inline-flex min-h-6 items-center rounded-full px-2.5 text-[11px] font-bold tracking-wide ${STATUS_STYLES[order.status] ?? "border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] text-[var(--oh-text-secondary)]"}`}
                 >
                   {order.status}
                 </span>
@@ -115,7 +115,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
           <AsyncState loading={loading} error={error} empty={!order} onRetry={reload}>
             {order && (
               <>
-                <section aria-labelledby="order-summary-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+                <section aria-labelledby="order-summary-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
                   <div className="border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
                     <h2 id="order-summary-heading" className="text-sm font-semibold text-[var(--oh-text)]">Order summary</h2>
                   </div>
@@ -128,15 +128,15 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                     <DetailField label="Reference" value={display(order.reference)} />
                   </div>
                   <div className="grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/70 p-4 sm:grid-cols-3 sm:px-5">
-                    <div className="rounded-lg border border-[var(--oh-border)] bg-white p-3">
+                    <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
                       <p className="text-xs font-medium text-[var(--oh-muted)]">Expected total</p>
                       <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{money(order.expectedTotal)}</p>
                     </div>
-                    <div className="rounded-lg border border-[var(--oh-border)] bg-white p-3">
+                    <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
                       <p className="text-xs font-medium text-[var(--oh-muted)]">Total cost</p>
                       <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{money(order.totalCost)}</p>
                     </div>
-                    <div className="col-span-2 rounded-lg border border-[var(--oh-border)] bg-white p-3 sm:col-span-1">
+                    <div className="col-span-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3 sm:col-span-1">
                       <p className="text-xs font-medium text-[var(--oh-muted)]">Line items</p>
                       <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{lineCount}</p>
                     </div>
@@ -149,7 +149,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                   )}
                 </section>
 
-                <section aria-labelledby="line-items-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+                <section aria-labelledby="line-items-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
                   <div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
                     <div>
                       <h2 id="line-items-heading" className="text-sm font-semibold text-[var(--oh-text)]">Line items</h2>

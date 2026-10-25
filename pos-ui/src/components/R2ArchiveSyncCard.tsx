@@ -112,7 +112,7 @@ export function R2ArchiveSyncCard() {
             )}
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--oh-muted)]">
-            A private, read-only Shopfront snapshot for development and testing. It is kept separate from Odoo products, stock and sales; sync runs only when requested.
+            A private, read-only Shopfront snapshot for development and testing. It is kept separate from Orithos products, stock and sales; sync runs only when requested.
           </p>
         </div>
         <div className="flex gap-2">

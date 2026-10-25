@@ -76,7 +76,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       items, limit, offset, hasNext: rows.length > limit,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer invoices are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer invoices are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

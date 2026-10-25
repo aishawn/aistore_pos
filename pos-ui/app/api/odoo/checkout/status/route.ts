@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       saleId: order.id, receipt: order.pos_reference || order.name,
       total: Math.abs(order.amount_total), gst: Math.abs(order.amount_tax),
       subtotal: Math.round((Math.abs(order.amount_total) - Math.abs(order.amount_tax)) * 100) / 100,
-      // Odoo amount_paid is net of the negative cash-change payment line.
+      // Orithos amount_paid is net of the negative cash-change payment line.
       tendered: order.amount_total < 0 ? Math.abs(order.amount_paid) : Math.round((order.amount_paid + Math.abs(order.amount_return)) * 100) / 100,
       change: order.amount_total < 0 ? 0 : Math.abs(order.amount_return), isRefund: order.amount_total < 0,
       lines: lines.map((line) => ({ name: line.full_product_name, quantity: line.qty, subtotal: line.price_subtotal, total: line.price_subtotal_incl })),

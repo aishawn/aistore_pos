@@ -48,7 +48,7 @@ const modules = [
   },
   {
     label: "Products & stock",
-    href: "/products/odoo",
+    href: "/products",
     icon: Package,
     description: "Everything on your shelves.",
     color: "green",
@@ -56,7 +56,7 @@ const modules = [
   },
   {
     label: "Purchasing",
-    href: "/purchases/odoo",
+    href: "/purchases",
     icon: ShoppingCart,
     description: "Keep your store well stocked.",
     color: "purple",
@@ -64,7 +64,7 @@ const modules = [
   },
   {
     label: "Customers",
-    href: "/customers/odoo",
+    href: "/customers",
     icon: Users,
     description: "Make every visit more personal.",
     color: "teal",
@@ -183,7 +183,7 @@ export function OverviewPageContent({
       : []),
   ];
   const insights = [
-    ...(hasPermission("stock.replenishment") && allowed.has("/purchases/odoo") ? [{ title: "Low stock items", description: data?.lowStockCount !== undefined ? `${data.lowStockCount} products are running low.` : "Review products that need restocking.", href: "/purchases/odoo?tab=replenishment", tone: "orange" }] : []),
+    ...(hasPermission("stock.replenishment") && allowed.has("/purchases") ? [{ title: "Low stock items", description: data?.lowStockCount !== undefined ? `${data.lowStockCount} products are running low.` : "Review products that need restocking.", href: "/purchases?tab=replenishment", tone: "orange" }] : []),
     ...(parked
       ? [{
           title: `${parked} parked sale${parked === 1 ? "" : "s"}`,
@@ -200,7 +200,7 @@ export function OverviewPageContent({
           tone: "blue",
         }]
       : []),
-    ...(allowed.has("/customers/odoo") ? [{ title: "New customers", description: data?.newCustomers ? `${data.newCustomers} new customers this period.` : "Be ready when customers arrive.", href: "/customers/odoo", tone: "green" }] : []),
+    ...(allowed.has("/customers") ? [{ title: "New customers", description: data?.newCustomers ? `${data.newCustomers} new customers this period.` : "Be ready when customers arrive.", href: "/customers", tone: "green" }] : []),
     ...(!parked && !canReport && allowed.has("/settings/integrations")
       ? [{
           title: "Connect your store",
@@ -248,7 +248,7 @@ export function OverviewPageContent({
               <RefreshCw size={16} /> Retry
             </button>
             {connection && allowed.has("/settings/integrations") ? (
-              <Link href="/settings/integrations">Connect Odoo</Link>
+              <Link href="/settings/integrations">Connect Orithos</Link>
             ) : null}
           </section>
         ) : null}

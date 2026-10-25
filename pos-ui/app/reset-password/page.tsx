@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
       </header>
 
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 items-center py-10">
-        <section className="w-full rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-[var(--oh-shadow-card)] sm:p-8">
+        <section className="w-full rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-[var(--oh-shadow-card)] sm:p-8">
           {loading ? (
             <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-[var(--oh-muted)]">
               <LoaderCircle size={18} className="animate-spin" /> Checking link…
@@ -141,7 +141,7 @@ export default function ResetPasswordPage() {
                     required
                     minLength={12}
                     maxLength={72}
-                    className="h-12 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
+                    className="h-12 rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm font-semibold text-[var(--oh-text-secondary)]">
@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
                     required
                     minLength={12}
                     maxLength={72}
-                    className="h-12 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
+                    className="h-12 rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
                   />
                 </label>
                 <p className="text-xs leading-5 text-[var(--oh-muted)]">Use at least 12 characters.</p>

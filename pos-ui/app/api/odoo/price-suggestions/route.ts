@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 28;
-// Each product may require two Odoo tax computations. Keep the page small
+// Each product may require two Orithos tax computations. Keep the page small
 // enough for the edge request budget; callers can continue with nextOffset.
 const PAGE_SIZE = 10;
 const DEFAULT_MARGIN = 0.3;
@@ -22,9 +22,9 @@ type RpcEnvelope<T> = { result?: T; error?: { message?: string } };
 
 function getBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -38,11 +38,11 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
   });
-  if (!response.ok) throw new Error("Odoo price suggestion data is unavailable");
+  if (!response.ok) throw new Error("Orithos price suggestion data is unavailable");
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
     if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new PriceSuggestionSessionExpiredError();
-    throw new Error("Your Odoo account cannot read the product prices needed for suggestions.");
+    throw new Error("Your Orithos account cannot read the product prices needed for suggestions.");
   }
   return payload.result;
 }
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
   if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403, correlationId);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return noStoreJson({ message: "Odoo session expired" }, 401, correlationId);
+  if (!sessionId) return noStoreJson({ message: "Orithos session expired" }, 401, correlationId);
 
   const marginTarget = parseMarginTarget(request.nextUrl.searchParams.get("marginTarget"));
   const now = Date.now();
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return noStoreJson({ message: forced.error }, forced.status, correlationId);
     const companyId = forced.companyIds[0];
-    if (!companyId) return noStoreJson({ message: "No Odoo companies are available to this user." }, 403, correlationId);
+    if (!companyId) return noStoreJson({ message: "No Orithos companies are available to this user." }, 403, correlationId);
 
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
@@ -176,8 +176,8 @@ export async function GET(request: NextRequest) {
           suggestedPrice: null,
           suggestedMargin: null,
           status: "review_tax" as const,
-          reason: "Odoo sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price.",
-          reasonParts: ["Odoo sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price."],
+          reason: "Orithos sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price.",
+          reasonParts: ["Orithos sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price."],
           currentNetPrice: null,
           currentGst: null,
           suggestedNetPrice: null,
@@ -211,17 +211,17 @@ export async function GET(request: NextRequest) {
 
       if (!hasPrice) {
         status = "unsaleable";
-        reasonParts.push("No shelf price in Odoo — keep unsaleable until the owner sets a price.");
+        reasonParts.push("No shelf price in Orithos — keep unsaleable until the owner sets a price.");
       } else if (!hasCost) {
         status = "missing_cost";
-        reasonParts.push("No cost in Odoo — cannot suggest a margin-based price. Do not invent a cost.");
+        reasonParts.push("No cost in Orithos — cannot suggest a margin-based price. Do not invent a cost.");
       } else if (!taxReady) {
         status = "review_tax";
-        reasonParts.push("Missing or complex Odoo sale tax configuration. Review it before calculating a shelf price; no GST rate is assumed.");
+        reasonParts.push("Missing or complex Orithos sale tax configuration. Review it before calculating a shelf price; no GST rate is assumed.");
       } else if (currentMargin !== null && currentMargin + 0.005 < marginTarget) {
         status = "raise";
         reasonParts.push(`Current margin ${(currentMargin * 100).toFixed(1)}% is below target ${(marginTarget * 100).toFixed(0)}%.`);
-        reasonParts.push(`Margin uses net sales excluding GST and Odoo standard cost. Odoo calculates the shelf tax.`);
+        reasonParts.push(`Margin uses net sales excluding GST and Orithos standard cost. Orithos calculates the shelf tax.`);
         if (suggestedPrice === null || currentPrice === null || suggestedPrice <= currentPrice || suggestedMargin === null || suggestedMargin + 0.005 < marginTarget) {
           status = "review_cost";
           suggestedPrice = null;
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
         method: "rules_v2_net_margin",
       };
     }
-    // Bound Odoo concurrency: never fan out an entire catalogue into RPC calls.
+    // Bound Orithos concurrency: never fan out an entire catalogue into RPC calls.
     const items: Awaited<ReturnType<typeof buildSuggestion>>[] = [];
     for (let start = 0; start < pageProducts.length; start += 5) {
       items.push(...await Promise.all(pageProducts.slice(start, start + 5).map(buildSuggestion)));
@@ -286,11 +286,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PriceSuggestionSessionExpiredError) {
-      const response = noStoreJson({ message: "Odoo session expired" }, 401, correlationId);
+      const response = noStoreJson({ message: "Orithos session expired" }, 401, correlationId);
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return noStoreJson({ message }, status, correlationId);
   }

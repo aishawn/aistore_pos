@@ -33,7 +33,7 @@ function ToggleSwitch({
         checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
       )}
     >
-      <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+<span className="h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm" />
     </button>
   );
 }
@@ -105,7 +105,7 @@ export function ExportExternalStocktakeModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
+className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 bg-[var(--oh-tile-blue-bg)] px-5 py-3.5">
@@ -128,7 +128,7 @@ export function ExportExternalStocktakeModal({
           {outletsError && (
             <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
               <span>Could not load outlets: {outletsError}</span>
-              <button type="button" onClick={reloadOutlets} disabled={outletsLoading || busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+<button type="button" onClick={reloadOutlets} disabled={outletsLoading || busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-danger-text)] hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60">
                 <RefreshCw size={15} /> Retry outlets
               </button>
             </div>
@@ -149,7 +149,7 @@ export function ExportExternalStocktakeModal({
             type="button"
             onClick={close}
             disabled={busy}
-            className="rounded-[var(--oh-radius)] bg-[#d8d8d8] px-4 py-1.5 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#ccc] disabled:opacity-60"
+className="rounded-[var(--oh-radius)] bg-[var(--oh-surface-muted)] px-4 py-1.5 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-border)] disabled:opacity-60"
           >
             Cancel
           </button>

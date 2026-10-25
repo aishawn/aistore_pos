@@ -158,7 +158,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           <button
             type="button"
             onClick={() => setRetryKey((value) => value + 1)}
-            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold"
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-[var(--oh-surface-elevated)] px-3 font-semibold"
           >
             <RefreshIcon size={14} /> Retry
           </button>
@@ -180,7 +180,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
   return (
     <SommelierShell title={wine.name} subtitle={[wine.varietal, wine.vintage, wine.region].filter(Boolean).join(" · ")}>
-      <div className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+      <div className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[28px] font-semibold leading-none text-[var(--oh-text)]">{formatMoney(wine.sellPrice)}</p>
@@ -236,7 +236,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
         <button
           type="button"
           onClick={() => void refreshPitch(pitch === "30s" ? "10s" : "30s")}
-          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] font-semibold text-[var(--oh-text)] hover:bg-slate-50"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[14px] font-semibold text-[var(--oh-text)] hover:bg-slate-50"
         >
           Help me sell this
         </button>
@@ -247,7 +247,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           type="button"
           disabled={busy !== null}
           onClick={() => void loadSimilar("cheaper")}
-          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
         >
           {busy === "cheaper" ? "Looking…" : "Similar but cheaper"}
         </button>
@@ -255,7 +255,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           type="button"
           disabled={busy !== null}
           onClick={() => void loadSimilar("upgrade")}
-          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
         >
           {busy === "upgrade" ? "Looking…" : "Something better"}
         </button>
@@ -290,7 +290,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             if (askHint) setAskHint(null);
           }}
           placeholder="Type the customer's question"
-          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="submit"
@@ -307,7 +307,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             type="button"
             disabled={busy !== null}
             onClick={() => void ask(q)}
-            className="min-h-9 rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)] hover:border-[var(--oh-primary)] hover:text-[var(--oh-primary)] disabled:opacity-50"
+            className="min-h-9 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)] hover:border-[var(--oh-primary)] hover:text-[var(--oh-primary)] disabled:opacity-50"
           >
             {q}
           </button>
@@ -315,7 +315,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
       </div>
       {askHint ? <p className="mt-2 text-[13px] text-amber-700">{askHint}</p> : null}
 
-      {answer ? <p className="mt-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] leading-6 text-[var(--oh-text)]">{answer}</p> : null}
+      {answer ? <p className="mt-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[14px] leading-6 text-[var(--oh-text)]">{answer}</p> : null}
       {error ? <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
 
 
@@ -329,7 +329,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             className={`rounded-full border px-3 py-1.5 text-[13px] ${
               reaction === "liked"
                 ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"
+                : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)]"
             }`}
           >
             Liked
@@ -340,7 +340,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             className={`rounded-full border px-3 py-1.5 text-[13px] ${
               reaction === "rejected"
                 ? "border-rose-600 bg-rose-50 text-rose-800"
-                : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"
+                : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)]"
             }`}
           >
             Rejected
@@ -356,7 +356,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
 function Chip({ children }: { children: React.ReactNode }) {
   if (!children) return null;
-  return <span className="rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)]">{children}</span>;
+  return <span className="rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)]">{children}</span>;
 }
 
 function MiniToggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -364,7 +364,7 @@ function MiniToggle({ active, onClick, children }: { active: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-9 rounded-md px-2 py-1 text-[13px] font-semibold ${active ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] hover:bg-slate-100"}`}
+      className={`min-h-9 rounded-md px-2 py-1 text-[13px] font-semibold ${active ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface-elevated)] text-[var(--oh-text-secondary)] hover:bg-slate-100"}`}
     >
       {children}
     </button>

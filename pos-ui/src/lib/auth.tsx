@@ -74,12 +74,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     /* eslint-disable react-hooks/set-state-in-effect */
     let active = true;
     if (isLocalPreviewSession()) {
-      setUser(normalizeUser({
+      const cached = typeof localStorage !== "undefined" ? localStorage.getItem(USER_KEY) : null;
+      let previewUser: CurrentUserResponse = {
         id: "local-preview",
         name: "Local Preview",
         username: "preview",
         isAdmin: true,
-      }));
+      };
+      if (cached) {
+        try { previewUser = JSON.parse(cached) as CurrentUserResponse; } catch { localStorage.removeItem(USER_KEY); }
+      }
+      setUser(normalizeUser(previewUser));
       setReady(true);
       return () => { active = false; };
     }
