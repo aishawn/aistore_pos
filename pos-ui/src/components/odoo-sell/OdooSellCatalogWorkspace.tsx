@@ -104,6 +104,11 @@ export function OdooSellCatalogWorkspace({
   );
 
   if (showCatalogHome) {
+    const dynamicCategoryNames = new Set(categoryTiles.map((category) => friendlyProductName(category.name).trim().toLowerCase()));
+    const quickCategoryShortcuts = SALE_KEY_CATEGORIES.filter((category) => {
+      const label = category.label.trim().toLowerCase();
+      return !dynamicCategoryNames.has(label);
+    });
     return (
       <div className="space-y-4">
         <div>
@@ -133,7 +138,7 @@ export function OdooSellCatalogWorkspace({
             >
               All products
             </button>
-            {(!categoryTiles.length || categoriesError) && SALE_KEY_CATEGORIES.map((category) => (
+            {quickCategoryShortcuts.map((category) => (
               <button
                 key={category.id}
                 type="button"
@@ -160,6 +165,9 @@ export function OdooSellCatalogWorkspace({
               );
             })}
           </div>
+          <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
+            Tab focuses each quick key, Enter opens the selected category.
+          </p>
           {categoryTiles.length === 0 && !categoriesLoading && !categoriesError && (
             <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
               <p className="font-medium">No POS category keys yet</p>
@@ -172,7 +180,7 @@ export function OdooSellCatalogWorkspace({
               </Link>
             </div>
           )}
-          <p className="mt-3 text-[13px] text-[var(--oh-muted)]">Tap a category to browse products, or search in the cart panel.</p>
+          <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Tap a category to browse products, or search in the cart panel.</p>
         </div>
         {lineQtyControls}
       </div>
