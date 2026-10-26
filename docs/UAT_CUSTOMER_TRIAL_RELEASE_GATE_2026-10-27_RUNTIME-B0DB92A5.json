@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-27",
+  "target": "https://demo.orithos.com.au",
+  "runtime": {
+    "frontend": "b0db92a58b831609031fa83d5b211a8e4f49e8d9",
+    "backend": "b0db92a58b831609031fa83d5b211a8e4f49e8d9",
+    "dokployStatus": "done"
+  },
+  "environment": {
+    "odooDatabase": "aipos_uat",
+    "odooDatabaseUat": "aipos_uat",
+    "isolationOdooDatabase": "aipos_uat",
+    "isolated": false,
+    "mode": "shared-uat"
+  },
+  "checks": {
+    "adminLoginHttp": 200,
+    "parkedSalesGetHttp": 200,
+    "parkedSalesBody": { "code": 0, "data": [] },
+    "odooSessionHttp": 200,
+    "customerGroupCrud": "PASS",
+    "crossStoreLoginAndCatalogueRead": "PASS",
+    "checkoutQuoteHttp": 200,
+    "checkoutQuoteProductId": 5,
+    "checkoutQuoteSubtotal": 32,
+    "checkoutQuoteTax": 0,
+    "checkoutQuoteTotal": 32
+  },
+  "businessWrites": 0,
+  "status": "NO-GO",
+  "blockers": [
+    "All environments intentionally share aipos_uat; isolated customer production is not established.",
+    "Demo checkout quote has zero GST because product ID 5 has no tax IDs.",
+    "Sale, refund, cash close, purchase receive and stocktake reconciliation are not accepted while GST is missing."
+  ]
+}
