@@ -402,6 +402,13 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         finally:
             await odoo_client.close()
         result["odoo_import"] = odoo_result
+        # The legacy shadow endpoint is optional. Odoo is the authoritative
+        # destination; a shadow failure must remain visible as a warning
+        # without marking a successful Odoo import as failed.
+        if result.get("error") and odoo_result.get("status") == "completed":
+            result["shadow_error"] = result["error"]
+            result["error"] = None
+            result["status"] = "completed"
     else:
         await odoo_client.close()
     return result
