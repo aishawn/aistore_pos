@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     shopfront_redirect_uri: str = "http://localhost:8000/oauth/shopfront/callback"
     # Keep the initial consent request to permissions required for reporting,
     # product and inventory reads. Webhook permissions can be added later.
-    shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_history"
+    shopfront_scopes: str = "run_sales_reports see_products see_history"
     # Webhook permissions are optional and can make the consent request fail
     # before the Shopfront application has been granted them.
     shopfront_enable_webhooks: bool = False
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     odoo_api_token: str = ""
     odoo_api_database: str = ""
     odoo_import_enabled: bool = False
+    odoo_business_write_enabled: bool = False
     shopfront_products_query: str = "{ products(first: 100) { edges { node { id name status cost globalCost prices { price } barcodes { code } category { name } brand { name } inventory { quantity outlet { id name } } } } } }"
     shopfront_inventory_query: str = "{ products(first: 100) { edges { node { id name inventory { quantity outlet { id name } } } } } }"
     shopfront_sale_detail_query: str = ""

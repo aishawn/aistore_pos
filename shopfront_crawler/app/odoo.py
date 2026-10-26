@@ -8,11 +8,12 @@ class OdooIntegrationError(RuntimeError):
 
 
 class OdooSyncClient:
-    def __init__(self, base_url: str, token: str, database: str, enabled: bool, http: httpx.AsyncClient | None = None):
+    def __init__(self, base_url: str, token: str, database: str, enabled: bool, business_write: bool = False, http: httpx.AsyncClient | None = None):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.database = database
         self.enabled = enabled
+        self.business_write = business_write
         self.http = http or httpx.AsyncClient(timeout=90)
 
     async def close(self) -> None:
@@ -25,7 +26,7 @@ class OdooSyncClient:
             raise OdooIntegrationError("Odoo integration URL/token is not configured")
         response = await self.http.post(
             f"{self.base_url}/api/shopfront/sync",
-            json={"type": import_type, "store_key": store_key, "items": items},
+            json={"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items},
             headers={"X-Shopfront-Integration-Token": self.token, "X-Odoo-Database": self.database, "Accept": "application/json"},
         )
         if response.status_code >= 400:

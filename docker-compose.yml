@@ -116,7 +116,7 @@ services:
       SHOPFRONT_CLIENT_ID: ${SHOPFRONT_CLIENT_ID:-}
       SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
       SHOPFRONT_REDIRECT_URI: ${SHOPFRONT_REDIRECT_URI:-https://shopfront.orithos.com.au/oauth/shopfront/callback}
-      SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_advanced_reports run_sales_reports see_products see_history see_webhooks create_webhooks}
+      SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_sales_reports see_products see_history}
       SHOPFRONT_STORES: ${SHOPFRONT_STORES:-skr:skr}
       DATABASE_URL: ${SHOPFRONT_DATABASE_URL:-sqlite:////data/shopfront_crawler.db}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
@@ -129,6 +129,11 @@ services:
       POS_API_BASE_URL: ${SHOPFRONT_POS_API_BASE_URL:-http://backend:8080}
       POS_API_TOKEN: ${SHOPFRONT_POS_API_TOKEN:-}
       POS_IMPORT_ENABLED: ${SHOPFRONT_POS_IMPORT_ENABLED:-false}
+      ODOO_API_BASE_URL: ${ODOO_API_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_API_TOKEN: ${ODOO_API_TOKEN:-}
+      ODOO_API_DATABASE: ${ODOO_API_DATABASE:-aipos_uat}
+      ODOO_IMPORT_ENABLED: ${ODOO_IMPORT_ENABLED:-false}
+      ODOO_BUSINESS_WRITE_ENABLED: ${ODOO_BUSINESS_WRITE_ENABLED:-false}
       SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR: ${SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR:-}
     volumes:
       - shopfront-crawler-data:/data
