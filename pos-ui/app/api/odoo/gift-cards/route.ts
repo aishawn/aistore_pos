@@ -15,7 +15,12 @@ async function detectLoyaltyCard(scope: Awaited<ReturnType<typeof scopedOdoo>>) 
     await scope.rpc<number>("loyalty.card", "search_count", [[]]);
     return { model: "loyalty.card", name: "Loyalty Card" };
   } catch (error) {
-    if (!(error instanceof OdooScopeError) || error.code !== "LOYALTY_NOT_INSTALLED") throw error;
+    // Odoo versions without Coupons & Loyalty may report the missing model as
+    // either a tagged scope error or a generic 404/Not Found RPC error.
+    if (!(error instanceof OdooScopeError)) throw error;
+    const unavailable = error.code === "LOYALTY_NOT_INSTALLED"
+      || (error.status === 422 && /(?:404|not found|loyalty\.card)/i.test(error.message));
+    if (!unavailable) throw error;
     return null;
   }
 }
