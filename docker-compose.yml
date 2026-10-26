@@ -131,6 +131,10 @@ services:
       POS_API_TOKEN: ${SHOPFRONT_POS_API_TOKEN:-}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
       POS_IMPORT_ENABLED: ${SHOPFRONT_POS_IMPORT_ENABLED:-true}
+      # Keep the crawler's formal-write flag explicit. Older deployments only
+      # exposed ODOO_BUSINESS_WRITE_ENABLED, while the crawler reads the
+      # POS_BUSINESS_WRITE_ENABLED setting directly.
+      POS_BUSINESS_WRITE_ENABLED: ${POS_BUSINESS_WRITE_ENABLED:-${ODOO_BUSINESS_WRITE_ENABLED:-false}}
       ODOO_API_BASE_URL: ${ODOO_API_BASE_URL:-https://odoo.orithos.com.au}
       ODOO_API_TOKEN: ${ODOO_API_TOKEN:-}
       ODOO_API_DATABASE: ${ODOO_API_DATABASE:-aipos_uat}
