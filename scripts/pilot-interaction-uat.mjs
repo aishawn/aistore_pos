@@ -222,17 +222,17 @@ try {
     await page.waitForFunction(() => {
       const cards = [...document.querySelectorAll("main section article")];
       const text = document.querySelector("main section")?.innerText ?? "";
-      return cards.length > 0 && /SKU R2-/i.test(text);
+      return cards.length > 0 && /SKU (?:R2|DEMO)-/i.test(text);
     }, null, { timeout: 30000 }).catch(() => {
-      throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for search validation.");
+      throw new BlockedUatCheck("Odoo has no uniquely identified product fixture (R2-* or DEMO-*); a product fixture is required for search validation.");
     });
     const table = page.locator("table");
     if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
       throw new Error("The wide product table is visible at the mobile viewport");
     }
     const firstCard = page.locator("main section article").first();
-    const sku = (await firstCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
-    if (!sku) throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for search validation.");
+    const sku = (await firstCard.innerText()).match(/SKU\s+((?:R2|DEMO)-[A-Za-z0-9-]+)/)?.[1];
+    if (!sku) throw new BlockedUatCheck("Odoo has no uniquely identified product fixture (R2-* or DEMO-*); a product fixture is required for search validation.");
     await search.fill(sku);
     await page.waitForFunction((expectedSku) => {
       const cards = [...document.querySelectorAll("main section article")];
@@ -240,7 +240,7 @@ try {
       return cards.length === 1 && text.includes(expectedSku);
     }, sku, { timeout: 30000 });
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the R2 product cards replaced the wide table; searching a unique SKU returned one matching result.";
+    return "At 390px the product cards replaced the wide table; searching a unique SKU returned one matching result.";
   });
 
   await check("Product edit dialog is prefilled from Odoo", async () => {
@@ -257,8 +257,8 @@ try {
     const search = page.getByPlaceholder("Search product, barcode or SKU");
     await page.locator("main section article").first().waitFor({ timeout: 30000 });
     const initialCard = page.locator("main section article").first();
-    const sku = (await initialCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
-    if (!sku) throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for edit validation.");
+    const sku = (await initialCard.innerText()).match(/SKU\s+((?:R2|DEMO)-[A-Za-z0-9-]+)/)?.[1];
+    if (!sku) throw new BlockedUatCheck("Odoo has no uniquely identified product fixture (R2-* or DEMO-*); a product fixture is required for edit validation.");
     await search.fill(sku);
     await page.waitForFunction((expectedSku) => {
       const cards = [...document.querySelectorAll("main section article")];
@@ -268,7 +268,7 @@ try {
     await card.waitFor({ timeout: 15000 });
     const cardText = await card.innerText();
     const displayedPrice = Number(cardText.match(/\$([\d,]+\.\d{2})/)?.[1]?.replaceAll(",", ""));
-    if (!Number.isFinite(displayedPrice) || displayedPrice <= 0) throw new Error("R2 test product does not show a valid Odoo price");
+    if (!Number.isFinite(displayedPrice) || displayedPrice <= 0) throw new Error("Odoo product does not show a valid sale price");
     await card.getByRole("button", { name: /Edit/i }).click();
     const dialog = page.getByRole("dialog", { name: "Edit product" });
     await dialog.waitFor({ timeout: 10000 });
@@ -282,15 +282,19 @@ try {
     if (!Number.isFinite(price) || price <= 0) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the edit dialog fit the viewport, prefilled a valid R2 Odoo price, and was closed without saving.";
+    return "At 390px the edit dialog fit the viewport, prefilled a valid Odoo price, and was closed without saving.";
   });
 
   await check("New product form blocks submission without a name", async () => {
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const trigger = page.getByRole("button", { name: "New product" });
-    if (!(await trigger.isEnabled().catch(() => false))) {
-      throw new BlockedUatCheck("Odoo product workspace controls were not enabled after loading; a product fixture or session warmup is required.");
-    }
+    await trigger.waitFor({ state: "visible", timeout: 30000 });
+    await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll("button")].find((element) => element.textContent?.trim() === "New product");
+      return button instanceof HTMLButtonElement && !button.disabled;
+    }, null, { timeout: 30000 }).catch(() => {
+      throw new BlockedUatCheck("Odoo product workspace controls did not finish loading; a product fixture or session warmup is required.");
+    });
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "New product" });
     const name = dialog.getByLabel(/Product name/i);
@@ -316,6 +320,7 @@ try {
     page.on("request", onRequest);
     try {
       await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 15000 });
+      await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 });
       const more = page.locator("details > summary").filter({ hasText: /^More$/ });
       const moreVisible = await more.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
       const importButton = page.getByRole("button", { name: /^Import(?: CSV)?$/ });
@@ -346,9 +351,12 @@ try {
       }
       await more.click();
       await importButton.waitFor({ state: "visible", timeout: 10000 });
-      if (!(await importButton.isEnabled().catch(() => false))) {
-        throw new BlockedUatCheck("Odoo product data was still loading, so the CSV import control remained disabled.");
-      }
+      await page.waitForFunction(() => {
+        const button = [...document.querySelectorAll("button")].find((element) => /^Import(?: CSV)?$/.test(element.textContent?.trim() ?? ""));
+        return button instanceof HTMLButtonElement && !button.disabled;
+      }, null, { timeout: 30000 }).catch(() => {
+        throw new BlockedUatCheck("Odoo product import controls did not finish loading; a product fixture or session warmup is required.");
+      });
       await importButton.click();
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
