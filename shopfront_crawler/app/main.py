@@ -271,7 +271,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
     try:
         await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
         if settings.pos_import_enabled:
-            await push_pos_snapshot(db, store_key)
+            await push_pos_snapshot(db, store_key, start, end)
         return True
     except Exception:
         failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
@@ -289,11 +289,19 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str) -> None:
+async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None) -> None:
     """Push the current idempotent crawler snapshot to the POS boundary."""
     products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
-    sales = db.scalars(select(Sale).where(Sale.store_key == store_key)).all()
+    sales_query = select(Sale).where(Sale.store_key == store_key)
+    if start is not None and end is not None:
+        window_start = datetime.combine(start, datetime.min.time())
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+        sales_query = sales_query.where(
+            ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
+            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        )
+    sales = db.scalars(sales_query).all()
     incomplete = [sale.shopfront_sale_id for sale in sales if not sale.shopfront_sale_id or not sale.items]
     if incomplete:
         logger.warning("POS formal sale import pending complete details: store=%s incomplete_sales=%s", store_key, len(incomplete))
@@ -306,7 +314,9 @@ async def push_pos_snapshot(db: Session, store_key: str) -> None:
     try:
         await client.upsert_products(jsonable_encoder(payloads["products"]))
         await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
-        await client.upsert_sales(jsonable_encoder(payloads["sales"]))
+        sale_items = payloads["sales"]["items"]
+        for offset in range(0, len(sale_items), 250):
+            await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": sale_items[offset:offset + 250]}))
     except Exception:
         logger.exception("POS snapshot push failed: store=%s", store_key)
     finally:
