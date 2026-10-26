@@ -37,14 +37,24 @@ export function useOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState(false);
+  const [authExpired, setAuthExpired] = useState(false);
   const [parked, setParked] = useState(0);
   const revision = useRef(0);
   const load = useCallback(async () => {
     const current = ++revision.current;
     setLoading(true);
     setError(null);
+    setAuthExpired(false);
+    let checkingSession = true;
     try {
-      await getOdooSessionStatus();
+      const session = await getOdooSessionStatus();
+      checkingSession = false;
+      if (!session.user) {
+        if (current !== revision.current) return;
+        setConnection(true);
+        setError("Connect your store to load dashboard data.");
+        return;
+      }
       const response = await fetchOdooRoute(
         "/api/odoo/reporting-dashboard?hours=24",
         { cache: "no-store", credentials: "same-origin" },
@@ -76,9 +86,23 @@ export function useOverview() {
       });
     } catch (cause) {
       if (current === revision.current) {
-        setConnection(cause instanceof OdooApiError && cause.status === 401);
+        const authExpired = cause instanceof OdooApiError
+          && cause.status === 401
+          && checkingSession
+          && /Orithos session expired/i.test(cause.message);
+        const odooSessionExpired = cause instanceof OdooApiError
+          && cause.status === 401
+          && !checkingSession;
+        setAuthExpired(authExpired);
+        setConnection(odooSessionExpired ? true : false);
         setError(
-          cause instanceof Error ? cause.message : "Could not load dashboard.",
+          authExpired
+            ? "Your Orithos session has expired. Please sign in again."
+            : odooSessionExpired
+              ? "Connect your store to load dashboard data."
+            : cause instanceof Error
+              ? cause.message
+              : "Could not load dashboard.",
         );
       }
     } finally {
@@ -136,6 +160,7 @@ export function useOverview() {
     loading,
     error,
     connection,
+    authExpired,
     parked,
     load,
     greeting,

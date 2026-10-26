@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, CircleAlert, LoaderCircle, LogIn, LogOut, RefreshCw } from "lucide-react";
+import { CheckCircle2, CircleAlert, LoaderCircle, LogOut, RefreshCw } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSessionStatus,
-  loginToOdoo,
   logoutFromOdoo,
   OdooApiError,
   type OdooAuthUser,
@@ -19,8 +18,6 @@ export function OdooPosConnectionCard() {
   const [user, setUser] = useState<OdooAuthUser | null>(null);
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [autoRecoverConfigured, setAutoRecoverConfigured] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const requestRevision = useRef(0);
@@ -57,35 +54,6 @@ export function OdooPosConnectionCard() {
   useEffect(() => {
     void refreshConnection();
   }, [refreshConnection]);
-
-  async function connect(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) return;
-    const revision = ++requestRevision.current;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const sessionUser = await loginToOdoo(username.trim(), password);
-      if (revision !== requestRevision.current) return;
-      setPassword("");
-      if (!sessionUser) throw new Error("Orithos did not return a valid user session.");
-      setUser(sessionUser);
-      const pos = await getOdooPosBootstrap();
-      if (revision !== requestRevision.current) return;
-      setBootstrap(pos);
-      setState("connected");
-      setMessage(pos.message ?? null);
-    } catch (error) {
-      if (revision === requestRevision.current) {
-        setState("error");
-        setMessage(error instanceof OdooApiError && error.status === 503
-          ? "Orithos connection is not configured on the POS server."
-          : error instanceof Error ? error.message : "Could not connect to Orithos.");
-      }
-    } finally {
-      if (revision === requestRevision.current) setBusy(false);
-    }
-  }
 
   async function disconnect() {
     if (busy) return;
@@ -175,30 +143,22 @@ export function OdooPosConnectionCard() {
       ) : (
         <>
         {state === "error" && <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
-          <span>Connection status could not be confirmed.</span>
+          <span>{autoRecoverConfigured ? "The Orithos service is reconnecting automatically." : "Connection status could not be confirmed."}</span>
           <button type="button" onClick={() => void refreshConnection()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60"><RefreshCw size={15} /> Retry status check</button>
         </div>}
-        <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-          <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
-            Orithos backend username
-            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
-            Orithos backend password
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
-          </label>
-          <button type="submit" disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
-            {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect backend
-          </button>
-        </form>
+        {autoRecoverConfigured ? (
+          <p className="mt-5 rounded-lg border border-dashed border-[var(--oh-border)] px-4 py-4 text-sm leading-6 text-[var(--oh-muted)]">
+            Odoo is managed by the Orithos server. Your store connection is restored automatically when the session expires.
+          </p>
+        ) : null}
         </>
       )}
 
       {message && <p role={state === "error" ? "alert" : "status"} className={`mt-4 rounded-md border px-3 py-2 text-sm ${state === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>{message}</p>}
       <p className="mt-4 text-xs leading-5 text-[var(--oh-muted)]">
         {autoRecoverConfigured
-          ? "Orithos auto-reconnect is on for signed-in Orithos users when the session cookie expires."
-          : "Orithos auto-reconnect is off. Ask an admin to configure the dedicated Orithos service account on the server if sessions keep dropping."}
+          ? "Managed by Orithos server connection. No Odoo credentials are required on this device."
+          : "The Orithos server service account is not configured. Ask an admin to configure ODOO_SERVICE_USERNAME and ODOO_SERVICE_PASSWORD."}
       </p>
     </section>
   );

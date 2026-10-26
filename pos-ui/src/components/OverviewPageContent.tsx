@@ -99,6 +99,7 @@ export function OverviewPageContent({
     loading,
     error,
     connection,
+    authExpired,
     parked,
     load,
     greeting,
@@ -235,7 +236,9 @@ export function OverviewPageContent({
           <section role="alert" className="ov-error">
             <div>
               <h2>
-                {connection
+                {authExpired
+                  ? "Your session needs attention"
+                  : connection
                   ? "Connect your store"
                   : "Dashboard could not refresh"}
               </h2>
@@ -247,7 +250,11 @@ export function OverviewPageContent({
             <button onClick={() => void load()} disabled={loading}>
               <RefreshCw size={16} /> Retry
             </button>
-            {connection && allowed.has("/settings/integrations") ? (
+            {authExpired ? (
+              <Link href={`/login?next=${encodeURIComponent(typeof window === "undefined" ? "/overview" : `${window.location.pathname}${window.location.search}`)}`}>
+                Sign in again
+              </Link>
+            ) : connection && allowed.has("/settings/integrations") ? (
               <Link href="/settings/integrations">Connect Orithos</Link>
             ) : null}
           </section>
