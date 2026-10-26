@@ -5,6 +5,7 @@ services:
     image: orithos-uat-backend:latest
     environment:
       RUNTIME_ENVIRONMENT: uat
+      POSTGRESQL_URL: ${POSTGRESQL_URL:?Set a dedicated UAT PostgreSQL URL}
       ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       R2_SYNC_SCHEDULE_ENABLED: "false"
@@ -20,5 +21,6 @@ services:
       RUNTIME_ENVIRONMENT: uat
       ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
+      ODOO_STOCKTAKE_WRITE_ENABLED: ${ODOO_STOCKTAKE_WRITE_ENABLED:-false}
   r2-sync:
     profiles: ["archive-disabled-for-uat"]

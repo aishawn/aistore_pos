@@ -225,6 +225,7 @@ services:
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
       NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
       NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
+      ODOO_STOCKTAKE_WRITE_ENABLED: ${ODOO_STOCKTAKE_WRITE_ENABLED:-false}
       # Used by the server-side Odoo session/data bridge. Keep credentials out
       # of the browser bundle. Staff may sign in with their own Odoo users, or
       # an optional least-privilege service account can restore sessions.
