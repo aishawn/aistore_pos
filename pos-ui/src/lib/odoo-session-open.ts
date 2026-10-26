@@ -6,6 +6,11 @@ export type RegisterOpenTarget = {
 
 export type RegisterOpenDecision = "open" | "already-open" | "denied";
 
+export function isExpiredOdooSessionError(detail: string): boolean {
+  return /(session expired|invalid session|not authenticated|please log in|\bauthenticate\b)/i.test(detail)
+    && !/pos\.session/i.test(detail);
+}
+
 export function resolveRegisterOpenDecision(
   target: RegisterOpenTarget | null,
   requestedConfigId: number,

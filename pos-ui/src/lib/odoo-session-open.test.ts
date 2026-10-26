@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveRegisterOpenDecision } from "./odoo-session-open.ts";
+import { isExpiredOdooSessionError, resolveRegisterOpenDecision } from "./odoo-session-open.ts";
 
 const target = { configId: 7, companyId: 3, hasOpenSession: false };
+
+test("classifies explicit Odoo authentication errors as expired sessions", () => {
+  for (const detail of ["Session expired", "Invalid session", "Not authenticated", "Please log in", "Authenticate again"]) {
+    assert.equal(isExpiredOdooSessionError(detail), true, detail);
+  }
+});
+
+test("keeps pos.session business errors as register errors", () => {
+  assert.equal(isExpiredOdooSessionError("Could not open pos.session: session is already closed"), false);
+  assert.equal(isExpiredOdooSessionError("Register is unavailable"), false);
+});
 
 test("denies register opening outside the authenticated tenant company", () => {
   assert.equal(resolveRegisterOpenDecision(target, 7, [4]), "denied");
