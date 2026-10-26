@@ -316,7 +316,8 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]} for sale in sales]},
     }
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
-    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, settings.pos_api_token)
+    fallback_token = settings.shopfront_integration_token or settings.pos_api_token
+    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, fallback_token)
     sale_items = payloads["sales"]["items"]
     result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": len(sale_items), "error": None}
     try:

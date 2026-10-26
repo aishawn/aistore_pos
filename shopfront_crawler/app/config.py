@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     shopfront_history_start_year: int = 2010
     pos_api_base_url: str = ""
     pos_api_token: str = ""
+    shopfront_integration_token: str = ""
     pos_company_id: str = ""
     pos_outlet_id: str = ""
     # Keep the crawler-to-POS mirror enabled by default. Formal Odoo business
