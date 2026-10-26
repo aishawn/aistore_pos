@@ -38,9 +38,17 @@ export async function hasOrithosSession(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   if (!accessToken) return false;
 
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
+    || request.headers.get("host");
+  const tenantSlug = request.headers.get("x-orithos-tenant-slug")
+    || forwardedHost?.match(/^([a-z0-9-]+)\.orithos\.com\.au(?::\d+)?$/i)?.[1];
+  const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` };
+  if (forwardedHost) headers["X-Forwarded-Host"] = forwardedHost;
+  if (tenantSlug) headers["X-Orithos-Tenant-Slug"] = tenantSlug;
+
   try {
     const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers,
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     });
