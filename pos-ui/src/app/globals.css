@@ -1,5 +1,0 @@
-/*
- * DEPRECATED — runtime CSS is pos-ui/app/globals.css (imported by app/layout.tsx).
- * Kept so src/app/layout.tsx and older tooling do not load a diverging theme.
- */
-@import "../../app/globals.css";
