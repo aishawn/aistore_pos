@@ -127,7 +127,7 @@ try {
     const accountPage = await accountContext.newPage();
     try {
       await accountPage.setViewportSize({ width: 1440, height: 900 });
-      await accountPage.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await accountPage.goto(`${base}/dashboard`, { waitUntil: "networkidle", timeout: 60000 });
       const trigger = accountPage.locator("[data-user-menu-trigger]");
       const menu = accountPage.locator("#user-menu");
       await trigger.waitFor({ timeout: 15000 });
