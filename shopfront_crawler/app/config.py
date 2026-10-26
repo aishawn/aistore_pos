@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     pos_company_id: str = ""
     pos_outlet_id: str = ""
     pos_import_enabled: bool = False
+    odoo_api_base_url: str = ""
+    odoo_api_token: str = ""
+    odoo_import_enabled: bool = False
     shopfront_products_query: str = "{ products(first: 100) { edges { node { id name status cost globalCost prices { price } barcodes { code } category { name } brand { name } inventory { quantity outlet { id name } } } } } }"
     shopfront_inventory_query: str = "{ products(first: 100) { edges { node { id name inventory { quantity outlet { id name } } } } } }"
     shopfront_sale_detail_query: str = ""
