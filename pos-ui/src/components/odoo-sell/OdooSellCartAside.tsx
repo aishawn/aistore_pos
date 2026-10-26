@@ -347,8 +347,8 @@ export function OdooSellCartAside({
             onClick={onFocusTerminalConfirm}
             className="mb-2 flex min-h-11 w-full items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left text-xs font-semibold text-amber-950 hover:bg-amber-100"
           >
-            <span>Card payment is waiting for terminal approval</span>
-            <span className="shrink-0 underline underline-offset-2">Review above</span>
+            <span>Confirm card payment after the terminal approves</span>
+            <span className="shrink-0 underline underline-offset-2">Confirm</span>
           </button>
         )}
         {showFinaliseHint && (

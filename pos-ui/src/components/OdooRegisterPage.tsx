@@ -179,7 +179,6 @@ export function OdooRegisterPage() {
   const [pendingCheckout, setPendingCheckout] = useState<OdooCheckoutRequest | null>(null);
   const [confirmedPaymentKey, setConfirmedPaymentKey] = useState<string | null>(null);
   const checkoutBusy = useRef(false);
-  const paymentConfirmRef = useRef<HTMLButtonElement | null>(null);
   const productSearchRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
@@ -1037,14 +1036,9 @@ export function OdooRegisterPage() {
                     ? "Enter cash received"
                     : "Finalise Sale";
 
-  function focusPaymentConfirm() {
-    paymentConfirmRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    paymentConfirmRef.current?.focus();
-  }
-
   function handleFinaliseClick() {
     if (awaitingCardConfirm) {
-      focusPaymentConfirm();
+      setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey));
       return;
     }
     void checkout();
@@ -1440,23 +1434,17 @@ export function OdooRegisterPage() {
           hasConfig={Boolean(selectedConfig)}
           busy={busy}
           isCashPayment={isCashPayment}
-          paymentMethodId={paymentMethodId}
           amountToCollect={amountToCollect}
           cashTendered={cashTendered}
           tenderedAmount={tenderedAmount}
           changeDue={changeDue}
-          confirmedMatches={confirmedPaymentKey === paymentConfirmationKey}
-          quoteIsCurrent={quoteIsCurrent}
           totalWhole={totalWhole}
           totalCents={totalCents}
-          awaitingCardConfirm={awaitingCardConfirm}
-          paymentConfirmRef={paymentConfirmRef}
           onSelectCard={() => selectCardPayment()}
           onSelectCash={() => selectCashPayment(true)}
           onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutOpen(true); }}
           onClear={requestClearSale}
           onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}
-          onToggleTerminalConfirm={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
         />
 
         <OdooSellCartAside
@@ -1513,7 +1501,7 @@ export function OdooRegisterPage() {
           showQuoteRetry={Boolean(connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0)}
           onRetryQuote={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }}
           awaitingCardConfirm={awaitingCardConfirm}
-          onFocusTerminalConfirm={focusPaymentConfirm}
+          onFocusTerminalConfirm={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
           canFinalise={canFinalise}
           finaliseLabel={finaliseLabel}
           finaliseTitle={finaliseTitle}

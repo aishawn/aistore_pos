@@ -1,6 +1,5 @@
 "use client";
 
-import type { Ref } from "react";
 import { AdminNavyButton, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { cn } from "@/lib/utils";
 import { money } from "./shared";
@@ -17,23 +16,17 @@ type OdooSellPaymentBarProps = {
   hasConfig: boolean;
   busy: boolean;
   isCashPayment: boolean;
-  paymentMethodId: number | null;
   amountToCollect: number;
   cashTendered: string;
   tenderedAmount: number;
   changeDue: number;
-  confirmedMatches: boolean;
-  quoteIsCurrent: boolean;
   totalWhole: string;
   totalCents: string;
-  awaitingCardConfirm: boolean;
-  paymentConfirmRef: Ref<HTMLButtonElement>;
   onSelectCard: () => void;
   onSelectCash: () => void;
   onCashOut: () => void;
   onClear: () => void;
   onCashTenderedChange: (value: string) => void;
-  onToggleTerminalConfirm: () => void;
 };
 
 export function OdooSellPaymentBar({
@@ -46,23 +39,17 @@ export function OdooSellPaymentBar({
   hasConfig,
   busy,
   isCashPayment,
-  paymentMethodId,
   amountToCollect,
   cashTendered,
   tenderedAmount,
   changeDue,
-  confirmedMatches,
-  quoteIsCurrent,
   totalWhole,
   totalCents,
-  awaitingCardConfirm,
-  paymentConfirmRef,
   onSelectCard,
   onSelectCash,
   onCashOut,
   onClear,
   onCashTenderedChange,
-  onToggleTerminalConfirm,
 }: OdooSellPaymentBarProps) {
   return (
     <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
@@ -125,12 +112,9 @@ export function OdooSellPaymentBar({
           </span>
         </div>
       </div>
-      {(isCashPayment || (!isCashPayment && paymentMethodId)) && linesLength > 0 && (
+      {isCashPayment && linesLength > 0 && (
         <div
-          className={cn(
-            "mt-2 flex flex-wrap items-end gap-3 rounded-lg border bg-[var(--oh-surface-elevated)] px-3 py-2",
-            awaitingCardConfirm ? "border-amber-300 ring-1 ring-amber-200" : "border-[var(--oh-border)]",
-          )}
+          className="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2"
         >
           {isCashPayment && (
             <label className="grid min-w-[160px] flex-1 gap-1 text-[13px] font-medium text-[var(--oh-text-secondary)]">
@@ -152,46 +136,6 @@ export function OdooSellPaymentBar({
                 <span className="text-[14px] font-semibold tabular-nums text-[var(--oh-text)]">Change {money(changeDue)}</span>
               )}
             </label>
-          )}
-          {!isCashPayment && paymentMethodId && (
-            <div className="flex min-w-[280px] flex-1 flex-col gap-1.5">
-              <button
-                ref={paymentConfirmRef}
-                id="odoo-payment-terminal-confirm"
-                type="button"
-                role="switch"
-                aria-label="Payment approved on the external terminal"
-                aria-checked={confirmedMatches}
-                disabled={busy || !quoteIsCurrent}
-                onClick={onToggleTerminalConfirm}
-                className={cn(
-                  "flex min-h-12 items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                  confirmedMatches
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                    : "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100",
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "inline-flex h-7 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors",
-                    confirmedMatches ? "bg-emerald-600" : "bg-amber-500",
-                  )}
-                >
-                  <span className={cn("h-6 w-6 rounded-full bg-[var(--oh-surface-elevated)] shadow transition-transform", confirmedMatches && "translate-x-5")} />
-                </span>
-                <span>
-                  <span className="block font-semibold">
-                    {confirmedMatches ? "Terminal approved — ready to finalise" : "Waiting for terminal approval"}
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-5 opacity-90">
-                    {confirmedMatches
-                      ? "Use Finalise Sale in the cart to record this payment in Orithos."
-                      : "After the customer pays, confirm the terminal result here. Orithos records only — it does not charge the card."}
-                  </span>
-                </span>
-              </button>
-            </div>
           )}
           {selectedPayment && <p className="text-[13px] text-[var(--oh-muted)]">Paying with {selectedPayment.name}</p>}
         </div>
