@@ -9,7 +9,14 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); } catch { return authProxyError("Invalid login request", 400); }
   try {
-    return await respondWithAuthTokens(await postAuthBackend("login", body, null, request));
+    const hostname = request.nextUrl.hostname.toLowerCase();
+    const tenantMatch = hostname.match(/^([a-z0-9-]+)\.orithos\.com\.au$/i);
+    const tenantSlug = tenantMatch?.[1];
+    const backendBody = tenantSlug && !["www", "app", "api", "odoo", "cdn", "support", "mail", "status"].includes(tenantSlug)
+      && body && typeof body === "object" && !Array.isArray(body)
+      ? { ...(body as Record<string, unknown>), subdomain: (body as Record<string, unknown>).subdomain || tenantSlug }
+      : body;
+    return await respondWithAuthTokens(await postAuthBackend("login", backendBody, null, request));
   } catch {
     return authProxyError("Authentication service is unavailable", 502);
   }
