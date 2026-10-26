@@ -75,10 +75,21 @@ export async function postAuthBackend(
     const forwardedFor = forwardFrom.headers.get("x-forwarded-for");
     if (forwardedFor) headers["X-Forwarded-For"] = forwardedFor;
   }
+  let backendBody = body;
+  if (path === "login" && body && typeof body === "object" && !Array.isArray(body)) {
+    const forwardedHost = forwardFrom?.headers.get("x-forwarded-host")?.split(",")[0].trim()
+      || forwardFrom?.headers.get("host")
+      || "";
+    const slug = forwardFrom?.headers.get("x-orithos-tenant-slug")
+      || forwardedHost.match(/^([a-z0-9-]+)\.orithos\.com\.au(?::\d+)?$/i)?.[1];
+    if (slug && !["www", "app", "api", "odoo", "cdn", "support", "mail", "status"].includes(slug.toLowerCase())) {
+      backendBody = { ...(body as Record<string, unknown>), subdomain: (body as Record<string, unknown>).subdomain || slug };
+    }
+  }
   return fetch(`${base}/api/auth/${path}`, {
     method: "POST",
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: backendBody === undefined ? undefined : JSON.stringify(backendBody),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
   });
