@@ -111,7 +111,9 @@ export async function middleware(request: NextRequest) {
   const correlationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incomingCorrelationId)
     ? incomingCorrelationId
     : crypto.randomUUID();
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  // Cloudflare/Dokploy can reuse x-forwarded-host from the control-plane
+  // router. The public Host header identifies the tenant for this request.
+  const host = request.headers.get("host") || request.headers.get("x-forwarded-host");
   const tenantSlug = parseTenantSlugFromHost(host);
   const localPreview = process.env.NODE_ENV === "development"
     && request.cookies.get("orithos_local_preview")?.value === "1";

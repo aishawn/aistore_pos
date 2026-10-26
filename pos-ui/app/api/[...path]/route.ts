@@ -48,8 +48,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
   // Tenant-aware POS requests still forward the original host below.
   const isShopfrontIntegration = path[0] === "integrations" && path[1] === "shopfront";
   if (!isShopfrontIntegration) {
-    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
-      || request.headers.get("host");
+    const forwardedHost = request.headers.get("host")
+      || request.headers.get("x-forwarded-host")?.split(",")[0].trim();
     if (forwardedHost) headers.set("x-forwarded-host", forwardedHost);
     const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
     if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);

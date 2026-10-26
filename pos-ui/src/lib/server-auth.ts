@@ -64,8 +64,11 @@ export async function postAuthBackend(
     ...(authorization ? { Authorization: authorization } : {}),
   };
   if (forwardFrom) {
-    const forwardedHost = forwardFrom.headers.get("x-forwarded-host")?.split(",")[0].trim()
-      || forwardFrom.headers.get("host");
+    // The edge proxy may leave x-forwarded-host set to the control-plane
+    // host for every Next request. The browser-facing Host is the tenant
+    // boundary, so prefer it when forwarding the request to Spring.
+    const forwardedHost = forwardFrom.headers.get("host")
+      || forwardFrom.headers.get("x-forwarded-host")?.split(",")[0].trim();
     if (forwardedHost) headers["X-Forwarded-Host"] = forwardedHost;
     const tenantSlug = forwardFrom.headers.get("x-orithos-tenant-slug");
     if (tenantSlug) headers["X-Orithos-Tenant-Slug"] = tenantSlug;

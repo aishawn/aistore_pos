@@ -35,8 +35,8 @@ export async function fetchTenantOdooBinding(request: NextRequest): Promise<Tena
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
   };
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
-    || request.headers.get("host");
+  const forwardedHost = request.headers.get("host")
+    || request.headers.get("x-forwarded-host")?.split(",")[0].trim();
   if (forwardedHost) headers["X-Forwarded-Host"] = forwardedHost;
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
   if (forwardedProto) headers["X-Forwarded-Proto"] = forwardedProto;
