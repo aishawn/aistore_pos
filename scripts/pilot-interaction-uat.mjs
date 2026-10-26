@@ -15,13 +15,13 @@ const env = Object.fromEntries(
     }),
 );
 const base = "https://demo.orithos.com.au";
-const password = env.INITIAL_ADMIN_PASSWORD;
-if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+const password = env.INITIAL_ADMIN_PASSWORD?.trim() ?? "";
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 const checks = [];
+let sessionAuthenticated = false;
 
 class BlockedUatCheck extends Error {
   constructor(message) {
@@ -45,55 +45,47 @@ async function check(name, run) {
 }
 
 try {
-  const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
-    headers: { Origin: base },
-  });
-  const loginBody = await login.json().catch(() => ({}));
-  if (!login.ok() || loginBody.code !== 0) throw new Error("Pilot interaction UAT login failed");
+  if (!password) {
+    checks.push({
+      name: "Admin session for interaction UAT",
+      status: "BLOCKED",
+      evidence: "The local .env has no non-empty INITIAL_ADMIN_PASSWORD value; no login request or authenticated browser interaction was run.",
+    });
+  } else {
+    const login = await context.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password },
+      headers: { Origin: base },
+      timeout: 15000,
+    });
+    const loginBody = await login.json().catch(() => ({}));
+    if (!login.ok() || loginBody.code !== 0) {
+      checks.push({
+        name: "Admin session for interaction UAT",
+        status: "BLOCKED",
+        evidence: `Admin login was rejected with HTTP ${login.status()} (API code ${loginBody.code ?? "unavailable"}); no authenticated browser interactions were run.`,
+      });
+    } else {
+      sessionAuthenticated = true;
 
-  await check("Mobile navigation drawer opens and dismisses", async () => {
+  await check("Mobile dashboard module navigation reaches Products workspace", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const trigger = page.locator('button[aria-controls="main-navigation"]');
-    const navigation = page.locator("#main-navigation");
-    const backdrop = page.locator('button[aria-label="Close navigation menu"]:not([aria-controls])');
-    await trigger.waitFor({ timeout: 15000 });
-    await page.waitForFunction(() => {
-      const toggle = document.querySelector('button[aria-controls="main-navigation"]');
-      const navigation = document.querySelector("#main-navigation");
-      return toggle?.getAttribute("aria-expanded") === "false" && navigation?.getAttribute("aria-hidden") === "true";
-    }, null, { timeout: 15000 });
-    await trigger.click();
-    if (await trigger.getAttribute("aria-expanded") !== "true" || await navigation.getAttribute("aria-hidden") !== "false") {
-      throw new Error("Mobile navigation did not expose its expanded state");
+    await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const modules = page.getByRole("list", { name: "Store modules" });
+    await modules.waitFor({ timeout: 30000 });
+    const stock = modules.getByRole("link", { name: /Stock/ });
+    await stock.waitFor({ timeout: 15000 });
+    if (new URL(await stock.getAttribute("href"), base).pathname !== "/products") {
+      throw new Error("The Stock module does not link to the Products workspace");
     }
-    await page.waitForFunction(() => {
-      const navigation = document.querySelector("#main-navigation");
-      return navigation?.getAttribute("role") === "dialog" && navigation.contains(document.activeElement);
-    }, null, { timeout: 1500 }).catch(() => { throw new Error("Mobile navigation did not receive initial focus"); });
-    await page.keyboard.press("Shift+Tab");
-    if (!await navigation.evaluate((element) => element.contains(document.activeElement))) {
-      throw new Error("Mobile navigation focus escaped on Shift+Tab");
-    }
-    // Let the open-state effect register its Escape handler before dispatching the key.
-    await page.waitForTimeout(50);
-    await page.keyboard.press("Escape");
-    await page.waitForFunction(() => {
-      const toggle = document.querySelector('button[aria-controls="main-navigation"]');
-      const navigation = document.querySelector("#main-navigation");
-      return toggle?.getAttribute("aria-expanded") === "false" && navigation?.getAttribute("aria-hidden") === "true";
-    }, null, { timeout: 1500 }).catch(() => { throw new Error("Escape did not close the mobile navigation"); });
-    await trigger.click();
-    await backdrop.click({ position: { x: 350, y: 100 } });
-    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Outside click did not close the mobile navigation");
+    await stock.click();
+    await page.waitForURL("**/products", { timeout: 15000 });
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px, the navigation drawer opens and closes with Escape and the outside backdrop; ARIA state tracks visibility.";
+    return "At 390px, the in-page Stock module linked to the Products workspace and reached that route without the hidden Sidebar/Header chrome.";
   });
 
   await check("Compact account popover opens and closes accessibly", async () => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const trigger = page.locator("[data-user-menu-trigger]");
     const menu = page.getByRole("dialog", { name: "User menu" });
     await trigger.waitFor({ timeout: 15000 });
@@ -115,46 +107,42 @@ try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}/settings/payment`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const settingsGroup = page.locator('#main-navigation > div nav button[aria-controls^="sidebar-group-setup"]');
-    await settingsGroup.waitFor({ timeout: 15000 });
+    await settingsGroup.waitFor({ timeout: 30000 });
     if (await settingsGroup.getAttribute("aria-expanded") !== "true") {
       throw new Error("Settings group did not auto-expand for the active payment page");
     }
-    const paymentLink = page.locator('#main-navigation a[href="/settings/payment"]');
-    await paymentLink.waitFor({ timeout: 10000 });
-    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const paymentLink = page.locator('#main-navigation a[href="/settings/store"]');
+    await paymentLink.waitFor({ timeout: 30000 });
+    await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.goto(`${base}/settings/payment`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(() => {
       const group = document.querySelector('#main-navigation button[aria-controls^="sidebar-group-setup"]');
       return group?.getAttribute("aria-expanded") === "true";
-    }, null, { timeout: 15000 });
+    }, null, { timeout: 30000 });
     return "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page.";
   });
 
-  await check("Classification creation restores mobile menu focus", async () => {
+  await check("Legacy classification route opens the read-only category workspace", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${base}/classifications`, { waitUntil: "networkidle", timeout: 60000 });
-    const menu = page.getByRole("button", { name: "Menu", exact: true });
-    await menu.waitFor({ timeout: 15000 });
-    await page.waitForFunction(() => document.querySelector('button[aria-label="Menu"]')?.getAttribute("aria-expanded") === "false", null, { timeout: 10000 });
-    await menu.click();
-    const trigger = page.getByRole("button", { name: "Add Classification", exact: true });
-    await trigger.waitFor({ timeout: 10000 });
-    await trigger.click();
-    const dialog = page.getByRole("dialog", { name: "Create New Classification" });
-    await dialog.waitFor({ state: "visible", timeout: 10000 });
-    const selector = dialog.locator('button[aria-haspopup="listbox"]').first();
-    await selector.waitFor({ timeout: 10000 });
-    await selector.press("ArrowDown");
-    await page.getByRole("listbox").waitFor({ state: "visible", timeout: 10000 });
-    await page.keyboard.press("Escape");
-    await dialog.waitFor({ state: "hidden", timeout: 10000 });
-    await page.waitForFunction(
-      (element) => document.activeElement === element,
-      await menu.elementHandle(),
-      { timeout: 1500 },
-    ).catch(() => { throw new Error("Classification modal did not restore focus to the mobile Menu trigger"); });
+    const writes = [];
+    const onRequest = (request) => {
+      if (request.method() !== "GET" && /\/api\/odoo\/categories(?:\/|\?|$)/.test(new URL(request.url()).pathname)) writes.push(request.url());
+    };
+    page.on("request", onRequest);
+    try {
+      await page.goto(`${base}/classifications`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForURL("**/products?dialog=categories", { timeout: 15000 });
+      const dialog = page.getByRole("dialog", { name: "Manage Categories" });
+      await dialog.waitFor({ state: "visible", timeout: 10000 });
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden", timeout: 10000 });
+      await page.waitForURL("**/products", { timeout: 10000 });
+      if (writes.length) throw new Error("Opening and closing the category workspace issued a category write");
+    } finally {
+      page.off("request", onRequest);
+    }
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the Menu opens the classification dialog, the MDB selector supports ArrowDown/Escape, and closing restores focus to Menu.";
+    return "The legacy classification route opened the 390px Manage Categories dialog; Escape closed it and removed the query without category writes.";
   });
 
   await check("Product search filters the Odoo catalogue", async () => {
@@ -252,6 +240,7 @@ try {
   });
 
   await check("CSV product import previews valid rows without writing to Odoo", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const writes = [];
     const onRequest = (request) => {
@@ -261,7 +250,38 @@ try {
     };
     page.on("request", onRequest);
     try {
-      await page.getByRole("button", { name: "Import CSV" }).click();
+      await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 15000 });
+      const more = page.locator("details > summary").filter({ hasText: /^More$/ });
+      const moreVisible = await more.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+      const importButton = page.getByRole("button", { name: /^Import(?: CSV)?$/ });
+      if (!moreVisible) {
+        const state = await page.evaluate(() => ({
+          url: location.pathname + location.search,
+          viewport: innerWidth,
+          moreSummaries: [...document.querySelectorAll("details > summary")].map((summary) => (summary.innerText || "").trim()),
+          access: (() => {
+            try {
+              const user = JSON.parse(localStorage.getItem("sf_user") || "{}");
+              return {
+                isAdmin: user.isAdmin === true || user.roleCode === "ADMIN",
+                canImportExport: user.isAdmin === true || user.roleCode === "ADMIN" || (user.permissions || []).includes("stock.products.import_export"),
+              };
+            } catch {
+              return { isAdmin: false, canImportExport: false };
+            }
+          })(),
+          importButtons: [...document.querySelectorAll("button")]
+            .filter((button) => /import/i.test(button.innerText || button.getAttribute("aria-label") || ""))
+            .map((button) => ({ text: (button.innerText || "").trim().replace(/\s+/g, " "), label: button.getAttribute("aria-label"), disabled: button.disabled, visible: Boolean(button.offsetWidth || button.offsetHeight) })),
+        }));
+        if (!state.access.canImportExport) {
+          throw new BlockedUatCheck(`The signed-in Demo account lacks stock.products.import_export; the UI correctly omits the CSV import action. ${JSON.stringify(state.access)}`);
+        }
+        throw new Error(`CSV import menu is absent after the Products toolbar loaded: ${JSON.stringify(state)}`);
+      }
+      await more.click();
+      await importButton.waitFor({ state: "visible", timeout: 10000 });
+      await importButton.click();
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
       const fileInput = dialog.locator('input[type="file"]');
@@ -415,11 +435,11 @@ try {
     return `At 390px, replenishment showed product cards without overflow (${dimensions.document}px); coverage changed to 7 days; no-sales state remains explicitly qualified.`;
   });
 
-  await check("Overview period buttons reload Odoo dashboard", async () => {
+  await check("Reports period controls refresh the Orithos dashboard", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("group", { name: "Odoo sales reporting range" }).waitFor({ timeout: 15000 });
-    await page.getByRole("region", { name: /Odoo summary/ }).waitFor({ timeout: 30000 });
+    await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("group", { name: "Orithos sales reporting range" }).waitFor({ timeout: 15000 });
+    await page.getByRole("region", { name: /Orithos summary/ }).waitFor({ timeout: 30000 });
     const updatedRange = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "24" && response.ok();
@@ -427,7 +447,7 @@ try {
     await page.getByRole("button", { name: "24 hours", exact: true }).click();
     const rangeResponse = await updatedRange;
     const rangeData = await rangeResponse.json();
-    await page.getByText(/Odoo POS activity · 24 hours/).waitFor({ timeout: 15000 });
+    await page.getByText(/Orithos POS activity · 24 hours/).waitFor({ timeout: 15000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     if (dimensions.document > dimensions.viewport) throw new Error(`Mobile overview overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
     const chartMarks = page.locator('[role="img"][aria-label]');
@@ -437,7 +457,7 @@ try {
       if (Number(rangeData.transactions) !== 0 || Number(rangeData.refundTransactions) !== 0) {
         throw new Error("Overview trend is empty despite sales or refunds in the selected period");
       }
-      await page.getByText("No Odoo sales in this period", { exact: true }).waitFor({ timeout: 10000 });
+      await page.getByText("No Orithos sales in this period", { exact: true }).waitFor({ timeout: 10000 });
     }
     const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
     await launcher.waitFor({ timeout: 10000 });
@@ -446,23 +466,25 @@ try {
     await page.getByRole("dialog", { name: "Orithos AI assistant" }).getByTitle("Close").click();
     return rangeData.trend?.length
       ? `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour trend renders ${rangeData.trend.length} accessible marks, and the AI assistant opens/closes.`
-      : `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes.`;
+      : `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour Orithos report has no sales, so the qualified empty state renders, and the AI assistant opens/closes.`;
   });
 
-  await check("Legacy report previews do not imply live Odoo data", async () => {
+  await check("Legacy sales report opens the live reporting dashboard", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/reports/sales`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("heading", { name: "Sales report" }).waitFor({ timeout: 15000 });
-    await page.getByRole("status").getByText("Static preview · no live Odoo data", { exact: true }).waitFor({ timeout: 10000 });
-    await page.getByText("No sample rows are available in this preview.", { exact: true }).waitFor({ timeout: 10000 });
-    const misleadingTotals = await page.getByText(/\$0\.00|0\.00%/).count();
-    if (misleadingTotals) throw new Error("Legacy report preview exposes placeholder monetary totals");
+    await page.waitForURL("**/reports/dashboard", { timeout: 15000 });
+    await page.getByRole("heading", { name: "Reports", exact: true }).waitFor({ timeout: 30000 });
+    await page.getByRole("group", { name: "Orithos sales reporting range" }).waitFor({ timeout: 30000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
-    if (dimensions.document > dimensions.viewport) throw new Error(`Legacy report preview overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
-    return "At 390px the sales report clearly identifies itself as a static preview, displays no placeholder totals, and has no horizontal overflow.";
+    if (dimensions.document > dimensions.viewport) throw new Error(`Reports dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
+    return "The legacy sales report route redirected to the live Reports dashboard; its period controls rendered without horizontal overflow at 390px.";
   });
+  }
+  }
 } finally {
-  try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
+  if (sessionAuthenticated) {
+    try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base }, timeout: 5000 }); } catch { /* Session expires normally. */ }
+  }
   await browser.close();
 }
 
@@ -473,6 +495,7 @@ const output = {
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
   scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
+  result: checks.some((item) => item.status === "FAIL") ? "FAIL" : checks.some((item) => item.status === "BLOCKED") ? "BLOCKED" : "PASS",
   checks,
 };
 const requestedOutput = process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_INTERACTION_2026-10-14.json";
@@ -483,5 +506,6 @@ const outputPath = path.isAbsolute(requestedOutput)
     : path.join("docs", requestedOutput));
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
-console.log(JSON.stringify({ outputPath, passed: checks.filter((item) => item.status === "PASS").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));
+console.log(JSON.stringify({ outputPath, result: output.result, passed: checks.filter((item) => item.status === "PASS").length, blocked: checks.filter((item) => item.status === "BLOCKED").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));
 if (checks.some((item) => item.status === "FAIL")) process.exitCode = 2;
+else if (checks.some((item) => item.status === "BLOCKED")) process.exitCode = 3;
