@@ -132,7 +132,11 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
     counts = {"summaries": 0, "sales": 0, "products": 0, "inventory": 0, "warnings": []}
     try:
         token = await access_token(db, settings, store)
-        rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
+        rows: list[dict[str, Any]] = []
+        try:
+            rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
+        except ShopfrontError as exc:
+            counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         sale_rows: list[dict[str, Any]] = []
         try:
             sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat())
@@ -149,6 +153,20 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             agg["cost"] += parse_decimal(first(row, "Cost of Goods Sold", "cost")) or Decimal(0)
             agg["profit"] += parse_decimal(first(row, "Profit", "profit")) or Decimal(0)
             agg["count"] += 1
+        if not rows and sale_rows:
+            # Reporting has occasional date-specific 400 responses. GraphQL
+            # still contains the complete Sale records, so use it as the
+            # aggregate source for that range instead of dropping the day.
+            for row in sale_rows:
+                timestamp = first(row, "createdAt", "created_at", "timestamp")
+                key = (business_date(timestamp, start), first(row, "outlet", "outletName", "outlet_name"))
+                agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "count": 0, "row": row})
+                revenue = parse_decimal(first(row, "totalPrice", "total_price")) or Decimal(0)
+                cost = parse_decimal(first(row, "totalCost", "total_cost")) or Decimal(0)
+                agg["revenue"] += revenue
+                agg["cost"] += cost
+                agg["profit"] += revenue - cost
+                agg["count"] += 1
         for (summary_date, outlet), agg in aggregates.items():
             summary = db.scalar(select(DailySalesSummary).where(DailySalesSummary.store_key == store.store_key, DailySalesSummary.business_date == summary_date, DailySalesSummary.outlet == outlet))
             if summary is None:
