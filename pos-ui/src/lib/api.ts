@@ -105,6 +105,14 @@ function isAuthExemptPath(path: string): boolean {
     || path.startsWith("/api/public/");
 }
 
+function canRetryTransientRoute(method: string, path: string): boolean {
+  const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod === "GET" && (path === "/api/auth/me" || path.startsWith("/api/odoo/"))) return true;
+  // Login only creates a new token and is safe to replay when an old route
+  // returns a transient gateway/route response.
+  return normalizedMethod === "POST" && path === "/api/auth/login";
+}
+
 /** The development preview has no backend session to refresh or expire. */
 export function isLocalPreviewSession(): boolean {
   if (typeof window === "undefined" || typeof document === "undefined") return false;
@@ -201,6 +209,7 @@ async function request<T>(
   path: string,
   opts: { query?: Record<string, QueryValue>; body?: unknown; signal?: AbortSignal } = {},
   retriedAfterRefresh = false,
+  retriedAfterRoute = false,
 ): Promise<T> {
   getToken();
   const res = await fetch(buildUrl(path, opts.query), {
@@ -219,17 +228,22 @@ async function request<T>(
     /* non-JSON response */
   }
 
+  const transientRoute = [404, 502, 503, 504].includes(res.status);
+  if (transientRoute && !retriedAfterRoute && canRetryTransientRoute(method, path)) {
+    return request<T>(method, path, opts, retriedAfterRefresh, true);
+  }
+
   const authExpired = !isLocalPreviewSession()
     && (res.status === 401 || json?.code === 40100 || json?.code === 40103);
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   const isOdooRead = canReplay && path.startsWith("/api/odoo/") && path !== "/api/odoo/session";
   if (authExpired && isOdooRead && !retriedAfterRefresh && await recoverOdooSession()) {
-    return request<T>(method, path, opts, true);
+    return request<T>(method, path, opts, true, retriedAfterRoute);
   }
   // Never replay a write after an auth refresh: the server may have accepted
   // the original request before the response was interrupted.
   if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
-    return request<T>(method, path, opts, true);
+    return request<T>(method, path, opts, true, retriedAfterRoute);
   }
 
   if (!res.ok || !json) {
