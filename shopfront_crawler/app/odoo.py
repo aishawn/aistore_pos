@@ -38,9 +38,10 @@ class OdooSyncClient:
                 last_error = f"Odoo API failed ({response.status_code}): {response.text[:500]}"
                 continue
             data = response.json()
-            if data.get("ok") is not False:
+            result = data.get("result") if isinstance(data, dict) and isinstance(data.get("result"), dict) else data
+            if result.get("ok") is not False:
                 return data
-            last_error = str(data.get("error", "Odoo import failed"))
+            last_error = str(result.get("error", "Odoo import failed"))
             if last_error != "unauthorized":
                 break
         raise OdooIntegrationError(last_error)
