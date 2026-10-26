@@ -9,7 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import desc, select, update
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -349,90 +349,63 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
 
 
 async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None) -> dict:
-    """Push the current idempotent crawler snapshot to the POS boundary."""
+    """Push a snapshot in bounded pages so a full history never sits in RAM."""
     products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
-    sales_query = select(Sale).where(Sale.store_key == store_key)
+    sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
     if start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time())
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
-        sales_query = sales_query.where(
-            ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
-            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
-        )
-    sales = db.scalars(sales_query).all()
-    incomplete = [sale.shopfront_sale_id for sale in sales if not sale.shopfront_sale_id or not sale.items]
-    if incomplete:
-        logger.warning("POS formal sale import pending complete details: store=%s incomplete_sales=%s", store_key, len(incomplete))
-    payloads = {
-        "products": {"store_key": store_key, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload} for p in products]},
-        "inventory": {"store_key": store_key, "replace": True, "items": [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp, "raw_payload": row.raw_payload} for row in inventory]},
-        "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]} for sale in sales]},
-    }
+        sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
+    total_sales = db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, fallback_token)
-    sale_items = payloads["sales"]["items"]
-    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": len(sale_items), "error": None}
+    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None}
+
+    def sale_payload(sale: Sale) -> dict:
+        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]}
+
+    product_items = [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload} for p in products]
+    inventory_items = [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp, "raw_payload": row.raw_payload} for row in inventory]
     try:
-        product_result = await client.upsert_products(jsonable_encoder(payloads["products"]))
-        inventory_result = await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
+        product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
+        inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+        if settings.odoo_import_enabled:
+            await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
+            await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
-        sale_imported = 0
-
-        async def send_sales(items: list[dict]) -> int:
-            nonlocal sale_batches
-            try:
-                await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
-                sale_batches += 1
-                return len(items)
-            except Exception:
-                if len(items) <= 25:
-                    raise
-                midpoint = len(items) // 2
-                return await send_sales(items[:midpoint]) + await send_sales(items[midpoint:])
-
-        for offset in range(0, len(sale_items), 250):
-            sale_imported += await send_sales(sale_items[offset:offset + 250])
-        result.update({"status": "completed", "sale_batches": sale_batches, "sales_imported": sale_imported, "product_response": product_result, "inventory_response": inventory_result})
+        odoo_batches = 0
+        offset = 0
+        while offset < total_sales:
+            sales = db.scalars(sales_query.offset(offset).limit(250)).all()
+            if not sales:
+                break
+            items = [sale_payload(sale) for sale in sales]
+            await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+            sale_batches += 1
+            if settings.odoo_import_enabled:
+                for small_offset in range(0, len(items), 100):
+                    batch = items[small_offset:small_offset + 100]
+                    try:
+                        await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
+                    except Exception:
+                        for retry_offset in range(0, len(batch), 25):
+                            await odoo_client.sync("sales", store_key, jsonable_encoder(batch[retry_offset:retry_offset + 25]))
+                    odoo_batches += 1
+            offset += len(sales)
+            result["sales_imported"] = offset
+            result["sale_batches"] = sale_batches
+            result["odoo_sale_batches"] = odoo_batches
+            if run is not None:
+                run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": offset, "sale_total": total_sales, "sale_batches": sale_batches, "odoo_sale_batches": odoo_batches, "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror"}
+                db.commit()
+        result.update({"status": "completed", "product_response": product_result, "inventory_response": inventory_result})
     except Exception as exc:
-        result["error"] = str(exc)[:500]
-        logger.exception("POS snapshot push failed: store=%s", store_key)
+        result["error"] = repr(exc)[:500]
+        logger.exception("Shopfront snapshot push failed: store=%s", store_key)
     finally:
         await client.close()
-    if settings.odoo_import_enabled:
-        odoo_result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": len(sale_items), "error": None}
-        try:
-            product_response = await odoo_client.sync("products", store_key, jsonable_encoder(payloads["products"]["items"]))
-            inventory_response = await odoo_client.sync("inventory", store_key, jsonable_encoder(payloads["inventory"]["items"]))
-            sale_responses = []
-            # Keep Odoo transactions small: one malformed or slow order must
-            # not roll back a large historical batch.
-            for offset in range(0, len(sale_items), 100):
-                batch = sale_items[offset:offset + 100]
-                try:
-                    sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(batch)))
-                except Exception:
-                    for small_offset in range(0, len(batch), 25):
-                        sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(batch[small_offset:small_offset + 25])))
-                if run is not None:
-                    run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": min(offset + len(batch), len(sale_items)), "sale_total": len(sale_items), "sale_batches": len(sale_responses), "stage": "odoo_business"}
-                    db.commit()
-            odoo_result.update({"status": "completed", "product_response": product_response, "inventory_response": inventory_response, "sales_response": sale_responses[-1] if sale_responses else None, "sale_batches": len(sale_responses), "incomplete_mirrored": len(incomplete)})
-        except Exception as exc:
-            odoo_result["error"] = repr(exc)[:500]
-            logger.exception("Odoo snapshot push failed: store=%s", store_key)
-        finally:
-            await odoo_client.close()
-        result["odoo_import"] = odoo_result
-        # The legacy shadow endpoint is optional. Odoo is the authoritative
-        # destination; a shadow failure must remain visible as a warning
-        # without marking a successful Odoo import as failed.
-        if result.get("error") and odoo_result.get("status") == "completed":
-            result["shadow_error"] = result["error"]
-            result["error"] = None
-            result["status"] = "completed"
-    else:
         await odoo_client.close()
     return result
 
