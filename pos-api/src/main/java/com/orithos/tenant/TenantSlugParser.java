@@ -68,6 +68,21 @@ public class TenantSlugParser {
         return HostTenant.controlPlaneTenant();
     }
 
+    /** Extract a tenant slug from a trusted proxy host without applying the
+     * reserved-slug list. The proxy has already classified infrastructure
+     * hosts; this keeps an older reserved list from hiding a real store. */
+    public String forwardedTenantSlug(String hostHeader) {
+        if (hostHeader == null || hostHeader.isBlank()) return null;
+        String host = firstHost(hostHeader).toLowerCase(Locale.ROOT);
+        int colon = host.indexOf(':');
+        if (colon >= 0) host = host.substring(0, colon);
+        String suffix = "." + props.getBaseDomain().trim().toLowerCase(Locale.ROOT);
+        if (!host.endsWith(suffix) || host.length() <= suffix.length()) return null;
+        String slug = host.substring(0, host.length() - suffix.length());
+        if (slug.contains(".")) return null;
+        return normalizeSlug(slug);
+    }
+
     public String normalizeSlug(String raw) {
         if (raw == null) return null;
         String slug = raw.trim().toLowerCase(Locale.ROOT);
