@@ -71,21 +71,66 @@ async function authenticateOdoo(username: string, password: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Orithos login failed");
-
-  const payload = (await response.json()) as {
+  let payload: {
     result?: OdooSessionInfo;
     error?: { message?: string; data?: { message?: string } };
-  };
-  if (payload.error || !payload.result?.uid) {
+  } | null = null;
+  try {
+    payload = await response.json() as typeof payload;
+  } catch {
+    // Odoo proxies can return an HTML 502 while the web login endpoint remains healthy.
+  }
+  if (response.ok && payload?.result?.uid) {
+    const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
+    const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
+    if (sessionId) return { info: payload.result, sessionId };
+  }
+  if (payload?.error && /access|password|credential|login|authentication/i.test(`${payload.error.message ?? ""} ${payload.error.data?.message ?? ""}`)) {
     throw new Error("Orithos username or password is incorrect");
   }
 
-  const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
-  const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
-  if (!sessionId) throw new Error("Orithos did not return a session");
+  return authenticateOdooWebLogin(baseUrl, database, username, password);
+}
 
-  return { info: payload.result, sessionId };
+async function authenticateOdooWebLogin(baseUrl: string, database: string, username: string, password: string) {
+  const loginPage = await fetch(`${baseUrl}/web/login?db=${encodeURIComponent(database)}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!loginPage.ok) throw new Error("Orithos login failed");
+  const html = await loginPage.text();
+  const csrfToken = html.match(/name=["']csrf_token["'][^>]*value=["']([^"']+)/i)?.[1];
+  if (!csrfToken) throw new Error("Orithos login failed");
+  const initialCookies = loginPage.headers.getSetCookie().map((value) => value.split(";", 1)[0]).join("; ");
+  const form = new URLSearchParams({ csrf_token: csrfToken, login: username, password, type: "password", redirect: "" });
+  const loginResponse = await fetch(`${baseUrl}/web/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(initialCookies ? { Cookie: initialCookies } : {}),
+    },
+    body: form,
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  const sessionCookie = loginResponse.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value))
+    ?? initialCookies.split("; ").find((value) => value.startsWith("session_id="));
+  const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
+  if (!sessionId || loginResponse.status < 300 || loginResponse.status >= 400) {
+    throw new Error("Orithos username or password is incorrect");
+  }
+  const infoResponse = await fetch(`${baseUrl}/web/session/get_session_info`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!infoResponse.ok) throw new Error("Orithos login failed");
+  const infoPayload = await infoResponse.json() as { result?: OdooSessionInfo; error?: unknown };
+  if (infoPayload.error || !infoPayload.result?.uid) throw new Error("Orithos username or password is incorrect");
+  return { info: infoPayload.result, sessionId };
 }
 
 function getServiceCredentials() {
