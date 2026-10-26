@@ -9,7 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import desc, select
+from sqlalchemy import desc, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -35,13 +35,24 @@ async def startup() -> None:
         ensure_stores(db, settings)
         # A process restart must not leave durable jobs stuck in ``running``.
         # Requeue them and resume from their persisted cursor below.
-        interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running")).all()
+        interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running").order_by(SyncJob.store_key, desc(SyncJob.id))).all()
+        resumed_stores: set[str] = set()
+        interrupted_history_ids: list[int] = []
+        interrupted_discovery_ids: list[int] = []
         for job in interrupted:
+            if job.store_key in resumed_stores:
+                job.status = "superseded"
+                job.error = "superseded by newer job after crawler restart"
+                job.finished_at = datetime.now(timezone.utc)
+                continue
             job.status = "queued"
             job.error = "requeued after crawler restart"
+            resumed_stores.add(job.store_key)
+            if job.job_type == "history":
+                interrupted_history_ids.append(job.id)
+            elif job.job_type == "discover":
+                interrupted_discovery_ids.append(job.id)
         db.commit()
-        interrupted_history_ids = [job.id for job in interrupted if job.job_type == "history"]
-        interrupted_discovery_ids = [job.id for job in interrupted if job.job_type == "discover"]
     finally:
         db.close()
     scheduler.add_job(
@@ -316,12 +327,17 @@ async def run_history_job(job_id: int) -> None:
 async def _run_history_job(job_id: int) -> None:
     db = next(get_db())
     try:
+        claimed = db.execute(
+            update(SyncJob)
+            .where(SyncJob.id == job_id, SyncJob.status == "queued")
+            .values(status="running", started_at=datetime.now(timezone.utc))
+        )
+        db.commit()
+        if claimed.rowcount != 1:
+            return
         job = db.get(SyncJob, job_id)
         if not job:
             return
-        job.status = "running"
-        job.started_at = datetime.now(timezone.utc)
-        db.commit()
         start = date.fromisoformat(job.cursor_date or job.from_date)
         await run_sync_background(job.store_key, start, date.fromisoformat(job.to_date), job.id)
         db.refresh(job)
@@ -347,6 +363,14 @@ async def _run_history_job(job_id: int) -> None:
 async def run_history_discovery(job_id: int) -> None:
     db = next(get_db())
     try:
+        claimed = db.execute(
+            update(SyncJob)
+            .where(SyncJob.id == job_id, SyncJob.status == "queued")
+            .values(status="running", started_at=datetime.now(timezone.utc))
+        )
+        db.commit()
+        if claimed.rowcount != 1:
+            return
         job = db.get(SyncJob, job_id)
         store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
         if not job or not store:
