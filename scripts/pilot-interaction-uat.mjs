@@ -321,6 +321,10 @@ try {
     try {
       await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 15000 });
       await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 });
+      await page.waitForFunction(() => {
+        const button = [...document.querySelectorAll("button")].find((element) => element.textContent?.trim() === "New product");
+        return button instanceof HTMLButtonElement && !button.disabled;
+      }, null, { timeout: 60000 });
       const more = page.locator("details > summary").filter({ hasText: /^More$/ });
       const moreVisible = await more.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
       const importButton = page.getByRole("button", { name: /^Import(?: CSV)?$/ });
@@ -514,7 +518,8 @@ try {
   await check("Reports period controls refresh the Orithos dashboard", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("group", { name: "Orithos sales reporting range" }).waitFor({ timeout: 15000 });
+    await page.getByRole("heading", { name: "Reports", exact: true }).waitFor({ timeout: 30000 });
+    await page.getByRole("group", { name: "Orithos sales reporting range" }).waitFor({ timeout: 30000 });
     await page.getByRole("region", { name: /Orithos summary/ }).waitFor({ timeout: 30000 });
     const updatedRange = page.waitForResponse((response) => {
       const url = new URL(response.url());
