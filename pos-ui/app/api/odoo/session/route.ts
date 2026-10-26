@@ -80,10 +80,11 @@ async function authenticateOdoo(username: string, password: string) {
   } catch {
     // Odoo proxies can return an HTML 502 while the web login endpoint remains healthy.
   }
-  if (response.ok && payload?.result?.uid) {
+  const result = payload?.result;
+  if (response.ok && result?.uid) {
     const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
     const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
-    if (sessionId) return { info: payload.result, sessionId };
+    if (sessionId) return { info: result, sessionId };
   }
   if (payload?.error && /access|password|credential|login|authentication/i.test(`${payload.error.message ?? ""} ${payload.error.data?.message ?? ""}`)) {
     throw new Error("Orithos username or password is incorrect");
