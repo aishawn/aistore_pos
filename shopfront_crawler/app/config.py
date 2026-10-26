@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Keep the initial consent request to permissions required for reporting,
     # product and inventory reads. Webhook permissions can be added later.
     shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_history"
+    # Webhook permissions are optional and can make the consent request fail
+    # before the Shopfront application has been granted them.
+    shopfront_enable_webhooks: bool = False
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
@@ -34,9 +37,12 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: object) -> None:
         """Accept the old documented scope name while using Shopfront's current name."""
         aliases = {"see_sales": "see_history"}
+        optional_webhook_scopes = {"see_webhooks", "create_webhooks", "edit_webhooks", "delete_webhooks"}
         scopes: list[str] = []
         for raw_scope in self.shopfront_scopes.replace(",", " ").split():
             scope = aliases.get(raw_scope.strip(), raw_scope.strip())
+            if scope in optional_webhook_scopes and not self.shopfront_enable_webhooks:
+                continue
             if scope and scope not in scopes:
                 scopes.append(scope)
         self.shopfront_scopes = " ".join(scopes)
