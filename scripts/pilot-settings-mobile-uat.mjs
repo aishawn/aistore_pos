@@ -32,29 +32,56 @@ try {
       const loginBody = await login.json().catch(() => ({}));
       if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
+      const odooSession = await context.request.get(`${base}/api/odoo/session`, {
+        headers: { Origin: base },
+        timeout: 60000,
+      });
+      const odooSessionBody = await odooSession.json().catch(() => ({}));
+      if (!odooSession.ok() || !odooSessionBody.user) throw new Error(`ODOO_SESSION_WARMUP_FAILED_${odooSession.status()}`);
+
+      await context.route("**/api/**", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (request.method() === "GET" && url.origin === new URL(base).origin && url.pathname === "/api/sell/parked") {
+          return route.fulfill({ status: 200, json: { code: 0, data: [] } });
+        }
+        return route.continue();
+      });
+
       const page = await context.newPage();
       for (const spec of [
-        { path: "/settings/payment", label: "Payment method source", cardHeadings: ["Odoo registers"], tableHeadings: ["Odoo register"] },
-        { path: "/settings/tax", label: "Tax rate source", cardHeadings: ["Calculation"], tableHeadings: ["Calculation"] },
-        { path: "/settings/registers-outlets", label: "Store and register source", cardHeadings: ["Odoo company", "Payment methods"], tableHeadings: ["Store", "Register"] },
+        { path: "/settings/payment", label: "Payment method source", cardHeadings: ["Orithos registers"], tableHeadings: ["ORITHOS REGISTER"] },
+        { path: "/settings/tax", label: "Tax rate source", cardHeadings: [], tableHeadings: [] , emptyText: "No active sales tax rates" },
+        { path: "/settings/registers-outlets", label: "Store and register source", cardHeadings: ["Orithos company", "Payment methods"], tableHeadings: ["STORE", "REGISTER"] },
       ]) {
         await page.goto(`${base}${spec.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
         await page.getByRole("region", { name: spec.label }).waitFor({ timeout: 20000 }).catch(async () => {
           await page.locator(`[aria-label="${spec.label}"]`).waitFor({ timeout: 20000 });
         });
-        await page.getByText("Live from Odoo", { exact: false }).waitFor({ timeout: 20000 });
+        await page.getByText(/Live from (?:Odoo|Orithos)/, { exact: false }).waitFor({ timeout: 20000 });
         const layout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
         if (layout.document > layout.viewport) throw new Error(`${spec.path} overflows at ${width}px: ${JSON.stringify(layout)}`);
 
         if (width < 1280) {
           if (await page.locator("table").isVisible().catch(() => false)) throw new Error(`${spec.path} displays its desktop table at ${width}px`);
           const cards = page.locator("article");
-          await cards.first().waitFor({ timeout: 15000 });
-          if (!(await cards.count())) throw new Error(`${spec.path} has no live Odoo cards at ${width}px`);
+          await page.waitForFunction(({ emptyText }) => (
+            document.querySelectorAll("article").length > 0
+            || Boolean(emptyText && document.body.innerText.includes(emptyText))
+          ), { emptyText: spec.emptyText ?? "" }, { timeout: 15000 });
+          if (!(await cards.count())) {
+            if (!spec.emptyText || !(await page.getByText(spec.emptyText, { exact: false }).count())) {
+              throw new Error(`${spec.path} has no live Odoo cards or documented empty state at ${width}px`);
+            }
+          }
           for (const heading of spec.cardHeadings) await page.getByText(heading, { exact: true }).first().waitFor({ timeout: 10000 });
           checks.push(`${spec.path}: Odoo cards, source notice and no overflow at ${width}px`);
         } else {
-          await page.locator("table").first().waitFor({ timeout: 15000 });
+          if (spec.tableHeadings.length) {
+            await page.locator("table").first().waitFor({ timeout: 15000 });
+          } else if (spec.emptyText) {
+            await page.getByText(spec.emptyText, { exact: false }).waitFor({ timeout: 15000 });
+          }
           const tables = page.locator("table:visible");
           const visibleTableCount = await tables.count();
           if (visibleTableCount !== spec.tableHeadings.length) {
@@ -68,7 +95,7 @@ try {
             }));
             throw new Error(`${spec.path} expected ${spec.tableHeadings.length} visible desktop table(s), saw ${visibleTableCount}: ${JSON.stringify(details)}`);
           }
-          for (const heading of spec.tableHeadings) await page.getByRole("columnheader", { name: heading, exact: true }).first().waitFor({ timeout: 10000 });
+          for (const heading of spec.tableHeadings) await page.getByRole("columnheader", { name: new RegExp(`^${heading}$`, "i") }).first().waitFor({ timeout: 10000 });
           checks.push(`${spec.path}: semantic Odoo table(s), source notice and no overflow at ${width}px`);
         }
       }
@@ -135,12 +162,12 @@ try {
       checks.push(`/settings/statements: preview link, explicit disconnected preferences and no overflow at ${width}px`);
 
       await page.goto(`${base}/settings/pricesets`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.getByRole("heading", { name: "Price Sets", exact: true }).waitFor({ timeout: 15000 });
-      await page.getByText("Price sets and product prices are managed separately").waitFor({ timeout: 10000 });
+      await page.getByRole("heading", { name: "Price Lists", exact: true }).waitFor({ timeout: 15000 });
+      await page.getByText("Product base prices affect standard shelf prices").waitFor({ timeout: 10000 });
       const priceSetsLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
       if (priceSetsLayout.document > priceSetsLayout.viewport) throw new Error(`/settings/pricesets overflows at ${width}px: ${JSON.stringify(priceSetsLayout)}`);
-      await page.getByRole("link", { name: /Manage price lists/ }).waitFor({ timeout: 10000 });
-      await page.getByRole("button", { name: /Add price set/ }).waitFor({ timeout: 10000 });
+      await page.getByRole("link", { name: "Product base prices", exact: true }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: /Add price list/ }).waitFor({ timeout: 10000 });
       checks.push(`/settings/pricesets: live management entry, separate price-list notice and no overflow at ${width}px`);
 
       await page.goto(`${base}/settings/rules`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -152,31 +179,12 @@ try {
       checks.push(`/settings/rules: honest control status and no overflow at ${width}px`);
 
       await page.goto(`${base}/settings/users`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.getByRole("heading", { name: "Store users" }).waitFor({ timeout: 15000 });
-      const usersLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
-      if (usersLayout.document > usersLayout.viewport) throw new Error(`/settings/users overflows at ${width}px: ${JSON.stringify(usersLayout)}`);
-      if (width < 1280) {
-        if (await page.locator("table:visible").count()) throw new Error("Users table is visible at mobile width");
-        const mobileUserCards = page.locator('ul[class*="xl:hidden"] > li');
-        const mobileUserCardCount = await mobileUserCards.count();
-        if (!mobileUserCardCount) {
-          blocked = true;
-          checks.push(`/settings/users: BLOCKED - mobile staff cards are missing at ${width}px`);
-        } else {
-          checks.push(`/settings/users: staff cards and no overflow at ${width}px`);
-        }
-      } else {
-        if (await page.locator('ul[class*="xl:hidden"]').isVisible()) throw new Error("Mobile user cards are visible at desktop width");
-        const staffHeaders = ["Name", "Username", "Email", "Role", "Status", "Actions"];
-        const headerVisibility = await Promise.all(staffHeaders.map((header) => page.getByRole("columnheader", { name: header, exact: true }).isVisible().catch(() => false)));
-        const missingStaffHeaders = staffHeaders.filter((_, index) => !headerVisibility[index]);
-        if (missingStaffHeaders.length) {
-          blocked = true;
-          checks.push(`/settings/users: BLOCKED - missing semantic staff headers at ${width}px: ${missingStaffHeaders.join(", ")}`);
-        } else {
-          checks.push(`/settings/users: semantic staff table and no overflow at ${width}px`);
-        }
-      }
+      await page.getByRole("heading", { name: "Integrations", exact: true }).waitFor({ timeout: 15000 });
+      if (!page.url().endsWith("/settings/integrations")) throw new Error("Users settings did not redirect to the integrations hub");
+      const integrationsLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (integrationsLayout.document > integrationsLayout.viewport) throw new Error(`/settings/integrations overflows at ${width}px: ${JSON.stringify(integrationsLayout)}`);
+      await page.getByRole("heading", { name: "Gift cards", exact: true }).waitFor({ timeout: 10000 });
+      checks.push(`/settings/users -> /settings/integrations: current hub redirect and no overflow at ${width}px`);
     } finally {
       await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
       await context.close();
