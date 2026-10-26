@@ -37,6 +37,17 @@ public class TenantResolverFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             TenantSlugParser.HostTenant hostTenant = slugParser.resolve(request);
+            // The Next BFF derives this header from the public Host before it
+            // forwards the request. Some Dokploy/Cloudflare routes overwrite
+            // X-Forwarded-Host with the control-plane host, so retain the
+            // tenant boundary from the trusted internal BFF header.
+            if (hostTenant.controlPlane()) {
+                String forwardedSlug = slugParser.normalizeSlug(
+                        request.getHeader("X-Orithos-Tenant-Slug"));
+                if (forwardedSlug != null && !slugParser.isReserved(forwardedSlug)) {
+                    hostTenant = TenantSlugParser.HostTenant.tenant(forwardedSlug);
+                }
+            }
             if (hostTenant.controlPlane() || isPublicControlPlaneEndpoint(request)
                     || isServiceIntegrationEndpoint(request)) {
                 TenantHolder.set(TenantHolder.ResolvedTenant.controlPlaneTenant());
