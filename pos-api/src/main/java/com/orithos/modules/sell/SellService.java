@@ -13,6 +13,8 @@ import com.orithos.modules.sale.SaleItem;
 import com.orithos.modules.sale.SaleMapper;
 import com.orithos.modules.sell.dto.*;
 import com.orithos.security.CurrentUser;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,11 +35,19 @@ public class SellService {
     private final ProductMapper productMapper;
     private final CustomerMapper customerMapper;
     private final SaleMapper saleMapper;
+    private final boolean odooOnlyMode;
 
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper) {
+        this(productMapper, customerMapper, saleMapper, false);
+    }
+
+    @Autowired
+    public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
+                       @Value("${app.odoo-only-mode:false}") boolean odooOnlyMode) {
         this.productMapper = productMapper;
         this.customerMapper = customerMapper;
         this.saleMapper = saleMapper;
+        this.odooOnlyMode = odooOnlyMode;
     }
 
     /** Search products and customers for the Sell-pad search bar. */
@@ -76,6 +86,9 @@ public class SellService {
 
     /** List parked (suspended) sales for the Parked Sales tab. */
     public List<Sale> listParked() {
+        // Parked sales are a Classic POS concept; Odoo-only deployments have no
+        // legacy sale tables and must expose an empty read-only state instead.
+        if (odooOnlyMode) return List.of();
         LocalDate today = AustraliaTime.today();
         List<Sale> parked = saleMapper.page("PARKED", null, 50, 0);
         for (Sale sale : parked) {

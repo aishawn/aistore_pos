@@ -29,4 +29,17 @@ class SellServiceParkedSaleReadTest {
         verify(sales).page("PARKED", null, 50, 0);
         verify(sales, never()).expireParkedBefore(any(), any());
     }
+
+    @Test
+    void odooOnlyListingReturnsEmptyWithoutLegacyRead() {
+        ProductMapper products = mock(ProductMapper.class);
+        CustomerMapper customers = mock(CustomerMapper.class);
+        SaleMapper sales = mock(SaleMapper.class);
+
+        SellService service = new SellService(products, customers, sales, true);
+
+        assertEquals(List.of(), service.listParked());
+        verify(sales, never()).page("PARKED", null, 50, 0);
+        verify(sales, never()).expireParkedBefore(any(), any());
+    }
 }
