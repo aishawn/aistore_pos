@@ -43,7 +43,8 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   const payload = await response.json() as RpcResult<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|log in|authenticate/i.test(detail)) throw new SessionExpiredError();
+    if (/(session expired|invalid session|not authenticated|please log in|\bauthenticate\b)/i.test(detail)
+      && !/pos\.session/i.test(detail)) throw new SessionExpiredError();
     throw new OpenSessionError("Orithos could not open the selected register", 409);
   }
   return payload.result;
