@@ -116,6 +116,37 @@ public class ShopfrontIntegrationController {
         return ApiResult.ok(result);
     }
 
+    @GetMapping("/data")
+    public ApiResult<Map<String, Object>> data(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String storeKey,
+            @RequestParam String type,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        authorize(supplied);
+        if (page < 1 || size < 1 || size > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 500");
+        }
+        String table = switch (type) {
+            case "products" -> "shopfront_product";
+            case "inventory" -> "shopfront_inventory";
+            case "sales" -> "shopfront_sale";
+            case "sale_items" -> "shopfront_sale_item";
+            case "payments" -> "shopfront_sale_payment";
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
+        };
+        ensureShadowTables();
+        int offset = (page - 1) * size;
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", storeKey);
+        result.put("type", type);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("data", jdbc.queryForList("SELECT * FROM " + table + " WHERE store_key = ? ORDER BY synced_at DESC LIMIT ? OFFSET ?", storeKey, size, offset));
+        result.put("total", count(table, storeKey));
+        return ApiResult.ok(result);
+    }
+
     @GetMapping("/import-runs/{id}")
     public ApiResult<Map<String, Object>> run(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                               @PathVariable long id) {
