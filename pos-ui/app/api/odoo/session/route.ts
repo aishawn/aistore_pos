@@ -16,6 +16,10 @@ type OdooSessionInfo = {
   partner_display_name?: string;
   user_context?: { allowed_company_ids?: number[] };
 };
+type OdooAuthPayload = {
+  result?: OdooSessionInfo;
+  error?: { message?: string; data?: { message?: string } };
+};
 
 function getOdooConfig() {
   const baseUrl = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
@@ -71,16 +75,13 @@ async function authenticateOdoo(username: string, password: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  let payload: {
-    result?: OdooSessionInfo;
-    error?: { message?: string; data?: { message?: string } };
-  } | null = null;
+  let payload: OdooAuthPayload | null = null;
   try {
-    payload = await response.json() as typeof payload;
+    payload = await response.json() as OdooAuthPayload;
   } catch {
     // Odoo proxies can return an HTML 502 while the web login endpoint remains healthy.
   }
-  const result = payload?.result;
+  const result: OdooSessionInfo | undefined = payload ? payload.result : undefined;
   if (response.ok && result?.uid) {
     const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
     const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
