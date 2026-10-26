@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 
 const CATEGORIES: Array<{ words: string[]; icon: string; tone: string }> = [
   { words: ["wine", "shiraz", "cabernet", "pinot", "chardonnay", "riesling"], icon: "🍷", tone: "bg-rose-50 text-rose-700" },
-  { words: ["beer", "lager", "ale", "stout", "peroni", "brew"], icon: "🍺", tone: "bg-amber-50 text-amber-800" },
+  { words: ["beer", "lager", "ale", "stout", "peroni", "brew", "ipa", "pilsner"], icon: "🍺", tone: "bg-amber-50 text-amber-800" },
+  { words: ["cider", "perry"], icon: "🍏", tone: "bg-lime-50 text-lime-800" },
   { words: ["spirit", "vodka", "whisky", "whiskey", "gin", "rum", "bourbon"], icon: "🥃", tone: "bg-orange-50 text-orange-800" },
   { words: ["bread", "loaf", "bakery"], icon: "🍞", tone: "bg-yellow-50 text-yellow-800" },
   { words: ["banana", "apple", "fruit", "produce"], icon: "🍎", tone: "bg-green-50 text-green-800" },

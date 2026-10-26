@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-10-26T04:11:18.398Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "a4c5f636cbb00d6bbf547ae9b8ad7e9a40d27578",
+  "expectedRuntimeCommit": "c88f0820c3bb787ac14ec085daa227d763147eb5",
+  "sourceTreeDirty": true,
+  "runtime": {
+    "frontendCommit": "c88f0820c3bb787ac14ec085daa227d763147eb5",
+    "backendCommit": "c88f0820c3bb787ac14ec085daa227d763147eb5",
+    "matchesSourceCommit": false
+  },
+  "scope": "Read-only register category/product load and visible-button overlap check at 390px and 1440px; API writes blocked",
+  "status": "PASS",
+  "businessWrites": 0,
+  "blockedWrites": [],
+  "screenshots": [
+    "docs/screenshots/register-postload-c88f0820-390.png",
+    "docs/screenshots/register-postload-c88f0820-1440.png"
+  ],
+  "checks": [
+    {
+      "width": 390,
+      "status": "PASS",
+      "errors": [],
+      "state": {
+        "title": "Sell",
+        "bodyTextSample": "Orithos\nSell\nDashboard\nStock\nCustomers\nOrithos AI\nReports\nSetup\nOrithos\nSkip to main content\nSell\norithos_store1\nQuick Keys\nParked Sales\nMore Actions\nBack to Quick Keys\nBeer\nCart\nHide OOS\n🍺\n$5.00\n4 PINE PACIFIC ALE\n🍺\n$5.99\n4 PINES JAP LAGER\n🍺\n$5.00\n4 PINES PALE ALE CANS 375ML\n🍺\n$3.99\n4 PINES SUMMER ALE CAN\n🍺\n$10.00\n8.6 BEER 500ML\n🍺\n$5.00\nATOMIC BEER IPA 5.6% CANS\n$8.00\nBALTER HAZY IPA CANS\n$8.00\nBALTER IPA 375ML\n🥃\n$5.99\nBULMERS ORIGINAL CIDER 4PK 330\n🍺\n$6.00\nBecks Beer Can 500ml\n$8.00\nBeerfarm Hazy Pale Ale Can 375ml\n$7.00\nCAPITAL BREWING COAST ALE\n$5.00\nCBCO GOLDY LAGER 375ML\n$5.99\nCBCO NEPA PALE ALE CAN 375ML\n2 left\n$7.00\nCBCO PALE ALE 500ML\n$3.99\nCOLONIAL MIDDY LAGER 375ML\n$5.00\nCOOPERS LAGER 4.2%\n$8.00\nCOOPERS PALE ALE 750ML\n$5.00\nCOOPERS SPARKLING ALE 440ML\n$6.00\nCOOPERS SPK ALE BTL 375ML\n$6.00\nCOOPERS STOUT STUBBIE 375ML\n$5.00\nCUSTARD & CO CIDER\n$5.00\nCUSTARD & CO CIDER DRY\n2 left\n$300.00\nEXPORT BEER GOLD 50L\n2 left\n$6.00\nFERAL WAR HOG IPA CANS 375ML\n3 left\n$4.00\nFURPHY ALE CAN 375ML\n$4.00\nFURPHY ALE BTL 375ML\n$4.00\nGAGE ROADS ATOMIC PALE ALE\n$5.00\nGAGE ROADS IPA\n$4.00\nGOAT LAGER CAN 4.2%\n$6.00\nGRAND RIDGE GIPPSLAND GOLD PALE ALE\n1 left\n$7.00\nGUINNESS DRGHT STOUT 470ML\n$6.99\nHARCOURT APPLE CIDER 500ML\n1 left\n$7.00\nHARCOURT APPLE CIDER CANS\n$6.99\nHARCOURT DRY CIDER 500ML\n2 left\n$7.00\nHARCOURT DRY CIDER CANS\n$7.00\nHARCOURT PEAR CIDER CANS\n$8.00\nHAWKERS HAZY IPA 375ML\n$3.00\nHAWTHORN PALE ALE 330ML\n$5.50\nHEINEKEN LAGER CANS 500ML\n$8.00\nHOP NATION DREAMFEED HAZY IPA 6.5%\n$3.00\nIRON JACK LAGER 330ML BOTTLE\n$4.00\nIRON JACK LAGER 4.2% BOTTLE\n$3.80\nJAMES SQUIRE PALE ALE 345ML\n$3.99\nJAMES SQUIRE PEAR CIDER 345ML\n$7.00\nKILKENNY IRISH ALE CAN 470ML\n$3.99\nKOSCIUSZKO PALE ALE 330ML\n2 left\n$5.00\nMATILDA BAY ALE STUBBIES 375ML\n$49.99\nMATSOS ALC G/BEER CAN10PK330ML\n2 left\n",
+        "productLikeTexts": [
+          "🍺 $5.00 4 PINE PACIFIC ALE",
+          "🍺 $5.99 4 PINES JAP LAGER",
+          "🍺 $5.00 4 PINES PALE ALE CANS 375ML",
+          "🍺 $3.99 4 PINES SUMMER ALE CAN",
+          "🍺 $10.00 8.6 BEER 500ML",
+          "🍺 $5.00 ATOMIC BEER IPA 5.6% CANS",
+          "$8.00 BALTER HAZY IPA CANS",
+          "$8.00 BALTER IPA 375ML",
+          "🥃 $5.99 BULMERS ORIGINAL CIDER 4PK 330",
+          "🍺 $6.00 Becks Beer Can 500ml",
+          "$8.00 Beerfarm Hazy Pale Ale Can 375ml",
+          "$7.00 CAPITAL BREWING COAST ALE"
+        ],
+        "viewportImages": [
+          {
+            "alt": "",
+            "complete": true,
+            "loaded": true,
+            "source": "/images/ai-glass-orb.webp"
+          }
+        ],
+        "aiLauncher": {
+          "x": 173,
+          "y": 8,
+          "right": 217,
+          "bottom": 52
+        },
+        "aiTextOverlaps": [],
+        "horizontalOverflow": false,
+        "imageWaitTimedOut": false
+      }
+    },
+    {
+      "width": 1440,
+      "status": "PASS",
+      "errors": [],
+      "state": {
+        "title": "Sell",
+        "bodyTextSample": "Orithos\nSell\nDashboard\nStock\nCustomers\nOrithos AI\nReports\nSetup\n\nadmin\n\nSkip to main content\nSell\norithos_store1\nQuick Keys\nParked Sales\nMore Actions\nBack to Quick Keys\nBeer\nHide out of stock\n🍺\n$5.00\n4 PINE PACIFIC ALE\n🍺\n$5.99\n4 PINES JAP LAGER\n🍺\n$5.00\n4 PINES PALE ALE CANS 375ML\n🍺\n$3.99\n4 PINES SUMMER ALE CAN\n🍺\n$10.00\n8.6 BEER 500ML\n🍺\n$5.00\nATOMIC BEER IPA 5.6% CANS\n$8.00\nBALTER HAZY IPA CANS\n$8.00\nBALTER IPA 375ML\n🥃\n$5.99\nBULMERS ORIGINAL CIDER 4PK 330\n🍺\n$6.00\nBecks Beer Can 500ml\n🍺\n$8.00\nBeerfarm Hazy Pale Ale Can 375ml\n🍺\n$7.00\nCAPITAL BREWING COAST ALE\n🍺\n$5.00\nCBCO GOLDY LAGER 375ML\n🍺\n$5.99\nCBCO NEPA PALE ALE CAN 375ML\n2 left\n🍺\n$7.00\nCBCO PALE ALE 500ML\n🍺\n$3.99\nCOLONIAL MIDDY LAGER 375ML\n🍺\n$5.00\nCOOPERS LAGER 4.2%\n🍺\n$8.00\nCOOPERS PALE ALE 750ML\n🍺\n$5.00\nCOOPERS SPARKLING ALE 440ML\n🍺\n$6.00\nCOOPERS SPK ALE BTL 375ML\n🍺\n$6.00\nCOOPERS STOUT STUBBIE 375ML\n$5.00\nCUSTARD & CO CIDER\n$5.00\nCUSTARD & CO CIDER DRY\n2 left\n$300.00\nEXPORT BEER GOLD 50L\n2 left\n$6.00\nFERAL WAR HOG IPA CANS 375ML\n3 left\n$4.00\nFURPHY ALE CAN 375ML\n$4.00\nFURPHY ALE BTL 375ML\n$4.00\nGAGE ROADS ATOMIC PALE ALE\n$5.00\nGAGE ROADS IPA\n$4.00\nGOAT LAGER CAN 4.2%\n$6.00\nGRAND RIDGE GIPPSLAND GOLD PALE ALE\n1 left\n$7.00\nGUINNESS DRGHT STOUT 470ML\n$6.99\nHARCOURT APPLE CIDER 500ML\n1 left\n$7.00\nHARCOURT APPLE CIDER CANS\n$6.99\nHARCOURT DRY CIDER 500ML\n2 left\n$7.00\nHARCOURT DRY CIDER CANS\n$7.00\nHARCOURT PEAR CIDER CANS\n$8.00\nHAWKERS HAZY IPA 375ML\n$3.00\nHAWTHORN PALE ALE 330ML\n$5.50\nHEINEKEN LAGER CANS 500ML\n$8.00\nHOP NATION DREAMFEED HAZY IPA 6.5%\n$3.00\nIRON JACK LAGER 330ML BOTTLE\n$4.00\nIRON JACK LAGER 4.2% BOTTLE\n$3.80\nJAMES SQUIRE PALE ALE 345ML\n$3.99\nJAMES SQUIRE PEAR CIDER 345ML\n$7.00\nKILKENNY IRISH ALE CAN 470ML\n$3.99\nKOSCIUSZKO PALE ALE 330ML\n2 left\n$5.00\nMATILDA BAY ALE STUBBIES 375ML\n$49.99\nM",
+        "productLikeTexts": [
+          "🍺 $5.00 4 PINE PACIFIC ALE",
+          "🍺 $5.99 4 PINES JAP LAGER",
+          "🍺 $5.00 4 PINES PALE ALE CANS 375ML",
+          "🍺 $3.99 4 PINES SUMMER ALE CAN",
+          "🍺 $10.00 8.6 BEER 500ML",
+          "🍺 $5.00 ATOMIC BEER IPA 5.6% CANS",
+          "$8.00 BALTER HAZY IPA CANS",
+          "$8.00 BALTER IPA 375ML",
+          "🥃 $5.99 BULMERS ORIGINAL CIDER 4PK 330",
+          "🍺 $6.00 Becks Beer Can 500ml",
+          "🍺 $8.00 Beerfarm Hazy Pale Ale Can 375ml",
+          "🍺 $7.00 CAPITAL BREWING COAST ALE"
+        ],
+        "viewportImages": [
+          {
+            "alt": "",
+            "complete": true,
+            "loaded": true,
+            "source": "/images/ai-glass-orb.webp"
+          }
+        ],
+        "aiLauncher": {
+          "x": 1352,
+          "y": 200,
+          "right": 1416,
+          "bottom": 264
+        },
+        "aiTextOverlaps": [],
+        "horizontalOverflow": false,
+        "imageWaitTimedOut": false
+      }
+    }
+  ]
+}
