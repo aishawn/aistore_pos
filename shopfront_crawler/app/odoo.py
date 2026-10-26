@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import httpx
@@ -34,11 +35,23 @@ class OdooSyncClient:
         tokens = [self.token] + ([self.fallback_token] if self.fallback_token else [])
         last_error = "Odoo import failed"
         for token in tokens:
-            response = await self.http.post(
-                f"{self.base_url}/api/shopfront/sync",
-                json=payload,
-                headers={"X-Shopfront-Integration-Token": token, "X-Odoo-Database": self.database, "Accept": "application/json"},
-            )
+            response = None
+            for attempt in range(4):
+                try:
+                    response = await self.http.post(
+                        f"{self.base_url}/api/shopfront/sync",
+                        json=payload,
+                        headers={"X-Shopfront-Integration-Token": token, "X-Odoo-Database": self.database, "Accept": "application/json"},
+                    )
+                    if response.status_code not in {502, 503, 504}:
+                        break
+                    last_error = f"Odoo API failed ({response.status_code}): {response.text[:500]}"
+                except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                    last_error = f"Odoo connection failed: {exc!r}"
+                if attempt < 3:
+                    await asyncio.sleep(2 ** attempt)
+            if response is None:
+                continue
             if response.status_code >= 400:
                 last_error = f"Odoo API failed ({response.status_code}): {response.text[:500]}"
                 continue
