@@ -112,7 +112,7 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
   const minY = height + (mobile ? 64 : margin);
   const maxY = Math.max(minY, window.innerHeight - bottomInset);
   const obstacles = Array.from(document.querySelectorAll<HTMLElement>(
-    "button, a, input, select, textarea, [role='button'], h1, h2, h3, p, label, dt, dd",
+    "button, a, input, select, textarea, [role='button'], h1, h2, h3, p, label, dt, dd, span",
   )).flatMap((element) => {
     if (element.closest("[data-ai-fab]") || element.getClientRects().length === 0) return [];
     const style = window.getComputedStyle(element);
@@ -120,7 +120,14 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
     const rect = element.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0 || rect.right <= 0 || rect.bottom <= 0 || rect.left >= window.innerWidth || rect.top >= window.innerHeight) return [];
     const interactive = element.matches("button, a, input, select, textarea, [role='button']");
-    if (!interactive && !element.textContent?.trim()) return [];
+    const text = element.textContent?.trim();
+    const compactText = element.matches("span")
+      && (style.display === "inline-flex" || style.display === "inline-block")
+      && rect.width <= 180
+      && rect.height <= 64
+      && Boolean(text)
+      && (text?.length ?? 0) <= 60;
+    if (!interactive && !element.matches("h1, h2, h3, p, label, dt, dd") && !compactText) return [];
     return [{ rect, weight: interactive ? 8 : 3 }];
   });
 
