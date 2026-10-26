@@ -400,9 +400,20 @@ async function recoverOdooSession() {
       cache: "no-store",
     })
       .then(async (response) => {
-        if (!response.ok) return false;
-        const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null } | null;
-        return Boolean(payload?.user);
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          if (response.ok) {
+            const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null } | null;
+            if (payload?.user) return true;
+          }
+          if (attempt === 0) {
+            response = await fetch("/api/odoo/session", {
+              method: "GET",
+              credentials: "same-origin",
+              cache: "no-store",
+            });
+          }
+        }
+        return false;
       })
       .catch(() => false)
       .finally(() => { odooRecoveryInFlight = null; });
@@ -413,13 +424,19 @@ async function recoverOdooSession() {
 async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false) {
   const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
+  const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+  const canRetryRoute = canReplay || (method === "POST" && path === "/api/odoo/session");
   let response = await fetch(input, init);
+  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute) {
+    response = await fetch(input, init);
+  }
   if (response.status !== 401 || isLocalPreviewSession()) return response;
 
   // Odoo-backed routes use their own session cookie. Recover it before refreshing
   // the unrelated Orithos access token, then replay only requests proven safe.
   if (canReplay && await recoverOdooSession()) {
     response = await fetch(input, init);
+    if (response.status === 401 && canRetryRoute) response = await fetch(input, init);
     if (response.status !== 401) return response;
   }
 
@@ -439,7 +456,9 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
 
   const recovered = await recoverOdooSession();
   if (recovered && canReplay) {
-    return fetch(input, init);
+    response = await fetch(input, init);
+    if (response.status === 401 && canRetryRoute) return fetch(input, init);
+    return response;
   }
 
   // Recover credentials in the background, but never replay a write request.
