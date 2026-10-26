@@ -67,7 +67,8 @@ export async function postAuthBackend(
     const forwardedHost = forwardFrom.headers.get("x-forwarded-host")?.split(",")[0].trim()
       || forwardFrom.headers.get("host");
     if (forwardedHost) headers["X-Forwarded-Host"] = forwardedHost;
-    const tenantSlug = forwardFrom.headers.get("x-orithos-tenant-slug");
+    const tenantSlug = forwardFrom.headers.get("x-orithos-tenant-slug")
+      || forwardedHost?.match(/^([a-z0-9-]+)\.orithos\.com\.au(?::\d+)?$/i)?.[1];
     if (tenantSlug) headers["X-Orithos-Tenant-Slug"] = tenantSlug;
     const forwardedProto = forwardFrom.headers.get("x-forwarded-proto")?.split(",")[0].trim();
     if (forwardedProto) headers["X-Forwarded-Proto"] = forwardedProto;

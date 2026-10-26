@@ -51,6 +51,9 @@ async function proxy(request: NextRequest, context: RouteContext) {
     const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
       || request.headers.get("host");
     if (forwardedHost) headers.set("x-forwarded-host", forwardedHost);
+    const tenantSlug = request.headers.get("x-orithos-tenant-slug")
+      || forwardedHost?.match(/^([a-z0-9-]+)\.orithos\.com\.au(?::\d+)?$/i)?.[1];
+    if (tenantSlug) headers.set("x-orithos-tenant-slug", tenantSlug);
     const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
     if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);
     const forwardedFor = request.headers.get("x-forwarded-for");
