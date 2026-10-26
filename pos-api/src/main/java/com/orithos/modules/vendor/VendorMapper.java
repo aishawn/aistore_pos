@@ -50,7 +50,7 @@ public interface VendorMapper {
     @Insert("""
             INSERT INTO vendor (name, subdomain, status, url, contact_name, trial_ends_at, outlet_id, dummy_data_requested)
             VALUES (#{name}, #{subdomain}, #{status}, #{url}, #{contactName}, #{trialEndsAt}, #{outletId},
-                    COALESCE(#{dummyDataRequested}, 0))
+                    COALESCE(#{dummyDataRequested}, FALSE))
             """)
     int insert(Vendor vendor);
 
