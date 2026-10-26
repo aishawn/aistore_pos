@@ -296,12 +296,11 @@ async def push_pos_snapshot(db: Session, store_key: str) -> None:
     sales = db.scalars(select(Sale).where(Sale.store_key == store_key)).all()
     incomplete = [sale.shopfront_sale_id for sale in sales if not sale.shopfront_sale_id or not sale.items]
     if incomplete:
-        logger.warning("POS sales push blocked: store=%s incomplete_sales=%s", store_key, len(incomplete))
-        return
+        logger.warning("POS formal sale import pending complete details: store=%s incomplete_sales=%s", store_key, len(incomplete))
     payloads = {
-        "products": {"store_key": store_key, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price} for p in products]},
-        "inventory": {"store_key": store_key, "replace": True, "items": [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp} for row in inventory]},
-        "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total} for item in sale.items]} for sale in sales]},
+        "products": {"store_key": store_key, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload} for p in products]},
+        "inventory": {"store_key": store_key, "replace": True, "items": [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp, "raw_payload": row.raw_payload} for row in inventory]},
+        "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]} for sale in sales]},
     }
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
