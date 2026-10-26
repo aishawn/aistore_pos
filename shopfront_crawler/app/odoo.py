@@ -25,7 +25,12 @@ class OdooSyncClient:
             raise OdooIntegrationError("Odoo import is disabled")
         if not self.base_url or not self.token:
             raise OdooIntegrationError("Odoo integration URL/token is not configured")
-        payload = {"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items}
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items},
+            "id": None,
+        }
         tokens = [self.token] + ([self.fallback_token] if self.fallback_token else [])
         last_error = "Odoo import failed"
         for token in tokens:
