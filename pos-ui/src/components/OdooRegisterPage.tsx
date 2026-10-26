@@ -1419,7 +1419,6 @@ export function OdooRegisterPage() {
           cashTendered={cashTendered}
           tenderedAmount={tenderedAmount}
           changeDue={changeDue}
-          cardPaymentConfirmed={cardPaymentConfirmed}
           confirmedMatches={confirmedPaymentKey === paymentConfirmationKey}
           quoteIsCurrent={quoteIsCurrent}
           totalWhole={totalWhole}

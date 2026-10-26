@@ -23,7 +23,6 @@ type OdooSellPaymentBarProps = {
   cashTendered: string;
   tenderedAmount: number;
   changeDue: number;
-  cardPaymentConfirmed: boolean;
   confirmedMatches: boolean;
   quoteIsCurrent: boolean;
   totalWhole: string;
@@ -56,7 +55,6 @@ export function OdooSellPaymentBar({
   cashTendered,
   tenderedAmount,
   changeDue,
-  cardPaymentConfirmed,
   confirmedMatches,
   quoteIsCurrent,
   totalWhole,
@@ -179,9 +177,6 @@ export function OdooSellPaymentBar({
           )}
           {!isCashPayment && paymentMethodId && (
             <div className="flex min-w-[280px] flex-1 flex-col gap-1.5">
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
-                Card · Step {cardPaymentConfirmed ? "2 of 2" : "1 of 2"}
-              </p>
               <button
                 ref={paymentConfirmRef}
                 id="odoo-payment-terminal-confirm"
