@@ -147,6 +147,21 @@ public class ShopfrontIntegrationController {
         return ApiResult.ok(result);
     }
 
+    @GetMapping("/match-status")
+    public ApiResult<Map<String, Object>> matchStatus(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String storeKey) {
+        authorize(supplied);
+        ensureShadowTables();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", storeKey);
+        result.put("products", count("shopfront_product", storeKey));
+        result.put("barcode_matched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND sp.barcode IS NOT NULL AND EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode)", Integer.class, storeKey));
+        result.put("barcode_unmatched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
+        result.put("sales_with_unmatched_items", jdbc.queryForObject("SELECT COUNT(DISTINCT ss.external_id) FROM shopfront_sale ss JOIN shopfront_sale_item si ON si.store_key = ss.store_key AND si.external_sale_id = ss.external_id LEFT JOIN shopfront_product sp ON sp.store_key = ss.store_key AND sp.source_id = si.source_product_id WHERE ss.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
+        return ApiResult.ok(result);
+    }
+
     @GetMapping("/import-runs/{id}")
     public ApiResult<Map<String, Object>> run(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                               @PathVariable long id) {
