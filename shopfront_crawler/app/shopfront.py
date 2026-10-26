@@ -110,7 +110,20 @@ BY outlet
 START '{start}'
 END '{end}'
 UNCONSOLIDATED'''
-        return await self.run_report(access_token, query)
+        try:
+            return await self.run_report(access_token, query)
+        except ShopfrontError:
+            if start != end:
+                raise
+            # A few historical business dates reject an end date without a
+            # time component. Retry that single-day window explicitly.
+            fallback = f'''SELECT BY_NAME, revenue, cost, revenue - cost AS "Profit", timestamp
+FROM sales
+BY outlet
+START '{start} 00:00:00'
+END '{end} 23:59:59'
+UNCONSOLIDATED'''
+            return await self.run_report(access_token, fallback)
 
     async def fetch_sales_graphql(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
