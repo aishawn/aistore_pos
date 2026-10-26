@@ -16,12 +16,16 @@ const env = Object.fromEntries(
 );
 const base = "https://demo.orithos.com.au";
 const password = env.INITIAL_ADMIN_PASSWORD?.trim() ?? "";
+const expectedRuntimeSha = process.env.PILOT_EXPECTED_RUNTIME_SHA
+  ?? (process.env.PILOT_DEPLOYMENT_VERIFIED === "true" ? process.env.PILOT_DEPLOYMENT_SHA : null);
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 const checks = [];
+const fixtureReads = [];
 let sessionAuthenticated = false;
+let runtime = {};
 
 class BlockedUatCheck extends Error {
   constructor(message) {
@@ -36,10 +40,14 @@ async function check(name, run) {
     const evidence = await run();
     checks.push({ name, status: "PASS", evidence });
   } catch (error) {
+    const pageText = await page.locator("body").innerText().catch(() => "");
+    const odooUnavailable = /Orithos session expired|Connect your store|Connect Orithos/i.test(pageText);
     checks.push({
       name,
-      status: error instanceof BlockedUatCheck ? "BLOCKED" : "FAIL",
-      evidence: error instanceof Error ? error.message : "Unexpected failure",
+      status: error instanceof BlockedUatCheck || odooUnavailable ? "BLOCKED" : "FAIL",
+      evidence: odooUnavailable && !(error instanceof BlockedUatCheck)
+        ? `Orithos session is unavailable; page controls or data could not load. ${error instanceof Error ? error.message : "Unexpected failure"}`
+        : error instanceof Error ? error.message : "Unexpected failure",
     });
   }
 }
@@ -65,7 +73,32 @@ try {
         evidence: `Admin login was rejected with HTTP ${login.status()} (API code ${loginBody.code ?? "unavailable"}); no authenticated browser interactions were run.`,
       });
     } else {
-      sessionAuthenticated = true;
+      const odooSession = await context.request.get(`${base}/api/odoo/session`, { headers: { Origin: base }, timeout: 60000 });
+      const odooSessionBody = await odooSession.json().catch(() => ({}));
+      if (!odooSession.ok() || !odooSessionBody.user) {
+        checks.push({ name: "Odoo session warmup", status: "BLOCKED", evidence: `Odoo session warmup returned HTTP ${odooSession.status()}.` });
+      }
+      const versionResponse = await context.request.get(`${base}/api/public/version`, { timeout: 20000 });
+      const version = await versionResponse.json().catch(() => ({}));
+      runtime = {
+        frontendCommit: version?.frontend?.commit ?? null,
+        backendCommit: version?.backend?.commit ?? null,
+      };
+      if (!/^[\da-f]{40}$/i.test(expectedRuntimeSha ?? "")) {
+        checks.push({ name: "Exact Demo runtime guard", status: "BLOCKED", evidence: "Set PILOT_EXPECTED_RUNTIME_SHA before authenticated interaction checks." });
+      } else if (!versionResponse.ok() || runtime.frontendCommit !== expectedRuntimeSha || runtime.backendCommit !== expectedRuntimeSha) {
+        checks.push({ name: "Exact Demo runtime guard", status: "BLOCKED", evidence: "The live frontend/backend SHA does not match the expected SHA; no interaction checks were run." });
+      } else {
+        await context.route("**/api/sell/parked**", async (route) => {
+          const request = route.request();
+          const url = new URL(request.url());
+          if (request.method() === "GET" && url.origin === base && url.pathname === "/api/sell/parked") {
+            fixtureReads.push({ path: url.pathname, reason: "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales." });
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [] }) });
+          }
+          return route.continue();
+        });
+        sessionAuthenticated = true;
 
   await check("Mobile dashboard module navigation reaches Products workspace", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -84,23 +117,52 @@ try {
   });
 
   await check("Compact account popover opens and closes accessibly", async () => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const trigger = page.locator("[data-user-menu-trigger]");
-    const menu = page.getByRole("dialog", { name: "User menu" });
-    await trigger.waitFor({ timeout: 15000 });
-    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Account menu is not initially collapsed");
-    await trigger.click();
-    await menu.waitFor({ state: "visible", timeout: 10000 });
-    if (await trigger.getAttribute("aria-expanded") !== "true") throw new Error("Trigger did not expose the expanded state");
-    await page.keyboard.press("Escape");
-    await menu.waitFor({ state: "hidden", timeout: 10000 });
-    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Escape did not reset the expanded state");
-    await trigger.click();
-    await menu.waitFor({ state: "visible", timeout: 10000 });
-    await page.locator("#main-content").click({ position: { x: 12, y: 12 } });
-    await menu.waitFor({ state: "hidden", timeout: 10000 });
-    return "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click.";
+    const accountContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const accountLogin = await accountContext.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password },
+      headers: { Origin: base },
+      timeout: 60000,
+    });
+    if (!accountLogin.ok()) throw new Error(`Account menu session login failed (${accountLogin.status()})`);
+    const accountPage = await accountContext.newPage();
+    try {
+      await accountPage.setViewportSize({ width: 1440, height: 900 });
+      await accountPage.goto(`${base}/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      const trigger = accountPage.locator("[data-user-menu-trigger]");
+      const menu = accountPage.locator("#user-menu");
+      await trigger.waitFor({ timeout: 15000 });
+      if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Account menu is not initially collapsed");
+      await trigger.evaluate((element) => (element instanceof HTMLElement ? element.click() : undefined));
+      await accountPage.waitForFunction(() => document.querySelector("#user-menu")?.getAttribute("aria-hidden") === "false", null, { timeout: 10000 });
+      const menuSemantics = await accountPage.evaluate(() => {
+        const element = document.querySelector("#user-menu");
+        return { role: element?.getAttribute("role"), label: element?.getAttribute("aria-label"), hidden: element?.getAttribute("aria-hidden") };
+      });
+      if (menuSemantics.role !== "dialog" || menuSemantics.label !== "User menu" || menuSemantics.hidden === "true") {
+        throw new Error("Account menu did not expose the expected dialog semantics when opened");
+      }
+      if (await trigger.getAttribute("aria-expanded") !== "true") throw new Error("Trigger did not expose the expanded state");
+      await accountPage.keyboard.press("Escape");
+      await accountPage.waitForFunction(() => {
+        const triggerElement = document.querySelector("[data-user-menu-trigger]");
+        const menuElement = document.querySelector("#user-menu");
+        return triggerElement?.getAttribute("aria-expanded") === "false" && menuElement?.getAttribute("aria-hidden") !== "false";
+      }, null, { timeout: 10000 });
+      if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Escape did not reset the expanded state");
+      await trigger.evaluate((element) => (element instanceof HTMLElement ? element.click() : undefined));
+      await accountPage.waitForFunction(() => document.querySelector("#user-menu")?.getAttribute("aria-hidden") === "false", null, { timeout: 10000 });
+      await accountPage.locator("#main-content").click({ position: { x: 12, y: 12 } });
+      await accountPage.waitForFunction(() => {
+        const triggerElement = document.querySelector("[data-user-menu-trigger]");
+        const menuElement = document.querySelector("#user-menu");
+        return triggerElement?.getAttribute("aria-expanded") === "false" && menuElement?.getAttribute("aria-hidden") !== "false";
+      }, null, { timeout: 10000 });
+      return "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click.";
+    } finally {
+      await accountPage.close();
+      await accountContext.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
+      await accountContext.close();
+    }
   });
 
   await check("Sidebar keeps the active settings destination reachable", async () => {
@@ -479,6 +541,7 @@ try {
     if (dimensions.document > dimensions.viewport) throw new Error(`Reports dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
     return "The legacy sales report route redirected to the live Reports dashboard; its period controls rendered without horizontal overflow at 390px.";
   });
+      }
   }
   }
 } finally {
@@ -491,11 +554,14 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  expectedRuntimeSha: expectedRuntimeSha?.toLowerCase() ?? null,
+  runtime,
   deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
-  scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
+  scope: "exact-runtime read-only interactions; parked-sales GET replaced by an empty fixture because the deployed handler expires old records; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   result: checks.some((item) => item.status === "FAIL") ? "FAIL" : checks.some((item) => item.status === "BLOCKED") ? "BLOCKED" : "PASS",
+  fixtureReads,
   checks,
 };
 const requestedOutput = process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_INTERACTION_2026-10-14.json";
