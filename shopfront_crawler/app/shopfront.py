@@ -65,8 +65,8 @@ class ShopfrontClient:
         requests = 0
         while True:
             requests += 1
-            if requests > 120:
-                raise ShopfrontError("Incomplete report exceeded 120 requests")
+            if requests > 12:
+                raise ShopfrontError("Incomplete report did not complete after 12 polls")
             payload: dict[str, Any] = {"query": query, "disableFormat": False, "ignoreDivisionByZero": True}
             if key:
                 payload["key"] = key

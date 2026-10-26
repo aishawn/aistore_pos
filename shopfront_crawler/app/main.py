@@ -24,6 +24,7 @@ app = FastAPI(title="Shopfront Crawler", version="0.1.0")
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
+history_lock = __import__("asyncio").Lock()
 
 
 @app.on_event("startup")
@@ -237,14 +238,7 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # Keep report windows small enough for Shopfront's reporting
                 # backend; large historical windows can hang or return 500.
                 chunk_end = min(cursor + timedelta(days=max(1, settings.history_chunk_days - 1)), end)
-                try:
-                    await sync_store(db, settings, store, cursor, chunk_end, include_catalog=(cursor == start))
-                    if settings.pos_import_enabled:
-                        await push_pos_snapshot(db, store_key)
-                except Exception:
-                    # Shopfront may reject a large historical report. Split the
-                    # failed range into smaller requests before moving on.
-                    logger.exception("Shopfront chunk failed: store=%s from=%s to=%s", store_key, cursor, chunk_end)
+                await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, cursor == start)
                 cursor = chunk_end + timedelta(days=1)
                 if job_id is not None:
                     job = db.get(SyncJob, job_id)
@@ -255,6 +249,28 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         db.commit()
     finally:
         db.close()
+
+
+async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
+    try:
+        await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
+        if settings.pos_import_enabled:
+            await push_pos_snapshot(db, store_key)
+        return True
+    except Exception:
+        failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
+        if failed_run and start < end:
+            failed_run.status = "superseded"
+            failed_run.error = "split into smaller retry ranges"
+            db.commit()
+        if start >= end:
+            logger.exception("Shopfront single-day chunk failed: store=%s from=%s", store_key, start)
+            return False
+        midpoint = start + timedelta(days=(end - start).days // 2)
+        logger.warning("Splitting failed Shopfront range: store=%s from=%s to=%s", store_key, start, end)
+        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog)
+        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False)
+        return left and right
 
 
 async def push_pos_snapshot(db: Session, store_key: str) -> None:
@@ -291,6 +307,13 @@ async def scheduled_sync() -> None:
 
 
 async def run_history_job(job_id: int) -> None:
+    if history_lock.locked():
+        return
+    async with history_lock:
+        await _run_history_job(job_id)
+
+
+async def _run_history_job(job_id: int) -> None:
     db = next(get_db())
     try:
         job = db.get(SyncJob, job_id)
