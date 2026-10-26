@@ -3931,3 +3931,14 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - Direct Odoo JSON-RPC authentication against the unified `aipos_uat` target succeeds with the configured `ODOO_USER`/`ODOO_PASS` service account (`uid=2`). The POS `INITIAL_ADMIN_PASSWORD` is not the Odoo admin password for this database; this is expected because POS and Odoo credentials are separate variables.
 - After the subsequent Dokploy deployment, runtime is `d3d97bacad2e4c670686e658b65f67d66008cfd2` on both frontend and backend. A second Demo customer-group CRUD run on that exact runtime passed all 11 checks, including HTTP 201 create and final absence cleanup; marker `Codex UAT Group 1793034173177` was removed.
 - Read-only checkout quote on the exact runtime returned HTTP 200 for Demo product ID 5 at `$32.00`, but GST/tax was `0` and the product record has no tax IDs. No checkout write was sent. This is a release blocker until the correct Australian GST configuration is supplied and the quote, sale, refund and reports reconcile.
+@@
+## 2026-10-27 aipos_uat sales/refund closure on runtime `a6961f01`
+
+- Demo frontend/backend `/api/public/version` both report exact commit `a6961f01c069a9fd99ffa986eb1468dae84bad98`.
+- All three configured Odoo database variables are intentionally `aipos_uat`: `ODOO_DATABASE`, `ODOO_DATABASE_UAT`, and `ISOLATION_ODOO_DATABASE`. `/api/public/uat-context` correctly reports `isolated=false` for this shared UAT arrangement.
+- Fresh admin and Odoo sessions succeeded. POS bootstrap bound tenant 1 to company 2, config 1, open session `Orithos UAT Pilot Register/00001`.
+- One unique cash sale passed: receipt `260-1-000044`, sale ID `4871`, product 5 quantity 1, `$32.00` subtotal + `$3.20` GST = `$35.20`, tendered `$35.20`, change `$0.00`.
+- Full refund passed: receipt `260-1-000045`, refund sale ID `5144`, linked to sale `4871`; refund total `-$35.20` and original line `9476` has `refunded_qty=1`. Product 5 stock reads `23` after the sale/refund pair, with 10% tax ID `44` and inclusive price `$35.20`.
+- Evidence: [UAT_SALES_REFUND_AIPOS_UAT_2026-10-27_RUNTIME-A6961F01.json](UAT_SALES_REFUND_AIPOS_UAT_2026-10-27_RUNTIME-A6961F01.json).
+- A diagnostic checkout with a human-readable order key was rejected with HTTP 400 before any write; the API requires a standard UUID and the UI uses `crypto.randomUUID()`. No source change was needed.
+- Release remains **NO-GO** for customer production. Register close and cash reconciliation, procurement receiving, stocktake conflict/retry, backup restore, cross-tenant denial and physical device checks are still required. Shared `aipos_uat` is suitable for controlled trial data only.

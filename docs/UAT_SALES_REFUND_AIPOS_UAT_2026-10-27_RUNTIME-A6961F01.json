@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-10-26T17:48:17Z",
+  "target": "https://demo.orithos.com.au",
+  "runtime": {
+    "frontendCommit": "a6961f01c069a9fd99ffa986eb1468dae84bad98",
+    "backendCommit": "a6961f01c069a9fd99ffa986eb1468dae84bad98",
+    "odooDatabase": "aipos_uat",
+    "odooDatabaseUat": "aipos_uat",
+    "isolationOdooDatabase": "aipos_uat",
+    "uatContextIsolated": false,
+    "odooCompany": [2, "Orithos UAT Pilot [Orithos 2]"],
+    "posConfig": [1, "Orithos UAT Pilot Register"],
+    "posSession": [1, "Orithos UAT Pilot Register/00001"]
+  },
+  "result": "PASS_WITH_LIMITATIONS",
+  "checks": [
+    {
+      "name": "cash-sale",
+      "status": "PASS",
+      "saleId": 4871,
+      "receipt": "260-1-000044",
+      "amount": 35.2,
+      "subtotalExGst": 32,
+      "gst": 3.2,
+      "tendered": 35.2,
+      "change": 0,
+      "productId": 5,
+      "quantity": 1
+    },
+    {
+      "name": "full-refund",
+      "status": "PASS",
+      "refundSaleId": 5144,
+      "receipt": "260-1-000045",
+      "refundOfSaleId": 4871,
+      "amount": -35.2,
+      "subtotalExGst": -32,
+      "gst": -3.2,
+      "productId": 5,
+      "quantity": -1,
+      "originalLineRefundedQty": 1
+    },
+    {
+      "name": "stock-after-sale-and-refund",
+      "status": "PASS",
+      "productId": 5,
+      "qtyAvailable": 23,
+      "freeQty": 23,
+      "taxId": 44,
+      "priceIncluded": 35.2,
+      "priceTax": 3.2
+    },
+    {
+      "name": "parked-sales-read",
+      "status": "PASS",
+      "httpStatus": 200,
+      "items": 0,
+      "sideEffect": "No business write observed; response was an empty list."
+    }
+  ],
+  "limitations": [
+    "The shared aipos_uat database intentionally reports isolated=false; this is controlled UAT, not customer production isolation.",
+    "Register close, cash-count variance handling, procurement receiving, stocktake concurrency, backup restore, hardware and tenant-cross-access tests remain outstanding.",
+    "The checkout API requires orderUuid to be a standard UUID. A non-UUID diagnostic request was rejected with HTTP 400 before any write; the UI already generates crypto.randomUUID()."
+  ]
+}
