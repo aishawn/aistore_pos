@@ -269,9 +269,13 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
-        await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
+        run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
         if settings.pos_import_enabled:
-            await push_pos_snapshot(db, store_key, start, end)
+            pos_result = await push_pos_snapshot(db, store_key, start, end)
+            counts = dict(run.counts or {})
+            counts["pos_import"] = pos_result
+            run.counts = counts
+            db.commit()
         return True
     except Exception:
         failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
@@ -289,7 +293,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None) -> None:
+async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None) -> dict:
     """Push the current idempotent crawler snapshot to the POS boundary."""
     products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
@@ -311,16 +315,22 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]} for sale in sales]},
     }
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    sale_items = payloads["sales"]["items"]
+    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": len(sale_items), "error": None}
     try:
-        await client.upsert_products(jsonable_encoder(payloads["products"]))
-        await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
-        sale_items = payloads["sales"]["items"]
+        product_result = await client.upsert_products(jsonable_encoder(payloads["products"]))
+        inventory_result = await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
+        sale_batches = 0
         for offset in range(0, len(sale_items), 250):
             await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": sale_items[offset:offset + 250]}))
-    except Exception:
+            sale_batches += 1
+        result.update({"status": "completed", "sale_batches": sale_batches, "product_response": product_result, "inventory_response": inventory_result})
+    except Exception as exc:
+        result["error"] = str(exc)[:500]
         logger.exception("POS snapshot push failed: store=%s", store_key)
     finally:
         await client.close()
+    return result
 
 
 async def scheduled_sync() -> None:
