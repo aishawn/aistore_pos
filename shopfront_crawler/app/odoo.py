@@ -36,7 +36,11 @@ class OdooSyncClient:
         last_error = "Odoo import failed"
         for token in tokens:
             response = None
-            for attempt in range(4):
+            # Dokploy containers can briefly lose external DNS during a
+            # rolling deployment. Keep the batch alive long enough for DNS
+            # and the reverse proxy to recover instead of failing the whole
+            # multi-hour snapshot.
+            for attempt in range(10):
                 try:
                     response = await self.http.post(
                         f"{self.base_url}/api/shopfront/sync",
@@ -48,8 +52,8 @@ class OdooSyncClient:
                     last_error = f"Odoo API failed ({response.status_code}): {response.text[:500]}"
                 except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
                     last_error = f"Odoo connection failed: {exc!r}"
-                if attempt < 3:
-                    await asyncio.sleep(2 ** attempt)
+                if attempt < 9:
+                    await asyncio.sleep(min(30, 2 ** attempt))
             if response is None:
                 continue
             if response.status_code >= 400:
