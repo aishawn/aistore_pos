@@ -8,9 +8,10 @@ class OdooIntegrationError(RuntimeError):
 
 
 class OdooSyncClient:
-    def __init__(self, base_url: str, token: str, enabled: bool, http: httpx.AsyncClient | None = None):
+    def __init__(self, base_url: str, token: str, database: str, enabled: bool, http: httpx.AsyncClient | None = None):
         self.base_url = base_url.rstrip("/")
         self.token = token
+        self.database = database
         self.enabled = enabled
         self.http = http or httpx.AsyncClient(timeout=90)
 
@@ -25,7 +26,7 @@ class OdooSyncClient:
         response = await self.http.post(
             f"{self.base_url}/api/shopfront/sync",
             json={"type": import_type, "store_key": store_key, "items": items},
-            headers={"X-Shopfront-Integration-Token": self.token, "Accept": "application/json"},
+            headers={"X-Shopfront-Integration-Token": self.token, "X-Odoo-Database": self.database, "Accept": "application/json"},
         )
         if response.status_code >= 400:
             raise OdooIntegrationError(f"Odoo API failed ({response.status_code}): {response.text[:500]}")
