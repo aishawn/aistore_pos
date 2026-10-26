@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
@@ -123,7 +124,20 @@ BY outlet
 START '{start} 00:00:00'
 END '{end} 23:59:59'
 UNCONSOLIDATED'''
-            return await self.run_report(access_token, fallback)
+            try:
+                return await self.run_report(access_token, fallback)
+            except ShopfrontError:
+                # Some older records only accept a date-to-date window. The
+                # caller upserts by source ID, so the adjacent-day response is
+                # safe and preserves the target business date.
+                next_day = (date.fromisoformat(end) + timedelta(days=1)).isoformat()
+                adjacent = f'''SELECT BY_NAME, revenue, cost, revenue - cost AS "Profit", timestamp
+FROM sales
+BY outlet
+START '{start}'
+END '{next_day}'
+UNCONSOLIDATED'''
+                return await self.run_report(access_token, adjacent)
 
     async def fetch_sales_graphql(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
