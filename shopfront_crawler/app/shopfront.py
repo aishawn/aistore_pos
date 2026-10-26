@@ -67,9 +67,7 @@ class ShopfrontClient:
             requests += 1
             if requests > 12:
                 raise ShopfrontError("Incomplete report did not complete after 12 polls")
-            payload: dict[str, Any] = {"query": query, "disableFormat": False, "ignoreDivisionByZero": True}
-            if key:
-                payload["key"] = key
+            payload: dict[str, Any] = {"key": key} if key else {"query": query, "disableFormat": False, "ignoreDivisionByZero": True}
             data = (await self._request("/api/v2/reports", access_token, json=payload)).json()
             if data.get("error"):
                 raise ShopfrontError(data.get("message", "Shopfront report failed"))
