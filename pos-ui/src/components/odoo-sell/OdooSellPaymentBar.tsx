@@ -14,7 +14,6 @@ type OdooSellPaymentBarProps = {
   cardMethod: PaymentMethodLike | null;
   cashMethod: PaymentMethodLike | null;
   selectedPayment: PaymentMethodLike | null;
-  parkedLoaded: boolean;
   hasConfig: boolean;
   busy: boolean;
   isCashPayment: boolean;
@@ -32,10 +31,6 @@ type OdooSellPaymentBarProps = {
   onSelectCard: () => void;
   onSelectCash: () => void;
   onCashOut: () => void;
-  onCaseQuantity: () => void;
-  onReturnItem: () => void;
-  onDiscount: () => void;
-  onPark: () => void;
   onClear: () => void;
   onCashTenderedChange: (value: string) => void;
   onToggleTerminalConfirm: () => void;
@@ -48,7 +43,6 @@ export function OdooSellPaymentBar({
   cardMethod,
   cashMethod,
   selectedPayment,
-  parkedLoaded,
   hasConfig,
   busy,
   isCashPayment,
@@ -66,10 +60,6 @@ export function OdooSellPaymentBar({
   onSelectCard,
   onSelectCash,
   onCashOut,
-  onCaseQuantity,
-  onReturnItem,
-  onDiscount,
-  onPark,
   onClear,
   onCashTenderedChange,
   onToggleTerminalConfirm,
@@ -112,38 +102,6 @@ export function OdooSellPaymentBar({
           title={!hasConfig ? "Open a register session before recording cash out" : "Record cash taken from the register"}
         >
           Cash Out
-        </AdminSecondaryButton>
-        <AdminSecondaryButton
-          className={cn("min-h-11", !linesLength && "opacity-45")}
-          onClick={onCaseQuantity}
-          disabled={!linesLength}
-          title={linesLength ? "Switch pack size on the selected line: Each → 6 → 12 → 24 (does not add another case)" : "Add a product first"}
-        >
-          Case Quantity
-        </AdminSecondaryButton>
-        <AdminSecondaryButton
-          className={cn("min-h-11", !linesLength && "opacity-45")}
-          onClick={onReturnItem}
-          disabled={!linesLength}
-          title="Open completed sales to select and record a full refund"
-        >
-          Return Item
-        </AdminSecondaryButton>
-        <AdminSecondaryButton
-          className={cn("min-h-11", !linesLength && "opacity-45")}
-          onClick={onDiscount}
-          disabled={!linesLength}
-          title="Apply a percentage discount to the selected cart line"
-        >
-          Discount
-        </AdminSecondaryButton>
-        <AdminSecondaryButton
-          className={cn("min-h-11", (!linesLength || !parkedLoaded || !hasConfig || busy) && "opacity-45")}
-          onClick={onPark}
-          disabled={!linesLength || !parkedLoaded || !hasConfig || busy}
-          title={!linesLength ? "Nothing to park" : "Save this cart on this terminal"}
-        >
-          Park Sale
         </AdminSecondaryButton>
         <AdminSecondaryButton
           className={cn(

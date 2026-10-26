@@ -30,6 +30,14 @@ type OdooSellCatalogWorkspaceProps = {
   targetLineQuantity: number;
   onIncrementQty: () => void;
   onDecrementQty: () => void;
+  onCaseQuantity: () => void;
+  onReturnItem: () => void;
+  onDiscount: () => void;
+  onPark: () => void;
+  onClear: () => void;
+  parkedLoaded: boolean;
+  hasConfig: boolean;
+  busy: boolean;
   backToCatalogHome: () => void;
   categoryId: number | null;
   query: string;
@@ -64,6 +72,14 @@ export function OdooSellCatalogWorkspace({
   targetLineQuantity,
   onIncrementQty,
   onDecrementQty,
+  onCaseQuantity,
+  onReturnItem,
+  onDiscount,
+  onPark,
+  onClear,
+  parkedLoaded,
+  hasConfig,
+  busy,
   backToCatalogHome,
   categoryId,
   query,
@@ -83,9 +99,9 @@ export function OdooSellCatalogWorkspace({
   onLoadMoreProducts,
   onAddProduct,
 }: OdooSellCatalogWorkspaceProps) {
-  const lineQtyControls = (
-    <div className="hidden lg:block">
-      <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line quantity</p>
+  const lineControls = (
+    <div>
+      <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line controls</p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -102,6 +118,56 @@ export function OdooSellCatalogWorkspace({
           className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           − Qty
+        </button>
+        <button
+          type="button"
+          disabled={!linesLength}
+          onClick={onCaseQuantity}
+          title={linesLength ? "Switch pack size on the selected line: Each → 6 → 12 → 24" : "Add a product first"}
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Case Qty
+        </button>
+        <button
+          type="button"
+          disabled={!linesLength}
+          onClick={onReturnItem}
+          title="Open completed sales to select and record a full refund"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Return Item
+        </button>
+        <button
+          type="button"
+          disabled={!linesLength}
+          onClick={onDiscount}
+          title="Apply a percentage discount to the selected cart line"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Discount
+        </button>
+        <button
+          type="button"
+          disabled={!linesLength || !parkedLoaded || !hasConfig || busy}
+          onClick={onPark}
+          title={!linesLength ? "Nothing to park" : "Save this cart on this terminal"}
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Park Sale
+        </button>
+        <button
+          type="button"
+          disabled={!linesLength}
+          onClick={onClear}
+          title={linesLength ? "Clear the current cart" : "Cart is already empty"}
+          className={cn(
+            "min-h-11 rounded-lg border px-3 py-2 text-[13px] font-medium hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40",
+            linesLength
+              ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)]"
+              : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text-secondary)]",
+          )}
+        >
+          Clear Sale
         </button>
       </div>
     </div>
@@ -178,7 +244,7 @@ export function OdooSellCatalogWorkspace({
           )}
           <p className="mt-3 text-[13px] text-[var(--oh-muted)]">Tap a category to browse products, or search in the cart panel.</p>
         </div>
-        {lineQtyControls}
+        {lineControls}
       </div>
     );
   }
@@ -381,7 +447,7 @@ export function OdooSellCatalogWorkspace({
           </div>
         )}
       </div>
-      {lineQtyControls}
+      {lineControls}
     </div>
   );
 }

@@ -1398,6 +1398,14 @@ export function OdooRegisterPage() {
                 targetLineQuantity={targetCartLine()?.quantity ?? 0}
                 onIncrementQty={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }}
                 onDecrementQty={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }}
+                onCaseQuantity={applyCaseQuantity}
+                onReturnItem={() => openSalesHistory()}
+                onDiscount={applyDiscount}
+                onPark={() => parkCurrentSale()}
+                onClear={requestClearSale}
+                parkedLoaded={parkedLoaded}
+                hasConfig={Boolean(selectedConfig)}
+                busy={busy}
                 backToCatalogHome={backToCatalogHome}
                 categoryId={categoryId}
                 query={query}
@@ -1429,7 +1437,6 @@ export function OdooRegisterPage() {
           cardMethod={cardMethod}
           cashMethod={cashMethod}
           selectedPayment={selectedPayment ?? null}
-          parkedLoaded={parkedLoaded}
           hasConfig={Boolean(selectedConfig)}
           busy={busy}
           isCashPayment={isCashPayment}
@@ -1447,10 +1454,6 @@ export function OdooRegisterPage() {
           onSelectCard={() => selectCardPayment()}
           onSelectCash={() => selectCashPayment(true)}
           onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutOpen(true); }}
-          onCaseQuantity={applyCaseQuantity}
-          onReturnItem={() => openSalesHistory()}
-          onDiscount={applyDiscount}
-          onPark={() => parkCurrentSale()}
           onClear={requestClearSale}
           onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}
           onToggleTerminalConfirm={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
