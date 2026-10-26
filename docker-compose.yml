@@ -117,6 +117,7 @@ services:
       SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
       SHOPFRONT_REDIRECT_URI: ${SHOPFRONT_REDIRECT_URI:-https://shopfront.orithos.com.au/oauth/shopfront/callback}
       SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_sales_reports see_products see_history}
+      SHOPFRONT_ENABLE_ADVANCED_REPORTS: ${SHOPFRONT_ENABLE_ADVANCED_REPORTS:-false}
       SHOPFRONT_STORES: ${SHOPFRONT_STORES:-skr:skr}
       DATABASE_URL: ${SHOPFRONT_DATABASE_URL:-sqlite:////data/shopfront_crawler.db}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}

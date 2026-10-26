@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Keep the initial consent request to permissions required for reporting,
     # product and inventory reads. Webhook permissions can be added later.
     shopfront_scopes: str = "run_sales_reports see_products see_history"
+    # Advanced reports are not required for the crawler and may not be
+    # enabled on every Shopfront application. Opt in only when needed.
+    shopfront_enable_advanced_reports: bool = False
     # Webhook permissions are optional and can make the consent request fail
     # before the Shopfront application has been granted them.
     shopfront_enable_webhooks: bool = False
@@ -46,6 +49,8 @@ class Settings(BaseSettings):
         scopes: list[str] = []
         for raw_scope in self.shopfront_scopes.replace(",", " ").split():
             scope = aliases.get(raw_scope.strip(), raw_scope.strip())
+            if scope == "run_advanced_reports" and not self.shopfront_enable_advanced_reports:
+                continue
             if scope in optional_webhook_scopes and not self.shopfront_enable_webhooks:
                 continue
             if scope and scope not in scopes:
