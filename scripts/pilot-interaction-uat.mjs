@@ -288,6 +288,9 @@ try {
   await check("New product form blocks submission without a name", async () => {
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const trigger = page.getByRole("button", { name: "New product" });
+    if (!(await trigger.isEnabled().catch(() => false))) {
+      throw new BlockedUatCheck("Odoo product workspace controls were not enabled after loading; a product fixture or session warmup is required.");
+    }
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "New product" });
     const name = dialog.getByLabel(/Product name/i);
@@ -343,6 +346,9 @@ try {
       }
       await more.click();
       await importButton.waitFor({ state: "visible", timeout: 10000 });
+      if (!(await importButton.isEnabled().catch(() => false))) {
+        throw new BlockedUatCheck("Odoo product data was still loading, so the CSV import control remained disabled.");
+      }
       await importButton.click();
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
