@@ -338,8 +338,10 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         try:
             product_response = await odoo_client.sync("products", store_key, jsonable_encoder(payloads["products"]["items"]))
             inventory_response = await odoo_client.sync("inventory", store_key, jsonable_encoder(payloads["inventory"]["items"]))
-            sale_response = await odoo_client.sync("sales", store_key, jsonable_encoder(sale_items))
-            odoo_result.update({"status": "completed", "product_response": product_response, "inventory_response": inventory_response, "sales_response": sale_response})
+            sale_responses = []
+            for offset in range(0, len(sale_items), 250):
+                sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(sale_items[offset:offset + 250])))
+            odoo_result.update({"status": "completed", "product_response": product_response, "inventory_response": inventory_response, "sales_response": sale_responses[-1] if sale_responses else None, "sale_batches": len(sale_responses), "incomplete_mirrored": len(incomplete)})
         except Exception as exc:
             odoo_result["error"] = str(exc)[:500]
             logger.exception("Odoo snapshot push failed: store=%s", store_key)
@@ -538,7 +540,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
     run = await _stage_pos_import(store, "sales", db)
     rows = db.scalars(select(Sale).where(Sale.store_key == store)).all()
     incomplete = [x.shopfront_sale_id for x in rows if not x.shopfront_sale_id or not x.items]
-    if incomplete:
+    if incomplete and settings.pos_business_write_enabled:
         run.status = "blocked"
         run.error = f"Sale detail is incomplete for {len(incomplete)} sales; formal POS import is blocked"
         run.counts = {"sales": len(rows), "blocked": len(incomplete)}
