@@ -82,8 +82,11 @@ services:
       AI_REPORT_RO_PASSWORD: ${AI_REPORT_RO_PASSWORD:-}
       # Sommelier / AI catalogue SoT — same service account as frontend auto-recover.
       ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
-      ODOO_DATABASE: ${ODOO_DATABASE:-aipos_uat}
-      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:-aipos_uat}
+      # Never silently point a production deployment at the shared UAT database.
+      # Dokploy must provide the database names explicitly for each environment.
+      ODOO_DATABASE: ${ODOO_DATABASE:?Set ODOO_DATABASE in Dokploy}
+      ODOO_DATABASE_UAT: ${ODOO_DATABASE_UAT:-aipos_uat}
+      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set ISOLATION_ODOO_DATABASE in Dokploy}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
       R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront
@@ -226,9 +229,10 @@ services:
       # of the browser bundle. Staff may sign in with their own Odoo users, or
       # an optional least-privilege service account can restore sessions.
       ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
-      ODOO_DATABASE: ${ODOO_DATABASE:-aipos_uat}
+      ODOO_DATABASE: ${ODOO_DATABASE:?Set ODOO_DATABASE in Dokploy}
+      ODOO_DATABASE_UAT: ${ODOO_DATABASE_UAT:-aipos_uat}
       ODOO_CATEGORY_WRITE_ENABLED: ${ODOO_CATEGORY_WRITE_ENABLED:-false}
-      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:-aipos_uat}
+      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set ISOLATION_ODOO_DATABASE in Dokploy}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
       R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront

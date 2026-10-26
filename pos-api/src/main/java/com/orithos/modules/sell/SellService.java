@@ -76,7 +76,6 @@ public class SellService {
 
     /** List parked (suspended) sales for the Parked Sales tab. */
     public List<Sale> listParked() {
-        expireOverdueParkedSales();
         LocalDate today = AustraliaTime.today();
         List<Sale> parked = saleMapper.page("PARKED", null, 50, 0);
         for (Sale sale : parked) {
@@ -89,7 +88,7 @@ public class SellService {
 
     /**
      * Void parked sales from before yesterday's Sydney business day.
-     * Called when the register lists parked sales and on a 15-minute schedule.
+     * Called by the scheduled cleanup job every 15 minutes.
      */
     public int expireOverdueParkedSales() {
         LocalDate today = AustraliaTime.today();
