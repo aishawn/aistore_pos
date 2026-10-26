@@ -44,7 +44,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             if (hostTenant.controlPlane()) {
                 String forwardedSlug = slugParser.normalizeSlug(
                         request.getHeader("X-Orithos-Tenant-Slug"));
-                if (forwardedSlug != null && !slugParser.isReserved(forwardedSlug)) {
+                // The BFF already rejects reserved infrastructure hosts before
+                // setting this header. Do not apply the backend's reserved
+                // list a second time: deployments may carry an old list that
+                // incorrectly contains a real tenant slug such as `skr`.
+                if (forwardedSlug != null) {
                     hostTenant = TenantSlugParser.HostTenant.tenant(forwardedSlug);
                 }
             }
