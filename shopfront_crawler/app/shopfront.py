@@ -62,25 +62,37 @@ class ShopfrontClient:
     async def run_report(self, access_token: str, query: str) -> list[dict[str, Any]]:
         pages: list[dict[str, Any]] = []
         key: str | None = None
-        seen_keys: set[str] = set()
+        requests = 0
         while True:
+            requests += 1
+            if requests > 120:
+                raise ShopfrontError("Incomplete report exceeded 120 requests")
             payload: dict[str, Any] = {"query": query, "disableFormat": False, "ignoreDivisionByZero": True}
             if key:
                 payload["key"] = key
             data = (await self._request("/api/v2/reports", access_token, json=payload)).json()
             if data.get("error"):
                 raise ShopfrontError(data.get("message", "Shopfront report failed"))
-            pages.append(data)
             if data.get("completed", True):
+                # A report can return the same continuation key while the
+                # asynchronous page is still being prepared. Replace that
+                # in-flight page instead of duplicating its rows.
+                if pages and key and data.get("key") == key:
+                    pages[-1] = data
+                else:
+                    pages.append(data)
                 break
-            key = data.get("key")
-            if not key:
+            next_key = data.get("key")
+            if not next_key:
                 raise ShopfrontError("Incomplete report has no continuation key")
-            if key in seen_keys:
-                raise ShopfrontError("Incomplete report repeated its continuation key")
-            seen_keys.add(key)
-            if len(seen_keys) >= 100:
-                raise ShopfrontError("Incomplete report exceeded 100 pages")
+            if pages and key == next_key:
+                pages[-1] = data
+                # Reporting is limited to 10 requests per minute. Repeated
+                # keys mean the server is still preparing this same page.
+                await asyncio.sleep(6)
+            else:
+                pages.append(data)
+            key = next_key
         rows: list[dict[str, Any]] = []
         for page in pages:
             report_data = (page.get("data") or {}).get("data", [])
