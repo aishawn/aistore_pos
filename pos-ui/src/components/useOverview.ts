@@ -56,7 +56,7 @@ export function useOverview() {
         return;
       }
       const response = await fetchOdooRoute(
-        "/api/odoo/reporting-dashboard?hours=24",
+        "/api/odoo/reporting-dashboard?hours=168",
         { cache: "no-store", credentials: "same-origin" },
       );
       const payload = await response.json();

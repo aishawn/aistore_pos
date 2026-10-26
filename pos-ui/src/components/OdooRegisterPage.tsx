@@ -21,6 +21,7 @@ import {
 } from "@/components/odoo-sell/shared";
 import {
   getOdooPosBootstrap,
+  openOdooPosSession,
   getOdooSession,
   quoteOdooPosOrder,
   postOdooSessionCash,
@@ -233,7 +234,7 @@ export function OdooRegisterPage() {
         setPaymentMethodId(null);
         return;
       }
-      const data = await getOdooPosBootstrap();
+      let data = await getOdooPosBootstrap();
       if (revision !== loadRevision.current) return;
       setBootstrap(data);
       let rememberedId: number | null = null;
@@ -241,10 +242,15 @@ export function OdooRegisterPage() {
         const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
         if (Number.isSafeInteger(stored) && stored > 0) rememberedId = stored;
       } catch { /* Register selection remains available for this session. */ }
-      const active = data.configs.find((item) => item.id === selectedConfigIdRef.current)
+      let active = data.configs.find((item) => item.id === selectedConfigIdRef.current)
         ?? data.configs.find((item) => item.id === rememberedId)
         ?? data.configs.find((item) => item.session)
         ?? data.configs[0];
+      if (active && !active.session) {
+        await openOdooPosSession(active.id);
+        data = await getOdooPosBootstrap();
+        active = data.configs.find((item) => item.id === active?.id) ?? data.configs[0];
+      }
       selectedConfigIdRef.current = active?.id ?? null;
       setConfigId(active?.id ?? null);
       if (active) {
@@ -1251,8 +1257,8 @@ export function OdooRegisterPage() {
 
       {!selectedConfig?.session && (
         <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-          <span>No open session — open one in Orithos, then refresh.</span>
-          <Link href="/" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Orithos POS</Link>
+          <span>No open session — Orithos will try to open this register automatically.</span>
+          <button type="button" onClick={() => void loadPos()} disabled={refreshing} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)] disabled:opacity-60">{refreshing ? "Opening…" : "Retry register"}</button>
         </div>
       )}
       {!isOnline && (

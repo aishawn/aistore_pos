@@ -504,6 +504,19 @@ export async function getOdooPosBootstrap(): Promise<OdooPosBootstrap> {
   return payload as OdooPosBootstrap;
 }
 
+/** Open a register through the server-side Odoo service account. */
+export async function openOdooPosSession(configId: number): Promise<void> {
+  const response = await fetchOdooApi("/api/odoo/session/open", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ configId }),
+  });
+  const payload = await response.json().catch(() => null) as { message?: string } | null;
+  if (!response.ok) throw new OdooApiError(payload?.message || `Could not open the Orithos register (${response.status})`, response.status);
+}
+
 export class OdooCheckoutPendingError extends Error {
   constructor(public readonly order: OdooCheckoutRequest) {
     super("The payment result is pending confirmation. Do not take payment again. Check the saved order before continuing.");
