@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-27",
+  "runtime": {
+    "baseUrl": "https://demo.orithos.com.au",
+    "commit": "835971d1041f64486333a04eb8eaa14710dc5abf",
+    "database": "aipos_uat"
+  },
+  "tenantBinding": {
+    "vendorId": 1,
+    "subdomain": "demo",
+    "odooCompanyId": 2,
+    "odooPosConfigId": 1,
+    "odooStockLocationId": 18,
+    "locationName": "UATPI/Stock",
+    "locationSource": "tenant-binding"
+  },
+  "checks": [
+    {
+      "name": "read-enabled",
+      "status": "PASS",
+      "httpStatus": 200,
+      "writeEnabled": true,
+      "expectedQty": 24
+    },
+    {
+      "name": "same-count-idempotent",
+      "status": "PASS",
+      "httpStatus": 200,
+      "applied": 0
+    },
+    {
+      "name": "count-adjustment",
+      "status": "PASS",
+      "httpStatus": 200,
+      "beforeQty": 24,
+      "countedQty": 25,
+      "actualQty": 25,
+      "applied": 1,
+      "adjustmentReferenceIds": [5]
+    },
+    {
+      "name": "duplicate-retry-idempotent",
+      "status": "PASS",
+      "httpStatus": 200,
+      "currentQty": 25,
+      "applied": 0
+    },
+    {
+      "name": "restore-test-fixture",
+      "status": "PASS",
+      "httpStatus": 200,
+      "beforeQty": 25,
+      "countedQty": 24,
+      "actualQty": 24,
+      "applied": 1
+    }
+  ],
+  "status": "PASS"
+}
