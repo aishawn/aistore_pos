@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-10-26T05:48:52.896Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "170f8e66db6e07d1d0240cc8de577f245f737ac2",
+  "sourceTreeDirty": true,
+  "expectedRuntimeCommit": "170f8e66db6e07d1d0240cc8de577f245f737ac2",
+  "runtime": {
+    "frontendCommit": "170f8e66db6e07d1d0240cc8de577f245f737ac2",
+    "backendCommit": "170f8e66db6e07d1d0240cc8de577f245f737ac2",
+    "matchesExpectedRuntimeCommit": true
+  },
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scope": "Mobile register add-to-cart, cart visibility, quantity update, and read-only quote; all other API mutations blocked",
+  "status": "FAIL",
+  "businessWrites": 0,
+  "blockedWrites": [],
+  "allowedReadPosts": [
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    }
+  ],
+  "optionalImageFailures": [
+    {
+      "path": "/api/odoo/products/780/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/781/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/628/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/1717/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/228/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/1562/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/1874/image",
+      "status": 404
+    },
+    {
+      "path": "/api/odoo/products/427/image",
+      "status": 404
+    }
+  ],
+  "screenshot": "docs/screenshots/register-cart-mobile-readonly/cart-390-170f8e66.png",
+  "checks": [
+    {
+      "name": "Cart button reveals cart within the mobile viewport",
+      "status": "PASS",
+      "details": {
+        "top": 673.25,
+        "bottom": 828,
+        "viewportHeight": 844,
+        "visible": true
+      }
+    },
+    {
+      "name": "Finalise action fits the mobile viewport without scrolling",
+      "status": "FAIL",
+      "details": {
+        "top": 1104.90625,
+        "bottom": 1148.90625,
+        "viewportHeight": 844,
+        "visible": false
+      }
+    },
+    {
+      "name": "Added product appears in cart",
+      "status": "PASS",
+      "details": {
+        "productName": "148 PINOT NOIR 750ML"
+      }
+    },
+    {
+      "name": "Cart quantity control updates line quantity",
+      "status": "PASS"
+    },
+    {
+      "name": "No browser errors or API read failures",
+      "status": "PASS",
+      "details": {
+        "errors": [],
+        "apiFailures": []
+      }
+    },
+    {
+      "name": "Back to products returns to the mobile catalogue",
+      "status": "FAIL"
+    }
+  ]
+}

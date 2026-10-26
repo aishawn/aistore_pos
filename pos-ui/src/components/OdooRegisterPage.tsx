@@ -193,6 +193,7 @@ export function OdooRegisterPage() {
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
   const [catalogHome, setCatalogHome] = useState(true);
   const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [selectedLineKey, setSelectedLineKey] = useState<string | null>(null);
   const [exactCashArmed, setExactCashArmed] = useState(false);
   const [clearSaleConfirm, setClearSaleConfirm] = useState(false);
@@ -1184,6 +1185,7 @@ export function OdooRegisterPage() {
     setQuery("");
     setProductActiveIndex(-1);
     setMobileCatalogOpen(false);
+    setMobileCartOpen(false);
   }
 
   const topCategories = posCategories.filter((category) => !category.parent_id);
@@ -1363,7 +1365,10 @@ export function OdooRegisterPage() {
               <OdooSellCatalogWorkspace
                 showCatalogHome={showCatalogHome}
                 showMobileCartButton={mobileCatalogOpen}
-                onViewCart={() => setMobileCatalogOpen(false)}
+                onViewCart={() => {
+                  setMobileCatalogOpen(false);
+                  setMobileCartOpen(true);
+                }}
                 categoriesError={categoriesError}
                 categoriesLoading={categoriesLoading}
                 categoryTiles={categoryTiles}
@@ -1432,6 +1437,11 @@ export function OdooRegisterPage() {
         />
 
         <OdooSellCartAside
+          mobileOpen={mobileCartOpen}
+          onCloseMobile={() => {
+            setMobileCartOpen(false);
+            setMobileCatalogOpen(true);
+          }}
           customer={customer}
           customerQuery={customerQuery}
           customers={customers}

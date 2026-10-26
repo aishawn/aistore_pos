@@ -1,7 +1,7 @@
 "use client";
 
 import type { KeyboardEvent, RefObject } from "react";
-import { LoaderCircle, Minus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Minus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { CartIcon, PlusIcon } from "@/components/icons";
 import type { OdooCheckoutQuote, OdooCustomerRecord } from "@/lib/odoo-api";
 import { friendlyProductName } from "@/lib/product-display-name";
@@ -11,6 +11,8 @@ import { OdooSellFinaliseButton } from "./OdooSellFinaliseButton";
 import { CASE_PACK_OPTIONS, money, provisionalLineUnit, type CartLine } from "./shared";
 
 type OdooSellCartAsideProps = {
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
   customer: OdooCustomerRecord | null;
   customerQuery: string;
   customers: OdooCustomerRecord[];
@@ -59,6 +61,8 @@ type OdooSellCartAsideProps = {
 };
 
 export function OdooSellCartAside({
+  mobileOpen,
+  onCloseMobile,
   customer,
   customerQuery,
   customers,
@@ -105,7 +109,22 @@ export function OdooSellCartAside({
   totalCents,
 }: OdooSellCartAsideProps) {
   return (
-    <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
+    <aside className={cn(
+      "order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto",
+      mobileOpen && "fixed inset-x-0 top-[50px] bottom-0 z-50 min-h-0 w-auto rounded-none lg:static lg:inset-auto lg:z-auto lg:rounded-[var(--oh-radius)]",
+    )}>
+      {mobileOpen && (
+        <div className="shrink-0 border-b border-[var(--oh-border)] px-3 py-2 lg:hidden">
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
+          >
+            <ArrowLeft size={17} aria-hidden="true" />
+            Back to products
+          </button>
+        </div>
+      )}
       <div className="border-b border-[var(--oh-border)] px-4 py-3">
         {customer ? (
           <div className="flex items-center gap-3">
