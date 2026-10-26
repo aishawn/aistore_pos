@@ -85,9 +85,12 @@ def start_auth(store_key: str, db: Session = Depends(get_db)) -> RedirectRespons
 
 
 @app.get("/oauth/shopfront/callback")
-async def auth_callback(code: str | None = None, state: str | None = None, error: str | None = None, db: Session = Depends(get_db)) -> dict:
+async def auth_callback(code: str | None = None, state: str | None = None, error: str | None = None, error_description: str | None = None, db: Session = Depends(get_db)) -> dict:
     if error:
-        raise HTTPException(400, f"Shopfront authorization failed: {error}")
+        detail = f"Shopfront authorization failed: {error}"
+        if error_description:
+            detail += f" ({error_description})"
+        raise HTTPException(400, detail)
     if not code or not state:
         raise HTTPException(400, "Missing code or state")
     oauth_state = db.scalar(select(OAuthState).where(OAuthState.state == state))

@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     shopfront_client_id: str = ""
     shopfront_client_secret: str = ""
     shopfront_redirect_uri: str = "http://localhost:8000/oauth/shopfront/callback"
-    shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_history see_webhooks create_webhooks"
+    # Keep the initial consent request to permissions required for reporting,
+    # product and inventory reads. Webhook permissions can be added later.
+    shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_history"
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
@@ -31,10 +33,13 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context: object) -> None:
         """Accept the old documented scope name while using Shopfront's current name."""
-        self.shopfront_scopes = " ".join(
-            "see_history" if scope == "see_sales" else scope
-            for scope in self.shopfront_scopes.split()
-        )
+        aliases = {"see_sales": "see_history"}
+        scopes: list[str] = []
+        for raw_scope in self.shopfront_scopes.replace(",", " ").split():
+            scope = aliases.get(raw_scope.strip(), raw_scope.strip())
+            if scope and scope not in scopes:
+                scopes.append(scope)
+        self.shopfront_scopes = " ".join(scopes)
 
     def stores(self) -> dict[str, dict[str, str]]:
         result: dict[str, dict[str, str]] = {}
