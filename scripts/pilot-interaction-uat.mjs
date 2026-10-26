@@ -319,15 +319,26 @@ try {
     };
     page.on("request", onRequest);
     try {
-      await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 15000 });
-      await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 });
-      await page.waitForFunction(() => {
-        const button = [...document.querySelectorAll("button")].find((element) => element.textContent?.trim() === "New product");
-        return button instanceof HTMLButtonElement && !button.disabled;
-      }, null, { timeout: 60000 });
-      const more = page.locator("details > summary").filter({ hasText: /^More$/ });
-      const moreVisible = await more.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
-      const importButton = page.getByRole("button", { name: /^Import(?: CSV)?$/ });
+      let importButton;
+      let moreVisible = false;
+      for (let attempt = 0; attempt < 3 && !moreVisible; attempt += 1) {
+        if (attempt > 0) await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+        await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
+        await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 });
+        await page.waitForFunction(() => {
+          const button = [...document.querySelectorAll("button")].find((element) => element.textContent?.trim() === "New product");
+          return button instanceof HTMLButtonElement && !button.disabled;
+        }, null, { timeout: 60000 });
+        const more = page.locator("details > summary").filter({ hasText: /^More$/ });
+        moreVisible = await more.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+        if (moreVisible) {
+          await more.click();
+          importButton = page.getByRole("button", { name: /^Import(?: CSV)?$/ });
+          await importButton.waitFor({ state: "visible", timeout: 15000 });
+          const enabled = await importButton.isEnabled().catch(() => false);
+          if (!enabled) moreVisible = false;
+        }
+      }
       if (!moreVisible) {
         const state = await page.evaluate(() => ({
           url: location.pathname + location.search,
@@ -353,14 +364,7 @@ try {
         }
         throw new Error(`CSV import menu is absent after the Products toolbar loaded: ${JSON.stringify(state)}`);
       }
-      await more.click();
       await importButton.waitFor({ state: "visible", timeout: 10000 });
-      await page.waitForFunction(() => {
-        const button = [...document.querySelectorAll("button")].find((element) => /^Import(?: CSV)?$/.test(element.textContent?.trim() ?? ""));
-        return button instanceof HTMLButtonElement && !button.disabled;
-      }, null, { timeout: 30000 }).catch(() => {
-        throw new BlockedUatCheck("Odoo product import controls did not finish loading; a product fixture or session warmup is required.");
-      });
       await importButton.click();
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
