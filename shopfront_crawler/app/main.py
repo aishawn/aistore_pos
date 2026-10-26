@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
+snapshot_lock = __import__("asyncio").Lock()
 
 
 @app.on_event("startup")
@@ -162,6 +163,59 @@ async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_d
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
     background_tasks.add_task(run_sync_background, store.store_key, start, end)
     return {"status": "queued", "store": store.store_key, "from": start, "to": end}
+
+
+async def run_full_snapshot_job(job_id: int) -> None:
+    if snapshot_lock.locked():
+        return
+    async with snapshot_lock:
+        db = next(get_db())
+        run = None
+        try:
+            job = db.get(SyncJob, job_id)
+            if not job or job.status != "queued":
+                return
+            job.status = "running"
+            job.started_at = datetime.now(timezone.utc)
+            run = SyncRun(store_key=job.store_key, status="running", counts={"type": "full_snapshot"})
+            db.add(run)
+            db.commit()
+            result = await push_pos_snapshot(db, job.store_key)
+            run.status = "completed" if result.get("error") is None else "failed"
+            run.counts = {"type": "full_snapshot", **result}
+            run.error = result.get("error")
+            run.finished_at = datetime.now(timezone.utc)
+            job.status = run.status
+            job.payload = run.counts
+            job.error = run.error
+            job.finished_at = run.finished_at
+            db.commit()
+        except Exception as exc:
+            if run is not None:
+                run.status = "failed"
+                run.error = str(exc)[:2000]
+                run.finished_at = datetime.now(timezone.utc)
+            job = db.get(SyncJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error = str(exc)[:2000]
+                job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        finally:
+            db.close()
+
+
+@app.post("/api/stores/{store_key}/pos/full-snapshot")
+async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+    store = require_store(store_key, db)
+    active = active_job(db, store.store_key)
+    if active:
+        raise HTTPException(409, "A sync job is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="snapshot", status="queued")
+    db.add(job)
+    db.commit()
+    background_tasks.add_task(run_full_snapshot_job, job.id)
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "crawler database to POS and Odoo mirrors"}
 
 
 def active_job(db: Session, store_key: str) -> SyncJob | None:
