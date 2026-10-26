@@ -393,11 +393,13 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             product_response = await odoo_client.sync("products", store_key, jsonable_encoder(payloads["products"]["items"]))
             inventory_response = await odoo_client.sync("inventory", store_key, jsonable_encoder(payloads["inventory"]["items"]))
             sale_responses = []
-            for offset in range(0, len(sale_items), 250):
-                sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(sale_items[offset:offset + 250])))
+            # Keep Odoo transactions small: one malformed or slow order must
+            # not roll back a large historical batch.
+            for offset in range(0, len(sale_items), 25):
+                sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(sale_items[offset:offset + 25])))
             odoo_result.update({"status": "completed", "product_response": product_response, "inventory_response": inventory_response, "sales_response": sale_responses[-1] if sale_responses else None, "sale_batches": len(sale_responses), "incomplete_mirrored": len(incomplete)})
         except Exception as exc:
-            odoo_result["error"] = str(exc)[:500]
+            odoo_result["error"] = repr(exc)[:500]
             logger.exception("Odoo snapshot push failed: store=%s", store_key)
         finally:
             await odoo_client.close()
