@@ -361,7 +361,7 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, fallback_token)
-    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None}
+    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
 
     def sale_payload(sale: Sale) -> dict:
         return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]}
@@ -369,8 +369,14 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
     product_items = [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload} for p in products]
     inventory_items = [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp, "raw_payload": row.raw_payload} for row in inventory]
     try:
-        product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
-        inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+        product_result = None
+        inventory_result = None
+        try:
+            product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
+            inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+        except Exception as exc:
+            result["mirror_errors"].append(f"catalog: {exc!r}")
+            logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
         if settings.odoo_import_enabled:
             await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
             await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
@@ -382,8 +388,12 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             if not sales:
                 break
             items = [sale_payload(sale) for sale in sales]
-            await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
-            sale_batches += 1
+            try:
+                await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                sale_batches += 1
+            except Exception as exc:
+                result["mirror_errors"].append(f"sales batch {offset}: {exc!r}")
+                logger.warning("POS sales mirror failed; continuing with Odoo: offset=%s error=%r", offset, exc)
             if settings.odoo_import_enabled:
                 for small_offset in range(0, len(items), 100):
                     batch = items[small_offset:small_offset + 100]
