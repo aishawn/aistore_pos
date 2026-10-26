@@ -35,6 +35,11 @@ async def startup() -> None:
         ensure_stores(db, settings)
         # A process restart must not leave durable jobs stuck in ``running``.
         # Requeue them and resume from their persisted cursor below.
+        interrupted_runs = db.scalars(select(SyncRun).where(SyncRun.status == "running")).all()
+        for run in interrupted_runs:
+            run.status = "failed"
+            run.error = "interrupted by crawler restart; history job will retry this range"
+            run.finished_at = datetime.now(timezone.utc)
         interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running").order_by(SyncJob.store_key, desc(SyncJob.id))).all()
         resumed_stores: set[str] = set()
         interrupted_history_ids: list[int] = []
