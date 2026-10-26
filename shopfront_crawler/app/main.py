@@ -180,7 +180,7 @@ async def run_full_snapshot_job(job_id: int) -> None:
             run = SyncRun(store_key=job.store_key, status="running", counts={"type": "full_snapshot"})
             db.add(run)
             db.commit()
-            result = await push_pos_snapshot(db, job.store_key)
+            result = await push_pos_snapshot(db, job.store_key, run=run)
             run.status = "completed" if result.get("error") is None else "failed"
             run.counts = {"type": "full_snapshot", **result}
             run.error = result.get("error")
@@ -326,7 +326,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
     try:
         run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
         if settings.pos_import_enabled:
-            pos_result = await push_pos_snapshot(db, store_key, start, end)
+            pos_result = await push_pos_snapshot(db, store_key, start, end, run=run)
             counts = dict(run.counts or {})
             counts["pos_import"] = pos_result
             run.counts = counts
@@ -348,7 +348,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None) -> dict:
+async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None) -> dict:
     """Push the current idempotent crawler snapshot to the POS boundary."""
     products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
@@ -378,10 +378,23 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         product_result = await client.upsert_products(jsonable_encoder(payloads["products"]))
         inventory_result = await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
         sale_batches = 0
+        sale_imported = 0
+
+        async def send_sales(items: list[dict]) -> int:
+            nonlocal sale_batches
+            try:
+                await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                sale_batches += 1
+                return len(items)
+            except Exception:
+                if len(items) <= 25:
+                    raise
+                midpoint = len(items) // 2
+                return await send_sales(items[:midpoint]) + await send_sales(items[midpoint:])
+
         for offset in range(0, len(sale_items), 250):
-            await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": sale_items[offset:offset + 250]}))
-            sale_batches += 1
-        result.update({"status": "completed", "sale_batches": sale_batches, "product_response": product_result, "inventory_response": inventory_result})
+            sale_imported += await send_sales(sale_items[offset:offset + 250])
+        result.update({"status": "completed", "sale_batches": sale_batches, "sales_imported": sale_imported, "product_response": product_result, "inventory_response": inventory_result})
     except Exception as exc:
         result["error"] = str(exc)[:500]
         logger.exception("POS snapshot push failed: store=%s", store_key)
@@ -395,8 +408,16 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             sale_responses = []
             # Keep Odoo transactions small: one malformed or slow order must
             # not roll back a large historical batch.
-            for offset in range(0, len(sale_items), 25):
-                sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(sale_items[offset:offset + 25])))
+            for offset in range(0, len(sale_items), 100):
+                batch = sale_items[offset:offset + 100]
+                try:
+                    sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(batch)))
+                except Exception:
+                    for small_offset in range(0, len(batch), 25):
+                        sale_responses.append(await odoo_client.sync("sales", store_key, jsonable_encoder(batch[small_offset:small_offset + 25])))
+                if run is not None:
+                    run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": min(offset + len(batch), len(sale_items)), "sale_total": len(sale_items), "sale_batches": len(sale_responses), "stage": "odoo_business"}
+                    db.commit()
             odoo_result.update({"status": "completed", "product_response": product_response, "inventory_response": inventory_response, "sales_response": sale_responses[-1] if sale_responses else None, "sale_batches": len(sale_responses), "incomplete_mirrored": len(incomplete)})
         except Exception as exc:
             odoo_result["error"] = repr(exc)[:500]
