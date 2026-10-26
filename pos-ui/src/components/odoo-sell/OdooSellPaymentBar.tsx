@@ -33,6 +33,8 @@ type OdooSellPaymentBarProps = {
   onSelectCash: () => void;
   onCashOut: () => void;
   onCaseQuantity: () => void;
+  onReturnItem: () => void;
+  onDiscount: () => void;
   onPark: () => void;
   onClear: () => void;
   onCashTenderedChange: (value: string) => void;
@@ -65,6 +67,8 @@ export function OdooSellPaymentBar({
   onSelectCash,
   onCashOut,
   onCaseQuantity,
+  onReturnItem,
+  onDiscount,
   onPark,
   onClear,
   onCashTenderedChange,
@@ -116,6 +120,22 @@ export function OdooSellPaymentBar({
           title={linesLength ? "Switch pack size on the selected line: Each → 6 → 12 → 24 (does not add another case)" : "Add a product first"}
         >
           Case Quantity
+        </AdminSecondaryButton>
+        <AdminSecondaryButton
+          className={cn("min-h-11", !linesLength && "opacity-45")}
+          onClick={onReturnItem}
+          disabled={!linesLength}
+          title="Open completed sales to select and record a full refund"
+        >
+          Return Item
+        </AdminSecondaryButton>
+        <AdminSecondaryButton
+          className={cn("min-h-11", !linesLength && "opacity-45")}
+          onClick={onDiscount}
+          disabled={!linesLength}
+          title="Apply a percentage discount to the selected cart line"
+        >
+          Discount
         </AdminSecondaryButton>
         <AdminSecondaryButton
           className={cn("min-h-11", (!linesLength || !parkedLoaded || !hasConfig || busy) && "opacity-45")}

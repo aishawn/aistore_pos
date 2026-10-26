@@ -8,6 +8,8 @@ export type CartLine = {
   quantity: number;
   /** Units per pack (1 = bottle/each, 12 = case). */
   packFactor: number;
+  /** Line discount as a percentage from 0 to 100. */
+  discountPercent?: number;
 };
 
 export type ParkedOdooSale = {

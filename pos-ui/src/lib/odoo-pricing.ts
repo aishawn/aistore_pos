@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 
-export type PricingLine = { productId: number; quantity: number; uomFactor?: number };
+export type PricingLine = { productId: number; quantity: number; uomFactor?: number; discountPercent?: number };
 export type ResolvedPrices = { prices: { productId: number; unitPrice: number }[]; pricelistId: number | false; priceSource: string; priceSourceName: string; currency: string };
 
 export function aggregateQuantities(lines: PricingLine[]) {
@@ -95,7 +95,7 @@ export async function resolveCartPrices(scope: Awaited<ReturnType<typeof scopedO
 export function priceSignature(input: { configId: number; paymentMethodId: number; customerId?: number | null; lines: PricingLine[]; prices: ResolvedPrices; totals: { subtotal: number; tax: number; total: number } }) {
   return createHash("sha256").update(JSON.stringify({
     configId: input.configId, paymentMethodId: input.paymentMethodId, customerId: input.customerId ?? null,
-    lines: input.lines.map((line) => [line.productId, line.quantity, line.uomFactor ?? 1]),
+    lines: input.lines.map((line) => [line.productId, line.quantity, line.uomFactor ?? 1, line.discountPercent ?? 0]),
     prices: input.prices.prices.map((price) => [price.productId, price.unitPrice]).sort((a, b) => a[0] - b[0]),
     pricelistId: input.prices.pricelistId, currency: input.prices.currency,
     totals: { subtotal: input.totals.subtotal, tax: input.totals.tax, total: input.totals.total },

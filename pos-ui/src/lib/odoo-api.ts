@@ -324,7 +324,7 @@ export interface OdooCheckoutRequest {
   tendered: number;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
-  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; refundedOrderLineId?: number }[];
+  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; discountPercent?: number; refundedOrderLineId?: number }[];
 }
 
 export interface OdooCheckoutResult {

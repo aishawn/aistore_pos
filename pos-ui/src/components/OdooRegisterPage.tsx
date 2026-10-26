@@ -549,7 +549,7 @@ export function OdooRegisterPage() {
     configId,
     paymentMethodId,
     customerId: customer?.id ?? null,
-    lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1]),
+    lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0]),
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
@@ -560,7 +560,7 @@ export function OdooRegisterPage() {
   const quoteIsCurrent = Boolean(quote && quotedFingerprint === currentQuoteFingerprint);
   const quoteError = !quoteLoading && quoteFailure?.fingerprint === currentQuoteFingerprint ? quoteFailure.message : null;
   const fallbackSubtotal = useMemo(
-    () => Math.round(lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0) * 100) / 100,
+    () => Math.round(lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity * (1 - (line.discountPercent || 0) / 100), 0) * 100) / 100,
     [lines],
   );
   const subtotal = quoteIsCurrent ? quote!.subtotal : fallbackSubtotal;
@@ -601,7 +601,7 @@ export function OdooRegisterPage() {
         configId: selectedConfig.id,
         paymentMethodId,
         customerId: customer?.id ?? null,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
       }).then((result) => {
         if (revision === quoteRevision.current) {
           setQuote(result);
@@ -907,7 +907,7 @@ export function OdooRegisterPage() {
         customerId: customer?.id ?? null,
         tendered: tenderedAmount,
         expectedQuote: quote?.signature,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1, discountPercent: line.discountPercent || 0 })),
       };
       if (!pendingCheckout) {
         // Persist the identity before sending money-related writes, including a browser refresh mid-request.
@@ -1133,6 +1133,25 @@ export function OdooRegisterPage() {
     const next = CASE_PACK_OPTIONS[idx >= 0 ? (idx + 1) % CASE_PACK_OPTIONS.length : 1] ?? 12;
     setLinePackFactor(line.product.id, current, next);
     setSelectedLineKey(lineKey(line.product.id, next));
+    setError(null);
+  }
+
+  function applyDiscount() {
+    const line = targetCartLine();
+    if (!line) return;
+    const input = window.prompt("Discount percentage (0-100)", String(line.discountPercent ?? 0));
+    if (input === null) return;
+    const value = Number(input);
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      setError("Discount must be a percentage from 0 to 100.");
+      return;
+    }
+    const rounded = Math.round(value * 100) / 100;
+    setLines((current) => current.map((item) =>
+      item.product.id === line.product.id && (item.packFactor || 1) === (line.packFactor || 1)
+        ? { ...item, discountPercent: rounded || undefined }
+        : item,
+    ));
     setError(null);
   }
 
@@ -1429,6 +1448,8 @@ export function OdooRegisterPage() {
           onSelectCash={() => selectCashPayment(true)}
           onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutOpen(true); }}
           onCaseQuantity={applyCaseQuantity}
+          onReturnItem={() => openSalesHistory()}
+          onDiscount={applyDiscount}
           onPark={() => parkCurrentSale()}
           onClear={requestClearSale}
           onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}

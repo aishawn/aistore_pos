@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     customerId?: number | null;
     tendered?: number;
     refundOfOrderId?: number | null;
-    lines?: { productId: number; quantity: number; uomFactor?: number; refundedOrderLineId?: number }[];
+    lines?: { productId: number; quantity: number; uomFactor?: number; discountPercent?: number; refundedOrderLineId?: number }[];
   };
   try {
     body = await request.json();
@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
       || !Number.isFinite(factor)
       || factor <= 0
       || factor > 1000
+      || !Number.isFinite(line.discountPercent ?? 0)
+      || (line.discountPercent ?? 0) < 0
+      || (line.discountPercent ?? 0) > 100
       || (isRefund && (!Number.isInteger(line.refundedOrderLineId) || line.refundedOrderLineId! < 1))
       || (!isRefund && line.refundedOrderLineId != null);
   })) {
@@ -374,7 +377,7 @@ export async function POST(request: NextRequest) {
       const priceUnit = refundSourceLine
         ? Number(refundSourceLine.price_unit)
         : prices!.prices.find((price) => price.productId === product.id)!.unitPrice;
-      const discount = refundSourceLine ? Number(refundSourceLine.discount || 0) : 0;
+      const discount = refundSourceLine ? Number(refundSourceLine.discount || 0) : Number(inputLine.discountPercent ?? 0);
       if (!Number.isFinite(priceUnit) || priceUnit < 0 || !Number.isFinite(discount) || discount < 0 || discount > 100) {
         throw new OdooCheckoutError(`The source price for ${product.name} is invalid.`, 409);
       }

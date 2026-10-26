@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { configId?: number; customerId?: number | null; paymentMethodId?: number; lines?: { productId: number; quantity: number; uomFactor?: number }[] };
+  let body: { configId?: number; customerId?: number | null; paymentMethodId?: number; lines?: { productId: number; quantity: number; uomFactor?: number; discountPercent?: number }[] };
   try { body = await request.json(); } catch { return NextResponse.json({ message: "Invalid cart quote request" }, { status: 400 }); }
   if (!Number.isInteger(body.configId) || !Number.isInteger(body.paymentMethodId) || !Array.isArray(body.lines) || !body.lines.length || body.lines.length > MAX_LINES) {
     return NextResponse.json({ message: "Choose a register, payment method and valid cart items." }, { status: 400 });
   }
-  if (body.lines.some((line) => !Number.isInteger(line.productId) || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1000 || !Number.isFinite(line.uomFactor ?? 1) || (line.uomFactor ?? 1) <= 0 || (line.uomFactor ?? 1) > 1000)) {
+  if (body.lines.some((line) => !Number.isInteger(line.productId) || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1000 || !Number.isFinite(line.uomFactor ?? 1) || (line.uomFactor ?? 1) <= 0 || (line.uomFactor ?? 1) > 1000 || !Number.isFinite(line.discountPercent ?? 0) || (line.discountPercent ?? 0) < 0 || (line.discountPercent ?? 0) > 100)) {
     return NextResponse.json({ message: "Cart quantities or pack sizes are invalid." }, { status: 400 });
   }
 
@@ -123,9 +123,10 @@ export async function POST(request: NextRequest) {
       if (fiscalPositionId && taxIds.length) taxIds = await rpc<number[]>(session, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds], {}, correlationId);
       const effectiveQuantity = line.quantity * (line.uomFactor ?? 1);
       const unitPrice = prices.prices.find((price) => price.productId === product.id)!.unitPrice;
+      const discountedUnitPrice = unitPrice * (1 - (line.discountPercent ?? 0) / 100);
       const totals = taxIds.length
-        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, unitPrice, null, effectiveQuantity, false, false], {}, correlationId)
-        : { total_excluded: unitPrice * effectiveQuantity, total_included: unitPrice * effectiveQuantity };
+        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, discountedUnitPrice, null, effectiveQuantity, false, false], {}, correlationId)
+        : { total_excluded: discountedUnitPrice * effectiveQuantity, total_included: discountedUnitPrice * effectiveQuantity };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new QuoteError(`Could not calculate tax for ${product.name}.`);
       subtotal += totals.total_excluded;
       total += totals.total_included;

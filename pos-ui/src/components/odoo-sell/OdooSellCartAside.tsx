@@ -228,14 +228,14 @@ export function OdooSellCartAside({
           </div>
         ) : (
           <ul className="divide-y divide-[var(--oh-border)]">
-            {lines.map(({ product, quantity: qty, packFactor }) => {
+            {lines.map(({ product, quantity: qty, packFactor, discountPercent = 0 }) => {
               const factor = packFactor || 1;
               const key = lineKey(product.id, factor);
               const quotedLine = quoteIsCurrent
                 ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor)
                 : undefined;
               const provisionalUnit = provisionalLineUnit(product, factor);
-              const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty);
+              const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty * (1 - discountPercent / 100));
               const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
               const fullName = product.display_name || product.name;
               const label = friendlyProductName(fullName);
@@ -260,6 +260,7 @@ export function OdooSellCartAside({
                       </p>
                       <p className="text-[13px] text-[var(--oh-muted)]">
                         {factor > 1 ? `${money(unitPrice)} / case · ${factor}` : `${money(unitPrice)} each`}
+                        {discountPercent > 0 ? ` · ${discountPercent}% off` : ""}
                       </p>
                     </div>
                     <span className="shrink-0 text-[13px] font-semibold text-[var(--oh-text)]">
