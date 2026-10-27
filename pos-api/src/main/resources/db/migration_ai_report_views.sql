@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS ai_report_audit (
   question TEXT NULL,
   sql_text TEXT NULL,
   path VARCHAR(32) NULL,
-  allowed SMALLINT NOT NULL DEFAULT 0,
+  allowed BOOLEAN NOT NULL DEFAULT FALSE,
   reject_reason VARCHAR(512) NULL,
   row_count INT NULL,
   latency_ms INT NULL,
