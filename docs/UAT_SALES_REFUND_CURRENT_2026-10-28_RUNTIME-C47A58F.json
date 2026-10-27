@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-10-27T21:03:36.284Z",
+  "base": "https://demo.orithos.com.au",
+  "runtime": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+  "databasePolicy": "aipos_uat shared UAT",
+  "checks": [
+    {
+      "name": "login",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "odoo.session",
+      "status": "PASS",
+      "httpStatus": 200,
+      "user": "yu18888xiao@gmail.com"
+    },
+    {
+      "name": "pos.bootstrap",
+      "status": "PASS",
+      "httpStatus": 200,
+      "configId": 1,
+      "paymentMethodId": 2,
+      "session": "Orithos UAT Pilot Register/00040"
+    },
+    {
+      "name": "DEMO Cabernet 750ml",
+      "status": "PASS",
+      "productId": 5,
+      "beforeQty": 24
+    },
+    {
+      "name": "sale.quote",
+      "status": "PASS",
+      "httpStatus": 200,
+      "total": 35.2,
+      "gst": 3.2
+    },
+    {
+      "name": "sale.create",
+      "status": "PASS",
+      "httpStatus": 201,
+      "saleId": 94839,
+      "receipt": "260-1-000062",
+      "total": 35.2,
+      "gst": 3.2,
+      "lines": 1
+    },
+    {
+      "name": "sale.retry.idempotent",
+      "status": "PASS",
+      "httpStatus": 200,
+      "saleId": 94839
+    },
+    {
+      "name": "sale.readback",
+      "status": "PASS",
+      "httpStatus": 200,
+      "state": "paid",
+      "total": 35.2,
+      "gst": 3.2
+    },
+    {
+      "name": "refund.create",
+      "status": "PASS",
+      "httpStatus": 201,
+      "refundId": 94840,
+      "total": 35.2,
+      "gst": 3.2
+    },
+    {
+      "name": "stock.restored",
+      "status": "PASS",
+      "beforeQty": 24,
+      "afterQty": 24
+    }
+  ],
+  "status": true
+}
