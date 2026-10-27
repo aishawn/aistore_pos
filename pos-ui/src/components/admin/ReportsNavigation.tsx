@@ -57,7 +57,7 @@ const SECTIONS: ReportSection[] = [
     icon: PackageSearch,
     match: ["/reports/purchase", "/reports/transfer"],
     children: [
-      { label: "Purchase Spend", href: "/reports/purchase" },
+      { label: "Purchase Orders", href: "/reports/purchase" },
       { label: "Suppliers", href: "/reports/purchase?view=suppliers" },
       { label: "Open Purchase Orders", href: "/reports/purchase?view=open-orders" },
       { label: "Transfers In Transit", href: "/reports/transfer" },
