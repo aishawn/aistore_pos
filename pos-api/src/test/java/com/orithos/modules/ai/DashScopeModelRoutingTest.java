@@ -28,23 +28,23 @@ class DashScopeModelRoutingTest {
     }
 
     @Test
-    void environmentPostProcessorSetsMultiModelForQwen38() {
+    void environmentPostProcessorKeepsGlobalClientOnTextPath() {
         MockEnvironment env = new MockEnvironment();
         env.setProperty("AI_DASHSCOPE_MODEL", "qwen3.8-flash");
         new DashScopeEnvironmentPostProcessor().postProcessEnvironment(env, new SpringApplication());
-        assertEquals(Boolean.TRUE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
+        assertEquals(Boolean.FALSE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
         assertEquals(
                 DashScopeModelRouting.TEXT_COMPLETIONS_PATH,
                 env.getProperty(DashScopeEnvironmentPostProcessor.COMPLETIONS_PATH_PROPERTY));
     }
 
     @Test
-    void incompatibleFalseOverrideCannotDisableQwen38Routing() {
+    void explicitTrueDoesNotForceGlobalMultimodalForQwen38() {
         MockEnvironment env = new MockEnvironment();
         env.setProperty("AI_DASHSCOPE_MODEL", "qwen3.8-flash");
-        env.setProperty("AI_DASHSCOPE_MULTI_MODEL", "false");
+        env.setProperty("AI_DASHSCOPE_MULTI_MODEL", "true");
         new DashScopeEnvironmentPostProcessor().postProcessEnvironment(env, new SpringApplication());
-        assertEquals(Boolean.TRUE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
+        assertEquals(Boolean.FALSE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,13 +31,20 @@ public class GenerateResponseNode implements NodeAction {
     private final IntentConfigService configService;
     private final AiProperties properties;
     private final PosAssistantTools tools;
+    private final String primaryModel;
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
                                 AiProperties properties, PosAssistantTools tools) {
+        this(chatClient, configService, properties, tools, "qwen-plus");
+    }
+
+    public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
+                                AiProperties properties, PosAssistantTools tools, String primaryModel) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.properties = properties;
         this.tools = tools;
+        this.primaryModel = primaryModel == null || primaryModel.isBlank() ? "qwen-plus" : primaryModel.trim();
     }
 
     @Override
@@ -75,6 +83,8 @@ public class GenerateResponseNode implements NodeAction {
                 .system(system)
                 .user(userPrompt)
                 .options(DashScopeChatOptions.builder()
+                        .model(primaryModel)
+                        .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(primaryModel))
                         .temperature(properties.temperature())
                         .maxToken(properties.maxTokens())
                         .build());
