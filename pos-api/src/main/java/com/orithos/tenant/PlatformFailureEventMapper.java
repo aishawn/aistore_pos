@@ -30,14 +30,14 @@ public interface PlatformFailureEventMapper {
                    (SELECT latest.error_summary FROM platform_failure_event latest
                     WHERE latest.fingerprint=f.fingerprint
                       AND latest.service=f.service
-                      AND latest.runtime_commit &lt;=> f.runtime_commit
+                      AND latest.runtime_commit IS NOT DISTINCT FROM f.runtime_commit
                       AND ((latest.tenant_id IS NULL AND f.tenant_id IS NULL) OR latest.tenant_id=f.tenant_id)
                     ORDER BY latest.occurred_at DESC, latest.id DESC LIMIT 1) AS error_summary,
                    COUNT(*) AS occurrences,
                    (SELECT latest.duration_ms FROM platform_failure_event latest
                     WHERE latest.fingerprint=f.fingerprint
                       AND latest.service=f.service
-                      AND latest.runtime_commit &lt;=> f.runtime_commit
+                      AND latest.runtime_commit IS NOT DISTINCT FROM f.runtime_commit
                       AND ((latest.tenant_id IS NULL AND f.tenant_id IS NULL) OR latest.tenant_id=f.tenant_id)
                     ORDER BY latest.occurred_at DESC, latest.id DESC LIMIT 1) AS latest_duration_ms,
                    MIN(f.occurred_at) AS first_seen_at,
@@ -45,7 +45,7 @@ public interface PlatformFailureEventMapper {
                    (SELECT latest.correlation_id FROM platform_failure_event latest
                     WHERE latest.fingerprint=f.fingerprint
                       AND latest.service=f.service
-                      AND latest.runtime_commit &lt;=> f.runtime_commit
+                      AND latest.runtime_commit IS NOT DISTINCT FROM f.runtime_commit
                       AND ((latest.tenant_id IS NULL AND f.tenant_id IS NULL) OR latest.tenant_id=f.tenant_id)
                     ORDER BY latest.occurred_at DESC, latest.id DESC LIMIT 1) AS latest_correlation_id,
                    f.runtime_commit AS runtime_commit
