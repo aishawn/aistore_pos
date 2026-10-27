@@ -67,3 +67,9 @@
 - Fixed nested sidebar subgroup typing so the production build can handle Stock > Pricing groups. `npm run typecheck` passes in `pos-ui`; `git diff --check` passes.
 - Dokploy deployment `fXdmCpLgR0EZXs3DglBzv` completed with status `done`. Both `skr.orithos.com.au` and `demo.orithos.com.au` report frontend/backend runtime commit `69a892d1` from `/api/public/version`.
 - Authenticated browser verification at `skr.orithos.com.au/reports/dashboard` confirmed all five report tabs share one row (`y=50`, height `48`), Sales History points to `/history`, and clicking Analyse dashboard keeps the URL unchanged while calling `/api/ai/assistant` and rendering the result.
+
+### Sales History tab persistence
+
+- Added a dedicated `app/history/layout.tsx` so the shared five-tab ReportsNavigation remains visible after navigating to `/history` (and `/history/odoo`).
+- Verified at `skr.orithos.com.au/history` on 1440px and 390px viewports: all five tabs render at the same `y=50` row, `Sales History` has `aria-current="page"`, the page heading is present, and there is no horizontal overflow.
+- Dokploy deployment `oiu2JcIp_JBKfg6ZWwf7Z` completed with status `done`; runtime frontend/backend commit was `3ec5f2b3`.
