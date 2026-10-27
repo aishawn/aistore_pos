@@ -22,6 +22,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 import { friendlyProductName } from "@/lib/product-display-name";
+import { DashboardInsightsPanel } from "@/components/admin/DashboardInsightsPanel";
 
 type RecentSale = {
   id: number;
@@ -51,6 +52,7 @@ type OverviewData = {
   transactions: number;
   itemsSold: number;
   openRegisters: number;
+  lowStockCount?: number;
   trend: { label: string; revenue: number; transactions: number }[];
   recentSales: RecentSale[];
   topProducts: { id: number; name: string; qty: number; revenue: number }[];
@@ -495,6 +497,26 @@ export function OrithosReportsDashboardPage() {
               {r2ArchiveUnavailable ? <button type="button" onClick={() => setR2RetryKey((value) => value + 1)} className="oh-type-meta inline-flex min-h-11 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50"><RefreshCw size={13} /> Retry archive</button> : <Link href="/history" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>}
             </div>
           </section>
+
+          <DashboardInsightsPanel
+            data={data ? {
+              company: data.company,
+              currency: data.currency,
+              rangeLabel,
+              periodBounds,
+              revenue: data.revenue,
+              transactions: data.transactions,
+              refunds: data.refunds ?? 0,
+              refundTransactions: data.refundTransactions ?? 0,
+              itemsSold: data.itemsSold,
+              tax: data.tax,
+              openRegisters: data.openRegisters,
+              topProducts: data.topProducts,
+              byCategory: data.byCategory,
+              compare: data.compare,
+              lowStockCount: data.lowStockCount,
+            } : null}
+          />
 
           <section className="min-h-0 shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
