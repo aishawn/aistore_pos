@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import javax.sql.DataSource;
 
 /**
@@ -118,11 +119,13 @@ public class OdooTenantProvisioner {
     }
 
     public void provisionAsyncSafe(Long vendorId, boolean seedDummyData) {
-        try {
-            provision(vendorId, seedDummyData, "SIGNUP");
-        } catch (Exception e) {
-            log.warn("Odoo provision failed for vendor {}: {}", vendorId, e.getMessage());
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                provision(vendorId, seedDummyData, "SIGNUP");
+            } catch (Exception e) {
+                log.warn("Odoo provision failed for vendor {}: {}", vendorId, e.getMessage());
+            }
+        });
     }
 
     public Vendor provision(Long vendorId) {
