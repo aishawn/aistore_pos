@@ -177,10 +177,22 @@ public class ShopfrontIntegrationController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
         result.put("products", count("shopfront_product", storeKey));
+        result.put("products_missing_name", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product WHERE store_key = ? AND (name IS NULL OR TRIM(name) = '')",
+                Integer.class, storeKey));
         result.put("barcode_matched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND sp.barcode IS NOT NULL AND EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode)", Integer.class, storeKey));
         result.put("barcode_unmatched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
         result.put("manually_mapped", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'", Integer.class, storeKey));
         result.put("sales_with_unmatched_items", jdbc.queryForObject("SELECT COUNT(DISTINCT ss.external_id) FROM shopfront_sale ss JOIN shopfront_sale_item si ON si.store_key = ss.store_key AND si.external_sale_id = ss.external_id LEFT JOIN shopfront_product sp ON sp.store_key = ss.store_key AND sp.source_id = si.source_product_id WHERE ss.store_key = ? AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping pm WHERE pm.store_key = ss.store_key AND pm.source_product_id = si.source_product_id AND pm.status = 'MAPPED') AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
+        result.put("sale_items_missing_name", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (product_name IS NULL OR TRIM(product_name) = '')",
+                Integer.class, storeKey));
+        result.put("sale_items_missing_source_product", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (source_product_id IS NULL OR TRIM(source_product_id) = '')",
+                Integer.class, storeKey));
+        result.put("inventory_outlets", jdbc.queryForObject(
+                "SELECT COUNT(DISTINCT outlet_id) FROM shopfront_inventory WHERE store_key = ?",
+                Integer.class, storeKey));
         return ApiResult.ok(result);
     }
 
@@ -252,9 +264,12 @@ public class ShopfrontIntegrationController {
             Map<String, Object> business = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             if (mappingReady) {
                 ensureShadowTables();
-                persistShadow(type, store, mappingRows.get(0), items);
+                boolean completeInventorySnapshot = "inventory".equals(type)
+                        && body.path("replace").asBoolean(false)
+                        && body.path("snapshot_complete").asBoolean(false);
+                persistShadow(type, store, mappingRows.get(0), items, completeInventorySnapshot);
                 if (businessWriteEnabled) {
-                    business = importBusiness(type, store, mappingRows.get(0), items);
+                    business = importBusiness(type, store, mappingRows.get(0), items, completeInventorySnapshot);
                 }
             }
             Long id;
@@ -310,7 +325,7 @@ public class ShopfrontIntegrationController {
      * shopfront_product_mapping, so retries update the same row instead of
      * creating another Sell item.
      */
-    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items) throws Exception {
+    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
         int created = 0;
@@ -334,6 +349,9 @@ public class ShopfrontIntegrationController {
                 }
             }
         } else if ("inventory".equals(type)) {
+            if (completeInventorySnapshot) {
+                jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
+            }
             for (JsonNode item : items) {
                 try {
                     Long productId = mappedProductId(store, text(item, "source_id"));
@@ -383,7 +401,6 @@ public class ShopfrontIntegrationController {
         if (type == null || type.isBlank()) type = "STANDARD";
         String description = text(item, "description");
         String image = text(item, "image");
-        if (image != null && image.length() > 512) image = null;
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
             String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
@@ -492,7 +509,7 @@ public class ShopfrontIntegrationController {
         return count == null ? 0 : count;
     }
 
-    private void persistShadow(String type, String store, Map<String, Object> mapping, JsonNode items) throws Exception {
+    private void persistShadow(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
         boolean postgres = isPostgres();
         String outlet = String.valueOf(mapping.getOrDefault("outlet_id", ""));
         if ("products".equals(type)) {
@@ -505,6 +522,9 @@ public class ShopfrontIntegrationController {
                 jdbc.update(sql, store, source, text(item,"name"), text(item,"sku"), text(item,"barcode"), text(item,"category"), text(item,"brand"), decimal(item,"cost"), decimal(item,"price"), objectMapper.writeValueAsString(item));
             }
         } else if ("inventory".equals(type)) {
+            if (completeInventorySnapshot) {
+                jdbc.update("DELETE FROM shopfront_inventory WHERE store_key = ?", store);
+            }
             for (JsonNode item : items) {
                 String source = text(item, "source_id");
                 if (source.isBlank()) continue;

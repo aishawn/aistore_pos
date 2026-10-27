@@ -325,7 +325,7 @@ CREATE TABLE product (
   order_notes     TEXT         NULL,
   invoice_notes   TEXT         NULL,
   ticket_information JSONB      NULL,
-  image           VARCHAR(512) NULL,
+  image           TEXT         NULL,
   alternate_images JSONB        NULL,
   metcash_msc     VARCHAR(64)  NULL,
   temp_product    SMALLINT   NOT NULL DEFAULT 0,

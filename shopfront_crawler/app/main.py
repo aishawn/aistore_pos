@@ -623,7 +623,7 @@ async def push_pos_snapshot(
             if product_responses:
                 product_result = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
             if include_catalog and inventory_items:
-                inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+                inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
         except Exception as exc:
             catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
@@ -928,7 +928,7 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
             "raw_payload": raw,
         }
 
-    payload = jsonable_encoder({"store_key": store, "replace": True, "items": [import_inventory_item(x) for x in rows]})
+    payload = jsonable_encoder({"store_key": store, "replace": True, "snapshot_complete": True, "items": [import_inventory_item(x) for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
