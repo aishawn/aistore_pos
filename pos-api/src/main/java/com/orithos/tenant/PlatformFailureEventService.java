@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -58,7 +59,7 @@ public class PlatformFailureEventService {
         this(mapper, buildIdentity, null, environment);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(HttpServletRequest request, int httpStatus, Integer errorCode, Throwable error) {
         try {
             TenantHolder.ResolvedTenant resolved = TenantHolder.get();

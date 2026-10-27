@@ -9,11 +9,14 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.orithos.modules.customer.CustomerGroupService;
 import com.orithos.modules.customer.CustomerService;
 import com.orithos.modules.product.ProductService;
 import com.orithos.tenant.PlatformFailureEventService;
+import com.orithos.config.CorrelationIdContext;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
@@ -21,6 +24,8 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final PlatformFailureEventService failureEvents;
 
@@ -172,6 +177,9 @@ public class GlobalExceptionHandler {
         if (SqlConstraintUtils.isInvalidPriceQuantity(e)) {
             return invalidPriceQuantityResponse();
         }
+        log.error("Unhandled request failure correlationId={} method={} path={} type={}",
+                CorrelationIdContext.current(), request.getMethod(), request.getRequestURI(),
+                e.getClass().getSimpleName(), e);
         failureEvents.record(request, 500, 50000, e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResult.fail(50000, "Unexpected server error."));
