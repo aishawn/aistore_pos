@@ -63,6 +63,7 @@
 
 ### Release and verification
 
-- Candidate was rebased onto the latest `origin/main` and pushed to `main` as `c98db6b4`.
-- `git diff --check` passed. ESLint completed successfully before the worktree dependency install became incomplete on Windows; TypeScript/Next checks could not run because `node_modules` did not produce executable links (`node` is v22 while the package requires v24).
-- Dokploy is configured to deploy `main`. At the latest check, `/api/public/version` on `skr.orithos.com.au` and `demo.orithos.com.au` still reported runtime `79bdee71`, so the new commit is awaiting Dokploy deployment. Do not mark the iteration as live until the endpoint reports `c98db6b4` and the browser confirms the five-tab row and Dashboard AI panel.
+- Candidate was rebased onto the latest `origin/main`; final release commit is `2bf183c935abe05889ed03518601ebacde0544ec`, pushed to `main`.
+- Fixed nested sidebar subgroup typing so the production build can handle Stock > Pricing groups. `npm run typecheck` passes in `pos-ui`; `git diff --check` passes.
+- Dokploy deployment `tLVyV5gj73IrlvRaNIvV1` completed with status `done`. Both `skr.orithos.com.au` and `demo.orithos.com.au` report frontend/backend runtime commit `2bf183c9` from `/api/public/version`.
+- Authenticated browser verification at `skr.orithos.com.au/reports/dashboard` confirmed all five report tabs share one row (`y=50`, height `48`), Sales History points to `/history`, and clicking Analyse dashboard keeps the URL unchanged while calling `/api/ai/assistant` and rendering the result.
