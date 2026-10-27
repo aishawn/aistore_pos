@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import main
 from app.db import Base
-from app.models import InventorySnapshot, Product, Sale, Store, SyncRun
+from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncRun
 
 
 @pytest.fixture
@@ -21,17 +21,26 @@ def db_session():
 
 
 def seed_snapshot(db: Session) -> None:
+    sale = Sale(
+        store_key="skr",
+        shopfront_sale_id="sale-1",
+        created_at=datetime(2026, 10, 26),
+        updated_at=datetime(2026, 10, 26),
+        total_price=Decimal("12.99"),
+    )
+    sale.items.append(SaleItem(
+        shopfront_product_id="product-1",
+        product_name=None,
+        quantity=Decimal("1"),
+        unit_price=Decimal("12.99"),
+        line_total=Decimal("12.99"),
+        raw_payload={"id": "line-1"},
+    ))
     db.add_all([
         Store(store_key="skr", vendor="skr"),
         Product(store_key="skr", shopfront_product_id="product-1", name="Test wine", sku="SKU-1"),
         InventorySnapshot(store_key="skr", shopfront_product_id="product-1", quantity=Decimal("5")),
-        Sale(
-            store_key="skr",
-            shopfront_sale_id="sale-1",
-            created_at=datetime(2026, 10, 26),
-            updated_at=datetime(2026, 10, 26),
-            total_price=Decimal("12.99"),
-        ),
+        sale,
     ])
     db.commit()
 
@@ -67,20 +76,20 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
     monkeypatch.setattr(main, "OrithosClient", FakePosClient)
     result = await main.push_pos_snapshot(db_session, "skr")
 
-    assert result == {
-        "status": "completed",
-        "products": 1,
-        "inventory": 1,
-        "sales": 1,
-        "error": None,
-        "sale_batches": 1,
-        "product_response": {"data": {"upserted": 1}},
-        "inventory_response": {"data": {"replaced": 1}},
-    }
+    assert result["status"] == "completed"
+    assert result["products"] == 1
+    assert result["inventory"] == 1
+    assert result["sales"] == 1
+    assert result["error"] is None
+    assert result["sale_batches"] == 1
+    assert result["product_response"] == {"data": {"upserted": 1}}
+    assert result["inventory_response"] == {"data": {"replaced": 1}}
+    assert result["mirror_errors"] == []
     client = FakePosClient.instances[0]
     assert client.closed is True
     assert len(client.sales_payloads) == 1
     assert client.sales_payloads[0]["items"][0]["external_id"] == "sale-1"
+    assert client.sales_payloads[0]["items"][0]["items"][0]["name"] == "Test wine"
 
 
 @pytest.mark.asyncio
@@ -103,13 +112,12 @@ async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, m
     monkeypatch.setattr(main, "OrithosClient", FakePosClient)
     result = await main.push_pos_snapshot(db_session, "skr")
 
-    assert result == {
-        "status": "failed",
-        "products": 1,
-        "inventory": 1,
-        "sales": 1,
-        "error": "POS temporarily unavailable",
-    }
+    assert result["status"] == "failed"
+    assert result["products"] == 1
+    assert result["inventory"] == 1
+    assert result["sales"] == 1
+    assert result["error"] == "POS temporarily unavailable"
+    assert result["mirror_errors"]
     assert FakePosClient.instances[0].closed is True
 
 

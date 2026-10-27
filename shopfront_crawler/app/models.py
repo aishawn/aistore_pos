@@ -143,6 +143,9 @@ class SaleItem(Base):
     __tablename__ = "sale_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
+    # Shopfront can contain the same product more than once in one sale.
+    # Keep the immutable SaleItem id so those lines are not collapsed.
+    line_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     shopfront_product_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     product_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)

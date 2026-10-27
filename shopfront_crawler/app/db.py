@@ -38,6 +38,9 @@ def init_db() -> None:
             "outlet_id": "VARCHAR(128)",
             "outlet_name": "VARCHAR(255)",
         },
+        "sale_items": {
+            "line_key": "VARCHAR(128)",
+        },
     }
     inspector = inspect(engine)
     with engine.begin() as connection:

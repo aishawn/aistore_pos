@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
@@ -351,7 +351,13 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             # Historical chunks only need the catalog on the first chunk. For
             # later chunks, push sales when present and avoid rewriting the
             # same full product/inventory snapshot for every empty date range.
-            pos_result = await push_pos_snapshot(db, store_key, start, end, run=run, include_catalog=include_catalog)
+            push_kwargs = {"run": run, "include_catalog": include_catalog}
+            product_source_ids = (run.counts or {}).get("product_source_ids") if run.counts else None
+            if product_source_ids:
+                # Later history chunks push only products discovered in their
+                # SaleItems; the first chunk still sends the complete catalog.
+                push_kwargs["product_source_ids"] = product_source_ids
+            pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             counts = dict(run.counts or {})
             counts["pos_import"] = pos_result
             run.counts = counts
@@ -373,9 +379,21 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None, include_catalog: bool = True) -> dict:
+async def push_pos_snapshot(
+    db: Session,
+    store_key: str,
+    start: date | None = None,
+    end: date | None = None,
+    run: SyncRun | None = None,
+    include_catalog: bool = True,
+    product_source_ids: list[str] | None = None,
+) -> dict:
     """Push a snapshot in bounded pages so a full history never sits in RAM."""
-    products = db.scalars(select(Product).where(Product.store_key == store_key)).all() if include_catalog else []
+    products_query = select(Product).where(Product.store_key == store_key)
+    if not include_catalog:
+        ids = sorted({str(value) for value in (product_source_ids or []) if value})
+        products_query = products_query.where(Product.shopfront_product_id.in_(ids)) if ids else products_query.where(False)
+    products = db.scalars(products_query).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all() if include_catalog else []
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
     if start is not None and end is not None:
@@ -385,17 +403,58 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
     total_sales = db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
-    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, fallback_token)
+    odoo_enabled = bool(
+        settings.odoo_import_enabled
+        and settings.odoo_api_base_url
+        and (settings.odoo_api_token or fallback_token)
+    )
+    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, settings.odoo_business_write_enabled, fallback_token)
     result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
+
+    products_by_source = {str(product.shopfront_product_id): product for product in products}
+
+    def sale_line_payload(item: SaleItem) -> dict:
+        """Build a complete line even when an older row missed product_name.
+
+        Early crawler runs persisted the nested Shopfront item in raw_payload but
+        did not always copy its name into SaleItem.product_name. Prefer the
+        persisted line, then the nested source item, then the catalog mirror.
+        This keeps historical Odoo/POS repairs idempotent and avoids placeholder
+        product names on re-import.
+        """
+        raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        catalog = products_by_source.get(str(item.shopfront_product_id))
+        catalog_raw = catalog.raw_payload if catalog and isinstance(catalog.raw_payload, dict) else {}
+        source = nested or catalog_raw
+        name = item.product_name or nested.get("name") or raw.get("name")
+        name = name or (catalog.name if catalog else None) or catalog_raw.get("name")
+        if name and not item.product_name:
+            item.product_name = str(name)
+        if not nested and catalog_raw:
+            raw["item"] = catalog_raw
+        barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else None
+        if not barcodes and isinstance(catalog_raw.get("barcodes"), list):
+            barcodes = catalog_raw["barcodes"]
+        sku = nested.get("mdbId") or nested.get("sku") or (catalog.sku if catalog else None) or catalog_raw.get("mdbId") or catalog_raw.get("sku")
+        return {
+            "source_product_id": item.shopfront_product_id,
+            "name": name,
+            "sku": sku,
+            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else (catalog.barcode if catalog else None)),
+            "barcodes": barcodes or [],
+            "quantity": item.quantity,
+            "unit_price": item.unit_price,
+            "line_total": item.line_total,
+            "cost": item.cost,
+            "tax": item.tax,
+            "raw_payload": raw,
+        }
 
     def sale_payload(sale: Sale) -> dict:
         raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
         return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
-            "source_product_id": item.shopfront_product_id,
-            "name": item.product_name or ((item.raw_payload or {}).get("item", {}).get("name") if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else None),
-            "sku": ((item.raw_payload or {}).get("item", {}).get("mdbId") if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else None),
-            "barcodes": ((item.raw_payload or {}).get("item", {}).get("barcodes", []) if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else []),
-            "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload,
+            **sale_line_payload(item),
         } for item in sale.items]}
 
     def product_payload(product: Product) -> dict:
@@ -480,17 +539,29 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
     try:
         product_result = None
         inventory_result = None
+        catalog_error: Exception | None = None
         try:
-            if include_catalog:
-                product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
+            product_responses = []
+            for offset in range(0, len(product_items), 250):
+                product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
+            if product_responses:
+                product_result = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
+            if include_catalog and inventory_items:
                 inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
         except Exception as exc:
+            catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
             logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
+        if result["mirror_errors"] and not odoo_enabled:
+            raise RuntimeError(str(catalog_error or result["mirror_errors"][-1]))
         odoo_product_result = None
         odoo_inventory_result = None
-        if settings.odoo_import_enabled and include_catalog:
-            odoo_product_result = await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
+        if odoo_enabled and product_items:
+            odoo_product_responses = []
+            for offset in range(0, len(product_items), 100):
+                odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 100])))
+            odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
+        if odoo_enabled and include_catalog and inventory_items:
             odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
         odoo_batches = 0
@@ -506,7 +577,7 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             except Exception as exc:
                 result["mirror_errors"].append(f"sales batch {offset}: {exc!r}")
                 logger.warning("POS sales mirror failed; continuing with Odoo: offset=%s error=%r", offset, exc)
-            if settings.odoo_import_enabled:
+            if odoo_enabled:
                 for small_offset in range(0, len(items), 100):
                     batch = items[small_offset:small_offset + 100]
                     try:
@@ -526,12 +597,12 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             "status": "completed",
             "product_response": product_result,
             "inventory_response": inventory_result,
-            "odoo_business_write": bool(settings.odoo_import_enabled and settings.odoo_business_write_enabled),
+            "odoo_business_write": bool(odoo_enabled and settings.odoo_business_write_enabled),
             "odoo_product_response": odoo_product_result,
             "odoo_inventory_response": odoo_inventory_result,
         })
     except Exception as exc:
-        result["error"] = repr(exc)[:500]
+        result["error"] = str(exc)[:500]
         logger.exception("Shopfront snapshot push failed: store=%s", store_key)
     finally:
         await client.close()
@@ -746,7 +817,22 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         run.counts = {"sales": len(rows), "blocked": len(incomplete)}
         db.commit()
         return {"status": run.status, "run_id": run.id, "counts": run.counts, "error": run.error}
-    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [{"source_product_id": i.shopfront_product_id, "name": i.product_name, "quantity": i.quantity, "unit_price": i.unit_price, "line_total": i.line_total} for i in x.items]} for x in rows]})
+    products_by_source = {str(product.shopfront_product_id): product for product in db.scalars(select(Product).where(Product.store_key == store)).all()}
+
+    def repair_line(item: SaleItem) -> dict:
+        raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        catalog = products_by_source.get(str(item.shopfront_product_id))
+        catalog_raw = catalog.raw_payload if catalog and isinstance(catalog.raw_payload, dict) else {}
+        name = item.product_name or nested.get("name") or raw.get("name") or (catalog.name if catalog else None) or catalog_raw.get("name")
+        if name and not item.product_name:
+            item.product_name = str(name)
+        if not nested and catalog_raw:
+            raw["item"] = catalog_raw
+        barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else catalog_raw.get("barcodes", [])
+        return {"source_product_id": item.shopfront_product_id, "name": name, "sku": (catalog.sku if catalog else None), "barcodes": barcodes or [], "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": raw}
+
+    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [repair_line(i) for i in x.items]} for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
