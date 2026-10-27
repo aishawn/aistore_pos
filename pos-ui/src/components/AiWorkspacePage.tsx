@@ -39,11 +39,19 @@ const customerTasks: AiTask[] = [
     permission: "ai.recommend",
   },
   {
+    href: "/ai/identify",
+    icon: ScanLine,
+    title: "Identify a product",
+    description:
+      "Search any wine, grocery, drink, or household product by name or barcode.",
+    permission: "ai.recommend",
+  },
+  {
     href: "/sommelier/identify",
     icon: Camera,
     title: "Scan a wine label",
     description:
-      "Photograph a label or search a barcode, then see stock, pairing, and sales help.",
+      "Photograph a wine label and match it to this store's catalogue.",
     permission: "ai.sommelier",
   },
 ];
