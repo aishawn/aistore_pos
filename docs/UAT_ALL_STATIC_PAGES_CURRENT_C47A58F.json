@@ -1,0 +1,1816 @@
+{
+  "generatedAt": "2026-10-27T21:11:52.518Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "53f208852c0e1a6378e06f4f609e9434cf4c0c4f",
+  "deployment": "unverified-after-deploy",
+  "expectedRuntimeSha": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+  "runtimeBefore": {
+    "frontendCommit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+    "backendCommit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49"
+  },
+  "runtimeAfter": {
+    "frontendCommit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+    "backendCommit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49"
+  },
+  "staticRoutes": 154,
+  "viewports": [
+    390,
+    1440
+  ],
+  "routeFilter": null,
+  "checksPassed": 308,
+  "checksTotal": 308,
+  "expectedUnavailable": [],
+  "failures": [],
+  "navigationRetries": [],
+  "blockedApiRequests": [],
+  "fixtureReads": [
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may expire parked sales."
+    }
+  ],
+  "readOnlyRecordPosts": [
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "outlets",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "registers",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "outlets",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "registers",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "suppliers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "suppliers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "customers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "customers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "customers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "sales",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "status",
+        "period"
+      ]
+    },
+    {
+      "type": "suppliers",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "outlets",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "outlets",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "registers",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "outlets",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "registers",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "taxes",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "limit",
+        "offset",
+        "stockOnly"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "suppliers",
+      "keys": [
+        "query",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "type": "products",
+      "keys": [
+        "query",
+        "limit",
+        "offset",
+        "catalogueView"
+      ]
+    },
+    {
+      "type": "posCategories",
+      "keys": [
+        "limit",
+        "offset"
+      ]
+    }
+  ],
+  "sessionRenewals": [],
+  "scope": "Live authenticated static route/layout checks; parked-sales GET replaced with an empty fixture; allowlisted Odoo records and query-only POST /api/reports (string query plus optional cache.id) and auth refresh permitted; saved-report mutations and other API mutations blocked",
+  "result": "PASS"
+}
