@@ -23,6 +23,8 @@ import {
   type SidebarGroup,
   type SidebarIcon,
   type SidebarItem,
+  type SidebarGroupItem,
+  type SidebarSubGroup,
 } from "@/lib/sidebar-navigation";
 import { useGiftCardCapability } from "@/hooks/useGiftCardCapability";
 import { useAuth } from "@/lib/auth";
@@ -42,6 +44,10 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
 };
 
 function isGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
+  return "items" in entry;
+}
+
+function isSubGroup(entry: SidebarGroupItem | SidebarSubGroup): entry is SidebarSubGroup {
   return "items" in entry;
 }
 
@@ -75,7 +81,8 @@ function subItemActive(
 }
 
 function groupActive(group: SidebarGroup, pathname: string) {
-  return group.items.some((item) => subItemActive(item, pathname, group.items));
+  const items = group.items.flatMap((item) => isSubGroup(item) ? item.items : [item]);
+  return items.some((item) => subItemActive(item, pathname, items));
 }
 
 function useGuardedNav() {
@@ -247,7 +254,11 @@ function SidebarNavGroup({
       {visiblyExpanded && (
         <ul id={submenuId} className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
           {group.items.map((item) => {
-            const active = subItemActive(item, pathname, group.items);
+            if (isSubGroup(item)) {
+              return <SidebarNavSubGroup key={item.label} group={item} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={tabIndex} />;
+            }
+            const siblingItems = group.items.filter((candidate): candidate is SidebarGroupItem => !isSubGroup(candidate));
+            const active = subItemActive(item, pathname, siblingItems);
             return (
               <li key={item.href}>
                 <Link
@@ -279,6 +290,75 @@ function SidebarNavGroup({
                     />
                   ) : null}
                   {item.more ? "More" : item.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function SidebarNavSubGroup({
+  group,
+  pathname,
+  guardNav,
+  onNavigate,
+  tabIndex,
+}: {
+  group: SidebarSubGroup;
+  pathname: string;
+  guardNav: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+  onNavigate?: () => void;
+  tabIndex?: number;
+}) {
+  const [expanded, setExpanded] = useState(() => group.items.some((item) => pathMatches(item.href, pathname, item.matchHrefs)));
+  const active = group.items.some((item) => pathMatches(item.href, pathname, item.matchHrefs));
+  const visiblyExpanded = expanded || active;
+  const submenuId = `sidebar-subgroup-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  return (
+    <li>
+      <button
+        type="button"
+        tabIndex={tabIndex}
+        aria-expanded={visiblyExpanded}
+        aria-controls={submenuId}
+        onClick={() => setExpanded((value) => !value)}
+        className={cn(
+          "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors",
+          active
+            ? "text-[var(--oh-sidebar-active)]"
+            : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
+        )}
+      >
+        {group.label}
+        {visiblyExpanded ? <ChevronDown size={14} className="opacity-50" /> : <ChevronRight size={14} className="opacity-50" />}
+      </button>
+      {visiblyExpanded && (
+        <ul id={submenuId} className="ml-2 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-2">
+          {group.items.map((item) => {
+            const itemActive = subItemActive(item, pathname, group.items);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  tabIndex={tabIndex}
+                  title={item.hint}
+                  onClick={(event) => {
+                    guardNav(event, item.href);
+                    if (!event.defaultPrevented) onNavigate?.();
+                  }}
+                  className={cn(
+                    "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors",
+                    itemActive
+                      ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
+                      : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
+                  )}
+                >
+                  {itemActive && <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />}
+                  {item.label}
                 </Link>
               </li>
             );
