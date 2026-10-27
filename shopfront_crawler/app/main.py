@@ -510,6 +510,83 @@ async def push_pos_snapshot(
         }
 
     product_items = [product_payload(p) for p in products]
+
+    # The current Shopfront catalog contains only active/current products.
+    # Historical SaleItems can reference products that have since been
+    # archived, while still carrying the real name, barcode and price. Promote
+    # those embedded products into the catalog payload before sending sales so
+    # POS/Odoo can match the sale line to a named product instead of creating a
+    # ``Shopfront <source_id>`` placeholder.
+    sale_item_query = (
+        select(SaleItem)
+        .join(Sale, SaleItem.sale_id == Sale.id)
+        .where(Sale.store_key == store_key)
+    )
+    if start is not None and end is not None:
+        window_start = datetime.combine(start, datetime.min.time())
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+        sale_item_query = sale_item_query.where(
+            ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
+            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        )
+
+    def historical_product_payload(item: SaleItem) -> dict | None:
+        raw = item.raw_payload if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        source = nested or raw
+        source_id = str(item.shopfront_product_id or source.get("id") or "").strip()
+        name = item.product_name or source.get("name") or raw.get("name")
+        if not source_id or not name:
+            return None
+        barcodes = source.get("barcodes") if isinstance(source.get("barcodes"), list) else []
+        prices = source.get("prices") if isinstance(source.get("prices"), list) else []
+        price = item.unit_price
+        if price is None and prices and isinstance(prices[0], dict):
+            price = prices[0].get("price")
+        cost = item.cost if item.cost is not None else source.get("cost")
+        return {
+            "source_id": source_id,
+            "name": str(name),
+            "sku": source.get("mdbId") or source.get("sku"),
+            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None),
+            "barcodes": barcodes,
+            "category": (source.get("category") or {}).get("name") if isinstance(source.get("category"), dict) else source.get("category"),
+            "brand": (source.get("brand") or {}).get("name") if isinstance(source.get("brand"), dict) else source.get("brand"),
+            "description": source.get("description"),
+            "image": source.get("image"),
+            "alternate_images": source.get("alternateImages") or source.get("alternate_images") or [],
+            "tags": source.get("tags") or [],
+            "track_inventory": source.get("trackInventory"),
+            "case_quantity": source.get("caseQuantity"),
+            "tax_rate_name": (source.get("taxRate") or {}).get("name") if isinstance(source.get("taxRate"), dict) else None,
+            "cost_tax_rate_name": (source.get("costTaxRate") or {}).get("name") if isinstance(source.get("costTaxRate"), dict) else None,
+            "cost": cost,
+            "price": price,
+            "prices": prices or ([{"quantity": 1, "price": price}] if price is not None else []),
+            "source_status": source.get("status"),
+            "source_type": source.get("type"),
+            "raw_payload": raw,
+        }
+
+    product_items_by_source = {str(item["source_id"]): item for item in product_items if item.get("source_id")}
+    for sale_item in db.scalars(sale_item_query).yield_per(1000):
+        historical = historical_product_payload(sale_item)
+        if not historical:
+            continue
+        existing = product_items_by_source.get(historical["source_id"])
+        if existing is None:
+            product_items_by_source[historical["source_id"]] = historical
+            continue
+        # Current catalog values win; historical values fill fields that were
+        # absent from the current catalog response.
+        for key, value in historical.items():
+            if key == "raw_payload":
+                continue
+            if not existing.get(key) and value:
+                existing[key] = value
+    product_items = list(product_items_by_source.values())
+    # Include historical SaleItem-derived products in the run statistics.
+    result["products"] = len(product_items)
     inventory_items = []
     for row in inventory:
         raw = row.raw_payload if isinstance(row.raw_payload, dict) else {}

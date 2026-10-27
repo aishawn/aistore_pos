@@ -82,6 +82,7 @@ def _upsert_sale_product(
     product_id: str,
     source_product: dict[str, Any],
     sale_item: dict[str, Any],
+    cache: dict[str, Product] | None = None,
 ) -> Product:
     """Promote the product embedded in a SaleItem into the catalog mirror.
 
@@ -90,13 +91,20 @@ def _upsert_sale_product(
     SaleItem still contains the name, barcode and image metadata needed to
     render the historical sale and to create an auditable POS product.
     """
-    product = db.scalar(select(Product).where(
-        Product.store_key == store_key,
-        Product.shopfront_product_id == product_id,
-    ))
+    product = cache.get(product_id) if cache is not None else None
+    if product is None:
+        product = db.scalar(select(Product).where(
+            Product.store_key == store_key,
+            Product.shopfront_product_id == product_id,
+        ))
     if product is None:
         product = Product(store_key=store_key, shopfront_product_id=product_id)
         db.add(product)
+    if cache is not None:
+        # A date range can contain many SaleItems for the same product. Keep
+        # one pending ORM instance so a later row cannot enqueue a duplicate
+        # INSERT before the transaction is flushed.
+        cache[product_id] = product
 
     incoming = dict(source_product) if isinstance(source_product, dict) else {}
     incoming.setdefault("id", product_id)
@@ -206,6 +214,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
     client = get_client(settings, store)
     counts = {"summaries": 0, "sales": 0, "products": 0, "products_from_sales": 0, "inventory": 0, "warnings": []}
     sale_product_ids: set[str] = set()
+    sale_products: dict[str, Product] = {}
     try:
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
@@ -290,7 +299,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                         continue
                     product_id = str(product.get("id") or item_id)
                     sale_product_ids.add(product_id)
-                    _upsert_sale_product(db, store.store_key, product_id, product, item)
+                    _upsert_sale_product(db, store.store_key, product_id, product, item, sale_products)
                     line_key = str(item_id)
                     sale_item = db.scalar(select(SaleItem).where(SaleItem.sale_id == sale.id, SaleItem.line_key == line_key))
                     # Rows created by older versions have no line_key. Reuse a
