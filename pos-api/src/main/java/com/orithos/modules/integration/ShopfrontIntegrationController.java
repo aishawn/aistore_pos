@@ -302,7 +302,9 @@ public class ShopfrontIntegrationController {
                 String sql = postgres
                         ? "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON CONFLICT (store_key,source_product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,snapshot_at=EXCLUDED.snapshot_at,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                         : "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),snapshot_at=VALUES(snapshot_at),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
-                jdbc.update(sql, store, source, outlet, decimal(item,"quantity"), text(item,"timestamp"), objectMapper.writeValueAsString(item));
+                String itemOutlet = text(item, "outlet_id");
+                if (itemOutlet == null || itemOutlet.isBlank()) itemOutlet = outlet;
+                jdbc.update(sql, store, source, itemOutlet, decimal(item,"quantity"), text(item,"timestamp"), objectMapper.writeValueAsString(item));
             }
         } else if ("sales".equals(type)) {
             for (JsonNode sale : items) {

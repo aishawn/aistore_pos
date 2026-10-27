@@ -146,7 +146,7 @@ UNCONSOLIDATED'''
           sales(startDate: $startDate, endDate: $endDate, after: $after) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
-              items { id quantity cost basePrice tax totalPrice item { id } }
+              items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }

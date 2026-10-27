@@ -222,7 +222,10 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     sale_item.line_total = parse_decimal(first(item, "totalPrice", "lineTotal"))
                     sale_item.cost = parse_decimal(first(item, "cost", "Cost"))
                     sale_item.tax = parse_decimal(first(item, "tax", "Tax"))
-                    sale_item.product_name = first(item, "productName", "name")
+                    # Shopfront puts the product fields under SaleItem.item.
+                    # Older queries only requested item.id, so retain the
+                    # top-level fallbacks for tenants with legacy payloads.
+                    sale_item.product_name = first(item, "productName", "name") or first(product, "name")
                     sale_item.raw_payload = item
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
@@ -248,7 +251,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             barcodes = item.get("barcodes") if isinstance(item.get("barcodes"), list) else []
             category = item.get("category") if isinstance(item.get("category"), dict) else {}
             brand = item.get("brand") if isinstance(item.get("brand"), dict) else {}
-            product.sku = first(item, "sku", "SKU")
+            product.sku = first(item, "sku", "SKU", "mdbId", "MDB ID")
             product.barcode = first(item, "barcode", "Barcode") or (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None)
             product.name = first(item, "name", "Name")
             product.category = first(item, "categoryName") or category.get("name")
@@ -263,7 +266,25 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             for inventory_row in inventory_rows:
                 quantity = first(inventory_row, "quantity", "Quantity")
                 if quantity is not None:
-                    db.add(InventorySnapshot(store_key=store.store_key, shopfront_product_id=str(product_id), quantity=parse_decimal(quantity), raw_payload=inventory_row))
+                    outlet = inventory_row.get("outlet") if isinstance(inventory_row.get("outlet"), dict) else {}
+                    outlet_id = first(inventory_row, "outletId") or outlet.get("id")
+                    outlet_name = first(inventory_row, "outletName") or outlet.get("name")
+                    existing_inventory = db.scalar(select(InventorySnapshot).where(
+                        InventorySnapshot.store_key == store.store_key,
+                        InventorySnapshot.shopfront_product_id == str(product_id),
+                        InventorySnapshot.outlet_id == (str(outlet_id) if outlet_id is not None else None),
+                    ))
+                    if existing_inventory is None:
+                        existing_inventory = InventorySnapshot(
+                            store_key=store.store_key,
+                            shopfront_product_id=str(product_id),
+                            outlet_id=str(outlet_id) if outlet_id is not None else None,
+                        )
+                        db.add(existing_inventory)
+                    existing_inventory.outlet_name = str(outlet_name) if outlet_name is not None else None
+                    existing_inventory.quantity = parse_decimal(quantity)
+                    existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
+                    existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
         run.status, run.counts = "completed", counts
         run.finished_at = datetime.now(timezone.utc)
