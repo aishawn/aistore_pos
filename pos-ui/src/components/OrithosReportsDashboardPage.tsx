@@ -168,6 +168,7 @@ export function OrithosReportsDashboardPage() {
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const [r2RetryKey, setR2RetryKey] = useState(0);
   const [sampleDataActive, setSampleDataActive] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const rangeHoursRef = useRef(720);
@@ -248,6 +249,14 @@ export function OrithosReportsDashboardPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!loading || data) {
+      setSlowLoading(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSlowLoading(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, [data, loading]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
   useEffect(() => {
     let active = true;
@@ -312,6 +321,11 @@ export function OrithosReportsDashboardPage() {
             <div className="space-y-2"><div className="h-3 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="h-7 w-52 animate-pulse rounded bg-[var(--oh-surface-muted)]" /><div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)]" /></div>
             <div className="h-11 w-52 animate-pulse rounded-lg bg-[var(--oh-surface-muted)]" />
           </div>
+          {slowLoading ? (
+            <p className="oh-type-meta rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[var(--oh-muted)]">
+              Connecting to Orithos… sales data can take a few seconds to arrive.
+            </p>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3"><div className="h-3 w-24 rounded bg-[var(--oh-border)]" /><div className="mt-4 h-6 w-32 rounded bg-[var(--oh-surface-muted)]" /><div className="mt-3 h-3 w-40 rounded bg-[var(--oh-border)]" /></div>)}
           </div>
@@ -409,13 +423,13 @@ export function OrithosReportsDashboardPage() {
 
           {sampleDataActive && (
             <section aria-label="Sample data notice" className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2.5">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Sample data is still in this store</h2>
                 <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
                   DEMO products and demo seed sales are included in Sell and Reports. Remove them before go-live, then import your catalogue.
                 </p>
               </div>
-              <Link href="/settings/data" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-sky-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-sky-50">
+              <Link href="/settings/data" className="oh-type-meta inline-flex min-h-11 shrink-0 items-center rounded-md border border-sky-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-sky-50">
                 Remove sample data
               </Link>
             </section>
