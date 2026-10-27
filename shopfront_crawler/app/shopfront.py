@@ -169,7 +169,7 @@ UNCONSOLIDATED'''
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
         try:
-            return _extract_nodes(await self.graphql(access_token, query), "products")
+            nodes = _extract_nodes(await self.graphql(access_token, query), "products")
         except ShopfrontError:
             # Shopfront rejects a complete GraphQL page when one optional
             # field is unavailable for a tenant. Keep the catalog usable with
@@ -182,7 +182,28 @@ UNCONSOLIDATED'''
               inventory { quantity outlet { id name } }
             } } } }
             """
-            return _extract_nodes(await self.graphql(access_token, fallback), "products")
+            nodes = _extract_nodes(await self.graphql(access_token, fallback), "products")
+
+        # Optional fields are queried independently. Shopfront GraphQL rejects
+        # a whole selection when one field is unavailable for a tenant, so a
+        # problem in one group must not discard the base catalog page.
+        optional_queries = (
+            "{ products(first: 100) { edges { node { id mdbId family { id name } tags { name } trackInventory caseQuantity taxRate { id name } costTaxRate { id name } } } } }",
+            "{ products(first: 100) { edges { node { id prices { quantity price } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder outlet { id name } } } } } }",
+        )
+        merged = {str(node.get("id")): dict(node) for node in nodes if isinstance(node, dict) and node.get("id")}
+        for optional_query in optional_queries:
+            try:
+                for node in _extract_nodes(await self.graphql(access_token, optional_query), "products"):
+                    if not isinstance(node, dict) or not node.get("id"):
+                        continue
+                    target = merged.get(str(node["id"]))
+                    if target is not None:
+                        target.update({key: value for key, value in node.items() if value is not None})
+            except ShopfrontError:
+                continue
+        return list(merged.values())
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return _extract_nodes(await self.graphql(access_token, query), "products")
