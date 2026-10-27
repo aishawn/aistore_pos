@@ -667,7 +667,21 @@ async def push_pos_snapshot(
             result["sale_batches"] = sale_batches
             result["odoo_sale_batches"] = odoo_batches
             if run is not None:
-                run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": offset, "sale_total": total_sales, "sale_batches": sale_batches, "odoo_sale_batches": odoo_batches, "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror"}
+                # Preserve source-sync counts when this helper is called for
+                # a historical chunk. Replacing the whole object hid
+                # products_from_sales, warnings and the crawler's date range.
+                prior_counts = dict(run.counts or {})
+                run.counts = {
+                    **prior_counts,
+                    "type": prior_counts.get("type", "full_snapshot"),
+                    "pos_products": len(product_items),
+                    "pos_inventory": len(inventory_items),
+                    "pos_sales": offset,
+                    "sale_total": total_sales,
+                    "sale_batches": sale_batches,
+                    "odoo_sale_batches": odoo_batches,
+                    "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
+                }
                 db.commit()
         result.update({
             "status": "failed" if result["mirror_errors"] else "completed",
