@@ -53,3 +53,16 @@
 1. 为 `advanced` 和 `misc` 设计明确的 Odoo 数据契约后再接入真实指标。
 2. 补充商品缺失图片的默认占位策略。
 3. 保持报表路由回归矩阵，禁止重新引入 `ReportBuilder` 或 `/api/reports`。
+## 2026-10-27 Navigation and Dashboard AI iteration
+
+- Reports navigation is now a single horizontal row with five business tabs: Overview, AI Insights, Sales History, Inventory, and Purchasing & Transfers.
+- Sales History is a first-class tab backed by `/history`; duplicate report history paths remain compatibility redirects.
+- AI Insights is embedded in the Odoo Dashboard. It uses the selected dashboard period and loaded Odoo metrics, and only calls the AI Assistant after the operator clicks **Analyse dashboard**. The prompt covers sales trend, comparison, basket size, refunds, product/category mix, inventory signals, and read-only next actions.
+- `/reports/ai/metrics` remains an admin-only AI Query Health page under Setup and is no longer presented as the business insights tab.
+- Classic POS API and `/api/reports` are not used. Odoo remains the sole business data source.
+
+### Release and verification
+
+- Candidate was rebased onto the latest `origin/main` and pushed to `main` as `c98db6b4`.
+- `git diff --check` passed. ESLint completed successfully before the worktree dependency install became incomplete on Windows; TypeScript/Next checks could not run because `node_modules` did not produce executable links (`node` is v22 while the package requires v24).
+- Dokploy is configured to deploy `main`. At the latest check, `/api/public/version` on `skr.orithos.com.au` and `demo.orithos.com.au` still reported runtime `79bdee71`, so the new commit is awaiting Dokploy deployment. Do not mark the iteration as live until the endpoint reports `c98db6b4` and the browser confirms the five-tab row and Dashboard AI panel.
