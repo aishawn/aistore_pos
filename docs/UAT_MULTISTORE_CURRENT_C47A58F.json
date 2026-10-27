@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-10-27T21:33:37.209Z",
+  "sourceCommit": "c4994c2d396c36f5fc3dbe5b89a315922eb2ef13",
+  "deploymentSha": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+  "appBase": "https://app.orithos.com.au",
+  "demoBase": "https://demo.orithos.com.au",
+  "passed": 10,
+  "failed": 1,
+  "result": "FAIL",
+  "checks": [
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "platformOperator": true
+    },
+    {
+      "name": "platform.tenants.list",
+      "status": "PASS",
+      "httpStatus": 200,
+      "count": 100
+    },
+    {
+      "name": "platform.operator.detail",
+      "status": "BLOCKED",
+      "message": "platform operator store was not returned; no tenant lifecycle mutation attempted"
+    },
+    {
+      "name": "platform.stores.page",
+      "status": "PASS",
+      "url": "https://app.orithos.com.au/platform/stores",
+      "snippet": "Orithos Platform admin All stores · app.orithos.com.au Stores AI usage Operations Failures Audit Open demo store admin Sign out Stores Platform admin view of every vendor. Store owners from brand signup manage staff only"
+    },
+    {
+      "name": "demo.login",
+      "status": "PASS"
+    },
+    {
+      "name": "demo.odooBinding",
+      "status": "PASS",
+      "httpStatus": 200,
+      "odooProvisionStatus": "ready",
+      "companyId": 2,
+      "r2Prefix": "shopfront/demo/"
+    },
+    {
+      "name": "demo.receive.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Orithos session expired\"}"
+    },
+    {
+      "name": "demo.cash.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Orithos session expired\"}"
+    },
+    {
+      "name": "demo.cash.csrfOrigin",
+      "status": "PASS",
+      "httpStatus": 403
+    },
+    {
+      "name": "demo.manageCash.page",
+      "status": "PASS",
+      "snippet": "Orithos Sell Dashboard Stock Customers Orithos AI Reports Setup admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Open session requi"
+    },
+    {
+      "name": "demo.purchases.page",
+      "status": "PASS",
+      "snippet": "Orithos Sell Dashboard Stock Products Purchasing Suppliers Customers Orithos AI Reports Setup admin Skip to main content Purchasing Plan replenishment, manage orders and receive st"
+    }
+  ]
+}

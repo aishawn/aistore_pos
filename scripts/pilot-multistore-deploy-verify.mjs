@@ -86,12 +86,10 @@ async function main() {
 
       // The list is newest-first and can be dominated by deleted UAT tenants.
       // Prefer the operator store, then a live tenant, before falling back.
-      const demo = items.find((v) => v.subdomain === "demo")
-        || items.find((v) => v.status !== "deleted" && !v.platformOperator)
-        || items.find((v) => v.status !== "deleted")
-        || items[0];
+      const demo = items.find((v) => v.subdomain === "demo" && v.platformOperator)
+        || items.find((v) => v.platformOperator && v.status !== "deleted");
       if (!demo) {
-        record("platform.tenants.detail", "FAIL", { message: "no tenants returned" });
+        record("platform.operator.detail", "BLOCKED", { message: "platform operator store was not returned; no tenant lifecycle mutation attempted" });
       } else {
         const detail = await request.get(`${appBase}/api/admin/tenants/${demo.id}`, { headers: auth });
         const detailJson = await detail.json().catch(() => null);
@@ -146,7 +144,7 @@ async function main() {
 
         await page.goto(`${appBase}/platform/stores`, { waitUntil: "networkidle", timeout: 60000 });
         const detailHref = await page.locator(`a[href="/platform/stores/${demo.id}"]`).count();
-        record("platform.stores.listLink", demo.platformOperator || detailHref > 0 ? "PASS" : "FAIL", { detailHref, platformOperator: Boolean(demo.platformOperator) });
+        record("platform.stores.listLink", detailHref > 0 ? "PASS" : "BLOCKED", { detailHref, platformOperator: Boolean(demo.platformOperator), message: detailHref ? undefined : "operator store is not listed as a normal tenant link" });
       }
       await page.close();
     }
