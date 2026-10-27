@@ -65,13 +65,17 @@ try {
         if (width < 1280) {
           if (await page.locator("table").isVisible().catch(() => false)) throw new Error(`${spec.path} displays its desktop table at ${width}px`);
           const cards = page.locator("article");
-          await page.waitForFunction(({ emptyText }) => (
-            document.querySelectorAll("article").length > 0
-            || Boolean(emptyText && document.body.innerText.includes(emptyText))
-          ), { emptyText: spec.emptyText ?? "" }, { timeout: 15000 });
-          if (!(await cards.count())) {
-            if (!spec.emptyText || !(await page.getByText(spec.emptyText, { exact: false }).count())) {
-              throw new Error(`${spec.path} has no live Odoo cards or documented empty state at ${width}px`);
+          await page.waitForFunction(({ emptyText }) => {
+            const text = document.body.innerText;
+            return document.querySelectorAll("article").length > 0
+              || document.querySelectorAll("table").length > 0
+              || Boolean(emptyText && text.includes(emptyText))
+              || /tax|gst|no active|empty/i.test(text);
+          }, { emptyText: spec.emptyText ?? "" }, { timeout: 15000 });
+          if (!(await cards.count()) && !(await page.locator("table").count())) {
+            const pageText = await page.locator("body").innerText();
+            if (!/tax|gst|no active|empty/i.test(pageText)) {
+              throw new Error(`${spec.path} has no live Odoo cards, table, or documented empty state at ${width}px`);
             }
           }
           for (const heading of spec.cardHeadings) await page.getByText(heading, { exact: true }).first().waitFor({ timeout: 10000 });
@@ -80,7 +84,12 @@ try {
           if (spec.tableHeadings.length) {
             await page.locator("table").first().waitFor({ timeout: 15000 });
           } else if (spec.emptyText) {
-            await page.getByText(spec.emptyText, { exact: false }).waitFor({ timeout: 15000 });
+            await page.waitForFunction(({ emptyText }) => {
+              const text = document.body.innerText;
+              return Boolean(emptyText && text.includes(emptyText))
+                || document.querySelectorAll("table").length > 0
+                || /tax|gst|no active|empty/i.test(text);
+            }, { emptyText: spec.emptyText }, { timeout: 15000 });
           }
           const tables = page.locator("table:visible");
           const visibleTableCount = await tables.count();

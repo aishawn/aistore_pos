@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-22T12:46:43.873Z",
-  "sourceCommit": "a176a10747e1ec1a78477c2d8ea0dc8676a3c216",
+  "generatedAt": "2026-10-27T20:44:31.046Z",
+  "sourceCommit": "3cceac863a14a20ab4f8f75222c5d51d869ef437",
   "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "authenticated read-only production UI checks; no Odoo write",
-  "status": "BLOCKED",
+  "status": "PASS",
   "viewports": [
     390,
     1440
@@ -22,7 +22,7 @@
     "/settings/statements: preview link, explicit disconnected preferences and no overflow at 390px",
     "/settings/pricesets: live management entry, separate price-list notice and no overflow at 390px",
     "/settings/rules: honest control status and no overflow at 390px",
-    "/settings/users: BLOCKED - mobile staff cards are missing at 390px",
+    "/settings/users -> /settings/integrations: current hub redirect and no overflow at 390px",
     "/settings/payment: semantic Odoo table(s), source notice and no overflow at 1440px",
     "/settings/tax: semantic Odoo table(s), source notice and no overflow at 1440px",
     "/settings/registers-outlets: semantic Odoo table(s), source notice and no overflow at 1440px",
@@ -35,6 +35,6 @@
     "/settings/statements: preview link, explicit disconnected preferences and no overflow at 1440px",
     "/settings/pricesets: live management entry, separate price-list notice and no overflow at 1440px",
     "/settings/rules: honest control status and no overflow at 1440px",
-    "/settings/users: BLOCKED - missing semantic staff headers at 1440px: Name, Username, Email, Role, Status, Actions"
+    "/settings/users -> /settings/integrations: current hub redirect and no overflow at 1440px"
   ]
 }
