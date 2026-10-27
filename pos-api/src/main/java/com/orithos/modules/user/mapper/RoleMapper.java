@@ -21,7 +21,12 @@ public interface RoleMapper {
     @Select("""
         SELECT * FROM role
         WHERE managed_id IN ('ADMIN', 'MANAGER', 'CLERK')
-        ORDER BY FIELD(managed_id, 'ADMIN', 'MANAGER', 'CLERK'), id
+        ORDER BY CASE managed_id
+            WHEN 'ADMIN' THEN 1
+            WHEN 'MANAGER' THEN 2
+            WHEN 'CLERK' THEN 3
+            ELSE 4
+        END, id
         """)
     List<Role> findManagedRoles();
 
