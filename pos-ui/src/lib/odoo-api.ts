@@ -316,7 +316,6 @@ export interface OdooPosBootstrap {
 
 export interface OdooCheckoutRequest {
   expectedQuote?: string;
-  externalPaymentConfirmed?: boolean;
   configId: number;
   paymentMethodId: number;
   orderUuid: string;

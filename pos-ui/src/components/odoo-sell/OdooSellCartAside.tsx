@@ -48,8 +48,6 @@ type OdooSellCartAsideProps = {
   quoteError: string | null;
   showQuoteRetry: boolean;
   onRetryQuote: () => void;
-  awaitingCardConfirm: boolean;
-  onFocusTerminalConfirm: () => void;
   canFinalise: boolean;
   finaliseLabel: string;
   finaliseTitle: string;
@@ -98,8 +96,6 @@ export function OdooSellCartAside({
   quoteError,
   showQuoteRetry,
   onRetryQuote,
-  awaitingCardConfirm,
-  onFocusTerminalConfirm,
   canFinalise,
   finaliseLabel,
   finaliseTitle,
@@ -341,16 +337,6 @@ export function OdooSellCartAside({
             </button>
           </div>
         )}
-        {awaitingCardConfirm && (
-          <button
-            type="button"
-            onClick={onFocusTerminalConfirm}
-            className="mb-2 flex min-h-11 w-full items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left text-xs font-semibold text-amber-950 hover:bg-amber-100"
-          >
-            <span>Confirm card payment after the terminal approves</span>
-            <span className="shrink-0 underline underline-offset-2">Confirm</span>
-          </button>
-        )}
         {showFinaliseHint && (
           <p role="status" className="mb-2 text-xs font-medium text-amber-800">
             {finaliseLabel}
@@ -366,7 +352,6 @@ export function OdooSellCartAside({
         {lines.length > 0 && (
           <OdooSellFinaliseButton
             canFinalise={canFinalise}
-            awaitingCardConfirm={awaitingCardConfirm}
             label={finaliseLabel}
             title={finaliseTitle}
             onClick={onFinalise}
