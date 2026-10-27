@@ -45,7 +45,11 @@ async function readJson(res) {
   }
 }
 
-const out = { generatedAt: new Date().toISOString(), commit: "5fa78d5", checks: [] };
+const out = {
+  generatedAt: new Date().toISOString(),
+  commit: process.env.PILOT_DEPLOYMENT_SHA || "unverified-after-deploy",
+  checks: [],
+};
 function check(name, status, detail = {}) {
   out.checks.push({ name, status, ...detail });
   console.log(`[${status}] ${name}${detail.message ? ` — ${detail.message}` : ""}`);
