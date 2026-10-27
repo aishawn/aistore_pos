@@ -46,20 +46,36 @@ def init_db() -> None:
             for name, sql_type in columns.items():
                 if name not in existing:
                     connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"))
-        # Older rows stored outlet data only inside raw_payload. Backfill the
-        # normalized key before deduplication; otherwise SQL NULL semantics
-        # allow one duplicate row per historical snapshot.
+        # Older rows stored outlet data only inside raw_payload. Deduplicate
+        # using the derived outlet key before backfilling the normalized
+        # columns. This order matters when a previous deployment already
+        # created the unique index: updating all duplicate NULL rows first
+        # would violate that index before the cleanup can run.
         if engine.dialect.name == "sqlite":
             connection.execute(text(
-                "UPDATE inventory_snapshots SET outlet_id = json_extract(raw_payload, '$.outlet.id'), "
-                "outlet_name = json_extract(raw_payload, '$.outlet.name') "
-                "WHERE outlet_id IS NULL AND json_extract(raw_payload, '$.outlet.id') IS NOT NULL"
+                "DELETE FROM inventory_snapshots "
+                "WHERE id NOT IN (SELECT MAX(id) FROM inventory_snapshots "
+                "GROUP BY store_key, shopfront_product_id, "
+                "COALESCE(outlet_id, json_extract(raw_payload, '$.outlet.id'), 'unknown'))"
+            ))
+            connection.execute(text(
+                "UPDATE inventory_snapshots SET outlet_id = COALESCE(outlet_id, "
+                "json_extract(raw_payload, '$.outlet.id'), 'unknown'), "
+                "outlet_name = COALESCE(outlet_name, json_extract(raw_payload, '$.outlet.name')) "
+                "WHERE outlet_id IS NULL"
             ))
         elif engine.dialect.name == "postgresql":
             connection.execute(text(
-                "UPDATE inventory_snapshots SET outlet_id = raw_payload->'outlet'->>'id', "
-                "outlet_name = raw_payload->'outlet'->>'name' "
-                "WHERE outlet_id IS NULL AND raw_payload->'outlet'->>'id' IS NOT NULL"
+                "DELETE FROM inventory_snapshots "
+                "WHERE id NOT IN (SELECT MAX(id) FROM inventory_snapshots "
+                "GROUP BY store_key, shopfront_product_id, "
+                "COALESCE(outlet_id, raw_payload->'outlet'->>'id', 'unknown'))"
+            ))
+            connection.execute(text(
+                "UPDATE inventory_snapshots SET outlet_id = COALESCE(outlet_id, "
+                "raw_payload->'outlet'->>'id', 'unknown'), "
+                "outlet_name = COALESCE(outlet_name, raw_payload->'outlet'->>'name') "
+                "WHERE outlet_id IS NULL"
             ))
         # Older crawler volumes did not have a uniqueness constraint and may
         # contain one row per historical snapshot. Keep the newest row for
