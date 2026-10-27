@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-10-27T21:20:53.664Z",
+  "scope": "temporary-tenant purchase confirmation and receipt recovery",
+  "checks": [
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "tenant.create",
+      "status": "PASS",
+      "httpStatus": 200,
+      "vendorId": 105
+    },
+    {
+      "name": "tenant.provision.ready",
+      "status": "PASS",
+      "provisionStatus": "ready",
+      "companyId": 53
+    },
+    {
+      "name": "tenant.bootstrap",
+      "status": "PASS",
+      "bootstrapStatus": 200,
+      "storeStatus": 200
+    },
+    {
+      "name": "tenant.odoo.session",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "supplier.create",
+      "status": "PASS",
+      "httpStatus": 201,
+      "supplierId": 265
+    },
+    {
+      "name": "replenishment.read",
+      "status": "PASS",
+      "httpStatus": 200,
+      "productId": 5238,
+      "method": "rules_v1_weighted_velocity"
+    },
+    {
+      "name": "draft.rfq.create",
+      "status": "PASS",
+      "httpStatus": 201,
+      "purchaseId": 11,
+      "auditSaved": true
+    },
+    {
+      "name": "purchase.confirm",
+      "status": "PASS",
+      "httpStatus": 200,
+      "state": null
+    },
+    {
+      "name": "purchase.receipt.readback",
+      "status": "PASS",
+      "httpStatus": 200,
+      "pickingId": 96747,
+      "moveId": 187727,
+      "orderedQty": 3
+    },
+    {
+      "name": "over-receive.blocked",
+      "status": "PASS",
+      "httpStatus": 400,
+      "message": "Quantity for [DEMO-PROS] DEMO Prosecco 750ml exceeds ordered quantity."
+    },
+    {
+      "name": "partial.receive",
+      "status": "PASS",
+      "httpStatus": 200,
+      "resultState": "confirmed",
+      "pickingState": "done"
+    },
+    {
+      "name": "duplicate.receive.idempotent",
+      "status": "PASS",
+      "httpStatus": 200,
+      "resultState": "already_completed"
+    },
+    {
+      "name": "backorder.readback",
+      "status": "PASS",
+      "httpStatus": 200,
+      "pickingId": 96762,
+      "moveId": 187747,
+      "remaining": 2
+    },
+    {
+      "name": "remaining.receive",
+      "status": "PASS",
+      "httpStatus": 200,
+      "resultState": "confirmed",
+      "pickingState": "done"
+    },
+    {
+      "name": "final.purchase.readback",
+      "status": "PASS",
+      "httpStatus": 200,
+      "receivable": null
+    },
+    {
+      "name": "tenant.delete",
+      "status": "PASS",
+      "httpStatus": 200,
+      "tenantStatus": "deleted"
+    },
+    {
+      "name": "deleted.auth",
+      "status": "PASS",
+      "httpStatus": 402
+    }
+  ],
+  "status": "PASS"
+}
