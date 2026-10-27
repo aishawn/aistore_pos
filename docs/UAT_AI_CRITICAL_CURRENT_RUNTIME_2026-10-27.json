@@ -1,0 +1,155 @@
+{
+  "generatedAt": "2026-10-27T05:10:32.239Z",
+  "sourceCommit": "41d58a70f80abca47edc6c4240f0d461e113c11d",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "49935042be85f24f0b8e4f7296b4dad976f24304",
+    "frontendBuiltAt": "2026-10-27T04:46:25.872Z",
+    "backendCommit": "49935042be85f24f0b8e4f7296b4dad976f24304",
+    "backendBuiltAt": "2026-10-27T04:44:35Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 387,
+  "selectedCount": 4,
+  "selectedIds": [
+    "help-register",
+    "help-capabilities-en",
+    "stock-clarify-not-displayed-zh",
+    "stock-clarify-no-results-zh"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 387,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "help-register",
+      "question": "How do I close the register?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 500,
+        "attempts": 1,
+        "intent": null,
+        "route": null,
+        "fastPathId": null,
+        "source": null,
+        "llmFallback": null,
+        "writeRequests": null,
+        "writeRequestsCheck": false,
+        "correlationId": "8a8bbda0-07b8-4937-94b0-563e311c24ca"
+      }
+    },
+    {
+      "id": "help-capabilities-en",
+      "question": "What can you do?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 500,
+        "attempts": 1,
+        "intent": null,
+        "route": null,
+        "fastPathId": null,
+        "source": null,
+        "llmFallback": null,
+        "writeRequests": null,
+        "writeRequestsCheck": false,
+        "correlationId": "ca9d8b8c-0f7a-4a9d-93e3-5457d0370e78"
+      }
+    },
+    {
+      "id": "stock-clarify-not-displayed-zh",
+      "question": "库存为什么没有显示？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 500,
+        "attempts": 1,
+        "intent": null,
+        "route": null,
+        "fastPathId": null,
+        "source": null,
+        "llmFallback": null,
+        "writeRequests": null,
+        "writeRequestsCheck": false,
+        "correlationId": "d9a2621e-905d-4493-9a2a-558920617bd6",
+        "answerChecks": [
+          false
+        ]
+      }
+    },
+    {
+      "id": "stock-clarify-no-results-zh",
+      "question": "为什么没有结果？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 500,
+        "attempts": 1,
+        "intent": null,
+        "route": null,
+        "fastPathId": null,
+        "source": null,
+        "llmFallback": null,
+        "writeRequests": null,
+        "writeRequestsCheck": false,
+        "correlationId": "67817476-6100-4a6b-93a5-828e7232d435",
+        "answerChecks": [
+          false
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 0,
+  "blocked": 0,
+  "failed": 4,
+  "status": "FAIL",
+  "acceptance": {
+    "sourceTreeClean": false,
+    "runtimeMatchesSourceCommit": false,
+    "fullCatalogRun": false,
+    "candidateAccepted": false
+  }
+}
