@@ -34,8 +34,8 @@ public interface AiReportAuditMapper {
 
     @Select("""
             SELECT COUNT(*) AS requests,
-                   COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
-                   COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
+                   COALESCE(SUM(CASE WHEN allowed IS TRUE THEN 1 ELSE 0 END), 0) AS allowed,
+                   COALESCE(SUM(CASE WHEN allowed IS FALSE THEN 1 ELSE 0 END), 0) AS rejected,
                    COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
                    COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
                                      COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens
@@ -48,8 +48,8 @@ public interface AiReportAuditMapper {
     @Select("""
             SELECT COALESCE(path, 'unknown') AS path,
                    COUNT(*) AS requests,
-                   COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
-                   COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
+                   COALESCE(SUM(CASE WHEN allowed IS TRUE THEN 1 ELSE 0 END), 0) AS allowed,
+                   COALESCE(SUM(CASE WHEN allowed IS FALSE THEN 1 ELSE 0 END), 0) AS rejected,
                    COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
                    COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
                                      COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens
@@ -86,8 +86,8 @@ public interface AiReportAuditMapper {
     @Select("""
             SELECT vendor_id AS vendorId,
                    COUNT(*) AS requests,
-                   COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
-                   COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
+                   COALESCE(SUM(CASE WHEN allowed IS TRUE THEN 1 ELSE 0 END), 0) AS allowed,
+                   COALESCE(SUM(CASE WHEN allowed IS FALSE THEN 1 ELSE 0 END), 0) AS rejected,
                    COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
                    COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
                                      COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens,
