@@ -1,19 +1,16 @@
-import { ReportBuilder } from "@/components/admin/ReportBuilder";
+import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
 
 export default function PurchaseReportsPage() {
   return (
-    <ReportBuilder
-      title="Purchase report"
-      query={`SELECT BY_NAME AS "Name", quantity_ordered AS "Quantity Ordered", quantity_received AS "Quantity Received", cost AS "Cost"`}
-      panels={[
-        { label: "Report Type", value: "Supplier" },
-        { label: "Group By", value: "None" },
-        { label: "Date and Time", value: "Today" },
-        { label: "Consolidate By Report Type", value: "Yes" },
-        { label: "Precision", value: "None" },
-      ]}
-      columns={["Name", "Quantity Ordered", "Quantity Received", "Cost", "Outstanding", "Supplier"]}
-      totals={[null, "0", "0", "$0.00", "$0.00", null]}
-    />
+    <div className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Odoo workflow</p>
+        <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchase orders</h1>
+        <p className="mt-1 text-sm text-[var(--oh-muted)]">Review RFQs and purchase orders from the connected Orithos account.</p>
+      </header>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <OdooPurchaseOrdersPage embedded />
+      </div>
+    </div>
   );
 }
