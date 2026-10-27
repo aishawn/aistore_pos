@@ -495,7 +495,8 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
                 run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": offset, "sale_total": total_sales, "sale_batches": sale_batches, "odoo_sale_batches": odoo_batches, "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror"}
                 db.commit()
         result.update({
-            "status": "completed",
+            "status": "failed" if result["mirror_errors"] else "completed",
+            "error": "; ".join(result["mirror_errors"]) if result["mirror_errors"] else None,
             "product_response": product_result,
             "inventory_response": inventory_result,
             "odoo_business_write": bool(settings.odoo_import_enabled and settings.odoo_business_write_enabled),
