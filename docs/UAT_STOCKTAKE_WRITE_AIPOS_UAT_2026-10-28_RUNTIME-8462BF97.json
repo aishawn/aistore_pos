@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-27T19:00:00Z",
+  "target": "https://demo.orithos.com.au",
+  "runtimeCommit": "8462bf9731c862483b669960507ed0a51a93475e",
+  "database": "aipos_uat",
+  "scope": "authorized UAT stocktake write with duplicate retry and restoration",
+  "location": {
+    "id": 18,
+    "name": "UATPI/Stock",
+    "source": "tenant-binding",
+    "writeEnabled": true
+  },
+  "productId": 5,
+  "checks": [
+    { "name": "initial.read", "status": "PASS", "quantity": 24 },
+    { "name": "no-op.adjustment", "status": "PASS", "httpStatus": 200, "applied": 0 },
+    { "name": "count.adjustment", "status": "PASS", "httpStatus": 200, "before": 24, "counted": 25, "applied": 1, "actual": 25 },
+    { "name": "count.readback", "status": "PASS", "quantity": 25 },
+    { "name": "duplicate.retry", "status": "PASS", "httpStatus": 200, "applied": 0 },
+    { "name": "restore.adjustment", "status": "PASS", "httpStatus": 200, "before": 25, "counted": 24, "applied": 1, "actual": 24 },
+    { "name": "restore.readback", "status": "PASS", "quantity": 24 }
+  ],
+  "status": "PASS"
+}

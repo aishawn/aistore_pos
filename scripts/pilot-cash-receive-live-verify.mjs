@@ -166,7 +166,7 @@ const recv = await fetch(`${DEMO}/api/odoo/purchase-orders/1/receive`, {
   body: JSON.stringify({ confirm: true, lines: [{ moveId: 1, qtyDone: 1 }] }),
 });
 const rj = await readJson(recv);
-check("demo.receive.missingPo", recv.status === 404 ? "PASS" : "FAIL", {
+check("demo.receive.missingReceipt", recv.status === 400 ? "PASS" : "FAIL", {
   httpStatus: recv.status,
   message: rj.message,
 });

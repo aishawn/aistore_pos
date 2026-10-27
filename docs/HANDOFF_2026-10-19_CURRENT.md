@@ -3101,7 +3101,6 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Responsive stock/pricing fixture passed **15/15** across 320/390/768/1024/1440px with the new Export CSV and Clear Filters focus assertions, no page errors, no overflow, and `blockedWrites=0`. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 - [x] Node 24 typecheck, targeted ESLint, `node --check`, and `git diff --check` passed. No local production build was run.
 
-@@
 ## 2026-10-22 Settings Data focus follow-up
 
 - Settings Data now gives Retry, Remove sample data, Import products, Export products, and Download template visible `focus-visible` outlines. The actions and data flow are unchanged.
@@ -3931,7 +3930,6 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - Direct Odoo JSON-RPC authentication against the unified `aipos_uat` target succeeds with the configured `ODOO_USER`/`ODOO_PASS` service account (`uid=2`). The POS `INITIAL_ADMIN_PASSWORD` is not the Odoo admin password for this database; this is expected because POS and Odoo credentials are separate variables.
 - After the subsequent Dokploy deployment, runtime is `d3d97bacad2e4c670686e658b65f67d66008cfd2` on both frontend and backend. A second Demo customer-group CRUD run on that exact runtime passed all 11 checks, including HTTP 201 create and final absence cleanup; marker `Codex UAT Group 1793034173177` was removed.
 - Read-only checkout quote on the exact runtime returned HTTP 200 for Demo product ID 5 at `$32.00`, but GST/tax was `0` and the product record has no tax IDs. No checkout write was sent. This is a release blocker until the correct Australian GST configuration is supplied and the quote, sale, refund and reports reconcile.
-@@
 ## 2026-10-27 aipos_uat sales/refund closure on runtime `a6961f01`
 
 - Demo frontend/backend `/api/public/version` both report exact commit `a6961f01c069a9fd99ffa986eb1468dae84bad98`.
@@ -3942,3 +3940,91 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - Evidence: [UAT_SALES_REFUND_AIPOS_UAT_2026-10-27_RUNTIME-A6961F01.json](UAT_SALES_REFUND_AIPOS_UAT_2026-10-27_RUNTIME-A6961F01.json).
 - A diagnostic checkout with a human-readable order key was rejected with HTTP 400 before any write; the API requires a standard UUID and the UI uses `crypto.randomUUID()`. No source change was needed.
 - Release remains **NO-GO** for customer production. Register close and cash reconciliation, procurement receiving, stocktake conflict/retry, backup restore, cross-tenant denial and physical device checks are still required. Shared `aipos_uat` is suitable for controlled trial data only.
+
+## 2026-10-27 unified `aipos_uat` runtime recheck (`9fe5be41`)
+
+- Deployment, debugging and controlled UAT continue to use `ODOO_DATABASE=aipos_uat`, `ODOO_DATABASE_UAT=aipos_uat`, and `ISOLATION_ODOO_DATABASE=aipos_uat`. This is shared UAT mode; `/api/public/uat-context` returning `isolated=false` is expected and does not prove customer production isolation.
+- Demo authenticated successfully with HTTP 200. `/api/public/version` reports matching frontend/backend commit `9fe5be41d97fe62d27d3dafa272a0998efbcdae8`.
+- Authenticated `GET /api/sell/parked` returns HTTP 200 with `{code:0,data:[]}` on that runtime. The Odoo-only parked-sales fix is deployed and the read no longer fails against retired Classic POS tables.
+- No new business writes were made during this recheck. Customer production remains **NO-GO** until procurement receiving, stocktake conflict/retry, backup restore, cross-tenant denial, role permissions, hardware and AI acceptance are evidenced. Shared `aipos_uat` remains suitable only for controlled UAT/trial data.
+
+## 2026-10-27 register close/reopen fix on runtime `2166e6e2`
+
+- The deployed POS open-register route now completes Odoo's `pos.session.set_opening_control` after `pos.config.open_ui`; a 200 response no longer leaves the session in `opening_control`.
+- Exact runtime `2166e6e2b0c9fba8ed2c9f8c60fbd63d9f4378f5` was verified on Demo. Session `00003` closed with counted cash `$758.80`; the fixed open route created session `00004` and bootstrap returned `state=opened`.
+- The missing-count guard returned HTTP 422 with the expected message. A correct `$758.80` retry closed `00004`, and the final reopen created session `00005`, which bootstrap confirmed as `opened` for continued UAT.
+- Evidence: [UAT_REGISTER_CLOSE_REOPEN_AIPOS_UAT_2026-10-27_RUNTIME-2166E6E2.json](UAT_REGISTER_CLOSE_REOPEN_AIPOS_UAT_2026-10-27_RUNTIME-2166E6E2.json).
+- The register is intentionally left open as `00005`. Procurement receive, stocktake write/conflict, backup restore, cross-tenant denial, hardware and AI acceptance remain outstanding; overall release remains **NO-GO**.
+
+## 2026-10-27 procurement, cross-tenant and stocktake UAT
+
+- Runtime `5672f8f9bf12d6d1fe2e050bbad4b509393b4798` is deployed with matching frontend/backend SHA.
+- Temporary-tenant procurement UAT passed on that runtime: RFQ creation with approval audit, confirmation, over-receive rejection (HTTP 400), partial receipt, idempotent duplicate submission (`already_completed`), backorder remaining quantity (`2`), remaining receipt, final purchase readback with no open receipt, tenant deletion and deleted-auth rejection. Evidence: [UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json](UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json).
+- Cross-company supplier UAT passed on the same runtime: two distinct Odoo companies provisioned; tenant A supplier creation succeeded; tenant B purchase request using A's supplier returned HTTP 404; both tenants were deleted and authentication rejected afterward. Evidence: [UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json](UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json).
+- Demo stocktake write UAT passed and was restored: no-op applied `0`, count `24 -> 25` applied one adjustment, duplicate retry applied `0`, and restore `25 -> 24` succeeded. Location source was the tenant binding and the API reported writes enabled. This was an authorized mock/UAT adjustment, not customer production data. Evidence is the command output from `.local/stocktake-live-write.mjs`; a committed JSON artifact still needs to be captured.
+- Customer release remains **NO-GO** pending backup/restore proof, role matrix, hardware/EFTPOS/printing checks, AI provider/latency/cost acceptance, and a final GST/sales/refund/cash reconciliation pack. Shared `aipos_uat` remains controlled UAT, not production database isolation.
+
+## 2026-10-27 AI provider failure diagnosis
+
+- Dokploy backend logs for runtime `5672f8f9` show the failing `/api/ai/assistant` requests reach DashScope and receive HTTP 400 `InvalidParameter: url error`; the configured chat model is `qwen3.8-flash` while the Compose environment still contains `AI_DASHSCOPE_MULTI_MODEL=false`.
+- The same requests are surfaced as HTTP 500 by the assistant controller. Best-effort platform failure capture then hits an unavailable/invalid audit table and can emit `UnexpectedRollbackException`, masking the original response.
+- Local candidate changes force multimodal routing for models that require it even when an old explicit false override remains, and remove the transaction wrapper from the best-effort failure-capture write so audit failure cannot replace the API error. These backend changes require the Java 21 exact-SHA remote build gate before push/deploy.
+- Until that candidate is built, deployed, and the online utterance matrix is rerun, AI remains a release blocker. Deployment/debug/UAT Odoo variables remain uniformly `aipos_uat`.
+
+## 2026-10-27 backup gate recheck
+
+- Existing Dokploy backup evidence covers a Compose MySQL service/database named `orithos`, while the POS Compose configuration requires the external PostgreSQL connection `POSTGRESQL_URL`. This is not evidence that the POS PostgreSQL data is protected.
+- The recorded manual MySQL backup attempt returned HTTP 400 and produced zero R2 objects; no restore input exists. PostgreSQL backup, restore to a disposable target, post-restore login, and continued POS transaction checks remain outstanding and block customer release.
+
+## 2026-10-28 Java 21 and unified aipos_uat deployment recheck
+
+- Java 21 is installed at `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\tools\\jdk-21.0.12.1+1`; user-level `JAVA_HOME` now points there and Java 8 remains installed at `C:\\Program Files\\AdoptOpenJDK\\jdk-8.0.292.10-hotspot` for legacy use.
+- The local `pos-api` candidate passed `mvn -B clean verify` on Temurin Java 21: 529 main sources, 72 test sources, 440 tests, zero failures, and the Spring Boot jar was packaged. The build initially exposed a duplicate `decimal` helper and a constructor/test signature mismatch; both were fixed without changing the default business-write behavior.
+- A normal Dokploy Deploy was triggered for the configured `aistorepos` Compose service (`aishawn/aistore_pos`, `main`, no volume reset) and completed with status `done`.
+- Demo `/api/public/version` reports matching frontend/backend commit `553a7f710cc38a374414d4429bde1b12b2fa4621`; authenticated `GET /api/sell/parked` returns HTTP 200 with an empty list. This confirms the deployed `main` runtime is healthy for the parked read path.
+- Dokploy Odoo variables remain intentionally unified as `ODOO_DATABASE=aipos_uat`, `ODOO_DATABASE_UAT=aipos_uat`, and `ISOLATION_ODOO_DATABASE=aipos_uat`. This is shared UAT mode; it is not customer production isolation.
+- The local branch still contains unrelated dirty audit files and a Shopfront business-write candidate that is not part of `553a7f71`; do not claim those local changes are deployed. Customer production remains **NO-GO** until the backup/restore, tenant isolation, hardware and final business reconciliation gates are complete.
+
+## 2026-10-28 Shopfront startup hotfix and Dokploy recheck
+
+- Dokploy runtime `461a0ea5` was restarting because `ShopfrontIntegrationController` declared two constructors without marking the dependency-injection constructor. Spring attempted a no-argument constructor and failed with `NoSuchMethodException`.
+- Added `@Autowired` to the constructor receiving `JdbcTemplate`, `ObjectMapper`, and the three Shopfront configuration values. The fix is commit `97b2b963ad0cdfca222739eb520b1a08cc6a51a9` on `main`.
+- Exact `97b2b963` Java 21 build passed with 529 main sources, 72 test sources, 440 tests, zero failures, and a packaged Spring Boot jar.
+- Dokploy deployment completed successfully. Demo `/api/public/version` reports matching frontend/backend runtime SHA `97b2b963ad0cdfca222739eb520b1a08cc6a51a9`; admin login returned HTTP 200 and authenticated `GET /api/sell/parked` returned HTTP 200.
+- Deployment, debugging, and UAT remain intentionally unified on `ODOO_DATABASE=aipos_uat`, `ODOO_DATABASE_UAT=aipos_uat`, and `ISOLATION_ODOO_DATABASE=aipos_uat`. This is shared UAT mode and is not customer production isolation.
+
+## 2026-10-28 AI and release-gate recheck on `0aa729ea`
+
+- `origin/main` and Demo were rechecked at `0aa729ea24ab6b6d748c4dbe63f41af5c4783fae`; frontend/backend runtime commits matched during the clean-worktree audit.
+- AI availability UI passed, DashScope health passed, and the structured card contract passed 30/30 with zero assistant write requests.
+- The clean exact-SHA natural-language matrix recorded 373/387 PASS and 14 transient HTTP 502 responses across product lookup, reports, stock clarification, supplier lookup, and boundary questions. Replaying the affected questions separately returned HTTP 200 with correct deterministic answers, so the remaining issue is intermittent AI availability under the matrix load. Evidence: [UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-28_RUNTIME-0AA729EA-CLEAN.json](UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-28_RUNTIME-0AA729EA-CLEAN.json).
+- A direct PostgreSQL connection attempt from the audit host to the supplied endpoint timed out after TCP reachability succeeded; no dump or restore artifact exists. Backup/restore remains a release blocker.
+- Shared `aipos_uat`, missing PostgreSQL/Odoo restore proof, intermittent AI 502s, and physical device/offline checks keep formal customer production release **NO-GO**. Controlled UAT transactions remain allowed by user instruction.
+- Odoo-only role recheck on `0aa729ea`: admin login and `/api/odoo/session` returned HTTP 200; legacy `/settings/roles` and `/settings/users` correctly redirect to `/settings/integrations`. The old `/api/users` endpoint returns the intentional `41001 Classic POS API is retired` response and is not a supported Odoo-only user-management path.
+- Current runtime `0aa729ea` procurement recheck passed: temporary tenant provisioning, supplier creation, RFQ approval, over-receive rejection, partial receipt, idempotent duplicate receipt, backorder completion, final readback, tenant deletion, and deleted-auth rejection. Cross-tenant supplier recheck also passed: tenant B received HTTP 404 when using tenant A's supplier; both tenants were deleted. Evidence remains in [UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json](UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json) and [UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json](UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json).
+- Current runtime `0aa729ea` stocktake recheck passed and restored Demo product 5 from quantity 24 to 25 and back to 24; duplicate retry applied zero adjustments. Evidence: [UAT_STOCKTAKE_WRITE_AIPOS_UAT_2026-10-28_RUNTIME-0AA729EA.json](UAT_STOCKTAKE_WRITE_AIPOS_UAT_2026-10-28_RUNTIME-0AA729EA.json).
+
+## 2026-10-28 AI proxy timeout fix and runtime `8462bf97`
+
+- The frontend BFF previously aborted backend requests after 30 seconds while the backend AI timeout default was 40 seconds. `pos-ui/app/api/[...path]/route.ts` now uses `BACKEND_PROXY_TIMEOUT_MS`, defaulting to 60 seconds and clamped to 5-120 seconds. Commit `8462bf9731c862483b669960507ed0a51a93475e` was pushed to `main` and deployed by Dokploy.
+- Demo `/api/public/version` reports matching frontend/backend runtime SHA `8462bf9731c862483b669960507ed0a51a93475e`; Java 21 remains installed at `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\tools\\jdk-21.0.12.1+1`, with Java 8 retained for legacy use.
+- On the matching runtime, AI availability passed 3/3, structured card contract passed 30/30, and the full 387-question workflow matrix returned 387/387 PASS with 0 failures. The generated matrix report is marked blocked only because the audit checkout contains unrelated local files, so its source commit cannot equal the deployed commit; runtime identity itself is verified independently.
+- Release gate recheck: admin login HTTP 200, authenticated `GET /api/sell/parked` HTTP 200 with success, `/api/public/uat-context` reports `isolated=false` because deployment/debug/UAT intentionally use `ODOO_DATABASE=aipos_uat`, `ODOO_DATABASE_UAT=aipos_uat`, and `ISOLATION_ODOO_DATABASE=aipos_uat`. Evidence: [UAT_CUSTOMER_TRIAL_RELEASE_GATE_1793127407392.json](UAT_CUSTOMER_TRIAL_RELEASE_GATE_1793127407392.json).
+- Formal customer production release remains **NO-GO** for shared database isolation, PostgreSQL/Odoo backup and restore, physical device/offline acceptance, and a frozen release window. Controlled UAT transactions remain authorized against `aipos_uat`.
+
+## 2026-10-28 live UAT and backup gate recheck
+
+- Runtime `8462bf97` temporary-tenant procurement passed again: tenant create/provision, supplier create, replenishment read, RFQ create/confirm, over-receive rejection, partial receipt, duplicate idempotency, backorder completion, final readback, tenant deletion, and deleted-auth rejection. Evidence: [UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json](UAT_PURCHASE_RECEIVE_LIVE_2026-10-27.json).
+- Two temporary tenants were provisioned on the same runtime for supplier isolation. Tenant B received HTTP 404 when using tenant A's supplier; both tenants were deleted and deleted-auth checks returned HTTP 402. Evidence: [UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json](UAT_CROSS_TENANT_SUPPLIER_LIVE_2026-10-27.json).
+- Demo stocktake write passed against `aipos_uat`: product 5 quantity `24 -> 25 -> 24`, no-op applied `0`, duplicate retry applied `0`, and location source was `tenant-binding`. Evidence: [UAT_STOCKTAKE_WRITE_AIPOS_UAT_2026-10-28_RUNTIME-8462BF97.json](UAT_STOCKTAKE_WRITE_AIPOS_UAT_2026-10-28_RUNTIME-8462BF97.json).
+- Cash/session online recheck passed login, Odoo binding/session, cash in, amount cap rejection, cash out, CSRF rejection, purchases list, no-session receive rejection, platform login, UI cash record, and purchases UI (15 checks). One stale test assertion expected HTTP 404 for a missing receipt selector; the API correctly returned HTTP 400 validation, so the assertion needs updating before using that script as a release gate.
+- Backup gate recheck: direct PostgreSQL sessions to the supplied endpoint timed out under SSL, non-SSL, and prefer modes. A temporary Dokploy Compose PostgreSQL backup for `aipos_uat`/`backend` returned HTTP 400 on manual execution and was removed; no backup or restore evidence exists.
+- Demo `/settings/hardware` at 390px loaded without JavaScript errors and clearly showed Receipt printer/Cash drawer `Not verified` and Barcode scanner `Not tested`; physical connection and offline POS behavior remain unverified.
+
+## 2026-10-28 Odoo backup verification
+
+- Odoo database manager successfully exported `aipos_uat` through `POST /web/database/backup`: HTTP 200, 82,730,587-byte ZIP, containing `dump.sql`, `manifest.json`, and filestore. SHA-256: `FC12BF521A915E3A5D6422505B391ECA72EDF6C7397DCA3F242B51D3280BB448`. The binary is kept outside Git at `C:\\temp\\orithos-audit\\aipos_uat_20261028.zip`.
+- Restore to disposable database `aipos_uat_restore_20261028b` was submitted through `POST /web/database/restore`, but the reverse proxy returned HTTP 524 after the long-running request; the Odoo database list still contains only `aipos_uat`. A neutralized restore retry also timed out. Backup is now proven; restore, restored login, and continued POS transaction remain outstanding.
+- Dokploy backup configuration was not left changed: the temporary Compose PostgreSQL backup entry was removed after its manual execution returned HTTP 400.
+- A database-only custom dump also succeeded (84,525,300 bytes; SHA-256 `8A62C6BD0FCA6DF2489E4E7DB9B2C5521156A347362AD56970E0963BFAFBEC77`). Restore to `aipos_uat_restore_20261028d` was submitted and then polled for three minutes; the proxy request aborted after 90 seconds and the database list remained `aipos_uat` only. Restore is still the remaining backup gate.
+- Auto-deploy advanced Demo after these checks to `e995801498e7838458f2d3382e84fd7c34f2e1a0` (`fix(shopfront): backfill inventory outlet keys`, after `a7f19246`). Current release gate on that SHA still reports login HTTP 200, parked read HTTP 200, matching frontend/backend runtime, and `isolated=false` for the intentionally shared `aipos_uat` configuration.
