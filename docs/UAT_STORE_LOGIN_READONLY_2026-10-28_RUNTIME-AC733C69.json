@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-27T21:02:59.715Z",
+  "runtime": "ac733c69711cb2501ead7d310f83ffd214155456",
+  "checks": [
+    {
+      "store": "demo",
+      "status": "PASS",
+      "loginHttp": 200,
+      "sessionHttp": 200,
+      "bindingHttp": 200,
+      "productsHttp": 200,
+      "companyId": 2,
+      "provision": "ready",
+      "productCount": 5
+    },
+    {
+      "store": "skr",
+      "status": "PASS",
+      "loginHttp": 200,
+      "sessionHttp": 200,
+      "bindingHttp": 200,
+      "productsHttp": 200,
+      "companyId": 5,
+      "provision": "ready",
+      "productCount": 5
+    }
+  ],
+  "status": "PASS"
+}
