@@ -74,7 +74,7 @@ async function readOdooSessionSnapshot(companyId, sessionId) {
 }
 
 function check(name, passed, detail = {}) {
-  evidence.checks.push({ name, status: passed ? "PASS" : "FAIL", ...detail });
+  evidence.checks.push({ name, ...detail, status: passed ? "PASS" : "FAIL" });
   console.log(`[${passed ? "PASS" : "FAIL"}] ${name}`, detail);
 }
 
@@ -232,6 +232,7 @@ try {
           configId,
           paymentMethodId: cashMethod.id,
           orderUuid: randomUUID(),
+          expectedQuote: quote.signature,
           tendered: saleTotal,
           lines: [{ productId: product.id, quantity: 1 }],
         }),

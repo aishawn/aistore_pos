@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-10-27T20:58:11.978Z",
+  "slug": "codex-close-3134691978",
+  "checks": [
+    {
+      "name": "platform.login",
+      "httpStatus": 200,
+      "status": "PASS"
+    },
+    {
+      "name": "tenant.create",
+      "httpStatus": 200,
+      "vendorId": 104,
+      "message": "ok",
+      "status": "PASS"
+    },
+    {
+      "name": "tenant.provision.ready",
+      "companyId": 52,
+      "posConfigId": 54,
+      "status": "PASS"
+    },
+    {
+      "name": "owner.bootstrap",
+      "httpStatus": 200,
+      "status": "PASS"
+    },
+    {
+      "name": "store.bootstrap",
+      "httpStatus": 200,
+      "status": "PASS"
+    },
+    {
+      "name": "odoo.session",
+      "httpStatus": 200,
+      "allowedCompanyIds": [
+        52
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "dummy.catalog",
+      "httpStatus": 200,
+      "productCount": 14,
+      "status": "PASS"
+    },
+    {
+      "name": "pos.bootstrap",
+      "httpStatus": 200,
+      "configId": 54,
+      "sessionId": 51,
+      "registerCount": 3,
+      "status": "PASS"
+    },
+    {
+      "name": "cash.sale.quote",
+      "httpStatus": 200,
+      "total": 32,
+      "productId": 5203,
+      "paymentMethodId": 105,
+      "status": "PASS"
+    },
+    {
+      "name": "cash.sale",
+      "httpStatus": 201,
+      "saleId": 94836,
+      "receipt": "260-54-000035",
+      "total": 32,
+      "status": "PASS"
+    },
+    {
+      "name": "close.requiresCountedCash",
+      "httpStatus": 422,
+      "message": "Count the cash in the drawer before closing this register.",
+      "status": "PASS"
+    },
+    {
+      "name": "close.withExpectedCash",
+      "httpStatus": 200,
+      "message": "Register close requested in Orithos. Confirm cash differences in Orithos if the session remains in closing control.",
+      "countedCash": 790.8,
+      "status": "PASS"
+    },
+    {
+      "name": "close.stateAndCash",
+      "state": "closed",
+      "countedCash": 790.8,
+      "expectedCash": 790.8,
+      "difference": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "tenant.delete",
+      "httpStatus": 200,
+      "status": "PASS"
+    },
+    {
+      "name": "deleted.auth",
+      "httpStatus": 402,
+      "status": "PASS"
+    }
+  ],
+  "sessionRecords": [
+    {
+      "id": 51,
+      "name": "Main Store Register 1/00051",
+      "state": "opened",
+      "config_id": [
+        54,
+        "Main Store Register 1"
+      ],
+      "user_id": [
+        2,
+        "Administrator"
+      ],
+      "start_at": "2026-10-27 20:58:30",
+      "stop_at": false
+    }
+  ],
+  "odooBeforeClose": {
+    "id": 51,
+    "state": "opened",
+    "cash_register_balance_start": 0,
+    "cash_register_balance_end": 790.8,
+    "cash_register_balance_end_real": 0,
+    "cash_register_difference": -790.8
+  },
+  "odooAfterClose": {
+    "id": 51,
+    "state": "closed",
+    "cash_register_balance_start": 0,
+    "cash_register_balance_end": 790.8,
+    "cash_register_balance_end_real": 790.8,
+    "cash_register_difference": 0
+  }
+}
