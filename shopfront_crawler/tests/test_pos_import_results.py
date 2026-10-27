@@ -192,6 +192,6 @@ async def test_sync_chunk_persists_pos_result_in_run_counts(db_session, monkeypa
 
     assert ok is True
     assert run.counts == {
-        "products": 3,
+        "sync": {"products": 3},
         "pos_import": {"status": "failed", "products": 3, "error": "POS temporarily unavailable"},
     }
