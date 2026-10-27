@@ -39,6 +39,15 @@ class DashScopeModelRoutingTest {
     }
 
     @Test
+    void incompatibleFalseOverrideCannotDisableQwen38Routing() {
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("AI_DASHSCOPE_MODEL", "qwen3.8-flash");
+        env.setProperty("AI_DASHSCOPE_MULTI_MODEL", "false");
+        new DashScopeEnvironmentPostProcessor().postProcessEnvironment(env, new SpringApplication());
+        assertEquals(Boolean.TRUE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
+    }
+
+    @Test
     void environmentPostProcessorKeepsTextPathForQwenPlus() {
         MockEnvironment env = new MockEnvironment();
         env.setProperty("AI_DASHSCOPE_MODEL", "qwen-plus");

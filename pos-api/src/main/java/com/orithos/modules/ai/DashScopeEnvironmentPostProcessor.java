@@ -31,9 +31,11 @@ public class DashScopeEnvironmentPostProcessor implements EnvironmentPostProcess
 
         // Only honor an explicit operator override. Do not treat application.yml defaults as final.
         Boolean explicit = parseBoolean(environment.getProperty("AI_DASHSCOPE_MULTI_MODEL"));
-        boolean multiModel = explicit != null
-                ? explicit
-                : DashScopeModelRouting.requiresMultimodalEndpoint(model);
+        boolean requiresMultimodal = DashScopeModelRouting.requiresMultimodalEndpoint(model);
+        // A text-only endpoint is invalid for multimodal-capable models such as
+        // qwen3.8-flash and produces DashScope's opaque "url error" response.
+        // Keep the deployment safe even when an old Compose env still says false.
+        boolean multiModel = requiresMultimodal || Boolean.TRUE.equals(explicit);
 
         Map<String, Object> props = new HashMap<>();
         props.put(MULTI_MODEL_PROPERTY, multiModel);
