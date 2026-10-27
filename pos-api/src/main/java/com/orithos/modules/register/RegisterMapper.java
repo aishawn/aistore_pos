@@ -17,7 +17,7 @@ public interface RegisterMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO register (name, outlet_id, invoice_number, open_time, closed) "
-            + "VALUES (#{name}, #{outletId}, #{invoiceNumber}, #{openTime}, #{closed})")
+            + "VALUES (#{name}, #{outletId}, #{invoiceNumber}, #{openTime}, CASE WHEN #{closed} THEN 1 ELSE 0 END)")
     int insert(Register r);
 
     @Update("UPDATE register SET name=#{name}, outlet_id=#{outletId}, invoice_number=#{invoiceNumber}, "

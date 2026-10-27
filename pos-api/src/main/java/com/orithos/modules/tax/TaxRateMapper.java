@@ -28,7 +28,7 @@ public interface TaxRateMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO tax_rate (name, amount, mdb_id, is_default, outlet_id) "
-            + "VALUES (#{name}, #{amount}, #{mdbId}, #{isDefault}, #{outletId})")
+            + "VALUES (#{name}, #{amount}, #{mdbId}, CASE WHEN #{isDefault} THEN 1 ELSE 0 END, #{outletId})")
     int insert(TaxRate t);
 
     @Update("UPDATE tax_rate SET name=#{name}, amount=#{amount}, is_default=#{isDefault} WHERE id=#{id}")

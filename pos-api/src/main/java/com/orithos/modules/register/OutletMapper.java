@@ -18,8 +18,8 @@ public interface OutletMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO outlet (vendor_id, name, contact_id, logo, business_number, loyalty_enabled, "
             + "loyalty_name, loyalty_earn_rate, loyalty_redeem_rate, has_kitchen_screen, ticketing_price_set_id) "
-            + "VALUES (#{vendorId}, #{name}, #{contactId}, #{logo}, #{businessNumber}, #{loyaltyEnabled}, "
-            + "#{loyaltyName}, #{loyaltyEarnRate}, #{loyaltyRedeemRate}, #{hasKitchenScreen}, #{ticketingPriceSetId})")
+            + "VALUES (#{vendorId}, #{name}, #{contactId}, #{logo}, #{businessNumber}, CASE WHEN #{loyaltyEnabled} THEN 1 ELSE 0 END, "
+            + "#{loyaltyName}, #{loyaltyEarnRate}, #{loyaltyRedeemRate}, CASE WHEN #{hasKitchenScreen} THEN 1 ELSE 0 END, #{ticketingPriceSetId})")
     int insert(Outlet o);
 
     @Update("UPDATE outlet SET name=#{name}, contact_id=#{contactId}, logo=#{logo}, "
