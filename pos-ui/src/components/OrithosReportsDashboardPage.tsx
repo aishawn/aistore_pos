@@ -170,6 +170,7 @@ export function OrithosReportsDashboardPage() {
   const [sampleDataActive, setSampleDataActive] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const requestRevision = useRef(0);
+  const rangeHoursRef = useRef(720);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
   useEffect(() => {
@@ -184,7 +185,7 @@ export function OrithosReportsDashboardPage() {
     return () => { cancelled = true; };
   }, [data?.sampleDataClearedAt, lastLoadedAt]);
 
-  const load = useCallback(async (refresh = false, hours = rangeHours) => {
+  const load = useCallback(async (refresh = false, hours = rangeHoursRef.current) => {
     const revision = ++requestRevision.current;
     if (refresh) setRefreshing(true);
     else setLoading(true);
@@ -244,7 +245,7 @@ export function OrithosReportsDashboardPage() {
         setRefreshing(false);
       }
     }
-  }, [rangeHours]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
@@ -372,7 +373,7 @@ export function OrithosReportsDashboardPage() {
               <div role="group" aria-label="Orithos sales reporting range" className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
                 {OVERVIEW_RANGES.map((range) => (
                   <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
-                    onClick={() => { setRangeHours(range.hours); void load(true, range.hours); }}
+                    onClick={() => { rangeHoursRef.current = range.hours; setRangeHours(range.hours); void load(true, range.hours); }}
                     className={cn("oh-type-meta min-h-9 rounded-md px-2.5 font-medium transition-colors sm:px-3", rangeHours === range.hours ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
                     {range.label}
                   </button>
@@ -602,7 +603,7 @@ export function OrithosReportsDashboardPage() {
                       {widerRange && rangeHours < MAX_RANGE_HOURS ? (
                         <button
                           type="button"
-                          onClick={() => { setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
+                          onClick={() => { rangeHoursRef.current = widerRange.hours; setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
                           className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]"
                         >
                           Try {widerRange.label}
@@ -687,7 +688,7 @@ export function OrithosReportsDashboardPage() {
                     {widerRange ? (
                       <button
                         type="button"
-                        onClick={() => { setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
+                        onClick={() => { rangeHoursRef.current = widerRange.hours; setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
                         className="oh-type-label inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
                       >
                         Try {widerRange.label}

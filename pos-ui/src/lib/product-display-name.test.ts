@@ -30,6 +30,13 @@ describe("friendlyProductName", () => {
     assert.equal(friendlyProductName("DEMO Soft drinks"), "Soft drinks");
     assert.equal(friendlyProductName("SEED | Gin 700ml"), "Gin 700ml");
   });
+
+  it("strips unlabelled hexadecimal import hashes from archived product names", () => {
+    assert.equal(
+      friendlyProductName("[11eeaa99e970f0309af70261eda38a85] Shopfront 11eeaa99e970f0309af70261eda38a85"),
+      "Shopfront",
+    );
+  });
 });
 
 describe("truncateSku", () => {
