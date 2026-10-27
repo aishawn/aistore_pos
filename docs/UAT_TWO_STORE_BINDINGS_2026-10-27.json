@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-27",
+  "scope": "read-only two-store binding check",
+  "stores": [
+    {
+      "host": "https://demo.orithos.com.au",
+      "loginHttp": 200,
+      "bindingHttp": 200,
+      "odooCompanyId": 2,
+      "odooProvisionStatus": "ready"
+    },
+    {
+      "host": "https://skr.orithos.com.au",
+      "loginHttp": 200,
+      "bindingHttp": 200,
+      "odooCompanyId": 5,
+      "odooProvisionStatus": "ready"
+    }
+  ],
+  "interpretation": "Different Odoo companies are bound to the two stores. The shared aipos_uat database remains a controlled UAT configuration and is not independent production database isolation."
+}
