@@ -4028,3 +4028,10 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - Dokploy backup configuration was not left changed: the temporary Compose PostgreSQL backup entry was removed after its manual execution returned HTTP 400.
 - A database-only custom dump also succeeded (84,525,300 bytes; SHA-256 `8A62C6BD0FCA6DF2489E4E7DB9B2C5521156A347362AD56970E0963BFAFBEC77`). Restore to `aipos_uat_restore_20261028d` was submitted and then polled for three minutes; the proxy request aborted after 90 seconds and the database list remained `aipos_uat` only. Restore is still the remaining backup gate.
 - Auto-deploy advanced Demo after these checks to `e995801498e7838458f2d3382e84fd7c34f2e1a0` (`fix(shopfront): backfill inventory outlet keys`, after `a7f19246`). Current release gate on that SHA still reports login HTTP 200, parked read HTTP 200, matching frontend/backend runtime, and `isolated=false` for the intentionally shared `aipos_uat` configuration.
+
+## 2026-10-28 Java 21 local build and current release gate
+
+- Java 21 is available at `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\tools\\jdk-21.0.12.1+1`; Java 8 remains installed for legacy use. The `pos-api` module passed `mvn -B clean verify` with Java 21: 440 tests passed, zero failures, and the Spring Boot jar was packaged.
+- The current Demo runtime remains `e995801498e7838458f2d3382e84fd7c34f2e1a0` on both frontend and backend. Admin login and authenticated `GET /api/sell/parked` are HTTP 200.
+- The current customer-trial gate is intentionally `BLOCKED`: `ODOO_DATABASE`, `ODOO_DATABASE_UAT`, and `ISOLATION_ODOO_DATABASE` are all `aipos_uat`, so `/api/public/uat-context` reports `isolated=false`. This is the agreed shared UAT/debug configuration, not production isolation.
+- No new application code was deployed by this local build; the remote runtime already matches `origin/main`. Backup export is proven, but disposable restore and post-restore transaction verification remain outstanding. Customer production remains **NO-GO**.
