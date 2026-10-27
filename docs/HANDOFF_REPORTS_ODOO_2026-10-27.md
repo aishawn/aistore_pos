@@ -21,8 +21,8 @@
 
 - 主修复提交：`c0479a0a`，已推送 `origin/main`。
 - Dokploy 跟踪分支：`codex/ai-release`。
-- Dokploy 合并部署提交：`f749b6042379a72e0aee7a887552d533bec5386f`。
-- 线上版本接口确认 frontend/backend 均为 `f749b604`，部署状态为 `done`。
+- Dokploy 最终部署提交：`581c6a5da867d5e973b6f113fd328d1e4c69c05d`。
+- 线上版本接口确认 frontend/backend 均为 `581c6a5d`，部署状态为 `done`。
 
 ## 线上验证
 
@@ -39,6 +39,7 @@
 - 无 Application error、ChunkLoadError、Hydration 错误。
 - 无横向溢出。
 - inventory、purchase、transfer、actions 分别请求 Odoo session/records/purchase-orders/transfers；dashboard 请求 Odoo reporting dashboard；AI metrics 请求 `/api/ai/metrics`。
+- 最终矩阵脚本退出码为 0，AI metrics 返回 HTTP 200。
 
 ## 已知运行时噪音
 
