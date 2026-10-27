@@ -374,7 +374,6 @@ export function OdooSalesHistoryPage({
     try {
       const amount = Math.abs(saleDetail.order.amount_total);
       const request: OdooCheckoutRequest = {
-        externalPaymentConfirmed: true,
         configId: openConfig.id,
         paymentMethodId,
         orderUuid: crypto.randomUUID(),

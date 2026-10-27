@@ -104,7 +104,6 @@ export async function POST(request: NextRequest) {
 
   let body: {
     expectedQuote?: string;
-    externalPaymentConfirmed?: boolean;
     configId?: number;
     paymentMethodId?: number;
     orderUuid?: string;
@@ -232,9 +231,6 @@ export async function POST(request: NextRequest) {
     const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count", "type"], 1, correlationId);
     const paymentMethod = paymentMethods[0];
     if (!paymentMethod) throw new OdooCheckoutError("The selected payment method is unavailable.", 409);
-    if (!paymentMethod.is_cash_count && body.externalPaymentConfirmed !== true) {
-      throw new OdooCheckoutError("Confirm the external terminal payment or refund before recording this non-cash order.", 422);
-    }
     let cashRounding: OdooCashRounding | null = null;
     if (config.cash_rounding) {
       const roundingId = Array.isArray(config.rounding_method) ? config.rounding_method[0] : null;
