@@ -46,6 +46,21 @@ def init_db() -> None:
             for name, sql_type in columns.items():
                 if name not in existing:
                     connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"))
+        # Older rows stored outlet data only inside raw_payload. Backfill the
+        # normalized key before deduplication; otherwise SQL NULL semantics
+        # allow one duplicate row per historical snapshot.
+        if engine.dialect.name == "sqlite":
+            connection.execute(text(
+                "UPDATE inventory_snapshots SET outlet_id = json_extract(raw_payload, '$.outlet.id'), "
+                "outlet_name = json_extract(raw_payload, '$.outlet.name') "
+                "WHERE outlet_id IS NULL AND json_extract(raw_payload, '$.outlet.id') IS NOT NULL"
+            ))
+        elif engine.dialect.name == "postgresql":
+            connection.execute(text(
+                "UPDATE inventory_snapshots SET outlet_id = raw_payload->'outlet'->>'id', "
+                "outlet_name = raw_payload->'outlet'->>'name' "
+                "WHERE outlet_id IS NULL AND raw_payload->'outlet'->>'id' IS NOT NULL"
+            ))
         # Older crawler volumes did not have a uniqueness constraint and may
         # contain one row per historical snapshot. Keep the newest row for
         # each product/outlet before enforcing the idempotency invariant.

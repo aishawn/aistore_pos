@@ -267,7 +267,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                 quantity = first(inventory_row, "quantity", "Quantity")
                 if quantity is not None:
                     outlet = inventory_row.get("outlet") if isinstance(inventory_row.get("outlet"), dict) else {}
-                    outlet_id = first(inventory_row, "outletId") or outlet.get("id")
+                    outlet_id = first(inventory_row, "outletId") or outlet.get("id") or "unknown"
                     outlet_name = first(inventory_row, "outletName") or outlet.get("name")
                     # SessionLocal intentionally disables autoflush. Flush a
                     # newly seen row before the lookup so duplicate outlet
