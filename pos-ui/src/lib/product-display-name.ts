@@ -64,13 +64,16 @@ function stripBracketedIds(name: string): string {
     }
     const inner = name.slice(i + 1, close);
     const upper = inner.toUpperCase();
+    const isLongHexId = inner.length >= 12 && [...inner].every((ch) =>
+      (ch >= "A" && ch <= "F") || (ch >= "a" && ch <= "f") || (ch >= "0" && ch <= "9"),
+    );
     const isImportId = (
       (upper.startsWith("R2-") || upper.startsWith("R2_")
         || upper.startsWith("SKU-") || upper.startsWith("SKU_")
         || upper.startsWith("ID-") || upper.startsWith("ID_"))
       && [...inner.slice(inner.indexOf("-") >= 0 ? inner.indexOf("-") + 1 : inner.indexOf("_") + 1)].every(isIdBodyChar)
     );
-    if (!isImportId) {
+    if (!isImportId && !isLongHexId) {
       out += name.slice(i, close + 1);
       i = close + 1;
       continue;
@@ -78,6 +81,24 @@ function stripBracketedIds(name: string): string {
     i = close + 1;
     while (i < name.length && isSpace(name[i]!)) i += 1;
   }
+  return out;
+}
+
+/** Remove long import hashes that appear as a separate token in display names. */
+function stripInlineHexIds(name: string): string {
+  let out = "";
+  let token = "";
+  const flush = () => {
+    if (token && !(token.length >= 12 && [...token].every((ch) =>
+      (ch >= "A" && ch <= "F") || (ch >= "a" && ch <= "f") || (ch >= "0" && ch <= "9"),
+    ))) out += token;
+    token = "";
+  };
+  for (const ch of name) {
+    if (isIdBodyChar(ch)) token += ch;
+    else { flush(); out += ch; }
+  }
+  flush();
   return out;
 }
 
@@ -166,6 +187,7 @@ export function friendlyProductName(raw: Textish): string {
   }
 
   name = collapseSpaces(name);
+  name = collapseSpaces(stripInlineHexIds(name));
   return name || "Product";
 }
 
