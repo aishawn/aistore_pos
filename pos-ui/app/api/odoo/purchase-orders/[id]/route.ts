@@ -184,7 +184,14 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
                   const relation = line.move_id;
                   const moveId = Array.isArray(relation) ? Number(relation[0]) : Number(relation);
                   const picked = line.picked === true || String(line.state || "") === "done";
-                  if (!Number.isSafeInteger(moveId) || !picked) continue;
+                  if (!Number.isSafeInteger(moveId)) continue;
+                  // An open backorder has an unpicked move line whose quantity
+                  // is the remaining demand. Record zero explicitly so the
+                  // code below does not fall back to stock.move.quantity.
+                  if (!picked) {
+                    if (!pickedQuantityByMove.has(moveId)) pickedQuantityByMove.set(moveId, 0);
+                    continue;
+                  }
                   const quantity = Number(line[lineQtyField]);
                   if (Number.isFinite(quantity) && quantity >= 0) {
                     pickedQuantityByMove.set(moveId, (pickedQuantityByMove.get(moveId) ?? 0) + quantity);
