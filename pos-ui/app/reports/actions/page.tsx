@@ -1,5 +1,5 @@
-import { OdooSalesHistoryPage } from "@/components/OdooSalesHistoryPage";
+import { redirect } from "next/navigation";
 
 export default function ActionsReportsPage() {
-  return <OdooSalesHistoryPage />;
+  redirect("/history");
 }

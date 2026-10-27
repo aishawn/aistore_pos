@@ -16,6 +16,8 @@
 - 报表导航：移除无实际审计数据源的 `Audit Log`，将 actions 入口改为 `Sales history & refunds`。
 - 删除无引用的前端 `ReportBuilder`。
 - 修复 AI metrics PostgreSQL 查询：`ai_report_audit.allowed` 使用 boolean 条件，初始化迁移默认值同步为 `FALSE`。
+- 报表导航去除空壳 `Sales`、重复 `Operations` 顶层 tab；移除会跳回 Dashboard 的销售周期入口、未接入的 Saved/Custom 入口和重复的 sales history 入口。
+- `/reports/actions` 保留为旧书签兼容路由，统一重定向到唯一的 Odoo 销售历史页面 `/history`；旧抽屉中的死链接同步移除。
 
 ## 代码与部署
 

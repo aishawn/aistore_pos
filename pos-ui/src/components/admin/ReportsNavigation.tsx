@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, ClipboardCheck, FileCog, Heart, PackageSearch, ShoppingCart } from "lucide-react";
+import { BarChart3, Boxes, PackageSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReportSection = {
@@ -26,19 +26,6 @@ const SECTIONS: ReportSection[] = [
     ],
   },
   {
-    label: "Sales",
-    href: "/reports/sales",
-    icon: ShoppingCart,
-    match: ["/reports/sales", "/reports/daily-sales", "/reports/weekly-sales", "/reports/this-month-sales", "/reports/last-week-sales", "/reports/last-month-sales"],
-    children: [
-      { label: "Sales Overview", href: "/reports/sales" },
-      { label: "Daily Sales", href: "/reports/daily-sales", hint: "Today" },
-      { label: "Weekly Sales", href: "/reports/weekly-sales", hint: "This week" },
-      { label: "Monthly Sales", href: "/reports/this-month-sales", hint: "This month" },
-      { label: "Refunds & Discounts", href: "/reports/sales?view=refunds" },
-    ],
-  },
-  {
     label: "Inventory",
     href: "/reports/inventory",
     icon: Boxes,
@@ -55,17 +42,6 @@ const SECTIONS: ReportSection[] = [
     children: [
       { label: "Purchase Orders", href: "/reports/purchase" },
       { label: "Transfers In Transit", href: "/reports/transfer" },
-    ],
-  },
-  {
-    label: "Operations",
-    href: "/reports/closures",
-    icon: ClipboardCheck,
-    match: ["/reports/closures", "/reports/actions", "/reports/misc"],
-    children: [
-      { label: "Register Closures", href: "/reports/closures" },
-      { label: "Cash Variance", href: "/reports/closures?view=variance" },
-      { label: "Sales history & refunds", href: "/reports/actions" },
     ],
   },
 ];
@@ -124,10 +100,6 @@ export function ReportsNavigation() {
             </Link>
           );
         })}
-        <span className="ml-0 flex items-center gap-1.5 lg:ml-auto">
-          <Link href="/reports/favourites" className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]"><Heart size={14} /> Saved</Link>
-          <Link href="/reports/advanced" className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]"><FileCog size={14} /> Custom</Link>
-        </span>
       </div>
     </div>
   );
