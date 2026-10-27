@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,6 +38,7 @@ public class ShopfrontIntegrationController {
     private final boolean enabled;
     private final boolean businessWriteEnabled;
 
+    @Autowired
     public ShopfrontIntegrationController(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
