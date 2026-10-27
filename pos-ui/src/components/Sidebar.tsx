@@ -314,7 +314,7 @@ function SidebarNavSubGroup({
   onNavigate?: () => void;
   tabIndex?: number;
 }) {
-  const subgroupItems = group.items.filter((item): item is SidebarGroupItem => !isSubGroup(item));
+  const subgroupItems = group.items as SidebarGroupItem[];
   const [expanded, setExpanded] = useState(() => subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs)));
   const active = subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs));
   const visiblyExpanded = expanded || active;
@@ -340,16 +340,16 @@ function SidebarNavSubGroup({
       </button>
       {visiblyExpanded && (
         <ul id={submenuId} className="ml-2 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-2">
-          {group.items.map((item) => {
-            const itemActive = subItemActive(item, pathname, group.items);
+          {subgroupItems.map((groupItem) => {
+            const itemActive = subItemActive(groupItem, pathname, subgroupItems);
             return (
-              <li key={item.href}>
+              <li key={groupItem.href}>
                 <Link
-                  href={item.href}
+                  href={groupItem.href}
                   tabIndex={tabIndex}
-                  title={item.hint}
+                  title={groupItem.hint}
                   onClick={(event) => {
-                    guardNav(event, item.href);
+                    guardNav(event, groupItem.href);
                     if (!event.defaultPrevented) onNavigate?.();
                   }}
                   className={cn(
