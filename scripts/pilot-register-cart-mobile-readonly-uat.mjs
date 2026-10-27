@@ -25,6 +25,7 @@ const screenshotDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ??
 const checks = [];
 const blockedWrites = [];
 const allowedReadPosts = [];
+const fixtureReads = [];
 const optionalImageFailures = [];
 let version = {};
 let runtime = {};
@@ -59,6 +60,10 @@ try {
   await context.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    if (request.method() === "GET" && url.origin === new URL(base).origin && url.pathname === "/api/sell/parked") {
+      fixtureReads.push({ path: url.pathname, reason: "Avoid the legacy GET endpoint that may clean up parked sales." });
+      return route.fulfill({ status: 200, json: { code: 0, data: [] } });
+    }
     if (["GET", "HEAD", "OPTIONS"].includes(request.method())
       || request.method() === "POST" && url.origin === new URL(base).origin && ["/api/auth/refresh", "/api/odoo/checkout/quote"].includes(url.pathname)) return route.continue();
     if (request.method() === "POST" && url.origin === new URL(base).origin && url.pathname === "/api/odoo/records") {
@@ -106,6 +111,16 @@ try {
   if (!productName) throw new Error("PRODUCT_NAME_NOT_FOUND_IN_CATALOG_CARD");
   await firstProduct.click();
 
+  const backToProductsBeforePayment = page.getByRole("button", { name: "Back to products", exact: true });
+  if (await backToProductsBeforePayment.isVisible().catch(() => false)) {
+    await backToProductsBeforePayment.click({ force: true });
+    await page.waitForFunction(() => ![...document.querySelectorAll("aside")].some((element) => element.className.includes("fixed")), null, { timeout: 10000 });
+  }
+  const eftposButton = page.getByRole("button", { name: "EFTPOS", exact: true }).first();
+  await eftposButton.waitFor({ state: "visible", timeout: 10000 });
+  await eftposButton.click({ force: true });
+  record("Card payment can be selected before opening the mobile cart", await eftposButton.evaluate((element) => element.className.includes("ring-2")));
+
   const cartButton = page.getByRole("button", { name: "Cart", exact: true });
   await cartButton.waitFor({ timeout: 10000 });
   await cartButton.click();
@@ -131,6 +146,20 @@ try {
   await increase.click();
   await page.getByText("2 items", { exact: true }).waitFor({ timeout: 10000 });
   record("Cart quantity control updates line quantity", (await cartLine.innerText()).includes("2"));
+
+  await page.waitForFunction(() => {
+    const aside = [...document.querySelectorAll("aside")].find((element) => element.innerText.includes("Subtotal"));
+    return aside && !aside.innerText.includes("Calculating…") && !aside.innerText.includes("Waiting for tax…");
+  }, null, { timeout: 30000 });
+  const checkoutReadiness = await cartAside.evaluate((element) => {
+    const totalLabel = [...element.querySelectorAll("span")].find((node) => node.textContent.trim().toLowerCase() === "total");
+    const total = totalLabel?.parentElement?.querySelector("p")?.innerText.replace(/\s+/g, " ").trim() ?? "";
+    const finaliseLabel = element.querySelectorAll("button").item(element.querySelectorAll("button").length - 1)?.innerText.trim() ?? "";
+    const settled = !element.innerText.includes("Calculating…") && !element.innerText.includes("Waiting for tax…");
+    return { total, finaliseLabel, settled };
+  });
+  record("Checkout quote settles to a non-zero total", checkoutReadiness.settled && checkoutReadiness.total !== "$0.00", checkoutReadiness);
+  record("Card checkout remains available from the mobile cart", checkoutReadiness.settled && checkoutReadiness.finaliseLabel === "Finalise Sale", checkoutReadiness);
 
   const screenshotPath = path.join(screenshotDir, `cart-390-${suffix.toLowerCase()}.png`);
   fs.mkdirSync(screenshotDir, { recursive: true });
@@ -169,6 +198,7 @@ const output = {
   businessWrites: 0,
   blockedWrites,
   allowedReadPosts,
+  fixtureReads,
   optionalImageFailures,
   screenshot,
   checks,
