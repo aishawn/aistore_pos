@@ -63,7 +63,7 @@
 
 ### Release and verification
 
-- Candidate was rebased onto the latest `origin/main`; final release commit is `2bf183c935abe05889ed03518601ebacde0544ec`, pushed to `main`.
+- Candidate was rebased onto the latest `origin/main`; final release commit is `69a892d13e182b94780de76a09fc9c869b912d7f`, pushed to `main`.
 - Fixed nested sidebar subgroup typing so the production build can handle Stock > Pricing groups. `npm run typecheck` passes in `pos-ui`; `git diff --check` passes.
-- Dokploy deployment `tLVyV5gj73IrlvRaNIvV1` completed with status `done`. Both `skr.orithos.com.au` and `demo.orithos.com.au` report frontend/backend runtime commit `2bf183c9` from `/api/public/version`.
+- Dokploy deployment `fXdmCpLgR0EZXs3DglBzv` completed with status `done`. Both `skr.orithos.com.au` and `demo.orithos.com.au` report frontend/backend runtime commit `69a892d1` from `/api/public/version`.
 - Authenticated browser verification at `skr.orithos.com.au/reports/dashboard` confirmed all five report tabs share one row (`y=50`, height `48`), Sales History points to `/history`, and clicking Analyse dashboard keeps the URL unchanged while calling `/api/ai/assistant` and rendering the result.
