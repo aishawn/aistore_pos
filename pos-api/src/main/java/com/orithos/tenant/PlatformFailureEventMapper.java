@@ -57,13 +57,13 @@ public interface PlatformFailureEventMapper {
             <if test='from != null'>AND f.occurred_at &gt;=#{from}</if>
             <if test='to != null'>AND f.occurred_at &lt;=#{to}</if>
             <if test='query != null and query != ""'>
-              AND (f.correlation_id LIKE CONCAT('%', #{query}, '%')
-                OR f.tenant_name LIKE CONCAT('%', #{query}, '%')
-                OR f.tenant_slug LIKE CONCAT('%', #{query}, '%')
-                OR f.request_path LIKE CONCAT('%', #{query}, '%')
-                OR f.error_type LIKE CONCAT('%', #{query}, '%')
-                OR f.error_summary LIKE CONCAT('%', #{query}, '%')
-                OR f.runtime_commit LIKE CONCAT('%', #{query}, '%'))
+              AND (f.correlation_id LIKE ('%' || #{query} || '%')
+                OR f.tenant_name LIKE ('%' || #{query} || '%')
+                OR f.tenant_slug LIKE ('%' || #{query} || '%')
+                OR f.request_path LIKE ('%' || #{query} || '%')
+                OR f.error_type LIKE ('%' || #{query} || '%')
+                OR f.error_summary LIKE ('%' || #{query} || '%')
+                OR f.runtime_commit LIKE ('%' || #{query} || '%'))
             </if>
             GROUP BY f.fingerprint, f.environment, f.service, f.tenant_id, f.http_method, f.request_path,
                      f.http_status, f.error_code, f.error_type, f.runtime_commit
@@ -93,13 +93,13 @@ public interface PlatformFailureEventMapper {
               <if test='from != null'>AND f.occurred_at &gt;=#{from}</if>
               <if test='to != null'>AND f.occurred_at &lt;=#{to}</if>
               <if test='query != null and query != ""'>
-                AND (f.correlation_id LIKE CONCAT('%', #{query}, '%')
-                  OR f.tenant_name LIKE CONCAT('%', #{query}, '%')
-                  OR f.tenant_slug LIKE CONCAT('%', #{query}, '%')
-                  OR f.request_path LIKE CONCAT('%', #{query}, '%')
-                  OR f.error_type LIKE CONCAT('%', #{query}, '%')
-                  OR f.error_summary LIKE CONCAT('%', #{query}, '%')
-                  OR f.runtime_commit LIKE CONCAT('%', #{query}, '%'))
+                AND (f.correlation_id LIKE ('%' || #{query} || '%')
+                  OR f.tenant_name LIKE ('%' || #{query} || '%')
+                  OR f.tenant_slug LIKE ('%' || #{query} || '%')
+                  OR f.request_path LIKE ('%' || #{query} || '%')
+                  OR f.error_type LIKE ('%' || #{query} || '%')
+                  OR f.error_summary LIKE ('%' || #{query} || '%')
+                  OR f.runtime_commit LIKE ('%' || #{query} || '%'))
               </if>
               GROUP BY f.fingerprint, f.environment, f.service, f.tenant_id, f.http_method, f.request_path,
                        f.http_status, f.error_code, f.error_type, f.runtime_commit
