@@ -313,8 +313,9 @@ function SidebarNavSubGroup({
   onNavigate?: () => void;
   tabIndex?: number;
 }) {
-  const [expanded, setExpanded] = useState(() => group.items.some((item) => pathMatches(item.href, pathname, item.matchHrefs)));
-  const active = group.items.some((item) => pathMatches(item.href, pathname, item.matchHrefs));
+  const subgroupItems = group.items.filter((item): item is SidebarGroupItem => !isSubGroup(item));
+  const [expanded, setExpanded] = useState(() => subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs)));
+  const active = subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs));
   const visiblyExpanded = expanded || active;
   const submenuId = `sidebar-subgroup-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
