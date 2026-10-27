@@ -4042,3 +4042,9 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - Odoo shell connected to the restored database with explicit `db` host settings, loaded the registry successfully, read the restored `res.users` model, created and deleted a temporary partner, and committed with marker `RESTORE_TX_OK`.
 - The disposable restore database was deleted after verification. Evidence: [UAT_BACKUP_RESTORE_AIPOS_UAT_2026-10-28.json](UAT_BACKUP_RESTORE_AIPOS_UAT_2026-10-28.json).
 - Backup and restore gate is now **PASS**. Remaining customer release blockers are shared `aipos_uat` isolation, physical hardware/offline acceptance, and final frozen release/customer limitations review.
+
+## 2026-10-28 current runtime and trial limitations
+
+- Demo `/api/public/version` now reports matching frontend/backend runtime `340096ce87161ae5adb4232e6d7811ca26e90fa6`. The exact-SHA release gate confirms login HTTP 200 and parked-sale GET HTTP 200, but remains blocked because the three Odoo database variables intentionally point to the same `aipos_uat` database.
+- The online settings-mobile script did not complete because its tax-page assertion expected an empty-state label that is not present on the current populated Demo page. This is a test assertion mismatch, not evidence that tax configuration is correct; the tax page requires a revised assertion before it can be used as a release gate.
+- Customer trial limitations and rollback steps are documented in [CUSTOMER_TRIAL_LIMITATIONS_2026-10-28.md](CUSTOMER_TRIAL_LIMITATIONS_2026-10-28.md). Hardware and offline POS remain unverified and explicitly unavailable for customer commitments.
