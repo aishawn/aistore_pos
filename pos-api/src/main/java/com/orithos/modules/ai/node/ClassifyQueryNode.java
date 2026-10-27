@@ -225,8 +225,13 @@ public class ClassifyQueryNode implements NodeAction {
                     && fast.slots().get("query") != null && !fast.slots().get("query").isBlank()) {
                 return productSearchShortcut(fast, question);
             }
-            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
-                    fast.route(), fast.action());
+            Map<String, Object> shortcut = shortcutResult(fast.intent(), fast.summary(), fast.slots(),
+                    fast.panel(), fast.view(), fast.route(), fast.action());
+            if ("qa".equals(fast.intent()) && (fast.summary().contains("barcode")
+                    || fast.summary().contains("条码"))) {
+                shortcut.put("fast_path_id", "stock_clarification");
+            }
+            return shortcut;
         }
 
         IntentConfigService.Snapshot snap = configService.getSnapshot();

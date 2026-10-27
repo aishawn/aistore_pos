@@ -394,7 +394,7 @@ public final class AssistantFastPathRouter {
                     "qa",
                     chinese
                             ? "请告诉我具体商品名称或条码，我会查询本门店库存；查无匹配和库存数据暂不可用是两种不同情况。"
-                            : "Please give me the product name or barcode so I can check this store's stock. No catalogue match and temporarily unavailable stock data are different results.",
+                            : "Please give me the exact product name or barcode so I can check this store's stock. No catalogue match and temporarily unavailable stock data are different results.",
                     Map.of(),
                     "",
                     "",

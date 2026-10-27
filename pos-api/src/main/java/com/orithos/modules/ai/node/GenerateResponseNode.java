@@ -59,7 +59,8 @@ public class GenerateResponseNode implements NodeAction {
         String summary = state.value("intent_summary", String.class).orElse("");
         String fastPathId = state.value("fast_path_id", String.class).orElse("");
 
-        if ("historical_stock_unavailable".equals(fastPathId)) {
+        if ("historical_stock_unavailable".equals(fastPathId)
+                || "stock_clarification".equals(fastPathId)) {
             return Map.of("answer", summary);
         }
 
