@@ -89,10 +89,10 @@ mybatis:
 
 app:
   shopfront:
-    # Staging boundary only. Keep disabled until an isolated Odoo/test-company
-    # adapter and a dedicated integration token are configured.
+    # Writes require the integration token and an enabled store mapping.
     integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}
     integration-token: ${SHOPFRONT_INTEGRATION_TOKEN:}
+    business-write-enabled: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:${SHOPFRONT_INTEGRATION_ENABLED:false}}
   invoice:
     # Reserved for future supplier-provided invoice APIs. Keep false until an adapter exists.
     supplier-ingest-enabled: ${SUPPLIER_INVOICE_INGEST_ENABLED:false}

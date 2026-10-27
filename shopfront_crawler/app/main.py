@@ -385,7 +385,14 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
     result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
 
     def sale_payload(sale: Sale) -> dict:
-        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]}
+        raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
+            "source_product_id": item.shopfront_product_id,
+            "name": item.product_name or ((item.raw_payload or {}).get("item", {}).get("name") if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else None),
+            "sku": ((item.raw_payload or {}).get("item", {}).get("mdbId") if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else None),
+            "barcodes": ((item.raw_payload or {}).get("item", {}).get("barcodes", []) if isinstance(item.raw_payload, dict) and isinstance((item.raw_payload or {}).get("item"), dict) else []),
+            "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload,
+        } for item in sale.items]}
 
     def product_payload(product: Product) -> dict:
         raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
@@ -395,13 +402,13 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         tax_rate = raw.get("taxRate") if isinstance(raw.get("taxRate"), dict) else {}
         return {
             "source_id": product.shopfront_product_id,
-            "name": product.name,
-            "sku": product.sku,
-            "barcode": product.barcode,
+            "name": product.name or raw.get("name"),
+            "sku": product.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": product.barcode or ((raw.get("barcodes") or [{}])[0].get("code") if isinstance((raw.get("barcodes") or [{}])[0], dict) else None),
             "barcodes": raw.get("barcodes") or [],
-            "category": product.category,
+            "category": product.category or category.get("name"),
             "category_id": category.get("id"),
-            "brand": product.brand,
+            "brand": product.brand or brand.get("name"),
             "brand_id": brand.get("id"),
             "family": family.get("name"),
             "family_id": family.get("id"),
@@ -413,12 +420,14 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             "case_quantity": raw.get("caseQuantity"),
             "tax_rate_id": tax_rate.get("id"),
             "tax_rate_name": tax_rate.get("name"),
+            "cost_tax_rate_id": (raw.get("costTaxRate") or {}).get("id") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "cost_tax_rate_name": (raw.get("costTaxRate") or {}).get("name") if isinstance(raw.get("costTaxRate"), dict) else None,
             "source_status": raw.get("status"),
             "source_type": raw.get("type"),
             "source_created_at": raw.get("createdAt"),
             "source_updated_at": raw.get("updatedAt"),
-            "cost": product.cost,
-            "price": product.price,
+            "cost": product.cost if product.cost is not None else raw.get("cost"),
+            "price": product.price if product.price is not None else ((raw.get("prices") or [{}])[0].get("price") if isinstance((raw.get("prices") or [{}])[0], dict) else None),
             "prices": raw.get("prices") or [],
             "raw_payload": raw,
         }
