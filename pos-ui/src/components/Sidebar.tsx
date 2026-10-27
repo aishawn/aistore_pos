@@ -257,16 +257,17 @@ function SidebarNavGroup({
             if (isSubGroup(item)) {
               return <SidebarNavSubGroup key={item.label} group={item} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={tabIndex} />;
             }
+            const groupItem = item as SidebarGroupItem;
             const siblingItems = group.items.filter((candidate): candidate is SidebarGroupItem => !isSubGroup(candidate));
-            const active = subItemActive(item, pathname, siblingItems);
+            const active = subItemActive(groupItem, pathname, siblingItems);
             return (
-              <li key={item.href}>
+              <li key={groupItem.href}>
                 <Link
-                  href={item.href}
+                  href={groupItem.href}
                   tabIndex={tabIndex}
-                  title={item.hint}
+                  title={groupItem.hint}
                   onClick={(event) => {
-                    guardNav(event, item.href);
+                    guardNav(event, groupItem.href);
                     if (!event.defaultPrevented) onNavigate?.();
                   }}
                   className={cn(
@@ -279,7 +280,7 @@ function SidebarNavGroup({
                   {active && (
                     <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />
                   )}
-                  {item.more ? (
+                  {groupItem.more ? (
                     <Plus
                       size={14}
                       strokeWidth={2.5}
@@ -289,7 +290,7 @@ function SidebarNavGroup({
                       )}
                     />
                   ) : null}
-                  {item.more ? "More" : item.label}
+                  {groupItem.more ? "More" : groupItem.label}
                 </Link>
               </li>
             );
@@ -359,7 +360,7 @@ function SidebarNavSubGroup({
                   )}
                 >
                   {itemActive && <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />}
-                  {item.label}
+                  {groupItem.label}
                 </Link>
               </li>
             );
