@@ -4035,3 +4035,10 @@ Workspace-default and Radial UI implementation passed local fixture acceptance (
 - The current Demo runtime remains `e995801498e7838458f2d3382e84fd7c34f2e1a0` on both frontend and backend. Admin login and authenticated `GET /api/sell/parked` are HTTP 200.
 - The current customer-trial gate is intentionally `BLOCKED`: `ODOO_DATABASE`, `ODOO_DATABASE_UAT`, and `ISOLATION_ODOO_DATABASE` are all `aipos_uat`, so `/api/public/uat-context` reports `isolated=false`. This is the agreed shared UAT/debug configuration, not production isolation.
 - No new application code was deployed by this local build; the remote runtime already matches `origin/main`. Backup export is proven, but disposable restore and post-restore transaction verification remain outstanding. Customer production remains **NO-GO**.
+
+## 2026-10-28 backup restore drill completed
+
+- Odoo database manager export of `aipos_uat` was restored to disposable PostgreSQL database `aipos_uat_restore_20261028d`. Dokploy container logs show `RESTORE DB` completed; direct PostgreSQL listing confirmed the database existed.
+- Odoo shell connected to the restored database with explicit `db` host settings, loaded the registry successfully, read the restored `res.users` model, created and deleted a temporary partner, and committed with marker `RESTORE_TX_OK`.
+- The disposable restore database was deleted after verification. Evidence: [UAT_BACKUP_RESTORE_AIPOS_UAT_2026-10-28.json](UAT_BACKUP_RESTORE_AIPOS_UAT_2026-10-28.json).
+- Backup and restore gate is now **PASS**. Remaining customer release blockers are shared `aipos_uat` isolation, physical hardware/offline acceptance, and final frozen release/customer limitations review.
