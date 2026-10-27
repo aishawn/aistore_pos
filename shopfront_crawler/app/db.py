@@ -46,3 +46,15 @@ def init_db() -> None:
             for name, sql_type in columns.items():
                 if name not in existing:
                     connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}"))
+        # Older crawler volumes did not have a uniqueness constraint and may
+        # contain one row per historical snapshot. Keep the newest row for
+        # each product/outlet before enforcing the idempotency invariant.
+        connection.execute(text(
+            "DELETE FROM inventory_snapshots "
+            "WHERE id NOT IN (SELECT MAX(id) FROM inventory_snapshots "
+            "GROUP BY store_key, shopfront_product_id, outlet_id)"
+        ))
+        connection.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_inventory_snapshot "
+            "ON inventory_snapshots (store_key, shopfront_product_id, outlet_id)"
+        ))

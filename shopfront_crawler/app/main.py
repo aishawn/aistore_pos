@@ -803,14 +803,46 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(Product).where(Product.store_key == store).order_by(Product.name).offset((page - 1) * size).limit(size)).all()
-    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "sku": x.sku, "barcode": x.barcode, "name": x.name, "category": x.category, "brand": x.brand, "cost": x.cost, "price": x.price, "raw_payload": x.raw_payload, "synced_at": x.synced_at} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_products"}
+    def product_data(x: Product) -> dict:
+        raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
+        return {
+            "shopfront_product_id": x.shopfront_product_id,
+            "sku": x.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": x.barcode,
+            "barcodes": raw.get("barcodes") or [],
+            "name": x.name or raw.get("name"),
+            "category": x.category or (raw.get("category") or {}).get("name"),
+            "category_id": (raw.get("category") or {}).get("id"),
+            "brand": x.brand or (raw.get("brand") or {}).get("name"),
+            "brand_id": (raw.get("brand") or {}).get("id"),
+            "family": (raw.get("family") or {}).get("name"),
+            "family_id": (raw.get("family") or {}).get("id"),
+            "description": raw.get("description"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or [],
+            "tags": raw.get("tags") or [],
+            "track_inventory": raw.get("trackInventory"),
+            "case_quantity": raw.get("caseQuantity"),
+            "cost": x.cost,
+            "price": x.price,
+            "prices": raw.get("prices") or [],
+            "tax_rate": raw.get("taxRate"),
+            "cost_tax_rate": raw.get("costTaxRate"),
+            "status": raw.get("status"),
+            "type": raw.get("type"),
+            "source_created_at": raw.get("createdAt"),
+            "source_updated_at": raw.get("updatedAt"),
+            "raw_payload": raw,
+            "synced_at": x.synced_at,
+        }
+    return {"data": [product_data(x) for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_products"}
 
 
 @app.get("/api/inventory")
 def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store).order_by(desc(InventorySnapshot.inventory_timestamp)).offset((page - 1) * size).limit(size)).all()
-    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_inventory"}
+    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "outlet_id": x.outlet_id, "outlet_name": x.outlet_name, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_inventory"}
 
 
 @app.post("/webhooks/shopfront/{store_key}")

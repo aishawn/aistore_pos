@@ -180,6 +180,7 @@ class InventorySnapshot(Base):
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     inventory_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    __table_args__ = (UniqueConstraint("store_key", "shopfront_product_id", "outlet_id", name="uq_inventory_snapshot"),)
 
 
 class WebhookEvent(Base):
