@@ -45,10 +45,6 @@ const SECTIONS: ReportSection[] = [
     match: ["/reports/inventory"],
     children: [
       { label: "Inventory On Hand", href: "/reports/inventory" },
-      { label: "Inventory at Date", href: "/reports/inventory?view=at-date" },
-      { label: "Low / Out of Stock", href: "/reports/inventory?view=low-stock" },
-      { label: "Slow Moving Stock", href: "/reports/inventory?view=slow-moving" },
-      { label: "Inventory Movement", href: "/reports/inventory?view=movement" },
     ],
   },
   {
