@@ -120,13 +120,29 @@ def _upsert_sale_product(
         if _non_empty(value) or key not in merged_raw:
             merged_raw[key] = value
     product.raw_payload = merged_raw
-    product.name = product.name or name
-    product.sku = product.sku or first(incoming, "sku", "SKU", "mdbId", "MDB ID")
-    product.barcode = product.barcode or str(barcode) if barcode else product.barcode
-    product.cost = product.cost if product.cost is not None else parse_decimal(first(incoming, "cost", "Cost"))
-    product.price = product.price if product.price is not None else parse_decimal(
-        first(incoming, "price", "Price", "retailPrice", "basePrice")
-    )
+    # Older imports created ``Shopfront <source_id>`` placeholders before the
+    # complete SaleItem query was enabled. Replace those placeholders when a
+    # real source name arrives, while keeping an already meaningful catalog
+    # name stable.
+    if name and (not product.name or str(product.name).strip().startswith("Shopfront ")):
+        product.name = str(name)
+    incoming_sku = first(incoming, "sku", "SKU", "mdbId", "MDB ID")
+    if incoming_sku and not product.sku:
+        product.sku = str(incoming_sku)
+    if barcode and not product.barcode:
+        product.barcode = str(barcode)
+    incoming_cost = parse_decimal(first(incoming, "cost", "Cost"))
+    if incoming_cost is not None and product.cost is None:
+        product.cost = incoming_cost
+    incoming_price = parse_decimal(first(incoming, "price", "Price", "retailPrice", "basePrice"))
+    if incoming_price is None:
+        prices = incoming.get("prices") if isinstance(incoming.get("prices"), list) else []
+        if prices and isinstance(prices[0], dict):
+            incoming_price = parse_decimal(first(prices[0], "price", "Price"))
+    if incoming_price is None:
+        incoming_price = parse_decimal(first(sale_item, "basePrice", "unitPrice"))
+    if incoming_price is not None and product.price is None:
+        product.price = incoming_price
     product.synced_at = datetime.now(timezone.utc)
     return product
 

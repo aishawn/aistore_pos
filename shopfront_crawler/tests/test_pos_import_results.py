@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app import main
 from app.db import Base
 from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncRun
+from app.sync import _upsert_sale_product
 
 
 @pytest.fixture
@@ -43,6 +44,40 @@ def seed_snapshot(db: Session) -> None:
         sale,
     ])
     db.commit()
+
+
+def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_session):
+    product = Product(
+        store_key="skr",
+        shopfront_product_id="source-old",
+        name="Shopfront source-old",
+        raw_payload={"id": "source-old", "name": "Shopfront source-old"},
+    )
+    db_session.add(product)
+    db_session.commit()
+
+    updated = _upsert_sale_product(
+        db_session,
+        "skr",
+        "source-old",
+        {
+            "id": "source-old",
+            "name": "REAL PRODUCT NAME",
+            "description": "source description",
+            "image": None,
+            "barcodes": [{"code": "12345", "quantity": 1}],
+            "prices": [{"quantity": 1, "price": 9.99}],
+        },
+        {"id": "line-1", "basePrice": 9.99, "cost": 4.0},
+    )
+    db_session.commit()
+    db_session.refresh(updated)
+
+    assert updated.name == "REAL PRODUCT NAME"
+    assert updated.barcode == "12345"
+    assert updated.price == Decimal("9.99")
+    assert updated.raw_payload["description"] == "source description"
+    assert updated.raw_payload["barcodes"][0]["code"] == "12345"
 
 
 @pytest.mark.asyncio
