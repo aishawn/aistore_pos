@@ -60,13 +60,13 @@ public interface PlatformAdminAuditMapper {
             WHERE 1=1
             <if test='tenantId != null'>AND tenant_id=#{tenantId}</if>
             <if test='query != null and query != ""'>
-              AND (event_id LIKE CONCAT('%', #{query}, '%')
-                OR correlation_id LIKE CONCAT('%', #{query}, '%')
-                OR tenant_name LIKE CONCAT('%', #{query}, '%')
-                OR tenant_slug LIKE CONCAT('%', #{query}, '%')
-                OR actor_username LIKE CONCAT('%', #{query}, '%')
-                OR action LIKE CONCAT('%', #{query}, '%')
-                OR target_id LIKE CONCAT('%', #{query}, '%'))
+              AND (event_id LIKE ('%' || #{query} || '%')
+                OR correlation_id LIKE ('%' || #{query} || '%')
+                OR tenant_name LIKE ('%' || #{query} || '%')
+                OR tenant_slug LIKE ('%' || #{query} || '%')
+                OR actor_username LIKE ('%' || #{query} || '%')
+                OR action LIKE ('%' || #{query} || '%')
+                OR target_id LIKE ('%' || #{query} || '%'))
             </if>
             <if test='action != null and action != ""'>AND action=#{action}</if>
             <if test='outcome != null and outcome != ""'>AND outcome=#{outcome}</if>
@@ -90,13 +90,13 @@ public interface PlatformAdminAuditMapper {
             SELECT COUNT(*) FROM platform_admin_audit WHERE 1=1
             <if test='tenantId != null'>AND tenant_id=#{tenantId}</if>
             <if test='query != null and query != ""'>
-              AND (event_id LIKE CONCAT('%', #{query}, '%')
-                OR correlation_id LIKE CONCAT('%', #{query}, '%')
-                OR tenant_name LIKE CONCAT('%', #{query}, '%')
-                OR tenant_slug LIKE CONCAT('%', #{query}, '%')
-                OR actor_username LIKE CONCAT('%', #{query}, '%')
-                OR action LIKE CONCAT('%', #{query}, '%')
-                OR target_id LIKE CONCAT('%', #{query}, '%'))
+              AND (event_id LIKE ('%' || #{query} || '%')
+                OR correlation_id LIKE ('%' || #{query} || '%')
+                OR tenant_name LIKE ('%' || #{query} || '%')
+                OR tenant_slug LIKE ('%' || #{query} || '%')
+                OR actor_username LIKE ('%' || #{query} || '%')
+                OR action LIKE ('%' || #{query} || '%')
+                OR target_id LIKE ('%' || #{query} || '%'))
             </if>
             <if test='action != null and action != ""'>AND action=#{action}</if>
             <if test='outcome != null and outcome != ""'>AND outcome=#{outcome}</if>
