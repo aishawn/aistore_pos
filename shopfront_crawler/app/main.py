@@ -46,6 +46,7 @@ async def startup() -> None:
         resumed_stores: set[str] = set()
         interrupted_history_ids: list[int] = []
         interrupted_discovery_ids: list[int] = []
+        interrupted_snapshot_ids: list[int] = []
         for job in interrupted:
             if job.store_key in resumed_stores:
                 job.status = "superseded"
@@ -59,6 +60,25 @@ async def startup() -> None:
                 interrupted_history_ids.append(job.id)
             elif job.job_type == "discover":
                 interrupted_discovery_ids.append(job.id)
+            elif job.job_type == "snapshot":
+                interrupted_snapshot_ids.append(job.id)
+        # A snapshot can be persisted as queued immediately before a process
+        # restart, before its BackgroundTask gets a chance to claim it. Start
+        # the newest queued snapshot for each store so it cannot remain stuck.
+        queued_snapshots = db.scalars(
+            select(SyncJob)
+            .where(SyncJob.status == "queued", SyncJob.job_type == "snapshot")
+            .order_by(SyncJob.store_key, desc(SyncJob.id))
+        ).all()
+        queued_snapshot_stores: set[str] = set()
+        for job in queued_snapshots:
+            if job.store_key in queued_snapshot_stores:
+                job.status = "superseded"
+                job.error = "superseded by newer queued snapshot"
+                job.finished_at = datetime.now(timezone.utc)
+                continue
+            queued_snapshot_stores.add(job.store_key)
+            interrupted_snapshot_ids.append(job.id)
         db.commit()
     finally:
         db.close()
@@ -73,6 +93,8 @@ async def startup() -> None:
         __import__("asyncio").create_task(run_history_job(job_id))
     for job_id in interrupted_discovery_ids:
         __import__("asyncio").create_task(run_history_discovery(job_id))
+    for job_id in interrupted_snapshot_ids:
+        __import__("asyncio").create_task(run_full_snapshot_job(job_id))
 
 
 @app.on_event("shutdown")
@@ -377,9 +399,11 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         except Exception as exc:
             result["mirror_errors"].append(f"catalog: {exc!r}")
             logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
+        odoo_product_result = None
+        odoo_inventory_result = None
         if settings.odoo_import_enabled:
-            await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
-            await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
+            odoo_product_result = await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
+            odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
         odoo_batches = 0
         offset = 0
@@ -410,7 +434,14 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             if run is not None:
                 run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": offset, "sale_total": total_sales, "sale_batches": sale_batches, "odoo_sale_batches": odoo_batches, "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror"}
                 db.commit()
-        result.update({"status": "completed", "product_response": product_result, "inventory_response": inventory_result})
+        result.update({
+            "status": "completed",
+            "product_response": product_result,
+            "inventory_response": inventory_result,
+            "odoo_business_write": bool(settings.odoo_import_enabled and settings.odoo_business_write_enabled),
+            "odoo_product_response": odoo_product_result,
+            "odoo_inventory_response": odoo_inventory_result,
+        })
     except Exception as exc:
         result["error"] = repr(exc)[:500]
         logger.exception("Shopfront snapshot push failed: store=%s", store_key)
