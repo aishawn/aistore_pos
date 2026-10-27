@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,6 +38,7 @@ public class ShopfrontIntegrationController {
     private final boolean enabled;
     private final boolean businessWriteEnabled;
 
+    @Autowired
     public ShopfrontIntegrationController(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
@@ -377,18 +379,21 @@ public class ShopfrontIntegrationController {
         BigDecimal caseQuantity = decimal(item, "case_quantity");
         if (caseQuantity == null || caseQuantity.signum() <= 0) caseQuantity = BigDecimal.ONE;
         BigDecimal cost = decimal(item, "cost");
+        String type = text(item, "source_type");
+        if (type == null || type.isBlank()) type = "STANDARD";
         String description = text(item, "description");
         String image = text(item, "image");
         if (image != null && image.length() > 512) image = null;
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
-            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,track_inventory,request_price,request_quantity,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql.replace("VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?)"), Long.class, name, "STANDARD", "ACTIVE", description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "track_inventory", true), flag(item, "request_price", false), flag(item, "request_quantity", false), image, alternateImages, mdbId, outletId);
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, name, type, "ACTIVE", description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
-            jdbc.update("UPDATE product SET name=?,status='ACTIVE',description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,track_inventory=?,request_price=?,request_quantity=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "track_inventory", true), flag(item, "request_price", false), flag(item, "request_quantity", false), image, alternateImages, mdbId, outletId, productId);
+            jdbc.update("UPDATE product SET name=?,type=?,status='ACTIVE',description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, type, description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId);
         }
         upsertPrices(productId, item, outletId);
         upsertBarcodes(productId, item, outletId);
+        upsertTags(productId, item, outletId);
         return productId;
     }
 
@@ -403,7 +408,7 @@ public class ShopfrontIntegrationController {
         for (JsonNode price : prices) {
             BigDecimal quantity = decimal(price, "quantity", BigDecimal.ONE);
             BigDecimal value = decimal(price, "price");
-            if (quantity != null && quantity.signum() > 0 && value != null) jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex) VALUES (?,?,?,?)", productId, quantity, value, decimal(price, "price_ex"));
+            if (quantity != null && quantity.signum() > 0 && value != null) jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex) VALUES (?,?,?,?)", productId, quantity, value, decimal(price, "price_ex") != null ? decimal(price, "price_ex") : decimal(price, "priceEx"));
         }
     }
 
@@ -417,6 +422,24 @@ public class ShopfrontIntegrationController {
             if (owner != null && !owner.equals(productId)) continue;
             if (owner == null) jdbc.update("INSERT INTO product_barcode (product_id,code,quantity) VALUES (?,?,?)", productId, code, decimal(barcode, "quantity", BigDecimal.ONE));
             else jdbc.update("UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=?", decimal(barcode, "quantity", BigDecimal.ONE), productId, code);
+        }
+    }
+
+    private void upsertTags(long productId, JsonNode item, long outletId) {
+        JsonNode tags = item.get("tags");
+        if (tags == null || !tags.isArray()) return;
+        try {
+            jdbc.update("DELETE FROM product_tag WHERE product_id=?", productId);
+            for (JsonNode tag : tags) {
+                String name = tag.isTextual() ? tag.asText() : text(tag, "name");
+                if (name == null || name.isBlank()) continue;
+                Long tagId = ensureLookup("tag", name, outletId);
+                if (tagId != null) jdbc.update("INSERT INTO product_tag (product_id,tag_id) VALUES (?,?)", productId, tagId);
+            }
+        } catch (Exception e) {
+            // Tags are optional metadata; a malformed tag must not discard the
+            // product, price, barcode or inventory update.
+            log.warn("Shopfront tag sync skipped for product {}: {}", productId, e.getMessage());
         }
     }
 
