@@ -76,12 +76,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Stock",
     icon: "inventory",
     items: [
-      { label: "Products", href: "/products", permission: "stock.products.view" },
       {
-        label: "Pricing",
+        label: "Products",
         items: [
+          { label: "Products", href: "/products", permission: "stock.products.view" },
           { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
-          { label: "Price Review", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
         ],
       },
       { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
@@ -102,9 +101,8 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "sommelier",
     items: [
       { label: "AI Workspace", href: "/ai", anyPermissions: ["ai.assistant", "ai.recommend", "ai.sommelier", "ai.grocery", "ai.price_suggestions"] },
+      { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
       { label: "AI Assistant", href: "/assistant", permission: "ai.assistant" },
-      { label: "Recommend", href: "/recommend", permission: "ai.recommend" },
-      { label: "Scan Wine Label", href: "/sommelier/identify", permission: "ai.sommelier" },
     ],
   },
   {
