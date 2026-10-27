@@ -190,7 +190,10 @@ UNCONSOLIDATED'''
         optional_queries = (
             "{ products(first: 100) { edges { node { id mdbId family { id name } tags { name } trackInventory caseQuantity taxRate { id name } costTaxRate { id name } } } } }",
             "{ products(first: 100) { edges { node { id prices { quantity price } } } } }",
-            "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel reorderLevelSingles reorderLevelCases outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderAmount reorderAmountSingles reorderAmountCases reorderLimit outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity maxQuantity maxQuantitySingles maxQuantityCases onOrder outlet { id name } } } } } }",
         )
         merged = {str(node.get("id")): dict(node) for node in nodes if isinstance(node, dict) and node.get("id")}
         for optional_query in optional_queries:
@@ -200,7 +203,23 @@ UNCONSOLIDATED'''
                         continue
                     target = merged.get(str(node["id"]))
                     if target is not None:
-                        target.update({key: value for key, value in node.items() if value is not None})
+                        for key, value in node.items():
+                            if value is None:
+                                continue
+                            if key != "inventory" or not isinstance(value, list):
+                                target[key] = value
+                                continue
+                            current = {
+                                str(row.get("outlet", {}).get("id")): dict(row)
+                                for row in (target.get("inventory") or [])
+                                if isinstance(row, dict) and isinstance(row.get("outlet"), dict) and row.get("outlet", {}).get("id")
+                            }
+                            for row in value:
+                                if not isinstance(row, dict):
+                                    continue
+                                outlet_id = str((row.get("outlet") or {}).get("id", ""))
+                                current.setdefault(outlet_id, {}).update(row)
+                            target["inventory"] = list(current.values())
             except ShopfrontError:
                 continue
         return list(merged.values())
