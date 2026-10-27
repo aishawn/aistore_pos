@@ -548,8 +548,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 14px;
-  font-weight: 550;
+  font-size: 16px;
+  font-weight: 600;
   text-align: center;
 }
 .ov-ring-node > :is(button, a) > small {
@@ -772,6 +772,8 @@
   .ov-radial-main .ov-ring-center { width: auto; height: auto; min-height: 112px; box-shadow: 0 0 0 5px #ffffff88, 0 0 0 7px #ffc7a766, 0 12px 32px #e96b2528; }
   .ov-ring-node { width: auto; }
   .ov-radial-main .ov-node-icon { width: 68px; height: 68px; }
+  .ov-ring-node > :is(button, a) > span:last-child { font-size: 15px; }
+  .ov-radial-main .ov-ring-center strong { font-size: 21px; }
   .ov-radial-side { padding-top: 20px; }
   .ov-pulse-panel, .ov-insights-panel { border-radius: 20px; }
   .ov-ai-bar { align-items: stretch; flex-wrap: wrap; border-radius: 24px; padding: 10px 12px; }
@@ -887,7 +889,7 @@
   line-height: 1;
 }
 .ov-radial-main .ov-ring-center strong {
-  font-size: 20px;
+  font-size: 22px;
 }
 .ov-radial-side {
   position: absolute;
