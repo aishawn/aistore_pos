@@ -122,7 +122,7 @@ export function Sidebar({
       role={mobileOpen ? "dialog" : undefined}
       aria-modal={mobileOpen ? true : undefined}
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
+        "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden border-r border-[var(--oh-sidebar-border)] bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
         mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none md:pointer-events-auto md:translate-x-0",
         open ? "md:w-[var(--oh-sidebar-width)]" : "md:w-0",
       )}
@@ -147,8 +147,8 @@ export function Sidebar({
       </div>
 
       {giftCapability.error && <button type="button" disabled={giftCapability.loading} onClick={giftCapability.refresh} className="mx-3 min-h-11 rounded border border-white/20 px-2 text-xs text-white">Gift cards: retry availability</button>}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        <ul className="flex flex-col gap-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <ul className="flex flex-col gap-1">
           {navigation.map((entry) =>
             isGroup(entry) ? (
               <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={checkoutKeyboard ? -1 : undefined} />
@@ -189,7 +189,7 @@ function SidebarNavLink({
           if (!event.defaultPrevented) onNavigate?.();
         }}
         className={cn(
-          "oh-type-label relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 font-medium transition-colors",
+          "oh-type-label relative flex min-h-11 items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -235,7 +235,7 @@ function SidebarNavGroup({
         aria-controls={submenuId}
         onClick={() => setExpanded((value) => !value)}
         className={cn(
-          "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
+          "oh-type-label flex min-h-11 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",

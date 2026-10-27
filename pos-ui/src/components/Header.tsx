@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 import { OrithosLogo } from "@/components/OrithosLogo";
@@ -27,49 +28,66 @@ export function Header({
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
   const tabIndex = checkoutKeyboard ? -1 : undefined;
+  const contextItems = [
+    { href: "/dashboard", label: "Overview", match: pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname === "/overview" || pathname.startsWith("/overview/") },
+    { href: "/ai", label: "AI Insights", match: pathname === "/ai" || pathname.startsWith("/ai/") },
+    { href: "/history", label: "Sales History", match: pathname === "/history" || pathname.startsWith("/history/") },
+    { href: "/products", label: "Inventory", match: pathname === "/products" || pathname.startsWith("/products/") },
+    { href: "/purchases", label: "Purchasing & Transfers", match: pathname === "/purchases" || pathname.startsWith("/purchases/") },
+  ];
+  const showContextNav = !checkoutKeyboard && pathname !== "/login" && pathname !== "/signup";
 
   return (
-    <header className="relative flex h-[50px] items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-header-bg)] font-sans print:hidden">
-      <button
-        type="button"
-        tabIndex={tabIndex}
-        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={sidebarOpen}
-        aria-controls="main-navigation"
-        onClick={onSidebarToggle}
-        className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center px-1 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"
-      >
-        {sidebarOpen ? (
-          <PanelLeftClose size={22} strokeWidth={1.5} />
-        ) : (
-          <PanelLeft size={22} strokeWidth={1.5} />
-        )}
-      </button>
-
-      <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true">
-        <OrithosLogo />
-      </div>
-
-      <div className="flex items-center gap-2 pr-2 sm:pr-5">
+    <header className="relative shrink-0 bg-[var(--oh-header-bg)] font-sans print:hidden">
+      <div className="flex h-[var(--oh-header-height)] items-center justify-between border-b border-[var(--oh-border)]">
         <button
           type="button"
           tabIndex={tabIndex}
-          onClick={onUserClick}
-          title="User menu"
-          aria-label={`User menu for ${userName}`}
-          data-user-menu-trigger
-          aria-haspopup="dialog"
-          aria-controls="user-menu"
-          aria-expanded={userMenuOpen}
-          data-testid="sh-current-user"
-          className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={sidebarOpen}
+          aria-controls="main-navigation"
+          onClick={onSidebarToggle}
+          className="flex h-full w-14 shrink-0 cursor-pointer items-center justify-center text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)]"
         >
-          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-primary)]">
-            <UserIcon size={20} className="text-white" fill="white" />
-          </span>
-          <p className="oh-type-body mx-2 hidden text-[var(--oh-text)] sm:block">{userName}</p>
+          {sidebarOpen ? <PanelLeftClose size={21} strokeWidth={1.6} /> : <PanelLeft size={21} strokeWidth={1.6} />}
         </button>
+
+        <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true"><OrithosLogo /></div>
+
+        <div className="flex items-center gap-2 pr-3 sm:pr-6">
+          <button
+            type="button"
+            tabIndex={tabIndex}
+            onClick={onUserClick}
+            title="User menu"
+            aria-label={`User menu for ${userName}`}
+            data-user-menu-trigger
+            aria-haspopup="dialog"
+            aria-controls="user-menu"
+            aria-expanded={userMenuOpen}
+            data-testid="sh-current-user"
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-1 transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--oh-primary)]"><UserIcon size={18} className="text-white" fill="white" /></span>
+            <p className="oh-type-body mx-2 hidden text-[var(--oh-text)] sm:block">{userName}</p>
+          </button>
+        </div>
       </div>
+      {showContextNav && (
+        <nav aria-label="Workspace shortcuts" className="flex h-12 min-w-0 items-stretch gap-1 overflow-x-auto border-b border-[var(--oh-border)] px-3 md:px-6">
+          {contextItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={item.match ? "page" : undefined}
+              className={`relative inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 text-sm font-medium transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)] ${item.match ? "text-[var(--oh-primary)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] hover:text-[var(--oh-text)]"}`}
+            >
+              {item.label}
+              {item.match && <span aria-hidden="true" className="absolute inset-x-3 bottom-0 h-0.5 rounded-t-full bg-[var(--oh-primary)]" />}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }
