@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import javax.sql.DataSource;
 
 /**
@@ -41,6 +44,7 @@ public class OdooTenantProvisioner {
     private static final double GST_FACTOR = 1.10;
     private static final int DUMMY_SALES_COUNT = 32;
     private static final int DUMMY_SALES_DAYS = 14;
+    private static final Duration OPTIONAL_SAMPLE_DATA_TIMEOUT = Duration.ofSeconds(45);
     private static final DateTimeFormatter ODOO_DATETIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -253,15 +257,8 @@ public class OdooTenantProvisioner {
             }, "companyId=" + companyId);
 
             if (seedDummyData) {
-                try {
-                    provisionStep(attemptId, "OPTIONAL_SAMPLE_DATA", () -> {
-                        seedDummyExperience(sessionId, companyId, warehouse[1], primaryPosConfigId);
-                        return null;
-                    }, "companyId=" + companyId);
-                } catch (Exception seedError) {
-                    if (seedError instanceof TenantProvisionAttemptPersistenceException) throw seedError;
-                    log.warn("Dummy data seed failed for vendor {}: {}", vendorId, seedError.getMessage());
-                }
+                seedOptionalSampleData(attemptId, vendorId, sessionId, companyId,
+                        warehouse[1], primaryPosConfigId);
             }
 
             vendor.setOdooCompanyId(companyId);
@@ -310,6 +307,62 @@ public class OdooTenantProvisioner {
                 error.addSuppressed(recordingError);
             }
             throw error;
+        }
+    }
+
+    /**
+     * Sample data is useful for a trial but must never hold the core tenant
+     * binding in pending state. Odoo can take several minutes to answer the
+     * many catalog and order RPCs, so record a bounded best-effort step and
+     * let the tenant become ready when the core setup has completed.
+     */
+    private void seedOptionalSampleData(String attemptId, Long vendorId, String sessionId,
+                                        long companyId, long stockLocationId, long posConfigId) {
+        String stepId;
+        try {
+            stepId = beginProvisionStep(attemptId, "OPTIONAL_SAMPLE_DATA");
+        } catch (RuntimeException persistenceError) {
+            throw new TenantProvisionAttemptPersistenceException(
+                    "Could not record optional sample-data step", persistenceError);
+        }
+
+        CompletableFuture<Void> task = CompletableFuture.runAsync(() -> {
+            try {
+                seedDummyExperience(sessionId, companyId, stockLocationId, posConfigId);
+            } catch (Exception error) {
+                throw new java.util.concurrent.CompletionException(error);
+            }
+        });
+        try {
+            task.get(OPTIONAL_SAMPLE_DATA_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+            completeProvisionStep(attemptId, stepId, "OPTIONAL_SAMPLE_DATA", "companyId=" + companyId);
+        } catch (TimeoutException timeout) {
+            task.cancel(true);
+            recordOptionalSampleDataFailure(attemptId, stepId,
+                    "Sample data seeding exceeded " + OPTIONAL_SAMPLE_DATA_TIMEOUT.toSeconds()
+                            + " seconds; tenant setup continued without sample data.", timeout);
+            log.warn("Dummy data seed timed out for vendor {} after {} seconds; continuing provisioning",
+                    vendorId, OPTIONAL_SAMPLE_DATA_TIMEOUT.toSeconds());
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            recordOptionalSampleDataFailure(attemptId, stepId,
+                    "Sample data seeding was interrupted; tenant setup continued without sample data.", interrupted);
+        } catch (ExecutionException failed) {
+            Throwable cause = failed.getCause() == null ? failed : failed.getCause();
+            recordOptionalSampleDataFailure(attemptId, stepId,
+                    cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage(), cause);
+            log.warn("Dummy data seed failed for vendor {}: {}", vendorId, cause.getMessage());
+        }
+    }
+
+    private void recordOptionalSampleDataFailure(String attemptId, String stepId,
+                                                  String message, Throwable error) {
+        try {
+            failProvisionStep(attemptId, stepId, "OPTIONAL_SAMPLE_DATA",
+                    new IllegalStateException(message, error));
+        } catch (RuntimeException persistenceError) {
+            throw new TenantProvisionAttemptPersistenceException(
+                    "Could not record optional sample-data failure", persistenceError);
         }
     }
 
