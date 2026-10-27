@@ -168,7 +168,21 @@ UNCONSOLIDATED'''
             after = page_info["endCursor"]
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return _extract_nodes(await self.graphql(access_token, query), "products")
+        try:
+            return _extract_nodes(await self.graphql(access_token, query), "products")
+        except ShopfrontError:
+            # Shopfront rejects a complete GraphQL page when one optional
+            # field is unavailable for a tenant. Keep the catalog usable with
+            # fields supported by the current production schema.
+            fallback = """
+            { products(first: 100) { edges { node {
+              id name description image alternateImages status cost globalCost
+              prices { price } barcodes { code quantity }
+              category { name } brand { name }
+              inventory { quantity outlet { id name } }
+            } } } }
+            """
+            return _extract_nodes(await self.graphql(access_token, fallback), "products")
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return _extract_nodes(await self.graphql(access_token, query), "products")

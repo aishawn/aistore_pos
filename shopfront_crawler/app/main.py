@@ -347,11 +347,10 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
         run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
+        sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
             pos_result = await push_pos_snapshot(db, store_key, start, end, run=run)
-            counts = dict(run.counts or {})
-            counts["pos_import"] = pos_result
-            run.counts = counts
+            run.counts = {"sync": sync_counts, "pos_import": pos_result}
             db.commit()
         return True
     except Exception:
