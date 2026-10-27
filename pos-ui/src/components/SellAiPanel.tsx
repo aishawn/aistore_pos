@@ -45,39 +45,6 @@ function defaultAnchor(): FloatAnchor {
   return { x: window.innerWidth - 24, y: window.innerHeight - bottomInset };
 }
 
-function mobileHeaderAnchor(width: number, height: number): FloatAnchor | null {
-  const header = Array.from(document.querySelectorAll<HTMLElement>("header, [role='banner']"))
-    .find((element) => {
-      const rect = element.getBoundingClientRect();
-      return rect.top >= 0 && rect.top <= 8 && rect.height >= 40 && rect.height <= 88;
-    });
-  if (!header) return null;
-
-  const rect = header.getBoundingClientRect();
-  const occupied = Array.from(header.querySelectorAll<HTMLElement>("a, button, [role='button'], img"))
-    .flatMap((element) => {
-      if (element.getClientRects().length === 0) return [];
-      const item = element.getBoundingClientRect();
-      if (item.width === 0 || item.height === 0 || item.right <= 0 || item.left >= window.innerWidth) return [];
-      return [{ left: Math.max(0, item.left - 8), right: Math.min(window.innerWidth, item.right + 8) }];
-    })
-    .sort((a, b) => a.left - b.left);
-
-  let bestGap: { left: number; right: number } | null = null;
-  let cursor = 8;
-  for (const item of [...occupied, { left: window.innerWidth - 8, right: window.innerWidth }]) {
-    if (item.left - cursor >= width + 12 && (!bestGap || item.left - cursor > bestGap.right - bestGap.left)) {
-      bestGap = { left: cursor, right: item.left };
-    }
-    cursor = Math.max(cursor, item.right);
-  }
-  if (!bestGap) return null;
-  return {
-    x: (bestGap.left + bestGap.right + width) / 2,
-    y: rect.bottom - Math.max(2, (height - 44) / 2),
-  };
-}
-
 function loadAnchor(): FloatAnchor {
   try {
     const raw = sessionStorage.getItem(FLOAT_POS_KEY);
@@ -142,9 +109,13 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
   };
 
   if (score(preferred) === 0) return preferred;
+  // Keep the mobile launcher out of the top bar. The header gap can look empty
+  // to the obstacle scanner while still colliding with the brand and menu.
+  // A lower anchor is predictable and leaves navigation permanently usable.
   if (mobile) {
-    const headerAnchor = mobileHeaderAnchor(width, height);
-    if (headerAnchor && score(headerAnchor) === 0) return headerAnchor;
+    const lowerBottomInset = Math.max(bottomInset, 88);
+    const lowerAnchor = { x: window.innerWidth - margin, y: window.innerHeight - lowerBottomInset };
+    if (score(lowerAnchor) <= score(preferred)) return clampAnchor(lowerAnchor, width, height, lowerBottomInset);
   }
 
   let best = preferred;
@@ -654,11 +625,11 @@ export function SellAiPanel({
 
   useEffect(() => {
     setMounted(true);
-    const savedAnchor = loadAnchor();
     const mobile = window.matchMedia("(max-width: 767px)").matches;
     setMobileViewport(mobile);
     const compactRegister = pathname === "/register/classic" && mobile;
     const size = mobile ? 44 : 64;
+    const savedAnchor = mobile ? defaultAnchor() : loadAnchor();
     const safeAnchor = findClearAnchor(savedAnchor, size, size, compactRegister ? 108 : 8);
     setAnchor(safeAnchor);
     if (safeAnchor.x !== savedAnchor.x || safeAnchor.y !== savedAnchor.y) {
