@@ -17,7 +17,7 @@ const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWOR
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const expectedRuntimeCommit = process.env.PILOT_EXPECTED_RUNTIME_SHA ?? sourceCommit;
-if (!/^[\\da-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_EXPECTED_RUNTIME_SHA");
+if (!/^[0-9a-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_EXPECTED_RUNTIME_SHA");
 
 const marker = `Codex UAT Group ${Date.now()} ${Math.random().toString(36).slice(2, 8)}`;
 const renamedMarker = `${marker} Updated`;

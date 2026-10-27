@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-10-27T04:17:22.656Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "9337e2d8a6d2ae322f9c4733559715e81b9f405a",
+  "runtime": {
+    "frontendCommit": "5672f8f9bf12d6d1fe2e050bbad4b509393b4798",
+    "backendCommit": "5672f8f9bf12d6d1fe2e050bbad4b509393b4798",
+    "matchesSourceCommit": false,
+    "expectedCommit": "5672f8f9bf12d6d1fe2e050bbad4b509393b4798"
+  },
+  "viewport": 390,
+  "scope": "Authenticated customer-group UI create/read/rename/delete; random unassigned company-scoped fixture; parked-sales GET replaced with an empty fixture; finally cleanup and read-after-delete verification; unrelated writes blocked",
+  "status": "PASS",
+  "businessWrites": 3,
+  "cleanupVerified": true,
+  "fixtureReads": [
+    {
+      "path": "/api/sell/parked",
+      "reason": "Avoid the legacy GET endpoint that may clean up parked sales."
+    }
+  ],
+  "unexpectedWrites": [],
+  "checks": [
+    {
+      "name": "Admin authentication",
+      "status": "PASS"
+    },
+    {
+      "name": "Odoo session warmup",
+      "status": "PASS"
+    },
+    {
+      "name": "Customer group manager opens at 390px",
+      "status": "PASS"
+    },
+    {
+      "name": "Create group and read back unassigned record",
+      "status": "PASS"
+    },
+    {
+      "name": "Rename group and read back update",
+      "status": "PASS"
+    },
+    {
+      "name": "Delete group and verify both names are absent",
+      "status": "PASS"
+    },
+    {
+      "name": "Mobile layout, browser errors and API write scope",
+      "status": "PASS"
+    },
+    {
+      "name": "Finally cleanup and absence verification",
+      "status": "PASS"
+    }
+  ]
+}
