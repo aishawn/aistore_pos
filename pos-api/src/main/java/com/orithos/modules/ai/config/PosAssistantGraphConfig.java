@@ -31,6 +31,7 @@ import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -126,14 +127,15 @@ public class PosAssistantGraphConfig {
             ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider,
             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBriefProvider,
             ObjectProvider<PricingChatBrief> pricingChatBriefProvider,
-            ObjectProvider<GroceryChatBrief> groceryChatBriefProvider) throws GraphStateException {
+            ObjectProvider<GroceryChatBrief> groceryChatBriefProvider,
+            @Value("${spring.ai.dashscope.chat.options.model:qwen-plus}") String primaryModel) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
                 odooReportQueryService, sommelierChatBriefProvider,
                 replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
-                posAssistantChatClient, intentConfigService, properties, posAssistantTools)));
+                posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)
                 .addNode(CLASSIFY, classify)
                 .addNode(RESPOND, respond)
