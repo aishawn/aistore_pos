@@ -349,7 +349,10 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
         sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
-            pos_result = await push_pos_snapshot(db, store_key, start, end, run=run)
+            # Historical chunks only need the catalog on the first chunk. For
+            # later chunks, push sales when present and avoid rewriting the
+            # same full product/inventory snapshot for every empty date range.
+            pos_result = await push_pos_snapshot(db, store_key, start, end, run=run, include_catalog=include_catalog)
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
             db.commit()
         return True
@@ -369,10 +372,10 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None) -> dict:
+async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None, include_catalog: bool = True) -> dict:
     """Push a snapshot in bounded pages so a full history never sits in RAM."""
-    products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
-    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
+    products = db.scalars(select(Product).where(Product.store_key == store_key)).all() if include_catalog else []
+    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all() if include_catalog else []
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
     if start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time())
@@ -477,14 +480,15 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
         product_result = None
         inventory_result = None
         try:
-            product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
-            inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+            if include_catalog:
+                product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
+                inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
         except Exception as exc:
             result["mirror_errors"].append(f"catalog: {exc!r}")
             logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
         odoo_product_result = None
         odoo_inventory_result = None
-        if settings.odoo_import_enabled:
+        if settings.odoo_import_enabled and include_catalog:
             odoo_product_result = await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
             odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
