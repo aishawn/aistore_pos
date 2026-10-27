@@ -24,9 +24,9 @@ public interface VendorMapper {
     @Select("""
             SELECT * FROM vendor
             WHERE (#{q} IS NULL OR #{q} = ''
-                   OR subdomain LIKE CONCAT('%', #{q}, '%')
-                   OR name LIKE CONCAT('%', #{q}, '%')
-            OR COALESCE(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+                   OR subdomain LIKE ('%' || #{q} || '%')
+                   OR name LIKE ('%' || #{q} || '%')
+            OR COALESCE(contact_name, '') LIKE ('%' || #{q} || '%'))
               AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
             ORDER BY created_at DESC, id DESC
             LIMIT #{size} OFFSET #{offset}
@@ -39,9 +39,9 @@ public interface VendorMapper {
     @Select("""
             SELECT COUNT(*) FROM vendor
             WHERE (#{q} IS NULL OR #{q} = ''
-                   OR subdomain LIKE CONCAT('%', #{q}, '%')
-                   OR name LIKE CONCAT('%', #{q}, '%')
-            OR COALESCE(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+                   OR subdomain LIKE ('%' || #{q} || '%')
+                   OR name LIKE ('%' || #{q} || '%')
+            OR COALESCE(contact_name, '') LIKE ('%' || #{q} || '%'))
               AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
             """)
     long countFiltered(@Param("q") String q, @Param("status") String status);

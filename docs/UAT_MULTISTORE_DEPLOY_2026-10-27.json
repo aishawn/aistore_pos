@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-10-27T05:45:31.132Z",
+  "sourceCommit": "f3bc3bf2739c8dc92f46155efacd9972ba65f991",
+  "deploymentSha": "49935042be85f24f0b8e4f7296b4dad976f24304",
+  "appBase": "https://app.orithos.com.au",
+  "demoBase": "https://demo.orithos.com.au",
+  "passed": 9,
+  "failed": 2,
+  "result": "FAIL",
+  "checks": [
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "platformOperator": true
+    },
+    {
+      "name": "platform.tenants.list",
+      "status": "FAIL",
+      "httpStatus": 500,
+      "count": 0
+    },
+    {
+      "name": "platform.tenants.detail",
+      "status": "FAIL",
+      "message": "no tenants returned"
+    },
+    {
+      "name": "platform.stores.page",
+      "status": "PASS",
+      "url": "https://app.orithos.com.au/platform/stores",
+      "snippet": "Orithos Platform admin All stores · app.orithos.com.au Stores AI usage Operations Failures Audit Open demo store admin Sign out Stores Platform admin view of every vendor. Store owners from brand signup manage staff only"
+    },
+    {
+      "name": "demo.login",
+      "status": "PASS"
+    },
+    {
+      "name": "demo.odooBinding",
+      "status": "PASS",
+      "httpStatus": 200,
+      "odooProvisionStatus": "ready",
+      "companyId": 2,
+      "r2Prefix": "shopfront/demo/"
+    },
+    {
+      "name": "demo.receive.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Orithos session expired\"}"
+    },
+    {
+      "name": "demo.cash.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Orithos session expired\"}"
+    },
+    {
+      "name": "demo.cash.csrfOrigin",
+      "status": "PASS",
+      "httpStatus": 403
+    },
+    {
+      "name": "demo.manageCash.page",
+      "status": "PASS",
+      "snippet": "Orithos Sell Dashboard Stock Customers Orithos AI Reports Setup admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Loading register s"
+    },
+    {
+      "name": "demo.purchases.page",
+      "status": "PASS",
+      "snippet": "Orithos Sell Dashboard Stock Products Price Lists Purchasing Suppliers Customers Orithos AI Reports Setup admin Skip to main content Purchasing Plan replenishment, manage orders an"
+    }
+  ]
+}
