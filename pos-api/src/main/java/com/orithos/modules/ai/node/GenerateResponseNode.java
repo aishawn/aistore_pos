@@ -133,8 +133,8 @@ public class GenerateResponseNode implements NodeAction {
         }
         if (normalized.matches(".*(?:stock|inventory|库存|存货|查不到库存|没有结果).*")) {
             return chinese
-                    ? "请打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。"
-                    : "Open Stock or Replenishment to check the current store data. AI will not invent stock quantities.";
+                    ? "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。"
+                    : "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.";
         }
         if (normalized.matches(".*(?:directly|automatically|submit|place|change|read).*"
                 + "(?:order|purchase|price|invoice|bill)|.*(?:自动|直接|提交|下单|改价|识别).*")) {
