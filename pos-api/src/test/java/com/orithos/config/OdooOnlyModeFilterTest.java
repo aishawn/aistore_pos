@@ -39,4 +39,17 @@ class OdooOnlyModeFilterTest {
         assertNull(chain.getRequest());
         assertTrue(response.getContentAsString().contains("Classic POS API is retired"));
     }
+
+    @Test
+    void appUserManagementRemainsAvailableInOdooOnlyMode() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(200, response.getStatus());
+        assertSame(request, (ServletRequest) chain.getRequest());
+    }
 }

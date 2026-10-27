@@ -39,7 +39,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             "/api/sale-keys", "/api/sales", "/api/security-events", "/api/settings",
             "/api/shelf-tickets", "/api/statements", "/api/stock-list", "/api/stocktakes",
             "/api/suppliers", "/api/supply-chain", "/api/tax-rates", "/api/ticket-template-pages",
-            "/api/ticket-templates", "/api/transferees", "/api/trashed-items", "/api/users",
+            "/api/ticket-templates", "/api/transferees", "/api/trashed-items",
             "/api/vendor-connections", "/api/webhooks");
 
     private final boolean enabled;
