@@ -35,10 +35,15 @@ export interface SidebarGroupItem {
   anyPermissions?: string[];
 }
 
+export interface SidebarSubGroup {
+  label: string;
+  items: SidebarGroupItem[];
+}
+
 export interface SidebarGroup {
   label: string;
   icon: SidebarIcon;
-  items: SidebarGroupItem[];
+  items: (SidebarGroupItem | SidebarSubGroup)[];
   /** If set, the whole group is hidden without this permission (when no child remains). */
   permission?: string;
 }
@@ -72,9 +77,14 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "inventory",
     items: [
       { label: "Products", href: "/products", permission: "stock.products.view" },
-      { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
+      {
+        label: "Pricing",
+        items: [
+          { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
+          { label: "Price Review", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
+        ],
+      },
       { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
-      { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
       { label: "Suppliers", href: "/suppliers", permission: "stock.suppliers" },
     ],
   },
@@ -187,7 +197,16 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.filter((item) => (item.href !== "/giftcards" || options?.giftCardsAvailable === true) && allowed(options, item.permission, item.adminOnly) && (!item.anyPermissions || item.anyPermissions.some((permission) => allowed(options, permission))));
+      const items = entry.items.flatMap((item) => {
+        if ("items" in item) {
+          const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
+          return children.length ? [{ ...item, items: children }] : [];
+        }
+        if (item.href === "/giftcards" && options?.giftCardsAvailable !== true) return [];
+        if (!allowed(options, item.permission, item.adminOnly)) return [];
+        if (item.anyPermissions && !item.anyPermissions.some((permission) => allowed(options, permission))) return [];
+        return [item];
+      });
       if (items.length === 0) return [];
       return [{ ...entry, items }];
     }
