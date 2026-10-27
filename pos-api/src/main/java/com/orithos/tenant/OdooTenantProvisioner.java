@@ -142,10 +142,11 @@ public class OdooTenantProvisioner {
         // The same dedicated connection owns acquisition and release; mapper calls use their normal connections.
         try (var connection = dataSource.getConnection()) {
             String lockName = "orithos:odoo-provision:" + vendorId;
-            try (var statement = connection.prepareStatement("SELECT GET_LOCK(?, 0)")) {
+            try (var statement = connection.prepareStatement(
+                    "SELECT pg_try_advisory_lock(hashtextextended(?, 0))")) {
                 statement.setString(1, lockName);
                 try (var result = statement.executeQuery()) {
-                    if (!result.next() || result.getInt(1) != 1) {
+                    if (!result.next() || !result.getBoolean(1)) {
                         throw new ProvisionLockException("Store provisioning is already running. Check its status before retrying.");
                     }
                 }
@@ -158,7 +159,8 @@ public class OdooTenantProvisioner {
                                 ? "Provisioning did not reach ready state" : result.getOdooProvisionError()));
                 return result;
             } finally {
-                try (var statement = connection.prepareStatement("SELECT RELEASE_LOCK(?)")) {
+                try (var statement = connection.prepareStatement(
+                        "SELECT pg_advisory_unlock(hashtextextended(?, 0))")) {
                     statement.setString(1, lockName);
                     statement.execute();
                 }
