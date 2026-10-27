@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     odoo_api_database: str = ""
     odoo_import_enabled: bool = True
     odoo_business_write_enabled: bool = False
-    shopfront_products_query: str = "{ products(first: 100) { edges { node { id name status cost globalCost prices { price } barcodes { code } category { name } brand { name } inventory { quantity outlet { id name } } } } } }"
-    shopfront_inventory_query: str = "{ products(first: 100) { edges { node { id name inventory { quantity outlet { id name } } } } } }"
+    shopfront_products_query: str = "{ products(first: 100) { edges { node { id name mdbId status type description image alternateImages createdAt updatedAt category { id name } brand { id name } family { id name } tags { name } trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost prices { quantity price priceEx decimalPlaceLength priceSet { id name } } barcodes { code quantity } taxRate { id name } costTaxRate { id name } inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder } } } } } }"
+    shopfront_inventory_query: str = "{ products(first: 100) { edges { node { id name mdbId inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder } } } } }"
     shopfront_sale_detail_query: str = ""
 
     def model_post_init(self, __context: object) -> None:

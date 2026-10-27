@@ -175,6 +175,8 @@ class InventorySnapshot(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     store_key: Mapped[str] = mapped_column(String(64), index=True)
     shopfront_product_id: Mapped[str] = mapped_column(String(128), index=True)
+    outlet_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    outlet_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     inventory_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)

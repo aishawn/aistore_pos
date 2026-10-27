@@ -26,6 +26,16 @@ def test_webhook_signature_verification():
     assert not verify_webhook(body, "bad", timestamp, "key")
 
 
+def test_sale_query_requests_nested_product_fields():
+    # Keep this assertion close to the client contract without making a live
+    # request. The nested Product selection is required for item names.
+    source = __import__("app.shopfront", fromlist=["ShopfrontClient"])
+    import inspect
+    text = inspect.getsource(source.ShopfrontClient.fetch_sales_graphql)
+    assert "... on Product" in text
+    assert "name description image alternateImages" in text
+
+
 def test_report_continuation_key_is_consumed():
     import asyncio
     import httpx
