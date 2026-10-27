@@ -424,6 +424,50 @@
   border: 1px solid var(--brand-line);
   border-radius: 50%;
   box-shadow: 0 12px 36px #2535500d;
+  transition:
+    transform 240ms cubic-bezier(.2,.7,.2,1),
+    box-shadow 240ms ease,
+    border-color 240ms ease,
+    filter 240ms ease;
+}
+.ov-ring-center-link {
+  cursor: pointer;
+}
+.ov-ring-center-link:hover,
+.ov-ring-center-link:focus-visible {
+  transform: translate(-50%, -50%) scale(1.045);
+  border-color: #f0ad78;
+  box-shadow:
+    0 0 0 8px #ffffff7a,
+    0 0 0 12px #f7b98c42,
+    0 16px 42px #dd9e6438;
+  filter: saturate(1.04);
+}
+.ov-ring-center-link:hover::after,
+.ov-ring-center-link:focus-visible::after {
+  opacity: .78;
+  transform: scale(1.06);
+}
+.ov-ring-center-link:hover::before,
+.ov-ring-center-link:focus-visible::before {
+  animation: ov-center-spark 650ms ease-out both;
+}
+.ov-ring-center-link:active {
+  transform: translate(-50%, -50%) scale(.975);
+}
+.ov-ring-list .ov-ring-center-link:hover,
+.ov-ring-list .ov-ring-center-link:focus-visible,
+.ov-ring-list .ov-ring-center-link:active {
+  transform: none;
+}
+.ov-ring-center-link:focus-visible {
+  outline: 3px solid var(--ov-blue);
+  outline-offset: 5px;
+}
+@keyframes ov-center-spark {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  45% { transform: scale(1.22) rotate(12deg); opacity: .95; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 .ov-ring-center strong {
   font-size: 22px;
@@ -467,7 +511,7 @@
 .ov-ring-node {
   position: absolute;
   z-index: 3;
-  width: 132px;
+  width: 148px;
 }
 .ov-ring-node > button,
 .ov-ring-node > a {
@@ -483,8 +527,8 @@
 .ov-node-icon {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   background: #fff;
   border: 1px solid var(--brand-line);
   border-radius: 21px;
@@ -517,10 +561,17 @@
   text-align: center;
 }
 .ov-radial-main .ov-node-icon {
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   box-shadow: 0 0 0 6px #ffffff8a, 0 8px 24px #2535501a;
+}
+.ov-radial-main .ov-ring-node > :is(button, a):hover .ov-node-icon,
+.ov-radial-main .ov-ring-node > :is(button, a):focus-visible .ov-node-icon {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow:
+    0 0 0 7px #ffffffa8,
+    0 11px 28px #25355028;
 }
 .ov-submenu {
   position: absolute;
@@ -719,6 +770,8 @@
   .ov-radial-main .ov-radial-area { min-height: 0; margin-top: 8px; }
   .ov-radial-main .ov-ring { min-height: 0; }
   .ov-radial-main .ov-ring-center { width: auto; height: auto; min-height: 112px; box-shadow: 0 0 0 5px #ffffff88, 0 0 0 7px #ffc7a766, 0 12px 32px #e96b2528; }
+  .ov-ring-node { width: auto; }
+  .ov-radial-main .ov-node-icon { width: 68px; height: 68px; }
   .ov-radial-side { padding-top: 20px; }
   .ov-pulse-panel, .ov-insights-panel { border-radius: 20px; }
   .ov-ai-bar { align-items: stretch; flex-wrap: wrap; border-radius: 24px; padding: 10px 12px; }
