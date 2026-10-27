@@ -176,6 +176,10 @@ export interface SidebarNavOptions {
   hasPermission?: (safeName: string) => boolean;
 }
 
+function isSidebarSubGroup(item: SidebarGroupItem | SidebarSubGroup): item is SidebarSubGroup {
+  return "items" in item;
+}
+
 function allowed(
   options: SidebarNavOptions | undefined,
   permission: string | undefined,
@@ -197,8 +201,8 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.flatMap((item) => {
-        if ("items" in item) {
+      const items = entry.items.flatMap<SidebarGroupItem | SidebarSubGroup>((item) => {
+        if (isSidebarSubGroup(item)) {
           const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
           return children.length ? [{ ...item, items: children }] : [];
         }

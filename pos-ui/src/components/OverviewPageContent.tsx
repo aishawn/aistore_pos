@@ -27,6 +27,7 @@ import { OverviewHeader } from "./OverviewHeader";
 import { RadialPie } from "./RadialPie";
 import { money, useOverview } from "./useOverview";
 import { useAiAssistant } from "@/lib/ai-assistant";
+import type { SidebarGroupItem, SidebarSubGroup } from "@/lib/sidebar-navigation";
 import { DashboardIntroAnimation } from "./AiTransitionOverlay";
 
 const modules = [
@@ -123,9 +124,12 @@ export function OverviewPageContent({
     return () => window.clearTimeout(timer);
   }, [active, finishAssistantTransition, transitionSource, transitionState]);
   const allowed = new Set(
-    navigation.flatMap((entry) =>
-      "items" in entry ? entry.items.map((child) => child.href) : [entry.href],
-    ),
+    navigation.flatMap((entry) => {
+      if (!("items" in entry)) return [entry.href];
+      return entry.items.flatMap((child: SidebarGroupItem | SidebarSubGroup) =>
+        "items" in child ? child.items.map((item) => item.href) : [child.href],
+      );
+    }),
   );
   const canReport = allowed.has("/reports/dashboard");
   const visible = modules.filter((item) => allowed.has(item.href));
