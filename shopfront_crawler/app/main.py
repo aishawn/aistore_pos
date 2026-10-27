@@ -676,17 +676,47 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
     require_store(store, db)
     run = await _stage_pos_import(store, "products", db)
     products = db.scalars(select(Product).where(Product.store_key == store)).all()
-    payload = jsonable_encoder({"store_key": store, "items": [{
-        "source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku,
-        "barcode": p.barcode, "category": p.category, "brand": p.brand,
-        "barcodes": (p.raw_payload or {}).get("barcodes", []) if isinstance(p.raw_payload, dict) else [],
-        "prices": (p.raw_payload or {}).get("prices", []) if isinstance(p.raw_payload, dict) else [],
-        "description": (p.raw_payload or {}).get("description") if isinstance(p.raw_payload, dict) else None,
-        "image": (p.raw_payload or {}).get("image") if isinstance(p.raw_payload, dict) else None,
-        "alternate_images": (p.raw_payload or {}).get("alternateImages", []) if isinstance(p.raw_payload, dict) else [],
-        "tags": (p.raw_payload or {}).get("tags", []) if isinstance(p.raw_payload, dict) else [],
-        "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload,
-    } for p in products]})
+    def import_product_item(p: Product) -> dict:
+        raw = p.raw_payload if isinstance(p.raw_payload, dict) else {}
+        category = raw.get("category") if isinstance(raw.get("category"), dict) else {}
+        brand = raw.get("brand") if isinstance(raw.get("brand"), dict) else {}
+        family = raw.get("family") if isinstance(raw.get("family"), dict) else {}
+        tax_rate = raw.get("taxRate") if isinstance(raw.get("taxRate"), dict) else {}
+        prices = raw.get("prices") if isinstance(raw.get("prices"), list) else []
+        barcodes = raw.get("barcodes") if isinstance(raw.get("barcodes"), list) else []
+        return {
+            "source_id": p.shopfront_product_id,
+            "name": p.name or raw.get("name"),
+            "sku": p.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": p.barcode or (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None),
+            "barcodes": barcodes,
+            "category": p.category or category.get("name"),
+            "category_id": category.get("id"),
+            "brand": p.brand or brand.get("name"),
+            "brand_id": brand.get("id"),
+            "family": family.get("name"),
+            "family_id": family.get("id"),
+            "description": raw.get("description"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or [],
+            "tags": raw.get("tags") or [],
+            "track_inventory": raw.get("trackInventory"),
+            "case_quantity": raw.get("caseQuantity"),
+            "tax_rate_id": tax_rate.get("id"),
+            "tax_rate_name": tax_rate.get("name"),
+            "cost_tax_rate_id": (raw.get("costTaxRate") or {}).get("id") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "cost_tax_rate_name": (raw.get("costTaxRate") or {}).get("name") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "source_status": raw.get("status"),
+            "source_type": raw.get("type"),
+            "source_created_at": raw.get("createdAt"),
+            "source_updated_at": raw.get("updatedAt"),
+            "cost": p.cost,
+            "price": p.price if p.price is not None else (prices[0].get("price") if prices and isinstance(prices[0], dict) else None),
+            "prices": prices,
+            "raw_payload": raw,
+        }
+
+    payload = jsonable_encoder({"store_key": store, "items": [import_product_item(p) for p in products]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -711,11 +741,32 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
     require_store(store, db)
     run = await _stage_pos_import(store, "inventory", db)
     rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store)).all()
-    payload = jsonable_encoder({"store_key": store, "replace": True, "items": [{
-        "source_id": x.shopfront_product_id, "outlet_id": x.outlet_id,
-        "outlet_name": x.outlet_name, "quantity": x.quantity,
-        "timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload,
-    } for x in rows]})
+    def import_inventory_item(x: InventorySnapshot) -> dict:
+        raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
+        outlet = raw.get("outlet") if isinstance(raw.get("outlet"), dict) else {}
+        return {
+            "source_id": x.shopfront_product_id,
+            "outlet_id": x.outlet_id or outlet.get("id"),
+            "outlet_name": x.outlet_name or outlet.get("name"),
+            "quantity": x.quantity,
+            "single_level": raw.get("singleLevel"),
+            "case_level": raw.get("caseLevel"),
+            "reorder_level": raw.get("reorderLevel"),
+            "reorder_level_singles": raw.get("reorderLevelSingles"),
+            "reorder_level_cases": raw.get("reorderLevelCases"),
+            "reorder_amount": raw.get("reorderAmount"),
+            "reorder_amount_singles": raw.get("reorderAmountSingles"),
+            "reorder_amount_cases": raw.get("reorderAmountCases"),
+            "reorder_limit": raw.get("reorderLimit"),
+            "max_quantity": raw.get("maxQuantity"),
+            "max_quantity_singles": raw.get("maxQuantitySingles"),
+            "max_quantity_cases": raw.get("maxQuantityCases"),
+            "on_order": raw.get("onOrder"),
+            "timestamp": x.inventory_timestamp,
+            "raw_payload": raw,
+        }
+
+    payload = jsonable_encoder({"store_key": store, "replace": True, "items": [import_inventory_item(x) for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:

@@ -188,6 +188,12 @@ UNCONSOLIDATED'''
         # a whole selection when one field is unavailable for a tenant, so a
         # problem in one group must not discard the base catalog page.
         optional_queries = (
+            # Keep metadata independent from SHOPFRONT_PRODUCTS_QUERY. A
+            # deployment may override that variable with a small query, but
+            # the crawler must still attempt to fetch every supported catalog
+            # field before deciding that it is unavailable.
+            "{ products(first: 100) { edges { node { id description image alternateImages } } } }",
+            "{ products(first: 100) { edges { node { id mdbId type } } } }",
             "{ products(first: 100) { edges { node { id mdbId family { id name } tags { name } trackInventory caseQuantity taxRate { id name } costTaxRate { id name } } } } }",
             "{ products(first: 100) { edges { node { id prices { quantity price } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",

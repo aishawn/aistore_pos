@@ -225,7 +225,20 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     # Shopfront puts the product fields under SaleItem.item.
                     # Older queries only requested item.id, so retain the
                     # top-level fallbacks for tenants with legacy payloads.
-                    sale_item.product_name = first(item, "productName", "name") or first(product, "name")
+                    sale_item.product_name = first(item, "productName", "name") or first(
+                        product, "name", "displayName", "title"
+                    )
+                    # Some Shopfront tenants return only ``item.id`` from the
+                    # Sale connection even when the inline Product fields are
+                    # requested. Fall back to the catalog already stored by
+                    # the crawler so POS sale lines retain a real name.
+                    if not sale_item.product_name:
+                        catalog_product = db.scalar(select(Product).where(
+                            Product.store_key == store.store_key,
+                            Product.shopfront_product_id == product_id,
+                        ))
+                        if catalog_product and catalog_product.name:
+                            sale_item.product_name = catalog_product.name
                     sale_item.raw_payload = item
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
@@ -290,6 +303,23 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
                     existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
+        # Catalog sync normally runs after sales sync in the same transaction.
+        # Backfill historical SaleItem names after the catalog is available so
+        # rerunning a date range repairs old rows without a full reimport.
+        catalog_names = {
+            product.shopfront_product_id: product.name
+            for product in db.scalars(select(Product).where(Product.store_key == store.store_key)).all()
+            if product.name
+        }
+        if catalog_names:
+            sale_items = db.scalars(
+                select(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store.store_key)
+            ).all()
+            for sale_item in sale_items:
+                if not sale_item.product_name:
+                    name = catalog_names.get(sale_item.shopfront_product_id)
+                    if name:
+                        sale_item.product_name = name
         run.status, run.counts = "completed", counts
         run.finished_at = datetime.now(timezone.utc)
         db.commit()
