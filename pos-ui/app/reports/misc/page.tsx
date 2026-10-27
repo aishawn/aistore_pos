@@ -1,19 +1,5 @@
-import { ReportBuilder } from "@/components/admin/ReportBuilder";
+import { OdooReportUnavailablePage } from "@/components/admin/OdooReportUnavailablePage";
 
 export default function MiscReportsPage() {
-  return (
-    <ReportBuilder
-      title="Miscellaneous report"
-      query={`SELECT BY_NAME AS "Name", value AS "Value", type AS "Type"`}
-      panels={[
-        { label: "Report Type", value: "Miscellaneous" },
-        { label: "Group By", value: "None" },
-        { label: "Date and Time", value: "Today" },
-        { label: "Consolidate By Report Type", value: "Yes" },
-        { label: "Precision", value: "None" },
-      ]}
-      columns={["Name", "Value", "Type", "Count"]}
-      totals={[null, "$0.00", null, "0"]}
-    />
-  );
+  return <OdooReportUnavailablePage title="Miscellaneous reports" description="Miscellaneous report data is not connected to an Odoo model yet. This page stays explicit until a real Odoo data source is available." />;
 }

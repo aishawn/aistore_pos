@@ -65,8 +65,7 @@ const SECTIONS: ReportSection[] = [
     children: [
       { label: "Register Closures", href: "/reports/closures" },
       { label: "Cash Variance", href: "/reports/closures?view=variance" },
-      { label: "Refunds & Voids", href: "/reports/actions" },
-      { label: "Audit Log", href: "/reports/actions?view=audit" },
+      { label: "Sales history & refunds", href: "/reports/actions" },
     ],
   },
 ];
