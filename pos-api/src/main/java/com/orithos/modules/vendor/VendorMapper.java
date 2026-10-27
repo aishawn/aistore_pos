@@ -50,7 +50,7 @@ public interface VendorMapper {
     @Insert("""
             INSERT INTO vendor (name, subdomain, status, url, contact_name, trial_ends_at, outlet_id, dummy_data_requested)
             VALUES (#{name}, #{subdomain}, #{status}, #{url}, #{contactName}, #{trialEndsAt}, #{outletId},
-                    #{dummyDataRequested})
+                    CASE WHEN #{dummyDataRequested} THEN 1 ELSE 0 END)
             """)
     int insert(Vendor vendor);
 
@@ -95,7 +95,7 @@ public interface VendorMapper {
 
     @Update("""
             UPDATE vendor SET
-              dummy_data_requested=#{dummyDataRequested},
+              dummy_data_requested=CASE WHEN #{dummyDataRequested} THEN 1 ELSE 0 END,
               sample_data_cleared_at=#{sampleDataClearedAt}
             WHERE id=#{id}
             """)
