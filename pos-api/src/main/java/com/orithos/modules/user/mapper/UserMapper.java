@@ -49,7 +49,9 @@ public interface UserMapper {
         INSERT INTO app_user (vendor_id, name, username, password_hash, email, phone, image,
                               role_id, is_admin, is_api_user, dark_mode, pending_password_reset, outlet_id)
         VALUES (#{vendorId}, #{name}, #{username}, #{passwordHash}, #{email}, #{phone}, #{image},
-                #{roleId}, #{isAdmin}, #{isApiUser}, #{darkMode}, #{pendingPasswordReset}, #{outletId})
+                #{roleId}, CASE WHEN #{isAdmin} THEN 1 ELSE 0 END,
+                CASE WHEN #{isApiUser} THEN 1 ELSE 0 END, #{darkMode},
+                CASE WHEN #{pendingPasswordReset} THEN 1 ELSE 0 END, #{outletId})
         """)
     int insert(User u);
 
