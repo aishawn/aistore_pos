@@ -199,10 +199,10 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.flatMap<SidebarGroupItem | SidebarSubGroup>((item) => {
+      const items: (SidebarGroupItem | SidebarSubGroup)[] = entry.items.flatMap((item): (SidebarGroupItem | SidebarSubGroup)[] => {
         if (isSidebarSubGroup(item)) {
           const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
-          return children.length ? [{ ...item, items: children }] : [];
+          return children.length ? [{ ...item, items: children } as SidebarSubGroup] : [];
         }
         if (item.href === "/giftcards" && options?.giftCardsAvailable !== true) return [];
         if (!allowed(options, item.permission, item.adminOnly)) return [];

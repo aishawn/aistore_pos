@@ -86,10 +86,10 @@ export function buildLaunchDestinations(
 ): LaunchDestination[] {
   return navigation.map((entry) => {
     if (isGroup(entry)) {
-      const children = entry.items
-        .flatMap((item) => isSidebarSubGroup(item) ? item.items : [item])
+      const children: LaunchChild[] = entry.items
+        .flatMap<SidebarGroupItem>((item) => isSidebarSubGroup(item) ? item.items : [item])
         .filter((item) => !item.more)
-        .map((item) => ({
+        .map((item): LaunchChild => ({
           label: item.label,
           href: item.href,
           hint: item.hint,

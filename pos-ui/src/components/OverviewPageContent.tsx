@@ -123,11 +123,11 @@ export function OverviewPageContent({
     }, 180);
     return () => window.clearTimeout(timer);
   }, [active, finishAssistantTransition, transitionSource, transitionState]);
-  const allowed = new Set(
-    navigation.flatMap((entry) => {
+  const allowed = new Set<string>(
+    navigation.flatMap<string>((entry) => {
       if (!("items" in entry)) return [entry.href];
-      return entry.items.flatMap((child: SidebarGroupItem | SidebarSubGroup) =>
-        "items" in child ? child.items.map((item) => item.href) : [child.href],
+      return entry.items.flatMap<string>((child: SidebarGroupItem | SidebarSubGroup) =>
+        "items" in child ? child.items.map<string>((item) => item.href) : [child.href],
       );
     }),
   );

@@ -320,6 +320,7 @@ export interface OdooCheckoutRequest {
   paymentMethodId: number;
   orderUuid: string;
   customerId?: number | null;
+  externalPaymentConfirmed?: boolean;
   tendered: number;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
