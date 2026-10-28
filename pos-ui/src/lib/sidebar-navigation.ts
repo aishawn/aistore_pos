@@ -80,8 +80,9 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Customers",
     icon: "customers",
     items: [
-      { label: "Customer Directory", href: "/customers", matchHrefs: ["/customer-groups"], permission: "customers.view" },
-      { label: "Receivables", href: "/customers/balances", permission: "customers.balances" },
+      { label: "Customers", href: "/customers", permission: "customers.view" },
+      { label: "Customer Groups", href: "/customer-groups", permission: "customers.view" },
+      { label: "Balances", href: "/customers/balances", permission: "customers.balances" },
       { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
     ],
   },
