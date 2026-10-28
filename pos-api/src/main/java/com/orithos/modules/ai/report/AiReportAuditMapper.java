@@ -11,6 +11,21 @@ import java.util.List;
 @Mapper
 public interface AiReportAuditMapper {
 
+    @Select("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ai_report_audit')")
+    boolean auditTableExists();
+
+    @Select("SELECT COALESCE((SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_report_audit' AND column_name = 'allowed'), 'missing')")
+    String allowedColumnType();
+
+    @Select("SELECT has_table_privilege(current_user, 'public.ai_report_audit', 'INSERT')")
+    boolean auditInsertPrivilege();
+
+    @Select("SELECT COUNT(*) FROM public.ai_report_audit")
+    long auditRowCount();
+
+    @Select("SELECT COUNT(*) FROM public.ai_report_audit WHERE vendor_id = #{vendorId}")
+    long auditVendorRowCount(@Param("vendorId") long vendorId);
+
     @Insert("""
             INSERT INTO ai_report_audit
               (vendor_id, user_id, outlet_id, outlet_ids, question, sql_text, path,
