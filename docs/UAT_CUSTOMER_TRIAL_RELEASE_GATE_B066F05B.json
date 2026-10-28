@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-10-28T14:55:34.588Z",
+  "target": "https://demo.orithos.com.au",
+  "expectedCommit": "b066f05b1bbf6f0b10ed493fbafa0f5dff8abc6d",
+  "expectedEnvironment": "production",
+  "scope": "release identity, database separation and parked-sale read; no business writes",
+  "status": "BLOCKED",
+  "deploymentShaVerified": true,
+  "databaseSeparation": {
+    "configured": true,
+    "distinct": false
+  },
+  "login": {
+    "authenticated": true,
+    "status": 200
+  },
+  "parkedSaleRead": {
+    "attempted": true,
+    "status": 200,
+    "success": true
+  },
+  "uatAttestation": {
+    "attempted": true,
+    "status": 200,
+    "isolated": false
+  }
+}

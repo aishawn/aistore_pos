@@ -83,7 +83,7 @@ export function UserMenu({
         <span className={online ? "text-[var(--sf-online-green)]" : ""}>{online ? "ONLINE" : "OFFLINE"}</span>
       </div>
       <p className="px-1 pb-3 text-sm leading-5 text-[var(--oh-muted)]">
-        Account settings and sign-out for this workstation.
+        Account settings and sign-out for this workstation. Offline POS checkout is not supported; keep this workstation connected before taking payment.
       </p>
       <div className="border-t border-[var(--oh-border)] px-1 py-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">Appearance</p>
