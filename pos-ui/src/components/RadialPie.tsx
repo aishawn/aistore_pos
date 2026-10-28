@@ -87,7 +87,12 @@ export function RadialPie({
   const originX = size.width / 2;
   const radius = Math.max(
     0,
-    Math.min(size.width / 2 - 90, size.height / 2 - 70, (size.width / 2 - 150) / 0.866, 205),
+    Math.min(
+      size.width / 2 - 106,
+      size.height / 2 - 86,
+      (size.width / 2 - 168) / 0.866,
+      218,
+    ),
   );
   const close = (restore = false) => {
     const target = pinned || preview;
@@ -156,7 +161,9 @@ export function RadialPie({
     >
       {centerHref ? (
         <Link
-          className="ov-ring-center"
+          className="ov-ring-center ov-ring-center-link"
+          aria-label={`${centerCaption}. Open dashboard`}
+          title="Open dashboard"
           style={listMode ? undefined : { left: originX }}
           href={centerHref}
           onClick={(event) => {

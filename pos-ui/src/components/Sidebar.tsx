@@ -23,6 +23,8 @@ import {
   type SidebarGroup,
   type SidebarIcon,
   type SidebarItem,
+  type SidebarGroupItem,
+  type SidebarSubGroup,
 } from "@/lib/sidebar-navigation";
 import { useGiftCardCapability } from "@/hooks/useGiftCardCapability";
 import { useAuth } from "@/lib/auth";
@@ -42,6 +44,10 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
 };
 
 function isGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
+  return "items" in entry;
+}
+
+function isSubGroup(entry: SidebarGroupItem | SidebarSubGroup): entry is SidebarSubGroup {
   return "items" in entry;
 }
 
@@ -75,7 +81,8 @@ function subItemActive(
 }
 
 function groupActive(group: SidebarGroup, pathname: string) {
-  return group.items.some((item) => subItemActive(item, pathname, group.items));
+  const items = group.items.flatMap((item) => isSubGroup(item) ? item.items : [item]);
+  return items.some((item) => subItemActive(item, pathname, items));
 }
 
 function useGuardedNav() {
@@ -115,7 +122,7 @@ export function Sidebar({
       role={mobileOpen ? "dialog" : undefined}
       aria-modal={mobileOpen ? true : undefined}
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
+        "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden border-r border-[var(--oh-sidebar-border)] bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
         mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none md:pointer-events-auto md:translate-x-0",
         open ? "md:w-[var(--oh-sidebar-width)]" : "md:w-0",
       )}
@@ -140,8 +147,8 @@ export function Sidebar({
       </div>
 
       {giftCapability.error && <button type="button" disabled={giftCapability.loading} onClick={giftCapability.refresh} className="mx-3 min-h-11 rounded border border-white/20 px-2 text-xs text-white">Gift cards: retry availability</button>}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        <ul className="flex flex-col gap-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <ul className="flex flex-col gap-1">
           {navigation.map((entry) =>
             isGroup(entry) ? (
               <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={checkoutKeyboard ? -1 : undefined} />
@@ -182,7 +189,7 @@ function SidebarNavLink({
           if (!event.defaultPrevented) onNavigate?.();
         }}
         className={cn(
-          "oh-type-label relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 font-medium transition-colors",
+          "oh-type-label relative flex min-h-11 items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -228,7 +235,7 @@ function SidebarNavGroup({
         aria-controls={submenuId}
         onClick={() => setExpanded((value) => !value)}
         className={cn(
-          "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
+          "oh-type-label flex min-h-11 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -247,15 +254,20 @@ function SidebarNavGroup({
       {visiblyExpanded && (
         <ul id={submenuId} className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
           {group.items.map((item) => {
-            const active = subItemActive(item, pathname, group.items);
+            if (isSubGroup(item)) {
+              return <SidebarNavSubGroup key={item.label} group={item} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={tabIndex} />;
+            }
+            const groupItem = item as SidebarGroupItem;
+            const siblingItems = group.items.filter((candidate): candidate is SidebarGroupItem => !isSubGroup(candidate));
+            const active = subItemActive(groupItem, pathname, siblingItems);
             return (
-              <li key={item.href}>
+              <li key={groupItem.href}>
                 <Link
-                  href={item.href}
+                  href={groupItem.href}
                   tabIndex={tabIndex}
-                  title={item.hint}
+                  title={groupItem.hint}
                   onClick={(event) => {
-                    guardNav(event, item.href);
+                    guardNav(event, groupItem.href);
                     if (!event.defaultPrevented) onNavigate?.();
                   }}
                   className={cn(
@@ -268,7 +280,7 @@ function SidebarNavGroup({
                   {active && (
                     <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />
                   )}
-                  {item.more ? (
+                  {groupItem.more ? (
                     <Plus
                       size={14}
                       strokeWidth={2.5}
@@ -278,7 +290,77 @@ function SidebarNavGroup({
                       )}
                     />
                   ) : null}
-                  {item.more ? "More" : item.label}
+                  {groupItem.more ? "More" : groupItem.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function SidebarNavSubGroup({
+  group,
+  pathname,
+  guardNav,
+  onNavigate,
+  tabIndex,
+}: {
+  group: SidebarSubGroup;
+  pathname: string;
+  guardNav: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+  onNavigate?: () => void;
+  tabIndex?: number;
+}) {
+  const subgroupItems = group.items as SidebarGroupItem[];
+  const [expanded, setExpanded] = useState(() => subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs)));
+  const active = subgroupItems.some((item) => pathMatches(item.href, pathname, item.matchHrefs));
+  const visiblyExpanded = expanded || active;
+  const submenuId = `sidebar-subgroup-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  return (
+    <li>
+      <button
+        type="button"
+        tabIndex={tabIndex}
+        aria-expanded={visiblyExpanded}
+        aria-controls={submenuId}
+        onClick={() => setExpanded((value) => !value)}
+        className={cn(
+          "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors",
+          active
+            ? "text-[var(--oh-sidebar-active)]"
+            : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
+        )}
+      >
+        {group.label}
+        {visiblyExpanded ? <ChevronDown size={14} className="opacity-50" /> : <ChevronRight size={14} className="opacity-50" />}
+      </button>
+      {visiblyExpanded && (
+        <ul id={submenuId} className="ml-2 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-2">
+          {subgroupItems.map((groupItem) => {
+            const itemActive = subItemActive(groupItem, pathname, subgroupItems);
+            return (
+              <li key={groupItem.href}>
+                <Link
+                  href={groupItem.href}
+                  tabIndex={tabIndex}
+                  title={groupItem.hint}
+                  onClick={(event) => {
+                    guardNav(event, groupItem.href);
+                    if (!event.defaultPrevented) onNavigate?.();
+                  }}
+                  className={cn(
+                    "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors",
+                    itemActive
+                      ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
+                      : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
+                  )}
+                >
+                  {itemActive && <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />}
+                  {groupItem.label}
                 </Link>
               </li>
             );

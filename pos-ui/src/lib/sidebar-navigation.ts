@@ -35,10 +35,15 @@ export interface SidebarGroupItem {
   anyPermissions?: string[];
 }
 
+export interface SidebarSubGroup {
+  label: string;
+  items: SidebarGroupItem[];
+}
+
 export interface SidebarGroup {
   label: string;
   icon: SidebarIcon;
-  items: SidebarGroupItem[];
+  items: (SidebarGroupItem | SidebarSubGroup)[];
   /** If set, the whole group is hidden without this permission (when no child remains). */
   permission?: string;
 }
@@ -54,7 +59,7 @@ export type SidebarIcon =
   | "settings"
   | "marketing";
 
-/** Primary nav: Odoo-backed surfaces only. Dashboard follows Sell for quick access. */
+/** Primary nav: Odoo-backed surfaces only. Dashboard sits above Setup. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   {
     label: "Sell",
@@ -63,18 +68,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     permission: "sell.checkout",
   },
   {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: "overview",
-  },
-  {
     label: "Stock",
     icon: "inventory",
     items: [
       { label: "Products", href: "/products", permission: "stock.products.view" },
-      { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
       { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
-      { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
       { label: "Suppliers", href: "/suppliers", permission: "stock.suppliers" },
     ],
   },
@@ -93,8 +91,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "AI Workspace", href: "/ai", anyPermissions: ["ai.assistant", "ai.recommend", "ai.sommelier", "ai.grocery", "ai.price_suggestions"] },
       { label: "AI Assistant", href: "/assistant", permission: "ai.assistant" },
-      { label: "Recommend", href: "/recommend", permission: "ai.recommend" },
-      { label: "Scan Wine Label", href: "/sommelier/identify", permission: "ai.sommelier" },
     ],
   },
   {
@@ -102,6 +98,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     href: "/reports/dashboard",
     icon: "reporting",
     permission: "reports.dashboard",
+  },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "overview",
   },
   {
     label: "Setup",
@@ -166,6 +167,10 @@ export interface SidebarNavOptions {
   hasPermission?: (safeName: string) => boolean;
 }
 
+function isSidebarSubGroup(item: SidebarGroupItem | SidebarSubGroup): item is SidebarSubGroup {
+  return "items" in item;
+}
+
 function allowed(
   options: SidebarNavOptions | undefined,
   permission: string | undefined,
@@ -187,7 +192,16 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.filter((item) => (item.href !== "/giftcards" || options?.giftCardsAvailable === true) && allowed(options, item.permission, item.adminOnly) && (!item.anyPermissions || item.anyPermissions.some((permission) => allowed(options, permission))));
+      const items: (SidebarGroupItem | SidebarSubGroup)[] = entry.items.flatMap((item): (SidebarGroupItem | SidebarSubGroup)[] => {
+        if (isSidebarSubGroup(item)) {
+          const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
+          return children.length ? [{ ...item, items: children } as SidebarSubGroup] : [];
+        }
+        if (item.href === "/giftcards" && options?.giftCardsAvailable !== true) return [];
+        if (!allowed(options, item.permission, item.adminOnly)) return [];
+        if (item.anyPermissions && !item.anyPermissions.some((permission) => allowed(options, permission))) return [];
+        return [item];
+      });
       if (items.length === 0) return [];
       return [{ ...entry, items }];
     }

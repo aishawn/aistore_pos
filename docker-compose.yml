@@ -96,6 +96,7 @@ services:
       R2_SYNC_MINUTE: ${R2_SYNC_MINUTE:-30}
       SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
+      SHOPFRONT_BUSINESS_WRITE_ENABLED: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:-true}
       APP_SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       APP_SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
     volumes:
@@ -148,10 +149,17 @@ services:
       - shopfront-crawler-data:/data
     labels:
       - traefik.enable=true
+      # Keep an explicit router for the crawler host. The frontend wildcard
+      # router intentionally excludes this host, so the crawler must own both
+      # entrypoints independently of Dokploy's generated domain labels.
+      - traefik.http.routers.shopfront-crawler.rule=Host(`shopfront.orithos.com.au`)
+      - traefik.http.routers.shopfront-crawler.entrypoints=web
+      - traefik.http.routers.shopfront-crawler.service=shopfront-crawler-svc
       - traefik.http.routers.shopfront-crawler-secure.rule=Host(`shopfront.orithos.com.au`)
       - traefik.http.routers.shopfront-crawler-secure.entrypoints=websecure
       - traefik.http.routers.shopfront-crawler-secure.priority=100
       - traefik.http.routers.shopfront-crawler-secure.tls=true
+      - traefik.http.routers.shopfront-crawler-secure.tls.certresolver=letsencrypt
       - traefik.http.services.shopfront-crawler-svc.loadbalancer.server.port=8000
 
   r2-sync:

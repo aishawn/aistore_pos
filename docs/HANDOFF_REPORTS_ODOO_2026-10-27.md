@@ -53,3 +53,23 @@
 1. 为 `advanced` 和 `misc` 设计明确的 Odoo 数据契约后再接入真实指标。
 2. 补充商品缺失图片的默认占位策略。
 3. 保持报表路由回归矩阵，禁止重新引入 `ReportBuilder` 或 `/api/reports`。
+## 2026-10-27 Navigation and Dashboard AI iteration
+
+- Reports navigation is now a single horizontal row with five business tabs: Overview, AI Insights, Sales History, Inventory, and Purchasing & Transfers.
+- Sales History is a first-class tab backed by `/history`; duplicate report history paths remain compatibility redirects.
+- AI Insights is embedded in the Odoo Dashboard. It uses the selected dashboard period and loaded Odoo metrics, and only calls the AI Assistant after the operator clicks **Analyse dashboard**. The prompt covers sales trend, comparison, basket size, refunds, product/category mix, inventory signals, and read-only next actions.
+- `/reports/ai/metrics` remains an admin-only AI Query Health page under Setup and is no longer presented as the business insights tab.
+- Classic POS API and `/api/reports` are not used. Odoo remains the sole business data source.
+
+### Release and verification
+
+- Candidate was rebased onto the latest `origin/main`; final release commit is `69a892d13e182b94780de76a09fc9c869b912d7f`, pushed to `main`.
+- Fixed nested sidebar subgroup typing so the production build can handle Stock > Pricing groups. `npm run typecheck` passes in `pos-ui`; `git diff --check` passes.
+- Dokploy deployment `fXdmCpLgR0EZXs3DglBzv` completed with status `done`. Both `skr.orithos.com.au` and `demo.orithos.com.au` report frontend/backend runtime commit `69a892d1` from `/api/public/version`.
+- Authenticated browser verification at `skr.orithos.com.au/reports/dashboard` confirmed all five report tabs share one row (`y=50`, height `48`), Sales History points to `/history`, and clicking Analyse dashboard keeps the URL unchanged while calling `/api/ai/assistant` and rendering the result.
+
+### Sales History tab persistence
+
+- Added a dedicated `app/history/layout.tsx` so the shared five-tab ReportsNavigation remains visible after navigating to `/history` (and `/history/odoo`).
+- Verified at `skr.orithos.com.au/history` on 1440px and 390px viewports: all five tabs render at the same `y=50` row, `Sales History` has `aria-current="page"`, the page heading is present, and there is no horizontal overflow.
+- Dokploy deployment `oiu2JcIp_JBKfg6ZWwf7Z` completed with status `done`; runtime frontend/backend commit was `3ec5f2b3`.

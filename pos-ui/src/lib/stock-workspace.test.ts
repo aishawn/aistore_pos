@@ -25,7 +25,10 @@ test("Stock includes price lists and Purchasing is visible with any one of its p
   const admin = getSidebarNavigation({ isAdmin: true });
   const group = admin.find((entry) => entry.label === "Stock");
   assert.ok(group && "items" in group);
-  assert.deepEqual(group.items.map((item) => item.label), ["Products", "Price Lists", "Purchasing", "Suppliers"]);
+  assert.deepEqual(group.items.map((item) => item.label), ["Products", "Pricing", "Purchasing", "Suppliers"]);
+  const pricing = group.items.find((item) => item.label === "Pricing");
+  assert.ok(pricing && "items" in pricing);
+  assert.deepEqual(pricing.items.map((item) => item.label), ["Price Lists", "Price Review"]);
   for (const permission of ["stock.purchases", "stock.replenishment", "stock.invoices"]) {
     const navigation = getSidebarNavigation({ hasPermission: (key) => key === permission });
     const stock = navigation.find((entry) => entry.label === "Stock");

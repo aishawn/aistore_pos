@@ -9,12 +9,12 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import desc, func, select, update
+from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
@@ -43,42 +43,55 @@ async def startup() -> None:
             run.error = "interrupted by crawler restart; history job will retry this range"
             run.finished_at = datetime.now(timezone.utc)
         interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running").order_by(SyncJob.store_key, desc(SyncJob.id))).all()
-        resumed_stores: set[str] = set()
+        resumed_stores: set[tuple[str, str]] = set()
         interrupted_history_ids: list[int] = []
         interrupted_discovery_ids: list[int] = []
         interrupted_snapshot_ids: list[int] = []
+        interrupted_catalog_ids: list[int] = []
+        interrupted_sales_repair_ids: list[int] = []
         for job in interrupted:
-            if job.store_key in resumed_stores:
+            job_key = (job.store_key, job.job_type)
+            if job_key in resumed_stores:
                 job.status = "superseded"
                 job.error = "superseded by newer job after crawler restart"
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             job.status = "queued"
             job.error = "requeued after crawler restart"
-            resumed_stores.add(job.store_key)
+            resumed_stores.add(job_key)
             if job.job_type == "history":
                 interrupted_history_ids.append(job.id)
             elif job.job_type == "discover":
                 interrupted_discovery_ids.append(job.id)
             elif job.job_type == "snapshot":
                 interrupted_snapshot_ids.append(job.id)
+            elif job.job_type == "catalog_snapshot":
+                interrupted_catalog_ids.append(job.id)
+            elif job.job_type == "sales_repair":
+                interrupted_sales_repair_ids.append(job.id)
         # A snapshot can be persisted as queued immediately before a process
         # restart, before its BackgroundTask gets a chance to claim it. Start
         # the newest queued snapshot for each store so it cannot remain stuck.
         queued_snapshots = db.scalars(
             select(SyncJob)
-            .where(SyncJob.status == "queued", SyncJob.job_type == "snapshot")
+            .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
             .order_by(SyncJob.store_key, desc(SyncJob.id))
         ).all()
-        queued_snapshot_stores: set[str] = set()
+        queued_snapshot_keys: set[tuple[str, str]] = set()
         for job in queued_snapshots:
-            if job.store_key in queued_snapshot_stores:
+            key = (job.store_key, job.job_type)
+            if key in queued_snapshot_keys:
                 job.status = "superseded"
                 job.error = "superseded by newer queued snapshot"
                 job.finished_at = datetime.now(timezone.utc)
                 continue
-            queued_snapshot_stores.add(job.store_key)
-            interrupted_snapshot_ids.append(job.id)
+            queued_snapshot_keys.add(key)
+            if job.job_type == "snapshot":
+                interrupted_snapshot_ids.append(job.id)
+            elif job.job_type == "catalog_snapshot":
+                interrupted_catalog_ids.append(job.id)
+            elif job.job_type == "sales_repair":
+                interrupted_sales_repair_ids.append(job.id)
         db.commit()
     finally:
         db.close()
@@ -95,6 +108,10 @@ async def startup() -> None:
         __import__("asyncio").create_task(run_history_discovery(job_id))
     for job_id in interrupted_snapshot_ids:
         __import__("asyncio").create_task(run_full_snapshot_job(job_id))
+    for job_id in interrupted_catalog_ids:
+        __import__("asyncio").create_task(run_catalog_snapshot_job(job_id))
+    for job_id in interrupted_sales_repair_ids:
+        __import__("asyncio").create_task(run_sales_repair_job(job_id))
 
 
 @app.on_event("shutdown")
@@ -188,8 +205,6 @@ async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_d
 
 
 async def run_full_snapshot_job(job_id: int) -> None:
-    if snapshot_lock.locked():
-        return
     async with snapshot_lock:
         db = next(get_db())
         run = None
@@ -227,6 +242,61 @@ async def run_full_snapshot_job(job_id: int) -> None:
             db.close()
 
 
+async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
+    """Run a catalog-only or sale-repair snapshot with durable progress."""
+    async with snapshot_lock:
+        db = next(get_db())
+        run = None
+        try:
+            job = db.get(SyncJob, job_id)
+            if not job or job.status != "queued":
+                return
+            job.status = "running"
+            job.started_at = datetime.now(timezone.utc)
+            run = SyncRun(store_key=job.store_key, status="running", counts={"type": job.job_type})
+            db.add(run)
+            db.commit()
+            result = await push_pos_snapshot(
+                db,
+                job.store_key,
+                run=run,
+                include_catalog=True,
+                include_sales=include_sales,
+                sales_offset=int((job.payload or {}).get("sales_offset", 0) or 0),
+                job=job,
+            )
+            run.status = "completed" if result.get("error") is None else "failed"
+            run.counts = {"type": job.job_type, **result}
+            run.error = result.get("error")
+            run.finished_at = datetime.now(timezone.utc)
+            job.status = run.status
+            job.payload = run.counts
+            job.error = run.error
+            job.finished_at = run.finished_at
+            db.commit()
+        except Exception as exc:
+            if run is not None:
+                run.status = "failed"
+                run.error = str(exc)[:2000]
+                run.finished_at = datetime.now(timezone.utc)
+            job = db.get(SyncJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error = str(exc)[:2000]
+                job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        finally:
+            db.close()
+
+
+async def run_catalog_snapshot_job(job_id: int) -> None:
+    await _run_catalog_job(job_id, include_sales=False)
+
+
+async def run_sales_repair_job(job_id: int) -> None:
+    await _run_catalog_job(job_id, include_sales=True)
+
+
 @app.post("/api/stores/{store_key}/pos/full-snapshot")
 async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
@@ -238,6 +308,42 @@ async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks,
     db.commit()
     background_tasks.add_task(run_full_snapshot_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "crawler database to POS and Odoo mirrors"}
+
+
+@app.post("/api/stores/{store_key}/pos/catalog-snapshot")
+async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+    """Refresh product metadata and inventory without waiting for history."""
+    store = require_store(store_key, db)
+    active = db.scalar(select(SyncJob).where(
+        SyncJob.store_key == store.store_key,
+        SyncJob.job_type == "catalog_snapshot",
+        SyncJob.status.in_(["queued", "running"]),
+    ))
+    if active:
+        raise HTTPException(409, "A catalog snapshot is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="catalog_snapshot", status="queued")
+    db.add(job)
+    db.commit()
+    background_tasks.add_task(run_catalog_snapshot_job, job.id)
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "products and inventory"}
+
+
+@app.post("/api/stores/{store_key}/pos/sales-repair")
+async def start_sales_repair(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+    """Re-push saved sales so SaleItem names and source metadata are repaired."""
+    store = require_store(store_key, db)
+    active = db.scalar(select(SyncJob).where(
+        SyncJob.store_key == store.store_key,
+        SyncJob.job_type == "sales_repair",
+        SyncJob.status.in_(["queued", "running"]),
+    ))
+    if active:
+        raise HTTPException(409, "A sales repair is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="sales_repair", status="queued")
+    db.add(job)
+    db.commit()
+    background_tasks.add_task(run_sales_repair_job, job.id)
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "saved sales and SaleItem metadata"}
 
 
 def active_job(db: Session, store_key: str) -> SyncJob | None:
@@ -277,6 +383,68 @@ def sync_status(store: str | None = None, db: Session = Depends(get_db)) -> dict
         query = query.where(SyncJob.store_key == store)
     jobs = db.scalars(query.limit(20)).all()
     return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "error": j.error, "created_at": j.created_at, "finished_at": j.finished_at} for j in jobs]}
+
+
+@app.get("/api/sync/coverage")
+def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
+    """Return read-only source coverage metrics for verification and handoff."""
+    require_store(store, db)
+    products = db.scalars(select(Product).where(Product.store_key == store)).all()
+    inventory_count = db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0
+    outlet_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.outlet_id))).where(InventorySnapshot.store_key == store, InventorySnapshot.outlet_id.is_not(None))) or 0
+    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
+    sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
+    missing_sale_item_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
+        Sale.store_key == store,
+        or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
+    )) or 0
+
+    def non_empty(value: object) -> bool:
+        return value is not None and value != "" and value != [] and value != {}
+
+    fields = {"name": 0, "description": 0, "barcode": 0, "sku": 0, "category": 0, "brand": 0, "image": 0, "alternate_images": 0, "price": 0, "cost": 0}
+    for product in products:
+        raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+        values = {
+            "name": product.name or raw.get("name"),
+            "description": raw.get("description"),
+            "barcode": product.barcode or raw.get("barcode") or raw.get("barcodes"),
+            "sku": product.sku or raw.get("sku") or raw.get("mdbId"),
+            "category": product.category or raw.get("category"),
+            "brand": product.brand or raw.get("brand"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or raw.get("alternate_images"),
+            "price": product.price or raw.get("price") or raw.get("prices"),
+            "cost": product.cost or raw.get("cost"),
+        }
+        for field, value in values.items():
+            if non_empty(value):
+                fields[field] += 1
+    return {
+        "data": {
+            "store": store,
+            "products": {"total": len(products), "fields": fields},
+            "inventory": {"records": int(inventory_count), "outlets": int(outlet_count)},
+            "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
+        },
+        "source": "shopfront_crawler",
+        "synced_at": datetime.now(timezone.utc),
+    }
+
+
+@app.get("/api/pos/coverage")
+async def pos_coverage(store: str, db: Session = Depends(get_db)) -> dict:
+    """Read POS staging counts through the server-side integration secret."""
+    require_store(store, db)
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        snapshot = await client.snapshot(store)
+        matching = await client.match_status(store)
+        return {"data": {"store": store, "snapshot": snapshot.get("data", snapshot), "matching": matching.get("data", matching)}, "source": "orithos_shopfront_staging"}
+    except PosIntegrationError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    finally:
+        await client.close()
 
 
 @app.post("/api/sync/runs/{run_id}/retry")
@@ -347,11 +515,19 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
         run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
+        sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
-            pos_result = await push_pos_snapshot(db, store_key, start, end, run=run)
-            counts = dict(run.counts or {})
-            counts["pos_import"] = pos_result
-            run.counts = counts
+            # Historical chunks only need the catalog on the first chunk. For
+            # later chunks, push sales when present and avoid rewriting the
+            # same full product/inventory snapshot for every empty date range.
+            push_kwargs = {"run": run, "include_catalog": include_catalog}
+            product_source_ids = sync_counts.get("product_source_ids")
+            if product_source_ids:
+                # Later history chunks push only products discovered in their
+                # SaleItems; the first chunk still sends the complete catalog.
+                push_kwargs["product_source_ids"] = product_source_ids
+            pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
+            run.counts = {"sync": sync_counts, "pos_import": pos_result}
             db.commit()
         return True
     except Exception:
@@ -370,44 +546,274 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         return left and right
 
 
-async def push_pos_snapshot(db: Session, store_key: str, start: date | None = None, end: date | None = None, run: SyncRun | None = None) -> dict:
+async def push_pos_snapshot(
+    db: Session,
+    store_key: str,
+    start: date | None = None,
+    end: date | None = None,
+    run: SyncRun | None = None,
+    include_catalog: bool = True,
+    product_source_ids: list[str] | None = None,
+    include_sales: bool = True,
+    sales_offset: int = 0,
+    job: SyncJob | None = None,
+) -> dict:
     """Push a snapshot in bounded pages so a full history never sits in RAM."""
-    products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
-    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
+    products_query = select(Product).where(Product.store_key == store_key)
+    if not include_catalog:
+        ids = sorted({str(value) for value in (product_source_ids or []) if value})
+        products_query = products_query.where(Product.shopfront_product_id.in_(ids)) if ids else products_query.where(False)
+    products = db.scalars(products_query).all()
+    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all() if include_catalog else []
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
     if start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time())
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
-    total_sales = db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0
+    total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
-    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, settings.odoo_import_enabled, settings.odoo_business_write_enabled, fallback_token)
+    odoo_enabled = bool(
+        settings.odoo_import_enabled
+        and settings.odoo_api_base_url
+        and (settings.odoo_api_token or fallback_token)
+    )
+    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, settings.odoo_business_write_enabled, fallback_token)
     result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
 
-    def sale_payload(sale: Sale) -> dict:
-        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": sale.raw_payload.get("payments", []) if isinstance(sale.raw_payload, dict) else [], "raw_payload": sale.raw_payload, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": item.raw_payload} for item in sale.items]}
+    products_by_source = {str(product.shopfront_product_id): product for product in products}
 
-    product_items = [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price, "raw_payload": p.raw_payload} for p in products]
-    inventory_items = [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp, "raw_payload": row.raw_payload} for row in inventory]
+    def sale_line_payload(item: SaleItem) -> dict:
+        """Build a complete line even when an older row missed product_name.
+
+        Early crawler runs persisted the nested Shopfront item in raw_payload but
+        did not always copy its name into SaleItem.product_name. Prefer the
+        persisted line, then the nested source item, then the catalog mirror.
+        This keeps historical Odoo/POS repairs idempotent and avoids placeholder
+        product names on re-import.
+        """
+        raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        catalog = products_by_source.get(str(item.shopfront_product_id))
+        catalog_raw = catalog.raw_payload if catalog and isinstance(catalog.raw_payload, dict) else {}
+        source = nested or catalog_raw
+        name = item.product_name or nested.get("name") or raw.get("name")
+        name = name or (catalog.name if catalog else None) or catalog_raw.get("name")
+        if name and not item.product_name:
+            item.product_name = str(name)
+        if not nested and catalog_raw:
+            raw["item"] = catalog_raw
+        barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else None
+        if not barcodes and isinstance(catalog_raw.get("barcodes"), list):
+            barcodes = catalog_raw["barcodes"]
+        sku = nested.get("mdbId") or nested.get("sku") or (catalog.sku if catalog else None) or catalog_raw.get("mdbId") or catalog_raw.get("sku")
+        return {
+            "source_product_id": item.shopfront_product_id,
+            "name": name,
+            "sku": sku,
+            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else (catalog.barcode if catalog else None)),
+            "barcodes": barcodes or [],
+            "quantity": item.quantity,
+            "unit_price": item.unit_price,
+            "line_total": item.line_total,
+            "cost": item.cost,
+            "tax": item.tax,
+            "raw_payload": raw,
+        }
+
+    def sale_payload(sale: Sale) -> dict:
+        raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
+            **sale_line_payload(item),
+        } for item in sale.items]}
+
+    def product_payload(product: Product) -> dict:
+        raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+        category = raw.get("category") if isinstance(raw.get("category"), dict) else {}
+        brand = raw.get("brand") if isinstance(raw.get("brand"), dict) else {}
+        family = raw.get("family") if isinstance(raw.get("family"), dict) else {}
+        tax_rate = raw.get("taxRate") if isinstance(raw.get("taxRate"), dict) else {}
+        return {
+            "source_id": product.shopfront_product_id,
+            "name": product.name or raw.get("name"),
+            "sku": product.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": product.barcode or ((raw.get("barcodes") or [{}])[0].get("code") if isinstance((raw.get("barcodes") or [{}])[0], dict) else None),
+            "barcodes": raw.get("barcodes") or [],
+            "category": product.category or category.get("name"),
+            "category_id": category.get("id"),
+            "brand": product.brand or brand.get("name"),
+            "brand_id": brand.get("id"),
+            "family": family.get("name"),
+            "family_id": family.get("id"),
+            "description": raw.get("description"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or [],
+            "tags": raw.get("tags") or [],
+            "track_inventory": raw.get("trackInventory"),
+            "case_quantity": raw.get("caseQuantity"),
+            "tax_rate_id": tax_rate.get("id"),
+            "tax_rate_name": tax_rate.get("name"),
+            "cost_tax_rate_id": (raw.get("costTaxRate") or {}).get("id") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "cost_tax_rate_name": (raw.get("costTaxRate") or {}).get("name") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "cost_percentage": raw.get("costPercentage"),
+            "use_scales": raw.get("useScales"),
+            "use_barcode_templates": raw.get("useBarcodeTemplates"),
+            "use_price_label": raw.get("usePriceLabel"),
+            "prevent_manual_discounts": raw.get("preventManualDiscounts"),
+            "request_quantity": raw.get("requestQuantity"),
+            "request_price": raw.get("requestPrice"),
+            "minimum_order_quantity": raw.get("minimumOrderQuantity"),
+            "order_notes": raw.get("orderNotes"),
+            "invoice_notes": raw.get("invoiceNotes"),
+            "temp_product": raw.get("tempProduct"),
+            "deleted": raw.get("deleted"),
+            "deleted_at": raw.get("deletedAt"),
+            "ignore_price_host_changes": raw.get("ignorePriceHostChanges"),
+            "ignore_barcode_host_changes": raw.get("ignoreBarcodeHostChanges"),
+            "source_status": raw.get("status"),
+            "source_type": raw.get("type"),
+            "source_created_at": raw.get("createdAt"),
+            "source_updated_at": raw.get("updatedAt"),
+            "cost": product.cost if product.cost is not None else raw.get("cost"),
+            "price": product.price if product.price is not None else ((raw.get("prices") or [{}])[0].get("price") if isinstance((raw.get("prices") or [{}])[0], dict) else None),
+            "prices": raw.get("prices") or [],
+            "raw_payload": raw,
+        }
+
+    product_items = [product_payload(p) for p in products]
+
+    # The current Shopfront catalog contains only active/current products.
+    # Historical SaleItems can reference products that have since been
+    # archived, while still carrying the real name, barcode and price. Promote
+    # those embedded products into the catalog payload before sending sales so
+    # POS/Odoo can match the sale line to a named product instead of creating a
+    # ``Shopfront <source_id>`` placeholder.
+    sale_item_query = (
+        select(SaleItem)
+        .join(Sale, SaleItem.sale_id == Sale.id)
+        .where(Sale.store_key == store_key)
+    )
+    if start is not None and end is not None:
+        window_start = datetime.combine(start, datetime.min.time())
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+        sale_item_query = sale_item_query.where(
+            ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
+            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        )
+
+    def historical_product_payload(item: SaleItem) -> dict | None:
+        raw = item.raw_payload if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        source = nested or raw
+        source_id = str(item.shopfront_product_id or source.get("id") or "").strip()
+        name = item.product_name or source.get("name") or raw.get("name")
+        if not source_id or not name:
+            return None
+        barcodes = source.get("barcodes") if isinstance(source.get("barcodes"), list) else []
+        prices = source.get("prices") if isinstance(source.get("prices"), list) else []
+        price = item.unit_price
+        if price is None and prices and isinstance(prices[0], dict):
+            price = prices[0].get("price")
+        cost = item.cost if item.cost is not None else source.get("cost")
+        return {
+            "source_id": source_id,
+            "name": str(name),
+            "sku": source.get("mdbId") or source.get("sku"),
+            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None),
+            "barcodes": barcodes,
+            "category": (source.get("category") or {}).get("name") if isinstance(source.get("category"), dict) else source.get("category"),
+            "brand": (source.get("brand") or {}).get("name") if isinstance(source.get("brand"), dict) else source.get("brand"),
+            "description": source.get("description"),
+            "image": source.get("image"),
+            "alternate_images": source.get("alternateImages") or source.get("alternate_images") or [],
+            "tags": source.get("tags") or [],
+            "track_inventory": source.get("trackInventory"),
+            "case_quantity": source.get("caseQuantity"),
+            "tax_rate_name": (source.get("taxRate") or {}).get("name") if isinstance(source.get("taxRate"), dict) else None,
+            "cost_tax_rate_name": (source.get("costTaxRate") or {}).get("name") if isinstance(source.get("costTaxRate"), dict) else None,
+            "cost": cost,
+            "price": price,
+            "prices": prices or ([{"quantity": 1, "price": price}] if price is not None else []),
+            "source_status": source.get("status"),
+            "source_type": source.get("type"),
+            "raw_payload": raw,
+        }
+
+    product_items_by_source = {str(item["source_id"]): item for item in product_items if item.get("source_id")}
+    for sale_item in db.scalars(sale_item_query).yield_per(1000):
+        historical = historical_product_payload(sale_item)
+        if not historical:
+            continue
+        existing = product_items_by_source.get(historical["source_id"])
+        if existing is None:
+            product_items_by_source[historical["source_id"]] = historical
+            continue
+        # Current catalog values win; historical values fill fields that were
+        # absent from the current catalog response.
+        for key, value in historical.items():
+            if key == "raw_payload":
+                continue
+            if not existing.get(key) and value:
+                existing[key] = value
+    product_items = list(product_items_by_source.values())
+    # Include historical SaleItem-derived products in the run statistics.
+    result["products"] = len(product_items)
+    inventory_items = []
+    for row in inventory:
+        raw = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+        outlet = raw.get("outlet") if isinstance(raw.get("outlet"), dict) else {}
+        inventory_items.append({
+            "source_id": row.shopfront_product_id,
+            "outlet_id": row.outlet_id or outlet.get("id"),
+            "outlet_name": row.outlet_name or outlet.get("name"),
+            "quantity": row.quantity,
+            "single_level": raw.get("singleLevel"),
+            "case_level": raw.get("caseLevel"),
+            "reorder_level": raw.get("reorderLevel"),
+            "reorder_level_singles": raw.get("reorderLevelSingles"),
+            "reorder_level_cases": raw.get("reorderLevelCases"),
+            "reorder_amount": raw.get("reorderAmount"),
+            "reorder_amount_singles": raw.get("reorderAmountSingles"),
+            "reorder_amount_cases": raw.get("reorderAmountCases"),
+            "reorder_limit": raw.get("reorderLimit"),
+            "max_quantity": raw.get("maxQuantity"),
+            "max_quantity_singles": raw.get("maxQuantitySingles"),
+            "max_quantity_cases": raw.get("maxQuantityCases"),
+            "on_order": raw.get("onOrder"),
+            "timestamp": row.inventory_timestamp,
+            "raw_payload": raw,
+        })
     try:
         product_result = None
         inventory_result = None
+        catalog_error: Exception | None = None
         try:
-            product_result = await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items}))
-            inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "items": inventory_items}))
+            product_responses = []
+            for offset in range(0, len(product_items), 250):
+                product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
+            if product_responses:
+                product_result = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
+            if include_catalog and inventory_items:
+                inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
         except Exception as exc:
+            catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
             logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
+        if result["mirror_errors"] and not odoo_enabled:
+            raise RuntimeError(str(catalog_error or result["mirror_errors"][-1]))
         odoo_product_result = None
         odoo_inventory_result = None
-        if settings.odoo_import_enabled:
-            odoo_product_result = await odoo_client.sync("products", store_key, jsonable_encoder(product_items))
+        if odoo_enabled and product_items:
+            odoo_product_responses = []
+            for offset in range(0, len(product_items), 100):
+                odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 100])))
+            odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
+        if odoo_enabled and include_catalog and inventory_items:
             odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
         odoo_batches = 0
-        offset = 0
-        while offset < total_sales:
+        offset = max(0, int(sales_offset or 0))
+        while include_sales and offset < total_sales:
             sales = db.scalars(sales_query.offset(offset).limit(250)).all()
             if not sales:
                 break
@@ -418,7 +824,7 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             except Exception as exc:
                 result["mirror_errors"].append(f"sales batch {offset}: {exc!r}")
                 logger.warning("POS sales mirror failed; continuing with Odoo: offset=%s error=%r", offset, exc)
-            if settings.odoo_import_enabled:
+            if odoo_enabled:
                 for small_offset in range(0, len(items), 100):
                     batch = items[small_offset:small_offset + 100]
                     try:
@@ -432,18 +838,35 @@ async def push_pos_snapshot(db: Session, store_key: str, start: date | None = No
             result["sale_batches"] = sale_batches
             result["odoo_sale_batches"] = odoo_batches
             if run is not None:
-                run.counts = {"type": "full_snapshot", "products": len(products), "inventory": len(inventory), "sales": offset, "sale_total": total_sales, "sale_batches": sale_batches, "odoo_sale_batches": odoo_batches, "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror"}
+                # Preserve source-sync counts when this helper is called for
+                # a historical chunk. Replacing the whole object hid
+                # products_from_sales, warnings and the crawler's date range.
+                prior_counts = dict(run.counts or {})
+                run.counts = {
+                    **prior_counts,
+                    "type": prior_counts.get("type", "full_snapshot"),
+                    "pos_products": len(product_items),
+                    "pos_inventory": len(inventory_items),
+                    "pos_sales": offset,
+                    "sale_total": total_sales,
+                    "sale_batches": sale_batches,
+                    "odoo_sale_batches": odoo_batches,
+                    "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
+                }
+                if job is not None:
+                    job.payload = {**(job.payload or {}), "sales_offset": offset, "sale_total": total_sales}
                 db.commit()
         result.update({
-            "status": "completed",
+            "status": "failed" if result["mirror_errors"] else "completed",
+            "error": "; ".join(result["mirror_errors"]) if result["mirror_errors"] else None,
             "product_response": product_result,
             "inventory_response": inventory_result,
-            "odoo_business_write": bool(settings.odoo_import_enabled and settings.odoo_business_write_enabled),
+            "odoo_business_write": bool(odoo_enabled and settings.odoo_business_write_enabled),
             "odoo_product_response": odoo_product_result,
             "odoo_inventory_response": odoo_inventory_result,
         })
     except Exception as exc:
-        result["error"] = repr(exc)[:500]
+        result["error"] = str(exc)[:500]
         logger.exception("Shopfront snapshot push failed: store=%s", store_key)
     finally:
         await client.close()
@@ -588,7 +1011,47 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
     require_store(store, db)
     run = await _stage_pos_import(store, "products", db)
     products = db.scalars(select(Product).where(Product.store_key == store)).all()
-    payload = jsonable_encoder({"store_key": store, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price} for p in products]})
+    def import_product_item(p: Product) -> dict:
+        raw = p.raw_payload if isinstance(p.raw_payload, dict) else {}
+        category = raw.get("category") if isinstance(raw.get("category"), dict) else {}
+        brand = raw.get("brand") if isinstance(raw.get("brand"), dict) else {}
+        family = raw.get("family") if isinstance(raw.get("family"), dict) else {}
+        tax_rate = raw.get("taxRate") if isinstance(raw.get("taxRate"), dict) else {}
+        prices = raw.get("prices") if isinstance(raw.get("prices"), list) else []
+        barcodes = raw.get("barcodes") if isinstance(raw.get("barcodes"), list) else []
+        return {
+            "source_id": p.shopfront_product_id,
+            "name": p.name or raw.get("name"),
+            "sku": p.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": p.barcode or (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None),
+            "barcodes": barcodes,
+            "category": p.category or category.get("name"),
+            "category_id": category.get("id"),
+            "brand": p.brand or brand.get("name"),
+            "brand_id": brand.get("id"),
+            "family": family.get("name"),
+            "family_id": family.get("id"),
+            "description": raw.get("description"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or [],
+            "tags": raw.get("tags") or [],
+            "track_inventory": raw.get("trackInventory"),
+            "case_quantity": raw.get("caseQuantity"),
+            "tax_rate_id": tax_rate.get("id"),
+            "tax_rate_name": tax_rate.get("name"),
+            "cost_tax_rate_id": (raw.get("costTaxRate") or {}).get("id") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "cost_tax_rate_name": (raw.get("costTaxRate") or {}).get("name") if isinstance(raw.get("costTaxRate"), dict) else None,
+            "source_status": raw.get("status"),
+            "source_type": raw.get("type"),
+            "source_created_at": raw.get("createdAt"),
+            "source_updated_at": raw.get("updatedAt"),
+            "cost": p.cost,
+            "price": p.price if p.price is not None else (prices[0].get("price") if prices and isinstance(prices[0], dict) else None),
+            "prices": prices,
+            "raw_payload": raw,
+        }
+
+    payload = jsonable_encoder({"store_key": store, "items": [import_product_item(p) for p in products]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -613,7 +1076,32 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
     require_store(store, db)
     run = await _stage_pos_import(store, "inventory", db)
     rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store)).all()
-    payload = jsonable_encoder({"store_key": store, "replace": True, "items": [{"source_id": x.shopfront_product_id, "quantity": x.quantity, "timestamp": x.inventory_timestamp} for x in rows]})
+    def import_inventory_item(x: InventorySnapshot) -> dict:
+        raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
+        outlet = raw.get("outlet") if isinstance(raw.get("outlet"), dict) else {}
+        return {
+            "source_id": x.shopfront_product_id,
+            "outlet_id": x.outlet_id or outlet.get("id"),
+            "outlet_name": x.outlet_name or outlet.get("name"),
+            "quantity": x.quantity,
+            "single_level": raw.get("singleLevel"),
+            "case_level": raw.get("caseLevel"),
+            "reorder_level": raw.get("reorderLevel"),
+            "reorder_level_singles": raw.get("reorderLevelSingles"),
+            "reorder_level_cases": raw.get("reorderLevelCases"),
+            "reorder_amount": raw.get("reorderAmount"),
+            "reorder_amount_singles": raw.get("reorderAmountSingles"),
+            "reorder_amount_cases": raw.get("reorderAmountCases"),
+            "reorder_limit": raw.get("reorderLimit"),
+            "max_quantity": raw.get("maxQuantity"),
+            "max_quantity_singles": raw.get("maxQuantitySingles"),
+            "max_quantity_cases": raw.get("maxQuantityCases"),
+            "on_order": raw.get("onOrder"),
+            "timestamp": x.inventory_timestamp,
+            "raw_payload": raw,
+        }
+
+    payload = jsonable_encoder({"store_key": store, "replace": True, "snapshot_complete": True, "items": [import_inventory_item(x) for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -644,7 +1132,22 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         run.counts = {"sales": len(rows), "blocked": len(incomplete)}
         db.commit()
         return {"status": run.status, "run_id": run.id, "counts": run.counts, "error": run.error}
-    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [{"source_product_id": i.shopfront_product_id, "name": i.product_name, "quantity": i.quantity, "unit_price": i.unit_price, "line_total": i.line_total} for i in x.items]} for x in rows]})
+    products_by_source = {str(product.shopfront_product_id): product for product in db.scalars(select(Product).where(Product.store_key == store)).all()}
+
+    def repair_line(item: SaleItem) -> dict:
+        raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        catalog = products_by_source.get(str(item.shopfront_product_id))
+        catalog_raw = catalog.raw_payload if catalog and isinstance(catalog.raw_payload, dict) else {}
+        name = item.product_name or nested.get("name") or raw.get("name") or (catalog.name if catalog else None) or catalog_raw.get("name")
+        if name and not item.product_name:
+            item.product_name = str(name)
+        if not nested and catalog_raw:
+            raw["item"] = catalog_raw
+        barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else catalog_raw.get("barcodes", [])
+        return {"source_product_id": item.shopfront_product_id, "name": name, "sku": (catalog.sku if catalog else None), "barcodes": barcodes or [], "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": raw}
+
+    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [repair_line(i) for i in x.items]} for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -701,14 +1204,46 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(Product).where(Product.store_key == store).order_by(Product.name).offset((page - 1) * size).limit(size)).all()
-    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "sku": x.sku, "barcode": x.barcode, "name": x.name, "category": x.category, "brand": x.brand, "cost": x.cost, "price": x.price, "raw_payload": x.raw_payload, "synced_at": x.synced_at} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_products"}
+    def product_data(x: Product) -> dict:
+        raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
+        return {
+            "shopfront_product_id": x.shopfront_product_id,
+            "sku": x.sku or raw.get("mdbId") or raw.get("sku"),
+            "barcode": x.barcode,
+            "barcodes": raw.get("barcodes") or [],
+            "name": x.name or raw.get("name"),
+            "category": x.category or (raw.get("category") or {}).get("name"),
+            "category_id": (raw.get("category") or {}).get("id"),
+            "brand": x.brand or (raw.get("brand") or {}).get("name"),
+            "brand_id": (raw.get("brand") or {}).get("id"),
+            "family": (raw.get("family") or {}).get("name"),
+            "family_id": (raw.get("family") or {}).get("id"),
+            "description": raw.get("description"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or [],
+            "tags": raw.get("tags") or [],
+            "track_inventory": raw.get("trackInventory"),
+            "case_quantity": raw.get("caseQuantity"),
+            "cost": x.cost,
+            "price": x.price,
+            "prices": raw.get("prices") or [],
+            "tax_rate": raw.get("taxRate"),
+            "cost_tax_rate": raw.get("costTaxRate"),
+            "status": raw.get("status"),
+            "type": raw.get("type"),
+            "source_created_at": raw.get("createdAt"),
+            "source_updated_at": raw.get("updatedAt"),
+            "raw_payload": raw,
+            "synced_at": x.synced_at,
+        }
+    return {"data": [product_data(x) for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_products"}
 
 
 @app.get("/api/inventory")
 def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store).order_by(desc(InventorySnapshot.inventory_timestamp)).offset((page - 1) * size).limit(size)).all()
-    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_inventory"}
+    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "outlet_id": x.outlet_id, "outlet_name": x.outlet_name, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_inventory"}
 
 
 @app.post("/webhooks/shopfront/{store_key}")

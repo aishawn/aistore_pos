@@ -177,7 +177,6 @@ export function OdooRegisterPage() {
   const [quoteRetryKey, setQuoteRetryKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState<OdooCheckoutRequest | null>(null);
-  const [confirmedPaymentKey, setConfirmedPaymentKey] = useState<string | null>(null);
   const checkoutBusy = useRef(false);
   const productSearchRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -899,7 +898,6 @@ export function OdooRegisterPage() {
       const stableOrderUuid = orderUuid.current ?? crypto.randomUUID();
       orderUuid.current = stableOrderUuid;
       const request: OdooCheckoutRequest = pendingCheckout ?? {
-        externalPaymentConfirmed: !isCashPayment && confirmedPaymentKey === paymentConfirmationKey,
         configId: selectedConfig.id,
         paymentMethodId: paymentMethodId!,
         orderUuid: stableOrderUuid,
@@ -947,7 +945,7 @@ export function OdooRegisterPage() {
       else {
         setPendingCheckout(null);
         if (cause instanceof Error && /Prices or taxes have changed/.test(cause.message)) {
-          setQuote(null); setConfirmedPaymentKey(null); setQuoteRetryKey((value) => value + 1);
+          setQuote(null); setQuoteRetryKey((value) => value + 1);
         }
       }
       setError(cause instanceof Error ? cause.message : "Orithos could not confirm the sale. Keep this order open and retry only after checking sales history.");
@@ -1009,11 +1007,8 @@ export function OdooRegisterPage() {
   );
 
   const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
-  const paymentConfirmationKey = JSON.stringify([configId, paymentMethodId, amountToCollect, customer?.id, lines.map((line) => [line.product.id, line.quantity, line.packFactor])]);
-  const cardPaymentConfirmed = isCashPayment || confirmedPaymentKey === paymentConfirmationKey;
   const cashEnough = Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect;
-  const canFinalise = Boolean(canSell && isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && cardPaymentConfirmed && cashEnough);
-  const awaitingCardConfirm = Boolean(lines.length && paymentMethodId && !isCashPayment && !cardPaymentConfirmed);
+  const canFinalise = Boolean(canSell && isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && cashEnough);
   const finaliseLabel = !canSell
     ? "No sell permission"
     : busy
@@ -1030,25 +1025,15 @@ export function OdooRegisterPage() {
               ? "Waiting for tax…"
               : !paymentMethodId
                 ? "Select payment"
-                : awaitingCardConfirm
-                  ? "Review terminal approval"
-                  : isCashPayment && !cashEnough
+                : isCashPayment && !cashEnough
                     ? "Enter cash received"
                     : "Finalise Sale";
 
   function handleFinaliseClick() {
-    if (awaitingCardConfirm) {
-      setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey));
-      return;
-    }
     void checkout();
   }
 
-  const finaliseTitle = canFinalise
-    ? "Complete this sale in Orithos"
-    : awaitingCardConfirm
-      ? "Review the terminal approval control before finalising"
-      : finaliseLabel;
+  const finaliseTitle = canFinalise ? "Complete this sale in Orithos" : finaliseLabel;
 
   function selectRegister(id: number) {
     selectedConfigIdRef.current = id;
@@ -1095,7 +1080,6 @@ export function OdooRegisterPage() {
     selectedPaymentMethodIdRef.current = method.id;
     setPaymentMethodId(method.id);
     setExactCashArmed(exact);
-    setConfirmedPaymentKey(null);
     if (exact && quoteIsCurrent) setCashTendered(amountToCollect.toFixed(2));
     else if (!exact) setCashTendered("");
   }
@@ -1155,7 +1139,6 @@ export function OdooRegisterPage() {
     setCustomerQuery("");
     setCustomers([]);
     setCashTendered("");
-    setConfirmedPaymentKey(null);
     setSelectedLineKey(null);
     setExactCashArmed(false);
     setClearSaleConfirm(false);
@@ -1500,13 +1483,11 @@ export function OdooRegisterPage() {
           quoteError={quoteError}
           showQuoteRetry={Boolean(connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0)}
           onRetryQuote={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }}
-          awaitingCardConfirm={awaitingCardConfirm}
-          onFocusTerminalConfirm={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
           canFinalise={canFinalise}
           finaliseLabel={finaliseLabel}
           finaliseTitle={finaliseTitle}
           onFinalise={handleFinaliseClick}
-          showFinaliseHint={!canFinalise && !awaitingCardConfirm && lines.length > 0 && !busy && isOnline && Boolean(selectedConfig?.session) && finaliseLabel !== "Finalise Sale"}
+          showFinaliseHint={!canFinalise && lines.length > 0 && !busy && isOnline && Boolean(selectedConfig?.session) && finaliseLabel !== "Finalise Sale"}
           totalWhole={totalWhole}
           totalCents={totalCents}
           busy={busy}

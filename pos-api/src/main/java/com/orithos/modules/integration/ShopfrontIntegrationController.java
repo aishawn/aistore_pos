@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +13,11 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.access.AccessDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
@@ -30,16 +36,28 @@ public class ShopfrontIntegrationController {
     private final ObjectMapper objectMapper;
     private final String token;
     private final boolean enabled;
+    private final boolean businessWriteEnabled;
 
+    @Autowired
     public ShopfrontIntegrationController(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
             @Value("${app.shopfront.integration-token:}") String token,
-            @Value("${app.shopfront.integration-enabled:false}") boolean enabled) {
+            @Value("${app.shopfront.integration-enabled:false}") boolean enabled,
+            @Value("${app.shopfront.business-write-enabled:false}") boolean businessWriteEnabled) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.token = token;
         this.enabled = enabled;
+        this.businessWriteEnabled = businessWriteEnabled;
+    }
+
+    public ShopfrontIntegrationController(
+            JdbcTemplate jdbc,
+            ObjectMapper objectMapper,
+            String token,
+            boolean enabled) {
+        this(jdbc, objectMapper, token, enabled, false);
     }
 
     @GetMapping("/mappings")
@@ -83,18 +101,21 @@ public class ShopfrontIntegrationController {
     }
 
     @PostMapping("/products:upsert")
+    @Transactional
     public ApiResult<Map<String, Object>> products(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                    @RequestBody JsonNode body) {
         return stage(supplied, "products", body);
     }
 
     @PostMapping("/inventory:replace")
+    @Transactional
     public ApiResult<Map<String, Object>> inventory(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                    @RequestBody JsonNode body) {
         return stage(supplied, "inventory", body);
     }
 
     @PostMapping("/sales:upsert")
+    @Transactional
     public ApiResult<Map<String, Object>> sales(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                 @RequestBody JsonNode body) {
         return stage(supplied, "sales", body);
@@ -156,10 +177,22 @@ public class ShopfrontIntegrationController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
         result.put("products", count("shopfront_product", storeKey));
+        result.put("products_missing_name", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product WHERE store_key = ? AND (name IS NULL OR TRIM(name) = '')",
+                Integer.class, storeKey));
         result.put("barcode_matched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND sp.barcode IS NOT NULL AND EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode)", Integer.class, storeKey));
         result.put("barcode_unmatched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
         result.put("manually_mapped", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'", Integer.class, storeKey));
         result.put("sales_with_unmatched_items", jdbc.queryForObject("SELECT COUNT(DISTINCT ss.external_id) FROM shopfront_sale ss JOIN shopfront_sale_item si ON si.store_key = ss.store_key AND si.external_sale_id = ss.external_id LEFT JOIN shopfront_product sp ON sp.store_key = ss.store_key AND sp.source_id = si.source_product_id WHERE ss.store_key = ? AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping pm WHERE pm.store_key = ss.store_key AND pm.source_product_id = si.source_product_id AND pm.status = 'MAPPED') AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
+        result.put("sale_items_missing_name", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (product_name IS NULL OR TRIM(product_name) = '')",
+                Integer.class, storeKey));
+        result.put("sale_items_missing_source_product", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (source_product_id IS NULL OR TRIM(source_product_id) = '')",
+                Integer.class, storeKey));
+        result.put("inventory_outlets", jdbc.queryForObject(
+                "SELECT COUNT(DISTINCT outlet_id) FROM shopfront_inventory WHERE store_key = ?",
+                Integer.class, storeKey));
         return ApiResult.ok(result);
     }
 
@@ -228,9 +261,16 @@ public class ShopfrontIntegrationController {
                     : "CREATE TABLE IF NOT EXISTS shopfront_import_run (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, store_key VARCHAR(64) NOT NULL, import_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, item_count INT NOT NULL, payload_json LONGTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
             var json = objectMapper.writeValueAsString(body);
             String status = mappingReady ? "STAGED" : "BLOCKED_MAPPING";
+            Map<String, Object> business = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             if (mappingReady) {
                 ensureShadowTables();
-                persistShadow(type, store, mappingRows.get(0), items);
+                boolean completeInventorySnapshot = "inventory".equals(type)
+                        && body.path("replace").asBoolean(false)
+                        && body.path("snapshot_complete").asBoolean(false);
+                persistShadow(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                if (businessWriteEnabled) {
+                    business = importBusiness(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                }
             }
             Long id;
             if (postgres) {
@@ -245,8 +285,9 @@ public class ShopfrontIntegrationController {
             result.put("type", type);
             result.put("item_count", items.size());
             result.put("mapping_ready", mappingReady);
-            result.put("business_write", false);
+            result.put("business_write", businessWriteEnabled && mappingReady);
             result.put("shadow_write", mappingReady);
+            result.put("business", business);
             return ApiResult.ok(result);
         } catch (Exception e) {
             Throwable root = e;
@@ -278,12 +319,199 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
     }
 
+    /**
+     * Import the source catalog into the POS catalog after the durable mirror
+     * has been written. Every source product is bound to one POS product in
+     * shopfront_product_mapping, so retries update the same row instead of
+     * creating another Sell item.
+     */
+    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
+        int created = 0;
+        int updated = 0;
+        int skipped = 0;
+        Set<String> errors = new HashSet<>();
+        if ("products".equals(type)) {
+            for (JsonNode item : items) {
+                try {
+                    long productId = upsertBusinessProduct(store, item, outletId);
+                    if (productId > 0) {
+                        boolean existed = jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key=? AND source_product_id=? AND pos_product_id=?",
+                                Integer.class, store, text(item, "source_id"), productId) > 0;
+                        upsertSourceMapping(store, text(item, "source_id"), productId);
+                        if (existed) updated++; else created++;
+                    } else skipped++;
+                } catch (Exception e) {
+                    skipped++;
+                    errors.add(text(item, "source_id") + ": " + e.getMessage());
+                }
+            }
+        } else if ("inventory".equals(type)) {
+            if (completeInventorySnapshot) {
+                jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
+            }
+            for (JsonNode item : items) {
+                try {
+                    Long productId = mappedProductId(store, text(item, "source_id"));
+                    if (productId == null) { skipped++; continue; }
+                    upsertBusinessInventory(productId, outletId, item);
+                    updated++;
+                } catch (Exception e) {
+                    skipped++;
+                    errors.add(text(item, "source_id") + ": " + e.getMessage());
+                }
+            }
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("enabled", true);
+        result.put("created", created);
+        result.put("updated", updated);
+        result.put("skipped", skipped);
+        result.put("errors", errors.stream().limit(20).toList());
+        return result;
+    }
+
+    private long upsertBusinessProduct(String store, JsonNode item, long outletId) throws Exception {
+        String sourceId = text(item, "source_id");
+        String name = text(item, "name");
+        if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
+        Long productId = mappedProductId(store, sourceId);
+        String barcode = firstBarcode(item);
+        if (productId == null && barcode != null) {
+            productId = findLong("SELECT product_id FROM product_barcode WHERE code=? LIMIT 1", barcode);
+        }
+        Integer mdbId = integerValue(item.get("sku"));
+        if (productId == null && mdbId != null) {
+            productId = findLong("SELECT id FROM product WHERE mdb_id=? AND deleted_at IS NULL LIMIT 1", mdbId);
+        }
+        if (productId == null) {
+            // active_name is globally unique in PostgreSQL, so an outlet-scoped
+            // lookup would still try to insert a duplicate for another outlet.
+            productId = findLong("SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", name);
+        }
+        Long categoryId = ensureLookup("category", text(item, "category"), outletId);
+        Long brandId = ensureLookup("brand", text(item, "brand"), outletId);
+        JsonNode family = item.get("family");
+        Long familyId = ensureLookup("family", family == null ? null : family.asText(null), outletId);
+        Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), outletId);
+        BigDecimal caseQuantity = decimal(item, "case_quantity");
+        if (caseQuantity == null || caseQuantity.signum() <= 0) caseQuantity = BigDecimal.ONE;
+        BigDecimal cost = decimal(item, "cost");
+        String type = text(item, "source_type");
+        if (type == null || type.isBlank()) type = "STANDARD";
+        String description = text(item, "description");
+        String image = text(item, "image");
+        String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
+        if (productId == null) {
+            String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
+            productId = jdbc.queryForObject(sql, Long.class, name, type, "ACTIVE", description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+        } else {
+            jdbc.update("UPDATE product SET name=?,type=?,status='ACTIVE',description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, type, description, categoryId, brandId, familyId, taxRateId, taxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId);
+        }
+        upsertPrices(productId, item, outletId);
+        upsertBarcodes(productId, item, outletId);
+        upsertTags(productId, item, outletId);
+        return productId;
+    }
+
+    private void upsertBusinessInventory(long productId, long outletId, JsonNode item) {
+        jdbc.update("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", productId, outletId, decimal(item, "quantity", BigDecimal.ZERO), decimal(item, "reorder_level"), decimal(item, "reorder_amount"), decimal(item, "reorder_limit"), decimal(item, "max_quantity"), decimal(item, "on_order", BigDecimal.ZERO));
+    }
+
+    private void upsertPrices(long productId, JsonNode item, long outletId) {
+        JsonNode prices = item.get("prices");
+        if (prices == null || !prices.isArray() || prices.size() == 0) return;
+        jdbc.update("DELETE FROM product_price WHERE product_id=?", productId);
+        for (JsonNode price : prices) {
+            BigDecimal quantity = decimal(price, "quantity", BigDecimal.ONE);
+            BigDecimal value = decimal(price, "price");
+            if (quantity != null && quantity.signum() > 0 && value != null) jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex) VALUES (?,?,?,?)", productId, quantity, value, decimal(price, "price_ex") != null ? decimal(price, "price_ex") : decimal(price, "priceEx"));
+        }
+    }
+
+    private void upsertBarcodes(long productId, JsonNode item, long outletId) {
+        JsonNode barcodes = item.get("barcodes");
+        if (!barcodes.isArray()) return;
+        for (JsonNode barcode : barcodes) {
+            String code = text(barcode, "code");
+            if (code == null || code.isBlank()) continue;
+            Long owner = findLong("SELECT product_id FROM product_barcode WHERE code=? LIMIT 1", code);
+            if (owner != null && !owner.equals(productId)) continue;
+            if (owner == null) jdbc.update("INSERT INTO product_barcode (product_id,code,quantity) VALUES (?,?,?)", productId, code, decimal(barcode, "quantity", BigDecimal.ONE));
+            else jdbc.update("UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=?", decimal(barcode, "quantity", BigDecimal.ONE), productId, code);
+        }
+    }
+
+    private void upsertTags(long productId, JsonNode item, long outletId) {
+        JsonNode tags = item.get("tags");
+        if (tags == null || !tags.isArray()) return;
+        try {
+            jdbc.update("DELETE FROM product_tag WHERE product_id=?", productId);
+            for (JsonNode tag : tags) {
+                String name = tag.isTextual() ? tag.asText() : text(tag, "name");
+                if (name == null || name.isBlank()) continue;
+                Long tagId = ensureLookup("tag", name, outletId);
+                if (tagId != null) jdbc.update("INSERT INTO product_tag (product_id,tag_id) VALUES (?,?)", productId, tagId);
+            }
+        } catch (Exception e) {
+            // Tags are optional metadata; a malformed tag must not discard the
+            // product, price, barcode or inventory update.
+            log.warn("Shopfront tag sync skipped for product {}: {}", productId, e.getMessage());
+        }
+    }
+
+    private void upsertSourceMapping(String store, String sourceId, long productId) {
+        jdbc.update("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type=EXCLUDED.match_type,status='MAPPED',updated_at=CURRENT_TIMESTAMP", store, sourceId, productId);
+    }
+
+    private Long mappedProductId(String store, String sourceId) {
+        if (sourceId == null || sourceId.isBlank()) return null;
+        try {
+            if (store == null) return jdbc.queryForObject("SELECT pos_product_id FROM shopfront_product_mapping WHERE source_product_id=? LIMIT 1", Long.class, sourceId);
+            return jdbc.queryForObject("SELECT pos_product_id FROM shopfront_product_mapping WHERE source_product_id=? AND store_key=? LIMIT 1", Long.class, sourceId, store);
+        } catch (Exception ignored) { return null; }
+    }
+
+    private Long ensureLookup(String table, String name, long outletId) {
+        if (name == null || name.isBlank()) return null;
+        try {
+            Long id = jdbc.queryForObject("SELECT id FROM " + table + " WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", Long.class, name);
+            if (id != null) return id;
+        } catch (Exception ignored) { }
+        return jdbc.queryForObject("INSERT INTO " + table + " (name) VALUES (?) RETURNING id", Long.class, name);
+    }
+
+    private Long ensureTaxRate(String name, long outletId) {
+        if (name == null || name.isBlank()) return null;
+        try { return jdbc.queryForObject("SELECT id FROM tax_rate WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", Long.class, name); }
+        catch (Exception ignored) { return null; }
+    }
+
+    private Long findLong(String sql, Object... args) {
+        try { return jdbc.queryForObject(sql, Long.class, args); }
+        catch (Exception ignored) { return null; }
+    }
+
+    private String firstBarcode(JsonNode item) {
+        JsonNode barcodes = item.get("barcodes");
+        if (barcodes != null && barcodes.isArray() && !barcodes.isEmpty()) return text(barcodes.get(0), "code");
+        return text(item, "barcode");
+    }
+
+    private long longValue(Object value) { try { return value == null ? 0 : Long.parseLong(String.valueOf(value)); } catch (Exception e) { return 0; } }
+    private Integer integerValue(Object value) { try { return value == null || String.valueOf(value).isBlank() ? null : Integer.valueOf(String.valueOf(value)); } catch (Exception e) { return null; } }
+    private int flag(JsonNode node, String key, boolean fallback) { return node.has(key) && !node.get(key).isNull() ? (node.get(key).asBoolean() ? 1 : 0) : (fallback ? 1 : 0); }
+    private BigDecimal decimal(JsonNode node, String key) { return decimal(node, key, null); }
+    private BigDecimal decimal(JsonNode node, String key, BigDecimal fallback) { try { JsonNode value=node.get(key); return value == null || value.isNull() || value.asText().isBlank() ? fallback : value.decimalValue(); } catch (Exception e) { return fallback; } }
+
     private int count(String table, String store) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE store_key = ?", Integer.class, store);
         return count == null ? 0 : count;
     }
 
-    private void persistShadow(String type, String store, Map<String, Object> mapping, JsonNode items) throws Exception {
+    private void persistShadow(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
         boolean postgres = isPostgres();
         String outlet = String.valueOf(mapping.getOrDefault("outlet_id", ""));
         if ("products".equals(type)) {
@@ -296,13 +524,18 @@ public class ShopfrontIntegrationController {
                 jdbc.update(sql, store, source, text(item,"name"), text(item,"sku"), text(item,"barcode"), text(item,"category"), text(item,"brand"), decimal(item,"cost"), decimal(item,"price"), objectMapper.writeValueAsString(item));
             }
         } else if ("inventory".equals(type)) {
+            if (completeInventorySnapshot) {
+                jdbc.update("DELETE FROM shopfront_inventory WHERE store_key = ?", store);
+            }
             for (JsonNode item : items) {
                 String source = text(item, "source_id");
                 if (source.isBlank()) continue;
                 String sql = postgres
                         ? "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON CONFLICT (store_key,source_product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,snapshot_at=EXCLUDED.snapshot_at,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                         : "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),snapshot_at=VALUES(snapshot_at),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
-                jdbc.update(sql, store, source, outlet, decimal(item,"quantity"), text(item,"timestamp"), objectMapper.writeValueAsString(item));
+                String itemOutlet = text(item, "outlet_id");
+                if (itemOutlet == null || itemOutlet.isBlank()) itemOutlet = outlet;
+                jdbc.update(sql, store, source, itemOutlet, decimal(item,"quantity"), text(item,"timestamp"), objectMapper.writeValueAsString(item));
             }
         } else if ("sales".equals(type)) {
             for (JsonNode sale : items) {
@@ -343,11 +576,6 @@ public class ShopfrontIntegrationController {
     private String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
-    }
-
-    private Object decimal(JsonNode node, String field) {
-        JsonNode value = node.get(field);
-        return value == null || value.isNull() || value.asText().isBlank() ? null : value.decimalValue();
     }
 
     private boolean isPostgres() {

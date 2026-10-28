@@ -59,7 +59,8 @@ public class AiReportAuditService {
             log.info("AI report audit path={} allowed={} rows={} latencyMs={}",
                     path, allowed, allowed ? rowCount : null, latency);
         } catch (DataAccessException e) {
-            log.warn("AI report audit insert skipped: {}", e.getClass().getSimpleName());
+            log.warn("AI report audit insert skipped type={} sqlState={} vendorCode={}",
+                    e.getClass().getSimpleName(), sqlState(e), vendorCode(e));
         } catch (Exception e) {
             log.warn("AI report audit skipped: {}", e.getClass().getSimpleName());
         }
@@ -93,8 +94,31 @@ public class AiReportAuditService {
                     AiReportQuotaService.estimateTokens(question, answer)
             );
         } catch (Exception e) {
-            log.warn("AI assistant audit skipped: {}", e.getClass().getSimpleName());
+            log.warn("AI assistant audit skipped type={} sqlState={} vendorCode={}",
+                    e.getClass().getSimpleName(), sqlState(e), vendorCode(e));
         }
+    }
+
+    private static String sqlState(Throwable error) {
+        Throwable cause = error.getCause();
+        while (cause != null) {
+            if (cause instanceof java.sql.SQLException sqlException) {
+                return sqlException.getSQLState();
+            }
+            cause = cause.getCause();
+        }
+        return "";
+    }
+
+    private static String vendorCode(Throwable error) {
+        Throwable cause = error.getCause();
+        while (cause != null) {
+            if (cause instanceof java.sql.SQLException sqlException) {
+                return Integer.toString(sqlException.getErrorCode());
+            }
+            cause = cause.getCause();
+        }
+        return "";
     }
 
     private static String firstNonBlank(String a, String b) {

@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -24,6 +25,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ShopfrontIntegrationControllerTest {
@@ -41,6 +43,28 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failure.getStatusCode());
         assertEquals("Unable to stage Shopfront import", failure.getReason());
         assertFalse(failure.getMessage().contains("password=secret"));
+    }
+
+    @Test
+    void completeInventoryReplacementClearsOnlyTheTargetStoreShadow() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "persistShadow", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        persistShadow.setAccessible(true);
+        persistShadow.invoke(controller, "inventory", "skr", Map.of("outlet_id", "48"),
+                new ObjectMapper().readTree("[]"), true);
+
+        verify(jdbc).update(contains("DELETE FROM shopfront_inventory WHERE store_key = ?"), eq("skr"));
     }
 
     @ParameterizedTest

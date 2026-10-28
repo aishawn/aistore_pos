@@ -2,105 +2,93 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, PackageSearch } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, Boxes, Lightbulb, PackageSearch, ReceiptText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ReportSection = {
+type ReportTab = {
   label: string;
   href: string;
   icon: typeof BarChart3;
   match: string[];
-  children: Array<{ label: string; href: string; hint?: string }>;
 };
 
-const SECTIONS: ReportSection[] = [
+const TABS: ReportTab[] = [
   {
     label: "Overview",
     href: "/reports/dashboard",
     icon: BarChart3,
     match: ["/reports/dashboard", "/reports/ai"],
-    children: [
-      { label: "Dashboard", href: "/reports/dashboard" },
-      { label: "AI Insights", href: "/reports/ai/metrics" },
-      { label: "Recent Sales", href: "/history" },
-    ],
+  },
+  {
+    label: "AI Insights",
+    href: "/reports/dashboard#ai-insights",
+    icon: Lightbulb,
+    match: ["/reports/dashboard#ai-insights"],
+  },
+  {
+    label: "Sales History",
+    href: "/history",
+    icon: ReceiptText,
+    match: ["/history"],
   },
   {
     label: "Inventory",
     href: "/reports/inventory",
     icon: Boxes,
     match: ["/reports/inventory"],
-    children: [
-      { label: "Inventory On Hand", href: "/reports/inventory" },
-    ],
   },
   {
     label: "Purchasing & Transfers",
     href: "/reports/purchase",
     icon: PackageSearch,
     match: ["/reports/purchase", "/reports/transfer"],
-    children: [
-      { label: "Purchase Orders", href: "/reports/purchase" },
-      { label: "Transfers In Transit", href: "/reports/transfer" },
-    ],
   },
 ];
 
-function isActive(pathname: string, section: ReportSection) {
-  return section.match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+function isActive(pathname: string, tab: ReportTab) {
+  return tab.match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 export function ReportsNavigation() {
   const pathname = usePathname();
-  const active = SECTIONS.find((section) => isActive(pathname, section)) ?? SECTIONS[0];
+  const [hash, setHash] = useState("");
+  useEffect(() => {
+    const updateHash = () => setHash(window.location.hash);
+    updateHash();
+    window.addEventListener("hashchange", updateHash);
+    return () => window.removeEventListener("hashchange", updateHash);
+  }, [pathname]);
+  const active = TABS.find((tab) => isActive(pathname, tab)) ?? TABS[0];
 
   return (
     <div className="shrink-0 border-b border-[var(--oh-border)] bg-white">
-      <nav aria-label="Report sections" className="overflow-x-auto px-3 pt-2 lg:px-5">
-        <div className="flex min-w-max items-end gap-1">
-          {SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const selected = active.href === section.href;
+      <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5">
+        <div className="flex min-w-max items-center gap-1">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const selected = tab.href.includes("#")
+              ? pathname === tab.href.split("#")[0] && hash === `#${tab.href.split("#")[1]}`
+              : active.href === tab.href && !hash;
             return (
               <Link
-                key={section.href}
-                href={section.href}
+                key={tab.href}
+                href={tab.href}
                 aria-current={selected ? "page" : undefined}
                 className={cn(
-                  "inline-flex min-h-11 items-center gap-2 rounded-t-lg border-b-2 px-3 text-sm font-semibold transition-colors",
+                  "inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition-colors",
                   selected
                     ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
                     : "border-transparent text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]",
                 )}
               >
                 <Icon size={16} aria-hidden="true" />
-                {section.label}
+                {tab.label}
               </Link>
             );
           })}
         </div>
       </nav>
-
-      <div className="flex items-center gap-2 overflow-x-auto border-t border-[var(--oh-border)] px-3 py-2 lg:px-5">
-        <span className="mr-1 shrink-0 text-xs font-semibold uppercase tracking-[.08em] text-[var(--oh-muted)]">Reports</span>
-        {active.children.map((item) => {
-          const selected = pathname === item.href || (item.href.includes("?") && pathname === item.href.split("?")[0]);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={selected ? "page" : undefined}
-              className={cn(
-                "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm transition-colors",
-                selected ? "bg-[var(--oh-primary)] font-semibold text-white" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]",
-              )}
-            >
-              {item.label}
-              {item.hint ? <span className="text-[11px] opacity-75">· {item.hint}</span> : null}
-            </Link>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -316,11 +316,11 @@ export interface OdooPosBootstrap {
 
 export interface OdooCheckoutRequest {
   expectedQuote?: string;
-  externalPaymentConfirmed?: boolean;
   configId: number;
   paymentMethodId: number;
   orderUuid: string;
   customerId?: number | null;
+  externalPaymentConfirmed?: boolean;
   tendered: number;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
@@ -854,6 +854,16 @@ export async function updateOdooCustomer(customerId: number, values: OdooCustome
   });
   const payload = await response.json().catch(() => null) as { message?: string } | null;
   if (!response.ok) throw new OdooApiError(payload?.message || `Customer update failed (${response.status})`, response.status);
+}
+
+export async function archiveOdooCustomer(customerId: number): Promise<void> {
+  const response = await fetchOdooApi(`/api/odoo/customers/${customerId}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => null) as { message?: string } | null;
+  if (!response.ok) throw new OdooApiError(payload?.message || `Customer archive failed (${response.status})`, response.status);
 }
 
 async function readOdooListPage<T>(path: string): Promise<{ items: T[]; hasNext: boolean }> {

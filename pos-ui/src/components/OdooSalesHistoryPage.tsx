@@ -75,14 +75,13 @@ function R2ArchivePanel({ query, overlayZClass = "z-[70]" }: { query: string; ov
 
   return (
     <>
-      <section className="shrink-0 overflow-hidden rounded-lg border border-amber-200 bg-amber-50/60">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 px-4 py-3">
+      <section className="shrink-0 overflow-hidden rounded-[var(--oh-radius)] border border-amber-200/80 bg-amber-50/45">
+        <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront R2 source archive</h2>
-            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot. Not the sales ledger — use the Orithos table below for refunds and reporting.</p>
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront R2 source archive <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">TEST</span></h2>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only cross-check. Use the Orithos ledger below for refunds and reporting.</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">R2 · TEST</span>
             <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 text-sm font-semibold text-[var(--oh-text)]">
               {expanded ? "Hide" : `Show ${filtered.length}`}
             </button>
@@ -90,7 +89,7 @@ function R2ArchivePanel({ query, overlayZClass = "z-[70]" }: { query: string; ov
         </header>
         {error && <div role="status" className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={() => setRetryKey((value) => value + 1)} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100"><RefreshCw size={14} /> Retry archive</button></div>}
         {expanded && !error && (
-          <div className="max-h-72 divide-y divide-amber-100 overflow-y-auto bg-white/70">
+          <div className="max-h-64 divide-y divide-amber-100 overflow-y-auto bg-white/60">
             {filtered.length ? filtered.map((receipt) => (
               <button key={receipt.id} type="button" onClick={() => setSelected(receipt)} className="flex min-h-12 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-left hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)]">
                 <span className="min-w-32 font-semibold text-[var(--oh-primary)]">{receipt.invoiceNumber}</span>
@@ -374,7 +373,6 @@ export function OdooSalesHistoryPage({
     try {
       const amount = Math.abs(saleDetail.order.amount_total);
       const request: OdooCheckoutRequest = {
-        externalPaymentConfirmed: true,
         configId: openConfig.id,
         paymentMethodId,
         orderUuid: crypto.randomUUID(),
@@ -439,17 +437,19 @@ export function OdooSalesHistoryPage({
   return (
     <Root className={isPanel
       ? "flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-white p-3 sm:p-4"
-      : "flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6"}>
-      <header className="flex shrink-0 items-start justify-between gap-3">
+      : "flex h-full min-h-0 flex-col gap-5 overflow-hidden bg-[var(--oh-surface)] px-4 py-5 md:px-8 md:py-6"}>
+      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
         <div className="min-w-0">
-          <h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "oh-type-title text-[var(--oh-text)]"}>Sales History</h1>
+          <h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "text-2xl font-semibold tracking-[-0.02em] text-[var(--oh-text)]"}>Sales History</h1>
           {!isPanel && (
-            <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+            <p className="mt-1 max-w-3xl text-sm leading-5 text-[var(--oh-muted)]">
               Formal ledger is Orithos POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Orithos rows, not the archive.
             </p>
           )}
-          {lastLoadedAt !== null && <p className="mt-1 text-xs text-[var(--oh-muted)]">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</p>}
-          {!isPanel && <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950">TEST · aipos demo data</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--oh-muted)]">
+            {lastLoadedAt !== null && <span>Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
+            {!isPanel && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-950">TEST · demo data</span>}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -483,12 +483,12 @@ export function OdooSalesHistoryPage({
         </section>
       ) : (
         <>
-          <div className="flex w-full max-w-3xl shrink-0 flex-wrap gap-2">
-            <label aria-label="Search sales" className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+          <div className="flex w-full shrink-0 flex-wrap gap-2.5 xl:max-w-5xl">
+            <label aria-label="Search sales" className="flex h-11 min-w-[220px] flex-[1_1_280px] items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input aria-label="Search sales by receipt or order reference" value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search receipt or order reference" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             </label>
-            <label className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
+            <label className="flex h-11 shrink-0 items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
               <span className="sr-only">Filter sales by time</span>
               <select value={period} onChange={(event) => { setPeriod(event.target.value as OdooSalesPeriodFilter); setOffset(0); }} className="h-full bg-transparent outline-none">
                 <option value="all">All time</option>
@@ -499,7 +499,7 @@ export function OdooSalesHistoryPage({
                 <option value="180d">Last 180 days</option>
               </select>
             </label>
-            <label className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
+            <label className="flex h-11 shrink-0 items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
               <span className="sr-only">Filter sales by status</span>
               <select value={status} onChange={(event) => { setStatus(event.target.value as OdooSalesStatusFilter); setOffset(0); }} className="h-full bg-transparent outline-none">
                 <option value="all">All statuses</option>
@@ -509,7 +509,7 @@ export function OdooSalesHistoryPage({
                 <option value="draft">Draft</option>
               </select>
             </label>
-            <button type="button" onClick={exportVisibleSales} disabled={!items.length || loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50" title="Export the currently visible sales rows as CSV">
+            <button type="button" onClick={exportVisibleSales} disabled={!items.length || loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50" title="Export the currently visible sales rows as CSV">
               <Download size={16} /> Export visible
             </button>
           </div>
@@ -518,7 +518,7 @@ export function OdooSalesHistoryPage({
 
           <R2ArchivePanel query={debouncedQuery} overlayZClass={r2OverlayZ} />
 
-          <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section className="min-h-0 flex-1 overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
@@ -539,12 +539,12 @@ export function OdooSalesHistoryPage({
                   <tr><td colSpan={6} className="p-0"><SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} /></td></tr>
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
-                    <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-[var(--oh-orange-dark)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><FileText size={15} aria-hidden="true" />{sale.pos_reference || sale.name}</button></td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order, storeTimezone)}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span></td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3.5"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-[var(--oh-orange-dark)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><FileText size={15} aria-hidden="true" />{sale.pos_reference || sale.name}</button></td>
+                    <td className="px-4 py-3.5 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order, storeTimezone)}</td>
+                    <td className="px-4 py-3.5 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
+                    <td className="px-4 py-3.5 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
+                    <td className="px-4 py-3.5"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span></td>
+                    <td className="px-4 py-3.5 text-right">
                       <div className="flex flex-col items-end gap-1">
                         <span className={`font-semibold tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{money(sale.amount_total)}</span>
                         {sale.amount_total < 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold leading-4 text-[var(--oh-danger)]">Refund</span>}

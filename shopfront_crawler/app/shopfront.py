@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import date, timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -146,7 +147,17 @@ UNCONSOLIDATED'''
           sales(startDate: $startDate, endDate: $endDate, after: $after) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
-              items { id quantity cost basePrice tax totalPrice item { id } }
+              items { id quantity cost basePrice tax totalPrice item { id ... on Product {
+                name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
+                tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice
+                minimumOrderQuantity orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+                category { id name } brand { id name } family { id name } tags { name }
+                trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
+                prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+                barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+                inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
+                  reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+              } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }
@@ -155,23 +166,125 @@ UNCONSOLIDATED'''
         """
         start_value = f"{start}T00:00:00Z"
         end_value = f"{end}T23:59:59Z"
-        result: list[dict[str, Any]] = []
-        after: str | None = None
-        while True:
-            data = await self.graphql(access_token, query, {"startDate": start_value, "endDate": end_value, "after": after})
-            connection = data.get("sales", {}) if isinstance(data, dict) else {}
-            edges = connection.get("edges", []) if isinstance(connection, dict) else []
-            result.extend(edge.get("node", {}) for edge in edges if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
-            page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
-            if not page_info.get("hasNextPage") or not page_info.get("endCursor"):
-                return result
-            after = page_info["endCursor"]
+        variables = {"startDate": start_value, "endDate": end_value}
+        try:
+            return await self._fetch_connection_nodes(access_token, query, "sales", variables)
+        except ShopfrontError:
+            # Optional Product fields differ between Shopfront tenants. Keep
+            # core Sale, item name, barcode, and payment sync available.
+            basic_query = """
+            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
+              sales(startDate: $startDate, endDate: $endDate, after: $after) {
+                edges { node {
+                  id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+                  items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
+                  payments { id amount status subtype }
+                } }
+                pageInfo { hasNextPage endCursor }
+              }
+            }
+            """
+            return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables)
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return _extract_nodes(await self.graphql(access_token, query), "products")
+        try:
+            nodes = await self._fetch_connection_nodes(access_token, query, "products")
+        except ShopfrontError:
+            # Shopfront rejects a complete GraphQL page when one optional
+            # field is unavailable for a tenant. Keep the catalog usable with
+            # fields supported by the current production schema.
+            fallback = """
+            { products(first: 100) { edges { node {
+              id name description image alternateImages status cost globalCost
+              prices { price } barcodes { code quantity }
+              category { name } brand { name }
+              inventory { quantity outlet { id name } }
+            } } } }
+            """
+            nodes = await self._fetch_connection_nodes(access_token, fallback, "products")
+
+        # Optional fields are queried independently. Shopfront GraphQL rejects
+        # a whole selection when one field is unavailable for a tenant, so a
+        # problem in one group must not discard the base catalog page.
+        optional_queries = (
+            # Keep metadata independent from SHOPFRONT_PRODUCTS_QUERY. A
+            # deployment may override that variable with a small query, but
+            # the crawler must still attempt to fetch every supported catalog
+            # field before deciding that it is unavailable.
+            "{ products(first: 100) { edges { node { id name description image alternateImages } } } }",
+            "{ products(first: 100) { edges { node { id mdbId status type createdAt updatedAt deletedAt deleted tempProduct } } } }",
+            "{ products(first: 100) { edges { node { id category { id name } brand { id name } family { id name } tags { name } } } } }",
+            "{ products(first: 100) { edges { node { id trackInventory caseQuantity useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges orderNotes invoiceNotes } } } }",
+            "{ products(first: 100) { edges { node { id cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage } } } }",
+            "{ products(first: 100) { edges { node { id prices { quantity price priceEx decimalPlaceLength priceSet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id barcodes { code quantity } taxRate { id name } costTaxRate { id name } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel reorderLevelSingles reorderLevelCases outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderAmount reorderAmountSingles reorderAmountCases reorderLimit outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity maxQuantity maxQuantitySingles maxQuantityCases onOrder outlet { id name } } } } } }",
+        )
+        merged = {str(node.get("id")): dict(node) for node in nodes if isinstance(node, dict) and node.get("id")}
+        for optional_query in optional_queries:
+            try:
+                for node in await self._fetch_connection_nodes(access_token, optional_query, "products"):
+                    if not isinstance(node, dict) or not node.get("id"):
+                        continue
+                    target = merged.get(str(node["id"]))
+                    if target is not None:
+                        for key, value in node.items():
+                            if value is None:
+                                continue
+                            if key != "inventory" or not isinstance(value, list):
+                                target[key] = value
+                                continue
+                            current = {
+                                str(row.get("outlet", {}).get("id")): dict(row)
+                                for row in (target.get("inventory") or [])
+                                if isinstance(row, dict) and isinstance(row.get("outlet"), dict) and row.get("outlet", {}).get("id")
+                            }
+                            for row in value:
+                                if not isinstance(row, dict):
+                                    continue
+                                outlet_id = str((row.get("outlet") or {}).get("id", ""))
+                                current.setdefault(outlet_id, {}).update(row)
+                            target["inventory"] = list(current.values())
+            except ShopfrontError:
+                continue
+        return list(merged.values())
+
+    async def _fetch_connection_nodes(
+        self,
+        access_token: str,
+        query: str,
+        field: str,
+        variables: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        paged_query = _add_cursor_pagination(query, field)
+        result: list[dict[str, Any]] = []
+        after: str | None = None
+        seen_cursors: set[str] = set()
+        while True:
+            request_variables = dict(variables or {})
+            request_variables["after"] = after
+            data = await self.graphql(access_token, paged_query, request_variables)
+            connection = data.get(field, {}) if isinstance(data, dict) else {}
+            edges = connection.get("edges", []) if isinstance(connection, dict) else []
+            result.extend(
+                edge["node"]
+                for edge in edges
+                if isinstance(edge, dict) and isinstance(edge.get("node"), dict)
+            )
+            page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+            if not page_info.get("hasNextPage"):
+                return result
+            next_cursor = page_info.get("endCursor")
+            if not next_cursor or str(next_cursor) in seen_cursors:
+                raise ShopfrontError(f"Shopfront {field} pagination returned a missing or repeated cursor")
+            seen_cursors.add(str(next_cursor))
+            after = str(next_cursor)
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return _extract_nodes(await self.graphql(access_token, query), "products")
+        return await self._fetch_connection_nodes(access_token, query, "products")
 
     async def fetch_sale_detail(self, access_token: str, sale_id: str, query: str) -> dict[str, Any]:
         data = await self.graphql(access_token, query, {"id": sale_id})
@@ -201,3 +314,37 @@ def _extract_nodes(data: dict[str, Any], key: str) -> list[dict[str, Any]]:
         if isinstance(value.get("edges"), list):
             return [edge.get("node", {}) for edge in value["edges"]]
     return []
+
+
+def _add_cursor_pagination(query: str, field: str) -> str:
+    selector = re.compile(rf"\b{re.escape(field)}\s*\(\s*first\s*:\s*(\d+)(?:\s*,\s*after\s*:\s*\$after)?\s*\)")
+    match = selector.search(query)
+    if not match:
+        already_paginated = re.search(rf"\b{re.escape(field)}\s*\([^)]*\bafter\s*:\s*\$after", query)
+        declared_cursor = re.search(r"\$after\s*:\s*Cursor\b", query)
+        if already_paginated and declared_cursor and "pageInfo" in query:
+            return query
+        raise ShopfrontError(f"Shopfront {field} query must select a paginated connection with first: N")
+    paged = selector.sub(lambda found: f"{field}(first: {found.group(1)}, after: $after)", query, count=1)
+    opening = paged.find("{", match.end())
+    if opening < 0:
+        raise ShopfrontError(f"Shopfront {field} query has no connection selection")
+    depth = 0
+    closing = -1
+    for index in range(opening, len(paged)):
+        if paged[index] == "{":
+            depth += 1
+        elif paged[index] == "}":
+            depth -= 1
+            if depth == 0:
+                closing = index
+                break
+    if closing < 0:
+        raise ShopfrontError(f"Shopfront {field} query has unbalanced selections")
+    if "pageInfo" not in paged[opening:closing]:
+        paged = f"{paged[:closing]} pageInfo {{ hasNextPage endCursor }} {paged[closing:]}"
+    if paged.lstrip().startswith("{"):
+        return f"query CursorPage($after: Cursor) {paged}"
+    if not re.search(r"\$after\s*:\s*Cursor\b", paged):
+        raise ShopfrontError(f"Shopfront {field} operation must declare $after: Cursor")
+    return paged

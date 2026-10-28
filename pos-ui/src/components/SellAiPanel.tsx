@@ -1412,6 +1412,9 @@ export function SellAiPanel({
           </Link>
         </div>
         <nav className="space-y-1 text-[14px]" aria-label="AI assistant navigation">
+          <Link href="/" className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+            <ShoppingCart size={17} /> Sell
+          </Link>
           <button type="button" onClick={() => setHistoryOpen(false)} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]", !historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)]")} aria-current={!historyOpen ? "page" : undefined}>
             <Sparkles size={17} /> AI Assistant
           </button>

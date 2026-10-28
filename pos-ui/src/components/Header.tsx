@@ -29,46 +29,40 @@ export function Header({
   const tabIndex = checkoutKeyboard ? -1 : undefined;
 
   return (
-    <header className="relative flex h-[50px] items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-header-bg)] font-sans print:hidden">
-      <button
-        type="button"
-        tabIndex={tabIndex}
-        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={sidebarOpen}
-        aria-controls="main-navigation"
-        onClick={onSidebarToggle}
-        className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center px-1 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"
-      >
-        {sidebarOpen ? (
-          <PanelLeftClose size={22} strokeWidth={1.5} />
-        ) : (
-          <PanelLeft size={22} strokeWidth={1.5} />
-        )}
-      </button>
-
-      <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true">
-        <OrithosLogo />
-      </div>
-
-      <div className="flex items-center gap-2 pr-2 sm:pr-5">
+    <header className="relative shrink-0 bg-[var(--oh-header-bg)] font-sans print:hidden">
+      <div className="flex h-[var(--oh-header-height)] items-center justify-between border-b border-[var(--oh-border)]">
         <button
           type="button"
           tabIndex={tabIndex}
-          onClick={onUserClick}
-          title="User menu"
-          aria-label={`User menu for ${userName}`}
-          data-user-menu-trigger
-          aria-haspopup="dialog"
-          aria-controls="user-menu"
-          aria-expanded={userMenuOpen}
-          data-testid="sh-current-user"
-          className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={sidebarOpen}
+          aria-controls="main-navigation"
+          onClick={onSidebarToggle}
+          className="flex h-full w-14 shrink-0 cursor-pointer items-center justify-center text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)]"
         >
-          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-primary)]">
-            <UserIcon size={20} className="text-white" fill="white" />
-          </span>
-          <p className="oh-type-body mx-2 hidden text-[var(--oh-text)] sm:block">{userName}</p>
+          {sidebarOpen ? <PanelLeftClose size={21} strokeWidth={1.6} /> : <PanelLeft size={21} strokeWidth={1.6} />}
         </button>
+
+        <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true"><OrithosLogo /></div>
+
+        <div className="flex items-center gap-2 pr-3 sm:pr-6">
+          <button
+            type="button"
+            tabIndex={tabIndex}
+            onClick={onUserClick}
+            title="User menu"
+            aria-label={`User menu for ${userName}`}
+            data-user-menu-trigger
+            aria-haspopup="dialog"
+            aria-controls="user-menu"
+            aria-expanded={userMenuOpen}
+            data-testid="sh-current-user"
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-1 transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--oh-primary)]"><UserIcon size={18} className="text-white" fill="white" /></span>
+            <p className="oh-type-body mx-2 hidden text-[var(--oh-text)] sm:block">{userName}</p>
+          </button>
+        </div>
       </div>
     </header>
   );

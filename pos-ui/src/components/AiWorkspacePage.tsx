@@ -60,7 +60,7 @@ const storeTasks: AiTask[] = [
   {
     href: "/stock/price-suggestions",
     icon: BarChart3,
-    title: "Review price suggestions",
+    title: "Price Suggestions",
     description:
       "Review data-backed price candidates before applying any change.",
     permission: "ai.price_suggestions",

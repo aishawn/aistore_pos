@@ -72,6 +72,89 @@ def business_date(value: Any, fallback: date) -> str:
     return (parsed.date() if parsed else fallback).isoformat()
 
 
+def _non_empty(value: Any) -> bool:
+    return value is not None and value != "" and value != [] and value != {}
+
+
+def _upsert_sale_product(
+    db: Session,
+    store_key: str,
+    product_id: str,
+    source_product: dict[str, Any],
+    sale_item: dict[str, Any],
+    cache: dict[str, Product] | None = None,
+) -> Product:
+    """Promote the product embedded in a SaleItem into the catalog mirror.
+
+    Shopfront's current products query only returns the current catalog. Older
+    sales can reference products that are no longer in that catalog, but their
+    SaleItem still contains the name, barcode and image metadata needed to
+    render the historical sale and to create an auditable POS product.
+    """
+    product = cache.get(product_id) if cache is not None else None
+    if product is None:
+        product = db.scalar(select(Product).where(
+            Product.store_key == store_key,
+            Product.shopfront_product_id == product_id,
+        ))
+    if product is None:
+        product = Product(store_key=store_key, shopfront_product_id=product_id)
+        db.add(product)
+    if cache is not None:
+        # A date range can contain many SaleItems for the same product. Keep
+        # one pending ORM instance so a later row cannot enqueue a duplicate
+        # INSERT before the transaction is flushed.
+        cache[product_id] = product
+
+    incoming = dict(source_product) if isinstance(source_product, dict) else {}
+    incoming.setdefault("id", product_id)
+    name = first(incoming, "name", "Name") or first(sale_item, "productName", "name")
+    if name and not incoming.get("name"):
+        incoming["name"] = name
+    barcodes = incoming.get("barcodes") if isinstance(incoming.get("barcodes"), list) else []
+    barcode = first(incoming, "barcode", "Barcode")
+    if not barcode and barcodes and isinstance(barcodes[0], dict):
+        barcode = barcodes[0].get("code")
+    if barcode and not incoming.get("barcode"):
+        incoming["barcode"] = barcode
+    if not incoming.get("prices") and _non_empty(first(sale_item, "basePrice", "unitPrice")):
+        incoming["prices"] = [{"quantity": 1, "price": first(sale_item, "basePrice", "unitPrice")}]
+    if not _non_empty(first(incoming, "cost", "Cost")) and _non_empty(sale_item.get("cost")):
+        incoming["cost"] = sale_item.get("cost")
+
+    existing_raw = dict(product.raw_payload) if isinstance(product.raw_payload, dict) else {}
+    merged_raw = dict(existing_raw)
+    for key, value in incoming.items():
+        if _non_empty(value) or key not in merged_raw:
+            merged_raw[key] = value
+    product.raw_payload = merged_raw
+    # Older imports created ``Shopfront <source_id>`` placeholders before the
+    # complete SaleItem query was enabled. Replace those placeholders when a
+    # real source name arrives, while keeping an already meaningful catalog
+    # name stable.
+    if name and (not product.name or str(product.name).strip().startswith("Shopfront ")):
+        product.name = str(name)
+    incoming_sku = first(incoming, "sku", "SKU", "mdbId", "MDB ID")
+    if incoming_sku and not product.sku:
+        product.sku = str(incoming_sku)
+    if barcode and not product.barcode:
+        product.barcode = str(barcode)
+    incoming_cost = parse_decimal(first(incoming, "cost", "Cost"))
+    if incoming_cost is not None and product.cost is None:
+        product.cost = incoming_cost
+    incoming_price = parse_decimal(first(incoming, "price", "Price", "retailPrice", "basePrice"))
+    if incoming_price is None:
+        prices = incoming.get("prices") if isinstance(incoming.get("prices"), list) else []
+        if prices and isinstance(prices[0], dict):
+            incoming_price = parse_decimal(first(prices[0], "price", "Price"))
+    if incoming_price is None:
+        incoming_price = parse_decimal(first(sale_item, "basePrice", "unitPrice"))
+    if incoming_price is not None and product.price is None:
+        product.price = incoming_price
+    product.synced_at = datetime.now(timezone.utc)
+    return product
+
+
 def is_after(value: datetime | None, point: datetime) -> bool:
     if value is None:
         return False
@@ -129,7 +212,9 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
     db.add(run)
     db.commit()
     client = get_client(settings, store)
-    counts = {"summaries": 0, "sales": 0, "products": 0, "inventory": 0, "warnings": []}
+    counts = {"summaries": 0, "sales": 0, "products": 0, "products_from_sales": 0, "inventory": 0, "warnings": []}
+    sale_product_ids: set[str] = set()
+    sale_products: dict[str, Product] = {}
     try:
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
@@ -181,7 +266,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
-        for row in sale_rows:
+        for sale_index, row in enumerate(sale_rows, start=1):
             sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
             if sale_id:
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
@@ -213,19 +298,55 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     if not item_id:
                         continue
                     product_id = str(product.get("id") or item_id)
-                    sale_item = db.scalar(select(SaleItem).where(SaleItem.sale_id == sale.id, SaleItem.shopfront_product_id == product_id))
+                    sale_product_ids.add(product_id)
+                    _upsert_sale_product(db, store.store_key, product_id, product, item, sale_products)
+                    line_key = str(item_id)
+                    sale_item = db.scalar(select(SaleItem).where(SaleItem.sale_id == sale.id, SaleItem.line_key == line_key))
+                    # Rows created by older versions have no line_key. Reuse a
+                    # legacy row for the first matching line instead of making
+                    # every retry duplicate it.
                     if sale_item is None:
-                        sale_item = SaleItem(sale_id=sale.id, shopfront_product_id=product_id)
+                        sale_item = db.scalar(select(SaleItem).where(
+                            SaleItem.sale_id == sale.id,
+                            SaleItem.shopfront_product_id == product_id,
+                            SaleItem.line_key.is_(None),
+                        ))
+                    if sale_item is None:
+                        sale_item = SaleItem(sale_id=sale.id, line_key=line_key, shopfront_product_id=product_id)
                         db.add(sale_item)
+                    sale_item.line_key = line_key
                     sale_item.quantity = parse_decimal(first(item, "quantity", "Quantity"))
                     sale_item.unit_price = parse_decimal(first(item, "basePrice", "unitPrice"))
                     sale_item.line_total = parse_decimal(first(item, "totalPrice", "lineTotal"))
                     sale_item.cost = parse_decimal(first(item, "cost", "Cost"))
                     sale_item.tax = parse_decimal(first(item, "tax", "Tax"))
-                    sale_item.product_name = first(item, "productName", "name")
+                    # Shopfront puts the product fields under SaleItem.item.
+                    # Older queries only requested item.id, so retain the
+                    # top-level fallbacks for tenants with legacy payloads.
+                    sale_item.product_name = first(item, "productName", "name") or first(
+                        product, "name", "displayName", "title"
+                    )
+                    # Some Shopfront tenants return only ``item.id`` from the
+                    # Sale connection even when the inline Product fields are
+                    # requested. Fall back to the catalog already stored by
+                    # the crawler so POS sale lines retain a real name.
+                    if not sale_item.product_name:
+                        catalog_product = db.scalar(select(Product).where(
+                            Product.store_key == store.store_key,
+                            Product.shopfront_product_id == product_id,
+                        ))
+                        if catalog_product and catalog_product.name:
+                            sale_item.product_name = catalog_product.name
                     sale_item.raw_payload = item
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
+                # Do not hold SQLite's writer lock for the duration of a
+                # large GraphQL history window. This also makes a completed
+                # subset durable if the process is restarted mid-chunk.
+                if sale_index % 50 == 0:
+                    db.commit()
+        if sale_rows:
+            db.commit()
         if rows and not sale_rows:
             counts["warnings"].append({"stage": "sales", "message": "Complete Sale query returned no rows; saved summaries only."})
         products = []
@@ -248,7 +369,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             barcodes = item.get("barcodes") if isinstance(item.get("barcodes"), list) else []
             category = item.get("category") if isinstance(item.get("category"), dict) else {}
             brand = item.get("brand") if isinstance(item.get("brand"), dict) else {}
-            product.sku = first(item, "sku", "SKU")
+            product.sku = first(item, "sku", "SKU", "mdbId", "MDB ID")
             product.barcode = first(item, "barcode", "Barcode") or (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else None)
             product.name = first(item, "name", "Name")
             product.category = first(item, "categoryName") or category.get("name")
@@ -263,8 +384,49 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             for inventory_row in inventory_rows:
                 quantity = first(inventory_row, "quantity", "Quantity")
                 if quantity is not None:
-                    db.add(InventorySnapshot(store_key=store.store_key, shopfront_product_id=str(product_id), quantity=parse_decimal(quantity), raw_payload=inventory_row))
+                    outlet = inventory_row.get("outlet") if isinstance(inventory_row.get("outlet"), dict) else {}
+                    outlet_id = first(inventory_row, "outletId") or outlet.get("id") or "unknown"
+                    outlet_name = first(inventory_row, "outletName") or outlet.get("name")
+                    # SessionLocal intentionally disables autoflush. Flush a
+                    # newly seen row before the lookup so duplicate outlet
+                    # entries in one GraphQL response are still idempotent.
+                    db.flush()
+                    existing_inventory = db.scalar(select(InventorySnapshot).where(
+                        InventorySnapshot.store_key == store.store_key,
+                        InventorySnapshot.shopfront_product_id == str(product_id),
+                        InventorySnapshot.outlet_id == (str(outlet_id) if outlet_id is not None else None),
+                    ))
+                    if existing_inventory is None:
+                        existing_inventory = InventorySnapshot(
+                            store_key=store.store_key,
+                            shopfront_product_id=str(product_id),
+                            outlet_id=str(outlet_id) if outlet_id is not None else None,
+                        )
+                        db.add(existing_inventory)
+                    existing_inventory.outlet_name = str(outlet_name) if outlet_name is not None else None
+                    existing_inventory.quantity = parse_decimal(quantity)
+                    existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
+                    existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
+        # Catalog sync normally runs after sales sync in the same transaction.
+        # Backfill historical SaleItem names after the catalog is available so
+        # rerunning a date range repairs old rows without a full reimport.
+        catalog_names = {
+            product.shopfront_product_id: product.name
+            for product in db.scalars(select(Product).where(Product.store_key == store.store_key)).all()
+            if product.name
+        }
+        if catalog_names:
+            sale_items = db.scalars(
+                select(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store.store_key)
+            ).all()
+            for sale_item in sale_items:
+                if not sale_item.product_name:
+                    name = catalog_names.get(sale_item.shopfront_product_id)
+                    if name:
+                        sale_item.product_name = name
+        counts["products_from_sales"] = len(sale_product_ids)
+        counts["product_source_ids"] = sorted(sale_product_ids)
         run.status, run.counts = "completed", counts
         run.finished_at = datetime.now(timezone.utc)
         db.commit()

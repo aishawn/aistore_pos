@@ -210,8 +210,8 @@ export function OdooPriceSuggestionsPage() {
     <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Pricing</p>
-          <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price suggestions</h1>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">AI Workspace</p>
+          <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price Suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
             Shelf suggestions use Orithos taxes and a target margin on net sales excluding GST.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.

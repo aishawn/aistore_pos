@@ -111,3 +111,22 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ message }, { status });
   }
 }
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+
+  const { id: rawId } = await context.params;
+  const customerId = /^\d+$/.test(rawId) ? Number(rawId) : NaN;
+  if (!Number.isSafeInteger(customerId) || customerId < 1) return NextResponse.json({ message: "Invalid customer ID" }, { status: 400 });
+
+  try {
+    const scope = await customerWriteScope(request, { active: false }, customerId);
+    const ok = await scope.rpc<boolean>("res.partner", "write", [[customerId], { active: false }]);
+    if (!ok) return NextResponse.json({ message: "Orithos did not confirm the customer archive" }, { status: 502 });
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
+    const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
+    return NextResponse.json({ message }, { status });
+  }
+}
