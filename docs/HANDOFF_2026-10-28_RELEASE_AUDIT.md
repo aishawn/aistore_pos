@@ -16,6 +16,7 @@
 - Hardware status page and offline simulation: devices remain explicitly unverified; offline checkout is blocked with a reconnect message; offline numbering is explicitly unsupported. Evidence: `docs/UAT_HARDWARE_OFFLINE_RUNTIME-dc3d4d8e.json`.
 - AI feature matrix: login, client capability config, assistant, ASR empty-input guard, Sommelier endpoints, label empty-input guard, read-only price suggestions and anonymous guard passed. Evidence: `docs/UAT_AI_FEATURES_RUNTIME-dc3d4d8e.json`.
 - AI availability workspace check: dedicated `/assistant` route, enabled composer, and read-only stock shortcut passed on the current runtime. Evidence: `docs/UAT_AI_AVAILABILITY_ONLINE_20261028_fixed.json`.
+- The same availability check passed after deployment of `23d6f62c`; evidence: `docs/UAT_AI_AVAILABILITY_RUNTIME-23d6f62c.json`.
 
 ## Remaining blockers
 
