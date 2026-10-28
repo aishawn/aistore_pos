@@ -220,6 +220,9 @@ def save_pos_mapping(store_key: str, payload: dict, db: Session = Depends(get_db
 @app.post("/api/stores/{store_key}/sync")
 async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
+    active = active_job(db, store.store_key)
+    if active:
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
     end = to_date or date.today()
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
     background_tasks.add_task(run_sync_background, store.store_key, start, end)
@@ -341,13 +344,9 @@ async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks,
 async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     """Refresh product metadata and inventory without waiting for history."""
     store = require_store(store_key, db)
-    active = db.scalar(select(SyncJob).where(
-        SyncJob.store_key == store.store_key,
-        SyncJob.job_type == "catalog_snapshot",
-        SyncJob.status.in_(["queued", "running"]),
-    ))
+    active = active_job(db, store.store_key)
     if active:
-        raise HTTPException(409, "A catalog snapshot is already active for this store")
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
     job = SyncJob(store_key=store.store_key, job_type="catalog_snapshot", status="queued")
     db.add(job)
     db.commit()
@@ -1115,8 +1114,20 @@ async def scheduled_sync() -> None:
     today = datetime.now(ZoneInfo(settings.sync_timezone)).date()
     end = today - timedelta(days=1)
     start = end - timedelta(days=settings.sync_lookback_days - 1)
-    for store_key in settings.stores():
-        await run_sync_background(store_key, start, end)
+    db = next(get_db())
+    try:
+        for store_key in settings.stores():
+            # A persisted history/snapshot job owns the store writer. Waiting
+            # behind it would add another full report/import window and can
+            # make the historical job appear stalled while doing duplicate
+            # work. The next scheduled run will cover this lookback window.
+            active = active_job(db, store_key)
+            if active:
+                logger.info("Skipping scheduled sync for store=%s; active job=%s/%s", store_key, active.id, active.job_type)
+                continue
+            await run_sync_background(store_key, start, end)
+    finally:
+        db.close()
 
 
 async def run_history_job(job_id: int) -> None:

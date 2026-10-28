@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import main
 from app.db import Base
-from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncRun
+from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product
 
 
@@ -260,3 +260,35 @@ async def test_resumed_history_skips_catalog_when_products_are_already_durable(d
     await main.run_sync_background("skr", date(2026, 10, 26), date(2026, 10, 26), job_id=25)
 
     assert calls == [False]
+
+
+@pytest.mark.asyncio
+async def test_scheduled_sync_skips_store_with_active_history_job(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        SyncJob(store_key="skr", job_type="history", status="running", from_date="2026-01-01", to_date="2026-01-02", cursor_date="2026-01-01"),
+    ])
+    db_session.commit()
+    monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+    monkeypatch.setattr(main.settings, "sync_lookback_days", 3)
+    monkeypatch.setattr(main.settings, "sync_timezone", "Australia/Adelaide")
+
+    calls = []
+
+    async def unexpected_sync(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    monkeypatch.setattr(main, "run_sync_background", unexpected_sync)
+    await main.scheduled_sync()
+
+    assert calls == []
+
+
+def test_active_job_is_store_wide_for_manual_sync(db_session):
+    db_session.add(SyncJob(store_key="skr", job_type="history", status="running"))
+    db_session.commit()
+
+    active = main.active_job(db_session, "skr")
+
+    assert active is not None
+    assert active.job_type == "history"
