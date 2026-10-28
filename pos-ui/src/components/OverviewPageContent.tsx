@@ -362,8 +362,8 @@ export function OverviewPageContent({
                     <span className="ov-panel-period">Last 7 days</span>
                   </div>
                   <dl className="ov-pulse-stats">
-                    <div><dt>Sales</dt><dd>{money(data.revenue, data.currency)}</dd><span className="ov-stat-note"><CheckCircle2 size={13} /> Last 7 days</span></div>
-                    <div><dt>Transactions</dt><dd>{data.transactions ?? "—"}</dd><span className="ov-stat-note">Last 7 days</span></div>
+                    <div><dt>Sales</dt><dd>{money(data.revenue, data.currency)}</dd></div>
+                    <div><dt>Transactions</dt><dd>{data.transactions ?? "—"}</dd></div>
                     <div><dt>Opportunities</dt><dd>{data.opportunities ?? "—"}</dd><span className="ov-stat-note">Needs your attention</span></div>
                   </dl>
                   {canReport ? <Link className="ov-panel-action ov-pulse-banner" href="/reports/dashboard"><Sparkles size={28} /><span><strong>Your next insight starts here</strong><small>Explore your store’s sales and performance.</small></span><ArrowRight size={18} /></Link> : null}
