@@ -760,10 +760,10 @@ async def push_pos_snapshot(
     # absent from the current catalog and from older Sale payloads. Query those
     # IDs directly so names, images, prices and barcodes are not lost merely
     # because the product is no longer active.
-    missing_ids = [
-        source_id for source_id, item in product_items_by_source.items()
-        if not item.get("name") or not item.get("image") or not item.get("alternate_images")
-    ]
+    # Do not query every product merely because this tenant has no images.
+    # Image coverage is reported separately; only missing names require an
+    # archived-product lookup during the historical sale repair.
+    missing_ids = [source_id for source_id, item in product_items_by_source.items() if not item.get("name")]
     if missing_ids:
         source_store = db.scalar(select(Store).where(Store.store_key == store_key))
         if source_store is not None:
