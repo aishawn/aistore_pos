@@ -33,15 +33,19 @@
     "ordinary assistant quota rejects before provider execution",
     "SKR price list create/read/rename/archive CRUD passes 9/9 with cleanup verified",
     "SKR Odoo API cash sale/refund and inventory/history reconciliation passes 10/10",
-    "SKR browser quote-to-finalise read-only probe passes 5/5 with no checkout business write"
+    "SKR browser quote-to-finalise read-only probe passes 5/5 with no checkout business write",
+    "SKR browser cash sale, receipt, sales history and full refund UI passes 12/12 with inventory and negative refund readback",
+    "SKR purchase confirmation, over-receive guard, partial receipt, idempotent retry, backorder and final receive passes 14/14",
+    "SKR stocktake apply, readback, reversal and final readback passes 5/5"
   ],
   "blocked": [
     "provider image/OCR quota",
     "physical device acceptance",
     "offline POS acceptance",
     "backup restore application smoke",
-    "POS browser checkout submission and post-sale refund UI still need a matched runtime run",
-    "complete procurement, stocktake and cash-close reconciliation",
+    "cash close with correct counted cash returns Cloudflare 502 on the current runtime; an order-count preflight fix is implemented but not yet deployed",
+    "stocktake concurrency and recovery",
+    "GST reconciliation with a correctly taxed product",
     "formal tenant isolation"
   ]
 }

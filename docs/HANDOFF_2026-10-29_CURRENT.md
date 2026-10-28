@@ -36,10 +36,14 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - SKR 价格表真实 CRUD `docs/UAT_PRICELISTS_ONLINE_SKR_2026-10-29.json`：9/9 PASS，创建、读回、改名、归档和最终清理验证通过，3 个 UAT 写入。
 - SKR Odoo POS API 销售→全额退款 `docs/UAT_SELL_REFUND_API_SKR_2026-10-29.json`：10/10 PASS；现金销售与退款均确认，库存 100→销售→退款后回到 100，销售/退款历史均可回读。该证据的商品 GST 为 0，不能替代 GST 正确税率商品验收。
 - SKR POS 浏览器 quote→Finalise 只读探针 `docs/UAT_SELL_QUOTE_ONLINE_SKR_2026-10-29.json`：5/5 PASS；quote HTTP 200、购物车显示报价并启用 `Finalise Sale`，未提交 checkout 业务写入。
+- SKR POS 浏览器真实销售→收据→销售历史→全额退款 UI `docs/UAT_SELL_REFUND_BROWSER_SKR_2026-10-28.json`：12/12 PASS；收据回读、退款确认、负数退款历史和库存回读通过。测试商品 GST 为 0。
+- SKR 采购确认/收货生命周期 `docs/UAT_PURCHASE_RECEIVE_SKR_2026-10-28.json`：14/14 PASS；供应商、RFQ、确认、超量拦截、部分收货、重复提交幂等、backorder 和最终收货均通过。
+- SKR 盘点真实写入回滚 `docs/UAT_STOCKTAKE_WRITE_SKR_2026-10-29.json`：5/5 PASS；数量 190→191→190，Odoo 回读一致，临时差异已恢复。
+- SKR 现金关班 `docs/UAT_CASH_CLOSE_SKR_2026-10-29.json`：缺少盘点时 422 门禁通过，但正确现金 758.80 的关班请求约 30 秒后返回 Cloudflare 502，session 仍为 opened；关班闭环仍阻断。
 
 ## 当前结论：NO-GO（正式生产）
 
-仍需完成：POS 浏览器实际 checkout 提交后的收据/退款 UI 闭环（API 闭环已通过，quote→Finalise 只读 UI 已通过）、采购部分/超量/重复收货、库存盘点并发与恢复、现金关班差异策略、两租户越权、备份恢复后的登录与 POS 交易、真实硬件（打印机/钱箱/扫码器/EFTPOS）和真实脱敏票据 OCR。AI provider 图片/OCR 仍受上游配额限制，不能作为客户承诺能力。
+仍需完成：现金关班 502 修复与正确/错误盘点重试、盘点并发与恢复、两租户越权、备份恢复后的登录与 POS 交易、真实硬件（打印机/钱箱/扫码器/EFTPOS）和真实脱敏票据 OCR。GST 正确税率商品仍缺少可对账样本；AI provider 图片/OCR 仍受上游配额限制，不能作为客户承诺能力。
 
 共享 `aipos_uat` 只适合受控试用和调试。客户试用应限制商品、交易量和管理员权限，并每日核对销售、GST、库存与现金关班。
 
@@ -48,5 +52,6 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - 线上 `/api/public/version`：Demo 与 SKR 的 frontend/backend 均为 `9cebe3ae8211000dedd7cfe10bfccaf6f6963589`；两站点 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
+- 关班超大 session 预检候选已加入：`pos.order.search_count` 超过 `ODOO_CLOSE_MAX_ORDERS`（默认 10,000）时快速返回 HTTP 409，避免等待 Odoo/Cloudflare 超时；该候选尚未部署，需线上复验。
 - 本机未发现 `INITIAL_ADMIN_PASSWORD`、Dokploy/Odoo 凭据，也没有打印机、钱箱、扫码器或 EFTPOS；因此 Demo 认证写入验收和现场设备验收保持 `BLOCKED`，没有伪造 PASS。SKR 只读认证使用用户提供的测试账号完成。
 - 源码边界仍明确显示设备未连接、EFTPOS 未验证和离线 POS 不支持；这只能证明 UI 合约，不能替代现场验收。

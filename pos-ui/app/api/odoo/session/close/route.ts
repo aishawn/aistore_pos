@@ -17,6 +17,13 @@ class CloseError extends Error {
   constructor(message: string, public readonly status = 422) { super(message); }
 }
 
+const DEFAULT_CLOSE_ORDER_LIMIT = 10_000;
+
+function closeOrderLimit() {
+  const value = Number.parseInt(process.env.ODOO_CLOSE_MAX_ORDERS ?? "", 10);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_CLOSE_ORDER_LIMIT;
+}
+
 function getBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
   if (!value) throw new CloseError("Orithos connection is not configured on the POS server.", 503);
@@ -136,6 +143,21 @@ export async function POST(request: NextRequest) {
     if (!sessions?.length) throw new CloseError("The POS session is no longer open.", 409);
 
     const originalCountedCash = sessions[0].cash_register_balance_end_real ?? null;
+    const orderCount = await rpc<number>(
+      odooSession,
+      "pos.order",
+      "search_count",
+      [[["session_id", "=", sessionId]]],
+      {},
+      correlationId,
+    );
+    const maxCloseOrders = closeOrderLimit();
+    if (typeof orderCount === "number" && orderCount > maxCloseOrders) {
+      throw new CloseError(
+        `This register session contains ${orderCount.toLocaleString()} orders and is too large to close from POS. Close it in Orithos or start a fresh register session.`,
+        409,
+      );
+    }
     let countedCashWritten = false;
     try {
       if (body.countedCash != null) {
