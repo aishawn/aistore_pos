@@ -34,8 +34,10 @@ try {
 
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
-  await page.getByTestId("sh-current-user").click();
-  const menu = page.getByRole("dialog", { name: "User menu" });
+  const userButton = page.getByTestId("sh-current-user");
+  await userButton.waitFor({ state: "visible", timeout: 30000 });
+  await userButton.click();
+  const menu = page.locator("#user-menu");
   await menu.waitFor({ state: "visible", timeout: 30000 });
   const onlineText = await menu.innerText();
   const onlineBoundary = onlineText.includes("ONLINE")
