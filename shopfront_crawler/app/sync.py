@@ -366,6 +366,12 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     db.commit()
         if sale_rows:
             db.commit()
+            # The periodic checkpoint above intentionally updates progress in
+            # batches, but the final run record must report the exact number
+            # processed rather than the last checkpoint (for example 2500 of
+            # 2526). This is used by reconciliation and retry decisions.
+            counts["sales_fetched"] = len(sale_rows)
+            counts["sales_processed"] = len(sale_rows)
         if rows and not sale_rows:
             counts["warnings"].append({"stage": "sales", "message": "Complete Sale query returned no rows; saved summaries only."})
         products = []
