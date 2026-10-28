@@ -120,6 +120,7 @@ export function OdooCustomerBalancesPage() {
     <AdminPageLayout
       title="Receivables"
       subtitle="Current receivables and open invoices. Record and reconcile payments in Orithos Accounting."
+      compact
       count={loading || error ? undefined : items.length}
       countLabel="Customers on this page"
       actions={
@@ -128,16 +129,18 @@ export function OdooCustomerBalancesPage() {
         </AdminSecondaryButton>
       }
     >
-      <div className="mb-4"><OdooRecordLink model="account.move">Open Orithos Accounting</OdooRecordLink></div>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <label className="flex h-11 max-w-xl flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
-          <Search size={16} className="text-[var(--oh-muted)]" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customers" className="min-w-0 flex-1 bg-transparent text-sm outline-none" aria-label="Search customer balances" />
-        </label>
-        <label className="inline-flex min-h-11 items-center gap-2 text-sm text-[var(--oh-text)]">
-          <input type="checkbox" checked={owingOnly} onChange={(event) => setOwingOnly(event.target.checked)} className="h-4 w-4" />
-          Owing only
-        </label>
+      <div className="mb-4 flex flex-col gap-3 border-b border-[var(--oh-border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <OdooRecordLink model="account.move">Open Orithos Accounting</OdooRecordLink>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 sm:w-[min(28rem,42vw)]">
+            <Search size={16} className="shrink-0 text-[var(--oh-muted)]" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customers" className="min-w-0 flex-1 bg-transparent text-sm outline-none" aria-label="Search customer balances" />
+          </label>
+          <label className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm text-[var(--oh-text)]">
+            <input type="checkbox" checked={owingOnly} onChange={(event) => setOwingOnly(event.target.checked)} className="h-4 w-4" />
+            Owing only
+          </label>
+        </div>
       </div>
 
       {error && (
