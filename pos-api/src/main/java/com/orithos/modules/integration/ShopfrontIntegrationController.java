@@ -387,7 +387,9 @@ public class ShopfrontIntegrationController {
             productId = findLong("SELECT id FROM product WHERE mdb_id=? AND deleted_at IS NULL LIMIT 1", mdbId);
         }
         if (productId == null) {
-            productId = findLong("SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND outlet_id=? LIMIT 1", name, outletId);
+            // active_name is globally unique in PostgreSQL, so an outlet-scoped
+            // lookup would still try to insert a duplicate for another outlet.
+            productId = findLong("SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", name);
         }
         Long categoryId = ensureLookup("category", text(item, "category"), outletId);
         Long brandId = ensureLookup("brand", text(item, "brand"), outletId);
