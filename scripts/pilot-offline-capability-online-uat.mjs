@@ -43,13 +43,19 @@ try {
   await menu.waitFor({ state: "visible", timeout: 30000 });
   const onlineText = await menu.innerText();
   const onlineBoundary = onlineText.includes("ONLINE")
-    && onlineText.includes("Offline POS checkout is not supported");
+    && onlineText.includes("Offline POS checkout is not supported")
+    && onlineText.includes("Receipt printer")
+    && onlineText.includes("Cash drawer")
+    && onlineText.includes("Keyboard probe only")
+    && onlineText.includes("EFTPOS terminal")
+    && onlineText.includes("Not connected / not validated");
 
   await context.setOffline(true);
   await page.waitForTimeout(250);
   const offlineText = await menu.innerText();
   const offlineBoundary = offlineText.includes("OFFLINE")
-    && offlineText.includes("Offline POS checkout is not supported");
+    && offlineText.includes("Offline POS checkout is not supported")
+    && offlineText.includes("Not connected / not validated");
   await context.setOffline(false);
 
   result = {
