@@ -3,6 +3,7 @@ package com.orithos.modules.ai.sommelier;
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiProviderConfig;
+import com.orithos.modules.ai.AiProviderQuotaService;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import com.orithos.modules.ai.sommelier.dto.AskRequest;
 import com.orithos.modules.ai.sommelier.dto.AskResponse;
@@ -18,6 +19,7 @@ import com.orithos.modules.ai.sommelier.dto.SimilarResponse;
 import com.orithos.modules.ai.sommelier.dto.WineAssistantResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,23 +38,36 @@ public class SommelierController {
     private final SommelierService sommelierService;
     private final TenantContextFactory tenantContextFactory;
     private final ObjectProvider<WineLabelVisionService> visionService;
+    private final AiProviderQuotaService providerQuota;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
     @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
     private String dashScopeBaseUrl;
 
+    @Autowired
     public SommelierController(
             SommelierService sommelierService,
             TenantContextFactory tenantContextFactory,
-            ObjectProvider<WineLabelVisionService> visionService) {
+            ObjectProvider<WineLabelVisionService> visionService,
+            AiProviderQuotaService providerQuota) {
         this.sommelierService = sommelierService;
         this.tenantContextFactory = tenantContextFactory;
         this.visionService = visionService;
+        this.providerQuota = providerQuota;
+    }
+
+    SommelierController(
+            SommelierService sommelierService,
+            TenantContextFactory tenantContextFactory,
+            ObjectProvider<WineLabelVisionService> visionService) {
+        this(sommelierService, tenantContextFactory, visionService, null);
     }
 
     @PostMapping("/recommend")
     public ApiResult<RecommendResponse> recommend(@Valid @RequestBody RecommendRequest request) {
-        return ApiResult.ok(sommelierService.recommend(request, tenantContextFactory.fromSecurity()));
+        var tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
+        return ApiResult.ok(sommelierService.recommend(request, tenant));
     }
 
     @GetMapping("/identify")
@@ -73,8 +88,12 @@ public class SommelierController {
             throw new BusinessException(50301,
                     "Label recognition is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
+        var tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) {
+            providerQuota.acquire(tenant, (int) Math.min(Integer.MAX_VALUE, Math.max(1L, file == null ? 0L : file.getSize() / 4L)));
+        }
         WineLabelRead read = vision.read(file);
-        return ApiResult.ok(sommelierService.identifyFromLabel(read, tenantContextFactory.fromSecurity()));
+        return ApiResult.ok(sommelierService.identifyFromLabel(read, tenant));
     }
 
     @GetMapping("/wines/{id}")
@@ -84,17 +103,23 @@ public class SommelierController {
 
     @PostMapping("/pitch")
     public ApiResult<PitchResponse> pitch(@Valid @RequestBody PitchRequest request) {
-        return ApiResult.ok(sommelierService.pitch(request, tenantContextFactory.fromSecurity()));
+        var tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
+        return ApiResult.ok(sommelierService.pitch(request, tenant));
     }
 
     @PostMapping("/similar")
     public ApiResult<SimilarResponse> similar(@Valid @RequestBody SimilarRequest request) {
-        return ApiResult.ok(sommelierService.similar(request, tenantContextFactory.fromSecurity()));
+        var tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
+        return ApiResult.ok(sommelierService.similar(request, tenant));
     }
 
     @PostMapping("/ask")
     public ApiResult<AskResponse> ask(@Valid @RequestBody AskRequest request) {
-        return ApiResult.ok(sommelierService.ask(request, tenantContextFactory.fromSecurity()));
+        var tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) providerQuota.acquire(tenant, AiProviderQuotaService.estimate(String.valueOf(request)));
+        return ApiResult.ok(sommelierService.ask(request, tenant));
     }
 
     @PostMapping("/feedback")

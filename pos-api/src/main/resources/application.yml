@@ -144,6 +144,9 @@ app:
       max-rows: 500
       queries-per-hour: ${AI_REPORT_QUOTA_QUERIES:120}
       tokens-per-hour: ${AI_REPORT_QUOTA_TOKENS:200000}
+    provider-quota:
+      requests-per-hour: ${AI_PROVIDER_QUOTA_REQUESTS:120}
+      tokens-per-hour: ${AI_PROVIDER_QUOTA_TOKENS:200000}
 
 # 日志级别
 logging:

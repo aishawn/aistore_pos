@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,6 +46,7 @@ public class AiAssistantController {
     private final AiReportMetricsService metricsService;
     private final AiReportAuditService auditService;
     private final AiChatHistoryService chatHistoryService;
+    private final AiProviderQuotaService providerQuota;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
     @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
@@ -52,6 +54,7 @@ public class AiAssistantController {
     @Value("${SOURCE_COMMIT:unknown}")
     private String sourceCommit;
 
+    @Autowired
     public AiAssistantController(
             ObjectProvider<PosAssistantGraphService> graphService,
             ObjectProvider<AiTranscriptionService> transcriptionService,
@@ -59,7 +62,8 @@ public class AiAssistantController {
             AiReportSnapshotService snapshotService,
             AiReportMetricsService metricsService,
             AiReportAuditService auditService,
-            AiChatHistoryService chatHistoryService) {
+            AiChatHistoryService chatHistoryService,
+            AiProviderQuotaService providerQuota) {
         this.graphService = graphService;
         this.transcriptionService = transcriptionService;
         this.tenantContextFactory = tenantContextFactory;
@@ -67,6 +71,19 @@ public class AiAssistantController {
         this.metricsService = metricsService;
         this.auditService = auditService;
         this.chatHistoryService = chatHistoryService;
+        this.providerQuota = providerQuota;
+    }
+
+    AiAssistantController(
+            ObjectProvider<PosAssistantGraphService> graphService,
+            ObjectProvider<AiTranscriptionService> transcriptionService,
+            TenantContextFactory tenantContextFactory,
+            AiReportSnapshotService snapshotService,
+            AiReportMetricsService metricsService,
+            AiReportAuditService auditService,
+            AiChatHistoryService chatHistoryService) {
+        this(graphService, transcriptionService, tenantContextFactory, snapshotService, metricsService,
+                auditService, chatHistoryService, null);
     }
 
     /** Phase A: classify intent + return UI instructions; frontend dispatches search/navigation. */
@@ -80,6 +97,9 @@ public class AiAssistantController {
             auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             throw new BusinessException(50301,
                     "AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+        }
+        if (providerQuota != null) {
+            providerQuota.acquire(tenant, AiProviderQuotaService.estimate(request.question()));
         }
 
         PosAssistantGraphService.AssistantResult result;
@@ -192,6 +212,10 @@ public class AiAssistantController {
         if (!aiEnabled || service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
             throw new BusinessException(50301,
                     "AI transcription is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+        }
+        TenantContext tenant = tenantContextFactory.fromSecurity();
+        if (providerQuota != null) {
+            providerQuota.acquire(tenant, (int) Math.min(Integer.MAX_VALUE, Math.max(1L, file == null ? 0L : file.getSize() / 4L)));
         }
         String text = service.transcribe(file, lang);
         String normalized = AiTranscriptionService.normalizeLang(lang);

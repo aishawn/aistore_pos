@@ -2,8 +2,11 @@ package com.orithos.modules.ai.invoice;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiProviderQuotaService;
+import com.orithos.modules.ai.report.TenantContextFactory;
 import com.orithos.security.AdminAccess;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,9 +23,20 @@ import java.util.List;
 public class AiInvoicePreviewController {
 
     private final ObjectProvider<InvoiceVisionService> visionService;
+    private final TenantContextFactory tenantContextFactory;
+    private final AiProviderQuotaService providerQuota;
 
-    public AiInvoicePreviewController(ObjectProvider<InvoiceVisionService> visionService) {
+    @Autowired
+    public AiInvoicePreviewController(ObjectProvider<InvoiceVisionService> visionService,
+                                      TenantContextFactory tenantContextFactory,
+                                      AiProviderQuotaService providerQuota) {
         this.visionService = visionService;
+        this.tenantContextFactory = tenantContextFactory;
+        this.providerQuota = providerQuota;
+    }
+
+    AiInvoicePreviewController(ObjectProvider<InvoiceVisionService> visionService) {
+        this(visionService, null, null);
     }
 
     @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -32,6 +46,10 @@ public class AiInvoicePreviewController {
         if (vision == null) {
             throw new BusinessException(50301,
                     "Invoice preview is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+        }
+        if (providerQuota != null) {
+            providerQuota.acquire(tenantContextFactory.fromSecurity(),
+                    (int) Math.min(Integer.MAX_VALUE, Math.max(1L, file == null ? 0L : file.getSize() / 4L)));
         }
         return ApiResult.ok(toPreview(vision.read(file)));
     }
