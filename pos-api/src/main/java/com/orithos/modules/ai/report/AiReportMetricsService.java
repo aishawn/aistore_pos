@@ -27,7 +27,7 @@ public class AiReportMetricsService {
         LocalDateTime generatedAt = LocalDateTime.now(ZoneOffset.UTC);
         LocalDateTime since = generatedAt.minusHours(hours);
         AuthUser user = CurrentUser.get();
-        long vendorId = user.vendorId() == null ? 0L : user.vendorId();
+        long vendorId = user.vendorId() == null ? TenantContext.DEFAULT_VENDOR_ID : user.vendorId();
         return buildForVendor(vendorId, hours, since, generatedAt);
     }
 
