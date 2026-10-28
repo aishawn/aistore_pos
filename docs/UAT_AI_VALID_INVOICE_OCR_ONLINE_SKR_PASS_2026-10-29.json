@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-28T21:49:11.860Z",
+  "target": "https://skr.orithos.com.au",
+  "runtimeVerifiedAgainst": "9a4dfeb92ec50ca1a618bf5fc4a6b8a76dc355ed",
+  "scope": "Synthetic Australian tax invoice OCR preview; no Odoo writes",
+  "fixture": "Synthetic Test Supplier Pty Ltd / SYNTH-20261023-001 / Sparkling Water 12 x 750mL",
+  "httpStatus": 200,
+  "apiCode": 0,
+  "checks": {
+    "supplierName": true,
+    "invoiceNumber": true,
+    "invoiceDate": true,
+    "gstAmount": true,
+    "totalPayable": true,
+    "lineDescription": true,
+    "lineQuantity": true,
+    "unitPrice": true,
+    "lineTotal": true
+  },
+  "extractedFieldPresence": {
+    "supplierName": true,
+    "invoiceNumber": true,
+    "invoiceDate": true,
+    "gstIncluded": true,
+    "totalPayable": true,
+    "lineCount": 1
+  },
+  "status": "PASS",
+  "businessWrites": 0,
+  "limitations": [
+    "Synthetic fixture only; this does not prove accuracy on real customer invoices.",
+    "Provider cost and token usage were not exposed by the response."
+  ]
+}

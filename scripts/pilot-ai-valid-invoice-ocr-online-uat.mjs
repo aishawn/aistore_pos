@@ -15,6 +15,7 @@ const env = fs.existsSync(envPath)
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME || "admin";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const expected = {
@@ -49,7 +50,7 @@ const context = await browser.newContext({ viewport: { width: 1000, height: 1200
 let result;
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
@@ -58,6 +59,7 @@ try {
   const page = await context.newPage();
   await page.setContent(html, { waitUntil: "domcontentloaded" });
   const image = await page.locator("main").screenshot({ type: "png" });
+  const requestStartedAt = Date.now();
   const response = await context.request.post(`${base}/api/ai/invoice/preview`, {
     multipart: { file: { name: "synthetic-tax-invoice.png", mimeType: "image/png", buffer: image } },
     headers: { Origin: base },
@@ -85,6 +87,8 @@ try {
     scope: "synthetic invoice image OCR preview only; no Odoo writes",
     fixture: "synthetic Australian tax invoice with non-real supplier and invoice identifiers",
     httpStatus: response.status(),
+    latencyMs: Date.now() - requestStartedAt,
+    rateLimitHeaders: Object.fromEntries(["retry-after", "x-ratelimit-limit", "x-ratelimit-remaining", "x-request-id"].map((name) => [name, response.headers()[name] ?? null])),
     apiCode: body.code ?? null,
     checks,
     extractedFieldPresence: {
