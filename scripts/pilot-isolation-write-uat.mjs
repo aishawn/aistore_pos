@@ -30,6 +30,7 @@ const isolationDb = (process.env.ISOLATION_ODOO_DATABASE || env.ISOLATION_ODOO_D
 const odooDb = (process.env.ODOO_DATABASE || env.ODOO_DATABASE || "").trim();
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const allowSharedUatWrites = process.env.PILOT_ALLOW_SHARED_UAT_WRITES === "true";
 
 const evidence = {
   generatedAt: new Date().toISOString(),
@@ -41,6 +42,7 @@ const evidence = {
   sales: [],
   refunds: [],
   errors: [],
+  sharedUatWriteOverride: false,
 };
 
 function fail(message) {
@@ -146,14 +148,22 @@ try {
   await login(page);
   const attestation = await page.request.get(`${base}/api/public/uat-context`);
   const runtime = attestation.ok() ? await attestation.json() : null;
+  const versionResponse = await page.request.get(`${base}/api/public/version`);
+  const version = versionResponse.ok() ? await versionResponse.json() : null;
   const candidate = process.env.SOURCE_COMMIT || "";
-  if (!runtime?.isolated || runtime.database !== isolationDb
-      || !/^[a-f0-9]{40}$/.test(candidate) || runtime.commit !== candidate) {
+  const runtimeShaMatches = /^[a-f0-9]{40}$/.test(candidate)
+    && version?.frontend?.commit === candidate
+    && version?.backend?.commit === candidate;
+  const isolatedTarget = runtime?.isolated === true && runtime.database === isolationDb;
+  const sharedUatOverride = allowSharedUatWrites && odooDb === "aipos_uat" && runtime?.isolated === false;
+  if ((!isolatedTarget && !sharedUatOverride) || !runtimeShaMatches) {
     await browser.close();
-    fail("Target runtime isolation or exact frontend/backend SHA could not be attested. No business writes performed.");
+    fail("Target runtime isolation/shared-UAT authorization or exact frontend/backend SHA could not be attested. No business writes performed.");
   }
   evidence.runtimeCommit = candidate;
-  evidence.runtimeIsolationVerified = true;
+  evidence.runtimeIsolationVerified = isolatedTarget;
+  evidence.sharedUatWriteOverride = sharedUatOverride;
+  evidence.runtimeVersion = version;
   const card = await sellOne(page, /DEMO-COLA/i, "Card", "$3.85");
   evidence.sales.push({ method: "Card", ...card });
   if (!card.receiptId) fail("Card sale did not expose a receipt id");
