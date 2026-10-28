@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
 /**
@@ -89,7 +90,7 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                       question TEXT NULL,
                       sql_text TEXT NULL,
                       path VARCHAR(32) NULL,
-                      allowed SMALLINT NOT NULL DEFAULT 0,
+                      allowed BOOLEAN NOT NULL DEFAULT FALSE,
                       reject_reason VARCHAR(512) NULL,
                       row_count INT NULL,
                       latency_ms INT NULL,
@@ -98,11 +99,20 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                       UNIQUE (vendor_id, user_id, created_at)
                     )
                     """);
+            ensureAllowedBoolean(c, st);
             log.info("Ensured ai_report_audit table");
             try {
                 st.execute("ALTER TABLE ai_report_audit ADD COLUMN estimated_tokens INT NULL");
             } catch (Exception ignored) {
                 // Existing deployments may already have the column.
+            }
+        }
+    }
+
+    private void ensureAllowedBoolean(Connection connection, Statement statement) throws Exception {
+        try (ResultSet columns = connection.getMetaData().getColumns(null, null, "ai_report_audit", "allowed")) {
+            if (columns.next() && !"BOOLEAN".equalsIgnoreCase(columns.getString("TYPE_NAME"))) {
+                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING allowed <> 0");
             }
         }
     }
