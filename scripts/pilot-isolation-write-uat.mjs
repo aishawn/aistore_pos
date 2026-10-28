@@ -95,21 +95,12 @@ async function sellOne(page, productNameRegex, paymentLabel, expectedTotal) {
   await page.getByRole("button", { name: "All products", exact: true }).click();
   await page.locator('[id^="pos-product-option-"]').filter({ hasText: productNameRegex }).first().click();
   await waitForTotal(page, expectedTotal);
-  const paymentSelect = page.locator("select").filter({ has: page.locator("option").filter({ hasText: paymentLabel }) }).first();
-  const paymentValue = await paymentSelect.locator("option").filter({ hasText: paymentLabel }).first().getAttribute("value");
-  await paymentSelect.selectOption(paymentValue);
+  await page.getByRole("button", { name: paymentLabel === "Card" ? "EFTPOS" : "Exact Cash", exact: true }).click();
   await page.waitForTimeout(800);
-  if (paymentLabel === "Cash") {
-    const cash = page.locator("#cash-tendered");
-    if (await cash.count()) {
-      await cash.fill(expectedTotal.replace("$", ""));
-    }
-  }
-  if (paymentLabel !== "Cash") await page.getByRole("checkbox", { name: /Payment approved on the external terminal/ }).check();
-  const finalise = page.getByRole("button", { name: "Finalise" });
+  const finalise = page.getByRole("button", { name: /Finalise(?: Sale)?/i });
   await finalise.waitFor({ state: "visible" });
   await page.waitForFunction(() => {
-    const button = [...document.querySelectorAll("button")].find((node) => node.textContent?.trim() === "Finalise");
+    const button = [...document.querySelectorAll("button")].find((node) => /^Finalise(?: Sale)?$/i.test(node.textContent?.trim() ?? ""));
     return Boolean(button && !button.disabled);
   }, null, { timeout: 20000 });
   await finalise.click();
