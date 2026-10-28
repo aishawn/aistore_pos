@@ -34,6 +34,8 @@ try {
 
   const page = await context.newPage();
   await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => null);
+  await page.waitForTimeout(1000);
   const userButton = page.getByTestId("sh-current-user");
   await userButton.waitFor({ state: "visible", timeout: 30000 });
   await userButton.click();
