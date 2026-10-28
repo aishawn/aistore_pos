@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-29",
+  "target": "https://demo.orithos.com.au",
+  "runtimeSha": "1604f3fbf1f681b88e76182f0492531b467ce668",
+  "frontendSha": "1604f3fbf1f681b88e76182f0492531b467ce668",
+  "backendSha": "1604f3fbf1f681b88e76182f0492531b467ce668",
+  "databaseMode": "shared-uat",
+  "odooDatabase": "aipos_uat",
+  "odooDatabaseUat": "aipos_uat",
+  "isolationOdooDatabase": "aipos_uat",
+  "isolated": false,
+  "status": "NO-GO-FORMAL-PRODUCTION",
+  "allowedUse": "owner-approved controlled UAT debugging and limited trial writes",
+  "java21Gate": {
+    "command": "mvn -B clean verify",
+    "environment": "maven:3.9-eclipse-temurin-21",
+    "result": "PASS",
+    "tests": 447,
+    "failures": 0,
+    "errors": 0
+  },
+  "verified": [
+    "frontend/backend runtime SHA match",
+    "authenticated parked-sale GET returns 200 and is read-only",
+    "ordinary assistant quota rejects before provider execution"
+  ],
+  "blocked": [
+    "provider image/OCR quota",
+    "physical device acceptance",
+    "offline POS acceptance",
+    "backup restore application smoke",
+    "complete procurement, stocktake and cash-close reconciliation",
+    "formal tenant isolation"
+  ]
+}
