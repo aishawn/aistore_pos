@@ -203,6 +203,7 @@ export function OdooSalesHistoryPage({
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [refundBusy, setRefundBusy] = useState(false);
   const pendingRefund = useRef<OdooCheckoutRequest | null>(null);
+  const [pendingRefundState, setPendingRefundState] = useState<OdooCheckoutRequest | null>(null);
   const refundLock = useRef(false);
   const [confirmingRefund, setConfirmingRefund] = useState(false);
   const [refundComplete, setRefundComplete] = useState(false);
@@ -297,7 +298,7 @@ export function OdooSalesHistoryPage({
     if (pendingRefund.current && pendingRefund.current.refundOfOrderId !== saleId) { setRefundMessage("Resolve the pending refund before opening another sale."); return; }
     try {
       const saved = JSON.parse(sessionStorage.getItem(`orithos-pending-refund:${saleId}`) ?? "null");
-      if (saved?.refundOfOrderId === saleId && typeof saved.orderUuid === "string" && Number.isSafeInteger(saved.configId)) pendingRefund.current = saved;
+      if (saved?.refundOfOrderId === saleId && typeof saved.orderUuid === "string" && Number.isSafeInteger(saved.configId)) { pendingRefund.current = saved; setPendingRefundState(saved); }
     } catch { /* The write path below refuses to submit without durable browser storage. */ }
     const revision = ++detailRevision.current;
     setSaleDetailId(saleId);
@@ -334,7 +335,7 @@ export function OdooSalesHistoryPage({
       try {
         const result = await recoverOdooPosOrder(pendingRefund.current);
         if (!result) { setRefundMessage("Refund result is still pending. Do not return funds again; check Orithos."); return; }
-        pendingRefund.current = null;
+        pendingRefund.current = null; setPendingRefundState(null);
         try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Keep the confirmed result visible. */ }
         setRefundMessage(`Refund confirmed as ${result.receipt}. Total ${money(result.total)}.`);
         setRefundComplete(true); setConfirmingRefund(false); void loadSales();
@@ -389,7 +390,7 @@ export function OdooSalesHistoryPage({
       setConfirmingRefund(false);
       void loadSales();
     } catch (cause) {
-      if (cause instanceof OdooCheckoutPendingError) pendingRefund.current = cause.order;
+      if (cause instanceof OdooCheckoutPendingError) { pendingRefund.current = cause.order; setPendingRefundState(cause.order); }
       else { try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Preserve the original error. */ } }
       setRefundMessage(cause instanceof Error ? cause.message : "Refund failed.");
       setConfirmingRefund(false);
@@ -658,7 +659,7 @@ export function OdooSalesHistoryPage({
           {refundMessage && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">{refundMessage}</p>}
           <footer className="receipt-print-hidden mt-6 flex flex-col gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
             <button type="button" onClick={closeSale} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:w-auto">Close</button>
-            {(canRefund || pendingRefund.current) && (
+            {(canRefund || pendingRefundState) && (
               <button
                 type="button"
                 onClick={requestRefundConfirmation}
@@ -666,7 +667,7 @@ export function OdooSalesHistoryPage({
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-800 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50 sm:w-auto"
               >
                 {refundBusy ? <LoaderCircle size={16} className="animate-spin" /> : <RotateCcw size={16} />}
-                {refundBusy ? "Checking…" : pendingRefund.current ? "Check saved refund" : "Refund full sale"}
+                {refundBusy ? "Checking…" : pendingRefundState ? "Check saved refund" : "Refund full sale"}
               </button>
             )}
             {canRefund && !refundConfig && (

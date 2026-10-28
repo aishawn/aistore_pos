@@ -28,6 +28,7 @@ export function SommelierIdentifyPage() {
   const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const lastQueryRef = useRef("");
+  const [lastQuery, setLastQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +53,7 @@ export function SommelierIdentifyPage() {
     const query = term.trim();
     if (!query) return;
     lastQueryRef.current = query;
+    setLastQuery(query);
     setLoading(true);
     setBusyLabel("Searching this store…");
     setError(null);
@@ -179,10 +181,10 @@ export function SommelierIdentifyPage() {
       {error ? (
         <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
           <span className="min-w-0 flex-1">{error}</span>
-          {lastQueryRef.current ? (
+          {lastQuery ? (
             <button
               type="button"
-              onClick={() => void search(lastQueryRef.current)}
+              onClick={() => void search(lastQuery)}
               disabled={loading}
               className="shrink-0 font-semibold underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >

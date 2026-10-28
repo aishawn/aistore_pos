@@ -44,8 +44,6 @@ export function OdooProductCataloguePage() {
   const { hasPermission } = useAuth();
   const [stockBusy, setStockBusy] = useState(false);
   const [categoryBusy, setCategoryBusy] = useState(false);
-  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
-  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const dialog = searchParams.get("dialog");
   const dialogBusy = stockBusy || categoryBusy;
   function setDialog(value: string | null) {
@@ -80,6 +78,8 @@ export function OdooProductCataloguePage() {
   const [error, setError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
+  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const [editingProduct, setEditingProduct] = useState<OdooProductRecord | null>(null);
   const [categoriesTouched, setCategoriesTouched] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);

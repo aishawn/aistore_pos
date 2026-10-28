@@ -571,9 +571,9 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   const createBaselineRef = useRef<string | null>(null);
   const editBaselineRef = useRef<string | null>(null);
   const passwordTouchedRef = useRef(false);
-  if (!isEdit && createBaselineRef.current === null) {
-    createBaselineRef.current = supplierPageSnapshot(form, []);
-  }
+  useLayoutEffect(() => {
+    if (!isEdit && createBaselineRef.current === null) createBaselineRef.current = supplierPageSnapshot(form, []);
+  }, [form, isEdit]);
 
   const supplierQuery = useApi<SupplierDetail>(
     isEdit && supplierId ? `/api/suppliers/${supplierId}` : null,

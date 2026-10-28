@@ -992,6 +992,8 @@ export function SellAiPanel({
       setThinkingHint(null);
       return;
     }
+    // This function runs only from user event handlers; the compiler rule cannot infer that boundary.
+    // eslint-disable-next-line react-hooks/purity
     const startedAt = performance.now();
     const hintTimers: number[] = [
       window.setTimeout(() => setThinkingHint("Still working on your question…"), 3000),
@@ -1049,6 +1051,7 @@ export function SellAiPanel({
               links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
                 intent: result.intent || "unknown",
+                // eslint-disable-next-line react-hooks/purity
                 latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
                 status: "ok",
               },
@@ -1071,6 +1074,7 @@ export function SellAiPanel({
           retryQuestion: e instanceof ApiError && (e.code === 50301 || e.status === 503) ? null : text,
           diagnostics: {
             intent: "unavailable",
+            // eslint-disable-next-line react-hooks/purity
             latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
             status: "error",
           },
@@ -1735,13 +1739,14 @@ function HistoryView({
   onRefresh: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [now] = useState(() => Date.now());
   const normalizedQuery = query.trim().toLowerCase();
   const visibleThreads = normalizedQuery
     ? threads.filter((thread) => `${thread.title} ${thread.sessionKey}`.toLowerCase().includes(normalizedQuery))
     : threads;
   const groupedThreads = visibleThreads.reduce<Record<string, AiChatThreadSummary[]>>((groups, thread) => {
     const date = thread.updatedAt || thread.createdAt;
-    const age = date ? Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000) : 999;
+    const age = date ? Math.floor((now - new Date(date).getTime()) / 86_400_000) : 999;
     const group = age < 1 ? "Today" : age < 7 ? "Last 7 days" : "Earlier";
     (groups[group] ??= []).push(thread);
     return groups;
