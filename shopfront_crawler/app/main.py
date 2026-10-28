@@ -205,7 +205,9 @@ async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_d
 
 
 async def run_full_snapshot_job(job_id: int) -> None:
-    async with snapshot_lock:
+    # Full snapshots and history/catalog jobs share the same database writer.
+    # Serialize all durable crawler writes through sync_lock.
+    async with sync_lock:
         db = next(get_db())
         run = None
         try:
@@ -244,7 +246,10 @@ async def run_full_snapshot_job(job_id: int) -> None:
 
 async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
     """Run a catalog-only or sale-repair snapshot with durable progress."""
-    async with snapshot_lock:
+    # Sale repair can touch the same Sale/Product rows as a history chunk.
+    # Serialize it with the history writer to avoid PostgreSQL serialization
+    # failures.
+    async with sync_lock:
         db = next(get_db())
         run = None
         try:

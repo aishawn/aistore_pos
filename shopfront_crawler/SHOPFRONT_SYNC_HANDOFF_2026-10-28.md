@@ -1,5 +1,17 @@
 # Shopfront 同步模块交接文档
 
+## 2026-10-28 并发修复补充
+
+线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`，源库缺名销售行已降至个位数；POS staging 仍有旧的缺名统计，待销售修复任务重新推送。销售修复任务曾因与历史分片同时写 PostgreSQL 而失败，错误为 `could not serialize access due to concurrent update`。
+
+已在 `main` 修复：历史同步、全量快照、商品快照和销售修复统一使用 crawler 写锁，避免同一批 Sale/Product 被并发更新。部署完成后按以下顺序操作：
+
+1. 确认历史任务 `25` 当前状态；运行中只轮询，不重复启动。
+2. 确认失败的销售修复任务已终止；历史任务结束后再调用 `POST /api/stores/skr/pos/sales-repair`。
+3. 复核 `/api/sync/coverage?store=skr` 和 `/api/pos/coverage?store=skr`，重点看 `sale_items_missing_name`、`sales_with_unmatched_items` 和 POS/Odoo 写入错误。
+
+本次修复不改变 Shopfront 源数据；图片仍以源端字段为准。当前源端图片覆盖率为 0 时，目标端不生成占位图片。
+
 最后更新：2026-10-28  
 适用目录：`orithopos-master/shopfront_crawler`  
 线上 crawler：`https://shopfront.orithos.com.au`  
