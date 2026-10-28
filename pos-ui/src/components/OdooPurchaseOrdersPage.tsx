@@ -321,7 +321,7 @@ export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolea
   );
 
   return (
-    <Container className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
+    <Container className={`flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--oh-surface)] ${embedded ? "gap-4 p-4 md:p-5" : "gap-4 p-4 md:gap-5 md:p-6"}`}>
       {!embedded && <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Orithos</p>
@@ -345,8 +345,6 @@ export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolea
         </div>
         )}
       </header>}
-      {embedded && <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="self-end rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">Refresh orders</button>}
-
       {tab === "transfers" ? (
         <StockTransfersPage embedded />
       ) : tab === "transfer-new" ? (
@@ -355,9 +353,10 @@ export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolea
       <>
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3">
         <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15"><Search size={17} className="text-[var(--oh-muted)]" /><input aria-label="Search purchase orders by RFQ, order or supplier" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search RFQ, order or supplier" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" /></label>
-        <label className="grid w-full min-w-0 gap-1 text-xs font-medium text-[var(--oh-muted)] sm:w-[210px] sm:flex-none">Status<select value={state} onChange={(event) => { setState(event.target.value); setOffset(0); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <select aria-label="Filter purchase orders by status" value={state} onChange={(event) => { setState(event.target.value); setOffset(0); }} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 sm:w-[210px] sm:flex-none">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        {embedded && <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh purchase orders" title="Refresh purchase orders" className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span>Refresh</span></button>}
       </div>
 
       <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">

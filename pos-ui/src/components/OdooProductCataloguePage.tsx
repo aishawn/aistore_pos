@@ -142,6 +142,12 @@ export function OdooProductCataloguePage() {
   useEffect(() => {
     if (requestedQuery !== null) setQuery(requestedQuery);
   }, [requestedQuery]);
+  const requestedCategoryId = searchParams.get("categoryId");
+  useEffect(() => {
+    if (requestedCategoryId === null) return;
+    const parsed = Number(requestedCategoryId);
+    if (Number.isSafeInteger(parsed) && parsed > 0) setCategoryId(parsed);
+  }, [requestedCategoryId]);
 
   const requestedCategoryId = searchParams.get("categoryId");
   useEffect(() => {
@@ -477,18 +483,15 @@ export function OdooProductCataloguePage() {
         </div>
       ) : (
         <>
-          <div className="flex shrink-0 flex-wrap gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             </label>
-            <label className="oh-type-label grid w-full min-w-0 gap-1 text-[var(--oh-muted)] sm:w-[220px] sm:flex-none">
-              POS category
-              <select aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60">
+            <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
                 <option value="">All categories</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
-              </select>
-            </label>
+            </select>
           </div>
 
           <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] md:hidden">Quick view
