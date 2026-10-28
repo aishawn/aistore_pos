@@ -233,10 +233,12 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
         for row in rows:
             timestamp = first(row, "timestamp", "Timestamp", "created_at", "createdAt")
             key = (business_date(timestamp, start), first(row, "by_name", "BY_NAME", "Name", "name", "outlet"))
-            agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "count": 0, "row": row})
+            agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
             agg["revenue"] += parse_decimal(first(row, "Revenue", "revenue")) or Decimal(0)
             agg["cost"] += parse_decimal(first(row, "Cost of Goods Sold", "cost")) or Decimal(0)
             agg["profit"] += parse_decimal(first(row, "Profit", "profit")) or Decimal(0)
+            agg["tax"] += parse_decimal(first(row, "Tax", "tax", "Tax Amount", "totalTax")) or Decimal(0)
+            agg["discount"] += parse_decimal(first(row, "Discount", "discount", "Discount Amount", "totalDiscount")) or Decimal(0)
             agg["count"] += 1
         if not rows and sale_rows:
             # Reporting has occasional date-specific 400 responses. GraphQL
@@ -245,12 +247,14 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             for row in sale_rows:
                 timestamp = first(row, "createdAt", "created_at", "timestamp")
                 key = (business_date(timestamp, start), first(row, "outlet", "outletName", "outlet_name"))
-                agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "count": 0, "row": row})
+                agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
                 revenue = parse_decimal(first(row, "totalPrice", "total_price")) or Decimal(0)
                 cost = parse_decimal(first(row, "totalCost", "total_cost")) or Decimal(0)
                 agg["revenue"] += revenue
                 agg["cost"] += cost
                 agg["profit"] += revenue - cost
+                agg["tax"] += parse_decimal(first(row, "totalTax", "total_tax", "tax")) or Decimal(0)
+                agg["discount"] += parse_decimal(first(row, "totalDiscount", "total_discount", "discount")) or Decimal(0)
                 agg["count"] += 1
         for (summary_date, outlet), agg in aggregates.items():
             summary = db.scalar(select(DailySalesSummary).where(DailySalesSummary.store_key == store.store_key, DailySalesSummary.business_date == summary_date, DailySalesSummary.outlet == outlet))
@@ -261,8 +265,8 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             summary.cost = agg["cost"]
             summary.profit = agg["profit"]
             summary.transaction_count = agg["count"]
-            summary.tax = None
-            summary.discount = None
+            summary.tax = agg["tax"]
+            summary.discount = agg["discount"]
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
