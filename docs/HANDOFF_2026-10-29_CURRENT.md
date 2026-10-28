@@ -5,7 +5,7 @@
 - Demo POS：`https://demo.orithos.com.au/`
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
-- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`8ecd8fc7f25ed782b194238f09001ce1775dcb81`。
+- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`b825a4fa3b6563e201b791f115e670e9278a8c69`。
 - 补货路由修复候选 `6bc07cfb` 已在 Demo 与 SKR 部署；后续测试/文档提交不改变行为 runtime。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
