@@ -15,7 +15,11 @@ url = get_settings().database_url
 if url.startswith("sqlite:///"):
     sqlite_path = url.removeprefix("sqlite:///")
     Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
-engine = create_engine(url, connect_args={"check_same_thread": False} if url.startswith("sqlite") else {}, pool_pre_ping=True)
+engine = create_engine(
+    url,
+    connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {},
+    pool_pre_ping=True,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
@@ -30,6 +34,13 @@ def get_db() -> Generator:
 def init_db() -> None:
     from . import models  # noqa: F401
     Base.metadata.create_all(engine)
+    if engine.dialect.name == "sqlite":
+        # History sync performs slow remote requests between writes. WAL keeps
+        # read-only status/catalog endpoints available while a chunk commits.
+        with engine.begin() as connection:
+            connection.exec_driver_sql("PRAGMA journal_mode=WAL")
+            connection.exec_driver_sql("PRAGMA busy_timeout=30000")
+            connection.exec_driver_sql("PRAGMA synchronous=NORMAL")
     # ``create_all`` does not upgrade a persistent SQLite/PostgreSQL volume.
     # Keep all crawler schema evolution here so an old deployment volume is
     # upgraded before request handlers query the new columns.

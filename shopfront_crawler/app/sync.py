@@ -266,7 +266,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
-        for row in sale_rows:
+        for sale_index, row in enumerate(sale_rows, start=1):
             sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
             if sale_id:
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
@@ -340,6 +340,13 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     sale_item.raw_payload = item
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
+                # Do not hold SQLite's writer lock for the duration of a
+                # large GraphQL history window. This also makes a completed
+                # subset durable if the process is restarted mid-chunk.
+                if sale_index % 50 == 0:
+                    db.commit()
+        if sale_rows:
+            db.commit()
         if rows and not sale_rows:
             counts["warnings"].append({"stage": "sales", "message": "Complete Sale query returned no rows; saved summaries only."})
         products = []
