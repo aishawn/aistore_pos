@@ -68,10 +68,9 @@ try {
       await list.waitFor({ timeout: 30000 });
       record("current empty search completes", await list.getByText("No matching products.", { exact: true }).isVisible());
       await page.screenshot({ path: path.join(screenshotDir, `stocktake-${width}.png`), fullPage: true });
-      let failPlanOnce = true;
+      let releasePlan = false;
       await page.route("**/api/odoo/replenishment?**", async (route) => {
-        if (failPlanOnce) {
-          failPlanOnce = false;
+        if (!releasePlan) {
           return route.fulfill({ status: 503, json: { message: "Read-only browser fault: plan unavailable" } });
         }
         return route.continue();
@@ -82,6 +81,7 @@ try {
       const hasRetry = await retry.isVisible();
       record("served replenishment page exposes retry after a read failure", hasRetry);
       if (hasRetry) {
+        releasePlan = true;
         await retry.click();
         await page.getByRole("heading", { name: "Replenishment", exact: true }).waitFor({ timeout: 60000 });
         await page.getByRole("status").filter({ hasText: "Updating replenishment" }).waitFor({ state: "hidden", timeout: 60000 });
