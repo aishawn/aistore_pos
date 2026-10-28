@@ -4,6 +4,8 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.AiProviderQuotaService;
+import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
@@ -36,6 +38,7 @@ public class GenerateResponseNode implements NodeAction {
     private final AiProperties properties;
     private final PosAssistantTools tools;
     private final String primaryModel;
+    private final AiProviderQuotaService providerQuota;
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
                                 AiProperties properties, PosAssistantTools tools) {
@@ -44,11 +47,18 @@ public class GenerateResponseNode implements NodeAction {
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
                                 AiProperties properties, PosAssistantTools tools, String primaryModel) {
+        this(chatClient, configService, properties, tools, primaryModel, null);
+    }
+
+    public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
+                                AiProperties properties, PosAssistantTools tools, String primaryModel,
+                                AiProviderQuotaService providerQuota) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.properties = properties;
         this.tools = tools;
         this.primaryModel = primaryModel == null || primaryModel.isBlank() ? "qwen-plus" : primaryModel.trim();
+        this.providerQuota = providerQuota;
     }
 
     @Override
@@ -98,6 +108,10 @@ public class GenerateResponseNode implements NodeAction {
         }
         String answer;
         try {
+            if (providerQuota != null) {
+                providerQuota.acquire(AssistantTenantContext.get(),
+                        AiProviderQuotaService.estimate(system, userPrompt));
+            }
             answer = prompt.call().content();
         } catch (RuntimeException failure) {
             // A provider outage must leave the assistant usable. Keep the fallback

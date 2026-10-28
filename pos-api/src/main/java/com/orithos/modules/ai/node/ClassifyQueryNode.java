@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.AiProviderQuotaService;
 import com.orithos.modules.ai.AssistantFastPathRouter;
 import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.DashScopeModelRouting;
@@ -59,6 +60,7 @@ public class ClassifyQueryNode implements NodeAction {
     private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
     private final ObjectProvider<PricingChatBrief> pricingChatBrief;
     private final ObjectProvider<GroceryChatBrief> groceryChatBrief;
+    private final AiProviderQuotaService providerQuota;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
@@ -97,6 +99,20 @@ public class ClassifyQueryNode implements NodeAction {
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief,
                              ObjectProvider<GroceryChatBrief> groceryChatBrief) {
+        this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief,
+                replenishmentChatBrief, pricingChatBrief, groceryChatBrief, null);
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
+                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
+                             ObjectProvider<PricingChatBrief> pricingChatBrief,
+                             ObjectProvider<GroceryChatBrief> groceryChatBrief,
+                             AiProviderQuotaService providerQuota) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
@@ -106,6 +122,7 @@ public class ClassifyQueryNode implements NodeAction {
         this.replenishmentChatBrief = replenishmentChatBrief;
         this.pricingChatBrief = pricingChatBrief;
         this.groceryChatBrief = groceryChatBrief;
+        this.providerQuota = providerQuota;
     }
 
     @Override
@@ -762,6 +779,7 @@ public class ClassifyQueryNode implements NodeAction {
     private RawIntent callModel(String system, String userPrompt) {
         // Prefer plain JSON text: more reliable across DashScope models than BeanOutputConverter/entity().
         try {
+            acquireProviderQuota(system, userPrompt);
             String raw = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
@@ -778,6 +796,7 @@ public class ClassifyQueryNode implements NodeAction {
         }
 
         try {
+            acquireProviderQuota(system, userPrompt);
             LlmIntentOutput entity = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
@@ -807,6 +826,12 @@ public class ClassifyQueryNode implements NodeAction {
 
         return new RawIntent("unknown", "model returned empty intent",
                 null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private void acquireProviderQuota(String system, String userPrompt) {
+        if (providerQuota != null) {
+            providerQuota.acquire(AssistantTenantContext.get(), AiProviderQuotaService.estimate(system, userPrompt));
+        }
     }
 
     private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question,
