@@ -26,7 +26,7 @@ public interface AiReportAuditMapper {
                @Param("question") String question,
                @Param("sqlText") String sqlText,
                @Param("path") String path,
-               @Param("allowed") int allowed,
+               @Param("allowed") boolean allowed,
                @Param("rejectReason") String rejectReason,
                @Param("rowCount") Integer rowCount,
                @Param("latencyMs") Integer latencyMs,
