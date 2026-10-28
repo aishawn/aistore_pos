@@ -5,11 +5,14 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
+const envFile = path.join(root, ".env");
+const envText = fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "";
+const env = Object.fromEntries(envText
   .split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => { const i = line.indexOf("="); return [line.slice(0, i).trim(), line.slice(i + 1).trim()]; }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME ?? "admin";
 const deployment = process.env.PILOT_DEPLOYMENT_SHA ?? "unverified";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
@@ -19,7 +22,7 @@ const checks = [];
 const record = (name, ok, detail) => checks.push({ name, status: ok ? "PASS" : "FAIL", detail });
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password }, headers: { Origin: base }, timeout: 60000,
+    data: { username, password }, headers: { Origin: base }, timeout: 60000,
   });
   record("admin login", login.ok(), `status=${login.status()}`);
   if (!login.ok()) throw new Error(`LOGIN_FAILED_${login.status()}`);
