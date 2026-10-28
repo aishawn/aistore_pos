@@ -120,11 +120,18 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                 }
                 try {
                     statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed DROP DEFAULT");
-                } catch (Exception ignored) {
-                    // A newly-created table may not expose a default yet.
+                    statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING (allowed <> 0)");
+                    statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed SET DEFAULT FALSE");
+                } catch (Exception directConversionFailure) {
+                    // Some old PostgreSQL installations retain a cast-incompatible
+                    // default constraint. Rebuild the column without losing 0/1 data.
+                    log.warn("Direct conversion of ai_report_audit.allowed failed type={} cause={}; rebuilding column",
+                            typeName, directConversionFailure.getClass().getSimpleName());
+                    statement.execute("ALTER TABLE ai_report_audit ADD COLUMN allowed_boolean BOOLEAN NOT NULL DEFAULT FALSE");
+                    statement.execute("UPDATE ai_report_audit SET allowed_boolean = (allowed <> 0)");
+                    statement.execute("ALTER TABLE ai_report_audit DROP COLUMN allowed");
+                    statement.execute("ALTER TABLE ai_report_audit RENAME COLUMN allowed_boolean TO allowed");
                 }
-                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING (allowed <> 0)");
-                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed SET DEFAULT FALSE");
                 log.info("Converted ai_report_audit.allowed from {} to BOOLEAN", typeName);
             }
         }
