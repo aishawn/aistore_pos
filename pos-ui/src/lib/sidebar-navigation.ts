@@ -85,7 +85,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers", permission: "customers.view" },
-      { label: "Customer Groups", href: "/customer-groups", permission: "customers.view" },
       { label: "Balances", href: "/customers/balances", permission: "customers.balances" },
       { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
     ],
@@ -198,7 +197,6 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
           const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
           return children.length ? [{ ...item, items: children }] : [];
         }
-        if (item.href === "/giftcards" && options?.giftCardsAvailable !== true) return [];
         if (!allowed(options, item.permission, item.adminOnly)) return [];
         if (item.anyPermissions && !item.anyPermissions.some((permission) => allowed(options, permission))) return [];
         return [item];
