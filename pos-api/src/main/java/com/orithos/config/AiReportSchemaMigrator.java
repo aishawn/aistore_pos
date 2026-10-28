@@ -99,18 +99,15 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                       UNIQUE (vendor_id, user_id, created_at)
                     )
                     """);
-            ensureAllowedBoolean(c, st);
             log.info("Ensured ai_report_audit table");
             try {
                 st.execute("ALTER TABLE ai_report_audit ADD COLUMN estimated_tokens INT NULL");
             } catch (Exception ignored) {
                 // Existing deployments may already have the column.
             }
-            try {
-                st.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING (allowed <> 0)");
-            } catch (Exception ignored) {
-                // Existing PostgreSQL installs may already use BOOLEAN.
-            }
+            // Keep the conversion idempotent. PostgreSQL cannot cast an old integer
+            // default (usually `0`) while changing the column type, so remove it first.
+            ensureAllowedBoolean(c, st);
         }
     }
 
@@ -121,7 +118,14 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                 if ("BOOLEAN".equalsIgnoreCase(typeName) || "BOOL".equalsIgnoreCase(typeName)) {
                     return;
                 }
-                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING allowed <> 0");
+                try {
+                    statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed DROP DEFAULT");
+                } catch (Exception ignored) {
+                    // A newly-created table may not expose a default yet.
+                }
+                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING (allowed <> 0)");
+                statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed SET DEFAULT FALSE");
+                log.info("Converted ai_report_audit.allowed from {} to BOOLEAN", typeName);
             }
         }
     }
