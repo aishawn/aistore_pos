@@ -218,6 +218,7 @@ UNCONSOLIDATED'''
             "{ products(first: 100) { edges { node { id cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage } } } }",
             "{ products(first: 100) { edges { node { id prices { quantity price priceEx decimalPlaceLength priceSet { id name } } } } } }",
             "{ products(first: 100) { edges { node { id barcodes { code quantity } taxRate { id name } costTaxRate { id name } } } } }",
+            "{ products(first: 100) { edges { node { id suppliers { id name } coreSupplier { id name } lastSupplier { id name } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel reorderLevelSingles reorderLevelCases outlet { id name } } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity reorderAmount reorderAmountSingles reorderAmountCases reorderLimit outlet { id name } } } } } }",
@@ -293,6 +294,7 @@ UNCONSOLIDATED'''
           tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
           orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
           category { id name } brand { id name } family { id name } tags { name }
+          suppliers { id name } coreSupplier { id name } lastSupplier { id name }
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
@@ -340,6 +342,7 @@ UNCONSOLIDATED'''
           tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
           orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
           category { id name } brand { id name } family { id name } tags { name }
+          suppliers { id name } coreSupplier { id name } lastSupplier { id name }
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
