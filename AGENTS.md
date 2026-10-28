@@ -2,7 +2,7 @@
 
 Shared project brief for **Cursor** and **Codex** (and any other coding agent). Read this first; follow links for depth. Do **not** put passwords, API keys, or tokens in this file.
 
-**Working-state note (2026-10-20):** the pilot remains **NO-GO**. The current handoff records an unresolved Dokploy Compose branch/source mismatch and lacks verified runtime identity for the latest code; do not report recent local work as deployed. Treat `docs/CAPABILITY_STATUS.md`, `docs/PILOT_RELEASE_READINESS.md`, and the current handoff as the status source of truth; this file contains durable rules, not a replacement for UAT evidence.
+**Working-state note (2026-10-29):** the pilot remains **NO-GO for formal production**. The deployed behavior SHA is `1604f3fbf1f681b88e76182f0492531b467ce668`; `main` may advance with documentation-only commits while Dokploy catches up. All deployment/debugging/trial traffic currently targets shared `aipos_uat`, so `isolated=false` is expected and must not be described as customer production isolation. Treat `docs/HANDOFF_2026-10-29_CURRENT.md`, `docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json`, `docs/CAPABILITY_STATUS.md`, and `docs/PILOT_RELEASE_READINESS.md` as the status sources of truth; this file contains durable rules, not a replacement for UAT evidence.
 
 ## What this is
 
@@ -151,7 +151,7 @@ When Dokploy exposes backend logs, record the Maven result, deployed SHA, and co
 | What works / gaps | [docs/CAPABILITY_STATUS.md](docs/CAPABILITY_STATUS.md) |
 | Function checklist / test status | [docs/FUNCTIONALITY_CHECKLIST.md](docs/FUNCTIONALITY_CHECKLIST.md) |
 | Pilot GO / NO-GO | [docs/PILOT_RELEASE_READINESS.md](docs/PILOT_RELEASE_READINESS.md) |
-| Current session handoff | [docs/HANDOFF_2026-10-19_CURRENT.md](docs/HANDOFF_2026-10-19_CURRENT.md) — current snapshot is updated through 2026-10-20; older `HANDOFF_*.md` files are historical records unless explicitly linked from it. |
+| Current session handoff | [docs/HANDOFF_2026-10-29_CURRENT.md](docs/HANDOFF_2026-10-29_CURRENT.md) and [docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json](docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json); older `HANDOFF_*.md` files are historical records unless explicitly linked from the current handoff. |
 | AI acceptance scope | [docs/AI_ASSISTANT_TEST_MATRIX.md](docs/AI_ASSISTANT_TEST_MATRIX.md), [docs/AI_ASSISTANT_TEST_PLAN.md](docs/AI_ASSISTANT_TEST_PLAN.md), [docs/AI_ASSISTANT_UTTERANCE_CATALOG.md](docs/AI_ASSISTANT_UTTERANCE_CATALOG.md) |
 | Isolation write UAT | [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md) |
 | R2 archive / cold history | [docs/R2_ARCHIVE_SYNC_PLAN.md](docs/R2_ARCHIVE_SYNC_PLAN.md), [docs/R2_COLD_HISTORY_POLICY.md](docs/R2_COLD_HISTORY_POLICY.md) |
