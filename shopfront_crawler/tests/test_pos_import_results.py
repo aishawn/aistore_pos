@@ -240,3 +240,23 @@ async def test_history_releases_writer_between_chunks_for_queued_repairs(db_sess
         ("chunk-start", date(2026, 11, 9)),
         ("chunk-end", date(2026, 11, 9)),
     ], events
+
+
+@pytest.mark.asyncio
+async def test_resumed_history_skips_catalog_when_products_are_already_durable(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        Product(store_key="skr", shopfront_product_id="existing", name="Existing product"),
+    ])
+    db_session.commit()
+    monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+    calls = []
+
+    async def fake_sync_history_chunk(_db, _store_key, _store, _start, _end, _job_id, include_catalog):
+        calls.append(include_catalog)
+        return True
+
+    monkeypatch.setattr(main, "_sync_history_chunk", fake_sync_history_chunk)
+    await main.run_sync_background("skr", date(2026, 10, 26), date(2026, 10, 26), job_id=25)
+
+    assert calls == [False]

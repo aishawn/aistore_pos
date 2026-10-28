@@ -501,10 +501,22 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # Keep report windows small enough for Shopfront's reporting
                 # backend; large historical windows can hang or return 500.
                 chunk_end = min(cursor + timedelta(days=max(1, settings.history_chunk_days - 1)), end)
+                # A restarted history job resumes at its saved cursor. The
+                # cursor is also the current invocation's start date, so using
+                # ``cursor == start`` alone would incorrectly repeat the full
+                # 10k-product catalog on every restart. The catalog is already
+                # durable after the first successful attempt; only a new
+                # history job with an empty catalog needs the initial snapshot.
+                include_catalog = cursor == start
+                if job_id is not None and include_catalog:
+                    existing_products = db.scalar(
+                        select(func.count()).select_from(Product).where(Product.store_key == store_key)
+                    ) or 0
+                    include_catalog = existing_products == 0
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
                 async with sync_lock:
-                    await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, cursor == start)
+                    await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, include_catalog)
                     cursor = chunk_end + timedelta(days=1)
                     if job_id is not None:
                         job = db.get(SyncJob, job_id)
