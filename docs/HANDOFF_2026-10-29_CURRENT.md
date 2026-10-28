@@ -5,8 +5,8 @@
 - Demo POS：`https://demo.orithos.com.au/`
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
-- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`87b81f05b7d556979fa39ac2635ad5e251213083`。
-- 补货路由修复候选 `6bc07cfb` 已在 Demo 与 SKR 部署；后续 `87b81f05` 为测试证据提交，前后端 runtime 仍一致。
+- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`8ecd8fc7f25ed782b194238f09001ce1775dcb81`。
+- 补货路由修复候选 `6bc07cfb` 已在 Demo 与 SKR 部署；后续测试/文档提交不改变行为 runtime。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
 
@@ -39,7 +39,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## 本轮续验
 
-- 线上 `/api/public/version`：frontend/backend 均为 `87b81f05b7d556979fa39ac2635ad5e251213083`；Demo 与 SKR 的 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
+- 线上 `/api/public/version`：frontend/backend 均为 `8ecd8fc7f25ed782b194238f09001ce1775dcb81`；Demo 与 SKR 的 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
 - 本机未发现 `INITIAL_ADMIN_PASSWORD`、Dokploy/Odoo 凭据，也没有打印机、钱箱、扫码器或 EFTPOS；因此 Demo 认证写入验收和现场设备验收保持 `BLOCKED`，没有伪造 PASS。SKR 只读认证使用用户提供的测试账号完成。
