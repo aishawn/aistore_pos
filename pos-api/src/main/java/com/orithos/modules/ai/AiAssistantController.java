@@ -98,6 +98,16 @@ public class AiAssistantController {
             throw new BusinessException(50301,
                     "AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
+
+        if (providerQuota != null) {
+            try {
+                providerQuota.acquire(tenant, AiProviderQuotaService.estimate(request.question()));
+            } catch (BusinessException error) {
+                auditService.recordAssistant(tenant, "quota", false, elapsedMs(startedAt),
+                        request.question(), null);
+                throw error;
+            }
+        }
         PosAssistantGraphService.AssistantResult result;
         try {
             result = service.ask(request.question(), request.threadId(), tenant, request.surface());
