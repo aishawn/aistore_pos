@@ -49,6 +49,7 @@ async def startup() -> None:
         interrupted_snapshot_ids: list[int] = []
         interrupted_catalog_ids: list[int] = []
         interrupted_sales_repair_ids: list[int] = []
+        queued_history_ids: list[int] = []
         for job in interrupted:
             job_key = (job.store_key, job.job_type)
             if job_key in resumed_stores:
@@ -92,6 +93,24 @@ async def startup() -> None:
                 interrupted_catalog_ids.append(job.id)
             elif job.job_type == "sales_repair":
                 interrupted_sales_repair_ids.append(job.id)
+
+        # A history request is persisted before its BackgroundTask starts.
+        # If the process restarts in that window, resume the newest queued
+        # range instead of leaving it permanently queued behind a dead lock.
+        queued_histories = db.scalars(
+            select(SyncJob)
+            .where(SyncJob.status == "queued", SyncJob.job_type == "history")
+            .order_by(SyncJob.store_key, desc(SyncJob.id))
+        ).all()
+        queued_history_stores: set[str] = set()
+        for job in queued_histories:
+            if job.store_key in queued_history_stores:
+                job.status = "superseded"
+                job.error = "superseded by newer queued history job"
+                job.finished_at = datetime.now(timezone.utc)
+                continue
+            queued_history_stores.add(job.store_key)
+            queued_history_ids.append(job.id)
         db.commit()
     finally:
         db.close()
@@ -103,6 +122,8 @@ async def startup() -> None:
     )
     scheduler.start()
     for job_id in interrupted_history_ids:
+        __import__("asyncio").create_task(run_history_job(job_id))
+    for job_id in queued_history_ids:
         __import__("asyncio").create_task(run_history_job(job_id))
     for job_id in interrupted_discovery_ids:
         __import__("asyncio").create_task(run_history_discovery(job_id))
