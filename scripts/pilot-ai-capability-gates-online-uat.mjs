@@ -44,9 +44,13 @@ try {
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method())) {
-      writes.push(`${request.method()} ${url.pathname}`);
+    if (!url.pathname.startsWith("/api/") || ["GET", "HEAD", "OPTIONS"].includes(request.method())) return;
+    if (url.pathname === "/api/odoo/records") {
+      const payload = request.postDataJSON() ?? {};
+      const rpcMethod = payload.method ?? payload.type;
+      if (["search_read", "fields_get", "search", "read", "name_search", "posCategories", "products"].includes(rpcMethod)) return;
     }
+    writes.push(`${request.method()} ${url.pathname}`);
   });
   await page.route("**/api/ai/config/client", async (route) => {
     const response = await route.fetch();
@@ -54,11 +58,15 @@ try {
     const data = { ...(body.data ?? {}), enabled: true, assistantAvailable: true, transcriptionAvailable: false };
     await route.fulfill({ response, contentType: "application/json", body: JSON.stringify({ ...body, data }) });
   });
-  await page.goto(`${base}/overview?__uat_capability_gate=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(`${base}/?__uat_capability_gate=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => null);
+  await page.waitForTimeout(1000);
   const trigger = page.getByRole("button", { name: /Open Orithos AI/ }).first();
-  await trigger.waitFor({ state: "visible", timeout: 30000 });
-  await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
+  const hasTrigger = await trigger.count() > 0;
+  if (hasTrigger) await trigger.click();
+  const dialog = hasTrigger
+    ? page.getByRole("dialog", { name: "Orithos AI assistant" })
+    : page.locator("body");
   await dialog.waitFor({ state: "visible", timeout: 10000 });
   const composer = dialog.getByPlaceholder("Ask Orithos AI…");
   const voice = dialog.getByRole("button", { name: "Voice input" });
@@ -66,6 +74,7 @@ try {
   await page.locator('button[title="Voice transcription is unavailable for this store"]')
     .waitFor({ state: "visible", timeout: 15000 });
   const result = {
+    assistantSurface: hasTrigger ? "floating-dialog" : "embedded-assistant",
     chatEnabled: !(await composer.isDisabled()),
     voiceDisabled: await voice.isDisabled(),
     voiceTitle: await voice.getAttribute("title"),
