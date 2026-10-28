@@ -6,7 +6,7 @@
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
 - 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`50b10914376a8f8cd52a935ac249d0592aa32eae`。
-- 当前远端 `main` 已为 `42d7c1fc6c412dba5501a32f09bacc5f543f1731`，因此 source/runtime 暂不一致，发布门禁保持 NO-GO；必须等 Dokploy 完成目标 SHA 部署后再做匹配验收。
+- 当前远端 `main` 已为 `da32d2a31b90f823c6cb55f6239b1c5b4065fe5f`，因此 source/runtime 暂不一致，发布门禁保持 NO-GO；必须等 Dokploy 完成目标 SHA 部署后再做匹配验收。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
 
