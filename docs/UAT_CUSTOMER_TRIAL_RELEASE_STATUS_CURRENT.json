@@ -1,11 +1,11 @@
 {
   "generatedAt": "2026-10-29",
   "target": "https://demo.orithos.com.au",
-  "runtimeSha": "30854d2d475245512cba15a1fb3752792be0a5fe",
-  "frontendSha": "30854d2d475245512cba15a1fb3752792be0a5fe",
-  "backendSha": "30854d2d475245512cba15a1fb3752792be0a5fe",
-  "sourceShaAtAudit": "3d70dde66c3ae00f7ccb01e1f1deb5144537c0b3",
-  "verifiedCodeCandidateSha": "fbd4f4c4b77e13d0a238e31491e64daeb761dc20",
+  "runtimeSha": "87b81f05b7d556979fa39ac2635ad5e251213083",
+  "frontendSha": "87b81f05b7d556979fa39ac2635ad5e251213083",
+  "backendSha": "87b81f05b7d556979fa39ac2635ad5e251213083",
+  "sourceShaAtAudit": "8ecd8fc7f25ed782b194238f09001ce1775dcb81",
+  "verifiedCodeCandidateSha": "6bc07cfbd36cd056c1bfba394a47545228f9d216",
   "sourceRuntimeMatch": false,
   "databaseMode": "shared-uat",
   "odooDatabase": "aipos_uat",
@@ -24,6 +24,8 @@
   },
   "verified": [
     "frontend/backend runtime SHA match",
+    "replenishment route is reachable and SKR authenticated read-only probe passes 13/13",
+    "hardware/offline boundary UI probe passes 4/4 while physical devices remain unverified",
     "authenticated parked-sale GET returns 200 and is read-only",
     "ordinary assistant quota rejects before provider execution"
   ],
