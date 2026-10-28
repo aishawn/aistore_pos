@@ -9,7 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import desc, func, select, update
+from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -381,6 +381,53 @@ def sync_status(store: str | None = None, db: Session = Depends(get_db)) -> dict
         query = query.where(SyncJob.store_key == store)
     jobs = db.scalars(query.limit(20)).all()
     return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "error": j.error, "created_at": j.created_at, "finished_at": j.finished_at} for j in jobs]}
+
+
+@app.get("/api/sync/coverage")
+def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
+    """Return read-only source coverage metrics for verification and handoff."""
+    require_store(store, db)
+    products = db.scalars(select(Product).where(Product.store_key == store)).all()
+    inventory_count = db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0
+    outlet_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.outlet_id))).where(InventorySnapshot.store_key == store, InventorySnapshot.outlet_id.is_not(None))) or 0
+    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
+    sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
+    missing_sale_item_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
+        Sale.store_key == store,
+        or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
+    )) or 0
+
+    def non_empty(value: object) -> bool:
+        return value is not None and value != "" and value != [] and value != {}
+
+    fields = {"name": 0, "description": 0, "barcode": 0, "sku": 0, "category": 0, "brand": 0, "image": 0, "alternate_images": 0, "price": 0, "cost": 0}
+    for product in products:
+        raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+        values = {
+            "name": product.name or raw.get("name"),
+            "description": raw.get("description"),
+            "barcode": product.barcode or raw.get("barcode") or raw.get("barcodes"),
+            "sku": product.sku or raw.get("sku") or raw.get("mdbId"),
+            "category": product.category or raw.get("category"),
+            "brand": product.brand or raw.get("brand"),
+            "image": raw.get("image"),
+            "alternate_images": raw.get("alternateImages") or raw.get("alternate_images"),
+            "price": product.price or raw.get("price") or raw.get("prices"),
+            "cost": product.cost or raw.get("cost"),
+        }
+        for field, value in values.items():
+            if non_empty(value):
+                fields[field] += 1
+    return {
+        "data": {
+            "store": store,
+            "products": {"total": len(products), "fields": fields},
+            "inventory": {"records": int(inventory_count), "outlets": int(outlet_count)},
+            "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
+        },
+        "source": "shopfront_crawler",
+        "synced_at": datetime.now(timezone.utc),
+    }
 
 
 @app.post("/api/sync/runs/{run_id}/retry")
