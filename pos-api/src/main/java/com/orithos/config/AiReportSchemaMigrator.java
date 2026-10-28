@@ -106,6 +106,11 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
             } catch (Exception ignored) {
                 // Existing deployments may already have the column.
             }
+            try {
+                st.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING (allowed <> 0)");
+            } catch (Exception ignored) {
+                // Existing PostgreSQL installs may already use BOOLEAN.
+            }
         }
     }
 
