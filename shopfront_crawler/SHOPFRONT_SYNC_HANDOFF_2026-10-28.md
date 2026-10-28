@@ -4,16 +4,16 @@
 
 ## 2026-10-28 并发修复补充
 
-线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`、商品约 `10,882`、库存 `10,838`；crawler 缺名商品为 `0`，缺名销售行已降至 `9`。POS staging 销售 `112,887`、商品 `11,010`、库存 `10,838`，条码匹配 `10,950`、未匹配 `60`，含未匹配商品销售 `7`。POS staging 的缺名销售行统计仍是旧快照，待销售修复任务重新推送后再判断。
+线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`、商品 `10,882`、库存 `10,838`；crawler 缺名商品为 `0`，缺名销售行 `9`。POS staging 销售 `112,887`、销售行 `220,621`、商品 `11,010`、库存 `10,838`，缺名销售行 `14,554`、条码未匹配 `60`，含未匹配商品销售 `7`。Odoo 镜像销售 `112,887`、销售行 `220,624`、商品 `11,011`、库存 `10,888`，缺名销售行 `8,678`。目标端统计需在修复任务完成后重查。
 
 销售修复任务曾因与历史分片同时写 PostgreSQL 而失败，错误为 `could not serialize access due to concurrent update`。
 
-已在 `main` 修复：历史同步、全量快照、商品快照和销售修复统一使用 crawler 写锁，避免同一批 Sale/Product 被并发更新。部署完成后按以下顺序操作：
+已在 `main` 修复：历史同步、全量快照、商品快照和销售修复使用 crawler 写锁，避免同一批 Sale/Product 并发更新。当前锁在整个历史任务期间持有，因此排队的销售修复会等待历史同步结束；这是排队延迟，不代表 worker 卡死。后续可将锁缩小到每个历史分片，并在分片提交游标后释放，让修复任务在分片之间运行。部署完成后按以下顺序操作：
 
 1. 确认线上 POS/crawler 已部署包含提交 `4b8d80e6` 的版本；未部署前不要重跑修复任务。
 2. 确认历史任务 `25` 当前状态；运行中只轮询，不重复启动。
-3. 确认失败的销售修复任务已终止；历史任务结束后再调用 `POST /api/stores/skr/pos/sales-repair`。
-4. 复核 `/api/sync/coverage?store=skr` 和 `/api/pos/coverage?store=skr`，重点看 `sale_items_missing_name`、`sales_with_unmatched_items` 和 POS/Odoo 写入错误。
+3. 查询当前是否已有排队的销售修复任务；不要重复创建。job `29` 当前为 `queued`，观察它是否在历史同步结束后启动。
+4. 复核 `/api/sync/coverage?store=skr`、`/api/pos/coverage?store=skr` 和 Orithos snapshot，重点看 `sale_items_missing_name`、`sales_with_unmatched_items`、未匹配条码及 POS/Odoo 写入错误。
 
 本次修复不改变 Shopfront 源数据；图片仍以源端字段为准。当前源端图片覆盖率为 0 时，目标端不生成占位图片。
 
@@ -61,7 +61,9 @@ C:\shawn\1code\1project-new\aistore_pos\v1\aistore_pos_shopfront_release\shopfro
 | `README.md` | 快速启动和接口索引 |
 | `tests/` | OAuth、同步、幂等和接口测试 |
 
-Git 已推送到 GitHub `main`。近期关键提交：
+并发修复提交 `4b8d80e6` 已在本地分支；当前工作区分支 `codex/ui-visual-polish` 的 HEAD 为 `145f2874`，相对 `origin/main` ahead 1 / behind 3。落后的 3 个提交是 AI 数据库迁移修复，`HEAD..origin/main` 没有 crawler 文件差异。本次文档更新尚未推送；后续提交前先确认目标分支并整合 `origin/main`，不要直接把旧分支推到 `main`。
+
+近期关键提交：
 
 - `4b8d80e6`：历史同步、全量快照、商品快照和销售修复串行化，避免 PostgreSQL 并发更新冲突；
 - `c43b14b4`：修复旧 SQLite 数据库缺列导致接口 500；
@@ -156,10 +158,11 @@ POST /api/pos/import/sales?store=skr
 
 未完成：
 
-- 历史任务 ID `25` 仍为 `running`，当前游标为 `2024-10-04`；
-- 最近分片 run `1433` 范围为 `2024-10-04` 至 `2024-10-17`，状态为 `running`；
-- 销售修复任务 ID `28` 已失败，原因是并发更新冲突；新版本部署完成且任务 25 完成后才能重试；
-- 在任务 25 完成前，不要重复启动 full history、销售修复或其他会写 Sale/Product 的任务。
+- 历史任务 ID `25` 为 `running`，范围 `2011-04-22` 至 `2026-10-27`，游标为 `2024-10-04`；
+- 当前分片 run `1435` 范围为 `2024-10-04` 至 `2024-10-17`，状态为 `running`，开始时间 `2026-10-28T06:03:47Z`；相同范围旧 run `1426` 曾运行约 2 小时 11 分，单凭当前耗时不能判定卡死；
+- 销售修复 job `29` 状态为 `queued`，创建于 `2026-10-28T06:37:38Z`。同步写锁覆盖整个历史循环，因此它可能要等历史任务结束才运行；
+- Dokploy crawler 容器仍在运行，启动时间与 run `1435` 开始时间一致，日志未见任务错误或新容器重启；运行镜像的精确 Git SHA 尚未核实；
+- 在 run `1435` / job `25` 仍运行时，不要重复启动 full history、销售修复或其他会写 Sale/Product 的任务。先轮询状态和日志。
 
 查询命令：
 
@@ -203,11 +206,11 @@ Invoke-RestMethod "https://shopfront.orithos.com.au/healthz"
 
 ### 8.1 先确认历史任务是否推进
 
-每隔一段时间查看任务 25 和当前运行分片（目前为 run `1433`）的游标、状态和结束时间。若游标变化，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要直接取消任务。
+每隔一段时间查看任务 `25`、当前分片（最近核查为 run `1435`）和 job `29` 的状态、游标与结束时间。若分片完成且游标推进，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要只因单个 14 天分片耗时较久就取消任务。
 
-### 8.2 历史任务完成后执行销售修复
+### 8.2 销售修复任务
 
-确认任务 `25` 完成、没有 `running` 分片后，只执行一次：
+优先等待已排队的 job `29` 自动获得写锁并完成；只有确认它已失败/终止且没有其他同类型活跃任务，才重新发起一次销售修复。不要手动重复创建。完成后只执行一次：
 
 ```powershell
 Invoke-RestMethod `
@@ -219,7 +222,7 @@ Invoke-RestMethod `
 
 ### 8.3 历史任务完成后只执行一次快照
 
-确认任务 25 已完成且没有 running 分片后，执行一次：
+确认任务 25 已完成、销售修复已完成且没有 running 分片后，才执行一次：
 
 ```text
 POST https://shopfront.orithos.com.au/api/stores/skr/pos/full-snapshot
@@ -227,7 +230,7 @@ POST https://shopfront.orithos.com.au/api/stores/skr/pos/full-snapshot
 
 等待完成，再重新统计 POS 商品、库存、销售和销售行。
 
-### 8.4 重新检查 POS 数据
+### 8.5 重新检查 POS 数据
 
 使用 Dokploy 中的 integration token 调用：
 
@@ -246,7 +249,7 @@ GET /api/integrations/shopfront/data?storeKey=skr&type=sale_items&page=1&size=50
 4. 同一个 Shopfront Sale 重跑是否只更新、不重复创建；
 5. 未匹配商品是否进入待处理状态，而不是自动按名称创建商品。
 
-### 8.4 再考虑正式导入
+### 8.6 再考虑正式导入
 
 先选 1 至 3 个已核对营业日做小范围导入：商品和库存通过后，再导入销售。销售缺少 Sale ID、商品行或支付信息时必须阻断，不能用报表汇总伪造正式 POS 销售。
 
@@ -294,4 +297,19 @@ GitHub `main` 推送后由 Dokploy 构建部署。部署后立即验证 `/health
 - 每日 02:00 任务可执行，失败可查看和重试；
 - Sell 页面能显示已匹配商品、价格和库存；
 - 未改变 Orithos 现有收银和库存业务逻辑。
+
+## 12. 当前差异与后续优化
+
+核查快照（2026-10-28；执行中数据会变化）：
+
+| 检查项 | 当前观察 | 后续动作 |
+| --- | --- | --- |
+| 销售行名称 | crawler 缺 `9`；POS staging 缺 `14,554`；Odoo 镜像缺 `8,678` | 等 job `29` 完成后重查，区分回填未覆盖与同步失败 |
+| 商品匹配 | POS staging 条码未匹配 `60`，涉及销售 `7` | 按 Shopfront ID、条码、SKU 核对，不按名称自动建商品 |
+| 库存 | crawler/POS `10,838`，Odoo `10,888` | 检查 outlet、产品映射和镜像来源，确认多出的 `50` 条后再判断是否需修正 |
+| 图片 | Shopfront `image=null`、`alternateImages=[]` | 源端无图片；不生成占位图，先确认源端其他字段/API |
+| 历史同步锁 | 锁覆盖整段历史任务 | 优化为分片级锁；每片成功提交后释放，让修复和目录快照在片间运行 |
+| 运行身份 | 容器启动时间与当前分片相同，但精确运行 SHA 未核实 | 在 Dokploy/部署元数据确认部署 SHA 后，再标记为版本已验证 |
+
+商品字段覆盖已核实：描述 `4,425`、条码 `10,822`、SKU `4,609`、分类 `10,838`、品牌 `0`、价格 `10,846`、成本 `10,882`。Shopfront 原始 payload 已保留；缺失字段应先确认源端是否提供，不推断或伪造。
 
