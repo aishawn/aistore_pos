@@ -586,6 +586,12 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
+            # The IDs are an in-process filter for this chunk, not durable
+            # progress state. Keeping only the count makes status reads and
+            # run-row commits substantially smaller for long histories.
+            if product_source_ids is not None:
+                sync_counts["product_source_id_count"] = len(product_source_ids)
+                sync_counts.pop("product_source_ids", None)
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
             db.commit()
         return True
