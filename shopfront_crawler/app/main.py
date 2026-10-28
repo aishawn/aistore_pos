@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -657,33 +658,55 @@ async def push_pos_snapshot(
             barcodes = catalog_raw["barcodes"]
         if not barcodes and isinstance((historical or {}).get("barcodes"), list):
             barcodes = historical["barcodes"]
-        sku = nested.get("mdbId") or nested.get("sku") or (catalog.sku if catalog else None) or catalog_raw.get("mdbId") or catalog_raw.get("sku")
+        def metadata(*keys: str) -> Any:
+            """Read complete product metadata from current or archived sources."""
+            sources = (nested, catalog_raw, historical or {}, historical_raw)
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                for key in keys:
+                    value = source.get(key)
+                    if value not in (None, "", [], {}):
+                        return value
+            return None
+
+        sku = metadata("mdbId", "sku") or (catalog.sku if catalog else None)
         # Keep the complete embedded Product payload on the line. This is
         # needed for archived products that are no longer in the active
         # catalog, and lets POS/Odoo repair names, descriptions and images.
-        category = nested.get("category") if isinstance(nested.get("category"), dict) else {}
-        brand = nested.get("brand") if isinstance(nested.get("brand"), dict) else {}
-        family = nested.get("family") if isinstance(nested.get("family"), dict) else {}
-        tax_rate = nested.get("taxRate") if isinstance(nested.get("taxRate"), dict) else {}
-        cost_tax_rate = nested.get("costTaxRate") if isinstance(nested.get("costTaxRate"), dict) else {}
+        category_value = metadata("category")
+        brand_value = metadata("brand")
+        family_value = metadata("family")
+        category = category_value if isinstance(category_value, dict) else {}
+        brand = brand_value if isinstance(brand_value, dict) else {}
+        family = family_value if isinstance(family_value, dict) else {}
+        tax_rate = metadata("taxRate") if isinstance(metadata("taxRate"), dict) else {}
+        cost_tax_rate = metadata("costTaxRate") if isinstance(metadata("costTaxRate"), dict) else {}
+        description = metadata("description")
+        image = metadata("image")
+        alternate_images = metadata("alternateImages", "alternate_images") or []
+        tags = metadata("tags") or []
+        track_inventory = metadata("trackInventory", "track_inventory")
+        case_quantity = metadata("caseQuantity", "case_quantity")
+        prices = metadata("prices") or []
         return {
             "source_product_id": item.shopfront_product_id,
             "name": name,
             "sku": sku,
-            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else (catalog.barcode if catalog else None)),
+            "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else (catalog.barcode if catalog else metadata("barcode"))),
             "barcodes": barcodes or [],
-            "category": category.get("name") or catalog.category if catalog else category.get("name"),
+            "category": category.get("name") if category else (category_value or (catalog.category if catalog else None)),
             "category_id": category.get("id"),
-            "brand": brand.get("name") or catalog.brand if catalog else brand.get("name"),
+            "brand": brand.get("name") if brand else (brand_value or (catalog.brand if catalog else None)),
             "brand_id": brand.get("id"),
-            "family": family.get("name"),
+            "family": family.get("name") if family else family_value,
             "family_id": family.get("id"),
-            "description": nested.get("description"),
-            "image": nested.get("image"),
-            "alternate_images": nested.get("alternateImages") or nested.get("alternate_images") or [],
-            "tags": nested.get("tags") or [],
-            "track_inventory": nested.get("trackInventory"),
-            "case_quantity": nested.get("caseQuantity"),
+            "description": description,
+            "image": image,
+            "alternate_images": alternate_images,
+            "tags": tags,
+            "track_inventory": track_inventory,
+            "case_quantity": case_quantity,
             "tax_rate_id": tax_rate.get("id"),
             "tax_rate_name": tax_rate.get("name"),
             "cost_tax_rate_id": cost_tax_rate.get("id"),
@@ -693,7 +716,7 @@ async def push_pos_snapshot(
             "line_total": item.line_total,
             "cost": item.cost,
             "tax": item.tax,
-            "prices": nested.get("prices") or [],
+            "prices": prices,
             "raw_payload": raw,
         }
 
