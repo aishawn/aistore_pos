@@ -18,7 +18,7 @@ from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, P
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, save_token, sync_store, verify_webhook
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, verify_webhook
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -756,6 +756,85 @@ async def push_pos_snapshot(
                 continue
             if not existing.get(key) and value:
                 existing[key] = value
+
+    # Historical SaleItems can point at archived products whose metadata is
+    # absent from the current catalog and from older Sale payloads. Query those
+    # IDs directly so names, images, prices and barcodes are not lost merely
+    # because the product is no longer active.
+    missing_ids = [
+        source_id for source_id, item in product_items_by_source.items()
+        if not item.get("name") or not item.get("image") or not item.get("alternate_images")
+    ]
+    if missing_ids:
+        source_store = db.scalar(select(Store).where(Store.store_key == store_key))
+        if source_store is not None:
+            source_client = get_client(settings, source_store)
+            try:
+                source_token = await access_token(db, settings, source_store)
+                fetched_by_id: dict[str, dict] = {}
+                for offset in range(0, len(missing_ids), 100):
+                    try:
+                        fetched = await source_client.fetch_products_by_ids(source_token, missing_ids[offset:offset + 100])
+                    except ShopfrontError as exc:
+                        result["mirror_errors"].append(f"archived products: {exc!r}")
+                        break
+                    fetched_by_id.update({str(item.get("id")): item for item in fetched if item.get("id")})
+                for source_id, item in fetched_by_id.items():
+                    category = item.get("category") if isinstance(item.get("category"), dict) else {}
+                    brand = item.get("brand") if isinstance(item.get("brand"), dict) else {}
+                    family = item.get("family") if isinstance(item.get("family"), dict) else {}
+                    tax_rate = item.get("taxRate") if isinstance(item.get("taxRate"), dict) else {}
+                    normalized = {
+                        "source_id": source_id,
+                        "name": item.get("name"),
+                        "sku": item.get("mdbId") or item.get("sku"),
+                        "barcode": item.get("barcode") or ((item.get("barcodes") or [{}])[0].get("code") if isinstance((item.get("barcodes") or [{}])[0], dict) else None),
+                        "barcodes": item.get("barcodes") or [],
+                        "category": item.get("categoryName") or category.get("name"),
+                        "category_id": category.get("id"),
+                        "brand": item.get("brandName") or brand.get("name"),
+                        "brand_id": brand.get("id"),
+                        "family": family.get("name"),
+                        "family_id": family.get("id"),
+                        "description": item.get("description"),
+                        "image": item.get("image"),
+                        "alternate_images": item.get("alternateImages") or item.get("alternate_images") or [],
+                        "tags": item.get("tags") or [],
+                        "track_inventory": item.get("trackInventory"),
+                        "case_quantity": item.get("caseQuantity"),
+                        "tax_rate_id": tax_rate.get("id"),
+                        "tax_rate_name": tax_rate.get("name"),
+                        "cost_tax_rate_name": (item.get("costTaxRate") or {}).get("name") if isinstance(item.get("costTaxRate"), dict) else None,
+                        "source_status": item.get("status"),
+                        "source_type": item.get("type"),
+                        "source_created_at": item.get("createdAt"),
+                        "source_updated_at": item.get("updatedAt"),
+                        "cost": item.get("cost"),
+                        "price": item.get("price") or ((item.get("prices") or [{}])[0].get("price") if isinstance((item.get("prices") or [{}])[0], dict) else None),
+                        "prices": item.get("prices") or [],
+                        "raw_payload": item,
+                    }
+                    existing = product_items_by_source.get(source_id)
+                    if existing is None:
+                        product_items_by_source[source_id] = normalized
+                    else:
+                        for key, value in normalized.items():
+                            if value not in (None, "", [], {}) and not existing.get(key):
+                                existing[key] = value
+                    product = products_by_source.get(source_id)
+                    if product is not None:
+                        product.name = product.name or normalized.get("name")
+                        product.sku = product.sku or normalized.get("sku")
+                        product.barcode = product.barcode or normalized.get("barcode")
+                        product.category = product.category or normalized.get("category")
+                        product.brand = product.brand or normalized.get("brand")
+                        product.cost = product.cost or parse_decimal(normalized.get("cost"))
+                        product.price = product.price or parse_decimal(normalized.get("price"))
+                        product.raw_payload = normalized.get("raw_payload") or product.raw_payload
+                        product.synced_at = datetime.now(timezone.utc)
+                db.commit()
+            finally:
+                await source_client.close()
     product_items = list(product_items_by_source.values())
     # Include historical SaleItem-derived products in the run statistics.
     result["products"] = len(product_items)
