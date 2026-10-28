@@ -43,42 +43,55 @@ async def startup() -> None:
             run.error = "interrupted by crawler restart; history job will retry this range"
             run.finished_at = datetime.now(timezone.utc)
         interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running").order_by(SyncJob.store_key, desc(SyncJob.id))).all()
-        resumed_stores: set[str] = set()
+        resumed_stores: set[tuple[str, str]] = set()
         interrupted_history_ids: list[int] = []
         interrupted_discovery_ids: list[int] = []
         interrupted_snapshot_ids: list[int] = []
+        interrupted_catalog_ids: list[int] = []
+        interrupted_sales_repair_ids: list[int] = []
         for job in interrupted:
-            if job.store_key in resumed_stores:
+            job_key = (job.store_key, job.job_type)
+            if job_key in resumed_stores:
                 job.status = "superseded"
                 job.error = "superseded by newer job after crawler restart"
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             job.status = "queued"
             job.error = "requeued after crawler restart"
-            resumed_stores.add(job.store_key)
+            resumed_stores.add(job_key)
             if job.job_type == "history":
                 interrupted_history_ids.append(job.id)
             elif job.job_type == "discover":
                 interrupted_discovery_ids.append(job.id)
             elif job.job_type == "snapshot":
                 interrupted_snapshot_ids.append(job.id)
+            elif job.job_type == "catalog_snapshot":
+                interrupted_catalog_ids.append(job.id)
+            elif job.job_type == "sales_repair":
+                interrupted_sales_repair_ids.append(job.id)
         # A snapshot can be persisted as queued immediately before a process
         # restart, before its BackgroundTask gets a chance to claim it. Start
         # the newest queued snapshot for each store so it cannot remain stuck.
         queued_snapshots = db.scalars(
             select(SyncJob)
-            .where(SyncJob.status == "queued", SyncJob.job_type == "snapshot")
+            .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
             .order_by(SyncJob.store_key, desc(SyncJob.id))
         ).all()
-        queued_snapshot_stores: set[str] = set()
+        queued_snapshot_keys: set[tuple[str, str]] = set()
         for job in queued_snapshots:
-            if job.store_key in queued_snapshot_stores:
+            key = (job.store_key, job.job_type)
+            if key in queued_snapshot_keys:
                 job.status = "superseded"
                 job.error = "superseded by newer queued snapshot"
                 job.finished_at = datetime.now(timezone.utc)
                 continue
-            queued_snapshot_stores.add(job.store_key)
-            interrupted_snapshot_ids.append(job.id)
+            queued_snapshot_keys.add(key)
+            if job.job_type == "snapshot":
+                interrupted_snapshot_ids.append(job.id)
+            elif job.job_type == "catalog_snapshot":
+                interrupted_catalog_ids.append(job.id)
+            elif job.job_type == "sales_repair":
+                interrupted_sales_repair_ids.append(job.id)
         db.commit()
     finally:
         db.close()
@@ -95,6 +108,10 @@ async def startup() -> None:
         __import__("asyncio").create_task(run_history_discovery(job_id))
     for job_id in interrupted_snapshot_ids:
         __import__("asyncio").create_task(run_full_snapshot_job(job_id))
+    for job_id in interrupted_catalog_ids:
+        __import__("asyncio").create_task(run_catalog_snapshot_job(job_id))
+    for job_id in interrupted_sales_repair_ids:
+        __import__("asyncio").create_task(run_sales_repair_job(job_id))
 
 
 @app.on_event("shutdown")
@@ -188,8 +205,6 @@ async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_d
 
 
 async def run_full_snapshot_job(job_id: int) -> None:
-    if snapshot_lock.locked():
-        return
     async with snapshot_lock:
         db = next(get_db())
         run = None
@@ -227,6 +242,59 @@ async def run_full_snapshot_job(job_id: int) -> None:
             db.close()
 
 
+async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
+    """Run a catalog-only or sale-repair snapshot with durable progress."""
+    async with snapshot_lock:
+        db = next(get_db())
+        run = None
+        try:
+            job = db.get(SyncJob, job_id)
+            if not job or job.status != "queued":
+                return
+            job.status = "running"
+            job.started_at = datetime.now(timezone.utc)
+            run = SyncRun(store_key=job.store_key, status="running", counts={"type": job.job_type})
+            db.add(run)
+            db.commit()
+            result = await push_pos_snapshot(
+                db,
+                job.store_key,
+                run=run,
+                include_catalog=True,
+                include_sales=include_sales,
+            )
+            run.status = "completed" if result.get("error") is None else "failed"
+            run.counts = {"type": job.job_type, **result}
+            run.error = result.get("error")
+            run.finished_at = datetime.now(timezone.utc)
+            job.status = run.status
+            job.payload = run.counts
+            job.error = run.error
+            job.finished_at = run.finished_at
+            db.commit()
+        except Exception as exc:
+            if run is not None:
+                run.status = "failed"
+                run.error = str(exc)[:2000]
+                run.finished_at = datetime.now(timezone.utc)
+            job = db.get(SyncJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error = str(exc)[:2000]
+                job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        finally:
+            db.close()
+
+
+async def run_catalog_snapshot_job(job_id: int) -> None:
+    await _run_catalog_job(job_id, include_sales=False)
+
+
+async def run_sales_repair_job(job_id: int) -> None:
+    await _run_catalog_job(job_id, include_sales=True)
+
+
 @app.post("/api/stores/{store_key}/pos/full-snapshot")
 async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
@@ -238,6 +306,42 @@ async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks,
     db.commit()
     background_tasks.add_task(run_full_snapshot_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "crawler database to POS and Odoo mirrors"}
+
+
+@app.post("/api/stores/{store_key}/pos/catalog-snapshot")
+async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+    """Refresh product metadata and inventory without waiting for history."""
+    store = require_store(store_key, db)
+    active = db.scalar(select(SyncJob).where(
+        SyncJob.store_key == store.store_key,
+        SyncJob.job_type == "catalog_snapshot",
+        SyncJob.status.in_(["queued", "running"]),
+    ))
+    if active:
+        raise HTTPException(409, "A catalog snapshot is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="catalog_snapshot", status="queued")
+    db.add(job)
+    db.commit()
+    background_tasks.add_task(run_catalog_snapshot_job, job.id)
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "products and inventory"}
+
+
+@app.post("/api/stores/{store_key}/pos/sales-repair")
+async def start_sales_repair(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+    """Re-push saved sales so SaleItem names and source metadata are repaired."""
+    store = require_store(store_key, db)
+    active = db.scalar(select(SyncJob).where(
+        SyncJob.store_key == store.store_key,
+        SyncJob.job_type == "sales_repair",
+        SyncJob.status.in_(["queued", "running"]),
+    ))
+    if active:
+        raise HTTPException(409, "A sales repair is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="sales_repair", status="queued")
+    db.add(job)
+    db.commit()
+    background_tasks.add_task(run_sales_repair_job, job.id)
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "saved sales and SaleItem metadata"}
 
 
 def active_job(db: Session, store_key: str) -> SyncJob | None:
@@ -386,6 +490,7 @@ async def push_pos_snapshot(
     run: SyncRun | None = None,
     include_catalog: bool = True,
     product_source_ids: list[str] | None = None,
+    include_sales: bool = True,
 ) -> dict:
     """Push a snapshot in bounded pages so a full history never sits in RAM."""
     products_query = select(Product).where(Product.store_key == store_key)
@@ -399,7 +504,7 @@ async def push_pos_snapshot(
         window_start = datetime.combine(start, datetime.min.time())
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
-    total_sales = db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0
+    total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_enabled = bool(
@@ -642,7 +747,7 @@ async def push_pos_snapshot(
         sale_batches = 0
         odoo_batches = 0
         offset = 0
-        while offset < total_sales:
+        while include_sales and offset < total_sales:
             sales = db.scalars(sales_query.offset(offset).limit(250)).all()
             if not sales:
                 break
