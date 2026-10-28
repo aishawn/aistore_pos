@@ -893,7 +893,12 @@ async def push_pos_snapshot(
                 odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 100])))
             odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
         if odoo_enabled and include_catalog and inventory_items:
-            odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
+            odoo_inventory_result = await odoo_client.sync(
+                "inventory",
+                store_key,
+                jsonable_encoder(inventory_items),
+                snapshot_complete=True,
+            )
         sale_batches = 0
         odoo_batches = 0
         offset = max(0, int(sales_offset or 0))

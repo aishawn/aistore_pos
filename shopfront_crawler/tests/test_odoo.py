@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -28,5 +29,27 @@ def test_sync_requires_explicit_odoo_success(body, expected):
                 assert response["result"]["ok"] is True
         finally:
             await client.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("snapshot_complete, expected_flags", [(True, {"replace": True, "snapshot_complete": True}), (False, {})])
+def test_inventory_snapshot_flags_are_only_sent_for_complete_snapshot(snapshot_complete, expected_flags):
+    async def run():
+        captured = {}
+
+        def handle(request):
+            captured.update(json.loads(request.content)["params"])
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True}})
+
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
+        client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, http=http)
+        try:
+            await client.sync("inventory", "skr", [{"source_id": "product-1"}], snapshot_complete=snapshot_complete)
+        finally:
+            await client.close()
+
+        assert {key: captured[key] for key in expected_flags} == expected_flags
+        assert {key for key in captured if key in {"replace", "snapshot_complete"}} == set(expected_flags)
 
     asyncio.run(run())

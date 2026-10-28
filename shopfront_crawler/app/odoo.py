@@ -21,15 +21,25 @@ class OdooSyncClient:
     async def close(self) -> None:
         await self.http.aclose()
 
-    async def sync(self, import_type: str, store_key: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+    async def sync(
+        self,
+        import_type: str,
+        store_key: str,
+        items: list[dict[str, Any]],
+        *,
+        snapshot_complete: bool = False,
+    ) -> dict[str, Any]:
         if not self.enabled:
             raise OdooIntegrationError("Odoo import is disabled")
         if not self.base_url or not self.token:
             raise OdooIntegrationError("Odoo integration URL/token is not configured")
+        params = {"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items}
+        if import_type == "inventory" and snapshot_complete:
+            params.update({"replace": True, "snapshot_complete": True})
         payload = {
             "jsonrpc": "2.0",
             "method": "call",
-            "params": {"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items},
+            "params": params,
             "id": None,
         }
         tokens = [self.token] + ([self.fallback_token] if self.fallback_token else [])

@@ -24,6 +24,8 @@
 
 修复已在最新 `origin/main` 基线上通过 crawler pytest 与 compileall；GitHub 推送及 Dokploy 部署状态以本节后续更新为准。部署后预期既有 queued job `29` 自动继续，history job `25` 在分片间释放 writer 并推进游标。
 
+后续复查发现 crawler 的 Odoo 库存请求没有携带 `replace=true` 与 `snapshot_complete=true`，所以 Odoo 的 stale mirror 清理条件未满足。新增的 crawler 修复只在完整库存快照时设置这两个标志；普通/局部同步仍不会删除 Odoo 镜像行。部署后完整快照应将 50 条旧 `default` 镜像行清除，但不修改真实 `stock.quant`。
+
 ### 接手步骤
 
 1. 查询 `/api/sync/status?store=skr`、`/api/sync/runs?store=skr&limit=10`，确认 job `25`、job `29` 没有被重建，并记录当前游标和最新运行状态。
