@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-10-28T23:14:54.506Z",
+  "target": "https://skr.orithos.com.au",
+  "username": "shawn",
+  "databaseMode": "shared-uat",
+  "odooDatabase": "aipos_uat",
+  "scope": "browser cash sale -> receipt UI -> sales history -> full refund UI -> inventory reconciliation",
+  "status": true,
+  "checks": [
+    {
+      "name": "browser.login",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "cookieCount": 2
+      }
+    },
+    {
+      "name": "browser.store.route",
+      "status": "PASS",
+      "detail": {
+        "url": "https://skr.orithos.com.au/"
+      }
+    },
+    {
+      "name": "browser.odoo.session",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "user": "yu18888xiao@gmail.com"
+      }
+    },
+    {
+      "name": "browser.register.ready",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "configId": 4,
+        "sessionId": 2,
+        "paymentMethodId": 8
+      }
+    },
+    {
+      "name": "browser.product.available",
+      "status": "PASS",
+      "detail": {
+        "productId": 13590,
+        "productName": "-196 LEMON P/F 6% 330ML",
+        "beforeQty": 98,
+        "price": 8.99
+      }
+    },
+    {
+      "name": "browser.quote",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "total": 8.99,
+        "tax": 0
+      }
+    },
+    {
+      "name": "browser.cart.add",
+      "status": "PASS",
+      "detail": {
+        "productName": "-196 LEMON P/F 6% 330ML"
+      }
+    },
+    {
+      "name": "browser.sale.receipt",
+      "status": "PASS",
+      "detail": {
+        "text": "Orithos Sell Stock Customers Orithos AI Reports Dashboard Setup shawn Skip to main content Sell Orithos UAT Business Two Register Quick Keys Parked Sales More Actions Back to Quick Keys Search: 160491 Hide out of stock $8.99 [160491] -196 LEMON P/F 6% 330ML LINE CONTROLS + Qty − Qty Case Qty Return Item Discount Park Sale Clear Sale EFTPOS Exact Cash Cash Out Clear Sale $0.00 Cart is empty Search or tap a quick key to add items 0 items 0 products Subtotal $0.00 GST $0.00 TOTAL $0.00 Sale complet"
+      }
+    },
+    {
+      "name": "browser.sale.readback",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "saleId": 156069,
+        "receipt": "260-4-153451",
+        "saleName": "Orithos UAT Business Two Register - 153451"
+      }
+    },
+    {
+      "name": "browser.refund.receipt",
+      "status": "PASS",
+      "detail": {
+        "statusText": "A refund has already been recorded for one or more items. Additional refunds are unavailable from this full-sale refund flow. Refund recorded as 260-4-153452. Total $8.99.",
+        "bodyText": "Orithos Sell Stock Customers Orithos AI Reports Dashboard Setup shawn Skip to main content Overview AI Insights Sales History Inventory Purchasing & Transfers Sales History Formal ledger is Orithos POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Orithos rows, not the archive. Last refreshed 29 Oct 2026, 9:44 am. TEST · demo data Refresh Filter sales by time All time Last 24 hours Last 7 days Last 30 days La"
+      }
+    },
+    {
+      "name": "browser.refund.inventory.reconciles",
+      "status": "PASS",
+      "detail": {
+        "beforeQty": 98,
+        "afterQty": 98,
+        "productId": 13590
+      }
+    },
+    {
+      "name": "browser.refund.history",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "refundId": 156070,
+        "refundReceipt": "260-4-153452",
+        "refundTotal": -8.99
+      }
+    }
+  ]
+}
