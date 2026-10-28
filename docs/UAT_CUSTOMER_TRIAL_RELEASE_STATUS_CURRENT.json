@@ -1,11 +1,11 @@
 {
   "generatedAt": "2026-10-29",
   "target": "https://demo.orithos.com.au",
-  "runtimeSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
-  "frontendSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
-  "backendSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
-  "sourceShaAtAudit": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
-  "verifiedCodeCandidateSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "runtimeSha": "2f27af8a8420acc84de1e688ef0ab17dba182ca9",
+  "frontendSha": "2f27af8a8420acc84de1e688ef0ab17dba182ca9",
+  "backendSha": "2f27af8a8420acc84de1e688ef0ab17dba182ca9",
+  "sourceShaAtAudit": "2f27af8a8420acc84de1e688ef0ab17dba182ca9",
+  "verifiedCodeCandidateSha": "2f27af8a8420acc84de1e688ef0ab17dba182ca9",
   "sourceRuntimeMatch": true,
   "databaseMode": "shared-uat",
   "odooDatabase": "aipos_uat",
@@ -31,13 +31,16 @@
     "public Wikimedia wine-label probe returns HTTP 200 and explicit no-match result",
     "authenticated parked-sale GET returns 200 and is read-only",
     "ordinary assistant quota rejects before provider execution",
-    "SKR price list create/read/rename/archive CRUD passes 9/9 with cleanup verified"
+    "SKR price list create/read/rename/archive CRUD passes 9/9 with cleanup verified",
+    "SKR Odoo API cash sale/refund and inventory/history reconciliation passes 10/10",
+    "SKR browser quote-to-finalise read-only probe passes 5/5 with no checkout business write"
   ],
   "blocked": [
     "provider image/OCR quota",
     "physical device acceptance",
     "offline POS acceptance",
     "backup restore application smoke",
+    "POS browser checkout submission and post-sale refund UI still need a matched runtime run",
     "complete procurement, stocktake and cash-close reconciliation",
     "formal tenant isolation"
   ]
