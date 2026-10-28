@@ -5,7 +5,7 @@
 - Demo POS：`https://demo.orithos.com.au/`
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
-- 最近一次线上 `/api/public/version` 观测到 Demo 与 SKR 前后端 runtime SHA：`9cebe3ae8211000dedd7cfe10bfccaf6f6963589`。
+- 最近一次线上 `/api/public/version` 观测到 Demo 与 SKR 前后端 runtime SHA：`b9d623211bd431fb06f2983f025972050ce7f1d7`。
 - 补货路由修复候选 `6bc07cfb` 已在 Demo 与 SKR 部署；后续测试/文档提交不改变行为 runtime。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
@@ -54,9 +54,9 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## 本轮续验
 
-- 线上 `/api/public/version`：Demo 与 SKR 的 frontend/backend 均为 `9cebe3ae8211000dedd7cfe10bfccaf6f6963589`；两站点 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
+- 线上 `/api/public/version`：Demo 与 SKR 的 frontend/backend 均为 `b9d623211bd431fb06f2983f025972050ce7f1d7`；两站点 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
-- 关班超大 session 预检候选已加入：`pos.order.search_count` 超过 `ODOO_CLOSE_MAX_ORDERS`（默认 10,000）时快速返回 HTTP 409，避免等待 Odoo/Cloudflare 超时；该候选尚未部署，需线上复验。
+- 关班超大 session 预检已部署：`pos.order.search_count` 超过 `ODOO_CLOSE_MAX_ORDERS`（默认 10,000）时快速返回 HTTP 409，避免等待 Odoo/Cloudflare 超时；线上复验见 `docs/UAT_CASH_CLOSE_PREFLIGHT_SKR_2026-10-29.json`。
 - 本机未发现 `INITIAL_ADMIN_PASSWORD`、Dokploy/Odoo 凭据，也没有打印机、钱箱、扫码器或 EFTPOS；因此 Demo 认证写入验收和现场设备验收保持 `BLOCKED`，没有伪造 PASS。SKR 只读认证使用用户提供的测试账号完成。
 - 源码边界仍明确显示设备未连接、EFTPOS 未验证和离线 POS 不支持；这只能证明 UI 合约，不能替代现场验收。
