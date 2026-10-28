@@ -5,8 +5,8 @@
 - Demo POS：`https://demo.orithos.com.au/`
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
-- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`50b10914376a8f8cd52a935ac249d0592aa32eae`。
-- 当前远端 `main` 已为 `da32d2a31b90f823c6cb55f6239b1c5b4065fe5f`，因此 source/runtime 暂不一致，发布门禁保持 NO-GO；必须等 Dokploy 完成目标 SHA 部署后再做匹配验收。
+- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`63eb752cd3eaf5d53fcdb891fd3888404bce0545`。
+- 当前远端 `main` 已为 `fbd4f4c4`（包含 UI lint 修复），因此 source/runtime 暂不一致，发布门禁保持 NO-GO；必须等 Dokploy 完成目标 SHA 部署后再做匹配验收。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
 
@@ -37,7 +37,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## 本轮续验
 
-- 线上 `/api/public/version`：frontend/backend 均为 `50b10914376a8f8cd52a935ac249d0592aa32eae`；`/api/public/uat-context` 为 HTTP 200、`isolated=false`。
+- 线上 `/api/public/version`：frontend/backend 均为 `63eb752cd3eaf5d53fcdb891fd3888404bce0545`；`/api/public/uat-context` 为 HTTP 200、`isolated=false`。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
 - 本机未发现 `INITIAL_ADMIN_PASSWORD`，也没有打印机、钱箱、扫码器或 EFTPOS；因此认证浏览器验收与现场设备验收保持 `BLOCKED`，没有伪造 PASS。
