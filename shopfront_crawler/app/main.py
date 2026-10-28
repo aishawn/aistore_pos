@@ -337,6 +337,12 @@ async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTas
 async def start_sales_repair(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     """Re-push saved sales so SaleItem names and source metadata are repaired."""
     store = require_store(store_key, db)
+    # A repair rewrites the same Sale/Product rows as history chunks. Queueing
+    # both jobs together can still collide when the service runs more than one
+    # process, where the in-process asyncio lock is not shared.
+    store_active = active_job(db, store.store_key)
+    if store_active:
+        raise HTTPException(409, f"A {store_active.job_type} job is already active for this store")
     active = db.scalar(select(SyncJob).where(
         SyncJob.store_key == store.store_key,
         SyncJob.job_type == "sales_repair",
