@@ -50,6 +50,20 @@ class OrithosClient:
             raise PosIntegrationError(f"Orithos API failed ({response.status_code}): {response.text[:500]}")
         return response.json()
 
+    async def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
+        if not self.enabled:
+            raise PosIntegrationError("Orithos import is disabled; set POS_IMPORT_ENABLED=true after staging validation")
+        if not self.base_url or not self.token:
+            raise PosIntegrationError("Orithos POS API URL/token is not configured")
+        response = await self.http.get(
+            f"{self.base_url}{path}",
+            params=params,
+            headers={"X-Shopfront-Integration-Token": self.token, "Accept": "application/json"},
+        )
+        if response.status_code >= 400:
+            raise PosIntegrationError(f"Orithos API failed ({response.status_code}): {response.text[:500]}")
+        return response.json()
+
     async def upsert_products(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/products:upsert", payload)
 
@@ -58,3 +72,9 @@ class OrithosClient:
 
     async def upsert_sales(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/sales:upsert", payload)
+
+    async def snapshot(self, store_key: str) -> dict[str, Any]:
+        return await self._get("/api/integrations/shopfront/snapshot", {"storeKey": store_key})
+
+    async def match_status(self, store_key: str) -> dict[str, Any]:
+        return await self._get("/api/integrations/shopfront/match-status", {"storeKey": store_key})
