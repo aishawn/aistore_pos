@@ -61,7 +61,6 @@ export function OdooCustomerDirectoryPage() {
   const [selectedPriceIds, setSelectedPriceIds] = useState<number[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
-  useDialogFocus(groupsOpen, () => { setGroupsOpen(false); setRefreshKey((value) => value + 1); });
   useDialogFocus(Boolean(detail), () => setDetail(null));
   useEffect(() => { if (searchParams.get("manage") === "groups" && canGroups) setGroupsOpen(true); }, [searchParams, canGroups]);
   useEffect(() => { const id = Number(searchParams.get("pricelistId")); if (Number.isSafeInteger(id) && id > 0) setPriceFilter([id]); }, [searchParams]);
@@ -81,6 +80,7 @@ export function OdooCustomerDirectoryPage() {
   const [pricelists, setPricelists] = useState<OdooPricelistRecord[]>([]);
   const [groups, setGroups] = useState<OdooCustomerGroupRecord[]>([]);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  useDialogFocus(groupsOpen, () => { setGroupsOpen(false); setRefreshKey((value) => value + 1); });
 
   useEffect(() => {
     const initialQuery = searchParams.get("q");

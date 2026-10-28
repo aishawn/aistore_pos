@@ -664,9 +664,9 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
   const [hydrated, setHydrated] = useState(!isEdit);
   const createBaselineRef = useRef<string | null>(null);
   const editBaselineRef = useRef<string | null>(null);
-  if (!isEdit && createBaselineRef.current === null) {
-    createBaselineRef.current = customerFormSnapshot(form);
-  }
+  useLayoutEffect(() => {
+    if (!isEdit && createBaselineRef.current === null) createBaselineRef.current = customerFormSnapshot(form);
+  }, [form, isEdit]);
 
   const customerQuery = useApi<CustomerDetail>(
     isEdit && customerId ? `/api/customers/${customerId}` : null,

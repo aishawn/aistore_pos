@@ -106,7 +106,7 @@ function PriceCell({
     setValue(num(priceBreak?.price));
   }, [priceBreak]);
 
-  const save = useCallback(async () => {
+  async function save() {
     if (saving) return;
     const trimmed = value.trim();
     if (trimmed === "") {
@@ -137,7 +137,7 @@ function PriceCell({
     } finally {
       setSaving(false);
     }
-  }, [onSaved, priceBreak?.price, priceBreak?.priceId, productId, quantity, saving, value]);
+  }
 
   return (
     <div className="relative flex min-w-0 flex-col xl:block xl:w-[88px] xl:shrink-0 xl:px-1">

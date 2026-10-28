@@ -22,6 +22,7 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [voiceBusyState, setVoiceBusyState] = useState(false);
   const [sending, setSending] = useState(false);
   const stop = useRef<(() => void) | null>(null);
   const session = useRef(0);
@@ -35,6 +36,7 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
     stop.current?.();
     stop.current = null;
     voiceBusy.current = false;
+    setVoiceBusyState(false);
     setRecording(false);
     setStatus(null);
   }, [disabled]);
@@ -48,6 +50,7 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
       return;
     }
     voiceBusy.current = true;
+    setVoiceBusyState(true);
     const id = ++session.current;
     try {
       setStatus("Allow microphone access to speak…");
@@ -70,7 +73,7 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
     } catch (e) {
       if (id === session.current) setError(e instanceof Error ? e.message : "Voice input failed. Please try again.");
     } finally {
-      if (id === session.current) { voiceBusy.current = false; setRecording(false); setStatus(null); }
+      if (id === session.current) { voiceBusy.current = false; setVoiceBusyState(false); setRecording(false); setStatus(null); }
     }
   }
 
@@ -108,7 +111,7 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
           }
           setFiles(selected); setError(null);
         }} />
-        <button type="button" aria-label="Attach files" title="Attach text, CSV, Markdown or JSON (20 KB total; message limit 4,000 characters)" disabled={locked || voiceBusy.current} onClick={() => picker.current?.click()} className={`${button} text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]`}><Paperclip size={18} /></button>
+        <button type="button" aria-label="Attach files" title="Attach text, CSV, Markdown or JSON (20 KB total; message limit 4,000 characters)" disabled={locked || voiceBusyState} onClick={() => picker.current?.click()} className={`${button} text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]`}><Paperclip size={18} /></button>
         <input ref={field} aria-label="Ask Orithos AI" value={value} disabled={locked || !!status} onChange={event => onChange(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} placeholder={placeholder} className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]" />
         <button type="button" aria-label={recording ? "Stop voice input" : "Voice input"} aria-pressed={recording} title={voiceAvailable === true ? "Click to speak; click again to finish" : voiceAvailable == null ? "Checking voice availability…" : "Voice transcription is unavailable for this store"} disabled={locked || voiceAvailable !== true || (!!status && !recording)} onClick={() => void voice()} className={`${button} ${recording ? "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]"}`}>{recording ? <Square size={17} /> : <Mic size={18} />}</button>
         <button type="submit" aria-label="Send message" title="Send message" disabled={locked || !!status || (!value.trim() && !files.length)} className={`${button} bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]`}><Send size={18} /></button>

@@ -166,10 +166,8 @@ export function OdooCloseRegisterForm({
   const requiresCashCount = Boolean(selected?.paymentMethods.some((method) => method.is_cash_count));
   const expectedCash = selected?.session?.cashBalanceEnd ?? null;
   const openingFloat = selected?.session?.cashBalanceStart ?? null;
-  const openDuration = useMemo(
-    () => formatOpenDuration(selected?.session?.start_at),
-    [selected?.session?.start_at],
-  );
+  const selectedStartAt = selected?.session?.start_at;
+  const openDuration = formatOpenDuration(selectedStartAt);
 
   const denominationTotal = useMemo(
     () => CASH_DENOMINATIONS.reduce((total, denomination) => total + denomination.value * (Number(cashCounts[String(denomination.value)]) || 0), 0),
