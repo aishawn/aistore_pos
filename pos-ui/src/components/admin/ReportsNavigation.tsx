@@ -82,6 +82,13 @@ export function ReportsNavigation() {
                 key={tab.href}
                 href={tab.href}
                 aria-current={selected ? "page" : undefined}
+                onClick={(event) => {
+                  if (tab.href !== "/reports/dashboard" || pathname !== "/reports/dashboard") return;
+                  event.preventDefault();
+                  window.history.replaceState(null, "", "/reports/dashboard");
+                  setHash("");
+                  (document.getElementById("ai-insights")?.closest("main") as HTMLElement | null)?.scrollTo({ top: 0, behavior: "smooth" });
+                }}
                 className={cn(
                   "inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition-colors",
                   selected
