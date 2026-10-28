@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-10-28T21:49:44.619Z",
+  "target": "https://skr.orithos.com.au",
+  "runtimeVerifiedAgainst": "9a4dfeb92ec50ca1a618bf5fc4a6b8a76dc355ed",
+  "scope": "synthetic invoice image OCR preview only; no Odoo writes",
+  "fixture": "synthetic Australian tax invoice with non-real supplier and invoice identifiers",
+  "httpStatus": 200,
+  "latencyMs": 783,
+  "rateLimitHeaders": {
+    "retry-after": null,
+    "x-ratelimit-limit": null,
+    "x-ratelimit-remaining": null,
+    "x-request-id": null
+  },
+  "apiCode": 42901,
+  "checks": {
+    "supplierName": false,
+    "invoiceNumber": false,
+    "invoiceDate": false,
+    "gstAmount": false,
+    "totalPayable": false,
+    "lineDescription": false,
+    "lineQuantity": false,
+    "unitPrice": false,
+    "lineTotal": false
+  },
+  "extractedFieldPresence": {
+    "supplierName": false,
+    "invoiceNumber": false,
+    "invoiceDate": false,
+    "gstIncluded": false,
+    "totalPayable": false,
+    "lineCount": 0
+  },
+  "extractedSyntheticLines": [],
+  "status": "FAIL",
+  "businessWrites": 0
+}
