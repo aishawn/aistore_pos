@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
 import {
   createOdooProduct,
   fetchOdooRoute,
@@ -20,6 +20,7 @@ import { formatStoreEpoch } from "@/lib/odoo-date";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 import { useAuth } from "@/lib/auth";
 import { StockWorkspaceDialog } from "@/components/admin/StockWorkspaceDialog";
+import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
 import { OdooCategoriesPanel } from "@/components/admin/OdooCategoriesPanel";
 import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -92,6 +93,7 @@ export function OdooProductCataloguePage() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importResult, setImportResult] = useState<{ created: number; skipped: Array<{ line: number; reason: string }> } | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [priceListsOpen, setPriceListsOpen] = useState(false);
   const resultsPending = loading || query.trim() !== debouncedQuery;
   const requestRevision = useRef(0);
   const newProductNameInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +108,7 @@ export function OdooProductCataloguePage() {
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
   }, undefined, newProductNameInputRef);
+  useDialogFocus(priceListsOpen, () => setPriceListsOpen(false));
   useLayoutEffect(() => {
     if (!importOpen || categoryLoading || importBusy) return;
     let attempts = 0;
@@ -424,9 +427,10 @@ export function OdooProductCataloguePage() {
         <div className="grid grid-cols-2 items-center gap-2 sm:flex">
           {hasPermission("stock.stocktake") && <button type="button" onClick={() => setDialog("stocktake")} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stocktake</button>}
           {hasPermission("stock.products.edit") && <button type="button" onClick={() => setDialog("categories")} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Manage Categories</button>}
-          {hasPermission("stock.products.import_export") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-48 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
-          <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
-          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
+          {(hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
+          {hasPermission("stock.products.import_export") && <><button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
+          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button></>}
+          {hasPermission("customers.pricelists") && <button type="button" onClick={() => setPriceListsOpen(true)} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><Tag size={16} /><span>Price Lists</span></button>}
           </div></details>}
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 justify-self-end rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:justify-self-auto sm:px-3">
@@ -438,6 +442,15 @@ export function OdooProductCataloguePage() {
 
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Manage Categories" busy={categoryBusy} onClose={() => setDialog(null)}><OdooCategoriesPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
       {dialog === "stocktake" && hasPermission("stock.stocktake") && <StockWorkspaceDialog title="Stocktake" busy={stockBusy} onClose={() => setDialog(null)} actions={<button type="button" disabled={stockBusy} onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete("dialog"); next.set("tab", "stocktake"); router.replace(`/products?${next}`, { scroll: false }); }} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Expand to full page</button>}><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></StockWorkspaceDialog>}
+      {priceListsOpen && <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setPriceListsOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="products-price-lists-title" className="h-[min(90dvh,900px)] w-full max-w-6xl overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] shadow-2xl">
+          <header className="flex items-center justify-between border-b border-[var(--oh-border)] bg-white px-4 py-3">
+            <h2 id="products-price-lists-title" className="text-base font-semibold text-[var(--oh-text)]">Price Lists</h2>
+            <button type="button" onClick={() => setPriceListsOpen(false)} aria-label="Close price lists" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
+          </header>
+          <div className="h-[calc(100%-65px)]"><OdooPricelistsPage embedded /></div>
+        </section>
+      </div>}
 
       {connected === false ? (
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">

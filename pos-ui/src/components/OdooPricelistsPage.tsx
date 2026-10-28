@@ -21,7 +21,7 @@ import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
 
-export function OdooPricelistsPage() {
+export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { hasPermission } = useAuth();
   const canManage = hasPermission("customers.pricelists");
   const [selected, setSelected] = useState<OdooPricelistRecord | null>(null);
@@ -118,6 +118,8 @@ export function OdooPricelistsPage() {
 
   return (
     <AdminPageLayout
+      compact={embedded}
+      fullBleed={embedded}
       title="Price Lists"
       subtitle="Member and wholesale price lists, rules and assigned customers"
       count={loading || error ? undefined : items.length}
