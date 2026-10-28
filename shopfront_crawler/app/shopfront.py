@@ -283,6 +283,53 @@ UNCONSOLIDATED'''
             seen_cursors.add(str(next_cursor))
             after = str(next_cursor)
 
+    async def fetch_products_by_ids(self, access_token: str, product_ids: list[str]) -> list[dict[str, Any]]:
+        """Fetch products referenced by history, including archived products."""
+        ids = [str(value).strip() for value in product_ids if str(value).strip()]
+        if not ids:
+            return []
+        fields = """
+          id name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
+          tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+          orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+          category { id name } brand { id name } family { id name } tags { name }
+          trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
+          prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+          barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
+            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+        """
+        queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
+        last_error: Exception | None = None
+        for selection in queries:
+            query = f"""
+            query ProductsByIds($ids: [ID], $after: Cursor) {{
+              products(products: $ids, first: 100, after: $after) {{
+                edges {{ node {{ {selection} }} }}
+                pageInfo {{ hasNextPage endCursor }}
+              }}
+            }}
+            """
+            try:
+                result: list[dict[str, Any]] = []
+                after: str | None = None
+                seen: set[str] = set()
+                while True:
+                    data = await self.graphql(access_token, query, {"ids": ids, "after": after})
+                    connection = data.get("products", {}) if isinstance(data, dict) else {}
+                    result.extend(edge.get("node", {}) for edge in connection.get("edges", []) if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
+                    page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+                    if not page_info.get("hasNextPage"):
+                        return result
+                    next_cursor = str(page_info.get("endCursor") or "")
+                    if not next_cursor or next_cursor in seen:
+                        raise ShopfrontError("Shopfront product ID pagination returned a repeated cursor")
+                    seen.add(next_cursor)
+                    after = next_cursor
+            except Exception as exc:
+                last_error = exc
+        raise ShopfrontError(f"Shopfront product ID query failed: {last_error}")
+
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, query, "products")
 
