@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-10-28T22:07:17.821Z",
+  "target": "https://skr.orithos.com.au",
+  "username": "shawn",
+  "marker": "Codex UAT Price List 1793225231297 porul",
+  "scope": "Authenticated price list create/read/rename/archive with cleanup",
+  "writes": 3,
+  "cleanupVerified": true,
+  "status": true,
+  "checks": [
+    {
+      "name": "login",
+      "status": "PASS"
+    },
+    {
+      "name": "Odoo session warmup",
+      "status": "PASS"
+    },
+    {
+      "name": "create price list",
+      "status": "PASS",
+      "detail": {
+        "status": 201
+      }
+    },
+    {
+      "name": "create readback",
+      "status": "PASS",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "rename price list",
+      "status": "PASS",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "rename readback",
+      "status": "PASS",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "archive price list",
+      "status": "PASS",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "archive readback",
+      "status": "PASS",
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "finally archive and verify",
+      "status": "PASS",
+      "detail": {
+        "cleanupStatus": 404,
+        "verifyStatus": 200
+      }
+    }
+  ]
+}
