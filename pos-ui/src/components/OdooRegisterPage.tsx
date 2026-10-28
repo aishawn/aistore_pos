@@ -44,6 +44,9 @@ import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 
+// Card settlement needs a paired terminal; browser-only checkout must not mark it paid.
+const EFTPOS_TERMINAL_ENABLED = false;
+
 type CompletedReceipt = {
   reference: string;
   total: number;
@@ -880,6 +883,10 @@ export function OdooRegisterPage() {
 
   async function checkout() {
     if (!isOnline || !selectedConfig || (!pendingCheckout && (!selectedConfig.session || !paymentMethodId || !lines.length)) || checkoutBusy.current) return;
+    if (cardMethod && paymentMethodId === cardMethod.id && !EFTPOS_TERMINAL_ENABLED) {
+      setError("EFTPOS is unavailable: connect and validate a terminal before taking card payments.");
+      return;
+    }
     checkoutBusy.current = true;
     setBusy(true);
     setError(null);
@@ -1085,6 +1092,10 @@ export function OdooRegisterPage() {
   }
 
   function selectCardPayment() {
+    if (!EFTPOS_TERMINAL_ENABLED) {
+      setError("EFTPOS is unavailable: connect and validate a terminal before taking card payments.");
+      return;
+    }
     const nonCash = paymentMethods.filter((item) => !isCashMethod(item));
     const method = nonCash.find((item) => /card|eftpos|bank|terminal/i.test(item.name))
       ?? nonCash.find((item) => !/account|customer|credit|pay.?later/i.test(item.name))
@@ -1415,6 +1426,7 @@ export function OdooRegisterPage() {
           cashMethod={cashMethod}
           selectedPayment={selectedPayment ?? null}
           hasConfig={Boolean(selectedConfig)}
+          eftposAvailable={EFTPOS_TERMINAL_ENABLED}
           busy={busy}
           isCashPayment={isCashPayment}
           amountToCollect={amountToCollect}

@@ -14,6 +14,7 @@ type OdooSellPaymentBarProps = {
   cashMethod: PaymentMethodLike | null;
   selectedPayment: PaymentMethodLike | null;
   hasConfig: boolean;
+  eftposAvailable: boolean;
   busy: boolean;
   isCashPayment: boolean;
   amountToCollect: number;
@@ -37,6 +38,7 @@ export function OdooSellPaymentBar({
   cashMethod,
   selectedPayment,
   hasConfig,
+  eftposAvailable,
   busy,
   isCashPayment,
   amountToCollect,
@@ -55,15 +57,15 @@ export function OdooSellPaymentBar({
     <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
       <div className="flex flex-wrap items-center gap-2">
         {eftposSelected ? (
-          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!cardMethod}>
+          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!cardMethod || !eftposAvailable} title={!eftposAvailable ? "EFTPOS terminal not connected or validated" : undefined}>
             EFTPOS
           </AdminNavyButton>
         ) : (
           <AdminSecondaryButton
             className={cn("min-h-11", !cardMethod && "opacity-45")}
             onClick={onSelectCard}
-            disabled={!cardMethod}
-            title={!cardMethod ? "No card payment method on this register" : cardMethod.name}
+            disabled={!cardMethod || !eftposAvailable}
+            title={!eftposAvailable ? "EFTPOS terminal not connected or validated" : !cardMethod ? "No card payment method on this register" : cardMethod.name}
           >
             EFTPOS
           </AdminSecondaryButton>
