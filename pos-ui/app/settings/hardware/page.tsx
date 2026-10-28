@@ -1,4 +1,4 @@
-import { Info, Monitor, Printer, ScanBarcode, Wallet, type LucideIcon } from "lucide-react";
+import { CreditCard, Info, Monitor, Printer, ScanBarcode, Wallet, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { HardwareBarcodeTest } from "@/components/admin/HardwareBarcodeTest";
@@ -38,6 +38,13 @@ const devices: {
     icon: Monitor,
     statusTone: "amber",
   },
+  {
+    name: "EFTPOS terminal",
+    detail: "No payment terminal connection has been detected or verified on this register.",
+    status: "Not connected",
+    icon: CreditCard,
+    statusTone: "amber",
+  },
 ];
 
 const statusStyles = {
@@ -73,7 +80,7 @@ export default function HardwarePage() {
             <h2 id="hardware-devices-title" className="text-sm font-semibold text-[var(--oh-text)]">Devices</h2>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">Connection checks for the current register</p>
           </div>
-          <span className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)] ring-1 ring-[var(--oh-border)]">4 devices</span>
+          <span className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)] ring-1 ring-[var(--oh-border)]">5 devices</span>
         </div>
 
         <ul className="grid gap-3 sm:grid-cols-2">

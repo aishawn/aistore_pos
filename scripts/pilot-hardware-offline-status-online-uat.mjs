@@ -29,7 +29,7 @@ try {
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(`${base}/settings/hardware`, { waitUntil: "networkidle", timeout: 60000 });
   const hardwareText = await page.locator("body").innerText();
-  const hardwareSignals = ["Hardware", "Receipt printer", "Cash drawer", "Barcode scanner", "Not verified", "Not tested"];
+  const hardwareSignals = ["Hardware", "Receipt printer", "Cash drawer", "Barcode scanner", "EFTPOS terminal", "Not connected", "Not verified", "Not tested"];
   record("hardware page explicitly reports unverified devices", hardwareSignals.every((signal) => hardwareText.includes(signal)),
     `signals=${hardwareSignals.filter((signal) => hardwareText.includes(signal)).join(",")}; pageErrors=${pageErrors.length}`);
 
