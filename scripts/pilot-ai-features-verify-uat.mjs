@@ -240,7 +240,7 @@ try {
 
     await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 90000 });
     try {
-      await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
+      await page.getByRole("heading", { name: /Price Suggestions/i, exact: true }).waitFor({ timeout: 30000 });
       record("Price suggestions page", "PASS", page.url());
     } catch {
       record("Price suggestions page", "FAIL", page.url());

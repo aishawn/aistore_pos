@@ -47,45 +47,32 @@ try {
   record("AI availability config", "PASS", `Authenticated client config reports enabled=${enabled}.`);
 
   const page = await context.newPage();
-  // This is a Next/SPA surface; third-party telemetry can keep networkidle
-  // open indefinitely even after the assistant is interactive.
-  await page.goto(`${base}/overview`, { waitUntil: "commit", timeout: 60000 });
+  // The assistant now has a dedicated workspace route. The overview page no
+  // longer renders the retired floating launcher used by this check.
+  await page.goto(`${base}/assistant`, { waitUntil: "commit", timeout: 60000 });
   await page.locator('main[aria-busy="false"]').waitFor({ timeout: 60000 }).catch(() => {});
-  const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
-  await fab.click();
-  const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
-  await dialog.waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("heading", { name: /Hello, .*Orithos AI/i }).waitFor({ timeout: 15000 });
+  const workspace = page.locator("main");
   if (enabled) {
-    const composer = dialog.getByPlaceholder("Ask Orithos AI…");
+    const composer = workspace.getByPlaceholder("Ask Orithos AI…");
     await composer.waitFor({ state: "visible", timeout: 15000 });
     if (await composer.isDisabled()) throw new Error("AI_COMPOSER_DISABLED_WHILE_STORE_AI_ENABLED");
     record("Enabled AI composer", "PASS", "Assistant composer is enabled while store AI is on; no prompt was submitted by this check.");
   } else {
-    await dialog.getByText("AI is disabled for this store", { exact: true }).waitFor({ timeout: 15000 });
-    await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 15000 });
-    const composer = dialog.getByPlaceholder("AI chat is off for this store");
+    await workspace.getByText("AI is disabled for this store", { exact: true }).waitFor({ timeout: 15000 });
+    await workspace.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 15000 });
+    const composer = workspace.getByPlaceholder("AI chat is off for this store");
     await composer.waitFor({ state: "visible", timeout: 15000 });
     if (await composer.isEnabled()) throw new Error("AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED");
     record("Disabled AI status copy", "PASS", "Assistant header and composer explain that production AI chat is off before a request is sent.");
   }
 
-  // The current assistant exposes sell-adjacent navigation through its shared
-  // Quick actions rather than the retired “Open sell” button.
-  await dialog.getByRole("button", { name: "Products", exact: true }).click();
-  // With AI enabled the shortcut first offers a safe CTA in the conversation;
-  // disabled-chat mode may navigate immediately. Accept either product path.
-  const productsCta = dialog.getByRole("button", { name: "Open products", exact: true });
-  try {
-    await productsCta.waitFor({ state: "visible", timeout: 5000 });
-    await productsCta.click();
-  } catch {
-    // Direct navigation already happened, so there is no CTA to click.
-  }
-  await page.waitForURL((url) => url.pathname === "/products" || url.pathname === "/products/odoo", {
-    timeout: 15000,
-    waitUntil: "commit",
-  });
-  record("Quick action remains available", "PASS", "The Products shortcut navigated without an AI or business write request.");
+  // The dedicated workspace exposes read-only workflow shortcuts. Verify the
+  // current surface without clicking one, so this availability check cannot
+  // create an assistant thread or trigger a business write.
+  const stockShortcut = workspace.getByRole("button", { name: /Check stock levels/i }).first();
+  await stockShortcut.waitFor({ state: "visible", timeout: 15000 });
+  record("Quick action remains available", "PASS", "The dedicated assistant workspace exposes a read-only stock shortcut.");
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
 } catch (error) {
   record("AI availability UI regression", "FAIL", error instanceof Error ? error.message : "Unexpected failure");

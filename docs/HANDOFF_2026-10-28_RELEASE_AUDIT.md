@@ -3,7 +3,7 @@
 ## Runtime
 
 - Pilot target: `https://demo.orithos.com.au`
-- Deployment SHA verified on frontend and backend: `dc3d4d8e9ad2f18bab2e8f0c796298addcd6a5dc`
+- Deployment SHA verified on frontend and backend: `68c24db7eebf6ef4975863aaba66c2b889554d11`
 - Dokploy Compose deployment: Done
 - Odoo database variables intentionally unified for this UAT phase: `aipos_uat`
 - Java 21 local verification: `mvn -B clean verify`, 442 tests, 0 failures/errors
@@ -15,6 +15,7 @@
 - Synthetic wine-label image recognition: brand, varietal, vintage and search queries returned, 0 business writes. Evidence: `docs/UAT_AI_WINE_LABEL_RUNTIME-dc3d4d8e.json`.
 - Hardware status page and offline simulation: devices remain explicitly unverified; offline checkout is blocked with a reconnect message; offline numbering is explicitly unsupported. Evidence: `docs/UAT_HARDWARE_OFFLINE_RUNTIME-dc3d4d8e.json`.
 - AI feature matrix: login, client capability config, assistant, ASR empty-input guard, Sommelier endpoints, label empty-input guard, read-only price suggestions and anonymous guard passed. Evidence: `docs/UAT_AI_FEATURES_RUNTIME-dc3d4d8e.json`.
+- AI availability workspace check: dedicated `/assistant` route, enabled composer, and read-only stock shortcut passed on the current runtime. Evidence: `docs/UAT_AI_AVAILABILITY_ONLINE_20261028_fixed.json`.
 
 ## Remaining blockers
 
