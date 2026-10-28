@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-28T12:54:26.803Z",
+  "sourceCommit": "7431dbe7b667376f20ca4041f3d489ad1ac399a0",
+  "runtimeCommit": "7431dbe7b667376f20ca4041f3d489ad1ac399a0",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated hardware status and offline POS browser simulation; no business writes",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "hardware page explicitly reports unverified devices",
+      "status": "PASS",
+      "detail": "signals=Hardware,Receipt printer,Cash drawer,Barcode scanner,EFTPOS terminal,Not connected,Not verified,Not tested; pageErrors=0"
+    },
+    {
+      "name": "offline numbering is explicitly unsupported",
+      "status": "PASS",
+      "detail": "liveQuote=true; textPresent=true"
+    },
+    {
+      "name": "offline POS blocks finalisation and explains recovery",
+      "status": "PASS",
+      "detail": "banner=true; pageErrors=0"
+    }
+  ],
+  "limitations": [
+    "Printer, cash drawer, barcode scanner and EFTPOS physical connection remain untested.",
+    "Offline simulation uses browser network emulation; no offline sale is supported or recorded."
+  ],
+  "status": "PASS"
+}
