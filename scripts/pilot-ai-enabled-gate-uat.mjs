@@ -24,10 +24,12 @@ const env = fs.existsSync(envPath)
     )
   : {};
 
-const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
+const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
+const username = process.env.PILOT_USERNAME ?? "admin";
+const runtimePassword = process.env.INITIAL_ADMIN_PASSWORD;
 const checks = [];
 const record = (name, status, evidence = "") => checks.push({ name, status, evidence });
-const hasPassword = Boolean(env.INITIAL_ADMIN_PASSWORD);
+const hasPassword = Boolean(runtimePassword || env.INITIAL_ADMIN_PASSWORD);
 const hasDashScopeKey = Boolean(env.AI_DASHSCOPE_API_KEY);
 const localAiEnabled = String(env.AI_ENABLED ?? "false").toLowerCase() === "true";
 
@@ -42,7 +44,7 @@ try {
   } else {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const login = await context.request.post(`${base}/api/auth/login`, {
-      data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+      data: { username, password: runtimePassword || env.INITIAL_ADMIN_PASSWORD },
       headers: { Origin: base },
     });
     const loginBody = await login.json().catch(() => ({}));
@@ -77,7 +79,7 @@ try {
         });
 
         await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => null);
-        const heading = page.getByRole("heading", { name: "Price suggestions", exact: true });
+        const heading = page.getByRole("heading", { name: /Price suggestions/i, exact: true });
         try {
           await heading.waitFor({ timeout: 30000 });
           record("price suggestions reachable", "PASS", page.url());
@@ -146,11 +148,10 @@ try {
             );
           }
 
-          await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 90000 });
-          await page.getByRole("button", { name: /Open Orithos AI/ }).first().click();
-          const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
-          await dialog.waitFor({ state: "visible", timeout: 15000 });
-          const composer = dialog.getByPlaceholder(/Ask Orithos AI|AI chat is off/);
+          await page.goto(`${base}/assistant`, { waitUntil: "networkidle", timeout: 90000 });
+          const workspace = page.locator("main");
+          await workspace.waitFor({ state: "visible", timeout: 15000 });
+          const composer = workspace.getByPlaceholder(/Ask Orithos AI|AI chat is off/);
           await composer.waitFor({ state: "visible", timeout: 15000 });
           const chatShouldWork = assistantAvailable !== false && assistantBody.code === 0;
           if (chatShouldWork && (await composer.isDisabled())) {

@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-28T23:40:00.000Z",
+  "target": "https://skr.orithos.com.au",
+  "runtimeVerifiedAgainst": "210cd55b2aa337f93cedba2229c49de1edcd3a53",
+  "scope": "authenticated shared-UAT close-register oversized-session guard; no cash write and no session state change",
+  "configId": 4,
+  "sessionId": 2,
+  "sessionOrderCount": 153453,
+  "configuredOrderLimit": 10000,
+  "request": {
+    "countedCash": 758.8,
+    "method": "POST /api/odoo/session/close"
+  },
+  "httpStatus": 409,
+  "elapsedMs": 478,
+  "responseMessage": "This register session contains 153,453 orders and is too large to close from POS. Close it in Orithos or start a fresh register session.",
+  "businessWrites": 0,
+  "sessionStateChanged": false,
+  "status": "PASS"
+}

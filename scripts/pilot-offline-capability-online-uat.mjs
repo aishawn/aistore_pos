@@ -19,6 +19,7 @@ const localEnv = fs.existsSync(envPath)
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || localEnv.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME || "admin";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
@@ -26,7 +27,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 let result;
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));

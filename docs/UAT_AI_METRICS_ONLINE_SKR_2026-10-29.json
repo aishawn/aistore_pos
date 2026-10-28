@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-10-28T23:34:16.030Z",
+  "sourceCommit": "4d1a31e194a2a7a728f67f6857c17dfd01b37ab4",
+  "deploymentShaVerified": true,
+  "runtimeCommit": "210cd55b2aa337f93cedba2229c49de1edcd3a53",
+  "target": "https://skr.orithos.com.au",
+  "scope": "admin-only AI report metrics read-only regression; no business or configuration writes",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "assistant audit seed",
+      "status": "PASS",
+      "detail": "intent=search_product"
+    },
+    {
+      "name": "admin metrics response",
+      "status": "PASS",
+      "detail": "status=200 paths=14 p50=716 p95=2699"
+    },
+    {
+      "name": "assistant intent metrics coverage",
+      "status": "PASS",
+      "detail": "assistant:search_product requests=116 allowed=116 p50=837 p95=1585 estimatedTokens=4808"
+    },
+    {
+      "name": "anonymous metrics guard",
+      "status": "PASS",
+      "detail": "status=401"
+    },
+    {
+      "name": "metrics UI 390px",
+      "status": "PASS",
+      "detail": "table=true pageErrors=0"
+    },
+    {
+      "name": "metrics accessibility 390px",
+      "status": "PASS",
+      "detail": "caption=1 scopedHeaders=8 busy=1"
+    },
+    {
+      "name": "metrics UI 1440px",
+      "status": "PASS",
+      "detail": "table=true pageErrors=0"
+    },
+    {
+      "name": "metrics accessibility 1440px",
+      "status": "PASS",
+      "detail": "caption=1 scopedHeaders=8 busy=1"
+    }
+  ],
+  "writes": [],
+  "status": "PASS"
+}

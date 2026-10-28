@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-28T21:27:08.863Z",
-  "sourceCommit": "87b81f05b7d556979fa39ac2635ad5e251213083",
-  "runtimeCommit": "87b81f05b7d556979fa39ac2635ad5e251213083",
+  "generatedAt": "2026-10-28T23:32:36.984Z",
+  "sourceCommit": "4d1a31e194a2a7a728f67f6857c17dfd01b37ab4",
+  "runtimeCommit": "210cd55b2aa337f93cedba2229c49de1edcd3a53",
   "target": "https://skr.orithos.com.au",
   "scope": "authenticated hardware status and offline POS browser simulation; no business writes",
   "checks": [

@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const runStamp = new Date().toISOString().replace(/[-:.]/g, "");
 const env = Object.fromEntries(
-  fs.readFileSync(path.join(root, ".env"), "utf8")
+  (fs.existsSync(path.join(root, ".env")) ? fs.readFileSync(path.join(root, ".env"), "utf8") : "")
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#") && line.includes("="))
     .map((line) => {
@@ -16,8 +16,10 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
     }),
 );
-const base = "https://demo.orithos.com.au";
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
+const username = process.env.PILOT_USERNAME || "admin";
+const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -26,7 +28,7 @@ const record = (name, status, evidence) => checks.push({ name, status, evidence 
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));

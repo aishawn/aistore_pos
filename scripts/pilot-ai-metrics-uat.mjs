@@ -7,7 +7,7 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = path.join(root, ".env");
 const env = Object.fromEntries(
-  fs.readFileSync(envPath, "utf8")
+  (fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "")
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#") && line.includes("="))
     .map((line) => {
@@ -17,6 +17,7 @@ const env = Object.fromEntries(
 );
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME ?? "admin";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const deploymentVerified = process.env.PILOT_DEPLOYMENT_VERIFIED === "true"
   && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "");
@@ -39,7 +40,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
     timeout: 60000,
   });

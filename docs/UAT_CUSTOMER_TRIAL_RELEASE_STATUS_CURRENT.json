@@ -37,6 +37,11 @@
     "SKR browser cash sale, receipt, sales history and full refund UI passes 12/12 with inventory and negative refund readback",
     "SKR purchase confirmation, over-receive guard, partial receipt, idempotent retry, backorder and final receive passes 14/14",
     "SKR stocktake apply, readback, reversal and final readback passes 5/5"
+    ,"SKR oversized-session close preflight returns HTTP 409 in 478ms with zero writes"
+    ,"SKR synthetic invoice OCR preview matches 9/9 expected fields with zero Odoo writes"
+    ,"SKR AI metrics window and responsive metrics UI pass; latency and estimated-token evidence recorded"
+    ,"SKR AI enabled gate, price suggestions read-only surface and no-price-write monitor pass"
+    ,"SKR hardware/offline browser boundary checks pass with physical-device and offline-sale limitations preserved"
   ],
   "blocked": [
     "provider image/OCR quota",

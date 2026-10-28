@@ -1,38 +1,45 @@
 {
-  "generatedAt": "2026-10-28T21:49:44.619Z",
+  "generatedAt": "2026-10-28T23:32:16.126Z",
   "target": "https://skr.orithos.com.au",
-  "runtimeVerifiedAgainst": "9a4dfeb92ec50ca1a618bf5fc4a6b8a76dc355ed",
+  "runtimeVerifiedAgainst": "210cd55b2aa337f93cedba2229c49de1edcd3a53",
   "scope": "synthetic invoice image OCR preview only; no Odoo writes",
   "fixture": "synthetic Australian tax invoice with non-real supplier and invoice identifiers",
   "httpStatus": 200,
-  "latencyMs": 783,
+  "latencyMs": 8799,
   "rateLimitHeaders": {
     "retry-after": null,
     "x-ratelimit-limit": null,
     "x-ratelimit-remaining": null,
     "x-request-id": null
   },
-  "apiCode": 42901,
+  "apiCode": 0,
   "checks": {
-    "supplierName": false,
-    "invoiceNumber": false,
-    "invoiceDate": false,
-    "gstAmount": false,
-    "totalPayable": false,
-    "lineDescription": false,
-    "lineQuantity": false,
-    "unitPrice": false,
-    "lineTotal": false
+    "supplierName": true,
+    "invoiceNumber": true,
+    "invoiceDate": true,
+    "gstAmount": true,
+    "totalPayable": true,
+    "lineDescription": true,
+    "lineQuantity": true,
+    "unitPrice": true,
+    "lineTotal": true
   },
   "extractedFieldPresence": {
-    "supplierName": false,
-    "invoiceNumber": false,
-    "invoiceDate": false,
-    "gstIncluded": false,
-    "totalPayable": false,
-    "lineCount": 0
+    "supplierName": true,
+    "invoiceNumber": true,
+    "invoiceDate": true,
+    "gstIncluded": true,
+    "totalPayable": true,
+    "lineCount": 1
   },
-  "extractedSyntheticLines": [],
-  "status": "FAIL",
+  "extractedSyntheticLines": [
+    {
+      "description": "Sparkling Water 12 x 750mL",
+      "qtyCases": 2,
+      "unitPrice": 12,
+      "lineTotal": 24
+    }
+  ],
+  "status": "PASS",
   "businessWrites": 0
 }

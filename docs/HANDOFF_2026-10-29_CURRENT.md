@@ -40,6 +40,11 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - SKR 采购确认/收货生命周期 `docs/UAT_PURCHASE_RECEIVE_SKR_2026-10-28.json`：14/14 PASS；供应商、RFQ、确认、超量拦截、部分收货、重复提交幂等、backorder 和最终收货均通过。
 - SKR 盘点真实写入回滚 `docs/UAT_STOCKTAKE_WRITE_SKR_2026-10-29.json`：5/5 PASS；数量 190→191→190，Odoo 回读一致，临时差异已恢复。
 - SKR 现金关班 `docs/UAT_CASH_CLOSE_SKR_2026-10-29.json`：缺少盘点时 422 门禁通过，但正确现金 758.80 的关班请求约 30 秒后返回 Cloudflare 502，session 仍为 opened；关班闭环仍阻断。
+- 关班订单量预检线上复验 `docs/UAT_CASH_CLOSE_PREFLIGHT_SKR_2026-10-29.json`：SKR `configId=4/sessionId=2` 的 153,453 张订单在 478ms 内返回 HTTP 409，未写入现金且 session 未变化；已避免旧 runtime 的 Cloudflare 502 等待，但该历史超大 session 仍需在 Orithos 中关闭或新开 register。
+- SKR 合成税票 OCR `docs/UAT_AI_VALID_INVOICE_OCR_ONLINE_SKR_2026-10-29.json`：9/9 字段匹配 PASS，约束为合成图片、预览接口、0 Odoo 写入，不能替代真实供应商票据现场准确率。
+- SKR AI 指标 `docs/UAT_AI_METRICS_ONLINE_SKR_2026-10-29.json`：24 小时窗口和权限/UI 检查 PASS；总体 p50 716ms、p95 2699ms，`assistant:search_product` p50 837ms、p95 1585ms、estimatedTokens 4808；成本仍为估算 token，非供应商账单。
+- SKR AI 启用门禁 `docs/UAT_AI_ENABLED_GATE_ONLINE_SKR_2026-10-29.json`：价格建议只读页面、AI assistant、酒类查找页和无价格写入监听均 PASS；脚本已兼容当前 `/assistant` 路由和进程环境认证。
+- SKR 离线/硬件边界 `docs/UAT_HARDWARE_OFFLINE_STATUS_ONLINE_SKR_2026-10-29.json`、`docs/UAT_OFFLINE_CAPABILITY_ONLINE_SKR_2026-10-29.json`：浏览器网络模拟和 UI 状态 PASS；没有升级为现场设备或离线销售支持。
 
 ## 当前结论：NO-GO（正式生产）
 
