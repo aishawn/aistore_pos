@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-29",
+  "target": "https://demo.orithos.com.au",
+  "runtimeSha": "859e20c7c6a7c19abca2f450e31020f608292efd",
+  "scope": "unauthenticated route and redirect smoke; no business writes",
+  "checks": [
+    { "route": "/", "status": 307, "location": "/login?next=%2F" },
+    { "route": "/login", "status": 200 },
+    { "route": "/dashboard", "status": 307, "location": "/login?next=%2Fdashboard" },
+    { "route": "/sell", "status": 307, "location": "/login?next=%2Fsell" },
+    { "route": "/stock", "status": 307, "location": "/login?next=%2Fstock" },
+    { "route": "/purchasing", "status": 307, "location": "/login?next=%2Fpurchasing" },
+    { "route": "/reports", "status": 307, "location": "/login?next=%2Freports" },
+    { "route": "/settings/hardware", "status": 307, "location": "/login?next=%2Fsettings%2Fhardware" },
+    { "route": "/settings/registers/invoices", "status": 307, "location": "/login?next=%2Fsettings%2Fregisters%2Finvoices" }
+  ],
+  "status": "PASS",
+  "businessWrites": 0
+}
