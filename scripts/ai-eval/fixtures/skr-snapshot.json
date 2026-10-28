@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "source": "synthetic-fixture-shaped-like-skr",
+  "generatedAt": "2026-10-28T00:00:00Z",
+  "outletId": 10,
+  "currency": "AUD",
+  "timezone": "Australia/Adelaide",
+  "products": [
+    { "id": 101, "name": "VB Cans", "barcode": "9310000001010", "sku": "VB-375", "category": "Beer", "brand": "Victoria Bitter", "price": 22.5, "gstIncluded": true, "stock": 48, "stockUpdatedAt": "2026-10-28T01:00:00Z" },
+    { "id": 102, "name": "Shiraz Reserve", "barcode": "9310000001027", "sku": "SHZ-750", "category": "Red Wine", "brand": "South Ridge", "price": 28, "gstIncluded": true, "stock": 12, "stockUpdatedAt": "2026-10-28T01:00:00Z" },
+    { "id": 103, "name": "Shiraz Reserve 6 Pack", "barcode": "9310000001034", "sku": "SHZ-6PK", "category": "Red Wine", "brand": "South Ridge", "price": 150, "gstIncluded": true, "stock": 4, "stockUpdatedAt": "2026-10-28T01:00:00Z" }
+  ],
+  "customers": [{ "id": 201, "label": "CUSTOMER-0001", "group": "Loyalty" }],
+  "sales": [
+    { "date": "2026-10-28", "outletId": 10, "revenue": 1840.5, "quantity": 96, "tickets": 73 },
+    { "date": "2026-10-27", "outletId": 10, "revenue": 1622, "quantity": 81, "tickets": 65 }
+  ],
+  "suppliers": [{ "id": 301, "name": "South Australia Beverage Supply" }]
+}
