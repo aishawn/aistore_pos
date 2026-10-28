@@ -107,9 +107,6 @@ export function OdooSellPaymentBar({
             ${totalWhole}
             <span className="text-[14px]">.{totalCents}</span>
           </span>
-          <span className="text-[12px] font-medium text-[var(--oh-muted)]">
-            Finalise from cart
-          </span>
         </div>
       </div>
       {isCashPayment && linesLength > 0 && (
