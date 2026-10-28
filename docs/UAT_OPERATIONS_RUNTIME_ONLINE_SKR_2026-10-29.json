@@ -1,0 +1,111 @@
+{
+  "generatedAt": "2026-10-28T21:12:09.671Z",
+  "sourceCommit": "680dad3dc98504c8f56e939a250973c481cdb361",
+  "deployment": "680dad3dc98504c8f56e939a250973c481cdb361",
+  "target": "https://skr.orithos.com.au",
+  "scope": "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal and read-only records POST permitted; business API mutations blocked; no inventory/RFQ/order writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "Odoo session warmup",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "new search retires old results during debounce",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "pending search reports busy and collapsed",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "current empty search completes",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "run",
+      "status": "FAIL",
+      "evidence": {
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Could not load replenishment', exact: true }) to be visible\u001b[22m\n",
+        "path": "/purchases",
+        "headings": [
+          "Purchasing"
+        ],
+        "apiFailures": [
+          {
+            "path": "/api/odoo/replenishment",
+            "status": 503
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "new search retires old results during debounce",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "pending search reports busy and collapsed",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "current empty search completes",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "run",
+      "status": "FAIL",
+      "evidence": {
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Could not load replenishment', exact: true }) to be visible\u001b[22m\n",
+        "path": "/purchases",
+        "headings": [
+          "Purchasing"
+        ],
+        "apiFailures": [
+          {
+            "path": "/api/odoo/replenishment",
+            "status": 503
+          }
+        ]
+      }
+    }
+  ],
+  "blockedWrites": [],
+  "sessionRenewals": [],
+  "allowedPostReads": [
+    {
+      "path": "/api/odoo/records"
+    },
+    {
+      "path": "/api/odoo/records"
+    },
+    {
+      "path": "/api/odoo/records"
+    },
+    {
+      "path": "/api/odoo/records"
+    }
+  ]
+}

@@ -5,18 +5,21 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+const envFile = path.join(root, ".env");
+const envText = fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "";
+const env = Object.fromEntries(envText.split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME ?? "admin";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_OPERATIONS_RUNTIME_ONLINE_CURRENT.json");
 const screenshotDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ?? "docs/screenshots/operations-runtime-online");
 fs.mkdirSync(screenshotDir, { recursive: true });
-const checks = [], blockedWrites = [], sessionRenewals = [];
+const checks = [], blockedWrites = [], sessionRenewals = [], allowedPostReads = [];
 const browser = await chromium.launch({ headless: true });
 try {
   const context = await browser.newContext();
-  const login = await context.request.post(`${base}/api/auth/login`, { data: { username: "admin", password }, headers: { Origin: base }, timeout: 60000 });
+  const login = await context.request.post(`${base}/api/auth/login`, { data: { username, password }, headers: { Origin: base }, timeout: 60000 });
   const body = await login.json().catch(() => ({}));
   if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
   // This run isolates page behavior after Odoo session recovery; cold-entry failures remain separate evidence.
@@ -29,6 +32,10 @@ try {
     const url = new URL(request.url());
     if (request.method() === "POST" && url.origin === new URL(base).origin && url.pathname === "/api/auth/refresh") {
       sessionRenewals.push({ path: url.pathname });
+      return route.continue();
+    }
+    if (request.method() === "POST" && url.origin === new URL(base).origin && url.pathname === "/api/odoo/records") {
+      allowedPostReads.push({ path: url.pathname });
       return route.continue();
     }
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) {
@@ -46,6 +53,8 @@ try {
     const apiFailures = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("response", (response) => { if (response.status() >= 400 && new URL(response.url()).pathname.startsWith("/api/")) apiFailures.push({ path: new URL(response.url()).pathname, status: response.status() }); });
+    const pageSession = await page.request.get(`${base}/api/odoo/session`, { headers: { Origin: base }, timeout: 60000 });
+    if (!pageSession.ok()) throw new Error(`ODOO_SESSION_WARMUP_FAILED_${pageSession.status()}`);
     const record = (name, ok, evidence = null) => checks.push({ viewport: width, actualViewport, name, status: ok ? "PASS" : "FAIL", evidence });
     try {
       await page.goto(`${base}/stock/stocktake`, { waitUntil: "networkidle", timeout: 60000 });
@@ -94,7 +103,7 @@ try {
 finally { await browser.close(); }
 const failed = checks.filter((check) => check.status === "FAIL").length;
 const deploymentSha = process.env.PILOT_DEPLOYMENT_SHA ?? "";
-const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: /^[\da-f]{40}$/i.test(deploymentSha) ? deploymentSha.toLowerCase() : "unverified-after-push", target: base, scope: "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal permitted; business API mutations blocked; no inventory/RFQ/order writes", status: failed === 0 && !blockedWrites.length ? "PASS" : "FAIL", checks, blockedWrites, sessionRenewals };
+const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: /^[\da-f]{40}$/i.test(deploymentSha) ? deploymentSha.toLowerCase() : "unverified-after-push", target: base, scope: "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal and read-only records POST permitted; business API mutations blocked; no inventory/RFQ/order writes", status: failed === 0 && !blockedWrites.length ? "PASS" : "FAIL", checks, blockedWrites, sessionRenewals, allowedPostReads };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, status: output.status, checks: checks.length, failed, blockedWrites: blockedWrites.length }));
