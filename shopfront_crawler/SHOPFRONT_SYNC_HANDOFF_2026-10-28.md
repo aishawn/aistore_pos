@@ -1,19 +1,24 @@
 # Shopfront 同步模块交接文档
 
+> 本文是 2026-10-28 的当前交接摘要。线上操作前先看“当前状态”和“恢复顺序”；历史记录只作为背景，不要据此重复启动任务。
+
 ## 2026-10-28 并发修复补充
 
-线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`，源库缺名销售行已降至个位数；POS staging 仍有旧的缺名统计，待销售修复任务重新推送。销售修复任务曾因与历史分片同时写 PostgreSQL 而失败，错误为 `could not serialize access due to concurrent update`。
+线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`、商品约 `10,882`、库存 `10,838`；crawler 缺名商品为 `0`，缺名销售行已降至 `9`。POS staging 销售 `112,887`、商品 `11,010`、库存 `10,838`，条码匹配 `10,950`、未匹配 `60`，含未匹配商品销售 `7`。POS staging 的缺名销售行统计仍是旧快照，待销售修复任务重新推送后再判断。
+
+销售修复任务曾因与历史分片同时写 PostgreSQL 而失败，错误为 `could not serialize access due to concurrent update`。
 
 已在 `main` 修复：历史同步、全量快照、商品快照和销售修复统一使用 crawler 写锁，避免同一批 Sale/Product 被并发更新。部署完成后按以下顺序操作：
 
-1. 确认历史任务 `25` 当前状态；运行中只轮询，不重复启动。
-2. 确认失败的销售修复任务已终止；历史任务结束后再调用 `POST /api/stores/skr/pos/sales-repair`。
-3. 复核 `/api/sync/coverage?store=skr` 和 `/api/pos/coverage?store=skr`，重点看 `sale_items_missing_name`、`sales_with_unmatched_items` 和 POS/Odoo 写入错误。
+1. 确认线上 POS/crawler 已部署包含提交 `4b8d80e6` 的版本；未部署前不要重跑修复任务。
+2. 确认历史任务 `25` 当前状态；运行中只轮询，不重复启动。
+3. 确认失败的销售修复任务已终止；历史任务结束后再调用 `POST /api/stores/skr/pos/sales-repair`。
+4. 复核 `/api/sync/coverage?store=skr` 和 `/api/pos/coverage?store=skr`，重点看 `sale_items_missing_name`、`sales_with_unmatched_items` 和 POS/Odoo 写入错误。
 
 本次修复不改变 Shopfront 源数据；图片仍以源端字段为准。当前源端图片覆盖率为 0 时，目标端不生成占位图片。
 
 最后更新：2026-10-28  
-适用目录：`orithopos-master/shopfront_crawler`  
+适用目录：`aistore_pos_shopfront_release/shopfront_crawler`  
 线上 crawler：`https://shopfront.orithos.com.au`  
 首个门店：`skr`（Shopfront vendor：`skr`）
 
@@ -34,13 +39,13 @@ crawler 不直连 Orithos MySQL，不绕过 Odoo 业务逻辑写生产表。正�
 
 ## 2. 代码与部署位置
 
-实际部署源代码位于：
+当前发布仓库和实际部署源代码位于：
 
 ```text
-C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master\shopfront_crawler
+C:\shawn\1code\1project-new\aistore_pos\v1\aistore_pos_shopfront_release\shopfront_crawler
 ```
 
-外层目录下的 `shopfront_crawler` 是旧副本，后续修改不要放在那里。
+`C:\shawn\1code\1project-new\aistore_pos\v1\shopfront_crawler` 是旧副本，后续修改不要放在那里。
 
 主要文件：
 
@@ -58,13 +63,14 @@ C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master\shopfront_crawler
 
 Git 已推送到 GitHub `main`。近期关键提交：
 
+- `4b8d80e6`：历史同步、全量快照、商品快照和销售修复串行化，避免 PostgreSQL 并发更新冲突；
 - `c43b14b4`：修复旧 SQLite 数据库缺列导致接口 500；
 - `e144cea7`：启用 SQLite WAL/busy timeout，并按销售批次提交，减少历史同步期间读接口阻塞。
 
 ## 3. 本地启动
 
 ```powershell
-cd C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master\shopfront_crawler
+cd C:\shawn\1code\1project-new\aistore_pos\v1\aistore_pos_shopfront_release\shopfront_crawler
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[test]"
@@ -142,17 +148,18 @@ POST /api/pos/import/sales?store=skr
 - `/healthz` 返回 200；
 - `/api/stores` 返回 200，`skr` token 状态为 `active`；
 - `/api/sync/status`、`/api/sync/runs`、`/api/products`、`/api/inventory`、`/api/sales` 可访问；
-- 最近的快照任务 21、22、23、24 已完成；
-- 数据库已有约 2247 个唯一商品，商品名称和售价已覆盖；
-- 库存已有 50 条记录、20 条非零库存，来源 outlet 为 `Cellarbrations at St Kilda Road`。
+- Shopfront/crawler 销售 `112,887`，销售行 `220,621`；
+- crawler 商品约 `10,882`，库存 `10,838`，商品缺名 `0`，销售行缺名 `9`；
+- POS staging 销售 `112,887`，商品 `11,010`，库存 `10,838`；
+- POS staging 条码匹配 `10,950`，未匹配 `60`，含未匹配商品销售 `7`；
+- Shopfront 当前商品图片字段为 `null`，`alternateImages` 为空，因此目标端图片为 `0` 属于源数据为空，不是同步代码丢失。
 
 未完成：
 
-- 历史任务 ID `25` 仍为 `running`，范围 `2011-04-22` 至 `2026-10-27`；
-- 当前游标停在 `2024-10-04`；
-- 当前分片为 `2024-10-04` 至 `2024-10-17`，对应最近 run `1418`；
-- run `1414` 至 `1417` 是 crawler 重启后产生的失败/重试记录，不代表数据已经完成；
-- 在任务 25 完成前，不要重复启动 full history，也不要并行启动新的 snapshot。
+- 历史任务 ID `25` 仍为 `running`，当前游标为 `2024-10-04`；
+- 最近分片 run `1433` 范围为 `2024-10-04` 至 `2024-10-17`，状态为 `running`；
+- 销售修复任务 ID `28` 已失败，原因是并发更新冲突；新版本部署完成且任务 25 完成后才能重试；
+- 在任务 25 完成前，不要重复启动 full history、销售修复或其他会写 Sale/Product 的任务。
 
 查询命令：
 
@@ -165,17 +172,14 @@ Invoke-RestMethod "https://shopfront.orithos.com.au/api/sync/runs?store=skr&limi
 
 当前商品字段覆盖抽样结果：
 
-| 字段 | 覆盖 |
-| --- | ---: |
-| 名称 | 2247/2247 |
-| 描述 | 2191/2247 |
-| 条码 | 2234/2247 |
-| 售价 | 2247/2247 |
-| 成本 | 2247/2247 |
-| 分类 | 50/2247 |
-| SKU | 5/2247 |
-| 品牌 | 0/2247 |
-| 图片 | 0/2247 |
+| 字段 | 当前结论 |
+| --- | --- |
+| 名称 | crawler 缺名商品为 0；销售行缺名待修复任务重刷 |
+| 条码/SKU | 条码优先，SKU 兜底；POS staging 仍有 60 条条码未匹配 |
+| 价格/成本/税率/库存 | 已保存并可用于后续导入 |
+| 分类/品牌/Family/Tags | 原始 payload 可保存，具体覆盖率以源端字段为准 |
+| 图片 | Shopfront 当前 `image=null` 且 `alternateImages=[]`，目标端为 0 属于源数据为空 |
+| 原始数据 | 保存 raw payload，便于后续补采和审计 |
 
 分类、SKU、品牌和图片缺失主要是 Shopfront 源数据本身为空，不能凭名称推测或伪造。原始 Shopfront payload 已保存，后续应先确认源端字段和权限，再决定是否补采。
 
@@ -183,11 +187,37 @@ POS shadow 快照曾统计到：商品 1880、库存 100、销售 105959、销�
 
 ## 8. 下一步操作顺序
 
+### 8.0 部署新版本
+
+线上 POS 最近仍可能返回旧版本 `e88b46b7`。先确认 Dokploy 已从 GitHub `main` 部署包含 `4b8d80e6` 的版本：
+
+```powershell
+Invoke-RestMethod "https://skr.orithos.com.au/api/public/version" | ConvertTo-Json -Depth 6
+```
+
+同时检查 crawler：
+
+```powershell
+Invoke-RestMethod "https://shopfront.orithos.com.au/healthz"
+```
+
 ### 8.1 先确认历史任务是否推进
 
-每隔一段时间查看任务 25 和 run 1418 的游标、状态和结束时间。若游标变化，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要直接取消任务。
+每隔一段时间查看任务 25 和当前运行分片（目前为 run `1433`）的游标、状态和结束时间。若游标变化，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要直接取消任务。
 
-### 8.2 历史任务完成后只执行一次快照
+### 8.2 历史任务完成后执行销售修复
+
+确认任务 `25` 完成、没有 `running` 分片后，只执行一次：
+
+```powershell
+Invoke-RestMethod `
+  "https://shopfront.orithos.com.au/api/stores/skr/pos/sales-repair" `
+  -Method Post
+```
+
+等待销售修复完成，再检查 `/api/pos/coverage?store=skr`。
+
+### 8.3 历史任务完成后只执行一次快照
 
 确认任务 25 已完成且没有 running 分片后，执行一次：
 
@@ -197,7 +227,7 @@ POST https://shopfront.orithos.com.au/api/stores/skr/pos/full-snapshot
 
 等待完成，再重新统计 POS 商品、库存、销售和销售行。
 
-### 8.3 重新检查 POS 数据
+### 8.4 重新检查 POS 数据
 
 使用 Dokploy 中的 integration token 调用：
 
