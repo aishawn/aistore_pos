@@ -1,9 +1,9 @@
 {
   "generatedAt": "2026-10-29",
   "target": "https://demo.orithos.com.au",
-  "runtimeSha": "e6278674e71c7bb2e1d8701929bae956be3821e0",
-  "frontendSha": "e6278674e71c7bb2e1d8701929bae956be3821e0",
-  "backendSha": "e6278674e71c7bb2e1d8701929bae956be3821e0",
+  "runtimeSha": "859e20c7c6a7c19abca2f450e31020f608292efd",
+  "frontendSha": "859e20c7c6a7c19abca2f450e31020f608292efd",
+  "backendSha": "859e20c7c6a7c19abca2f450e31020f608292efd",
   "verifiedCodeCandidateSha": "1604f3fbf1f681b88e76182f0492531b467ce668",
   "databaseMode": "shared-uat",
   "odooDatabase": "aipos_uat",
