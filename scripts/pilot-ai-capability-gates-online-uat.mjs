@@ -11,8 +11,10 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
+const envFile = path.join(root, ".env");
+const envText = fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "";
 const env = Object.fromEntries(
-  fs.readFileSync(path.join(root, ".env"), "utf8")
+  envText
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#") && line.includes("="))
     .map((line) => {
@@ -20,7 +22,9 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
     }),
 );
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME ?? "admin";
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -28,7 +32,7 @@ const writes = [];
 const pageErrors = [];
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
