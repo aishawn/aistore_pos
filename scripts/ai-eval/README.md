@@ -21,6 +21,18 @@ Build a snapshot:
 node scripts/ai-eval/build-skr-snapshot.mjs --input .local/skr-export.json --output data/ai-eval/skr-snapshot.json
 ```
 
+Fetch a read-only snapshot directly from the authenticated skr store. The
+fetcher opens the store after login, initializes the Odoo session, and only
+then reads the paginated product directory:
+
+```powershell
+$env:SKR_USERNAME = "shawn"
+$env:SKR_PASSWORD = "..."
+$env:SKR_SNAPSHOT_OUTPUT = ".local/skr-snapshot.json"
+node scripts/ai-eval/fetch-skr-readonly.mjs
+node scripts/ai-eval/build-skr-utterances.mjs .local/skr-snapshot.json .local/skr-utterances.jsonl
+```
+
 Run the local fixture evaluator:
 
 ```powershell
@@ -31,3 +43,7 @@ Run against a read-only assistant endpoint by setting `AI_EVAL_ENDPOINT` and
 `AI_EVAL_TOKEN`. The endpoint must be an assistant/query endpoint and must not
 be a command or write endpoint. A failed or unavailable endpoint is reported as
 `BLOCKED`, never as `PASS`.
+
+For live dynamic product checks, use `run-skr-live.mjs` with the generated
+JSONL. It checks the runtime SHA, intent, route, product query and empty
+`writeRequests`, with exponential retry for transient 502/503/504 responses.

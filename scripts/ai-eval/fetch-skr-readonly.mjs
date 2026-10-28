@@ -20,7 +20,6 @@ async function request(method, url, body) {
 }
 
 const login = await request("POST", `${base}/api/auth/login`, { username, password });
-console.error(JSON.stringify({ loginStatus: login.response.status(), loginCode: login.json.code, loginUser: login.json.data?.user?.username }, null, 2));
 if (!login.response.ok || login.json.code !== 0) throw new Error(`SKR_LOGIN_FAILED_${login.response.status}`);
 const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
 if (accessCookie) {
@@ -31,7 +30,18 @@ if (accessCookie) {
 }
 const page = await context.newPage();
 await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
-console.error(JSON.stringify({ pageUrl: page.url(), cookies: (await context.cookies(base)).map((cookie) => cookie.name), tokenInStorage: await page.evaluate(() => Boolean(localStorage.getItem("sf_token"))) }, null, 2));
+await page.waitForTimeout(5000);
+const odooSession = await page.evaluate(async () => {
+  const token = localStorage.getItem("sf_token");
+  const response = await fetch("/api/odoo/session", {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+  });
+  return { status: response.status, body: await response.json().catch(() => ({})) };
+});
+if (odooSession.status < 200 || odooSession.status >= 300) {
+  throw new Error(`SKR_ODOO_SESSION_FAILED_${odooSession.status}`);
+}
 
 const products = [];
 const fetchDiagnostics = [];
@@ -40,7 +50,7 @@ let hasNext = true;
 while (hasNext && offset <= 100000) {
   const pageResponse = await page.evaluate(async (payload) => {
     const token = localStorage.getItem("sf_token");
-    const response = await fetch("/api/odoo/records", { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(payload) });
+    const response = await fetch("/api/odoo/records", { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, credentials: "include", body: JSON.stringify(payload) });
     return { status: response.status, body: await response.json().catch(() => ({})) };
   }, { type: "products", limit: 100, offset });
   const pageJson = pageResponse.body;

@@ -432,6 +432,10 @@ const requestTimeoutMs = Number.parseInt(process.env.PILOT_REQUEST_TIMEOUT_MS ??
 if (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs < 1000) {
   throw new Error("INVALID_PILOT_REQUEST_TIMEOUT_MS");
 }
+const maxAttempts = Number.parseInt(process.env.PILOT_MAX_ATTEMPTS ?? "5", 10);
+if (!Number.isFinite(maxAttempts) || maxAttempts < 1 || maxAttempts > 8) {
+  throw new Error("INVALID_PILOT_MAX_ATTEMPTS");
+}
 
 const checks = [];
 const writeRequests = [];
@@ -555,7 +559,7 @@ try {
     let body = {};
     let requestError = null;
     let attempts = 0;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       attempts = attempt + 1;
       try {
         response = await context.request.post(`${base}/api/ai/assistant`, {
@@ -564,16 +568,16 @@ try {
           timeout: requestTimeoutMs,
         });
         body = await response.json().catch(() => ({}));
-        if (isUnavailable(response.status(), body.code) && attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        if (isUnavailable(response.status(), body.code) && attempt + 1 < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
           continue;
         }
         break;
       } catch (error) {
         requestError = error;
         const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
-        if (attempt < 2 && isTransientNetworkError(detail)) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        if (attempt + 1 < maxAttempts && isTransientNetworkError(detail)) {
+          await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
           continue;
         }
         break;
@@ -719,6 +723,7 @@ try {
     selectedCount: selectedCases.length,
     selectedIds: requestedIds ? [...requestedIds] : "all",
     requestTimeoutMs,
+    maxAttempts,
     catalogAudit: { uniqueIds: new Set(cases.map((item) => item.id)).size, duplicateIds: [] },
     checks,
     writeRequests,
@@ -760,6 +765,7 @@ try {
     selectedCount: selectedCases.length,
     selectedIds: requestedIds ? [...requestedIds] : "all",
     requestTimeoutMs,
+    maxAttempts,
     catalogAudit: { uniqueIds: null, duplicateIds },
     login: loginDiagnostics,
     proxyHealth,
