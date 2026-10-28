@@ -168,10 +168,10 @@ try {
     const invoiceContentType = invoice.headers()["content-type"] ?? "unknown";
     const invoiceBody = await invoice.json().catch(() => null);
     const invoiceCode = Number.isInteger(invoiceBody?.code) ? invoiceBody.code : null;
-    const invoiceEvidence = (detail) => JSON.stringify({
-      httpStatus: invoice.status(),
-      contentType: invoiceContentType,
-      apiCode: invoiceCode,
+    const invoiceEvidence = (detail, response = invoice, body = invoiceBody) => JSON.stringify({
+      httpStatus: response.status(),
+      contentType: response.headers()["content-type"] ?? "unknown",
+      apiCode: Number.isInteger(body?.code) ? body.code : null,
       detail,
     });
     if (!invoiceBody || typeof invoiceBody !== "object" || invoiceCode === null) {
@@ -214,7 +214,7 @@ try {
     record(
       "Invoice OCR invalid image guard",
       invalidInvoiceBody.code === 40013 && invalidInvoice.status() < 500 ? "PASS" : "FAIL",
-      invoiceEvidence(`status=${invalidInvoice.status()} code=${invalidInvoiceBody.code ?? "none"}`),
+      invoiceEvidence(`status=${invalidInvoice.status()} code=${invalidInvoiceBody.code ?? "none"}`, invalidInvoice, invalidInvoiceBody),
     );
 
     const page = await context.newPage();
