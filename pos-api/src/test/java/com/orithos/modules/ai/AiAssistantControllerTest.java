@@ -24,7 +24,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class AiAssistantControllerTest {
@@ -76,6 +78,35 @@ class AiAssistantControllerTest {
         assertTrue(error.getMessage().contains("temporarily unavailable"));
         verify(audit).recordAssistant(eq(tenant), eq("unknown"), eq(false), anyInt(),
                 eq("What should I reorder?"), isNull());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assistantQuotaRejectsBeforeCallingProvider() {
+        ObjectProvider<PosAssistantGraphService> graph = mock(ObjectProvider.class);
+        PosAssistantGraphService service = mock(PosAssistantGraphService.class);
+        when(graph.getIfAvailable()).thenReturn(service);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, java.util.List.of(3L),
+                java.util.Set.of(TenantContext.PERM_QUERY));
+        TenantContextFactory tenants = mock(TenantContextFactory.class);
+        when(tenants.fromSecurity()).thenReturn(tenant);
+        AiReportAuditService audit = mock(AiReportAuditService.class);
+        AiProviderQuotaService quota = mock(AiProviderQuotaService.class);
+        doThrow(new BusinessException(42901, "AI provider quota exceeded. Try again later."))
+                .when(quota).acquire(eq(tenant), anyInt());
+        AiAssistantController controller = new AiAssistantController(
+                graph, mock(ObjectProvider.class), tenants,
+                mock(AiReportSnapshotService.class), mock(AiReportMetricsService.class),
+                audit, mock(AiChatHistoryService.class), quota);
+        ReflectionTestUtils.setField(controller, "dashScopeBaseUrl", "https://dashscope.aliyuncs.com");
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> controller.assistant(new AssistantRequest("Show product count", null)));
+
+        assertEquals(42901, error.getCode());
+        verify(audit).recordAssistant(eq(tenant), eq("quota"), eq(false), anyInt(),
+                eq("Show product count"), isNull());
+        verifyNoInteractions(service);
     }
 
     @Test
