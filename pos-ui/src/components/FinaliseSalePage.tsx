@@ -43,6 +43,8 @@ type CheckoutPhase = "idle" | "processing" | "approved" | "error";
 
 /** Seconds the approved receipt stays visible before the sale auto-completes. */
 const AUTO_COMPLETE_SECONDS = 3;
+// Card settlement needs a paired terminal; browser-only checkout must not mark it paid.
+const EFTPOS_TERMINAL_ENABLED = false;
 
 
 
@@ -196,6 +198,12 @@ export function FinaliseSalePage() {
 
 
     const isCard = method.id === "eftpos" || method.id === "eftpos-no-cashout";
+
+    if (isCard && !EFTPOS_TERMINAL_ENABLED) {
+      setError("EFTPOS is unavailable: connect and validate a terminal before taking card payments.");
+      setPhase("error");
+      return;
+    }
 
     const isCash = method.id === "cash";
 
@@ -507,7 +515,9 @@ export function FinaliseSalePage() {
 
             <div className="grid w-full min-w-0 max-w-[720px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
 
-              {PAYMENT_METHODS.map((method) => (
+              {PAYMENT_METHODS.map((method) => {
+                const cardUnavailable = (method.id === "eftpos" || method.id === "eftpos-no-cashout") && !EFTPOS_TERMINAL_ENABLED;
+                return (
 
                 <button
 
@@ -515,9 +525,11 @@ export function FinaliseSalePage() {
 
                   type="button"
 
-                  disabled={phase === "processing"}
+                  disabled={phase === "processing" || cardUnavailable}
 
                   onClick={() => pay(method)}
+                  aria-label={cardUnavailable ? `${method.label} unavailable: terminal not connected` : method.label}
+                  title={cardUnavailable ? "EFTPOS terminal not connected or validated" : undefined}
 
                   className={cn(
 
@@ -533,10 +545,14 @@ export function FinaliseSalePage() {
                   {method.label}
 
                 </button>
-
-              ))}
+                );
+              })}
 
             </div>
+
+            <p className="max-w-[720px] text-xs text-[var(--oh-muted)]">
+              EFTPOS is unavailable until a terminal is connected and validated on this workstation.
+            </p>
 
 
 
