@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-10-28T12:48:52.067Z",
+  "scope": "cross-company supplier rejection through purchase request",
+  "checks": [
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "A.create",
+      "status": "PASS",
+      "httpStatus": 200,
+      "vendorId": 118
+    },
+    {
+      "name": "A.provision.ready",
+      "status": "PASS",
+      "provisionStatus": "ready",
+      "companyId": 66
+    },
+    {
+      "name": "A.bootstrap",
+      "status": "PASS",
+      "bootstrapStatus": 200,
+      "storeStatus": 200
+    },
+    {
+      "name": "A.odoo.session",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "B.create",
+      "status": "PASS",
+      "httpStatus": 200,
+      "vendorId": 119
+    },
+    {
+      "name": "B.provision.ready",
+      "status": "PASS",
+      "provisionStatus": "ready",
+      "companyId": 67
+    },
+    {
+      "name": "B.bootstrap",
+      "status": "PASS",
+      "bootstrapStatus": 200,
+      "storeStatus": 200
+    },
+    {
+      "name": "B.odoo.session",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "name": "companies.are.distinct",
+      "status": "PASS",
+      "companyA": 66,
+      "companyB": 67
+    },
+    {
+      "name": "a.supplier.create",
+      "status": "PASS",
+      "httpStatus": 201,
+      "supplierId": 348
+    },
+    {
+      "name": "b.replenishment.read",
+      "status": "PASS",
+      "httpStatus": 200,
+      "productId": 13884
+    },
+    {
+      "name": "b.cannot.use.a.supplier",
+      "status": "PASS",
+      "httpStatus": 404,
+      "message": "This supplier is unavailable to your Orithos account"
+    },
+    {
+      "name": "B.delete",
+      "status": "PASS",
+      "httpStatus": 200,
+      "tenantStatus": "deleted"
+    },
+    {
+      "name": "B.deleted.auth",
+      "status": "PASS",
+      "httpStatus": 402
+    },
+    {
+      "name": "A.delete",
+      "status": "PASS",
+      "httpStatus": 200,
+      "tenantStatus": "deleted"
+    },
+    {
+      "name": "A.deleted.auth",
+      "status": "PASS",
+      "httpStatus": 402
+    }
+  ],
+  "status": "PASS"
+}
