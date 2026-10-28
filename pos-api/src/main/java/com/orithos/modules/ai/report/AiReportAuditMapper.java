@@ -37,10 +37,11 @@ public interface AiReportAuditMapper {
 
     @Insert("""
             INSERT INTO ai_report_audit
-              (vendor_id, user_id, outlet_id, outlet_ids, question, sql_text, path,
+              (vendor_id, user_id, outlet_id, outlet_ids, question, sql_text, path, created_at,
                allowed, reject_reason, row_count, latency_ms, estimated_tokens)
             VALUES
               (#{vendorId}, #{userId}, #{outletId}, #{outletIds}, #{question}, #{sqlText}, #{path},
+              CURRENT_TIMESTAMP,
               #{allowed}, #{rejectReason}, #{rowCount}, #{latencyMs}, #{estimatedTokens})
             """)
     int insert(@Param("vendorId") long vendorId,
