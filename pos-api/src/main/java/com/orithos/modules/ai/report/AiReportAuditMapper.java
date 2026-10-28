@@ -26,6 +26,15 @@ public interface AiReportAuditMapper {
     @Select("SELECT COUNT(*) FROM public.ai_report_audit WHERE vendor_id = #{vendorId}")
     long auditVendorRowCount(@Param("vendorId") long vendorId);
 
+    @Select("SELECT CURRENT_TIMESTAMP")
+    LocalDateTime databaseCurrentTime();
+
+    @Select("SELECT MAX(created_at) FROM public.ai_report_audit")
+    LocalDateTime auditLatestCreatedAt();
+
+    @Select("SELECT MAX(created_at) FROM public.ai_report_audit WHERE vendor_id = #{vendorId}")
+    LocalDateTime auditVendorLatestCreatedAt(@Param("vendorId") long vendorId);
+
     @Insert("""
             INSERT INTO ai_report_audit
               (vendor_id, user_id, outlet_id, outlet_ids, question, sql_text, path,

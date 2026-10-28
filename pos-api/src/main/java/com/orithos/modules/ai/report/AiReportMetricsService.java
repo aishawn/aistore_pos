@@ -51,12 +51,15 @@ public class AiReportMetricsService {
         result.put("tableExists", tableExists);
         result.put("allowedColumnType", mapper.allowedColumnType());
         result.put("insertPrivilege", tableExists && mapper.auditInsertPrivilege());
+        result.put("databaseCurrentTime", mapper.databaseCurrentTime());
         if (tableExists) {
             result.put("rowCount", mapper.auditRowCount());
+            result.put("latestCreatedAt", mapper.auditLatestCreatedAt());
             AuthUser user = CurrentUser.get();
             long vendorId = user.vendorId() == null ? TenantContext.DEFAULT_VENDOR_ID : user.vendorId();
             result.put("vendorId", vendorId);
             result.put("vendorRowCount", mapper.auditVendorRowCount(vendorId));
+            result.put("vendorLatestCreatedAt", mapper.auditVendorLatestCreatedAt(vendorId));
         }
         return result;
     }
