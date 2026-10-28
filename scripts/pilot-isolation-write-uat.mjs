@@ -74,6 +74,7 @@ async function login(page) {
   if (!response.ok()) throw new Error(`Login failed with HTTP ${response.status()}`);
   await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForTimeout(10000);
+  await page.getByRole("button", { name: "All products", exact: true }).click();
   console.log((await page.locator("body").innerText()).slice(0, 1200));
   console.log((await page.getByRole("button").allTextContents()).slice(0, 30));
   await page.locator('[id^="pos-product-option-"]').filter({ hasText: /DEMO|PINOT|wine/i }).first().waitFor({ state: "visible", timeout: 60000 });
@@ -89,6 +90,7 @@ async function waitForTotal(page, amount) {
 
 async function sellOne(page, productNameRegex, paymentLabel, expectedTotal) {
   await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("button", { name: "All products", exact: true }).click();
   await page.locator('[id^="pos-product-option-"]').filter({ hasText: productNameRegex }).first().click();
   await waitForTotal(page, expectedTotal);
   const paymentSelect = page.locator("select").filter({ has: page.locator("option").filter({ hasText: paymentLabel }) }).first();
@@ -152,11 +154,11 @@ try {
   }
   evidence.runtimeCommit = candidate;
   evidence.runtimeIsolationVerified = true;
-  const card = await sellOne(page, /DEMO|PINOT|wine/i, "Card", "$");
+  const card = await sellOne(page, /DEMO-COLA/i, "Card", "$3.85");
   evidence.sales.push({ method: "Card", ...card });
   if (!card.receiptId) fail("Card sale did not expose a receipt id");
 
-  const cash = await sellOne(page, /DEMO|PINOT|wine/i, "Cash", "$");
+  const cash = await sellOne(page, /DEMO-COLA/i, "Cash", "$3.85");
   evidence.sales.push({ method: "Cash", ...cash });
   if (!cash.receiptId) fail("Cash sale did not expose a receipt id");
 
