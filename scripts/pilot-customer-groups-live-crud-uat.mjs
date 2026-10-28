@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
+const envFile = path.join(root, ".env");
+const envText = fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "";
+const env = Object.fromEntries(envText
   .split(/\r?\n/)
   .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => {
@@ -14,10 +16,11 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME ?? "admin";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const expectedRuntimeCommit = process.env.PILOT_EXPECTED_RUNTIME_SHA ?? sourceCommit;
-if (!/^[\\da-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_EXPECTED_RUNTIME_SHA");
+if (!/^[\da-f]{40}$/i.test(expectedRuntimeCommit)) throw new Error("INVALID_EXPECTED_RUNTIME_SHA");
 
 const marker = `Codex UAT Group ${Date.now()} ${Math.random().toString(36).slice(2, 8)}`;
 const renamedMarker = `${marker} Updated`;
@@ -38,20 +41,22 @@ function record(name, status, details) {
 }
 
 async function searchByName(name) {
-  const response = await context.request.get(`${base}/api/odoo/customer-groups?query=${encodeURIComponent(name)}&limit=100&offset=0`, {
-    headers: { Origin: base },
-    timeout: 30000,
-  });
+  let response = await context.request.get(`${base}/api/odoo/customer-groups?query=${encodeURIComponent(name)}&limit=100&offset=0`, { headers: { Origin: base }, timeout: 30000 });
+  if (response.status() === 401) {
+    const session = await context.request.get(`${base}/api/odoo/session`, { headers: { Origin: base }, timeout: 45000 });
+    if (session.ok()) response = await context.request.get(`${base}/api/odoo/customer-groups?query=${encodeURIComponent(name)}&limit=100&offset=0`, { headers: { Origin: base }, timeout: 30000 });
+  }
   if (!response.ok()) throw new Error(`GROUP_SEARCH_HTTP_${response.status()}`);
   const body = await response.json().catch(() => ({}));
   return (Array.isArray(body.items) ? body.items : []).filter((item) => item.name === name);
 }
 
 async function deleteById(id) {
-  const response = await context.request.delete(`${base}/api/odoo/customer-groups/${id}`, {
-    headers: { Origin: base },
-    timeout: 30000,
-  });
+  let response = await context.request.delete(`${base}/api/odoo/customer-groups/${id}`, { headers: { Origin: base }, timeout: 30000 });
+  if (response.status() === 401) {
+    const session = await context.request.get(`${base}/api/odoo/session`, { headers: { Origin: base }, timeout: 45000 });
+    if (session.ok()) response = await context.request.delete(`${base}/api/odoo/customer-groups/${id}`, { headers: { Origin: base }, timeout: 30000 });
+  }
   if (!response.ok()) throw new Error(`GROUP_CLEANUP_HTTP_${response.status()}`);
 }
 
@@ -59,7 +64,7 @@ try {
   browser = await chromium.launch({ headless: true });
   context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
     timeout: 30000,
   });
