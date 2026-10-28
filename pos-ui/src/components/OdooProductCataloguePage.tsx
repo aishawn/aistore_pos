@@ -149,13 +149,6 @@ export function OdooProductCataloguePage() {
     if (Number.isSafeInteger(parsed) && parsed > 0) setCategoryId(parsed);
   }, [requestedCategoryId]);
 
-  const requestedCategoryId = searchParams.get("categoryId");
-  useEffect(() => {
-    if (requestedCategoryId === null) return;
-    const parsed = Number(requestedCategoryId);
-    if (Number.isSafeInteger(parsed) && parsed > 0) setCategoryId(parsed);
-  }, [requestedCategoryId]);
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
