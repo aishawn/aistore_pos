@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-28T12:00:00+08:00",
+  "target": "https://demo.orithos.com.au",
+  "source": {
+    "branch": "main",
+    "commit": "12b0562c363160a0febc0cab6e8233f73530daed"
+  },
+  "runtime": {
+    "frontend": "162f002ce49670fdfd7f5990882bfb7e395885ff",
+    "backend": "162f002ce49670fdfd7f5990882bfb7e395885ff"
+  },
+  "databaseNames": {
+    "ODOO_DATABASE": "aipos_uat",
+    "ODOO_DATABASE_UAT": "aipos_uat",
+    "ISOLATION_ODOO_DATABASE": "aipos_uat"
+  },
+  "status": "BLOCKED",
+  "deploymentObserved": false,
+  "reason": "GitHub main advanced, but Dokploy did not expose a new deployment and the public runtime remained on the predecessor SHA.",
+  "scope": "read-only release identity check; no business writes"
+}
