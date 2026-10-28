@@ -1,0 +1,22 @@
+name: Backend Java 21 Verify
+
+on:
+  push:
+    branches:
+      - main
+      - codex/ai-assistant-quota
+  pull_request:
+    paths:
+      - "pos-api/**"
+      - ".github/workflows/backend-java21-verify.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container: maven:3.9-eclipse-temurin-21
+    steps:
+      - name: Checkout exact candidate SHA
+        uses: actions/checkout@v4
+      - name: Verify backend
+        working-directory: pos-api
+        run: mvn -B clean verify
