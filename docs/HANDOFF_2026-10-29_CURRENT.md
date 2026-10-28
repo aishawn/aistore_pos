@@ -34,3 +34,10 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 仍需完成：采购部分/超量/重复收货、库存盘点并发与恢复、现金关班差异策略、两租户越权、备份恢复后的登录与 POS 交易、真实硬件（打印机/钱箱/扫码器/EFTPOS）和真实脱敏票据 OCR。AI provider 图片/OCR 仍受上游配额限制，不能作为客户承诺能力。
 
 共享 `aipos_uat` 只适合受控试用和调试。客户试用应限制商品、交易量和管理员权限，并每日核对销售、GST、库存与现金关班。
+
+## 本轮续验
+
+- 线上 `/api/public/version`：frontend/backend 均为 `e6278674e71c7bb2e1d8701929bae956be3821e0`；`/api/public/uat-context` 为 HTTP 200、`isolated=false`。
+- 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
+- 本机未发现 `INITIAL_ADMIN_PASSWORD`，也没有打印机、钱箱、扫码器或 EFTPOS；因此认证浏览器验收与现场设备验收保持 `BLOCKED`，没有伪造 PASS。
+- 源码边界仍明确显示设备未连接、EFTPOS 未验证和离线 POS 不支持；这只能证明 UI 合约，不能替代现场验收。
