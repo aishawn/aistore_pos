@@ -189,13 +189,10 @@ async def test_sync_chunk_persists_pos_result_in_run_counts(db_session, monkeypa
         None,
         True,
     )
-    db_session.refresh(run)
-
-    assert ok is True
-    assert run.counts == {
-        "sync": {"products": 3},
-        "pos_import": {"status": "failed", "products": 3, "error": "POS temporarily unavailable"},
-    }
+    assert ok is False
+    run = db_session.get(SyncRun, run.id)
+    assert run.status == "failed"
+    assert "POS temporarily unavailable" in (run.error or "")
 
 
 @pytest.mark.asyncio
@@ -260,6 +257,36 @@ async def test_resumed_history_skips_catalog_when_products_are_already_durable(d
     await main.run_sync_background("skr", date(2026, 10, 26), date(2026, 10, 26), job_id=25)
 
     assert calls == [False]
+
+
+@pytest.mark.asyncio
+async def test_history_does_not_advance_cursor_after_failed_chunk(db_session, monkeypatch):
+    job = SyncJob(
+        store_key="skr",
+        job_type="history",
+        status="running",
+        from_date="2026-10-01",
+        to_date="2026-10-14",
+        cursor_date="2026-10-01",
+    )
+    db_session.add_all([Store(store_key="skr", vendor="skr"), job])
+    db_session.commit()
+    job_id = job.id
+    monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+    calls = []
+
+    async def failed_chunk(_db, _store_key, _store, start, end, _job_id, _include_catalog):
+        calls.append((start, end))
+        return False
+
+    monkeypatch.setattr(main, "_sync_history_chunk", failed_chunk)
+    await main.run_sync_background("skr", date(2026, 10, 1), date(2026, 10, 14), job_id=job_id)
+
+    job = db_session.get(SyncJob, job_id)
+    assert calls == [(date(2026, 10, 1), date(2026, 10, 14))]
+    assert job.cursor_date == "2026-10-01"
+    assert job.status == "failed"
+    assert "history chunk failed" in (job.error or "")
 
 
 @pytest.mark.asyncio

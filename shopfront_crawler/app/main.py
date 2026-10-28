@@ -543,7 +543,20 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
                 async with sync_lock:
-                    await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, include_catalog)
+                    completed = await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, include_catalog)
+                    # Never advance a durable history cursor past a chunk that
+                    # failed after all split retries. Advancing here would
+                    # make a job look complete while leaving an unrecoverable
+                    # data gap behind.
+                    if not completed:
+                        if job_id is not None:
+                            job = db.get(SyncJob, job_id)
+                            if job is not None and job.status == "running":
+                                job.status = "failed"
+                                job.error = f"history chunk failed: {cursor.isoformat()}..{chunk_end.isoformat()}"
+                                job.finished_at = datetime.now(timezone.utc)
+                                db.commit()
+                        break
                     cursor = chunk_end + timedelta(days=1)
                     if job_id is not None:
                         job = db.get(SyncJob, job_id)
@@ -571,14 +584,16 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
                 # SaleItems; the first chunk still sends the complete catalog.
                 push_kwargs["product_source_ids"] = product_source_ids
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
+            if pos_result.get("status") != "completed" or pos_result.get("error"):
+                raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
             db.commit()
         return True
-    except Exception:
+    except Exception as exc:
         failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
-        if failed_run and start < end:
-            failed_run.status = "superseded"
-            failed_run.error = "split into smaller retry ranges"
+        if failed_run:
+            failed_run.status = "superseded" if start < end else "failed"
+            failed_run.error = "split into smaller retry ranges" if start < end else str(exc)[:2000]
             db.commit()
         if start >= end:
             logger.exception("Shopfront single-day chunk failed: store=%s from=%s", store_key, start)
