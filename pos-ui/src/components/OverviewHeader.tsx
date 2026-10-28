@@ -24,7 +24,6 @@ export function OverviewHeader({
             : <><span>Your store. </span><em>One intelligence.</em></>}
         </h1>
         {active === "radial" ? <p className="ov-tagline">Sell smarter. Manage better. Grow further with Orithos AI.</p> : null}
-        {active === "workspace" ? <p className="ov-company">{company}</p> : null}
       </div>
       <div className="ov-toolbar">
         <OverviewLayoutSwitcher active={active} />

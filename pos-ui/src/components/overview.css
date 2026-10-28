@@ -82,7 +82,7 @@
   letter-spacing: -0.045em;
   margin: 8px 0;
 }
-.ov-brand { display: inline-flex; align-items: center; margin-bottom: 46px; }
+.ov-brand { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 36px; }
 .ov-header h1 em,
 .ov-radial-intro em {
   color: var(--brand-orange);
@@ -1196,6 +1196,36 @@
 .ov-workspace .ov-action-sell { color: #bb510f; background: #fff1e7; }
 .ov-workspace .ov-action-connections { color: #315dcc; background: #eaf0ff; }
 .ov-workspace .ov-action-icon svg { color: inherit; }
+
+/* Keep the desktop workspace within one viewport at standard laptop heights. */
+@media (min-width: 1200px) and (min-height: 760px) {
+  .ov-workspace { overflow: hidden; }
+  .ov-workspace .ov-container {
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 20px 48px 24px;
+  }
+  .ov-workspace .ov-header { margin-bottom: 18px; }
+  .ov-workspace .ov-summary {
+    min-height: 112px;
+    padding: 20px 24px;
+  }
+  .ov-workspace .ov-section-label { margin: 18px 0 10px; }
+  .ov-workspace .ov-modules { gap: 14px; }
+  .ov-workspace .ov-module {
+    min-height: 142px;
+    padding: 16px 18px;
+    gap: 14px;
+  }
+  .ov-workspace .ov-icon { width: 48px; height: 48px; }
+  .ov-workspace .ov-icon svg { width: 25px; height: 25px; }
+  .ov-workspace .ov-briefing {
+    margin-top: 16px;
+    padding: 12px 18px 8px;
+  }
+  .ov-workspace .ov-actions a { min-height: 52px; padding-block: 6px; }
+  .ov-workspace .ov-action-icon { width: 38px; height: 38px; flex-basis: 38px; }
+}
 
 /* Overview has a richer CSS surface than the Tailwind pages. Pair its cards
  * and controls with the shared dark tokens so the dashboard does not retain
