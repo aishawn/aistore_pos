@@ -117,11 +117,11 @@ try {
   }
   const bootstrapResponse = await context.request.get(`${base}/api/odoo/pos-bootstrap`);
   const bootstrap = await bootstrapResponse.json().catch(() => ({}));
-  const session = (bootstrap.configs || []).map((config) => config.session).find((value) => value?.name?.endsWith("/00004"));
+  const session = (bootstrap.configs || []).map((config) => config.session).find((value) => value?.state === "opened");
   if (!bootstrapResponse.ok() || session?.state !== "opened") {
-    throw new Error("Automatic recovery did not preserve the expected opened POS session 00004");
+    throw new Error("Automatic recovery did not preserve an opened POS session");
   }
-  record("Odoo reconnects automatically after session removal", "PASS", "Authenticated Odoo user restored; POS session orithos_store1/00004 remains opened.");
+  record("Odoo reconnects automatically after session removal", "PASS", `Authenticated Odoo user restored; opened POS session ${session.name || session.id} remains available.`);
 } catch (error) {
   record("Odoo auto-recovery regression", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
 } finally {

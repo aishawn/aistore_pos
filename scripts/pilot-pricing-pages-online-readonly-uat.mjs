@@ -12,11 +12,14 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const expectedRuntimeSha = process.env.PILOT_EXPECTED_RUNTIME_SHA
+  ?? (process.env.PILOT_DEPLOYMENT_VERIFIED === "true" ? process.env.PILOT_DEPLOYMENT_SHA : null);
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+if (!/^[\da-f]{40}$/i.test(expectedRuntimeSha ?? "")) throw new Error("EXPECTED_RUNTIME_SHA_REQUIRED");
 
 const routes = [
   { path: "/stock/list", heading: "Stock List", image: "stock-list", tableId: "stock-list-table" },
-  { path: "/stock/capped-pricing", heading: "Capped Pricing", image: "capped-pricing", tableId: "capped-pricing-table" },
+  { path: "/stock/capped-pricing", heading: "Product Base Prices", image: "capped-pricing", tableId: "capped-pricing-table" },
   { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", image: "bulk-price-edit", tableId: "bulk-price-edit-table" },
   { path: "/stock/price-suggestions", heading: "Price suggestions", image: "price-suggestions" },
 ];
@@ -26,6 +29,10 @@ fs.mkdirSync(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const checks = [];
 const blockedWrites = [];
+const sessionRenewals = [];
+const fixtureReads = [];
+const readOnlyDatasetRequests = [];
+let runtime = {};
 
 try {
   const context = await browser.newContext({ viewport: viewports[0] });
@@ -35,16 +42,50 @@ try {
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+  const versionResponse = await context.request.get(`${base}/api/public/version`, { timeout: 20000 });
+  const version = await versionResponse.json().catch(() => ({}));
+  runtime = {
+    frontendCommit: version?.frontend?.commit ?? null,
+    backendCommit: version?.backend?.commit ?? null,
+  };
+  if (!versionResponse.ok() || runtime.frontendCommit !== expectedRuntimeSha || runtime.backendCommit !== expectedRuntimeSha) {
+    throw new Error("RUNTIME_SHA_MISMATCH");
+  }
 
   for (const viewport of viewports) {
     const page = await context.newPage();
     await page.setViewportSize(viewport);
     const pageErrors = [];
+    const apiFailures = [];
+    const apiResponses = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("response", (apiResponse) => {
+      const responseUrl = new URL(apiResponse.url());
+      if (responseUrl.origin !== new URL(base).origin || !responseUrl.pathname.startsWith("/api/")) return;
+      const result = { path: responseUrl.pathname, status: apiResponse.status() };
+      apiResponses.push(result);
+      if (result.status >= 400) apiFailures.push(result);
+    });
     await page.route("**/api/**", async (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      const readOnlyRecordsQuery = request.method() === "POST" && url.pathname === "/api/odoo/records";
+      if (request.method() === "GET" && url.origin === new URL(base).origin && url.pathname === "/api/sell/parked") {
+        fixtureReads.push({ path: url.pathname, reason: "Avoid the legacy GET endpoint that may expire parked sales." });
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [] }) });
+      }
+      if (request.method() === "POST" && url.origin === new URL(base).origin && url.pathname === "/api/auth/refresh") {
+        sessionRenewals.push(url.pathname);
+        return route.continue();
+      }
+      let readOnlyRecordsQuery = false;
+      if (request.method() === "POST" && url.origin === new URL(base).origin && url.pathname === "/api/odoo/records") {
+        try {
+          const body = request.postDataJSON();
+          readOnlyRecordsQuery = ["products", "posCategories"].includes(body?.type)
+            && Object.keys(body).every((key) => ["type", "groupId", "pricelistId", "query", "limit", "offset", "categoryId", "stockOnly", "catalogueView", "status", "period"].includes(key));
+          if (readOnlyRecordsQuery) readOnlyDatasetRequests.push({ type: body.type, keys: Object.keys(body).filter((key) => key !== "type") });
+        } catch { /* Unknown POST shapes stay blocked. */ }
+      }
       if (!readOnlyRecordsQuery && !["GET", "HEAD", "OPTIONS"].includes(request.method())) {
         blockedWrites.push(`${request.method()} ${url.pathname}`);
         return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "Read-only UAT blocked this request", data: null }) });
@@ -54,6 +95,8 @@ try {
 
     for (const route of routes) {
       pageErrors.length = 0;
+      apiFailures.length = 0;
+      apiResponses.length = 0;
       const response = await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
       const heading = page.getByRole("heading", { name: route.heading, exact: true }).first();
       await heading.waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
@@ -64,11 +107,10 @@ try {
         .join(" ")
         .trim();
       const emptyOdooRules = route.path === "/stock/capped-pricing"
-        && await page.getByText("No Odoo price rules are configured for this store yet.", { exact: true }).isVisible().catch(() => false);
+        && await page.getByText("No Orithos price rules are configured for this store yet.", { exact: true }).isVisible().catch(() => false);
       const emptyStockList = route.path === "/stock/list"
         && await page.getByRole("status").filter({ hasText: "No results found." }).isVisible().catch(() => false);
       const dataBlocked = /classic pos api is retired|connect odoo|could not load|temporarily unavailable/i.test(alertText)
-        || emptyOdooRules
         || emptyStockList;
       const firstHeadingText = await page.locator("h1").first().innerText().catch(() => "");
       const headingVisible = await heading.isVisible().catch(() => false)
@@ -176,8 +218,7 @@ try {
           ]).then((fields) => fields.every(Boolean));
           mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
         } else {
-          // Empty Odoo price-rule data is valid; assert the explicit empty state.
-          mobileCardFields = await page.getByText("No results found.", { exact: true }).isVisible().catch(() => false);
+          mobileCardFields = emptyOdooRules;
           mobileCardWidth = viewport.width - 24;
         }
       } else if (viewport.width === 390 && route.path === "/stock/bulk-price-edit") {
@@ -204,6 +245,17 @@ try {
         width: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
       }));
+      const latestApiStatuses = new Map();
+      for (const result of apiResponses) latestApiStatuses.set(result.path, result.status);
+      const unrecoveredApiFailures = [...latestApiStatuses]
+        .filter(([, status]) => status >= 400)
+        .map(([path, status]) => ({ path, status }));
+      const recoveredApiErrors = [...new Set(apiFailures.map((result) => result.path))]
+        .filter((apiPath) => latestApiStatuses.get(apiPath) < 400)
+        .map((apiPath) => ({
+          path: apiPath,
+          statuses: apiResponses.filter((result) => result.path === apiPath).map((result) => result.status),
+        }));
       const screenshot = path.join(outputDir, `${route.image}-${viewport.width}.png`);
       await page.screenshot({ path: screenshot, fullPage: true }).catch(() => null);
       checks.push({
@@ -224,9 +276,18 @@ try {
         tableColumnsDoNotOverlap,
         columnsAlignWithFirstRow,
         headerTextFits,
+        emptyOdooRules,
+        emptyStockList,
         dataBlocked,
-        blockedReason: dataBlocked ? alertText.slice(0, 240) : null,
+        blockedReason: dataBlocked
+          ? emptyOdooRules ? "No Orithos price rules are configured for this store yet."
+            : emptyStockList ? "No results found."
+              : alertText.slice(0, 240)
+          : null,
         pageErrors: [...pageErrors],
+        apiFailures,
+        recoveredApiErrors,
+        unrecoveredApiFailures,
         screenshot: path.relative(root, screenshot).replaceAll(path.sep, "/"),
       });
     }
@@ -257,22 +318,26 @@ const failures = checks.filter((check) => !check.dataBlocked && (check.status ==
   || check.tableColumnsDoNotOverlap === false
   || check.columnsAlignWithFirstRow === false
   || check.headerTextFits === false
+  || (check.unrecoveredApiFailures?.length ?? 0) > 0
   || (check.pageErrors?.length ?? 0) > 0));
 const blockedChecks = checks.filter((check) => check.dataBlocked);
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   target: base,
-  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
-    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
-    : "unverified-after-deploy",
-  scope: "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
+  expectedRuntimeSha: expectedRuntimeSha.toLowerCase(),
+  runtime,
+  deployment: runtime.frontendCommit === runtime.backendCommit ? runtime.frontendCommit : "unverified-after-deploy",
+  scope: "authenticated pricing and stock pages; server-allowlisted product/category reads permitted; parked-sales GET replaced with an empty fixture to avoid possible cleanup side effects; all other non-GET API requests blocked; no business writes",
   status: failures.length > 0 || blockedWrites.length > 0 ? "FAIL" : blockedChecks.length > 0 ? "BLOCKED" : "PASS",
   passed: checks.length - failures.length,
   failed: failures.length,
   blocked: blockedChecks.length,
   checks,
   blockedWrites,
+  sessionRenewals,
+  fixtureReads,
+  readOnlyDatasetRequests,
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)

@@ -26,8 +26,8 @@ function product() {
   return { id: 11, name: "Fixture Product", display_name: "Fixture Product", barcode: false, default_code: "FX-11", list_price: 12.5, taxes_id: [1], price_included: 12.5, price_tax: 1.14, qty_available: 8, free_qty: 8, uom_id: [1, "Units"], pos_categ_ids: [1], available_in_pos: true };
 }
 
-async function newRegister({ method = "cash", checkoutMode = "success", quoteMode = "success" } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+async function newRegister({ method = "cash", checkoutMode = "success", quoteMode = "success", viewport = { width: 1440, height: 960 } } = {}) {
+  const context = await browser.newContext({ viewport });
   const writes = [];
   const checkoutBodies = [];
   let checkoutCount = 0;
@@ -105,6 +105,41 @@ try {
   assert.equal(await empty.page.getByRole("button", { name: /Finalise Sale/ }).count(), 0, "empty cart must not show a finalise button");
   checks.push({ id: "empty-cart-no-finalise-action", status: "PASS" });
   await empty.context.close();
+
+  const mobile = await newRegister({ viewport: { width: 390, height: 844 } });
+  const mobileSearch = mobile.page.getByRole("combobox", { name: "Search products by name, barcode or code" });
+  await mobileSearch.fill("");
+  await mobile.page.getByRole("button", { name: "Back to Quick Keys", exact: true }).click();
+  await mobile.page.getByRole("button", { name: "Fixture Category", exact: true }).click();
+  await mobile.page.getByRole("listbox", { name: "POS product search results" }).getByRole("option", { name: /Fixture Product/ }).waitFor({ state: "visible" });
+  await mobile.page.getByRole("option", { name: /Fixture Product/ }).click();
+  await mobile.page.getByRole("button", { name: "Cart", exact: true }).click();
+  const mobileCart = mobile.page.locator("aside").filter({ hasText: "Subtotal" }).first();
+  await mobileCart.getByText("Fixture Product", { exact: true }).waitFor({ state: "visible" });
+  const cartBox = await mobileCart.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, viewportHeight: innerHeight };
+  });
+  const finalise = mobileCart.getByRole("button").last();
+  const finaliseBox = await finalise.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, viewportHeight: innerHeight };
+  });
+  assert.ok(cartBox.top >= 50 && cartBox.bottom <= 844, `cart pane must fit mobile viewport: ${JSON.stringify(cartBox)}`);
+  assert.ok(finaliseBox.top >= 50 && finaliseBox.bottom <= 844, `finalise action must fit mobile viewport: ${JSON.stringify(finaliseBox)}`);
+  await mobile.page.screenshot({ path: path.join(screenshotDir, "mobile-cart-390.png") });
+  checks.push({ id: "mobile-cart-and-finalise-fit-viewport", status: "PASS", cartBox, finaliseBox });
+  const mobileLine = mobileCart.locator("li").filter({ hasText: "Fixture Product" }).first();
+  await mobileLine.locator("div[role=button]").first().click();
+  await mobileLine.getByRole("button", { name: "Increase Fixture Product" }).click();
+  await mobile.page.getByText("2 items", { exact: true }).waitFor();
+  checks.push({ id: "mobile-cart-quantity-updates", status: "PASS" });
+  assert.deepEqual(mobile.writes, [], "mobile cart navigation must not submit a sale");
+  await mobile.page.getByRole("button", { name: "Back to products", exact: true }).click();
+  await mobile.page.getByRole("button", { name: "Cart", exact: true }).waitFor({ state: "visible" });
+  assert.deepEqual(mobile.pageErrors, []);
+  checks.push({ id: "mobile-cart-return-and-no-business-write", status: "PASS", writes: mobile.writes, pageErrors: mobile.pageErrors });
+  await mobile.context.close();
 
   const cash = await newRegister();
   await cash.page.getByRole("option", { name: /Fixture Product/ }).click();

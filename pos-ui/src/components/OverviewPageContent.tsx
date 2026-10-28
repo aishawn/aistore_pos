@@ -124,7 +124,9 @@ export function OverviewPageContent({
   }, [active, finishAssistantTransition, transitionSource, transitionState]);
   const allowed = new Set(
     navigation.flatMap((entry) =>
-      "items" in entry ? entry.items.map((child) => child.href) : [entry.href],
+      "items" in entry
+        ? entry.items.flatMap((child) => "items" in child ? child.items.map((item) => item.href) : [child.href])
+        : [entry.href],
     ),
   );
   const canReport = allowed.has("/reports/dashboard");

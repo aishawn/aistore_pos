@@ -3,7 +3,7 @@
  * Always derived from sidebar navigation so admin filters stay consistent.
  */
 
-import type { SidebarGroup, SidebarIcon, SidebarItem } from "@/lib/sidebar-navigation";
+import { isSidebarSubGroup, type SidebarGroup, type SidebarIcon, type SidebarItem } from "@/lib/sidebar-navigation";
 
 export const LAUNCH_RING_EVENT = "orithos:open-launch-ring";
 
@@ -82,7 +82,7 @@ export function buildLaunchDestinations(
 ): LaunchDestination[] {
   return navigation.map((entry) => {
     if (isGroup(entry)) {
-      const children = entry.items
+      const children = entry.items.flatMap((item) => isSidebarSubGroup(item) ? item.items : [item])
         .filter((item) => !item.more)
         .map((item) => ({
           label: item.label,

@@ -1,13 +1,77 @@
 {
-  "generatedAt": "2026-10-22T12:19:07.212Z",
-  "sourceCommit": "b4719e7c51c2ffebdcd8b0916e7186480c55201d",
+  "generatedAt": "2026-10-26T13:03:39.827Z",
+  "sourceCommit": "6466aa68f04b8c7e7b1e1b069473ea8b65721041",
+  "expectedRuntimeSha": "6466aa68f04b8c7e7b1e1b069473ea8b65721041",
+  "runtime": {
+    "frontendCommit": "6466aa68f04b8c7e7b1e1b069473ea8b65721041",
+    "backendCommit": "6466aa68f04b8c7e7b1e1b069473ea8b65721041"
+  },
   "deployment": "unverified-after-deploy",
-  "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
+  "scope": "exact-runtime read-only interactions; parked-sales GET replaced by an empty fixture because the deployed handler expires old records; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
+  "result": "BLOCKED",
+  "fixtureReads": [
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    },
+    {
+      "path": "/api/sell/parked",
+      "reason": "Replace the legacy read endpoint because its current deployed handler expires overdue parked sales."
+    }
+  ],
   "checks": [
     {
-      "name": "Mobile navigation drawer opens and dismisses",
+      "name": "Mobile dashboard module navigation reaches Products workspace",
       "status": "PASS",
-      "evidence": "At 390px, the navigation drawer opens and closes with Escape and the outside backdrop; ARIA state tracks visibility."
+      "evidence": "At 390px, the in-page Stock module linked to the Products workspace and reached that route without the hidden Sidebar/Header chrome."
     },
     {
       "name": "Compact account popover opens and closes accessibly",
@@ -20,29 +84,29 @@
       "evidence": "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page."
     },
     {
-      "name": "Classification creation restores mobile menu focus",
+      "name": "Legacy classification route opens the read-only category workspace",
       "status": "PASS",
-      "evidence": "At 390px the Menu opens the classification dialog, the MDB selector supports ArrowDown/Escape, and closing restores focus to Menu."
+      "evidence": "The legacy classification route opened the 390px Manage Categories dialog; Escape closed it and removed the query without category writes."
     },
     {
       "name": "Product search filters the Odoo catalogue",
-      "status": "PASS",
-      "evidence": "At 390px the R2 product cards replaced the wide table; searching a unique SKU returned one matching result."
+      "status": "BLOCKED",
+      "evidence": "Odoo has no R2 product fixture; a product fixture is required for search validation."
     },
     {
       "name": "Product edit dialog is prefilled from Odoo",
-      "status": "PASS",
-      "evidence": "At 390px the edit dialog fit the viewport, prefilled a valid R2 Odoo price, and was closed without saving."
+      "status": "BLOCKED",
+      "evidence": "Odoo has no R2 product fixture; a product fixture is required for edit validation."
     },
     {
       "name": "New product form blocks submission without a name",
-      "status": "PASS",
-      "evidence": "Product name is required; dialog focus and trigger restoration passed; empty form validation was checked and no product was created."
+      "status": "BLOCKED",
+      "evidence": "Odoo product workspace controls were not enabled after loading; a product fixture or session warmup is required."
     },
     {
       "name": "CSV product import previews valid rows without writing to Odoo",
-      "status": "PASS",
-      "evidence": "A valid one-row CSV was parsed and previewed; Cancel closed the dialog with no Odoo product write."
+      "status": "BLOCKED",
+      "evidence": "Odoo product data was still loading, so the CSV import control remained disabled."
     },
     {
       "name": "Customer creation form is required-field guarded",
@@ -65,14 +129,14 @@
       "evidence": "At 390px, replenishment showed product cards without overflow (390px); coverage changed to 7 days; no-sales state remains explicitly qualified."
     },
     {
-      "name": "Reporting period selector reloads Odoo dashboard",
+      "name": "Reports period controls refresh the Orithos dashboard",
       "status": "PASS",
-      "evidence": "At 390px there is no horizontal overflow (390px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes."
+      "evidence": "At 390px there is no horizontal overflow (390px); the 24-hour Orithos report has no sales, so the qualified empty state renders, and the AI assistant opens/closes."
     },
     {
-      "name": "Legacy report previews do not imply live Odoo data",
+      "name": "Legacy sales report opens the live reporting dashboard",
       "status": "PASS",
-      "evidence": "At 390px the sales report clearly identifies itself as a static preview, displays no placeholder totals, and has no horizontal overflow."
+      "evidence": "The legacy sales report route redirected to the live Reports dashboard; its period controls rendered without horizontal overflow at 390px."
     }
   ]
 }

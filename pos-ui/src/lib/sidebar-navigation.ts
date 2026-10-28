@@ -48,6 +48,10 @@ export interface SidebarGroup {
   permission?: string;
 }
 
+export function isSidebarSubGroup(item: SidebarGroupItem | SidebarSubGroup): item is SidebarSubGroup {
+  return "items" in item;
+}
+
 export type SidebarIcon =
   | "overview"
   | "sales"
@@ -188,8 +192,8 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.flatMap((item) => {
-        if ("items" in item) {
+      const items: (SidebarGroupItem | SidebarSubGroup)[] = entry.items.flatMap((item): (SidebarGroupItem | SidebarSubGroup)[] => {
+        if (isSidebarSubGroup(item)) {
           const children = item.items.filter((child) => allowed(options, child.permission, child.adminOnly) && (!child.anyPermissions || child.anyPermissions.some((permission) => allowed(options, permission))));
           return children.length ? [{ ...item, items: children }] : [];
         }

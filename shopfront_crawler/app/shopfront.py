@@ -10,6 +10,43 @@ class ShopfrontError(RuntimeError):
     pass
 
 
+# Keep the crawler's built-in catalog query independent from an old deployment
+# override. The response retains source fields verbatim, while pageInfo lets us
+# walk every product instead of silently stopping at the first 100.
+CATALOG_QUERY = """
+query ShopfrontCatalog($after: Cursor) {
+  products(first: 100, after: $after) {
+    edges { node {
+      id name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
+      tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+      orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+      category { id name } brand { id name } family { id name } tags { name }
+      trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost
+      replacementCost costPercentage
+      prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+      barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
+        reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+INVENTORY_QUERY = """
+query ShopfrontInventory($after: Cursor) {
+  products(first: 100, after: $after) {
+    edges { node {
+      id name mdbId
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
+        reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
         self.vendor = vendor
@@ -168,10 +205,96 @@ UNCONSOLIDATED'''
             after = page_info["endCursor"]
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return _extract_nodes(await self.graphql(access_token, query), "products")
+        return await self._fetch_catalog(access_token, query, CATALOG_QUERY)
+
+    async def fetch_products_by_ids(self, access_token: str, product_ids: list[str]) -> list[dict[str, Any]]:
+        """Fetch products referenced by history, including archived products."""
+        ids = [str(value).strip() for value in product_ids if str(value).strip()]
+        if not ids:
+            return []
+        fields = """
+          id name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
+          tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+          orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+          category { id name } brand { id name } family { id name } tags { name }
+          trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
+          prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+          barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
+            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+        """
+        queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
+        last_error: Exception | None = None
+        for selection in queries:
+            query = f"""
+            query ProductsByIds($ids: [ID], $after: Cursor) {{
+              products(products: $ids, first: 100, after: $after) {{
+                edges {{ node {{ {selection} }} }}
+                pageInfo {{ hasNextPage endCursor }}
+              }}
+            }}
+            """
+            try:
+                result: list[dict[str, Any]] = []
+                after: str | None = None
+                seen: set[str] = set()
+                while True:
+                    data = await self.graphql(access_token, query, {"ids": ids, "after": after})
+                    connection = data.get("products", {}) if isinstance(data, dict) else {}
+                    result.extend(edge.get("node", {}) for edge in connection.get("edges", []) if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
+                    page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+                    if not page_info.get("hasNextPage"):
+                        return result
+                    next_cursor = str(page_info.get("endCursor") or "")
+                    if not next_cursor or next_cursor in seen:
+                        raise ShopfrontError("Shopfront product ID pagination returned a repeated cursor")
+                    seen.add(next_cursor)
+                    after = next_cursor
+            except Exception as exc:
+                last_error = exc
+        raise ShopfrontError(f"Shopfront product ID query failed: {last_error}")
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return _extract_nodes(await self.graphql(access_token, query), "products")
+        return await self._fetch_catalog(access_token, query, INVENTORY_QUERY)
+
+    async def _fetch_catalog(self, access_token: str, configured: str, fallback: str) -> list[dict[str, Any]]:
+        # Old environment overrides commonly contain only ``first: 100``.
+        # Try the lossless paginated query first, then retain compatibility
+        # with a tenant schema that rejects one of its optional fields.
+        candidates = [fallback]
+        if configured and configured.strip() not in candidates:
+            candidates.append(configured)
+        last_error: Exception | None = None
+        for candidate in candidates:
+            try:
+                result: list[dict[str, Any]] = []
+                after: str | None = None
+                while True:
+                    # A legacy environment override usually has no variable
+                    # declaration and no pageInfo. Supplying an undeclared
+                    # GraphQL variable makes an otherwise valid fallback fail.
+                    variables = {"after": after} if "$after" in candidate else {}
+                    data = await self.graphql(access_token, candidate, variables)
+                    connection = data.get("products", {}) if isinstance(data, dict) else {}
+                    result.extend(_extract_nodes(data, "products"))
+                    page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+                    if not page_info.get("hasNextPage") or not page_info.get("endCursor"):
+                        break
+                    next_cursor = str(page_info["endCursor"])
+                    if next_cursor == after:
+                        raise ShopfrontError("Shopfront catalog cursor did not advance")
+                    after = next_cursor
+                # A defensive de-duplication handles an occasionally repeated
+                # edge at a page boundary without dropping source fields.
+                unique: dict[str, dict[str, Any]] = {}
+                for node in result:
+                    source_id = str(node.get("id") or node.get("mdbId") or "")
+                    if source_id:
+                        unique[source_id] = node
+                return list(unique.values()) if unique else result
+            except Exception as exc:
+                last_error = exc
+        raise ShopfrontError(f"Shopfront catalog query failed: {last_error}")
 
     async def fetch_sale_detail(self, access_token: str, sale_id: str, query: str) -> dict[str, Any]:
         data = await self.graphql(access_token, query, {"id": sale_id})

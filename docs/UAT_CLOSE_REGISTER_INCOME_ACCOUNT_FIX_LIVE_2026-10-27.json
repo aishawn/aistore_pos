@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-27T20:58:11.978Z",
-  "slug": "codex-close-3134691978",
+  "generatedAt": "2026-10-27T23:45:28.838Z",
+  "slug": "codex-close-3144728838",
   "checks": [
     {
       "name": "platform.login",
@@ -10,14 +10,14 @@
     {
       "name": "tenant.create",
       "httpStatus": 200,
-      "vendorId": 104,
+      "vendorId": 114,
       "message": "ok",
       "status": "PASS"
     },
     {
       "name": "tenant.provision.ready",
-      "companyId": 52,
-      "posConfigId": 54,
+      "companyId": 62,
+      "posConfigId": 70,
       "status": "PASS"
     },
     {
@@ -34,7 +34,7 @@
       "name": "odoo.session",
       "httpStatus": 200,
       "allowedCompanyIds": [
-        52
+        62
       ],
       "status": "PASS"
     },
@@ -47,8 +47,8 @@
     {
       "name": "pos.bootstrap",
       "httpStatus": 200,
-      "configId": 54,
-      "sessionId": 51,
+      "configId": 70,
+      "sessionId": 61,
       "registerCount": 3,
       "status": "PASS"
     },
@@ -56,15 +56,15 @@
       "name": "cash.sale.quote",
       "httpStatus": 200,
       "total": 32,
-      "productId": 5203,
-      "paymentMethodId": 105,
+      "productId": 5665,
+      "paymentMethodId": 131,
       "status": "PASS"
     },
     {
       "name": "cash.sale",
       "httpStatus": 201,
-      "saleId": 94836,
-      "receipt": "260-54-000035",
+      "saleId": 107659,
+      "receipt": "260-70-000035",
       "total": 32,
       "status": "PASS"
     },
@@ -102,23 +102,23 @@
   ],
   "sessionRecords": [
     {
-      "id": 51,
-      "name": "Main Store Register 1/00051",
+      "id": 61,
+      "name": "Main Store Register 1/00061",
       "state": "opened",
       "config_id": [
-        54,
+        70,
         "Main Store Register 1"
       ],
       "user_id": [
         2,
         "Administrator"
       ],
-      "start_at": "2026-10-27 20:58:30",
+      "start_at": "2026-10-27 23:45:46",
       "stop_at": false
     }
   ],
   "odooBeforeClose": {
-    "id": 51,
+    "id": 61,
     "state": "opened",
     "cash_register_balance_start": 0,
     "cash_register_balance_end": 790.8,
@@ -126,7 +126,7 @@
     "cash_register_difference": -790.8
   },
   "odooAfterClose": {
-    "id": 51,
+    "id": 61,
     "state": "closed",
     "cash_register_balance_start": 0,
     "cash_register_balance_end": 790.8,

@@ -1,15 +1,39 @@
 {
-  "generatedAt": "2026-10-25T18:29:55.077Z",
+  "generatedAt": "2026-10-26T06:02:02.506Z",
   "status": "PASS",
   "source": "local Playwright fixture; all API calls intercepted",
   "nodeVersion": "v24.19.0",
-  "sourceHead": "a93cffb841f825206df8ca910101bdfb40aa5c7f",
+  "sourceHead": "4cf907c3d29152eccc1d9959a02d9e74683c24ca",
   "sourceTreeDirty": true,
   "target": "http://localhost:3101/register/odoo",
   "checks": [
     {
       "id": "empty-cart-no-finalise-action",
       "status": "PASS"
+    },
+    {
+      "id": "mobile-cart-and-finalise-fit-viewport",
+      "status": "PASS",
+      "cartBox": {
+        "top": 50,
+        "bottom": 844,
+        "viewportHeight": 844
+      },
+      "finaliseBox": {
+        "top": 783,
+        "bottom": 827,
+        "viewportHeight": 844
+      }
+    },
+    {
+      "id": "mobile-cart-quantity-updates",
+      "status": "PASS"
+    },
+    {
+      "id": "mobile-cart-return-and-no-business-write",
+      "status": "PASS",
+      "writes": [],
+      "pageErrors": []
     },
     {
       "id": "cash-shortfall-blocked",

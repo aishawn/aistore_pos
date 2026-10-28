@@ -158,12 +158,60 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
               limit: 200,
               context: companyContext,
             }) ?? [];
+            // Odoo 19 exposes `stock.move.quantity` as the planned/reserved
+            // quantity on an open backorder. The received quantity is carried
+            // by stock.move.line and is only complete when the line is picked
+            // (or its state is done). Prefer that source so a partial receipt
+            // keeps the remaining backorder visible to the UI.
+            let pickedQuantityByMove = new Map<number, number>();
+            try {
+              const moveLineFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move.line", "fields_get", [], { attributes: ["type"] });
+              const lineQtyField = Object.hasOwn(moveLineFields ?? {}, "quantity_product_uom")
+                ? "quantity_product_uom"
+                : Object.hasOwn(moveLineFields ?? {}, "quantity")
+                  ? "quantity"
+                  : null;
+              const lineCanIdentifyMove = Object.hasOwn(moveLineFields ?? {}, "move_id");
+              if (lineQtyField && lineCanIdentifyMove) {
+                const moveLines = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.move.line", "search_read", [[
+                  ["move_id", "in", ids],
+                ]], {
+                  fields: ["move_id", lineQtyField, ...(Object.hasOwn(moveLineFields ?? {}, "picked") ? ["picked"] : []), ...(Object.hasOwn(moveLineFields ?? {}, "state") ? ["state"] : [])],
+                  limit: 500,
+                  context: companyContext,
+                }) ?? [];
+                for (const line of moveLines) {
+                  const relation = line.move_id;
+                  const moveId = Array.isArray(relation) ? Number(relation[0]) : Number(relation);
+                  const picked = line.picked === true || String(line.state || "") === "done";
+                  if (!Number.isSafeInteger(moveId)) continue;
+                  // An open backorder has an unpicked move line whose quantity
+                  // is the remaining demand. Record zero explicitly so the
+                  // code below does not fall back to stock.move.quantity.
+                  if (!picked) {
+                    if (!pickedQuantityByMove.has(moveId)) pickedQuantityByMove.set(moveId, 0);
+                    continue;
+                  }
+                  const quantity = Number(line[lineQtyField]);
+                  if (Number.isFinite(quantity) && quantity >= 0) {
+                    pickedQuantityByMove.set(moveId, (pickedQuantityByMove.get(moveId) ?? 0) + quantity);
+                  }
+                }
+              }
+            } catch {
+              // Older Odoo versions may not expose move-line quantities; the
+              // move field fallback below preserves their existing behavior.
+              pickedQuantityByMove = new Map();
+            }
             receivable = {
               pickingId: Number(picking.id),
               pickingName: String(picking.name || ""),
               pickingState: String(picking.state || ""),
               moves: moves.map((move) => {
-                const qtyDone = typeof move[qtyField] === "number" ? move[qtyField] as number : 0;
+                const hasMoveLineQuantity = pickedQuantityByMove.has(move.id);
+                const qtyDone = hasMoveLineQuantity
+                  ? pickedQuantityByMove.get(move.id) ?? 0
+                  : typeof move[qtyField] === "number" ? move[qtyField] as number : 0;
                 const remaining = Math.max(0, (move.product_uom_qty || 0) - qtyDone);
                 return {
                   id: move.id,

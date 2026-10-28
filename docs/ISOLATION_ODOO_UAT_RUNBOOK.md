@@ -1,6 +1,6 @@
 # Isolated UAT environment
 
-Use `.env.uat.example` as the variable name template and copy it to ignored `.env.uat`. Set `ODOO_MASTER_PASSWORD` only on the host that creates the isolated database; use `scripts/create-isolated-odoo-database.mjs` before starting the stack. The UAT Compose overlay requires `RUNTIME_ENVIRONMENT=uat`, and both services must set `ODOO_DATABASE` and `ISOLATION_ODOO_DATABASE` to the same dedicated database. The value must not be `aipos`.
+Use `.env.uat.example` as the variable name template and copy it to ignored `.env.uat`. Set `ODOO_MASTER_PASSWORD` only on the host that creates the isolated Odoo database; use `scripts/create-isolated-odoo-database.mjs` before starting the stack. UAT needs two separate data stores: the dedicated Odoo database selected by `ODOO_DATABASE` and `ISOLATION_ODOO_DATABASE` (same value, never `aipos`), and the POS runtime PostgreSQL database selected by `POSTGRESQL_URL`. The POS URL must point to a dedicated UAT PostgreSQL database, never the production POS database. `POSTGRESQL_URL` is required by the base Compose file and is repeated in the UAT overlay so a missing isolated value fails clearly.
 
 Start with a distinct project and keep the frontend bound to localhost until identity and access checks pass:
 

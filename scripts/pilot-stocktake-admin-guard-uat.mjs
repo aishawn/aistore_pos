@@ -28,14 +28,11 @@ try {
   const admin = await request("/api/auth/login", "POST", { username: "admin", password: adminPassword });
   if (!admin.response.ok() || admin.body.code !== 0) throw new Error(`ADMIN_LOGIN_FAILED_${admin.response.status()}`);
   const roles = await request("/api/roles");
-  let role = Array.isArray(roles.body.data) ? roles.body.data[0] : null;
-  if (!role?.id) {
-    const createdRole = await request("/api/roles", "POST", { name: `Stocktake guard ${Date.now()}`, permissionIds: [] });
-    if (!createdRole.response.ok() || createdRole.body.code !== 0 || !createdRole.body.data?.id) {
-      throw new Error(`TEMP_ROLE_CREATE_FAILED_${createdRole.response.status()}`);
-    }
-    role = createdRole.body.data;
-    temporaryRoleId = role.id;
+  const role = Array.isArray(roles.body.data)
+    ? roles.body.data.find((candidate) => String(candidate.managedId ?? "").toUpperCase() === "CLERK")
+    : null;
+  if (!roles.response.ok() || roles.body.code !== 0 || !role?.id) {
+    throw new Error(`CLERK_ROLE_LOOKUP_FAILED_${roles.response.status()}`);
   }
   const adminUser = admin.body.data?.user ?? {};
   const username = `stocktake_guard_${Date.now()}`;

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-27T21:20:53.664Z",
+  "generatedAt": "2026-10-27T23:44:36.833Z",
   "scope": "temporary-tenant purchase confirmation and receipt recovery",
   "checks": [
     {
@@ -11,13 +11,13 @@
       "name": "tenant.create",
       "status": "PASS",
       "httpStatus": 200,
-      "vendorId": 105
+      "vendorId": 113
     },
     {
       "name": "tenant.provision.ready",
       "status": "PASS",
       "provisionStatus": "ready",
-      "companyId": 53
+      "companyId": 61
     },
     {
       "name": "tenant.bootstrap",
@@ -34,20 +34,20 @@
       "name": "supplier.create",
       "status": "PASS",
       "httpStatus": 201,
-      "supplierId": 265
+      "supplierId": 313
     },
     {
       "name": "replenishment.read",
       "status": "PASS",
       "httpStatus": 200,
-      "productId": 5238,
+      "productId": 5652,
       "method": "rules_v1_weighted_velocity"
     },
     {
       "name": "draft.rfq.create",
       "status": "PASS",
       "httpStatus": 201,
-      "purchaseId": 11,
+      "purchaseId": 14,
       "auditSaved": true
     },
     {
@@ -60,8 +60,8 @@
       "name": "purchase.receipt.readback",
       "status": "PASS",
       "httpStatus": 200,
-      "pickingId": 96747,
-      "moveId": 187727,
+      "pickingId": 107717,
+      "moveId": 209244,
       "orderedQty": 3
     },
     {
@@ -87,8 +87,8 @@
       "name": "backorder.readback",
       "status": "PASS",
       "httpStatus": 200,
-      "pickingId": 96762,
-      "moveId": 187747,
+      "pickingId": 107718,
+      "moveId": 209245,
       "remaining": 2
     },
     {

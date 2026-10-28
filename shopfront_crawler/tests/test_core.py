@@ -60,3 +60,34 @@ def test_report_continuation_key_is_consumed():
     rows = asyncio.run(run())
     assert [row["Revenue"] for row in rows] == ["$1", "$2"]
     assert b'"key":"next"' in calls[1]
+
+
+def test_catalog_walks_all_pages_and_keeps_extended_fields():
+    import httpx
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = request.read()
+        calls.append(payload)
+        if len(calls) == 1:
+            return httpx.Response(200, json={"data": {"products": {
+                "edges": [{"node": {"id": "p1", "name": "One", "image": "https://img/1"}}],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-2"},
+            }}})
+        return httpx.Response(200, json={"data": {"products": {
+            "edges": [{"node": {"id": "p2", "name": "Two", "description": "desc"}}],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            }}})
+
+    async def run():
+        client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        rows = await client.fetch_products("token", "{ products(first: 100) { edges { node { id name } } } }")
+        await client.close()
+        return rows
+
+    rows = __import__("asyncio").run(run())
+    assert [row["id"] for row in rows] == ["p1", "p2"]
+    assert rows[0]["image"] == "https://img/1"
+    assert b'"after":null' in calls[0]
+    assert b'"after":"cursor-2"' in calls[1]

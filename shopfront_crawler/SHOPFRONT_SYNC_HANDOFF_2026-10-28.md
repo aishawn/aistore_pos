@@ -44,10 +44,13 @@ C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master\shopfront_crawler
 | `README.md` | 快速启动和接口索引 |
 | `tests/` | OAuth、同步、幂等和接口测试 |
 
-Git 已推送到 GitHub `main`。近期关键提交：
+Git 已推送到 GitHub `main`。当前 crawler 相关关键提交：
 
-- `c43b14b4`：修复旧 SQLite 数据库缺列导致接口 500；
-- `e144cea7`：启用 SQLite WAL/busy timeout，并按销售批次提交，减少历史同步期间读接口阻塞。
+- `36dfa4a5`：独立商品/库存快照和销售修复任务；
+- `0988e413`：增加 crawler 源端覆盖率诊断；
+- `9d4ae555`：销售修复按批次 offset 断点续跑；
+- `4fdc820b`：通过 crawler 服务端读取 POS staging 覆盖率；
+- `6e3cbee5`：暴露 POS staging 覆盖率诊断接口。
 
 ## 3. 本地启动
 
@@ -137,10 +140,11 @@ POST /api/pos/import/sales?store=skr
 未完成：
 
 - 历史任务 ID `25` 仍为 `running`，范围 `2011-04-22` 至 `2026-10-27`；
-- 当前游标停在 `2024-10-04`；
-- 当前分片为 `2024-10-04` 至 `2024-10-17`，对应最近 run `1418`；
-- run `1414` 至 `1417` 是 crawler 重启后产生的失败/重试记录，不代表数据已经完成；
-- 在任务 25 完成前，不要重复启动 full history，也不要并行启动新的 snapshot。
+- 当前游标停在 `2024-10-04`，当前重试分片为 `2024-10-04` 至 `2024-10-17`，最近 run 为 `1426`；
+- 销售修复任务 ID `27` 仍为 `running`，最近 run 为 `1427`，总销售数为 `112887`，已支持 offset 断点续跑；
+- run `1424`、`1425` 是最近一次 crawler 重启留下的失败记录，错误为 `interrupted by crawler restart`，不代表已完成；
+- 商品/库存快照任务 ID `26` 已完成；
+- 在任务 25 和 27 完成前，不要重复启动历史同步或销售修复，也不要删除数据库卷。
 
 查询命令：
 
@@ -151,7 +155,7 @@ Invoke-RestMethod "https://shopfront.orithos.com.au/api/sync/runs?store=skr&limi
 
 ## 7. 数据完整性现状
 
-当前商品字段覆盖抽样结果：
+当前 crawler 源端覆盖率（接口采样时间：2026-10-28）：
 
 | 字段 | 覆盖 |
 | --- | ---: |
@@ -167,33 +171,46 @@ Invoke-RestMethod "https://shopfront.orithos.com.au/api/sync/runs?store=skr&limi
 
 分类、SKU、品牌和图片缺失主要是 Shopfront 源数据本身为空，不能凭名称推测或伪造。原始 Shopfront payload 已保存，后续应先确认源端字段和权限，再决定是否补采。
 
-POS shadow 快照曾统计到：商品 1880、库存 100、销售 105959、销售行 206648、支付 127324；其中销售行名称缺失 148103。该快照需要在历史任务完成后重新生成，不能作为最终验收结果。
+当前 POS staging 快照：
+
+| 指标 | 数量 |
+| --- | ---: |
+| 商品 | 3189 |
+| 库存记录 | 50 |
+| 销售 | 105959 |
+| 销售行 | 206648 |
+| 支付 | 127324 |
+| 商品缺名称 | 0 |
+| 条码匹配 | 3171 |
+| 条码未匹配 | 18 |
+| 含未匹配商品的销售 | 22525 |
+| 销售行缺名称 | 84523 |
+
+源端当前为 112887 笔销售、220621 条销售行；POS 少量销售和销售行缺失是因为销售修复仍在运行，不能作为最终验收结果。POS 商品数量高于源端商品目录，说明历史销售中的旧商品也已提升到 POS 商品 staging。
 
 ## 8. 下一步操作顺序
 
 ### 8.1 先确认历史任务是否推进
 
-每隔一段时间查看任务 25 和 run 1418 的游标、状态和结束时间。若游标变化，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要直接取消任务。
+每隔一段时间查看任务 25、run 1426 和 run 1427 的游标、状态和结束时间。若游标或销售修复进度变化，继续等待；若长时间不变，先查看 Dokploy crawler 日志，确认是 Shopfront 超时、限流、响应过大还是进程重启。不要直接取消任务。
 
 ### 8.2 历史任务完成后只执行一次快照
 
-确认任务 25 已完成且没有 running 分片后，执行一次：
+确认任务 25 已完成且没有 running 分片后，执行一次商品和库存快照：
 
 ```text
-POST https://shopfront.orithos.com.au/api/stores/skr/pos/full-snapshot
+POST https://shopfront.orithos.com.au/api/stores/skr/pos/catalog-snapshot
 ```
 
-等待完成，再重新统计 POS 商品、库存、销售和销售行。
+销售修复任务 27 完成后，再重新统计 POS 商品、库存、销售和销售行；如果销售行名称仍缺失，再按已保存 offset 继续修复，不要新建第二个修复任务。
 
 ### 8.3 重新检查 POS 数据
 
-使用 Dokploy 中的 integration token 调用：
+优先使用 crawler 的服务端代理接口，不在浏览器或文档中暴露 integration token：
 
 ```text
-GET /api/integrations/shopfront/snapshot?storeKey=skr
-GET /api/integrations/shopfront/match-status?storeKey=skr
-GET /api/integrations/shopfront/data?storeKey=skr&type=products&page=1&size=500
-GET /api/integrations/shopfront/data?storeKey=skr&type=sale_items&page=1&size=500
+GET https://shopfront.orithos.com.au/api/pos/coverage?store=skr
+GET https://shopfront.orithos.com.au/api/sync/coverage?store=skr
 ```
 
 重点检查：
@@ -220,7 +237,7 @@ GET /api/integrations/shopfront/data?storeKey=skr&type=sale_items&page=1&size=50
 
 ### 商品有名称但 Sell 没有
 
-先完成历史任务，再执行一次 full snapshot。检查 POS integration token、门店映射和 source product ID。能从 crawler 商品目录回填的名称应在 staging 重刷；Shopfront 源端没有名称的记录保留缺失状态。
+先完成历史任务和销售修复，再执行一次 `catalog-snapshot`。检查 POS integration token、门店映射和 source product ID。能从 crawler 商品目录回填的名称应在 staging 重刷；Shopfront 源端没有名称的记录保留缺失状态。
 
 ### 图片、品牌、分类缺失
 

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-22T03:15:26.402Z",
-  "sourceCommit": "177eea3d91be2d74ac22f049b46467cb19adddc4",
-  "deployment": "unverified-after-deploy",
+  "generatedAt": "2026-10-27T21:32:29.865Z",
+  "sourceCommit": "c4994c2d396c36f5fc3dbe5b89a315922eb2ef13",
+  "deployment": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only platform observability UI; no business writes",
   "status": "PASS",
@@ -10,7 +10,7 @@
       "route": "/platform/operations",
       "viewport": 390,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792638907711",
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1793136734657",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -21,7 +21,7 @@
       "route": "/platform/usage",
       "viewport": 390,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792638911151",
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1793136738112",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -32,7 +32,7 @@
       "route": "/platform/audit",
       "viewport": 390,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1792638912539",
+      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1793136739557",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -43,7 +43,7 @@
       "route": "/platform/failures",
       "viewport": 390,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1792638913962",
+      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1793136740942",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -54,23 +54,7 @@
       "route": "/platform/operations",
       "viewport": 1440,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792638916057",
-      "headingVisible": true,
-      "pageErrors": [],
-      "apiResponses": [
-        {
-          "path": "/api/admin/operations/health",
-          "status": 200
-        }
-      ],
-      "nonGet": [],
-      "noHorizontalOverflow": true
-    },
-    {
-      "route": "/platform/usage",
-      "viewport": 1440,
-      "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792638920261",
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1793136743517",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -78,10 +62,26 @@
       "noHorizontalOverflow": true
     },
     {
+      "route": "/platform/usage",
+      "viewport": 1440,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1793136745487",
+      "headingVisible": true,
+      "pageErrors": [],
+      "apiResponses": [
+        {
+          "path": "/api/platform/metrics/ai",
+          "status": 200
+        }
+      ],
+      "nonGet": [],
+      "noHorizontalOverflow": true
+    },
+    {
       "route": "/platform/audit",
       "viewport": 1440,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1792638921721",
+      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1793136746890",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -92,7 +92,7 @@
       "route": "/platform/failures",
       "viewport": 1440,
       "status": 200,
-      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1792638923116",
+      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1793136747925",
       "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
@@ -103,13 +103,13 @@
   "runtimeVersion": {
     "frontend": {
       "service": "orithos-frontend",
-      "commit": "c905902f4020180095646cdeeaf638d78a0ded2d",
-      "builtAt": "2026-10-22T03:12:22.738Z"
+      "commit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+      "builtAt": "2026-10-27T20:59:51.820Z"
     },
     "backend": {
       "service": "orithos-backend",
-      "commit": "c905902f4020180095646cdeeaf638d78a0ded2d",
-      "builtAt": "2026-10-22T03:12:22Z"
+      "commit": "c47a58f32c46009f88d4b82b3df4b6307d4bef49",
+      "builtAt": "2026-10-27T20:59:51Z"
     }
   }
 }

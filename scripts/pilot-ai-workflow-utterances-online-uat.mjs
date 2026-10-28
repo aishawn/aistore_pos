@@ -23,6 +23,7 @@ const env = fs.existsSync(envPath)
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME || "admin";
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const cases = [
@@ -527,7 +528,7 @@ try {
   let login;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     login = await context.request.post(`${base}/api/auth/login`, {
-      data: { username: "admin", password }, headers: { Origin: base },
+      data: { username, password }, headers: { Origin: base },
     });
     loginDiagnostics = {
       status: login.status(),

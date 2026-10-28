@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-23T20:13:39.569Z",
-  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+  "generatedAt": "2026-10-27T20:12:57.602Z",
+  "sourceCommit": "23309b9d004e04b768c019ccb7785c35e57c2171",
   "worktreeDirty": true,
-  "runtimeCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+  "runtimeCommit": "e995801498e7838458f2d3382e84fd7c34f2e1a0",
   "runtimeIdentity": {
-    "frontendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
-    "backendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+    "frontendCommit": "e995801498e7838458f2d3382e84fd7c34f2e1a0",
+    "backendCommit": "e995801498e7838458f2d3382e84fd7c34f2e1a0",
     "matchesSourceCommit": false
   },
   "target": "https://demo.orithos.com.au",
@@ -74,7 +74,7 @@
       "httpStatus": 200,
       "intent": "navigate",
       "cardPresent": true,
-      "cardStatus": "ready",
+      "cardStatus": "empty",
       "ctaRouteMatches": true,
       "ctaLabelMatches": true,
       "titleMatches": true,
@@ -89,7 +89,7 @@
         {
           "type": "replenishment",
           "title": "Replenishment suggestions",
-          "status": "ready",
+          "status": "empty",
           "route": "/stock/replenishment",
           "label": "Open replenishment"
         }
@@ -102,7 +102,7 @@
       "httpStatus": 200,
       "intent": "navigate",
       "cardPresent": true,
-      "cardStatus": "ready",
+      "cardStatus": "empty",
       "ctaRouteMatches": true,
       "ctaLabelMatches": true,
       "titleMatches": true,
@@ -117,7 +117,7 @@
         {
           "type": "replenishment",
           "title": "补货建议",
-          "status": "ready",
+          "status": "empty",
           "route": "/stock/replenishment",
           "label": "打开补货建议"
         }
@@ -130,7 +130,7 @@
       "httpStatus": 200,
       "intent": "navigate",
       "cardPresent": true,
-      "cardStatus": "ready",
+      "cardStatus": "empty",
       "ctaRouteMatches": true,
       "ctaLabelMatches": true,
       "titleMatches": true,
@@ -145,7 +145,7 @@
         {
           "type": "pricing",
           "title": "Price review suggestions",
-          "status": "ready",
+          "status": "empty",
           "route": "/stock/capped-pricing",
           "label": "Open price review"
         }
@@ -158,7 +158,7 @@
       "httpStatus": 200,
       "intent": "navigate",
       "cardPresent": true,
-      "cardStatus": "ready",
+      "cardStatus": "empty",
       "ctaRouteMatches": true,
       "ctaLabelMatches": true,
       "titleMatches": true,
@@ -173,7 +173,7 @@
         {
           "type": "pricing",
           "title": "价格复核建议",
-          "status": "ready",
+          "status": "empty",
           "route": "/stock/capped-pricing",
           "label": "打开价格复核"
         }

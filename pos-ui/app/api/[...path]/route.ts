@@ -28,6 +28,11 @@ const FORWARDED_RESPONSE_HEADERS = [
   "last-modified",
 ] as const;
 
+const BACKEND_PROXY_TIMEOUT_MS = (() => {
+  const configured = Number(process.env.BACKEND_PROXY_TIMEOUT_MS ?? "60000");
+  return Number.isFinite(configured) ? Math.min(120_000, Math.max(5_000, configured)) : 60_000;
+})();
+
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
   const upstreamUrl = new URL(
@@ -68,7 +73,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
       body: method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer(),
       cache: "no-store",
       redirect: "manual",
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(BACKEND_PROXY_TIMEOUT_MS),
     });
     const responseHeaders = new Headers();
     for (const name of FORWARDED_RESPONSE_HEADERS) {

@@ -9,7 +9,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store. One intelligence."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-workspace",
@@ -18,7 +18,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store, at a glance."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-register",
@@ -27,7 +27,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Sell"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-stock",
@@ -36,7 +36,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Stock List"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-assistant",
@@ -45,7 +45,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Hello, I’m Orithos AI"
+      "h1": "Platform admin required"
     },
     {
       "name": "brand-home",
@@ -81,7 +81,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store. One intelligence."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-workspace",
@@ -90,7 +90,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store, at a glance."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-register",
@@ -99,7 +99,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Sell"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-stock",
@@ -108,7 +108,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Stock List"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-assistant",
@@ -117,7 +117,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Hello, I’m Orithos AI"
+      "h1": "Platform admin required"
     },
     {
       "name": "brand-home",
@@ -153,7 +153,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store. One intelligence."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-workspace",
@@ -162,7 +162,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Your store, at a glance."
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-register",
@@ -171,7 +171,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Sell"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-stock",
@@ -180,7 +180,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Stock List"
+      "h1": "Platform admin required"
     },
     {
       "name": "pos-assistant",
@@ -189,7 +189,7 @@
       "primary": "#c2410c",
       "background": "#f4f7fb",
       "overflow": false,
-      "h1": "Hello, I’m Orithos AI"
+      "h1": "Platform admin required"
     },
     {
       "name": "brand-home",
@@ -306,7 +306,7 @@
       "b": "brand-module-purple-tint",
       "foreground": "rgb(101, 67, 191)",
       "background": "rgb(244, 240, 255)",
-      "ratio": 6.033307047298009
+      "ratio": 6.03330704729801
     },
     {
       "name": "contrast",
@@ -546,7 +546,7 @@
       "b": "brand-module-purple-tint",
       "foreground": "rgb(101, 67, 191)",
       "background": "rgb(244, 240, 255)",
-      "ratio": 6.033307047298009
+      "ratio": 6.03330704729801
     },
     {
       "name": "contrast",

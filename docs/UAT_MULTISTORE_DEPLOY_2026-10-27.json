@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-27T05:45:31.132Z",
-  "sourceCommit": "f3bc3bf2739c8dc92f46155efacd9972ba65f991",
-  "deploymentSha": "49935042be85f24f0b8e4f7296b4dad976f24304",
+  "generatedAt": "2026-10-27T23:54:44.220Z",
+  "sourceCommit": "abd83656ffed8b2b8542cecc53d33295f331eae1",
+  "deploymentSha": "cd3bd6b98480c83366ad73a9f6fb6b83f78f2cff",
   "appBase": "https://app.orithos.com.au",
   "demoBase": "https://demo.orithos.com.au",
-  "passed": 9,
-  "failed": 2,
-  "result": "FAIL",
+  "passed": 16,
+  "failed": 0,
+  "result": "PASS",
   "checks": [
     {
       "name": "platform.login",
@@ -15,20 +15,63 @@
     },
     {
       "name": "platform.tenants.list",
-      "status": "FAIL",
-      "httpStatus": 500,
-      "count": 0
+      "status": "PASS",
+      "httpStatus": 200,
+      "count": 100
+    },
+    {
+      "name": "platform.operator.detail",
+      "status": "PASS",
+      "httpStatus": 200,
+      "storeId": 1,
+      "subdomain": "demo",
+      "hasOwner": true,
+      "hasBinding": true,
+      "odooProvisionStatus": "ready",
+      "odooCompanyId": 2,
+      "source": "explicit operator detail fallback"
     },
     {
       "name": "platform.tenants.detail",
-      "status": "FAIL",
-      "message": "no tenants returned"
+      "status": "PASS",
+      "httpStatus": 200,
+      "storeId": 1,
+      "subdomain": "demo",
+      "hasOwner": true,
+      "hasBinding": true,
+      "odooProvisionStatus": "ready",
+      "odooCompanyId": 2
+    },
+    {
+      "name": "platform.operator.lifecycleBlocked",
+      "status": "PASS",
+      "httpStatus": 200,
+      "code": 40910,
+      "message": "Lifecycle changes are not allowed on the platform operator store"
     },
     {
       "name": "platform.stores.page",
       "status": "PASS",
       "url": "https://app.orithos.com.au/platform/stores",
       "snippet": "Orithos Platform admin All stores · app.orithos.com.au Stores AI usage Operations Failures Audit Open demo store admin Sign out Stores Platform admin view of every vendor. Store owners from brand signup manage staff only"
+    },
+    {
+      "name": "platform.stores.detailPage",
+      "status": "PASS",
+      "url": "https://app.orithos.com.au/platform/stores/1",
+      "snippet": "Orithos Platform admin All stores · app.orithos.com.au Stores AI usage Operations Failures Audit Open demo store admin Sign out Orithos Demo Platform lifecycle, owner recovery, and Orithos binding All stores Refresh AI U"
+    },
+    {
+      "name": "platform.noSellChrome",
+      "status": "PASS",
+      "sellNav": 0
+    },
+    {
+      "name": "platform.stores.listLink",
+      "status": "PASS",
+      "detailHref": 0,
+      "platformOperator": true,
+      "message": "operator store is intentionally opened through the explicit detail endpoint"
     },
     {
       "name": "demo.login",
@@ -62,12 +105,12 @@
     {
       "name": "demo.manageCash.page",
       "status": "PASS",
-      "snippet": "Orithos Sell Dashboard Stock Customers Orithos AI Reports Setup admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Loading register s"
+      "snippet": "Orithos Sell Dashboard Stock Customers Orithos AI Reports Setup admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Open session requi"
     },
     {
       "name": "demo.purchases.page",
       "status": "PASS",
-      "snippet": "Orithos Sell Dashboard Stock Products Price Lists Purchasing Suppliers Customers Orithos AI Reports Setup admin Skip to main content Purchasing Plan replenishment, manage orders an"
+      "snippet": "Orithos Sell Dashboard Stock Products Purchasing Suppliers Customers Orithos AI Reports Setup admin Skip to main content Purchasing Plan replenishment, manage orders and receive st"
     }
   ]
 }

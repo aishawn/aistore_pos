@@ -268,7 +268,9 @@ async function main() {
       continue;
     }
 
-    const reprovision = await reprovisionViaPlatform(auth, vendor.id);
+    const reprovision = env.REPAIR_RUN_REPROVISION === "1"
+      ? await reprovisionViaPlatform(auth, vendor.id)
+      : { skipped: true, note: "Set REPAIR_RUN_REPROVISION=1 to retry full Odoo provision" };
     const repair = await repairPosConfigs(sessionId, companyId, vendor.name || slug);
     const configs = await odooCallKw(
       sessionId,

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-27T20:55:18.455Z",
+  "generatedAt": "2026-10-27T22:05:48.298Z",
   "scope": "cross-company supplier rejection through purchase request",
   "checks": [
     {
@@ -11,13 +11,13 @@
       "name": "A.create",
       "status": "PASS",
       "httpStatus": 200,
-      "vendorId": 101
+      "vendorId": 107
     },
     {
       "name": "A.provision.ready",
       "status": "PASS",
       "provisionStatus": "ready",
-      "companyId": 49
+      "companyId": 55
     },
     {
       "name": "A.bootstrap",
@@ -34,13 +34,13 @@
       "name": "B.create",
       "status": "PASS",
       "httpStatus": 200,
-      "vendorId": 102
+      "vendorId": 108
     },
     {
       "name": "B.provision.ready",
       "status": "PASS",
       "provisionStatus": "ready",
-      "companyId": 50
+      "companyId": 56
     },
     {
       "name": "B.bootstrap",
@@ -56,20 +56,20 @@
     {
       "name": "companies.are.distinct",
       "status": "PASS",
-      "companyA": 49,
-      "companyB": 50
+      "companyA": 55,
+      "companyB": 56
     },
     {
       "name": "a.supplier.create",
       "status": "PASS",
       "httpStatus": 201,
-      "supplierId": 249
+      "supplierId": 282
     },
     {
       "name": "b.replenishment.read",
       "status": "PASS",
       "httpStatus": 200,
-      "productId": 5176
+      "productId": 5327
     },
     {
       "name": "b.cannot.use.a.supplier",

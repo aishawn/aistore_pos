@@ -9,8 +9,8 @@ Shared project brief for **Cursor** and **Codex** (and any other coding agent). 
 Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashiers sell, stock, purchase, and report in one UI. Optional AI (cashier assistant, sommelier, invoice OCR) stays off in production until budgeted.
 
 - **Business data source of truth:** Odoo (via `pos-ui` `/api/odoo/*`).
-- **Classic Spring/MySQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write Classic ↔ Odoo.
-- **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → MySQL 8 + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
+- **Classic Spring/PostgreSQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write Classic ↔ Odoo.
+- **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → PostgreSQL 16+ + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
 
 ## Hosts (production)
 
@@ -19,7 +19,7 @@ Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashie
 | `https://app.orithos.com.au` | Control plane — `PlatformShell`, `/platform/*`, signup. **No** store Sidebar / Sell. |
 | `https://demo.orithos.com.au` | Pilot store — full POS shell. Default UAT target. |
 | `https://{slug}.orithos.com.au` | Other tenant stores (same POS shell as demo). |
-| `https://odoo.orithos.com.au` | Odoo; database default `aipos` (pilot/test). |
+| `https://odoo.orithos.com.au` | Odoo; deployment, debugging and controlled customer trial currently use `aipos_uat`. This shared database is not proof of customer tenant isolation. |
 
 Login uses username/password only (no subdomain field). Host → vendor. Pilot admin username: `admin`. Demo credentials have been supplied in the current owner conversation; never copy the password into this file, handoffs, UAT artifacts, command logs, or Git. For repeatable browser checks, place it in an ignored local env file as `DEMO_ADMIN_PASSWORD` and read it without printing it.
 
@@ -38,7 +38,24 @@ orithopos/
 └── scripts/          Pilot / UAT / R2 helpers
 ```
 
-Local IDE: `pos-api/.env` from `pos-api/.env.example`; `pos-ui/.env.local` from `pos-ui/.env.local.example`; MySQL/Redis via `docker compose up -d mysql redis`.
+## Owner workspace paths
+
+- POS source: `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master`
+- Odoo source: `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithos_odoo`
+- Shopfront crawler: `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\shopfront_crawler`
+- Java 21 runtime: `C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\tools\\jdk-21.0.12.1+1`
+
+Deployment and debugging currently use the shared UAT database. Keep these names aligned in local and Dokploy environments:
+
+```text
+ODOO_DATABASE=aipos_uat
+ODOO_DATABASE_UAT=aipos_uat
+ISOLATION_ODOO_DATABASE=aipos_uat
+```
+
+The demo store is `https://demo.orithos.com.au`; the control plane is `https://app.orithos.com.au`. Credentials remain only in ignored environment variables (`INITIAL_ADMIN_PASSWORD`, `DOKPLOY_USER`, `DOKPLOY_PASS`).
+
+Local IDE: `pos-api/.env` from `pos-api/.env.example`; `pos-ui/.env.local` from `pos-ui/.env.local.example`; PostgreSQL/Redis via `docker compose up -d redis`.
 
 Toolchain: Node **24+** (the UI package declares `engines.node >=24`) and Java **21**. **Owner preference: do not run local builds.** Use narrow static checks such as `npm run typecheck`, targeted ESLint, and script syntax checks when relevant. Run application builds and full backend verification through Dokploy; report the exact source/deployment SHA and build evidence. The default live read-only UAT target is `https://demo.orithos.com.au`.
 
@@ -82,7 +99,7 @@ Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` 
 
 ## Hard rules for agents
 
-1. **Odoo is SoT** for pilot sell / stock / purchase / reporting. Do not revive Classic MySQL as the live path.
+1. **Odoo is SoT** for pilot sell / stock / purchase / reporting. Do not revive Classic PostgreSQL as the live path.
 2. **Do not write production `aipos`** for sell/refund/receive/close-register UAT unless the user explicitly approves. Prefer isolated DB (`aipos_uat` or approved TEST company) — see [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md). Isolation scripts must keep `ODOO_DATABASE` = `ISOLATION_ODOO_DATABASE`.
 3. **R2 / Shopfront history** is a read-only archive for production tenants. Do not import historical receipts into a production Odoo database or use R2 data as a second live source of truth. The demo/TEST exception is explicit and narrow: `scripts/import-r2-sales-receipts.py --apply` may run only against the approved TEST company/database, after a dry run and manifest verification, and must reconcile stock to the R2 snapshot afterward. Scheduled R2 sync stays off unless explicitly enabled. Policies: [docs/R2_COLD_HISTORY_POLICY.md](docs/R2_COLD_HISTORY_POLICY.md) and [docs/R2_ARCHIVE_SYNC_PLAN.md](docs/R2_ARCHIVE_SYNC_PLAN.md).
 4. **Do not invent GST, prices, ABN, or stock.** Missing source price/tax → keep product unsaleable; leave for owner/accountant.

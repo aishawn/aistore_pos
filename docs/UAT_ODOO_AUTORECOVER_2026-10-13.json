@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T22:10:20.119Z",
-  "deployment": "0adc6ebb8bdc53c1af77b274aa596d3c070f93a0",
+  "generatedAt": "2026-10-27T22:56:33.866Z",
+  "deployment": "abd83656ffed8b2b8542cecc53d33295f331eae1",
   "scope": "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   "checks": [
     {
@@ -31,7 +31,7 @@
     {
       "name": "Odoo reconnects automatically after session removal",
       "status": "PASS",
-      "evidence": "Authenticated Odoo user restored; POS session orithos_store1/00004 remains opened."
+      "evidence": "Authenticated Odoo user restored; opened POS session Orithos UAT Pilot Register/00040 remains available."
     }
   ]
 }

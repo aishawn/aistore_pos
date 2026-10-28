@@ -9,9 +9,10 @@ import { CustomerLookup } from "@/components/CustomerLookup";
 import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
 import { OdooRecordLink } from "@/components/OdooRecordLink";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { Archive, AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import {
   createOdooCustomer,
+  archiveOdooCustomer,
   getOdooCustomerGroups,
   getOdooPosBootstrap,
   getOdooPricelists,
@@ -89,6 +90,7 @@ export function OdooCustomerDirectoryPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
+  const [archivingCustomerId, setArchivingCustomerId] = useState<number | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const requestRevision = useRef(0);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
@@ -240,6 +242,21 @@ export function OdooCustomerDirectoryPage() {
     }
   }
 
+  async function archiveCustomer(customer: OdooCustomerRecord) {
+    if (archivingCustomerId !== null || !window.confirm(`Archive ${customer.name}? It will no longer appear in the active customer directory.`)) return;
+    setArchivingCustomerId(customer.id);
+    setError(null);
+    try {
+      await archiveOdooCustomer(customer.id);
+      if (detail?.id === customer.id) setDetail(null);
+      setRefreshKey((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not archive this Orithos customer.");
+    } finally {
+      setArchivingCustomerId(null);
+    }
+  }
+
   const groupName = (ids?: number[]) => {
     if (!ids?.length) return "—";
     const names = ids.map((id) => groups.find((group) => group.id === id)?.name).filter(Boolean);
@@ -322,7 +339,7 @@ export function OdooCustomerDirectoryPage() {
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer.category_id)}</td>
                     {canBalance && <td className="px-4 py-3 text-right font-medium text-[var(--oh-text)]">{money(customer.credit)}</td>}
-                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button></td>
+                    <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} aria-label={`Archive ${customer.name}`} title="Archive customer" className="inline-flex min-h-11 w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50">{archivingCustomerId === customer.id ? <LoaderCircle size={15} className="animate-spin" /> : <Archive size={15} />}</button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -349,7 +366,7 @@ export function OdooCustomerDirectoryPage() {
                     {Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "No price list"} · {groupName(customer.category_id)}
                   </p>
                   <footer className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3">
-                    <button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button>
+                    <div className="flex gap-2"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} aria-label={`Archive ${customer.name}`} title="Archive customer" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50">{archivingCustomerId === customer.id ? <LoaderCircle size={15} className="animate-spin" /> : <Archive size={15} />}</button></div>
                   </footer>
                 </article>
               ))}

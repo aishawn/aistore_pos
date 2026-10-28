@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-27T20:20:43.182Z",
+  "generatedAt": "2026-10-27T23:54:06.364Z",
   "target": "https://demo.orithos.com.au",
-  "expectedCommit": "e995801498e7838458f2d3382e84fd7c34f2e1a0",
+  "expectedCommit": "cd3bd6b98480c83366ad73a9f6fb6b83f78f2cff",
   "expectedEnvironment": "uat",
   "scope": "release identity, database separation and parked-sale read; no business writes",
   "status": "BLOCKED",
