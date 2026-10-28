@@ -284,7 +284,18 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                 sale.total_cost = parse_decimal(first(row, "Cost", "cost", "totalCost"))
                 sale.customer_reference = first(row, "clientId", "client_id", "customerReference")
                 sale.raw_payload = row
-                if settings.shopfront_sale_detail_query:
+                # The complete sales GraphQL query already requests item,
+                # payment and product metadata. An optional per-sale detail
+                # query is expensive, so use it only for incomplete rows.
+                row_items = row.get("items") if isinstance(row.get("items"), list) else []
+                row_has_product_metadata = bool(row_items) and all(
+                    isinstance(line, dict)
+                    and isinstance(line.get("item"), dict)
+                    and bool(first(line.get("item", {}), "name", "displayName", "title"))
+                    for line in row_items
+                )
+                row_has_payments = isinstance(row.get("payments"), list)
+                if settings.shopfront_sale_detail_query and (not row_has_product_metadata or not row_has_payments):
                     try:
                         detail = await client.fetch_sale_detail(token, str(sale_id), settings.shopfront_sale_detail_query)
                         if isinstance(detail, dict):
@@ -344,6 +355,10 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                 # large GraphQL history window. This also makes a completed
                 # subset durable if the process is restarted mid-chunk.
                 if sale_index % 50 == 0:
+                    counts["sales_fetched"] = len(sale_rows)
+                    counts["sales_processed"] = sale_index
+                    counts["stage"] = "sales"
+                    run.counts = counts
                     db.commit()
         if sale_rows:
             db.commit()
