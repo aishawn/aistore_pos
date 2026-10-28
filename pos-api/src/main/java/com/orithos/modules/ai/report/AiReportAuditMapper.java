@@ -27,13 +27,13 @@ public interface AiReportAuditMapper {
     long auditVendorRowCount(@Param("vendorId") long vendorId);
 
     @Select("SELECT CURRENT_TIMESTAMP")
-    LocalDateTime databaseCurrentTime();
+    String databaseCurrentTime();
 
     @Select("SELECT MAX(created_at) FROM public.ai_report_audit")
-    LocalDateTime auditLatestCreatedAt();
+    String auditLatestCreatedAt();
 
     @Select("SELECT MAX(created_at) FROM public.ai_report_audit WHERE vendor_id = #{vendorId}")
-    LocalDateTime auditVendorLatestCreatedAt(@Param("vendorId") long vendorId);
+    String auditVendorLatestCreatedAt(@Param("vendorId") long vendorId);
 
     @Insert("""
             INSERT INTO ai_report_audit
