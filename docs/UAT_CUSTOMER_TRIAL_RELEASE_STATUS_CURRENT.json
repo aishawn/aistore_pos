@@ -1,12 +1,12 @@
 {
   "generatedAt": "2026-10-29",
   "target": "https://demo.orithos.com.au",
-  "runtimeSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
-  "frontendSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
-  "backendSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
-  "sourceShaAtAudit": "3975d4aa733d844395d63df76ed81537b301788f",
-  "verifiedCodeCandidateSha": "6bc07cfbd36cd056c1bfba394a47545228f9d216",
-  "sourceRuntimeMatch": false,
+  "runtimeSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "frontendSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "backendSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "sourceShaAtAudit": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "verifiedCodeCandidateSha": "256f74f22bccd9d6858ca58f4d13309ff01d65f7",
+  "sourceRuntimeMatch": true,
   "databaseMode": "shared-uat",
   "odooDatabase": "aipos_uat",
   "odooDatabaseUat": "aipos_uat",
@@ -30,7 +30,8 @@
     "SKR assistant read-only probe returns 3/3 HTTP 200 with zero write requests",
     "public Wikimedia wine-label probe returns HTTP 200 and explicit no-match result",
     "authenticated parked-sale GET returns 200 and is read-only",
-    "ordinary assistant quota rejects before provider execution"
+    "ordinary assistant quota rejects before provider execution",
+    "SKR price list create/read/rename/archive CRUD passes 9/9 with cleanup verified"
   ],
   "blocked": [
     "provider image/OCR quota",

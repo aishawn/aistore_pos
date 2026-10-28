@@ -5,7 +5,7 @@
 - Demo POS：`https://demo.orithos.com.au/`
 - 管理后台：`https://app.orithos.com.au/`
 - Dokploy 自动部署来源：GitHub `main`
-- 最近一次线上 `/api/public/version` 观测到前后端 runtime SHA：`b825a4fa3b6563e201b791f115e670e9278a8c69`。
+- 最近一次线上 `/api/public/version` 观测到 Demo 与 SKR 前后端 runtime SHA：`256f74f22bccd9d6858ca58f4d13309ff01d65f7`。
 - 补货路由修复候选 `6bc07cfb` 已在 Demo 与 SKR 部署；后续测试/文档提交不改变行为 runtime。
 - Java 8 仍作为本机默认 Java；Java 21 安装于 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`，`JAVA21_HOME` 已写入用户环境变量。
 - 同 SHA GitHub Actions Java 21 门禁通过：`mvn -B clean verify`，447 tests，0 failures，0 errors。
@@ -33,6 +33,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - SKR 硬件/离线边界模拟 `docs/UAT_HARDWARE_OFFLINE_STATUS_ONLINE_SKR_2026-10-29.json`：4/4 PASS；仅证明 UI 明确标示设备未验收和离线结算不支持，不替代现场设备测试。
 - SKR AI assistant 只读 probe `docs/UAT_AI_ASSISTANT_READONLY_SKR_2026-10-29.json`：3/3 HTTP 200、无写请求；均走 `llmFallback=true`，响应约 1.9–4.7 秒。
 - SKR 公开 Wikimedia 酒标 probe `docs/UAT_AI_PUBLIC_WINE_LABEL_ONLINE_SKR_2026-10-29.json`：HTTP 200、约 17 秒，识别标签但店内匹配 0；不能替代真实脱敏样本准确率/成本验收。
+- SKR 价格表真实 CRUD `docs/UAT_PRICELISTS_ONLINE_SKR_2026-10-29.json`：9/9 PASS，创建、读回、改名、归档和最终清理验证通过，3 个 UAT 写入。
 
 ## 当前结论：NO-GO（正式生产）
 
@@ -42,7 +43,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## 本轮续验
 
-- 线上 `/api/public/version`：frontend/backend 均为 `8ecd8fc7f25ed782b194238f09001ce1775dcb81`；Demo 与 SKR 的 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
+- 线上 `/api/public/version`：Demo 与 SKR 的 frontend/backend 均为 `256f74f22bccd9d6858ca58f4d13309ff01d65f7`；两站点 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
 - 本机未发现 `INITIAL_ADMIN_PASSWORD`、Dokploy/Odoo 凭据，也没有打印机、钱箱、扫码器或 EFTPOS；因此 Demo 认证写入验收和现场设备验收保持 `BLOCKED`，没有伪造 PASS。SKR 只读认证使用用户提供的测试账号完成。
