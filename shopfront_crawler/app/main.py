@@ -432,6 +432,21 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     }
 
 
+@app.get("/api/pos/coverage")
+async def pos_coverage(store: str, db: Session = Depends(get_db)) -> dict:
+    """Read POS staging counts through the server-side integration secret."""
+    require_store(store, db)
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        snapshot = await client.snapshot(store)
+        matching = await client.match_status(store)
+        return {"data": {"store": store, "snapshot": snapshot.get("data", snapshot), "matching": matching.get("data", matching)}, "source": "orithos_shopfront_staging"}
+    except PosIntegrationError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    finally:
+        await client.close()
+
+
 @app.post("/api/sync/runs/{run_id}/retry")
 async def retry_sync_run(run_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
     run = db.get(SyncRun, run_id)
