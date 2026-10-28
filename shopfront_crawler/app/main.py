@@ -851,16 +851,49 @@ async def push_pos_snapshot(
                             if value not in (None, "", [], {}) and not existing.get(key):
                                 existing[key] = value
                     product = products_by_source.get(source_id)
+                    if product is None and normalized.get("name"):
+                        # Archived products are still valid source records. Keep
+                        # them in the crawler catalog so later API reads and
+                        # retries do not depend on the temporary batch payload.
+                        product = Product(
+                            store_key=store_key,
+                            shopfront_product_id=source_id,
+                            name=normalized.get("name"),
+                            sku=normalized.get("sku"),
+                            barcode=normalized.get("barcode"),
+                            category=normalized.get("category"),
+                            brand=normalized.get("brand"),
+                            cost=parse_decimal(normalized.get("cost")),
+                            price=parse_decimal(normalized.get("price")),
+                            raw_payload=normalized.get("raw_payload") or {},
+                        )
+                        db.add(product)
+                        db.flush()
+                        products_by_source[source_id] = product
                     if product is not None:
                         product.name = product.name or normalized.get("name")
                         product.sku = product.sku or normalized.get("sku")
                         product.barcode = product.barcode or normalized.get("barcode")
                         product.category = product.category or normalized.get("category")
                         product.brand = product.brand or normalized.get("brand")
-                        product.cost = product.cost or parse_decimal(normalized.get("cost"))
-                        product.price = product.price or parse_decimal(normalized.get("price"))
-                        product.raw_payload = normalized.get("raw_payload") or product.raw_payload
+                        product.cost = product.cost if product.cost is not None else parse_decimal(normalized.get("cost"))
+                        product.price = product.price if product.price is not None else parse_decimal(normalized.get("price"))
+                        existing_raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+                        product.raw_payload = {**existing_raw, **(normalized.get("raw_payload") or {})}
                         product.synced_at = datetime.now(timezone.utc)
+                    if normalized.get("name"):
+                        missing_lines = db.scalars(
+                            select(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).where(
+                                Sale.store_key == store_key,
+                                SaleItem.shopfront_product_id == source_id,
+                                or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
+                            )
+                        ).all()
+                        for missing_line in missing_lines:
+                            missing_line.product_name = str(normalized["name"])
+                            line_raw = dict(missing_line.raw_payload) if isinstance(missing_line.raw_payload, dict) else {}
+                            line_raw.setdefault("item", item)
+                            missing_line.raw_payload = line_raw
                 db.commit()
             finally:
                 await source_client.close()
