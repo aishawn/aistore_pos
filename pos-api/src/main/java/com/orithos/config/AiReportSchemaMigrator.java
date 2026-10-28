@@ -43,8 +43,8 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
             populator.addScript(new ClassPathResource("db/migration_ai_report_views.sql"));
             DatabasePopulatorUtils.execute(populator, dataSource);
             log.info("AI report views applied.");
-            seedPermissions();
             ensureAuditTable();
+            seedPermissions();
             ensureSnapshotTable();
             provisionTenantSchemas();
         } catch (Exception e) {
@@ -111,7 +111,11 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
 
     private void ensureAllowedBoolean(Connection connection, Statement statement) throws Exception {
         try (ResultSet columns = connection.getMetaData().getColumns(null, null, "ai_report_audit", "allowed")) {
-            if (columns.next() && !"BOOLEAN".equalsIgnoreCase(columns.getString("TYPE_NAME"))) {
+            if (columns.next()) {
+                String typeName = columns.getString("TYPE_NAME");
+                if ("BOOLEAN".equalsIgnoreCase(typeName) || "BOOL".equalsIgnoreCase(typeName)) {
+                    return;
+                }
                 statement.execute("ALTER TABLE ai_report_audit ALTER COLUMN allowed TYPE BOOLEAN USING allowed <> 0");
             }
         }
