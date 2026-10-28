@@ -4,7 +4,7 @@
   "runtimeSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
   "frontendSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
   "backendSha": "b825a4fa3b6563e201b791f115e670e9278a8c69",
-  "sourceShaAtAudit": "851c10a47d73ebf489ab81c5ebbcb8d24529ad6c",
+  "sourceShaAtAudit": "3975d4aa733d844395d63df76ed81537b301788f",
   "verifiedCodeCandidateSha": "6bc07cfbd36cd056c1bfba394a47545228f9d216",
   "sourceRuntimeMatch": false,
   "databaseMode": "shared-uat",
@@ -27,6 +27,8 @@
     "replenishment route is reachable and SKR authenticated read-only probe passes 13/13",
     "SKR customer-group live CRUD passes 8/8 with cleanup verified",
     "hardware/offline boundary UI probe passes 4/4 while physical devices remain unverified",
+    "SKR assistant read-only probe returns 3/3 HTTP 200 with zero write requests",
+    "public Wikimedia wine-label probe returns HTTP 200 and explicit no-match result",
     "authenticated parked-sale GET returns 200 and is read-only",
     "ordinary assistant quota rejects before provider execution"
   ],
