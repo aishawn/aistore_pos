@@ -1,16 +1,38 @@
 # Shopfront 同步模块交接文档
 
-## 2026-10-28 并发修复补充
+## 2026-10-28 数据完整性复核与接手状态
 
-线上复核显示：crawler 源库销售 `112,887`、销售行 `220,621`，源库缺名销售行已降至个位数；POS staging 仍有旧的缺名统计，待销售修复任务重新推送。销售修复任务曾因与历史分片同时写 PostgreSQL 而失败，错误为 `could not serialize access due to concurrent update`。
+以下是 2026-10-28 最近一次线上 API 核查结果；接手后必须重新请求状态接口，数量会随同步变化。
 
-已在 `main` 修复：历史同步、全量快照、商品快照和销售修复统一使用 crawler 写锁，避免同一批 Sale/Product 被并发更新。部署完成后按以下顺序操作：
+| 数据层 | 商品 | 库存 | 销售 | 销售行 | 缺名销售行 |
+|---|---:|---:|---:|---:|---:|
+| crawler 源库 | 10,882 | 10,838 | 112,887 | 220,621 | 9 |
+| POS staging | 11,010 | 10,838 | 112,887 | 220,621 | 14,554 |
+| Odoo 镜像（`aipos_uat`） | 11,011 | 10,888 | 112,887 | 220,624 | 8,678 |
 
-1. 确认历史任务 `25` 当前状态；运行中只轮询，不重复启动。
-2. 确认失败的销售修复任务已终止；历史任务结束后再调用 `POST /api/stores/skr/pos/sales-repair`。
-3. 复核 `/api/sync/coverage?store=skr` 和 `/api/pos/coverage?store=skr`，重点看 `sale_items_missing_name`、`sales_with_unmatched_items` 和 POS/Odoo 写入错误。
+- Sell 商品 API 抽样 500 个商品，名称缺失为 0；再用 25 个 Shopfront 商品名搜索，25 个均能精确命中。当前可售目录名称已同步；主要名称缺口在历史销售行。
+- crawler 有 10,882 个商品，其中名称 10,882、描述 4,425、条码 10,822、SKU 4,609、分类 10,838、品牌 0、图片 0、多图 0、价格 10,846、成本 10,882。Shopfront 当前产品图片与 `alternateImages` 覆盖均为 0；目标端没有图片是源端缺数据，不能伪造或用占位图代替。
+- crawler、POS staging 库存均有 10,838 行。Odoo 镜像有 10,838 个有效 source product/outlet 键，另有 50 条旧 `outlet_id=default` 镜像重复行。Odoo 清理过期镜像键的修复 `cee46f4` 已推送 `orithos_odoo` main；仍须确认 Dokploy 已部署，并由下一次完整库存快照验证。该修复不会改写或清零 `stock.quant`。
+- 按 barcode 优先、SKU 兜底，10,832/10,882 个商品可匹配；50 个商品同时缺 barcode 和 SKU。另有 270 个匹配商品名称不一致，需要人工抽样确认；禁止只按名称自动改名或建立重复商品。
+- Odoo 中当前 Shopfront 正式 POS 销售单为 0；112,887 条属于同步镜像数据，不得描述为已进入正式收银交易。
+- 线上 crawler 健康，`skr` OAuth active。历史 job `25` 仍为 running，游标停在 `2024-10-04`，run `1435` 处理 `2024-10-04` 至 `2024-10-17`；销售修复 job `29` 仍 queued。销售修复 run `28` 曾因 PostgreSQL `could not serialize access due to concurrent update` 失败。**不要重复创建 history 或 sales-repair 任务。**
+- 最近一次 `https://skr.orithos.com.au/api/public/version` 返回 POS frontend/backend commit `0892153f`；当时 crawler 仍未包含本次历史分片写锁修复。
 
-本次修复不改变 Shopfront 源数据；图片仍以源端字段为准。当前源端图片覆盖率为 0 时，目标端不生成占位图片。
+### 本次修复
+
+提交 `fix(shopfront): release writer between history chunks` 将历史写锁从整段历史任务缩小到单个分片及游标提交，并移除锁忙时直接返回的逻辑。目录/销售修复、全量快照仍使用同一写锁，因此等待中的 job `29` 可在历史分片边界执行，避免与同一 Sale/Product 并发写入。
+
+修复已在最新 `origin/main` 基线上通过 crawler pytest 与 compileall；GitHub 推送及 Dokploy 部署状态以本节后续更新为准。部署后预期既有 queued job `29` 自动继续，history job `25` 在分片间释放 writer 并推进游标。
+
+### 接手步骤
+
+1. 查询 `/api/sync/status?store=skr`、`/api/sync/runs?store=skr&limit=10`，确认 job `25`、job `29` 没有被重建，并记录当前游标和最新运行状态。
+2. 确认 crawler 部署 SHA 包含分片锁修复。轮询到 job `29` 完成；确认 job `25` 游标推进或最终完成。
+3. 再查 `/api/sync/coverage?store=skr` 与 `/api/pos/coverage?store=skr`。POS staging/Odoo `sale_items_missing_name` 应从上述旧值显著下降；不能仅以任务状态 completed 作为验收。
+4. 确认 Odoo `cee46f4` 已部署，再触发或等待一次完整库存快照；镜像 `default` outlet 行应归零，真实 `stock.quant` 数量不得因清理镜像行而改变。
+5. 重新核对商品匹配、名称差异、无标识商品、库存 outlet 和 Sale 行名称；历史 Sale 导入正式 POS 需要另行验证，不要通过重复创建正式交易来补镜像。
+
+不要取消 job `25`、重复启动全量历史、按名称自动匹配商品、直接删除商品、清零库存或 Fresh Volumes。
 
 最后更新：2026-10-28  
 适用目录：`orithopos-master/shopfront_crawler`  
