@@ -436,7 +436,7 @@ const maxAttempts = Number.parseInt(process.env.PILOT_MAX_ATTEMPTS ?? "5", 10);
 if (!Number.isFinite(maxAttempts) || maxAttempts < 1 || maxAttempts > 8) {
   throw new Error("INVALID_PILOT_MAX_ATTEMPTS");
 }
-const requestDelayMs = Number.parseInt(process.env.PILOT_REQUEST_DELAY_MS ?? "750", 10);
+const requestDelayMs = Number.parseInt(process.env.PILOT_REQUEST_DELAY_MS ?? "2000", 10);
 if (!Number.isFinite(requestDelayMs) || requestDelayMs < 0 || requestDelayMs > 10000) {
   throw new Error("INVALID_PILOT_REQUEST_DELAY_MS");
 }
@@ -487,7 +487,7 @@ const isUnavailable = (httpStatus, code) => [429, 502, 503, 504].includes(httpSt
 const retryDelayMs = (response, body, attempt) => {
   const retryAfter = Number.parseInt(response?.headers?.()["retry-after"] ?? "", 10);
   if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(30000, retryAfter * 1000);
-  if (body?.code === 42901 || response?.status?.() === 429) return Math.min(30000, 5000 * (attempt + 1));
+  if (body?.code === 42901 || response?.status?.() === 429) return Math.min(60000, 15000 * (attempt + 1));
   return Math.min(8000, 500 * (2 ** attempt));
 };
 const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable|(?:live )?product (?:count|total).*(?:unavailable|permission)|商品总数.*(?:暂不可用|无法获取|无权限|没有权限)/i.test(answer);

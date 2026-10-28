@@ -56,3 +56,9 @@ transient 502 responses remain a provider availability issue to monitor. A
 future release gate should require the full catalogue to run against one fixed
 runtime SHA and should classify transient 502/503/504 responses as `BLOCKED`,
 never as model failures or passes.
+
+The later full run also exposed provider quota code `42901` after sustained
+evaluation traffic. The runner now treats HTTP 429 and `42901` as
+infrastructure `BLOCKED`, waits between cases by default, honors
+`Retry-After`, and uses longer exponential backoff. A 429 must not be counted
+as an intent or routing failure.
