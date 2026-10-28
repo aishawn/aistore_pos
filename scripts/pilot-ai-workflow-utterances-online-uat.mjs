@@ -436,6 +436,10 @@ const maxAttempts = Number.parseInt(process.env.PILOT_MAX_ATTEMPTS ?? "5", 10);
 if (!Number.isFinite(maxAttempts) || maxAttempts < 1 || maxAttempts > 8) {
   throw new Error("INVALID_PILOT_MAX_ATTEMPTS");
 }
+const requestDelayMs = Number.parseInt(process.env.PILOT_REQUEST_DELAY_MS ?? "750", 10);
+if (!Number.isFinite(requestDelayMs) || requestDelayMs < 0 || requestDelayMs > 10000) {
+  throw new Error("INVALID_PILOT_REQUEST_DELAY_MS");
+}
 
 const checks = [];
 const writeRequests = [];
@@ -478,7 +482,14 @@ const context = {
   },
   cookies: async () => [...cookieJar].map(([name, value]) => ({ name, value })),
 };
-const isUnavailable = (httpStatus, code) => [502, 503, 504].includes(httpStatus) || [50210, 50301].includes(code);
+const isUnavailable = (httpStatus, code) => [429, 502, 503, 504].includes(httpStatus)
+  || [42901, 50210, 50301].includes(code);
+const retryDelayMs = (response, body, attempt) => {
+  const retryAfter = Number.parseInt(response?.headers?.()["retry-after"] ?? "", 10);
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(30000, retryAfter * 1000);
+  if (body?.code === 42901 || response?.status?.() === 429) return Math.min(30000, 5000 * (attempt + 1));
+  return Math.min(8000, 500 * (2 ** attempt));
+};
 const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable|(?:live )?product (?:count|total).*(?:unavailable|permission)|商品总数.*(?:暂不可用|无法获取|无权限|没有权限)/i.test(answer);
 const isTransientNetworkError = (value) => /ECONNRESET|ECONNREFUSED|ETIMEDOUT|TimeoutError|timeout|socket hang up|disconnected before secure TLS/i.test(String(value));
 const redactError = (value) => String(value)
@@ -569,7 +580,7 @@ try {
         });
         body = await response.json().catch(() => ({}));
         if (isUnavailable(response.status(), body.code) && attempt + 1 < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs(response, body, attempt)));
           continue;
         }
         break;
@@ -577,7 +588,7 @@ try {
         requestError = error;
         const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
         if (attempt + 1 < maxAttempts && isTransientNetworkError(detail)) {
-          await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 500 * (2 ** attempt))));
+          await new Promise((resolve) => setTimeout(resolve, retryDelayMs(null, null, attempt)));
           continue;
         }
         break;
@@ -595,6 +606,7 @@ try {
       });
       continue;
     }
+    if (requestDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, requestDelayMs));
     const data = body.data ?? {};
     const route = data.ui?.route ?? null;
     const query = data.slots?.query ?? null;
@@ -724,6 +736,7 @@ try {
     selectedIds: requestedIds ? [...requestedIds] : "all",
     requestTimeoutMs,
     maxAttempts,
+    requestDelayMs,
     catalogAudit: { uniqueIds: new Set(cases.map((item) => item.id)).size, duplicateIds: [] },
     checks,
     writeRequests,
@@ -766,6 +779,7 @@ try {
     selectedIds: requestedIds ? [...requestedIds] : "all",
     requestTimeoutMs,
     maxAttempts,
+    requestDelayMs,
     catalogAudit: { uniqueIds: null, duplicateIds },
     login: loginDiagnostics,
     proxyHealth,
