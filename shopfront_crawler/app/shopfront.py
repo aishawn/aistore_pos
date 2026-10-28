@@ -11,6 +11,43 @@ class ShopfrontError(RuntimeError):
     pass
 
 
+# Keep the crawler's built-in catalog query independent from an old deployment
+# override. The response retains source fields verbatim, while pageInfo lets us
+# walk every product instead of silently stopping at the first 100.
+CATALOG_QUERY = """
+query ShopfrontCatalog($after: Cursor) {
+  products(first: 100, after: $after) {
+    edges { node {
+      id name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
+      tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+      orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+      category { id name } brand { id name } family { id name } tags { name }
+      trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost
+      replacementCost costPercentage
+      prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+      barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+        reorderAmount reorderLimit maxQuantity onOrder }
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+INVENTORY_QUERY = """
+query ShopfrontInventory($after: Cursor) {
+  products(first: 100, after: $after) {
+    edges { node {
+      id name mdbId
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+        reorderAmount reorderLimit maxQuantity onOrder }
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
         self.vendor = vendor
@@ -147,16 +184,15 @@ UNCONSOLIDATED'''
           sales(startDate: $startDate, endDate: $endDate, after: $after) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
-              items { id quantity cost basePrice tax totalPrice item { id ... on Product {
-                name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
-                tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice
-                minimumOrderQuantity orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+              items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages
+                mdbId status type createdAt updatedAt deletedAt deleted
+                tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+                orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
                 category { id name } brand { id name } family { id name } tags { name }
                 trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
                 prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
                 barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-                inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-                  reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+                inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderAmount reorderLimit maxQuantity onOrder }
               } } }
               payments { id amount status subtype }
             } }
@@ -211,8 +247,7 @@ UNCONSOLIDATED'''
             # deployment may override that variable with a small query, but
             # the crawler must still attempt to fetch every supported catalog
             # field before deciding that it is unavailable.
-            "{ products(first: 100) { edges { node { id name description image alternateImages } } } }",
-            "{ products(first: 100) { edges { node { id mdbId status type createdAt updatedAt deletedAt deleted tempProduct } } } }",
+            "{ products(first: 100) { edges { node { id name description image alternateImages mdbId status type createdAt updatedAt deletedAt deleted tempProduct } } } }",
             "{ products(first: 100) { edges { node { id category { id name } brand { id name } family { id name } tags { name } } } } }",
             "{ products(first: 100) { edges { node { id trackInventory caseQuantity useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges orderNotes invoiceNotes } } } }",
             "{ products(first: 100) { edges { node { id cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage } } } }",
@@ -298,8 +333,8 @@ UNCONSOLIDATED'''
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+            reorderAmount reorderLimit maxQuantity onOrder }
         """
         queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
         last_error: Exception | None = None
@@ -346,8 +381,8 @@ UNCONSOLIDATED'''
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+            reorderAmount reorderLimit maxQuantity onOrder }
         """
         queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
         last_error: Exception | None = None
