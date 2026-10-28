@@ -931,6 +931,20 @@ export function SellAiPanel({
     if (!retryExistingMessage) {
       setMessages((prev) => [...prev, { role: "user", text }]);
     }
+    const appendReply = (message: ChatMessage) => setMessages((prev) => {
+      if (!retryExistingMessage) return [...prev, message];
+      let retryIndex = -1;
+      for (let index = prev.length - 1; index >= 0; index -= 1) {
+        if (prev[index].role === "assistant" && prev[index].retryQuestion === text) {
+          retryIndex = index;
+          break;
+        }
+      }
+      if (retryIndex < 0) return [...prev, message];
+      const next = [...prev];
+      next[retryIndex] = message;
+      return next;
+    });
     const pendingCommand = [...messages].reverse().find((message) => message.command?.status === "PREVIEWED")?.command;
     const isConfirmation = /^(?:确认|确认修改|确认执行|confirm|confirmed|execute)$/i.test(text.trim());
     if (pendingCommand && isConfirmation) {
@@ -972,20 +986,6 @@ export function SellAiPanel({
         return;
       }
     }
-    const appendReply = (message: ChatMessage) => setMessages((prev) => {
-      if (!retryExistingMessage) return [...prev, message];
-      let retryIndex = -1;
-      for (let index = prev.length - 1; index >= 0; index -= 1) {
-        if (prev[index].role === "assistant" && prev[index].retryQuestion === text) {
-          retryIndex = index;
-          break;
-        }
-      }
-      if (retryIndex < 0) return [...prev, message];
-      const next = [...prev];
-      next[retryIndex] = message;
-      return next;
-    });
     if (tryLocalWorkspaceIntent(text)) {
       busyRef.current = false;
       setBusy(false);
