@@ -17,7 +17,7 @@ public interface AiReportAuditMapper {
                allowed, reject_reason, row_count, latency_ms, estimated_tokens)
             VALUES
               (#{vendorId}, #{userId}, #{outletId}, #{outletIds}, #{question}, #{sqlText}, #{path},
-               CASE WHEN #{allowed} THEN 1 ELSE 0 END, #{rejectReason}, #{rowCount}, #{latencyMs}, #{estimatedTokens})
+              #{allowed}, #{rejectReason}, #{rowCount}, #{latencyMs}, #{estimatedTokens})
             """)
     int insert(@Param("vendorId") long vendorId,
                @Param("userId") long userId,
@@ -26,7 +26,7 @@ public interface AiReportAuditMapper {
                @Param("question") String question,
                @Param("sqlText") String sqlText,
                @Param("path") String path,
-               @Param("allowed") boolean allowed,
+               @Param("allowed") int allowed,
                @Param("rejectReason") String rejectReason,
                @Param("rowCount") Integer rowCount,
                @Param("latencyMs") Integer latencyMs,
