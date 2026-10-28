@@ -621,7 +621,12 @@ async def push_pos_snapshot(
         catalog_raw = catalog.raw_payload if catalog and isinstance(catalog.raw_payload, dict) else {}
         source = nested or catalog_raw
         name = item.product_name or nested.get("name") or raw.get("name")
-        name = name or (catalog.name if catalog else None) or catalog_raw.get("name")
+        # Archived products may only exist in the historical product payload
+        # assembled below. Use that payload before emitting a sale batch so
+        # older Odoo/POS lines are repaired with the real item name.
+        historical = product_items_by_source.get(str(item.shopfront_product_id)) if "product_items_by_source" in locals() else None
+        historical_raw = historical.get("raw_payload") if isinstance(historical, dict) and isinstance(historical.get("raw_payload"), dict) else {}
+        name = name or (catalog.name if catalog else None) or catalog_raw.get("name") or (historical or {}).get("name") or historical_raw.get("name")
         if name and not item.product_name:
             item.product_name = str(name)
         if not nested and catalog_raw:
@@ -629,6 +634,8 @@ async def push_pos_snapshot(
         barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else None
         if not barcodes and isinstance(catalog_raw.get("barcodes"), list):
             barcodes = catalog_raw["barcodes"]
+        if not barcodes and isinstance((historical or {}).get("barcodes"), list):
+            barcodes = historical["barcodes"]
         sku = nested.get("mdbId") or nested.get("sku") or (catalog.sku if catalog else None) or catalog_raw.get("mdbId") or catalog_raw.get("sku")
         return {
             "source_product_id": item.shopfront_product_id,
