@@ -832,14 +832,27 @@ async def push_pos_snapshot(
             if not existing.get(key) and value:
                 existing[key] = value
 
-    # Historical SaleItems can point at archived products whose metadata is
-    # absent from the current catalog and from older Sale payloads. Query those
-    # IDs directly so names, images, prices and barcodes are not lost merely
-    # because the product is no longer active.
-    # Do not query every product merely because this tenant has no images.
-    # Image coverage is reported separately; only missing names require an
-    # archived-product lookup during the historical sale repair.
-    missing_ids = [source_id for source_id, item in product_items_by_source.items() if not item.get("name")]
+    # Historical SaleItems can point at archived products that are no longer in
+    # the current catalog. Earlier repair runs only looked at product payloads
+    # already present in ``product_items_by_source``; that skipped the common
+    # case where the SaleItem itself had a source ID but no nested Product
+    # object. Collect those IDs explicitly so the archived-product lookup can
+    # restore names and every available product field.
+    missing_ids: set[str] = {
+        source_id
+        for source_id, item in product_items_by_source.items()
+        if not item.get("name")
+    }
+    for sale_item in db.scalars(sale_item_query).yield_per(1000):
+        source_id = str(sale_item.shopfront_product_id or "").strip()
+        if not source_id:
+            continue
+        raw = sale_item.raw_payload if isinstance(sale_item.raw_payload, dict) else {}
+        nested = raw.get("item") if isinstance(raw.get("item"), dict) else {}
+        catalog = product_items_by_source.get(source_id)
+        if not (sale_item.product_name or nested.get("name") or raw.get("name") or (catalog and catalog.get("name"))):
+            missing_ids.add(source_id)
+    missing_ids = sorted(missing_ids)
     if missing_ids:
         source_store = db.scalar(select(Store).where(Store.store_key == store_key))
         if source_store is not None:
@@ -854,6 +867,8 @@ async def push_pos_snapshot(
                         result["mirror_errors"].append(f"archived products: {exc!r}")
                         break
                     fetched_by_id.update({str(item.get("id")): item for item in fetched if item.get("id")})
+                recovered_names: dict[str, str] = {}
+                recovered_payloads: dict[str, dict] = {}
                 for source_id, item in fetched_by_id.items():
                     category = item.get("category") if isinstance(item.get("category"), dict) else {}
                     brand = item.get("brand") if isinstance(item.get("brand"), dict) else {}
@@ -912,10 +927,11 @@ async def push_pos_snapshot(
                             cost=parse_decimal(normalized.get("cost")),
                             price=parse_decimal(normalized.get("price")),
                             raw_payload=normalized.get("raw_payload") or {},
+                            synced_at=datetime.now(timezone.utc),
                         )
                         db.add(product)
                         db.flush()
-                        products_by_source[source_id] = product
+                    products_by_source[source_id] = product
                     if product is not None:
                         product.name = product.name or normalized.get("name")
                         product.sku = product.sku or normalized.get("sku")
