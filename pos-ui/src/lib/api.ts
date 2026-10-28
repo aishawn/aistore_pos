@@ -1057,6 +1057,47 @@ export async function transcribeAudio(
   return json.data;
 }
 
+export type AiCommandType = "UPDATE_PRODUCT" | "UPDATE_CUSTOMER" | "PREVIEW_PRICE_CHANGE" | "PREVIEW_REPLENISHMENT";
+export type AiCommandStatus = "DRAFT" | "PREVIEWED" | "CONFIRMED" | "EXECUTING" | "APPLIED" | "REJECTED" | "FAILED" | "EXPIRED" | "STALE" | "CANCELLED";
+export interface AiCommandItem {
+  id: number | null;
+  name: string;
+  field: string;
+  before: unknown;
+  after: unknown;
+  reason?: string | null;
+  status?: string | null;
+}
+export interface AiCommandResponse {
+  commandId: string;
+  type: AiCommandType;
+  status: AiCommandStatus;
+  confidence: number;
+  requiresConfirmation: boolean;
+  summary: string;
+  items: AiCommandItem[];
+  excludedItems: AiCommandItem[];
+  changes: Record<string, unknown>;
+  expiresAt: string;
+  version: string;
+  writeRequests: string[];
+}
+export function parseAiCommand(text: string, threadId?: string | null, surface?: string | null) {
+  return api.post<AiCommandResponse>("/api/ai/commands/parse", { text, threadId, surface });
+}
+export function previewAiCommand(id: string) {
+  return api.post<AiCommandResponse>("/api/ai/commands/" + encodeURIComponent(id) + "/preview");
+}
+export function confirmAiCommand(id: string, confirmationText: string, confirmationMode: "VOICE" | "TEXT" = "TEXT", expectedVersion?: string) {
+  return api.post<AiCommandResponse>("/api/ai/commands/" + encodeURIComponent(id) + "/confirm", { confirmationText, confirmationMode, expectedVersion });
+}
+export function cancelAiCommand(id: string) {
+  return api.post<AiCommandResponse>("/api/ai/commands/" + encodeURIComponent(id) + "/cancel");
+}
+export function getAiCommand(id: string) {
+  return api.get<AiCommandResponse>("/api/ai/commands/" + encodeURIComponent(id));
+}
+
 /** Unified product + customer search for the Sell-pad search bar. */
 export function searchSell(q: string): Promise<SellSearchResult> {
   return api.get<SellSearchResult>("/api/sell/search", { q });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
+import { AiCommandPreviewCard } from "@/components/ai/AiCommandPreviewCard";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -13,10 +14,13 @@ import {
   fetchAiChatThread,
   fetchAiChatThreads,
   fetchAiClientConfig,
+  parseAiCommand,
+  confirmAiCommand,
   ApiError,
   type AssistantCard,
   type AiChatThreadSummary,
   type AssistantResponse,
+  type AiCommandResponse,
 } from "@/lib/api";
 import {
   resolveEntityAction,
@@ -164,6 +168,7 @@ interface ChatMessage {
     latencyMs: number;
     status: "ok" | "error";
   };
+  command?: AiCommandResponse | null;
 }
 
 function messageLinks(msg: ChatMessage): ChatCta[] {
@@ -926,6 +931,47 @@ export function SellAiPanel({
     if (!retryExistingMessage) {
       setMessages((prev) => [...prev, { role: "user", text }]);
     }
+    const pendingCommand = [...messages].reverse().find((message) => message.command?.status === "PREVIEWED")?.command;
+    const isConfirmation = /^(?:确认|确认修改|确认执行|confirm|confirmed|execute)$/i.test(text.trim());
+    if (pendingCommand && isConfirmation) {
+      try {
+        const command = await confirmAiCommand(pendingCommand.commandId, text.trim(), "VOICE", pendingCommand.version);
+        updateCommandMessage(command);
+        busyRef.current = false;
+        setBusy(false);
+        return;
+      } catch (e) {
+        appendReply({
+          role: "assistant",
+          question: text,
+          text: e instanceof Error ? e.message : "The change could not be confirmed.",
+          diagnostics: { intent: "ai_command", latencyMs: 0, status: "error" },
+        });
+        busyRef.current = false;
+        setBusy(false);
+        return;
+      }
+    }
+    const looksLikeCommand = /(?:把|将|改成|设置为|提高|降低|上调|下调|修改|更新|rename|change|update|raise|increase|lower|decrease|replenish|restock|补货|客户.*(?:电话|邮箱)|customer.*(?:phone|email))/i.test(text);
+    if (looksLikeCommand) {
+      try {
+        const command = await parseAiCommand(text, threadId, surfaceFromPath(pathname));
+        appendCommandReply(command, text, retryExistingMessage);
+        busyRef.current = false;
+        setBusy(false);
+        return;
+      } catch (e) {
+        appendReply({
+          role: "assistant",
+          question: text,
+          text: e instanceof Error ? e.message : "The change request could not be prepared.",
+          diagnostics: { intent: "command", latencyMs: 0, status: "error" },
+        });
+        busyRef.current = false;
+        setBusy(false);
+        return;
+      }
+    }
     const appendReply = (message: ChatMessage) => setMessages((prev) => {
       if (!retryExistingMessage) return [...prev, message];
       let retryIndex = -1;
@@ -1043,6 +1089,32 @@ export function SellAiPanel({
         inputRef.current?.blur();
       }
     }
+  }
+
+  function appendCommandReply(command: AiCommandResponse, text: string, retryExistingMessage: boolean) {
+    const message: ChatMessage = {
+      role: "assistant",
+      text: command.summary,
+      question: text,
+      command,
+      requiresConfirmation: command.requiresConfirmation,
+      diagnostics: { intent: "ai_command", latencyMs: 0, status: "ok" },
+    };
+    setMessages((prev) => {
+      if (!retryExistingMessage) return [...prev, message];
+      const index = [...prev].reverse().findIndex((item) => item.role === "assistant" && item.retryQuestion === text);
+      if (index < 0) return [...prev, message];
+      const target = prev.length - 1 - index;
+      const next = [...prev];
+      next[target] = message;
+      return next;
+    });
+  }
+
+  function updateCommandMessage(command: AiCommandResponse) {
+    setMessages((prev) => prev.map((message) =>
+      message.command?.commandId === command.commandId ? { ...message, command, text: command.summary } : message,
+    ));
   }
 
   function openCustomerLookup(query: string) {
@@ -1397,7 +1469,7 @@ export function SellAiPanel({
             <div className="mx-auto flex min-h-full w-full max-w-[1080px] -translate-y-7 flex-col justify-center py-8 sm:-translate-y-11 sm:py-12 lg:-translate-y-14">
               <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-2 text-[18px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:text-[22px]">How can I help with your store today?</p></div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[158px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
-              {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} busy={busy} thinkingHint={thinkingHint} compact /></div>}
+              {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} onCommandChange={updateCommandMessage} busy={busy} thinkingHint={thinkingHint} compact /></div>}
             </div>
           )}
         </div>
@@ -1540,6 +1612,7 @@ export function SellAiPanel({
                   onOpenLink={followChatLink}
                   onRetry={(question) => void runIntent(question, true)}
                   onClear={clearChat}
+                  onCommandChange={updateCommandMessage}
                   busy={busy}
                   thinkingHint={thinkingHint}
                   compact={fullscreenPanel}
@@ -1747,6 +1820,7 @@ function DialogueView({
   onOpenLink,
   onRetry,
   onClear,
+  onCommandChange,
   busy,
   thinkingHint,
   compact = false,
@@ -1755,6 +1829,7 @@ function DialogueView({
   onOpenLink: (href: string) => void;
   onRetry: (question: string) => void;
   onClear: () => void;
+  onCommandChange: (command: AiCommandResponse) => void;
   busy?: boolean;
   thinkingHint?: string | null;
   compact?: boolean;
@@ -1838,6 +1913,10 @@ function DialogueView({
                     : "Click to open the full report in a new page"}
                 </span>
               </span>
+            ) : msg.command ? (
+              <div className="space-y-2">
+                <AiCommandPreviewCard command={msg.command} onChange={onCommandChange} />
+              </div>
             ) : cards.length > 0 ? (
               <div className="space-y-2">
                 {cards.map((card, cardIndex) => {

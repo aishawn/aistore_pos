@@ -121,6 +121,8 @@ app:
   ai:
     # 设为 true 并配置 AI_DASHSCOPE_API_KEY 后启用 Graph 智能助手 + 语音转写 + 酒标识别
     enabled: ${AI_ENABLED:false}
+    commands:
+      enabled: ${AI_COMMANDS_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
     # Use the configured primary DashScope model when it supports native multimodal
