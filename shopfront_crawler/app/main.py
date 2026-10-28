@@ -571,7 +571,20 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
-        run = await sync_store(db, settings, store, start, end, include_catalog=include_catalog)
+        # Keep the run open until the POS/Odoo mirror has acknowledged every
+        # batch. A source-only completion must never advance the history cursor
+        # while the downstream import is still running.
+        run = await sync_store(
+            db,
+            settings,
+            store,
+            start,
+            end,
+            include_catalog=include_catalog,
+            defer_completion=True,
+        )
+        if run.status == "failed":
+            return False
         sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
             # Historical chunks only need the catalog on the first chunk. For
@@ -593,7 +606,11 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
                 sync_counts["product_source_id_count"] = len(product_source_ids)
                 sync_counts.pop("product_source_ids", None)
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
-            db.commit()
+        else:
+            run.counts = {"sync": sync_counts}
+        run.status = "completed"
+        run.finished_at = datetime.now(timezone.utc)
+        db.commit()
         return True
     except Exception as exc:
         failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
@@ -1087,7 +1104,7 @@ async def push_pos_snapshot(
                 # historical replay while the 25-sale fallback keeps retries
                 # small when one payload contains a problematic record.
                 for small_offset in range(0, len(items), 200):
-                    batch = items[small_offset:small_offset + 100]
+                    batch = items[small_offset:small_offset + 200]
                     try:
                         await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
                     except Exception:

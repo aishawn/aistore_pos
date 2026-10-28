@@ -207,7 +207,15 @@ async def access_token(db: Session, settings: Settings, store: Store) -> str:
         await client.close()
 
 
-async def sync_store(db: Session, settings: Settings, store: Store, start: date, end: date, include_catalog: bool = True) -> SyncRun:
+async def sync_store(
+    db: Session,
+    settings: Settings,
+    store: Store,
+    start: date,
+    end: date,
+    include_catalog: bool = True,
+    defer_completion: bool = False,
+) -> SyncRun:
     run = SyncRun(store_key=store.store_key, from_date=start.isoformat(), to_date=end.isoformat())
     db.add(run)
     db.commit()
@@ -452,8 +460,8 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                         sale_item.product_name = name
         counts["products_from_sales"] = len(sale_product_ids)
         counts["product_source_ids"] = sorted(sale_product_ids)
-        run.status, run.counts = "completed", counts
-        run.finished_at = datetime.now(timezone.utc)
+        run.status, run.counts = ("running" if defer_completion else "completed"), counts
+        run.finished_at = None if defer_completion else datetime.now(timezone.utc)
         db.commit()
     except Exception as exc:
         db.rollback()
