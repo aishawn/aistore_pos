@@ -39,6 +39,28 @@ public class AiReportMetricsService {
         return buildForVendor(vendorId, hours, since, generatedAt);
     }
 
+    /**
+     * Read-only diagnostics for operators troubleshooting an empty metrics rollup.
+     * Counts are queried only after confirming the audit table exists so this endpoint
+     * remains useful during first-time migrations.
+     */
+    public Map<String, Object> auditDiagnostics() {
+        AdminAccess.requireAdmin();
+        Map<String, Object> result = new LinkedHashMap<>();
+        boolean tableExists = mapper.auditTableExists();
+        result.put("tableExists", tableExists);
+        result.put("allowedColumnType", mapper.allowedColumnType());
+        result.put("insertPrivilege", tableExists && mapper.auditInsertPrivilege());
+        if (tableExists) {
+            result.put("rowCount", mapper.auditRowCount());
+            AuthUser user = CurrentUser.get();
+            long vendorId = user.vendorId() == null ? TenantContext.DEFAULT_VENDOR_ID : user.vendorId();
+            result.put("vendorId", vendorId);
+            result.put("vendorRowCount", mapper.auditVendorRowCount(vendorId));
+        }
+        return result;
+    }
+
     private AiReportMetricsResponse buildForVendor(long vendorId, int hours,
                                                    LocalDateTime since, LocalDateTime generatedAt) {
         AiReportMetricsRow row = mapper.summarize(vendorId, since);
