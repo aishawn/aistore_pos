@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+import asyncio
 
 import pytest
 from sqlalchemy import create_engine
@@ -195,3 +196,47 @@ async def test_sync_chunk_persists_pos_result_in_run_counts(db_session, monkeypa
         "sync": {"products": 3},
         "pos_import": {"status": "failed", "products": 3, "error": "POS temporarily unavailable"},
     }
+
+
+@pytest.mark.asyncio
+async def test_history_releases_writer_between_chunks_for_queued_repairs(db_session, monkeypatch):
+    db_session.add(Store(store_key="skr", vendor="skr"))
+    db_session.commit()
+    monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+    monkeypatch.setattr(main.settings, "history_chunk_days", 14)
+
+    first_chunk_started = asyncio.Event()
+    finish_first_chunk = asyncio.Event()
+    events = []
+
+    async def fake_sync_history_chunk(_db, _store_key, _store, start, _end, _job_id, _include_catalog):
+        events.append(("chunk-start", start))
+        if start == date(2026, 10, 26):
+            first_chunk_started.set()
+            await finish_first_chunk.wait()
+        events.append(("chunk-end", start))
+        return True
+
+    monkeypatch.setattr(main, "_sync_history_chunk", fake_sync_history_chunk)
+
+    history = asyncio.create_task(main.run_sync_background(
+        "skr", date(2026, 10, 26), date(2026, 11, 9)
+    ))
+    await first_chunk_started.wait()
+
+    async def queued_repair():
+        async with main.sync_lock:
+            events.append(("repair", None))
+
+    repair = asyncio.create_task(queued_repair())
+    await asyncio.sleep(0)
+    finish_first_chunk.set()
+    await asyncio.gather(history, repair)
+
+    assert events == [
+        ("chunk-start", date(2026, 10, 26)),
+        ("chunk-end", date(2026, 10, 26)),
+        ("repair", None),
+        ("chunk-start", date(2026, 11, 9)),
+        ("chunk-end", date(2026, 11, 9)),
+    ], events

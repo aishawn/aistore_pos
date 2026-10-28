@@ -488,10 +488,7 @@ def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 async def run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
-    if sync_lock.locked():
-        return
-    async with sync_lock:
-        await _run_sync_background(store_key, start, end, job_id)
+    await _run_sync_background(store_key, start, end, job_id)
 
 
 async def _run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
@@ -504,15 +501,18 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # Keep report windows small enough for Shopfront's reporting
                 # backend; large historical windows can hang or return 500.
                 chunk_end = min(cursor + timedelta(days=max(1, settings.history_chunk_days - 1)), end)
-                await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, cursor == start)
-                cursor = chunk_end + timedelta(days=1)
-                if job_id is not None:
-                    job = db.get(SyncJob, job_id)
-                    if job is not None and job.status == "cancelled":
-                        break
-                    if job is not None:
-                        job.cursor_date = cursor.isoformat()
-                        db.commit()
+                # Serialize each durable chunk, then release the writer so a
+                # queued catalog/sales repair can run before the next range.
+                async with sync_lock:
+                    await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, cursor == start)
+                    cursor = chunk_end + timedelta(days=1)
+                    if job_id is not None:
+                        job = db.get(SyncJob, job_id)
+                        if job is not None and job.status == "cancelled":
+                            break
+                        if job is not None:
+                            job.cursor_date = cursor.isoformat()
+                            db.commit()
     finally:
         db.close()
 
