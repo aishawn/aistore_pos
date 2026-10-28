@@ -749,7 +749,7 @@ export function OrithosReportsDashboardPage() {
           </p>
         </div>
 
-        <aside className="hidden w-full shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:flex lg:h-full lg:w-[280px]">
+        <aside className="hidden w-full shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:sticky lg:top-3 lg:flex lg:h-fit lg:w-[280px]">
           <div className="flex shrink-0 items-center justify-between border-b border-[var(--oh-border)] px-3 py-2">
             <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Current sale</h2>
             {parkedCount > 0 && (

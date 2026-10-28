@@ -59,6 +59,13 @@ export function ReportsNavigation() {
     window.addEventListener("hashchange", updateHash);
     return () => window.removeEventListener("hashchange", updateHash);
   }, [pathname]);
+  useEffect(() => {
+    if (pathname !== "/reports/dashboard" || hash !== "#ai-insights") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("ai-insights")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hash, pathname]);
   const active = TABS.find((tab) => isActive(pathname, tab)) ?? TABS[0];
 
   return (
