@@ -88,6 +88,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
     hydratedDraft.current = null;
     setDraftReady(false);
     setDraftError(null);
+    setDraftNotice(null);
     setCountLines([]);
     setCountUnconfirmed(false);
     async function restore() {
@@ -197,6 +198,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
     setProducts([]);
     setSuccess(null);
     setApplyError(null);
+    setDraftNotice(null);
   }
 
   function addProduct(product: StocktakeProduct) {
