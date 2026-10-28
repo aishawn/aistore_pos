@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-10-28T00:48:17.428Z",
+  "target": "https://demo.orithos.com.au",
+  "scope": "offline browser simulation with cart; no business writes",
+  "status": "PARTIAL",
+  "checks": [
+    {
+      "name": "authenticated",
+      "status": "PASS"
+    },
+    {
+      "name": "product cart fixture",
+      "status": "PARTIAL"
+    },
+    {
+      "name": "offline banner",
+      "status": "PASS"
+    },
+    {
+      "name": "offline finalise guard",
+      "status": "PARTIAL"
+    }
+  ],
+  "limitations": [
+    "navigator.onLine and product click are browser simulation; physical network and payment devices remain untested."
+  ]
+}
