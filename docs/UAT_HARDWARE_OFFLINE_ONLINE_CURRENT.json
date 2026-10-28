@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-28T10:35:14.469Z",
-  "sourceCommit": "3493cd05331612c66ff5f7ce4146a92267547e2e",
+  "generatedAt": "2026-10-28T10:38:49.558Z",
+  "sourceCommit": "c4a729d201c0db3a47fab4ee777cc8ff892dba35",
   "runtimeCommit": "924fc408c65a03a8efd66c38fafe57d41ea082ee",
   "target": "https://demo.orithos.com.au",
   "scope": "authenticated hardware status and offline POS browser simulation; no business writes",
