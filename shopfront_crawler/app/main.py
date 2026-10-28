@@ -262,6 +262,8 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
                 run=run,
                 include_catalog=True,
                 include_sales=include_sales,
+                sales_offset=int((job.payload or {}).get("sales_offset", 0) or 0),
+                job=job,
             )
             run.status = "completed" if result.get("error") is None else "failed"
             run.counts = {"type": job.job_type, **result}
@@ -538,6 +540,8 @@ async def push_pos_snapshot(
     include_catalog: bool = True,
     product_source_ids: list[str] | None = None,
     include_sales: bool = True,
+    sales_offset: int = 0,
+    job: SyncJob | None = None,
 ) -> dict:
     """Push a snapshot in bounded pages so a full history never sits in RAM."""
     products_query = select(Product).where(Product.store_key == store_key)
@@ -793,7 +797,7 @@ async def push_pos_snapshot(
             odoo_inventory_result = await odoo_client.sync("inventory", store_key, jsonable_encoder(inventory_items))
         sale_batches = 0
         odoo_batches = 0
-        offset = 0
+        offset = max(0, int(sales_offset or 0))
         while include_sales and offset < total_sales:
             sales = db.scalars(sales_query.offset(offset).limit(250)).all()
             if not sales:
@@ -834,6 +838,8 @@ async def push_pos_snapshot(
                     "odoo_sale_batches": odoo_batches,
                     "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
                 }
+                if job is not None:
+                    job.payload = {**(job.payload or {}), "sales_offset": offset, "sale_total": total_sales}
                 db.commit()
         result.update({
             "status": "failed" if result["mirror_errors"] else "completed",
