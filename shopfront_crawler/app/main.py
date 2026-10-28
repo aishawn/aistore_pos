@@ -1076,7 +1076,11 @@ async def push_pos_snapshot(
                 result["mirror_errors"].append(f"sales batch {offset}: {exc!r}")
                 logger.warning("POS sales mirror failed; continuing with Odoo: offset=%s error=%r", offset, exc)
             if odoo_enabled:
-                for small_offset in range(0, len(items), 100):
+                # Odoo accepts a complete list of orders in one JSON-RPC
+                # transaction. A 200-sale batch halves request overhead for
+                # historical replay while the 25-sale fallback keeps retries
+                # small when one payload contains a problematic record.
+                for small_offset in range(0, len(items), 200):
                     batch = items[small_offset:small_offset + 100]
                     try:
                         await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
