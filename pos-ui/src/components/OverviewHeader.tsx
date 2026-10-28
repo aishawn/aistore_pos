@@ -16,7 +16,7 @@ export function OverviewHeader({
   return (
     <header className="ov-header">
       <div className="min-w-0">
-        {active === "radial" ? <div className="ov-brand"><OrithosLogo /></div> : null}
+        <div className="ov-brand"><OrithosLogo /></div>
         <p className="ov-eyebrow">{greeting}</p>
         <h1 title={company}>
           {active === "workspace"
@@ -28,7 +28,7 @@ export function OverviewHeader({
       </div>
       <div className="ov-toolbar">
         <OverviewLayoutSwitcher active={active} />
-        <OverviewAccountControl showLogo={active !== "radial"} />
+        <OverviewAccountControl showLogo={false} />
 
       </div>
     </header>

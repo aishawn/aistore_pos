@@ -13,9 +13,8 @@ import {
   Link2,
   ListChecks,
   Package,
-  Shield,
   ShoppingBag,
-  ShoppingCart,
+  Settings,
   Sparkles,
   Users,
   RefreshCw,
@@ -40,28 +39,12 @@ const modules = [
     artwork: "sell",
   },
   {
-    label: "Business insights",
-    href: "/reports/dashboard",
-    icon: BarChart3,
-    description: "A clearer view of your business.",
-    color: "blue",
-    artwork: "insights",
-  },
-  {
-    label: "Products & stock",
+    label: "Stock",
     href: "/products",
     icon: Package,
     description: "Everything on your shelves.",
     color: "green",
     artwork: "stock",
-  },
-  {
-    label: "Purchasing",
-    href: "/purchases",
-    icon: ShoppingCart,
-    description: "Keep your store well stocked.",
-    color: "purple",
-    artwork: "purchasing",
   },
   {
     label: "Customers",
@@ -72,20 +55,28 @@ const modules = [
     artwork: "customers",
   },
   {
-    label: "Permissions",
-    href: "/settings/roles",
-    icon: Shield,
-    description: "The right access for your team.",
-    color: "gray",
-    artwork: "permissions",
-  },
-  {
     label: "Orithos AI",
     href: "/assistant",
     icon: Sparkles,
     description: "A little help. More possibilities.",
     color: "pink",
     artwork: "ai",
+  },
+  {
+    label: "Reports",
+    href: "/reports/dashboard",
+    icon: BarChart3,
+    description: "A clearer view of your business.",
+    color: "blue",
+    artwork: "insights",
+  },
+  {
+    label: "Setup",
+    href: "/settings/company/general",
+    icon: Settings,
+    description: "Configure your store and team.",
+    color: "purple",
+    artwork: "purchasing",
   },
 ];
 
@@ -276,7 +267,7 @@ export function OverviewPageContent({
               </div>
               <dl>
                 <div>
-                  <dt>Net sales</dt>
+                  <dt>Sales</dt>
                   <dd>{money(data.revenue, data.currency)}</dd>
                 </div>
                 <div>
