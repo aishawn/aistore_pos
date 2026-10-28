@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-22T18:04:01.546Z",
-  "sourceCommit": "65b332c94fcd3387005f54d443cd7e4be6f047ee",
-  "deployment": null,
+  "generatedAt": "2026-10-28T10:26:42.103Z",
+  "sourceCommit": "3493cd05331612c66ff5f7ce4146a92267547e2e",
+  "deployment": "924fc408c65a03a8efd66c38fafe57d41ea082ee",
   "target": "https://demo.orithos.com.au",
   "status": "PASS",
   "fixture": "invoice preview, AI capability, Odoo session and Odoo records intercepted in browser; no model call or business writes",
@@ -17,7 +17,7 @@
   ],
   "scanCalls": 2,
   "capabilityCalls": 3,
-  "odooSessionCalls": 2,
+  "odooSessionCalls": 3,
   "odooRecordTypes": [
     "suppliers",
     "outlets"

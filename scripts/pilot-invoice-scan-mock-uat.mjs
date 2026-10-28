@@ -98,16 +98,17 @@ try {
 
   await page.goto(`${base}/invoices/new`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Scan supplier invoice" }).waitFor({ timeout: 20000 });
-  await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ timeout: 20000 });
+  const uploadButton = page.getByRole("button", { name: /Photograph or upload|Upload or photograph|Photograph|Upload PDF or image/ }).first();
+  await uploadButton.waitFor({ timeout: 20000 });
   await page.waitForTimeout(1000);
   const retryAvailability = page.getByRole("button", { name: "Retry availability" });
   await retryAvailability.waitFor({ state: "visible", timeout: 10000 });
   await retryAvailability.click();
-  const uploadAction = page.getByRole("button", { name: "Photograph or upload" });
+  const uploadAction = page.getByRole("button", { name: /Photograph or upload|Upload or photograph|Photograph|Upload PDF or image/ }).first();
   await page.waitForFunction((button) => button instanceof HTMLButtonElement && !button.disabled, await uploadAction.elementHandle(), { timeout: 20000 });
   const save = page.getByRole("button", { name: "Save as received order" });
   if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button");
-  const upload = page.locator('input[type="file"][aria-label="Choose or photograph a supplier invoice"]');
+  const upload = page.locator('input[type="file"][aria-label="Choose a supplier invoice PDF or image"]');
   await upload.setInputFiles({
     name: "mock-invoice.jpg",
     mimeType: "image/jpeg",
@@ -131,8 +132,7 @@ try {
   if (!(await productDescription.inputValue()).includes("MOCK Shiraz")) throw new Error("Mock line item was not shown for review");
   if (!(await page.getByRole("img", { name: "Invoice preview" }).count())) throw new Error("Uploaded image preview was not shown");
   if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button after scanning");
-  await page.getByRole("link", { name: "Open Odoo Purchases" }).waitFor({ timeout: 10000 });
-  await page.getByRole("link", { name: "Open Replenishment" }).waitFor({ timeout: 10000 });
+  await page.getByRole("link", { name: "Back to Purchasing" }).waitFor({ timeout: 10000 });
   const cases = page.locator('input[aria-label="Cases for line 1"]:visible');
   await cases.fill("3");
   if (await cases.inputValue() !== "3") throw new Error("Line quantity was not editable before leaving preview");
