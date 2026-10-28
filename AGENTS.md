@@ -2,7 +2,7 @@
 
 Shared project brief for **Cursor** and **Codex** (and any other coding agent). Read this first; follow links for depth. Do **not** put passwords, API keys, or tokens in this file.
 
-**Working-state note (2026-10-29):** the pilot remains **NO-GO for formal production**. The deployed behavior SHA is `2f27af8a8420acc84de1e688ef0ab17dba182ca9`; `main` may advance with documentation-only commits while Dokploy catches up. All deployment/debugging/trial traffic currently targets shared `aipos_uat`, so `isolated=false` is expected and must not be described as customer production isolation. Treat `docs/HANDOFF_2026-10-29_CURRENT.md`, `docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json`, `docs/CAPABILITY_STATUS.md`, and `docs/PILOT_RELEASE_READINESS.md` as the status sources of truth; this file contains durable rules, not a replacement for UAT evidence.
+**Working-state note (2026-10-29):** the pilot remains **NO-GO for formal production**. The deployed behavior SHA is `9cebe3ae8211000dedd7cfe10bfccaf6f6963589`; `main` may advance with documentation-only commits while Dokploy catches up. All deployment/debugging/trial traffic currently targets shared `aipos_uat`, so `isolated=false` is expected and must not be described as customer production isolation. Treat `docs/HANDOFF_2026-10-29_CURRENT.md`, `docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json`, `docs/CAPABILITY_STATUS.md`, and `docs/PILOT_RELEASE_READINESS.md` as the status sources of truth; this file contains durable rules, not a replacement for UAT evidence.
 
 ## What this is
 
