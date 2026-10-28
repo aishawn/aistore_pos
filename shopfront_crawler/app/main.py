@@ -608,17 +608,42 @@ async def push_pos_snapshot(
         if not barcodes and isinstance(catalog_raw.get("barcodes"), list):
             barcodes = catalog_raw["barcodes"]
         sku = nested.get("mdbId") or nested.get("sku") or (catalog.sku if catalog else None) or catalog_raw.get("mdbId") or catalog_raw.get("sku")
+        # Keep the complete embedded Product payload on the line. This is
+        # needed for archived products that are no longer in the active
+        # catalog, and lets POS/Odoo repair names, descriptions and images.
+        category = nested.get("category") if isinstance(nested.get("category"), dict) else {}
+        brand = nested.get("brand") if isinstance(nested.get("brand"), dict) else {}
+        family = nested.get("family") if isinstance(nested.get("family"), dict) else {}
+        tax_rate = nested.get("taxRate") if isinstance(nested.get("taxRate"), dict) else {}
+        cost_tax_rate = nested.get("costTaxRate") if isinstance(nested.get("costTaxRate"), dict) else {}
         return {
             "source_product_id": item.shopfront_product_id,
             "name": name,
             "sku": sku,
             "barcode": (barcodes[0].get("code") if barcodes and isinstance(barcodes[0], dict) else (catalog.barcode if catalog else None)),
             "barcodes": barcodes or [],
+            "category": category.get("name") or catalog.category if catalog else category.get("name"),
+            "category_id": category.get("id"),
+            "brand": brand.get("name") or catalog.brand if catalog else brand.get("name"),
+            "brand_id": brand.get("id"),
+            "family": family.get("name"),
+            "family_id": family.get("id"),
+            "description": nested.get("description"),
+            "image": nested.get("image"),
+            "alternate_images": nested.get("alternateImages") or nested.get("alternate_images") or [],
+            "tags": nested.get("tags") or [],
+            "track_inventory": nested.get("trackInventory"),
+            "case_quantity": nested.get("caseQuantity"),
+            "tax_rate_id": tax_rate.get("id"),
+            "tax_rate_name": tax_rate.get("name"),
+            "cost_tax_rate_id": cost_tax_rate.get("id"),
+            "cost_tax_rate_name": cost_tax_rate.get("name"),
             "quantity": item.quantity,
             "unit_price": item.unit_price,
             "line_total": item.line_total,
             "cost": item.cost,
             "tax": item.tax,
+            "prices": nested.get("prices") or [],
             "raw_payload": raw,
         }
 
@@ -648,7 +673,7 @@ async def push_pos_snapshot(
             "family_id": family.get("id"),
             "description": raw.get("description"),
             "image": raw.get("image"),
-            "alternate_images": raw.get("alternateImages") or [],
+            "alternate_images": raw.get("alternateImages") or raw.get("alternate_images") or [],
             "tags": raw.get("tags") or [],
             "track_inventory": raw.get("trackInventory"),
             "case_quantity": raw.get("caseQuantity"),
@@ -878,7 +903,12 @@ async def push_pos_snapshot(
         except Exception as exc:
             catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
-            logger.warning("POS catalog mirror failed; continuing with Odoo: %r", exc)
+            logger.warning("POS catalog mirror failed; Odoo mirror may continue but the sync will be retryable: %r", exc)
+        # A configured POS mirror is part of the requested synchronization
+        # contract. Do not report success when its product or inventory write
+        # failed, even if the independent Odoo mirror accepted the batch.
+        if catalog_error is not None and settings.pos_import_enabled:
+            raise RuntimeError(str(catalog_error)) from catalog_error
         if result["mirror_errors"] and not odoo_enabled:
             raise RuntimeError(str(catalog_error or result["mirror_errors"][-1]))
         odoo_product_result = None

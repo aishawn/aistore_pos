@@ -25,8 +25,8 @@ query ShopfrontCatalog($after: Cursor) {
       replacementCost costPercentage
       prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
       barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-        reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+        reorderAmount reorderLimit maxQuantity onOrder }
     } }
     pageInfo { hasNextPage endCursor }
   }
@@ -38,8 +38,8 @@ query ShopfrontInventory($after: Cursor) {
   products(first: 100, after: $after) {
     edges { node {
       id name mdbId
-      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-        reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+      inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+        reorderAmount reorderLimit maxQuantity onOrder }
     } }
     pageInfo { hasNextPage endCursor }
   }
@@ -183,7 +183,14 @@ UNCONSOLIDATED'''
           sales(startDate: $startDate, endDate: $endDate, after: $after) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
-              items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
+              items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages
+                mdbId status type createdAt updatedAt deletedAt deleted
+                tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
+                orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
+                category { id name } brand { id name } family { id name } tags { name }
+                trackInventory caseQuantity cost prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
+                barcodes { code quantity } taxRate { id name } costTaxRate { id name }
+              } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }
@@ -220,8 +227,8 @@ UNCONSOLIDATED'''
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+            reorderAmount reorderLimit maxQuantity onOrder }
         """
         queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
         last_error: Exception | None = None
@@ -267,8 +274,8 @@ UNCONSOLIDATED'''
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel reorderLevelSingles reorderLevelCases
-            reorderAmount reorderAmountSingles reorderAmountCases reorderLimit maxQuantity maxQuantitySingles maxQuantityCases onOrder }
+          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
+            reorderAmount reorderLimit maxQuantity onOrder }
         """
         queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
         last_error: Exception | None = None

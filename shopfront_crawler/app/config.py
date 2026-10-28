@@ -101,6 +101,7 @@ class Settings(BaseSettings):
             or any(field in self.shopfront_products_query for field in legacy_inventory_fields)
         ):
             self.shopfront_products_query = DEFAULT_PRODUCTS_QUERY
+        required_inventory_fields = ("quantity", "outlet", "reorderLevel", "reorderAmount", "reorderLimit", "maxQuantity", "onOrder")
         if (
             not all(field in self.shopfront_inventory_query for field in required_inventory_fields)
             or any(field in self.shopfront_inventory_query for field in legacy_inventory_fields)
