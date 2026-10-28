@@ -43,6 +43,7 @@ POST /api/stores/skr/history/sync
 POST /api/stores/skr/pos/catalog-snapshot
 POST /api/stores/skr/pos/sales-repair
 GET  /api/sync/status?store=skr
+GET  /api/sync/coverage?store=skr
 POST /api/sync/runs/{id}/retry
 POST /api/sync/runs/{id}/cancel
 GET  /api/pos/mappings?store=skr
