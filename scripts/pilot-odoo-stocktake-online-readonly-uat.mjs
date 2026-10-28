@@ -30,6 +30,15 @@ try {
   const loggedIn = login.ok() && loginBody.code === 0 && loginBody.data?.user?.isAdmin === true;
   checks.push({ name: "admin login", status: loggedIn ? "PASS" : "FAIL", httpStatus: login.status(), isAdmin: loginBody.data?.user?.isAdmin ?? null });
   if (!loggedIn) throw new Error(`LOGIN_FAILED_${login.status()}`);
+  const loginSetCookie = login.headers()["set-cookie"] ?? "";
+  const authCookies = loginSetCookie
+    .split(/\r?\n/)
+    .map((value) => value.split(";")[0].trim())
+    .filter((value) => value.includes("="))
+    .map((value) => {
+      const separator = value.indexOf("=");
+      return { name: value.slice(0, separator), value: value.slice(separator + 1), url: base };
+    });
 
   const odooSessionResponse = await context.request.get(`${base}/api/odoo/session`, { headers: { Origin: base } });
   const odooSessionBody = await odooSessionResponse.json().catch(() => ({}));
@@ -49,16 +58,21 @@ try {
 
   for (const viewport of viewports) {
     const pageContext = await browser.newContext({ viewport, storageState });
+    if (authCookies.length > 0) await pageContext.addCookies(authCookies);
     await pageContext.route("**/api/**", async (route) => {
-      if (!["GET", "HEAD", "OPTIONS"].includes(route.request().method())) {
+      const request = route.request();
+      const isReadOnlyRecordsQuery = request.method() === "POST"
+        && new URL(request.url()).pathname === "/api/odoo/records"
+        && ["products", "posCategories"].includes(request.postDataJSON()?.type);
+      if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) && !isReadOnlyRecordsQuery) {
         writeRequests += 1;
         return route.fulfill({ status: 405, json: { code: 40500, message: "Read-only UAT blocked this request" } });
       }
       return route.continue();
     });
     const page = await pageContext.newPage();
-    const response = await page.goto(`${base}/stock/stocktake`, { waitUntil: "networkidle", timeout: 60000 });
-    await page.getByRole("heading", { name: "Odoo Stocktake" }).waitFor({ state: "visible", timeout: 30000 });
+    const response = await page.goto(`${base}/products?tab=stocktake`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.getByRole("heading", { name: "Products" }).waitFor({ state: "visible", timeout: 30000 });
     const search = page.locator("#stocktake-search");
     const searchSemantics = await search.evaluate((element) => ({
       role: element.getAttribute("role"),
