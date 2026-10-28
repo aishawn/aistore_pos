@@ -187,6 +187,8 @@ try {
       record("Invoice OCR probe", "INFO", invoiceEvidence("provider reachable; probe image has no invoice fields"));
     } else if (invoiceCode === 40010) {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("valid image was rejected as empty"));
+    } else if (invoiceCode === 40013) {
+      record("Invoice OCR probe", "INFO", invoiceEvidence("probe image was correctly rejected as unusable"));
     } else if (invoiceCode === 50213) {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("provider/model configuration failure"));
     } else if (invoiceCode === 41001 || invoice.status() === 410) {
@@ -194,6 +196,26 @@ try {
     } else {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("unexpected invoice OCR response"));
     }
+
+    const invalidInvoice = await context.request.post(`${base}/api/ai/invoice/preview`, {
+      multipart: {
+        file: {
+          name: "invalid-1x1.png",
+          mimeType: "image/png",
+          buffer: Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            "base64",
+          ),
+        },
+      },
+      timeout: 30000,
+    });
+    const invalidInvoiceBody = await invalidInvoice.json().catch(() => ({}));
+    record(
+      "Invoice OCR invalid image guard",
+      invalidInvoiceBody.code === 40013 && invalidInvoice.status() < 500 ? "PASS" : "FAIL",
+      invoiceEvidence(`status=${invalidInvoice.status()} code=${invalidInvoiceBody.code ?? "none"}`),
+    );
 
     const page = await context.newPage();
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });

@@ -5,11 +5,17 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.orithos.common.BusinessException;
 
 class InvoiceVisionServiceTest {
 
@@ -116,5 +122,26 @@ class InvoiceVisionServiceTest {
 
         assertTrue(message.contains("qwen-vl-plus"));
         assertTrue(message.contains("AI_DASHSCOPE_BASE_URL"));
+    }
+
+    @Test
+    void unusableImagesAreRejectedBeforeProviderCall() throws Exception {
+        BufferedImage tiny = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ImageIO.write(tiny, "png", output);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> InvoiceVisionService.validateImage(output.toByteArray()));
+
+        assertEquals(40013, error.getCode());
+        assertTrue(error.getMessage().contains("32x32"));
+    }
+
+    @Test
+    void undecodableImagesAreRejectedWithBusinessError() {
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> InvoiceVisionService.validateImage(new byte[] {1, 2, 3}));
+
+        assertEquals(40013, error.getCode());
     }
 }

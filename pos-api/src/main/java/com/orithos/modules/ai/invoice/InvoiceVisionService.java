@@ -26,6 +26,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -49,6 +50,7 @@ public class InvoiceVisionService {
 
     private static final Logger log = LoggerFactory.getLogger(InvoiceVisionService.class);
     static final long MAX_BYTES = 8L * 1024 * 1024;
+    static final int MIN_IMAGE_DIMENSION = 32;
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter AU = DateTimeFormatter.ofPattern("d/M/uuuu");
@@ -136,6 +138,7 @@ public class InvoiceVisionService {
             bytes = rasterizePdf(bytes);
             mime = "image/jpeg";
         }
+        validateImage(bytes);
         String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
 
         boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(properties.visionModel());
@@ -184,6 +187,18 @@ public class InvoiceVisionService {
         } catch (Exception e) {
             log.warn("DashScope invoice vision failed: {}", e.getClass().getSimpleName());
             throw new BusinessException(50213, "Invoice recognition failed. Check the AI configuration and try again.");
+        }
+    }
+
+    /** Reject malformed or clearly unusable images before spending provider quota. */
+    static void validateImage(byte[] bytes) {
+        try (ByteArrayInputStream input = new ByteArrayInputStream(bytes)) {
+            BufferedImage image = ImageIO.read(input);
+            if (image == null || image.getWidth() < MIN_IMAGE_DIMENSION || image.getHeight() < MIN_IMAGE_DIMENSION) {
+                throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a clear image at least 32x32 pixels.");
+            }
+        } catch (IOException e) {
+            throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a JPEG, PNG, or PDF invoice.");
         }
     }
 
