@@ -40,6 +40,8 @@ GET  /api/inventory?store=skr
 GET  /api/sync/runs?store=skr
 POST /api/stores/skr/history/discover
 POST /api/stores/skr/history/sync
+POST /api/stores/skr/pos/catalog-snapshot
+POST /api/stores/skr/pos/sales-repair
 GET  /api/sync/status?store=skr
 POST /api/sync/runs/{id}/retry
 POST /api/sync/runs/{id}/cancel
@@ -50,6 +52,8 @@ POST /api/pos/import/sales?store=skr
 ```
 
 每日任务默认在 `02:00 Australia/Adelaide` 执行，并重新同步前 3 个营业日。历史任务使用 14 天分片，每个分片独立记录，服务重启后可通过 `/api/sync/status` 和失败运行重试。
+
+当历史任务正在运行时，可以单独执行 `pos/catalog-snapshot` 刷新商品、价格、条码、描述、图片、标签和库存；执行 `pos/sales-repair` 重新推送已保存销售并回填 SaleItem 名称。这两个任务使用持久化 job，支持通过 `/api/sync/status` 查看状态，不会重复创建历史任务或扣减库存。
 
 POS 导入默认关闭（`POS_IMPORT_ENABLED=false`）。开启前必须配置专用 API Token，并通过 `/api/pos/mappings/{store}` 保存门店映射。公司/门店 ID 不放在环境变量中；缺失映射时只生成 `BLOCKED_MAPPING` staging 记录。确认 Shopfront Sale 查询包含 Sale ID、商品行和支付方式后，才允许销售导入。
 
