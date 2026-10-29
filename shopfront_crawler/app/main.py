@@ -1092,8 +1092,11 @@ async def push_pos_snapshot(
         odoo_inventory_result = None
         if odoo_enabled and product_items:
             odoo_product_responses = []
-            for offset in range(0, len(product_items), 100):
-                odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 100])))
+            # Odoo commits each request transactionally. A 200-item batch
+            # reduces network and transaction overhead during history replay;
+            # failed requests still fall back to smaller batches below.
+            for offset in range(0, len(product_items), 200):
+                odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 200])))
             odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
         if odoo_enabled and include_catalog and inventory_items:
             odoo_inventory_result = await odoo_client.sync(
@@ -1126,8 +1129,8 @@ async def push_pos_snapshot(
                     try:
                         await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
                     except Exception:
-                        for retry_offset in range(0, len(batch), 25):
-                            await odoo_client.sync("sales", store_key, jsonable_encoder(batch[retry_offset:retry_offset + 25]))
+                        for retry_offset in range(0, len(batch), 50):
+                            await odoo_client.sync("sales", store_key, jsonable_encoder(batch[retry_offset:retry_offset + 50]))
                     odoo_batches += 1
             offset += len(sales)
             result["sales_imported"] = offset
