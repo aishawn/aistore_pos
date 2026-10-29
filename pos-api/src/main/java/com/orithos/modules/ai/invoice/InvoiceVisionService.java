@@ -97,6 +97,7 @@ public class InvoiceVisionService {
             Compare printed figures only to detect a conflict; if the printed total differs from printed subtotal, GST, or line totals, preserve each visible value and state the conflict in notes for human review.
             For every numeric field, return a JSON number without currency symbols; never return true/false or a formatted currency string.
             gstIncluded is the numeric tax amount printed next to a GST, GST amount, or GST included label. Do not require the exact words "GST included" and do not infer GST from totals or line items. If no GST amount is printed, return null.
+            Treat glare, specular reflection, bloom, washed-out pixels, and any light reflection over a number or label as obscured and uncertain. Set every affected field to JSON null and state the affected field in a human-review note; never copy a plausible value from surrounding context.
             If a field is absent, obscured, or uncertain, return JSON null. Do not infer an obscured amount from line items or other totals.
             Do not infer totalPayable from line items, or line values from multiplication. If printed totals conflict, preserve the printed values and state "Totals conflict; human review required" in notes.
             If any key amount or identifier is obscured or uncertain, set that field to null, state "Human review required", and name the field in notes.
