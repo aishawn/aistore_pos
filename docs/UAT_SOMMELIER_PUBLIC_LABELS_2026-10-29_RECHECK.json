@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-10-29T13:11:15.262Z",
+  "target": "https://demo.orithos.com.au",
+  "runtimeCommit": "8b6ad27ef54751b456fccb7c395b3e37d3ac6088",
+  "scope": "public Wikimedia Commons wine-label identification; read-only AI requests; no Odoo writes",
+  "source": "Wikimedia Commons Special:FilePath; sample filenames retained for provenance",
+  "results": [
+    {
+      "sample": "chapoutier.jpg",
+      "httpStatus": 200,
+      "apiCode": 0,
+      "data": {
+        "extractedName": "M. Chapoutier La Bernardine 2004",
+        "brand": "M. Chapoutier",
+        "vintage": "2004",
+        "varietal": "Châteauneuf-du-Pape",
+        "barcode": null,
+        "queries": [
+          "La Bernardine",
+          "M. Chapoutier",
+          "M. Chapoutier Châteauneuf-du-Pape",
+          "La Bernardine 2004",
+          "M. Chapoutier La Bernardine",
+          "La Bernardine Châteauneuf-du-Pape"
+        ],
+        "items": [],
+        "note": "Read the label, but nothing in this store matched. Search by name instead."
+      },
+      "message": "ok"
+    },
+    {
+      "sample": "gran-veigadares.jpg",
+      "httpStatus": 200,
+      "apiCode": 0,
+      "data": {
+        "extractedName": "Veigadares Veigadares Rías Baixas Blanco 2002",
+        "brand": "Veigadares",
+        "vintage": "2002",
+        "varietal": "Blanco",
+        "barcode": null,
+        "queries": [
+          "Veigadares Rías Baixas Blanco",
+          "Veigadares",
+          "Veigadares Blanco",
+          "Veigadares Rías Baixas Blanco 2002",
+          "Veigadares Rias Baixas",
+          "Veigadares 2002"
+        ],
+        "items": [],
+        "note": "Read the label, but nothing in this store matched. Search by name instead."
+      },
+      "message": "ok"
+    },
+    {
+      "sample": "fsm-vino-rosso.jpg",
+      "httpStatus": 200,
+      "apiCode": 42901,
+      "data": null,
+      "message": "AI provider quota exceeded. Try again later."
+    }
+  ],
+  "status": "BLOCKED"
+}
