@@ -43,10 +43,15 @@ const DRAG_THRESHOLD_PX = 6;
 
 type FloatAnchor = { x: number; y: number };
 
-function defaultAnchor(): FloatAnchor {
+function defaultAnchor(bottomInset = 88): FloatAnchor {
   if (typeof window === "undefined") return { x: 88, y: 88 };
-  const bottomInset = window.matchMedia("(max-width: 767px)").matches ? 88 : 24;
-  return { x: window.innerWidth - 24, y: window.innerHeight - bottomInset };
+  const mobileInset = window.matchMedia("(max-width: 767px)").matches ? bottomInset : 24;
+  return { x: window.innerWidth - 24, y: window.innerHeight - mobileInset };
+}
+
+function mobileFloatBottomInset(pathname: string, compactRegister: boolean): number {
+  if (pathname === "/invoices/new" || pathname === "/close") return 176;
+  return compactRegister ? 108 : 88;
 }
 
 function loadAnchor(): FloatAnchor {
@@ -634,8 +639,9 @@ export function SellAiPanel({
     setMobileViewport(mobile);
     const compactRegister = pathname === "/register/classic" && mobile;
     const size = mobile ? 44 : 64;
-    const savedAnchor = mobile ? defaultAnchor() : loadAnchor();
-    const safeAnchor = findClearAnchor(savedAnchor, size, size, compactRegister ? 108 : 8);
+    const bottomInset = mobile ? mobileFloatBottomInset(pathname, compactRegister) : 8;
+    const savedAnchor = mobile ? defaultAnchor(bottomInset) : loadAnchor();
+    const safeAnchor = findClearAnchor(savedAnchor, size, size, bottomInset);
     setAnchor(safeAnchor);
     if (safeAnchor.x !== savedAnchor.x || safeAnchor.y !== savedAnchor.y) {
       try {
@@ -658,7 +664,8 @@ export function SellAiPanel({
       setAnchor((prev) => {
         const compactRegister = pathname === "/register/classic" && mobile;
         const size = mobile ? 44 : 64;
-        const next = findClearAnchor(prev, size, size, compactRegister ? 108 : 8);
+        const bottomInset = mobile ? mobileFloatBottomInset(pathname, compactRegister) : 8;
+        const next = findClearAnchor(prev, size, size, bottomInset);
         try {
           sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
         } catch {
@@ -714,8 +721,10 @@ export function SellAiPanel({
     const el = floatRef.current;
     const w = el?.offsetWidth ?? 72;
     const h = el?.offsetHeight ?? 72;
-    const compactRegister = pathname === "/register/classic" && window.matchMedia("(max-width: 767px)").matches;
-    setAnchor(clampAnchor({ x: drag.origX + dx, y: drag.origY + dy }, w, h, compactRegister ? 108 : 8));
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const compactRegister = pathname === "/register/classic" && mobile;
+    const bottomInset = mobile ? mobileFloatBottomInset(pathname, compactRegister) : 8;
+    setAnchor(clampAnchor({ x: drag.origX + dx, y: drag.origY + dy }, w, h, bottomInset));
   }
 
   function endDrag(e: React.PointerEvent) {
@@ -734,8 +743,10 @@ export function SellAiPanel({
         const el = floatRef.current;
         if (!el) return;
         setAnchor((prev) => {
-          const compactRegister = pathname === "/register/classic" && window.matchMedia("(max-width: 767px)").matches;
-          const next = findClearAnchor(prev, el.offsetWidth, el.offsetHeight, compactRegister ? 108 : 8);
+          const mobile = window.matchMedia("(max-width: 767px)").matches;
+          const compactRegister = pathname === "/register/classic" && mobile;
+          const bottomInset = mobile ? mobileFloatBottomInset(pathname, compactRegister) : 8;
+          const next = findClearAnchor(prev, el.offsetWidth, el.offsetHeight, bottomInset);
           try {
             sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
           } catch {
