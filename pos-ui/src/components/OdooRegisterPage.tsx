@@ -1221,13 +1221,13 @@ export function OdooRegisterPage() {
 
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="odoo-register-header mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-[20px] font-semibold leading-tight text-[var(--oh-text)]">Sell</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="odoo-register-actions flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <div
-            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 pl-3 pr-1 shadow-sm"
+            className="inline-flex w-full min-w-0 items-center gap-2 overflow-x-auto rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 pl-3 pr-1 shadow-sm sm:w-auto"
             title={selectedConfig?.session ? `${selectedConfig.name} · ${selectedConfig.session.name}` : selectedConfig?.name}
           >
             <span className={cn("h-2 w-2 shrink-0 rounded-full", sessionOpen ? "bg-[var(--oh-success)]" : "bg-amber-500")} aria-hidden="true" />
