@@ -1097,6 +1097,15 @@
   .ov-radial-main .ov-ring-mobile-radial {
     min-height: 360px;
   }
+  /* On phones the radial is the primary action surface. Reveal its five
+   * destinations quickly so the first screen never looks inert while the
+   * decorative rings settle in. */
+  .ov-dashboard-reveal .ov-ring-node {
+    animation-duration: 320ms;
+    animation-delay: 80ms;
+  }
+  .ov-dashboard-reveal .ov-ring-node:nth-child(2n) { animation-delay: 110ms; }
+  .ov-dashboard-reveal .ov-ring-node:nth-child(3n) { animation-delay: 140ms; }
   .ov-radial-main .ov-ring-mobile-radial .ov-ring-center {
     width: 132px;
     height: 132px;
