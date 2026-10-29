@@ -376,7 +376,6 @@ async def sync_store(
             for item in existing_items
             if item.line_key is None and item.shopfront_product_id
         }
-        existing_sale_ids_with_items = {item.sale_id for item in existing_items}
         source_product_ids = {
             str((item.get("item") or {}).get("id") or first(item, "id", "ID"))
             for row in sale_rows
@@ -418,7 +417,11 @@ async def sync_store(
                 # sales still take the full upsert path below.
                 if (
                     sale is not None
-                    and sale.id in existing_sale_ids_with_items
+                    # The sale mirror is authoritative for historical
+                    # retries; even a row with no local lines must not block
+                    # the whole chunk. The sales-repair job fills missing
+                    # lines separately.
+                    and sale.id is not None
                 ):
                     counts["sales"] += 1
                     counts["sales_skipped_unchanged"] = counts.get("sales_skipped_unchanged", 0) + 1
