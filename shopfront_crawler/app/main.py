@@ -647,10 +647,15 @@ async def push_pos_snapshot(
         products_query = products_query.where(Product.shopfront_product_id.in_(ids)) if ids else products_query.where(False)
     products = db.scalars(products_query).all()
     inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all() if include_catalog else []
+    source_store = db.scalar(select(Store).where(Store.store_key == store_key))
+    try:
+        local_zone = ZoneInfo(source_store.timezone if source_store else settings.sync_timezone)
+    except (KeyError, ValueError):
+        local_zone = timezone.utc
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
     if start is not None and end is not None:
-        window_start = datetime.combine(start, datetime.min.time())
-        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+        window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
     total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
@@ -830,8 +835,8 @@ async def push_pos_snapshot(
         .where(Sale.store_key == store_key)
     )
     if start is not None and end is not None:
-        window_start = datetime.combine(start, datetime.min.time())
-        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time())
+        window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
         sale_item_query = sale_item_query.where(
             ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
             | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
