@@ -17,6 +17,11 @@ import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
 import com.orithos.modules.ai.context.FollowUpSupport;
 import com.orithos.modules.ai.dto.AssistantCard;
 import com.orithos.modules.ai.grocery.GroceryChatBrief;
+import com.orithos.modules.ai.gateway.AiCompletion;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.gateway.PromptVersion;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.report.OdooReportQueryService;
@@ -59,6 +64,7 @@ public class ClassifyQueryNode implements NodeAction {
     private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
     private final ObjectProvider<PricingChatBrief> pricingChatBrief;
     private final ObjectProvider<GroceryChatBrief> groceryChatBrief;
+    private final AiGateway aiGateway;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
@@ -85,7 +91,29 @@ public class ClassifyQueryNode implements NodeAction {
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief) {
         this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief,
-                replenishmentChatBrief, pricingChatBrief, null);
+                replenishmentChatBrief, pricingChatBrief, null, null);
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
+                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
+                             ObjectProvider<PricingChatBrief> pricingChatBrief,
+                             ObjectProvider<GroceryChatBrief> groceryChatBrief,
+                             AiGateway aiGateway) {
+        this.chatClient = chatClient;
+        this.configService = configService;
+        this.sanitizeService = sanitizeService;
+        this.properties = properties;
+        this.reportQueryService = reportQueryService;
+        this.sommelierChatBrief = sommelierChatBrief;
+        this.replenishmentChatBrief = replenishmentChatBrief;
+        this.pricingChatBrief = pricingChatBrief;
+        this.groceryChatBrief = groceryChatBrief;
+        this.aiGateway = aiGateway;
     }
 
     public ClassifyQueryNode(ChatClient chatClient,
@@ -106,6 +134,7 @@ public class ClassifyQueryNode implements NodeAction {
         this.replenishmentChatBrief = replenishmentChatBrief;
         this.pricingChatBrief = pricingChatBrief;
         this.groceryChatBrief = groceryChatBrief;
+        this.aiGateway = null;
     }
 
     @Override
@@ -235,7 +264,7 @@ public class ClassifyQueryNode implements NodeAction {
         String storeContext = optionalString(state, "store_context");
         String userPrompt = buildUserPrompt(snap, question, history, storeContext);
 
-        RawIntent raw = callModel(system, userPrompt);
+        RawIntent raw = callModel(system, userPrompt, tenantContext(state));
         SanitizedIntent result = sanitizeService.sanitize(raw);
         if (isWriteEntityResult(result) || isUnknownEntityOperation(result)) {
             String route = resolveGuidedActionRoute(
@@ -754,7 +783,17 @@ public class ClassifyQueryNode implements NodeAction {
         return builder.build();
     }
 
-    private RawIntent callModel(String system, String userPrompt) {
+    private RawIntent callModel(String system, String userPrompt, AiTenantContext tenant) {
+        if (aiGateway != null && tenant != null) {
+            AiCompletion<String> completion = aiGateway.complete(tenant, AiTask.CLASSIFICATION,
+                    new PromptVersion(IntentConfigService.PROMPT_CLASSIFY, "runtime", ""),
+                    system + "\n\n" + userPrompt, String.class);
+            RawIntent parsed = parseRawJson(completion.value());
+            if (parsed.intent() != null && !parsed.intent().isBlank()) {
+                return parsed;
+            }
+            throw new IllegalStateException("AI gateway returned invalid classify output");
+        }
         // Prefer plain JSON text: more reliable across DashScope models than BeanOutputConverter/entity().
         try {
             String raw = chatClient.prompt()
@@ -802,6 +841,15 @@ public class ClassifyQueryNode implements NodeAction {
 
         return new RawIntent("unknown", "model returned empty intent",
                 null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private static AiTenantContext tenantContext(OverAllState state) {
+        long vendor = state.value("vendor_id", Number.class).map(Number::longValue).orElse(0L);
+        long user = state.value("user_id", Number.class).map(Number::longValue).orElse(0L);
+        long outlet = state.value("outlet_id", Number.class).map(Number::longValue).orElse(0L);
+        if (vendor <= 0 || user <= 0 || outlet <= 0) return null;
+        String correlation = state.value(com.orithos.config.CorrelationIdContext.STATE_KEY, String.class).orElse("unknown");
+        return new AiTenantContext(vendor, outlet, user, correlation);
     }
 
     private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question,

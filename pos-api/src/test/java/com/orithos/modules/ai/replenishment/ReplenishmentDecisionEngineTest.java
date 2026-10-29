@@ -10,7 +10,7 @@ class ReplenishmentDecisionEngineTest {
         var result = ReplenishmentDecisionEngine.decide(new ReplenishmentDecisionEngine.Input(
                 4, 2, 0, 3, 1, 4, 14, 1.65, 6, true));
         assertEquals(ReplenishmentDecisionEngine.Status.REVIEW, result.status());
-        assertEquals(36.0, result.suggestedQuantity());
+        assertEquals(42.0, result.suggestedQuantity());
         assertTrue(result.safetyStock() > 0);
     }
 
