@@ -376,6 +376,20 @@ async def sync_store(
             for item in existing_items
             if item.line_key is None and item.shopfront_product_id
         }
+        source_product_ids = {
+            str((item.get("item") or {}).get("id") or first(item, "id", "ID"))
+            for row in sale_rows
+            for item in (row.get("items") if isinstance(row.get("items"), list) else [])
+            if isinstance(item, dict) and ((item.get("item") or {}).get("id") or first(item, "id", "ID"))
+        }
+        if source_product_ids:
+            sale_products.update({
+                str(product.shopfront_product_id): product
+                for product in db.scalars(select(Product).where(
+                    Product.store_key == store.store_key,
+                    Product.shopfront_product_id.in_(source_product_ids),
+                )).all()
+            })
         for sale_index, row in enumerate(sale_rows, start=1):
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
