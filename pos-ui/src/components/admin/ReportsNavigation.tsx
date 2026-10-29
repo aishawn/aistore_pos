@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BarChart3, Boxes, Lightbulb, PackageSearch, ReceiptText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +53,7 @@ function isActive(pathname: string, tab: ReportTab) {
 export function ReportsNavigation() {
   const pathname = usePathname();
   const [hash, setHash] = useState("");
+  const activeTabRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     const updateHash = () => setHash(window.location.hash);
     updateHash();
@@ -67,10 +68,17 @@ export function ReportsNavigation() {
     return () => window.cancelAnimationFrame(frame);
   }, [hash, pathname]);
   const active = TABS.find((tab) => isActive(pathname, tab)) ?? TABS[0];
+  useEffect(() => {
+    if (active.href === TABS[0].href && !hash) return;
+    const frame = window.requestAnimationFrame(() => {
+      activeTabRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [active.href, hash]);
 
   return (
     <div className="shrink-0 border-b border-[var(--oh-border)] bg-white">
-      <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5">
+      <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5 [scrollbar-width:thin]">
         <div className="flex min-w-max items-center gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -81,6 +89,7 @@ export function ReportsNavigation() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                ref={selected ? activeTabRef : undefined}
                 aria-current={selected ? "page" : undefined}
                 onClick={(event) => {
                   if (tab.href !== "/reports/dashboard" || pathname !== "/reports/dashboard") return;
