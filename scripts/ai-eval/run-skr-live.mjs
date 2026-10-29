@@ -9,7 +9,37 @@ const password = process.env.SKR_PASSWORD;
 const casesPath = process.env.SKR_CASES || ".local/skr-utterances-fixed.jsonl";
 const outputPath = process.env.SKR_EVAL_OUTPUT || ".local/skr-live-eval.json";
 const limit = Number.parseInt(process.env.SKR_CASE_LIMIT || "30", 10);
-if (!password) throw new Error("SKR_PASSWORD is required");
+
+function writeBlocked(reason, error = null) {
+  const output = {
+    generatedAt: new Date().toISOString(),
+    target: base,
+    sourceCommit: process.env.SKR_SOURCE_COMMIT || "unknown",
+    runtimeCommit: null,
+    sourceRuntimeMatch: false,
+    catalogPath: casesPath,
+    selectedCount: 0,
+    summary: { PASS: 0, FAIL: 0, BLOCKED: 1 },
+    writeRequests: ["none: assistant API only"],
+    blockedReason: reason,
+    error: error ? String(error.message || error) : null,
+    results: [],
+  };
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+  console.log(JSON.stringify({ outputPath, sourceRuntimeMatch: false, PASS: 0, FAIL: 0, BLOCKED: 1 }, null, 2));
+}
+
+if (!password) {
+  writeBlocked("MISSING_CREDENTIAL");
+  process.exitCode = 2;
+  process.exit();
+}
+if (!fs.existsSync(casesPath)) {
+  writeBlocked("MISSING_CASES_FILE");
+  process.exitCode = 2;
+  process.exit();
+}
 
 const cases = fs.readFileSync(casesPath, "utf8").split(/\r?\n/).filter(Boolean).map(JSON.parse).slice(0, limit);
 const sourceCommit = process.env.SKR_SOURCE_COMMIT || "unknown";
@@ -18,9 +48,22 @@ const context = await browser.newContext({ extraHTTPHeaders: { Origin: base } })
 const request = (method, url, options = {}) => method === "GET"
   ? context.request.get(url, options)
   : context.request.post(url, options);
-const login = await request("POST", `${base}/api/auth/login`, { data: { username, password }, headers: { Origin: base } });
+let login;
+try {
+  login = await request("POST", `${base}/api/auth/login`, { data: { username, password }, headers: { Origin: base } });
+} catch (error) {
+  await browser.close();
+  writeBlocked("LOGIN_UNAVAILABLE", error);
+  process.exitCode = 2;
+  process.exit();
+}
 const loginBody = await login.json().catch(() => ({}));
-if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+if (!login.ok() || loginBody.code !== 0) {
+  await browser.close();
+  writeBlocked("LOGIN_FAILED", new Error(`LOGIN_FAILED_${login.status()}`));
+  process.exitCode = 2;
+  process.exit();
+}
 
 const versionResponse = await request("GET", `${base}/api/public/version`);
 const version = await versionResponse.json().catch(() => ({}));
