@@ -1242,7 +1242,7 @@ export function OdooRegisterPage() {
                 if (lines.length) setPendingRegisterId(id);
                 else selectRegister(id);
               }}
-              className="max-w-[160px] truncate border-0 bg-transparent py-1 text-sm font-semibold text-[var(--oh-text)] outline-none"
+              className="max-w-[105px] truncate border-0 bg-transparent py-1 text-sm font-semibold text-[var(--oh-text)] outline-none sm:max-w-[160px]"
             >
               {bootstrap?.configs.map((config) => (
                 <option key={config.id} value={config.id}>{config.name}{config.session ? "" : " · Closed"}</option>
