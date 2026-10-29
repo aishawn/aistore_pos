@@ -25,7 +25,7 @@ import static com.orithos.modules.ai.command.AiCommandDtos.CommandItem;
 /** Converts natural language into a strict command draft; it never resolves or writes business records. */
 @Component
 public class AiCommandParser {
-    private static final PromptVersion PROMPT = new PromptVersion("ai-command-parser", "v1");
+    private static final PromptVersion PROMPT = new PromptVersion("ai-command-parser", "v1", "");
     private static final Set<String> CONTROL_KEYS = Set.of(
             "tenantid", "tenant_id", "vendorid", "vendor_id", "outletid", "outlet_id", "userid", "user_id",
             "sql", "model", "odoomodel", "odoo_model", "apipath", "api_path");

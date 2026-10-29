@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
+import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -40,11 +41,13 @@ public final class DashScopeAiGateway implements AiGateway {
     private final ObjectMapper objectMapper;
     private final RestClient mediaClient;
     private final String apiKey;
+    private final AiProperties aiProperties;
 
     public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
                               AiGatewayQuotaService quota,
                               AiGatewayUsageRecorder usageRecorder,
                               ObjectMapper objectMapper,
+                              AiProperties aiProperties,
                               @Value("${spring.ai.dashscope.api-key:}") String apiKey,
                               @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.clients = clients;
@@ -52,6 +55,7 @@ public final class DashScopeAiGateway implements AiGateway {
         this.quota = quota;
         this.usageRecorder = usageRecorder;
         this.objectMapper = objectMapper;
+        this.aiProperties = aiProperties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         String normalizedBaseUrl = baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", "");
         this.mediaClient = RestClient.builder().baseUrl(normalizedBaseUrl).build();
@@ -63,7 +67,7 @@ public final class DashScopeAiGateway implements AiGateway {
         if (tenant == null || (task != AiTask.TRANSCRIPTION && task != AiTask.VISION)) {
             throw new IllegalArgumentException("media task and tenant are required");
         }
-        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        requireEnabled();
         if (!StringUtils.hasText(apiKey)) throw new IllegalStateException("AI provider is not configured");
         if (media == null || media.length == 0) throw new IllegalArgumentException("media is required");
         String model = modelFor(task, false);
@@ -152,9 +156,7 @@ public final class DashScopeAiGateway implements AiGateway {
         if (tenant == null || task == null || prompt == null || outputType == null) {
             throw new IllegalArgumentException("AI gateway request is incomplete");
         }
-        if (!properties.isEnabled()) {
-            throw new IllegalStateException("AI gateway is disabled");
-        }
+        requireEnabled();
         String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
         ChatClient client = clients.getIfAvailable();
         if (client == null) {
@@ -203,7 +205,7 @@ public final class DashScopeAiGateway implements AiGateway {
     public AiCompletion<String> completeWithTools(AiTenantContext tenant, AiTask task, PromptVersion prompt,
                                                    String input, String systemPrompt, Object... tools) {
         if (tenant == null || task == null || prompt == null) throw new IllegalArgumentException("AI gateway request is incomplete");
-        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        requireEnabled();
         String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
         ChatClient client = clients.getIfAvailable();
         if (client == null) throw new IllegalStateException("AI provider is unavailable");
@@ -314,6 +316,12 @@ public final class DashScopeAiGateway implements AiGateway {
             case VISION -> properties.getVisionModel();
             default -> properties.getPrimaryModel();
         };
+    }
+
+    private void requireEnabled() {
+        if (!aiProperties.enabled() || !properties.isEnabled()) {
+            throw new IllegalStateException("AI gateway is disabled");
+        }
     }
 
     private static void sleepBackoff(int attempt) {

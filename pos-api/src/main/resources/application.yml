@@ -148,7 +148,8 @@ app:
       requests-per-hour: ${AI_PROVIDER_QUOTA_REQUESTS:120}
       tokens-per-hour: ${AI_PROVIDER_QUOTA_TOKENS:200000}
     gateway:
-      enabled: ${AI_GATEWAY_ENABLED:true}
+      # The provider adapter cannot bypass the product-wide AI switch.
+      enabled: ${AI_GATEWAY_ENABLED:${AI_ENABLED:false}}
       max-input-chars: ${AI_GATEWAY_MAX_INPUT_CHARS:12000}
       max-retries: ${AI_GATEWAY_MAX_RETRIES:2}
       timeout-seconds: ${AI_GATEWAY_TIMEOUT_SECONDS:40}

@@ -27,7 +27,7 @@ class AiCommandParserTest {
     @Test
     void parsesOnlyGatewayStructuredOutput() throws Exception {
         when(gateway.complete(eq(new AiTenantContext(7, 13, 11, "unknown")), eq(AiTask.COMMAND_PARSE),
-                eq(new PromptVersion("ai-command-parser", "v1")), org.mockito.ArgumentMatchers.anyString(), eq(com.fasterxml.jackson.databind.JsonNode.class)))
+                eq(new PromptVersion("ai-command-parser", "v1", "")), org.mockito.ArgumentMatchers.anyString(), eq(com.fasterxml.jackson.databind.JsonNode.class)))
                 .thenReturn(new AiCompletion<>(new ObjectMapper().readTree("""
                         {"type":"UPDATE_PRODUCT","confidence":0.98,"summary":"rename one product",
                          "items":[{"id":123,"name":"VB Cans","field":"name","before":"VB Cans","after":"Victoria Bitter","reason":"exact match","status":"READY"}],
