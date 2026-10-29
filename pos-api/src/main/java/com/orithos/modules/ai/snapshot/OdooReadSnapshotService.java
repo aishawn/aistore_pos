@@ -187,7 +187,7 @@ public class OdooReadSnapshotService {
             throw e;
         } catch (Exception e) {
             log.warn("Odoo AI snapshot sync failed vendorId={} outletId={} causeType={}",
-                    tenant.vendorId(), outletId, e.getClass().getSimpleName());
+                    tenant.vendorId(), outletId, e.getClass().getSimpleName(), e);
             throw new BusinessException(50320, "Odoo read snapshot is temporarily unavailable");
         }
     }

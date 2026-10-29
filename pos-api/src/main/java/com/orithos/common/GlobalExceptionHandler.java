@@ -2,6 +2,7 @@ package com.orithos.common;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -45,8 +46,23 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResult<Void>> business(BusinessException e, HttpServletRequest request) {
-        if (e.getCode() >= 50000) failureEvents.record(request, 200, e.getCode(), e);
+        if (e.getCode() >= 50000) {
+            try {
+                failureEvents.record(request, 200, e.getCode(), e);
+            } catch (RuntimeException auditFailure) {
+                log.warn("Could not persist failure event correlationId={} type={}",
+                        CorrelationIdContext.current(), auditFailure.getClass().getSimpleName());
+            }
+        }
         return ResponseEntity.ok(ApiResult.fail(e.getCode(), e.getMessage()));
+    }
+
+    @ExceptionHandler(UnexpectedRollbackException.class)
+    public ResponseEntity<ApiResult<Void>> rollback(UnexpectedRollbackException e, HttpServletRequest request) {
+        log.error("Transaction rollback while handling request correlationId={} method={} path={}",
+                CorrelationIdContext.current(), request.getMethod(), request.getRequestURI(), e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResult.fail(50320, "The requested AI data is temporarily unavailable."));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

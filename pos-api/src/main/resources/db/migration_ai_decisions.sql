@@ -49,3 +49,15 @@ CREATE TABLE IF NOT EXISTS odoo_read_snapshot (
 );
 CREATE INDEX IF NOT EXISTS idx_odoo_snapshot_latest
   ON odoo_read_snapshot(vendor_id, outlet_id, object_type, ingested_at DESC);
+
+-- Existing installations may have created this table before the snapshot
+-- payload/version fields were introduced. Keep the migration additive so a
+-- production database can be upgraded without dropping retained snapshots.
+ALTER TABLE odoo_read_snapshot ADD COLUMN IF NOT EXISTS source_version VARCHAR(128);
+ALTER TABLE odoo_read_snapshot ADD COLUMN IF NOT EXISTS event_time TIMESTAMPTZ;
+ALTER TABLE odoo_read_snapshot ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE odoo_read_snapshot ADD COLUMN IF NOT EXISTS data_quality_status VARCHAR(32) NOT NULL DEFAULT 'VALID';
+ALTER TABLE odoo_read_snapshot ADD COLUMN IF NOT EXISTS payload JSONB;
+ALTER TABLE odoo_read_snapshot ALTER COLUMN payload SET DEFAULT '{}'::jsonb;
+UPDATE odoo_read_snapshot SET payload = '{}'::jsonb WHERE payload IS NULL;
+ALTER TABLE odoo_read_snapshot ALTER COLUMN payload SET NOT NULL;
