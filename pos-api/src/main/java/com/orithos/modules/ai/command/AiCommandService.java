@@ -95,7 +95,9 @@ public class AiCommandService {
     public CommandResponse cancel(UUID id) {
         TenantContext tenant = tenantContextFactory.fromSecurity();
         AiCommandRepository.Row row = owned(id, tenant);
-        repository.updateStatus(id, AiCommandStatus.CANCELLED.name(), UUID.randomUUID().toString());
+        if (repository.cancelPreview(id, row.version()) != 1) {
+            throw new BusinessException(40922, "This command is no longer awaiting confirmation.");
+        }
         repository.audit(id, tenant.vendorId(), tenant.userId(), row.outletId(), "CANCELLED",
                 "cancelled by user", null);
         return get(id);
@@ -126,7 +128,10 @@ public class AiCommandService {
             throw new BusinessException(40923, "The preview version is stale. Create a new preview.");
         }
         Parsed parsed = read(row.payload());
-        repository.updateStatus(id, AiCommandStatus.EXECUTING.name(), UUID.randomUUID().toString());
+        String executingVersion = UUID.randomUUID().toString();
+        if (repository.claimForExecution(id, row.version(), executingVersion) != 1) {
+            throw new BusinessException(40922, "This command is already being confirmed or is no longer pending.");
+        }
         repository.audit(id, tenant.vendorId(), tenant.userId(), row.outletId(), "EXECUTING",
                 "confirmed by user", null);
         List<String> writes = new ArrayList<>();
@@ -137,12 +142,12 @@ public class AiCommandService {
                     String.join(",", writes), null);
             return response(id, parsed, AiCommandStatus.APPLIED, row.version(), row.expiresAt(), writes);
         } catch (StaleException e) {
-            repository.updateStatus(id, AiCommandStatus.STALE.name(), UUID.randomUUID().toString());
+            repository.recordTerminalFailure(id, tenant.vendorId(), tenant.userId(), row.outletId(),
+                    AiCommandStatus.STALE.name(), e.getMessage());
             throw new BusinessException(40924, e.getMessage());
         } catch (RuntimeException e) {
-            repository.updateStatus(id, AiCommandStatus.FAILED.name(), UUID.randomUUID().toString());
-            repository.audit(id, tenant.vendorId(), tenant.userId(), row.outletId(), "FAILED",
-                    e.getClass().getSimpleName(), null);
+            repository.recordTerminalFailure(id, tenant.vendorId(), tenant.userId(), row.outletId(),
+                    AiCommandStatus.FAILED.name(), e.getClass().getSimpleName());
             throw e;
         }
     }

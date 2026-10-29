@@ -2,6 +2,8 @@ package com.orithos.modules.ai.command;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -40,6 +42,29 @@ public class AiCommandRepository {
     public int updateStatus(UUID id, String status, String version) {
         return jdbc.update("UPDATE ai_command_draft SET status = ?, version = ?, " +
                 "updated_at = CURRENT_TIMESTAMP WHERE id = ?", status, version, id.toString());
+    }
+
+    public int claimForExecution(UUID id, String expectedVersion, String nextVersion) {
+        return jdbc.update("UPDATE ai_command_draft SET status = ?, version = ?, " +
+                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ? AND version = ?",
+                AiCommandStatus.EXECUTING.name(), nextVersion, id.toString(),
+                AiCommandStatus.PREVIEWED.name(), expectedVersion);
+    }
+
+    public int cancelPreview(UUID id, String expectedVersion) {
+        return jdbc.update("UPDATE ai_command_draft SET status = ?, version = ?, " +
+                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ? AND version = ?",
+                AiCommandStatus.CANCELLED.name(), UUID.randomUUID().toString(), id.toString(),
+                AiCommandStatus.PREVIEWED.name(), expectedVersion);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordTerminalFailure(UUID id, long vendorId, long userId, long outletId,
+                                      String status, String detail) {
+        jdbc.update("UPDATE ai_command_draft SET status = ?, version = ?, " +
+                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?",
+                status, UUID.randomUUID().toString(), id.toString(), AiCommandStatus.EXECUTING.name());
+        audit(id, vendorId, userId, outletId, status, detail, null);
     }
 
     public void audit(UUID id, long vendorId, long userId, long outletId, String event,
