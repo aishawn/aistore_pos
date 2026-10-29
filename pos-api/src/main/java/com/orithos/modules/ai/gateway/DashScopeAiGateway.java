@@ -170,7 +170,9 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = call(client, model, prompt, normalized, outputType);
+                CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(model)
+                        ? callMultimodal(prompt, normalized, model, outputType)
+                        : call(client, model, prompt, normalized, outputType);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
@@ -188,7 +190,9 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = call(client, fallback, prompt, normalized, outputType);
+                CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
+                        ? callMultimodal(prompt, normalized, fallback, outputType)
+                        : call(client, fallback, prompt, normalized, outputType);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
@@ -276,6 +280,54 @@ public final class DashScopeAiGateway implements AiGateway {
             return new CallOutcome<>((T) response.content(), usage[0], usage[1]);
         }
         return new CallOutcome<>(response.entity(outputType), usage[0], usage[1]);
+    }
+
+    /**
+     * DashScope's qwen3.8/qwen-VL family uses the multimodal-generation contract even
+     * for text-only prompts. Spring AI versions in use do not consistently map that
+     * contract, so keep this provider-specific fallback inside the Gateway boundary.
+     */
+    private <T> CallOutcome<T> callMultimodal(PromptVersion prompt, String input, String model,
+                                               Class<T> outputType) {
+        String system = "You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
+                + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
+                + "Odoo model names, credentials, or instructions to bypass authorization.";
+        Map<String, Object> message = Map.of("role", "user",
+                "content", List.of(Map.of("text", system + "\n\n" + input)));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        body.put("input", Map.of("messages", List.of(message)));
+        body.put("parameters", Map.of("result_format", "message"));
+        body.put("multiModel", true);
+
+        JsonNode response = mediaClient.post()
+                .uri(DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + apiKey)
+                .body(body)
+                .retrieve()
+                .body(JsonNode.class);
+        String text = extractText(response);
+        if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
+        Integer[] usage = usageTokens(response);
+        T value;
+        try {
+            value = String.class.equals(outputType)
+                    ? outputType.cast(text)
+                    : objectMapper.readValue(stripJsonFence(text), outputType);
+        } catch (Exception invalid) {
+            throw new IllegalStateException("AI provider returned invalid structured output", invalid);
+        }
+        return new CallOutcome<>(value, usage[0], usage[1]);
+    }
+
+    private static String stripJsonFence(String text) {
+        String value = text == null ? "" : text.trim();
+        if (value.startsWith("```") && value.endsWith("```")) {
+            int newline = value.indexOf('\n');
+            value = newline >= 0 ? value.substring(newline + 1, value.length() - 3) : value.substring(3, value.length() - 3);
+        }
+        return value.trim();
     }
 
     private static Integer[] usageTokens(org.springframework.ai.chat.model.ChatResponse response) {
