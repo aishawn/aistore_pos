@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -1066,6 +1067,39 @@ async def push_pos_snapshot(
             "raw_payload": raw,
         })
     try:
+        async def sync_odoo_batches(import_type: str, values: list[dict], *, snapshot_complete: bool = False) -> list[dict]:
+            """Write Odoo data with bounded retries and recursive split fallback.
+
+            Odoo can return PostgreSQL serialization failures when a large
+            catalog batch overlaps a regular POS transaction. Retrying the
+            same large transaction only repeats the conflict, so split the
+            failed batch until the conflicting record is isolated.
+            """
+            responses: list[dict] = []
+
+            async def write_chunk(chunk: list[dict], depth: int = 0) -> None:
+                last_error: Exception | None = None
+                for attempt in range(3):
+                    try:
+                        responses.append(await odoo_client.sync(import_type, store_key, jsonable_encoder(chunk), snapshot_complete=snapshot_complete))
+                        return
+                    except Exception as exc:
+                        last_error = exc
+                        text = str(exc).lower()
+                        retryable = any(token in text for token in ("serialize", "serialization", "deadlock", "could not serialize", "timeout"))
+                        if not retryable or attempt == 2:
+                            break
+                        await asyncio.sleep(2 ** attempt)
+                if len(chunk) <= 25 or depth >= 8 or last_error is None:
+                    raise last_error or RuntimeError("Odoo batch failed")
+                midpoint = max(1, len(chunk) // 2)
+                await write_chunk(chunk[:midpoint], depth + 1)
+                await write_chunk(chunk[midpoint:], depth + 1)
+
+            for offset in range(0, len(values), 200):
+                await write_chunk(values[offset:offset + 200])
+            return responses
+
         product_result = None
         inventory_result = None
         catalog_error: Exception | None = None
@@ -1091,20 +1125,17 @@ async def push_pos_snapshot(
         odoo_product_result = None
         odoo_inventory_result = None
         if odoo_enabled and product_items:
-            odoo_product_responses = []
-            # Odoo commits each request transactionally. A 200-item batch
-            # reduces network and transaction overhead during history replay;
-            # failed requests still fall back to smaller batches below.
-            for offset in range(0, len(product_items), 200):
-                odoo_product_responses.append(await odoo_client.sync("products", store_key, jsonable_encoder(product_items[offset:offset + 200])))
+            # Odoo commits each request transactionally. Serialization or
+            # deadlock failures are retried and recursively split; progress is
+            # persisted after every successful product batch.
+            odoo_product_responses = await sync_odoo_batches("products", product_items)
+            if job is not None:
+                job.payload = {**(job.payload or {}), "products_imported": len(product_items)}
+                db.commit()
             odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
         if odoo_enabled and include_catalog and inventory_items:
-            odoo_inventory_result = await odoo_client.sync(
-                "inventory",
-                store_key,
-                jsonable_encoder(inventory_items),
-                snapshot_complete=True,
-            )
+            inventory_responses = await sync_odoo_batches("inventory", inventory_items, snapshot_complete=True)
+            odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0
         offset = max(0, int(sales_offset or 0))
