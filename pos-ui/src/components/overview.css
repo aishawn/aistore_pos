@@ -774,6 +774,13 @@
   .ov-radial-main .ov-node-icon { width: 68px; height: 68px; }
   .ov-ring-node > :is(button, a) > span:last-child { font-size: 15px; }
   .ov-radial-main .ov-ring-center strong { font-size: 21px; }
+  .ov-ring-list { padding: 12px; }
+  .ov-ring-list .ov-ring-center { min-height: 124px; margin-bottom: 16px; padding: 18px 14px; }
+  .ov-ring-list .ov-ring-nodes { gap: 10px; }
+  .ov-ring-list .ov-ring-node > :is(button, a) { min-height: 128px; padding: 12px 8px; gap: 8px; }
+  .ov-ring-list .ov-ring-node > :is(button, a) > span:last-child { font-size: 15px; line-height: 1.25; }
+  .ov-ring-list .ov-node-icon { width: 64px; height: 64px; }
+  .ov-ring-list .ov-node-icon svg { width: 24px; height: 24px; }
   .ov-radial-side { padding-top: 20px; }
   .ov-pulse-panel, .ov-insights-panel { border-radius: 20px; }
   .ov-ai-bar { align-items: stretch; flex-wrap: wrap; border-radius: 24px; padding: 10px 12px; }
@@ -1371,6 +1378,8 @@
 @media (max-width: 767px) {
   .ov-workspace .ov-container { padding: 24px 20px 56px; }
   .ov-workspace .ov-toolbar { gap: 8px; justify-content: flex-start; }
+  .ov-workspace .ov-header { align-items: stretch; }
+  .ov-workspace .ov-header h1 { line-height: 1.12; margin-top: 8px; }
   .ov-workspace .ov-summary { padding: 22px 20px; }
   .ov-workspace .ov-summary dl { gap: 12px; }
   .ov-workspace .ov-summary dd { font-size: 24px; }
@@ -1386,15 +1395,27 @@
   .ov-workspace .ov-toolbar .oh-brand-wordmark { display: none; }
   .ov-workspace .ov-header h1 { font-size: 34px; max-width: 360px; }
   .ov-workspace .ov-header .ov-eyebrow { font-size: 14px; }
-  .ov-workspace .ov-summary dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-workspace .ov-summary dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .ov-workspace .ov-summary dl > div { min-width: 0; }
-  .ov-workspace .ov-summary dl > div:first-child { grid-column: 1 / -1; }
-  .ov-workspace .ov-modules { grid-template-columns: 1fr; gap: 14px; }
-  .ov-workspace .ov-module { min-height: 170px; }
+  .ov-workspace .ov-summary dl > div:first-child { grid-column: auto; }
+  .ov-workspace .ov-summary dd { font-size: 20px; }
+  .ov-workspace .ov-summary dt { font-size: 11px; white-space: nowrap; }
+  .ov-workspace .ov-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ov-workspace .ov-module { min-height: 148px; padding: 14px; gap: 16px; border-radius: 18px; }
+  .ov-workspace .ov-icon { width: 44px; height: 44px; border-radius: 13px; }
+  .ov-workspace .ov-icon svg { width: 23px; height: 23px; }
+  .ov-workspace .ov-module h3 { font-size: 15px; line-height: 1.25; }
+  .ov-workspace .ov-module p { margin-top: 4px; font-size: 12px; line-height: 1.35; }
   .ov-workspace .ov-module-art { width: 70%; opacity: 0.3; }
   .ov-workspace .ov-summary-art { width: 200px; height: 150px; right: 0; opacity: 0.26; }
   .ov-workspace .ov-briefing { padding-inline: 14px; }
   .ov-workspace .ov-actions a { padding-inline: 4px; }
+}
+@media (max-width: 359px) {
+  .ov-workspace .ov-container { padding-inline: 14px; }
+  .ov-workspace .ov-summary dl { grid-template-columns: 1fr; gap: 10px; }
+  .ov-workspace .ov-modules { grid-template-columns: 1fr; }
+  .ov-workspace .ov-module { min-height: 136px; }
 }
 
 /* Dashboard shares the same pill composer as the assistant workspace. */
