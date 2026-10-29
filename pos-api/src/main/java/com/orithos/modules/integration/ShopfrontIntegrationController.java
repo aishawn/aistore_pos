@@ -523,6 +523,10 @@ public class ShopfrontIntegrationController {
                         : "INSERT INTO shopfront_product (store_key,source_id,name,sku,barcode,category,brand,cost,price,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),sku=VALUES(sku),barcode=VALUES(barcode),category=VALUES(category),brand=VALUES(brand),cost=VALUES(cost),price=VALUES(price),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
                 jdbc.update(sql, store, source, text(item,"name"), text(item,"sku"), text(item,"barcode"), text(item,"category"), text(item,"brand"), decimal(item,"cost"), decimal(item,"price"), objectMapper.writeValueAsString(item));
             }
+            // Product batches can arrive after their historical sales. Repair
+            // those durable sale-line mirrors from the source ID in one
+            // idempotent statement so old lines do not stay unnamed forever.
+            jdbc.update("UPDATE shopfront_sale_item si SET product_name=(SELECT sp.name FROM shopfront_product sp WHERE sp.store_key=si.store_key AND sp.source_id=si.source_product_id), synced_at=CURRENT_TIMESTAMP WHERE si.store_key=? AND (si.product_name IS NULL OR TRIM(si.product_name)='') AND EXISTS (SELECT 1 FROM shopfront_product sp WHERE sp.store_key=si.store_key AND sp.source_id=si.source_product_id AND sp.name IS NOT NULL AND TRIM(sp.name)<>'')", store);
         } else if ("inventory".equals(type)) {
             if (completeInventorySnapshot) {
                 jdbc.update("DELETE FROM shopfront_inventory WHERE store_key = ?", store);
