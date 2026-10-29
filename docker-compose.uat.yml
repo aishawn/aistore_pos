@@ -12,6 +12,12 @@ services:
       AI_ENABLED: "true"
       AI_COMMANDS_ENABLED: "true"
       AI_COMMANDS_EXECUTION_ENABLED: "false"
+      APP_AI_SNAPSHOT_SYNC_ENABLED: "true"
+      APP_AI_SNAPSHOT_SYNC_DELAY_MS: "21600000"
+      APP_AI_SNAPSHOT_SYNC_INITIAL_DELAY_MS: "60000"
+      AI_REPLENISHMENT_COVERAGE_DAYS: "7"
+      AI_REPLENISHMENT_SERVICE_FACTOR: "1.65"
+      AI_REPLENISHMENT_CASE_PACK: "1"
       APP_ODOO_ONLY_MODE: "true"
   frontend:
     image: orithos-uat-frontend:latest
