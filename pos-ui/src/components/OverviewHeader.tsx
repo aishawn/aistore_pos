@@ -5,11 +5,9 @@ import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 
 export function OverviewHeader({
-  greeting,
   company,
   active,
 }: {
-  greeting: string;
   company: string;
   active: "radial" | "workspace";
 }) {
@@ -17,7 +15,6 @@ export function OverviewHeader({
     <header className="ov-header">
       <div className="ov-heading min-w-0">
         <div className="ov-brand"><OrithosLogo /></div>
-        <p className="ov-eyebrow">{greeting}</p>
         <h1 title={company} className="ov-header-title">
           {active === "workspace"
             ? <><span className="ov-title-line">Your store, </span><em className="ov-title-line">at a glance.</em></>

@@ -94,8 +94,6 @@ export function OverviewPageContent({
     authExpired,
     parked,
     load,
-    greeting,
-    user,
     navigation,
     destinations,
   } = useOverview();
@@ -195,7 +193,6 @@ export function OverviewPageContent({
       <div className="ov-container">
         <OverviewHeader
           active={active}
-          greeting={`${greeting}${user ? `, ${user.name || user.username}` : ""}`}
           company={data?.company || "Your store"}
         />
         {loading && !data ? (
