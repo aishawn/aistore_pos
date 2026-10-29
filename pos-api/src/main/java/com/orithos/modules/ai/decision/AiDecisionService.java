@@ -6,6 +6,7 @@ import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
 import com.orithos.modules.ai.snapshot.OdooReadSnapshotService;
 import com.orithos.modules.ai.snapshot.OdooReadSnapshotSyncResult;
+import com.orithos.modules.ai.snapshot.SnapshotDecisionEvaluator;
 import com.orithos.security.PermissionAccess;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,19 +23,20 @@ public class AiDecisionService {
     private final AiDecisionRepository repository;
     private final PermissionAccess permissions;
     private final OdooReadSnapshotService snapshots;
+    private final SnapshotDecisionEvaluator evaluator;
 
     @Autowired
     public AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
                              AiDecisionRepository repository, PermissionAccess permissions,
-                             OdooReadSnapshotService snapshots) {
+                             OdooReadSnapshotService snapshots, SnapshotDecisionEvaluator evaluator) {
         this.pricing = pricing; this.replenishment = replenishment;
-        this.repository = repository; this.permissions = permissions; this.snapshots = snapshots;
+        this.repository = repository; this.permissions = permissions; this.snapshots = snapshots; this.evaluator = evaluator;
     }
 
     /** Compatibility constructor for narrow unit tests that do not exercise the Odoo snapshot boundary. */
     AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
                       AiDecisionRepository repository, PermissionAccess permissions) {
-        this(pricing, replenishment, repository, permissions, null);
+        this(pricing, replenishment, repository, permissions, null, null);
     }
 
     public Map<String, Object> previewPricing(TenantContext tenant) {
@@ -43,8 +45,9 @@ public class AiDecisionService {
         var result = pricing.review(tenant);
         if (result == null) throw new BusinessException(50320, "Pricing source data is unavailable");
         Instant at = Instant.now();
-        UUID id = insert(tenant, "PRICING", at, "rule-v1", source, result);
-        return Map.of("snapshotId", id, "type", "PRICING", "status", "PREVIEW", "dataAsOf", at, "result", result);
+        Map<String, Object> engine = evaluatePricing(tenant, source);
+        UUID id = insert(tenant, "PRICING", at, "rule-v1", source, Map.of("liveResult", result, "engine", engine));
+        return Map.of("snapshotId", id, "type", "PRICING", "status", "PREVIEW", "dataAsOf", at, "result", result, "engine", engine);
     }
 
     public Map<String, Object> previewReplenishment(TenantContext tenant) {
@@ -53,12 +56,23 @@ public class AiDecisionService {
         var result = replenishment.plan(tenant);
         if (result == null) throw new BusinessException(50320, "Replenishment source data is unavailable");
         Instant at = Instant.now();
-        UUID id = insert(tenant, "REPLENISHMENT", at, "weighted-velocity-v1", source, result);
-        return Map.of("snapshotId", id, "type", "REPLENISHMENT", "status", "PREVIEW", "dataAsOf", at, "result", result);
+        Map<String, Object> engine = evaluateReplenishment(tenant, source);
+        UUID id = insert(tenant, "REPLENISHMENT", at, "weighted-velocity-v1", source, Map.of("liveResult", result, "engine", engine));
+        return Map.of("snapshotId", id, "type", "REPLENISHMENT", "status", "PREVIEW", "dataAsOf", at, "result", result, "engine", engine);
     }
 
     private OdooReadSnapshotSyncResult syncSnapshot(TenantContext tenant) {
         return snapshots == null ? null : snapshots.sync(tenant, 56);
+    }
+
+    private Map<String, Object> evaluatePricing(TenantContext tenant, OdooReadSnapshotSyncResult source) {
+        return evaluator == null || source == null ? Map.of("status", "NOT_AVAILABLE")
+                : evaluator.evaluatePricing(tenant, source.sourceVersion());
+    }
+
+    private Map<String, Object> evaluateReplenishment(TenantContext tenant, OdooReadSnapshotSyncResult source) {
+        return evaluator == null || source == null ? Map.of("status", "NOT_AVAILABLE")
+                : evaluator.evaluateReplenishment(tenant, source.sourceVersion());
     }
 
     private UUID insert(TenantContext tenant, String type, Instant at, String config,
