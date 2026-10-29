@@ -98,6 +98,19 @@ public class AiDecisionService {
         repository.feedback(tenant, snapshotId, action, request.before(), request.after(), request.note());
     }
 
+    public Map<String, Object> backtest(TenantContext tenant, String type,
+                                        String baselineVersion, String candidateVersion) {
+        permissions.requirePermission(permissionFor(type));
+        if (snapshots == null || evaluator == null) {
+            throw new BusinessException(50320, "AI decision replay is unavailable");
+        }
+        try {
+            return evaluator.compare(tenant, type, baselineVersion, candidateVersion);
+        } catch (IllegalArgumentException invalid) {
+            throw new BusinessException(40010, invalid.getMessage());
+        }
+    }
+
     private static String permissionFor(String type) {
         return "REPLENISHMENT".equalsIgnoreCase(type) ? "stock.replenishment" : "ai.price_suggestions";
     }

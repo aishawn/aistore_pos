@@ -29,6 +29,17 @@ public class AiDecisionController {
         return ApiResult.ok(service.previewReplenishment(tenantFactory.fromSecurity()));
     }
 
+    @PostMapping("/backtest")
+    public ApiResult<Map<String, Object>> backtest(@Valid @RequestBody BacktestRequest request) {
+        if (request == null || request.type() == null || request.baselineVersion() == null
+                || request.candidateVersion() == null) {
+            throw new com.orithos.common.BusinessException(40010,
+                    "Type and two snapshot versions are required");
+        }
+        return ApiResult.ok(service.backtest(tenantFactory.fromSecurity(), request.type(),
+                request.baselineVersion(), request.candidateVersion()));
+    }
+
     @GetMapping
     public ApiResult<List<Map<String, Object>>> list(@RequestParam(defaultValue = "PRICING") String type,
                                                       @RequestParam(defaultValue = "20") int limit) {
@@ -40,4 +51,6 @@ public class AiDecisionController {
         service.feedback(tenantFactory.fromSecurity(), id, request);
         return ApiResult.ok(null);
     }
+
+    public record BacktestRequest(String type, String baselineVersion, String candidateVersion) { }
 }
