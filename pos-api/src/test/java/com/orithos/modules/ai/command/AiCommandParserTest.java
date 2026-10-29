@@ -52,4 +52,39 @@ class AiCommandParserTest {
         assertThrows(com.orithos.common.BusinessException.class,
                 () -> parser.parse(tenant, "change a product"));
     }
+
+    @Test
+    void unwrapsProviderJsonTextAndFence() throws Exception {
+        when(gateway.complete(org.mockito.ArgumentMatchers.any(), eq(AiTask.COMMAND_PARSE),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                eq(com.fasterxml.jackson.databind.JsonNode.class)))
+                .thenReturn(new AiCompletion<>(new ObjectMapper().getNodeFactory().textNode("""
+                        ```json
+                        {"type":"UPDATE_PRODUCT","confidence":0.98,"summary":"rename one product",
+                         "items":[{"id":123,"name":"VB Cans","field":"name","before":"VB Cans","after":"Victoria Bitter","reason":"exact match","status":"READY"}],
+                         "changes":{"field":"name"},"excluded":[]}
+                        ```
+                        """), "test", "test", 1, 1, Duration.ZERO, false));
+
+        AiCommandService.Parsed parsed = parser.parse(tenant, "rename VB Cans to Victoria Bitter");
+
+        assertEquals(AiCommandType.UPDATE_PRODUCT, parsed.type());
+        assertEquals(123L, parsed.items().getFirst().id());
+    }
+
+    @Test
+    void unwrapsKnownProviderEnvelopeWithoutRelaxingSchema() throws Exception {
+        when(gateway.complete(org.mockito.ArgumentMatchers.any(), eq(AiTask.COMMAND_PARSE),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                eq(com.fasterxml.jackson.databind.JsonNode.class)))
+                .thenReturn(new AiCompletion<>(new ObjectMapper().readTree("""
+                        {"output":{"type":"UPDATE_PRODUCT","confidence":0.98,"summary":"rename one product",
+                         "items":[{"id":123,"name":"VB Cans","field":"name","before":"VB Cans","after":"Victoria Bitter","reason":"exact match","status":"READY"}],
+                         "changes":{"field":"name"},"excluded":[]}}
+                        """), "test", "test", 1, 1, Duration.ZERO, false));
+
+        AiCommandService.Parsed parsed = parser.parse(tenant, "rename VB Cans to Victoria Bitter");
+
+        assertEquals(AiCommandType.UPDATE_PRODUCT, parsed.type());
+    }
 }

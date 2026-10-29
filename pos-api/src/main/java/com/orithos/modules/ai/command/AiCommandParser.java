@@ -59,9 +59,10 @@ public class AiCommandParser {
             throw new BusinessException(50320, "AI command parser is temporarily unavailable.");
         }
         try {
+            JsonNode structured = normalizeProviderValue(completion.value());
             var reader = mapper.readerFor(AiCommandService.Parsed.class)
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-            AiCommandService.Parsed parsed = reader.readValue(completion.value().traverse(mapper));
+            AiCommandService.Parsed parsed = reader.readValue(structured.traverse(mapper));
             validate(parsed);
             return parsed;
         } catch (BusinessException rejected) {
@@ -69,6 +70,46 @@ public class AiCommandParser {
         } catch (Exception invalid) {
             throw new BusinessException(42220, "AI command output did not match the allowed schema.");
         }
+    }
+
+    /**
+     * DashScope text generation can return structured output as a JSON object,
+     * a JSON string, or a provider envelope containing one of those forms.
+     * Unwrap only the known transport fields; the command DTO remains strict
+     * so model-controlled fields still cannot bypass validation.
+     */
+    private JsonNode normalizeProviderValue(JsonNode value) throws Exception {
+        if (value == null || value.isNull()) throw new IllegalArgumentException("empty provider output");
+        JsonNode current = value;
+        for (int depth = 0; depth < 3; depth++) {
+            if (current.isTextual()) {
+                current = mapper.readTree(stripJsonFence(current.asText()));
+                continue;
+            }
+            if (current.isObject() && current.has("type")) return current;
+            JsonNode next = null;
+            for (String key : List.of("output", "result", "data", "content")) {
+                JsonNode candidate = current.get(key);
+                if (candidate != null && !candidate.isNull()) {
+                    next = candidate;
+                    break;
+                }
+            }
+            if (next == null) return current;
+            current = next;
+        }
+        return current;
+    }
+
+    private static String stripJsonFence(String text) {
+        String value = text == null ? "" : text.trim();
+        if (value.startsWith("```") && value.endsWith("```")) {
+            int newline = value.indexOf('\n');
+            value = newline >= 0
+                    ? value.substring(newline + 1, value.length() - 3)
+                    : value.substring(3, value.length() - 3);
+        }
+        return value.trim();
     }
 
     private void validate(AiCommandService.Parsed parsed) {
