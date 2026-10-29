@@ -56,7 +56,18 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## 本轮续验
 
-- 线上 `/api/public/version`：Demo 与 SKR 的 frontend/backend 均为 `c7c87b1aff8dfe4a4ec399a802fe6642fee6c898`；两站点 `/api/public/uat-context` 均为 HTTP 200、`isolated=false`。
+- 2026-10-29 续验：线上 Demo `/api/public/version` 返回前后端同 SHA `8b6ad27ef54751b456fccb7c395b3e37d3ac6088`，`/api/public/uat-context` 返回 `isolated=false`；未登录访问 `/api/ai/invoice/preview` 返回预期 HTTP 401。
+- OCR 候选工作树 `ocr-release-candidate` 的 `pos-ui` `npm run typecheck` 通过；`pilot-ai-valid-invoice-ocr-online-uat.mjs` 和 `pilot-invoice-ocr-preview-online.mjs` 均通过 `node --check`；`git diff --check` 通过。
+- Java 21 Surefire 现有产物显示 OCR 相关测试通过：`InvoiceVisionServiceTest` 10/10、`InvoiceScanSessionServiceTest` 4/4、`AiInvoicePreviewControllerTest` 3/3，0 failures、0 errors。该结果是本机已有构建产物，不等同于本轮重新执行的 Maven 门禁。
+- 真实额度恢复前曾因当前进程缺少 `INITIAL_ADMIN_PASSWORD` 暂停线上 OCR；凭据随后从本机忽略环境文件安全注入，未写入证据或代码。
+- 认证变量已从本机忽略环境文件安全注入当前进程后完成 Demo 真实 provider OCR：合成税票字段 9/9 PASS，另一个双明细供应商票据样本的供应商、发票号、日期、两条明细、GST 和总额全部 PASS，预览写入边界 PASS，业务写入 0。该样本运行在当前线上 `8b6ad27ef54751b456fccb7c395b3e37d3ac6088`。
+- 同一双明细样本连续重复 3 次均 `apiCode=0`、全部字段 PASS，延迟分别为 27,933ms、30,881ms、18,572ms。当前仅证明小样本可用性；尚未取得 provider 账单成本、真实限流阈值或 provider 不可用时的降级证据。
+- OCR 候选工作树的后端/UI改动仍未提交或部署；线上 OCR 结果验证的是当前已部署 SHA，不应被解释为候选人工复核门禁已上线。
+- Demo 硬件/离线边界线上模拟 `docs/UAT_HARDWARE_OFFLINE_ONLINE_2026-10-29_CURRENT.json`：5/5 PASS，设备页明确显示打印机、钱箱、扫码器、EFTPOS 未连接/未验收，离线时阻止结算并解释恢复，0 page errors；仍不能替代客户现场设备验收或证明离线销售已支持。
+- Demo AI availability `docs/UAT_AI_AVAILABILITY_ONLINE_2026-10-29_CURRENT.json`：3/3 PASS，认证配置 `enabled=true`、AI composer 可用、页面无提交业务写入。AI metrics `docs/UAT_AI_METRICS_ONLINE_2026-10-29_CURRENT.json`：9/9 PASS，当前窗口总体 p50=15ms、p95=2693ms，`assistant:search_product` requests=28、p50=789ms、p95=1379ms、estimatedTokens=532；指标成本仍是估算 token，不是 provider 账单。
+- 本机 DashScope 单短问健康探针 `docs/UAT_AI_DASHSCOPE_HEALTH_2026-10-29_CURRENT.json` 为 `BLOCKED`（`ECONNRESET`）；该结果只说明本机直连 provider 网络不稳定，不能推翻已通过的线上应用 OCR 请求，也不能作为 provider 降级验收证据。
+- Demo 客户组 CRUD `docs/UAT_CUSTOMER_GROUPS_LIVE_CRUD_DEMO_2026-10-29_CURRENT.json`：8/8 PASS，创建、读取、重命名、删除和清理后回读通过，3 个 UAT 写入并确认清理；脚本自身报告 `runtimeMatchesSource=false`，因为脚本来源工作树 HEAD 与线上 SHA 不同，线上 SHA 已由独立 `/api/public/version` 核对。
+- 历史续验记录曾观测到 `c7c87b1aff8dfe4a4ec399a802fe6642fee6c898`；当前线上 SHA 以本节第一条的 `8b6ad27ef54751b456fccb7c395b3e37d3ac6088` 为准。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
 - 关班超大 session 预检已部署：`pos.order.search_count` 超过 `ODOO_CLOSE_MAX_ORDERS`（默认 10,000）时快速返回 HTTP 409，避免等待 Odoo/Cloudflare 超时；线上复验见 `docs/UAT_CASH_CLOSE_PREFLIGHT_SKR_2026-10-29.json`。

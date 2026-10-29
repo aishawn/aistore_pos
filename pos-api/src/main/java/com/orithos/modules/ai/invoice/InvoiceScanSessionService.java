@@ -59,6 +59,9 @@ public class InvoiceScanSessionService {
         if (request == null) {
             throw new BusinessException(40010, "Invoice scan payload is required.");
         }
+        if (!request.isReviewConfirmed()) {
+            throw new BusinessException(40010, "Review the extracted invoice details and confirm before saving.");
+        }
         InvoiceScanSessionEntity session = new InvoiceScanSessionEntity();
         session.setVendorId(user.vendorId());
         session.setCreatedBy(user.id());

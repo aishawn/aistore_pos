@@ -1431,6 +1431,7 @@ export interface InvoiceScanSessionList {
 }
 
 export interface InvoiceScanSavePayload {
+  reviewConfirmed?: boolean;
   sourceType?: InvoiceScanSourceType;
   sourceFilename?: string | null;
   sourceContentType?: string | null;
@@ -1447,6 +1448,8 @@ export interface InvoiceScanSavePayload {
   internalNotes?: string | null;
   lines?: InvoiceScanSessionLine[];
 }
+
+export type InvoiceScanCreatePayload = InvoiceScanSavePayload & { reviewConfirmed: true };
 
 /** Photograph or upload a supplier tax invoice for OCR preview (image or PDF). */
 export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Promise<InvoiceScanPayload> {
@@ -1502,7 +1505,7 @@ export function getInvoiceScan(id: number) {
   return api.get<InvoiceScanSession>(`/api/invoice-scans/${id}`);
 }
 
-export function createInvoiceScan(payload: InvoiceScanSavePayload) {
+export function createInvoiceScan(payload: InvoiceScanCreatePayload) {
   return api.post<InvoiceScanSession>("/api/invoice-scans", payload);
 }
 

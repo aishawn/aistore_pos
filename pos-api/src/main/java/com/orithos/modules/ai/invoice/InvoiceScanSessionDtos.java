@@ -28,6 +28,7 @@ public final class InvoiceScanSessionDtos {
 
     @Data
     public static class SaveRequest {
+        private boolean reviewConfirmed;
         private String sourceType;
         private String sourceFilename;
         private String sourceContentType;
