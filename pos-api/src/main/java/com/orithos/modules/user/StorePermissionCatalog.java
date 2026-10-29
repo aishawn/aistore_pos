@@ -52,6 +52,12 @@ public final class StorePermissionCatalog {
             new Def(9243, "Find grocery", "ai.grocery", "AI"),
             new Def(9244, "Price suggestions", "ai.price_suggestions", "AI"),
             new Def(9245, "Invoice OCR", "ai.invoice", "AI"),
+            new Def(9260, "AI command preview", "ai.command.preview", "AI"),
+            new Def(9261, "AI command confirm", "ai.command.confirm", "AI"),
+            new Def(9262, "AI product changes", "ai.command.product", "AI"),
+            new Def(9263, "AI customer changes", "ai.command.customer", "AI"),
+            new Def(9264, "AI price changes", "ai.command.price", "AI"),
+            new Def(9265, "AI replenishment suggestions", "ai.command.replenishment", "AI"),
             new Def(9101, "AI Report Query", "ai.report.query", "AI"),
             new Def(9102, "AI Report Cost", "ai.report.cost", "AI"),
 
@@ -66,7 +72,10 @@ public final class StorePermissionCatalog {
     /** Permissions managers do not receive by default (admin-only). */
     public static final Set<String> ADMIN_ONLY_SAFE_NAMES = Set.of(
             "settings.data",
-            "settings.integrations"
+            "settings.integrations",
+            "ai.command.product",
+            "ai.command.customer",
+            "ai.command.price"
     );
 
     public static final Set<String> CLERK_DEFAULT_SAFE_NAMES = Set.of(

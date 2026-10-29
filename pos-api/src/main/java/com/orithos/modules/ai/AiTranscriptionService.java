@@ -3,6 +3,11 @@ package com.orithos.modules.ai;
 import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.report.TenantContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +53,8 @@ public class AiTranscriptionService {
     private final String apiKey;
     private final String baseUrl;
     private final RestClient restClient;
+    private final AiGateway aiGateway;
+    private final TenantContextFactory tenantContextFactory;
 
     /**
      * Primary Spring constructor. A second package-private overload exists for tests;
@@ -55,15 +62,25 @@ public class AiTranscriptionService {
      * "No default constructor found" (backend crash-loop → login 502).
      */
     @Autowired
-    public AiTranscriptionService(
-            AiProperties properties,
-            @Value("${spring.ai.dashscope.api-key:}") String apiKey,
-            @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
+    public AiTranscriptionService(AiProperties properties, AiGateway aiGateway,
+                                  TenantContextFactory tenantContextFactory,
+                                  @Value("${spring.ai.dashscope.api-key:}") String apiKey,
+                                  @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
+        this(properties, apiKey, baseUrl, RestClient.builder(), aiGateway, tenantContextFactory);
+    }
+
+    /** Test-only: inject a mockable {@link RestClient.Builder}. */
+    AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl) {
         this(properties, apiKey, baseUrl, RestClient.builder());
     }
 
     /** Test-only: inject a mockable {@link RestClient.Builder}. */
     AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder) {
+        this(properties, apiKey, baseUrl, builder, null, null);
+    }
+
+    private AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder,
+                                   AiGateway aiGateway, TenantContextFactory tenantContextFactory) {
         this.properties = properties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
@@ -73,6 +90,8 @@ public class AiTranscriptionService {
                 .baseUrl(this.baseUrl)
                 .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
                 .build();
+        this.aiGateway = aiGateway;
+        this.tenantContextFactory = tenantContextFactory;
     }
 
     /**
@@ -80,7 +99,7 @@ public class AiTranscriptionService {
      * @param lang optional ASR language hint: {@code en}, {@code zh}, or blank for auto-detect
      */
     public String transcribe(MultipartFile file, String lang) {
-        if (!StringUtils.hasText(apiKey)) {
+        if (aiGateway == null && !StringUtils.hasText(apiKey)) {
             throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
         }
         if (file == null || file.isEmpty()) {
@@ -101,8 +120,27 @@ public class AiTranscriptionService {
             throw new BusinessException(40010, "Audio file is empty.");
         }
 
-        String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
         String asrLang = normalizeLang(lang);
+
+        if (aiGateway != null) {
+            TenantContext scope = tenantContextFactory.fromSecurity();
+            Long outlet = scope.requireOutletId();
+            if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
+            try {
+                String transcript = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
+                                com.orithos.config.CorrelationIdContext.current()),
+                        AiTask.TRANSCRIPTION, "", mime, bytes, asrLang).value();
+                if (!StringUtils.hasText(transcript)) throw new BusinessException(50210,
+                        "Transcription returned empty text. Speak clearly and try again.");
+                return transcript.trim();
+            } catch (BusinessException e) { throw e; }
+            catch (Exception e) {
+                log.warn("Gateway transcription failed: {}", e.getClass().getSimpleName());
+                throw providerFailure();
+            }
+        }
+
+        String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
 
         Map<String, Object> inputAudio = Map.of("data", dataUri);
         Map<String, Object> contentItem = Map.of(

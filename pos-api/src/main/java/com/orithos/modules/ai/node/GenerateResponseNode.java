@@ -4,11 +4,13 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.AiProviderQuotaService;
-import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.gateway.PromptVersion;
 import org.springframework.ai.chat.client.ChatClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +40,11 @@ public class GenerateResponseNode implements NodeAction {
     private final AiProperties properties;
     private final PosAssistantTools tools;
     private final String primaryModel;
-    private final AiProviderQuotaService providerQuota;
+    private final AiGateway aiGateway;
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
                                 AiProperties properties, PosAssistantTools tools) {
-        this(chatClient, configService, properties, tools, "qwen-plus");
+        this(chatClient, configService, properties, tools, "qwen-plus", null);
     }
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
@@ -51,14 +53,13 @@ public class GenerateResponseNode implements NodeAction {
     }
 
     public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
-                                AiProperties properties, PosAssistantTools tools, String primaryModel,
-                                AiProviderQuotaService providerQuota) {
+                                AiProperties properties, PosAssistantTools tools, String primaryModel, AiGateway aiGateway) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.properties = properties;
         this.tools = tools;
         this.primaryModel = primaryModel == null || primaryModel.isBlank() ? "qwen-plus" : primaryModel.trim();
-        this.providerQuota = providerQuota;
+        this.aiGateway = aiGateway;
     }
 
     @Override
@@ -69,8 +70,7 @@ public class GenerateResponseNode implements NodeAction {
         String summary = state.value("intent_summary", String.class).orElse("");
         String fastPathId = state.value("fast_path_id", String.class).orElse("");
 
-        if ("historical_stock_unavailable".equals(fastPathId)
-                || "stock_clarification".equals(fastPathId)) {
+        if ("historical_stock_unavailable".equals(fastPathId)) {
             return Map.of("answer", summary);
         }
 
@@ -108,11 +108,19 @@ public class GenerateResponseNode implements NodeAction {
         }
         String answer;
         try {
-            if (providerQuota != null) {
-                providerQuota.acquire(AssistantTenantContext.get(),
-                        AiProviderQuotaService.estimate(system, userPrompt));
+            if (aiGateway != null) {
+                long vendor = state.value("vendor_id", Number.class).map(Number::longValue).orElse(0L);
+                long user = state.value("user_id", Number.class).map(Number::longValue).orElse(0L);
+                long outlet = state.value("outlet_id", Number.class).map(Number::longValue).orElse(0L);
+                if (vendor <= 0 || user <= 0 || outlet <= 0) throw new IllegalStateException("AI tenant scope unavailable");
+                String correlation = state.value(com.orithos.config.CorrelationIdContext.STATE_KEY, String.class).orElse("unknown");
+                var completion = aiGateway.completeWithTools(new AiTenantContext(vendor, outlet, user, correlation),
+                        AiTask.RESPONSE, new PromptVersion(IntentConfigService.PROMPT_RESPOND, "runtime", ""),
+                        userPrompt, system, tools == null ? new Object[0] : new Object[]{tools});
+                answer = completion.value();
+            } else {
+                answer = prompt.call().content();
             }
-            answer = prompt.call().content();
         } catch (RuntimeException failure) {
             // A provider outage must leave the assistant usable. Keep the fallback
             // deterministic and avoid logging the staff member's question.

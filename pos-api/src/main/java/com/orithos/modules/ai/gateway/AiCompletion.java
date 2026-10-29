@@ -7,8 +7,8 @@ public record AiCompletion<T>(
         T value,
         String provider,
         String model,
-        int inputTokens,
-        int outputTokens,
+        Integer inputTokens,
+        Integer outputTokens,
         Duration latency,
         boolean fallback
 ) {
@@ -16,8 +16,6 @@ public record AiCompletion<T>(
         if (value == null || provider == null || provider.isBlank() || model == null || model.isBlank()) {
             throw new IllegalArgumentException("AI completion metadata is incomplete");
         }
-        inputTokens = Math.max(0, inputTokens);
-        outputTokens = Math.max(0, outputTokens);
         latency = latency == null ? Duration.ZERO : latency;
     }
 }

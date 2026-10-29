@@ -137,7 +137,7 @@ public class PosAssistantGraphConfig {
                 odooReportQueryService, sommelierChatBriefProvider,
                 replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider, aiGateway)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
-                posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel)));
+                posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel, aiGateway)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)
                 .addNode(CLASSIFY, classify)
                 .addNode(RESPOND, respond)
