@@ -21,6 +21,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -216,7 +217,8 @@ public class OdooReadSnapshotService {
                    event_time, data_quality_status, payload)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 """, tenant.vendorId(), tenant.requireOutletId(), type, String.valueOf(sourceId), version,
-                eventTime, quality == null ? "VALID" : quality, mapper.writeValueAsString(payload));
+                eventTime == null ? null : Timestamp.from(eventTime),
+                quality == null ? "VALID" : quality, mapper.writeValueAsString(payload));
     }
 
     private List<Map<String, Object>> products(String session, long companyId, Map<String, Object> context)

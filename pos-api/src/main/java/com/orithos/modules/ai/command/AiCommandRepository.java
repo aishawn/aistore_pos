@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -25,7 +26,7 @@ public class AiCommandRepository {
                  source_text, source_thread_id, expires_at, version, idempotency_key)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id.toString(), vendorId, userId, outletId, type, status, payload,
-                sourceText, threadId, expiresAt, version, idempotencyKey);
+                sourceText, threadId, expiresAt == null ? null : Timestamp.from(expiresAt), version, idempotencyKey);
     }
 
     public Row find(UUID id) {
