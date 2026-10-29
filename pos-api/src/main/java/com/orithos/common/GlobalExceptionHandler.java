@@ -1,6 +1,7 @@
 package com.orithos.common;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -73,6 +74,16 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResult.fail(40900, "Data constraint violation."));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiResult<Void>> dataAccess(DataAccessException e, HttpServletRequest request) {
+        log.error("AI/data access failure correlationId={} method={} path={} type={}",
+                CorrelationIdContext.current(), request.getMethod(), request.getRequestURI(),
+                e.getClass().getSimpleName(), e);
+        failureEvents.record(request, 503, 50320, e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResult.fail(50320, "The requested AI data is temporarily unavailable."));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
