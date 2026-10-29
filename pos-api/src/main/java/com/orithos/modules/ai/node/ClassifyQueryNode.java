@@ -4,7 +4,6 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.AiProviderQuotaService;
 import com.orithos.modules.ai.AssistantFastPathRouter;
 import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.DashScopeModelRouting;
@@ -18,6 +17,11 @@ import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
 import com.orithos.modules.ai.context.FollowUpSupport;
 import com.orithos.modules.ai.dto.AssistantCard;
 import com.orithos.modules.ai.grocery.GroceryChatBrief;
+import com.orithos.modules.ai.gateway.AiCompletion;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.gateway.PromptVersion;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.report.OdooReportQueryService;
@@ -60,7 +64,7 @@ public class ClassifyQueryNode implements NodeAction {
     private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
     private final ObjectProvider<PricingChatBrief> pricingChatBrief;
     private final ObjectProvider<GroceryChatBrief> groceryChatBrief;
-    private final AiProviderQuotaService providerQuota;
+    private final AiGateway aiGateway;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
@@ -87,20 +91,7 @@ public class ClassifyQueryNode implements NodeAction {
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief) {
         this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief,
-                replenishmentChatBrief, pricingChatBrief, null);
-    }
-
-    public ClassifyQueryNode(ChatClient chatClient,
-                             IntentConfigService configService,
-                             IntentSanitizeService sanitizeService,
-                             AiProperties properties,
-                             OdooReportQueryService reportQueryService,
-                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
-                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
-                             ObjectProvider<PricingChatBrief> pricingChatBrief,
-                             ObjectProvider<GroceryChatBrief> groceryChatBrief) {
-        this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief,
-                replenishmentChatBrief, pricingChatBrief, groceryChatBrief, null);
+                replenishmentChatBrief, pricingChatBrief, null, null);
     }
 
     public ClassifyQueryNode(ChatClient chatClient,
@@ -112,7 +103,7 @@ public class ClassifyQueryNode implements NodeAction {
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief,
                              ObjectProvider<GroceryChatBrief> groceryChatBrief,
-                             AiProviderQuotaService providerQuota) {
+                             AiGateway aiGateway) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
@@ -122,7 +113,28 @@ public class ClassifyQueryNode implements NodeAction {
         this.replenishmentChatBrief = replenishmentChatBrief;
         this.pricingChatBrief = pricingChatBrief;
         this.groceryChatBrief = groceryChatBrief;
-        this.providerQuota = providerQuota;
+        this.aiGateway = aiGateway;
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
+                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
+                             ObjectProvider<PricingChatBrief> pricingChatBrief,
+                             ObjectProvider<GroceryChatBrief> groceryChatBrief) {
+        this.chatClient = chatClient;
+        this.configService = configService;
+        this.sanitizeService = sanitizeService;
+        this.properties = properties;
+        this.reportQueryService = reportQueryService;
+        this.sommelierChatBrief = sommelierChatBrief;
+        this.replenishmentChatBrief = replenishmentChatBrief;
+        this.pricingChatBrief = pricingChatBrief;
+        this.groceryChatBrief = groceryChatBrief;
+        this.aiGateway = null;
     }
 
     @Override
@@ -242,13 +254,8 @@ public class ClassifyQueryNode implements NodeAction {
                     && fast.slots().get("query") != null && !fast.slots().get("query").isBlank()) {
                 return productSearchShortcut(fast, question);
             }
-            Map<String, Object> shortcut = shortcutResult(fast.intent(), fast.summary(), fast.slots(),
-                    fast.panel(), fast.view(), fast.route(), fast.action());
-            if ("qa".equals(fast.intent()) && (fast.summary().contains("barcode")
-                    || fast.summary().contains("条码"))) {
-                shortcut.put("fast_path_id", "stock_clarification");
-            }
-            return shortcut;
+            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
+                    fast.route(), fast.action());
         }
 
         IntentConfigService.Snapshot snap = configService.getSnapshot();
@@ -257,7 +264,7 @@ public class ClassifyQueryNode implements NodeAction {
         String storeContext = optionalString(state, "store_context");
         String userPrompt = buildUserPrompt(snap, question, history, storeContext);
 
-        RawIntent raw = callModel(system, userPrompt);
+        RawIntent raw = callModel(system, userPrompt, tenantContext(state));
         SanitizedIntent result = sanitizeService.sanitize(raw);
         if (isWriteEntityResult(result) || isUnknownEntityOperation(result)) {
             String route = resolveGuidedActionRoute(
@@ -776,10 +783,19 @@ public class ClassifyQueryNode implements NodeAction {
         return builder.build();
     }
 
-    private RawIntent callModel(String system, String userPrompt) {
+    private RawIntent callModel(String system, String userPrompt, AiTenantContext tenant) {
+        if (aiGateway != null && tenant != null) {
+            AiCompletion<String> completion = aiGateway.complete(tenant, AiTask.CLASSIFICATION,
+                    new PromptVersion(IntentConfigService.PROMPT_CLASSIFY, "runtime", ""),
+                    system + "\n\n" + userPrompt, String.class);
+            RawIntent parsed = parseRawJson(completion.value());
+            if (parsed.intent() != null && !parsed.intent().isBlank()) {
+                return parsed;
+            }
+            throw new IllegalStateException("AI gateway returned invalid classify output");
+        }
         // Prefer plain JSON text: more reliable across DashScope models than BeanOutputConverter/entity().
         try {
-            acquireProviderQuota(system, userPrompt);
             String raw = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
@@ -796,7 +812,6 @@ public class ClassifyQueryNode implements NodeAction {
         }
 
         try {
-            acquireProviderQuota(system, userPrompt);
             LlmIntentOutput entity = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
@@ -828,10 +843,13 @@ public class ClassifyQueryNode implements NodeAction {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private void acquireProviderQuota(String system, String userPrompt) {
-        if (providerQuota != null) {
-            providerQuota.acquire(AssistantTenantContext.get(), AiProviderQuotaService.estimate(system, userPrompt));
-        }
+    private static AiTenantContext tenantContext(OverAllState state) {
+        long vendor = state.value("vendor_id", Number.class).map(Number::longValue).orElse(0L);
+        long user = state.value("user_id", Number.class).map(Number::longValue).orElse(0L);
+        long outlet = state.value("outlet_id", Number.class).map(Number::longValue).orElse(0L);
+        if (vendor <= 0 || user <= 0 || outlet <= 0) return null;
+        String correlation = state.value(com.orithos.config.CorrelationIdContext.STATE_KEY, String.class).orElse("unknown");
+        return new AiTenantContext(vendor, outlet, user, correlation);
     }
 
     private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question,

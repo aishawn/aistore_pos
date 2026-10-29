@@ -14,8 +14,8 @@ import com.alibaba.cloud.ai.graph.state.strategy.ReplaceStrategy;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.AiProviderQuotaService;
 import com.orithos.modules.ai.PosAssistantTools;
+import com.orithos.modules.ai.gateway.AiGateway;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.grocery.GroceryChatBrief;
@@ -129,15 +129,15 @@ public class PosAssistantGraphConfig {
             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBriefProvider,
             ObjectProvider<PricingChatBrief> pricingChatBriefProvider,
             ObjectProvider<GroceryChatBrief> groceryChatBriefProvider,
-            AiProviderQuotaService providerQuota,
+            AiGateway aiGateway,
             @Value("${spring.ai.dashscope.chat.options.model:qwen-plus}") String primaryModel) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
                 odooReportQueryService, sommelierChatBriefProvider,
-                replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider, providerQuota)));
+                replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider, aiGateway)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
-                posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel, providerQuota)));
+                posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)
                 .addNode(CLASSIFY, classify)
                 .addNode(RESPOND, respond)
