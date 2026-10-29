@@ -121,6 +121,11 @@ app:
   ai:
     # 设为 true 并配置 AI_DASHSCOPE_API_KEY 后启用 Graph 智能助手 + 语音转写 + 酒标识别
     enabled: ${AI_ENABLED:false}
+    commands:
+      # Command parsing and preview are safe read-only operations. Execution
+      # remains blocked until an isolated Odoo write UAT explicitly enables it.
+      enabled: ${AI_COMMANDS_ENABLED:true}
+      execution-enabled: ${AI_COMMANDS_EXECUTION_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
     # Use the configured primary DashScope model when it supports native multimodal
@@ -143,7 +148,8 @@ app:
       queries-per-hour: ${AI_REPORT_QUOTA_QUERIES:120}
       tokens-per-hour: ${AI_REPORT_QUOTA_TOKENS:200000}
     gateway:
-      enabled: ${AI_GATEWAY_ENABLED:true}
+      # The gateway cannot be enabled independently of the product AI switch.
+      enabled: ${AI_GATEWAY_ENABLED:${AI_ENABLED:false}}
       max-input-chars: ${AI_GATEWAY_MAX_INPUT_CHARS:12000}
       max-retries: ${AI_GATEWAY_MAX_RETRIES:2}
       timeout-seconds: ${AI_GATEWAY_TIMEOUT_SECONDS:40}
@@ -153,6 +159,11 @@ app:
       fallback-model: ${AI_GATEWAY_FALLBACK_MODEL:qwen-flash}
       transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}}
       vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}}
+    snapshot:
+      # Opt-in scheduled Odoo read sync. Manual /api/ai/snapshots/sync remains available.
+      sync-enabled: ${APP_AI_SNAPSHOT_SYNC_ENABLED:false}
+      sync-delay-ms: ${APP_AI_SNAPSHOT_SYNC_DELAY_MS:21600000}
+      sync-initial-delay-ms: ${APP_AI_SNAPSHOT_SYNC_INITIAL_DELAY_MS:60000}
 
 # 日志级别
 logging:

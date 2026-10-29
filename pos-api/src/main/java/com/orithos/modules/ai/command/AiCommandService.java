@@ -10,7 +10,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class AiCommandService {
@@ -18,10 +17,13 @@ public class AiCommandService {
     private final AiCommandRepository repository;
     private final AiCommandPermissionService permissions;
     private final AiCommandAuditService audit;
+    private final AiCommandTargetResolver resolver;
 
     public AiCommandService(AiCommandParser parser, AiCommandRepository repository,
-                            AiCommandPermissionService permissions, AiCommandAuditService audit) {
+                            AiCommandPermissionService permissions, AiCommandAuditService audit,
+                            AiCommandTargetResolver resolver) {
         this.parser = parser; this.repository = repository; this.permissions = permissions; this.audit = audit;
+        this.resolver = resolver;
     }
 
     public AiCommandDtos.CommandResponse parse(TenantContext tenant, AiCommandDtos.ParseRequest request) {
@@ -34,17 +36,19 @@ public class AiCommandService {
         UUID id = UUID.randomUUID();
         String version = UUID.randomUUID().toString();
         Instant expires = Instant.now().plus(10, ChronoUnit.MINUTES);
-        List<AiCommandDtos.CommandItem> items = (parsed.items() == null ? List.<AiCommandDtos.ParsedItem>of() : parsed.items()).stream()
-                // Model-supplied IDs/current values are not authoritative; a resolver must populate them.
-                .map(i -> new AiCommandDtos.CommandItem(null, i.name(), i.field(), null, i.after(), i.evidence(),
-                        "Target resolution adapter is not configured", null))
-                .collect(Collectors.toList());
-        repository.insert(id, tenant, type, AiCommandStatus.DRAFT, redactSourceText(request.text()), request.threadId(),
-                parsed.confidence(), expires, version, items, List.of(), parsed.changes(), id.toString());
-        audit.record(tenant, id, "PARSED_UNRESOLVED", AiCommandStatus.DRAFT, AiCommandStatus.DRAFT,
-                null, Map.of("type", type.name(), "itemCount", items.size(), "confidence", parsed.confidence()));
-        return response(id, type, AiCommandStatus.DRAFT, parsed.confidence(),
-                "Request parsed. A verified business target and current value are required before preview.", items, List.of(), expires, version, null);
+        AiCommandTargetResolver.Resolution resolution = resolver.resolve(tenant, type, parsed.items());
+        AiCommandStatus status = resolution.items().isEmpty() ? AiCommandStatus.DRAFT : AiCommandStatus.PREVIEWED;
+        repository.insert(id, tenant, type, status, redactSourceText(request.text()), request.threadId(),
+                parsed.confidence(), expires, version, resolution.items(), resolution.excludedItems(),
+                parsed.changes(), id.toString());
+        audit.record(tenant, id, status == AiCommandStatus.PREVIEWED ? "PREVIEWED" : "PARSED_UNRESOLVED",
+                status, status, null, Map.of("type", type.name(), "itemCount", resolution.items().size(),
+                        "excludedCount", resolution.excludedItems().size(), "confidence", parsed.confidence()));
+        return response(id, type, status, parsed.confidence(),
+                status == AiCommandStatus.PREVIEWED
+                        ? "Verified business targets are ready for confirmation."
+                        : "Request parsed. A verified business target and current value are required before preview.",
+                resolution.items(), resolution.excludedItems(), expires, version, null);
     }
 
     public AiCommandDtos.CommandResponse get(TenantContext tenant, UUID id) {

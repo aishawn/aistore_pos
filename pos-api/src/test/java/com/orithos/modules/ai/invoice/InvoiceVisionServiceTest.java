@@ -103,6 +103,38 @@ class InvoiceVisionServiceTest {
     }
 
     @Test
+    void unreconciledLineAndPayableTotalsRequireHumanReviewWithoutChangingValues() {
+        TaxInvoiceRead read = InvoiceVisionService.parse("""
+                {
+                  "supplierName": "Synthetic Test Supplier Pty Ltd",
+                  "gstIncluded": 2.18,
+                  "totalPayable": 26.00,
+                  "lines": [{"description": "Sparkling Water", "lineTotal": 24.00}]
+                }
+                """, mapper);
+
+        assertNotNull(read);
+        assertEquals(0, new BigDecimal("26.00").compareTo(read.totalPayable()));
+        assertEquals(0, new BigDecimal("2.18").compareTo(read.gstIncluded()));
+        assertTrue(read.notes().toLowerCase().contains("totals conflict"));
+        assertTrue(read.notes().toLowerCase().contains("human review required"));
+    }
+
+    @Test
+    void totalsThatReconcileWithTaxRemainUnflagged() {
+        TaxInvoiceRead read = InvoiceVisionService.parse("""
+                {
+                  "gstIncluded": 2.00,
+                  "totalPayable": 26.00,
+                  "lines": [{"description": "Synthetic item", "lineTotal": 24.00}]
+                }
+                """, mapper);
+
+        assertNotNull(read);
+        assertNull(read.notes());
+    }
+
+    @Test
     void malformedFieldsRemainUncertainWhileValidLinesAreKept() {
         TaxInvoiceRead read = InvoiceVisionService.parse("""
                 {

@@ -58,6 +58,7 @@ class InvoiceScanSessionServiceTest {
         when(mapper.findDuplicateIds(anyLong(), any(), any(), any())).thenReturn(List.of());
 
         InvoiceScanSessionDtos.SaveRequest request = new InvoiceScanSessionDtos.SaveRequest();
+        request.setReviewConfirmed(true);
         request.setSourceType("pdf");
         request.setInvoiceNumber("INV-1");
         request.setSupplierName("Acme");
@@ -73,6 +74,17 @@ class InvoiceScanSessionServiceTest {
         verify(mapper).insertLine(lineCaptor.capture());
         assertEquals("Shiraz 12x750", lineCaptor.getValue().getDescription());
         assertEquals("unmatched", lineCaptor.getValue().getMatchStatus());
+    }
+
+    @Test
+    void createRejectsDraftWithoutExplicitReviewConfirmation() {
+        InvoiceScanSessionDtos.SaveRequest request = new InvoiceScanSessionDtos.SaveRequest();
+        request.setSupplierName("Synthetic Test Supplier");
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.create(request));
+
+        assertEquals(40010, error.getCode());
+        org.mockito.Mockito.verify(mapper, org.mockito.Mockito.never()).insert(any(InvoiceScanSessionEntity.class));
     }
 
     @Test

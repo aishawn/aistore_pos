@@ -26,8 +26,9 @@ public class AiCommandDecisionSchemaMigrator implements CommandLineRunner {
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
             populator.setSeparator(";");
             populator.addScript(new ClassPathResource("db/migration_ai_commands.sql"));
+            populator.addScript(new ClassPathResource("db/migration_ai_backtest.sql"));
             DatabasePopulatorUtils.execute(populator, dataSource);
-            log.info("AI command and decision snapshot schema applied.");
+            log.info("AI command, decision snapshot and backtest schema applied.");
         } catch (Exception e) {
             log.error("AI command and decision schema migration failed: {}", e.getClass().getSimpleName());
             throw new IllegalStateException("AI command and decision schema migration failed", e);

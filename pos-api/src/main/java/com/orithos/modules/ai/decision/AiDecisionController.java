@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/ai/decisions")
@@ -27,6 +28,14 @@ public class AiDecisionController {
     @PostMapping("/replenishment/preview")
     public ApiResult<Map<String, Object>> replenishmentPreview() {
         return ApiResult.ok(service.previewReplenishment(tenantFactory.fromSecurity()));
+    }
+
+    @PostMapping("/backtest")
+    public ApiResult<Map<String, Object>> backtest(
+            @RequestParam(defaultValue = "PRICING") String type,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to) {
+        return ApiResult.ok(service.backtest(tenantFactory.fromSecurity(), type, from, to));
     }
 
     @GetMapping

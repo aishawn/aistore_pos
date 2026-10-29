@@ -99,6 +99,7 @@ public class InvoiceVisionService {
             Do not infer totalPayable from line items, or line values from multiplication. If printed totals conflict, preserve the printed values and state "Totals conflict; human review required" in notes.
             If any key amount or identifier is obscured or uncertain, set that field to null, state "Human review required", and name the field in notes.
             Never return a value for a field that notes explicitly describe as obscured or uncertain.
+            Treat any solid block, tape, finger, crop, blur, glare, reflection, bloom, or washed-out patch over a field as obscured even if part of the field remains legible. In that case do not guess the hidden characters or digits: return null for the affected field and include the exact field name in the human-review note. In particular, never reconstruct invoiceNumber or invoiceDate from a partially visible prefix/suffix.
             """;
 
     private final AiProperties properties;
@@ -242,7 +243,7 @@ public class InvoiceVisionService {
                     ));
                 }
             }
-            return new TaxInvoiceRead(
+            TaxInvoiceRead read = new TaxInvoiceRead(
                     text(node, "supplierName"),
                     text(node, "abn"),
                     text(node, "website"),
@@ -259,9 +260,37 @@ public class InvoiceVisionService {
                     text(node, "notes"),
                     lines
             );
+            return flagUnreconciledTotals(read);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static TaxInvoiceRead flagUnreconciledTotals(TaxInvoiceRead read) {
+        if (read.totalPayable() == null || read.lines().isEmpty()
+                || read.lines().stream().anyMatch(line -> line.lineTotal() == null)) {
+            return read;
+        }
+        BigDecimal lineTotal = read.lines().stream()
+                .map(TaxInvoiceRead.Line::lineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal delivery = read.deliveryFee() == null ? BigDecimal.ZERO : read.deliveryFee();
+        BigDecimal gst = read.gstIncluded() == null ? BigDecimal.ZERO : read.gstIncluded();
+        BigDecimal payable = read.totalPayable();
+        boolean reconciles = matches(lineTotal.add(delivery), payable)
+                || matches(lineTotal.add(delivery).add(gst), payable);
+        if (reconciles || (read.notes() != null && read.notes().toLowerCase(Locale.ROOT).contains("human review"))) {
+            return read;
+        }
+        String note = StringUtils.hasText(read.notes()) ? read.notes().trim() + " " : "";
+        note += "Totals conflict; human review required. Line totals do not reconcile with the payable total.";
+        return new TaxInvoiceRead(read.supplierName(), read.abn(), read.website(), read.invoiceNumber(),
+                read.invoiceDate(), read.customerName(), read.customerAddress(), read.attn(), read.phone(),
+                read.deliveryFee(), read.gstIncluded(), read.totalPayable(), read.totalCases(), note, read.lines());
+    }
+
+    private static boolean matches(BigDecimal left, BigDecimal right) {
+        return left.subtract(right).abs().compareTo(new BigDecimal("0.02")) <= 0;
     }
 
     static String extractText(JsonNode root) {

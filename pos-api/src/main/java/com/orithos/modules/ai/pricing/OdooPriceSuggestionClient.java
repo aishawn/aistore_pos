@@ -126,14 +126,14 @@ public class OdooPriceSuggestionClient {
                                 List.of("id", "in", soldIds),
                                 List.of("available_in_pos", "=", true),
                                 List.of("company_id", "=", companyId)),
-                        List.of("id", "name", "display_name", "list_price", "standard_price", "taxes_id"),
+                        List.of("id", "name", "display_name", "list_price", "standard_price", "qty_available", "taxes_id"),
                         context, PRODUCT_LIMIT, "id asc");
             } else {
                 products = searchRead(sessionId, "product.product",
                         List.of(
                                 List.of("available_in_pos", "=", true),
                                 List.of("company_id", "=", companyId)),
-                        List.of("id", "name", "display_name", "list_price", "standard_price", "taxes_id"),
+                        List.of("id", "name", "display_name", "list_price", "standard_price", "qty_available", "taxes_id"),
                         context, PRODUCT_LIMIT, "name asc, id asc");
             }
 
@@ -164,7 +164,7 @@ public class OdooPriceSuggestionClient {
                 }
             }
 
-            List<PriceReviewItem> reviews = buildReviewItems(products, soldMap, taxById, margin);
+            List<PriceReviewItem> reviews = buildReviewItems(products, soldMap, taxById, margin, true);
             reviews.sort(Comparator
                     .comparingDouble(PriceReviewItem::soldUnits).reversed()
                     .thenComparing(PriceReviewItem::name));
@@ -183,9 +183,18 @@ public class OdooPriceSuggestionClient {
             Map<Long, Double> soldMap,
             Map<Long, SuggestionTax> taxById,
             double marginTarget) {
+        return buildReviewItems(products, soldMap, taxById, marginTarget, false);
+    }
+
+    private static List<PriceReviewItem> buildReviewItems(
+            List<Map<String, Object>> products,
+            Map<Long, Double> soldMap,
+            Map<Long, SuggestionTax> taxById,
+            double marginTarget,
+            boolean enforcePolicy) {
         List<PriceReviewItem> out = new ArrayList<>();
         for (Map<String, Object> product : products) {
-            PriceReviewItem item = toReviewItem(product, soldMap, taxById, marginTarget);
+            PriceReviewItem item = toReviewItem(product, soldMap, taxById, marginTarget, enforcePolicy);
             if (item != null && needsReview(item.status())) {
                 out.add(item);
             }
@@ -202,6 +211,15 @@ public class OdooPriceSuggestionClient {
             Map<Long, Double> soldMap,
             Map<Long, SuggestionTax> taxById,
             double marginTarget) {
+        return toReviewItem(product, soldMap, taxById, marginTarget, false);
+    }
+
+    private static PriceReviewItem toReviewItem(
+            Map<String, Object> product,
+            Map<Long, Double> soldMap,
+            Map<Long, SuggestionTax> taxById,
+            double marginTarget,
+            boolean enforcePolicy) {
         long id = longId(product.get("id"));
         if (id <= 0) {
             return null;
@@ -245,6 +263,17 @@ public class OdooPriceSuggestionClient {
             return new PriceReviewItem(id, name, soldUnits, null, null, "review_tax");
         }
         Double currentMargin = PriceSuggestionMath.netMargin(current.totalExcluded(), costRaw);
+        PricingDecisionEngine.Decision policy = null;
+        if (enforcePolicy && product.containsKey("qty_available")) {
+            policy = PricingDecisionEngine.decide(
+                    new PricingDecisionEngine.Input(listPrice, costRaw, soldUnits / HISTORY_DAYS,
+                            decimal(product.get("qty_available")), false, false),
+                    new PricingDecisionEngine.Limits(0.25, 30, 0.10, 2.0, 10,
+                            0.05, marginTarget, 0.15, 0.25, 0.05));
+            if (policy.status() == PricingDecisionEngine.Status.INSUFFICIENT_DATA) {
+                return new PriceReviewItem(id, name, soldUnits, current.totalIncluded(), null, "review_data");
+            }
+        }
         Double proposedList = PriceSuggestionMath.suggestedListPrice(costRaw, marginTarget, productTaxes);
         Double suggestedShelf = null;
         if (proposedList != null && currentMargin != null && currentMargin + 0.005 < marginTarget) {
@@ -254,6 +283,9 @@ public class OdooPriceSuggestionClient {
             }
         }
         if (currentMargin != null && currentMargin + 0.005 < marginTarget) {
+            if (policy != null && policy.status() == PricingDecisionEngine.Status.HOLD) {
+                return new PriceReviewItem(id, name, soldUnits, current.totalIncluded(), null, "review_policy");
+            }
             if (suggestedShelf == null || suggestedShelf <= current.totalIncluded()) {
                 return new PriceReviewItem(id, name, soldUnits, current.totalIncluded(), null, "review_cost");
             }

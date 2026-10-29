@@ -2,9 +2,11 @@ package com.orithos.modules.ai.gateway;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.orithos.common.BusinessException;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.DashScopeModelRouting;
+import com.orithos.modules.ai.AiProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.slf4j.Logger;
@@ -40,11 +42,13 @@ public final class DashScopeAiGateway implements AiGateway {
     private final ObjectMapper objectMapper;
     private final RestClient mediaClient;
     private final String apiKey;
+    private final AiProperties aiProperties;
 
     public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
                               AiGatewayQuotaService quota,
                               AiGatewayUsageRecorder usageRecorder,
                               ObjectMapper objectMapper,
+                              AiProperties aiProperties,
                               @Value("${spring.ai.dashscope.api-key:}") String apiKey,
                               @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.clients = clients;
@@ -52,6 +56,7 @@ public final class DashScopeAiGateway implements AiGateway {
         this.quota = quota;
         this.usageRecorder = usageRecorder;
         this.objectMapper = objectMapper;
+        this.aiProperties = aiProperties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         String normalizedBaseUrl = baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", "");
         this.mediaClient = RestClient.builder().baseUrl(normalizedBaseUrl).build();
@@ -63,7 +68,7 @@ public final class DashScopeAiGateway implements AiGateway {
         if (tenant == null || (task != AiTask.TRANSCRIPTION && task != AiTask.VISION)) {
             throw new IllegalArgumentException("media task and tenant are required");
         }
-        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        requireEnabled();
         if (!StringUtils.hasText(apiKey)) throw new IllegalStateException("AI provider is not configured");
         if (media == null || media.length == 0) throw new IllegalArgumentException("media is required");
         String model = modelFor(task, false);
@@ -73,10 +78,13 @@ public final class DashScopeAiGateway implements AiGateway {
                 : visionBody(model, dataUri, mimeType, prompt);
         String uri = task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
                 ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH : "/compatible-mode/v1/chat/completions";
+        // Reserve the provider budget once per logical request. Provider retries
+        // reuse that reservation; charging each attempt would exhaust the outlet
+        // budget without sending additional user work.
+        quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
         RuntimeException last = null;
         for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
             try {
-                quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
                 Instant started = Instant.now();
                 JsonNode response = mediaClient.post().uri(uri).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + apiKey).body(body).retrieve().body(JsonNode.class);
@@ -152,9 +160,7 @@ public final class DashScopeAiGateway implements AiGateway {
         if (tenant == null || task == null || prompt == null || outputType == null) {
             throw new IllegalArgumentException("AI gateway request is incomplete");
         }
-        if (!properties.isEnabled()) {
-            throw new IllegalStateException("AI gateway is disabled");
-        }
+        requireEnabled();
         String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
         ChatClient client = clients.getIfAvailable();
         if (client == null) {
@@ -167,7 +173,7 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = call(client, model, prompt, normalized, outputType);
+                CallOutcome<T> outcome = call(client, model, prompt, normalized, outputType, objectMapper);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
@@ -185,7 +191,7 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = call(client, fallback, prompt, normalized, outputType);
+                CallOutcome<T> outcome = call(client, fallback, prompt, normalized, outputType, objectMapper);
                 return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
@@ -203,7 +209,7 @@ public final class DashScopeAiGateway implements AiGateway {
     public AiCompletion<String> completeWithTools(AiTenantContext tenant, AiTask task, PromptVersion prompt,
                                                    String input, String systemPrompt, Object... tools) {
         if (tenant == null || task == null || prompt == null) throw new IllegalArgumentException("AI gateway request is incomplete");
-        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        requireEnabled();
         String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
         ChatClient client = clients.getIfAvailable();
         if (client == null) throw new IllegalStateException("AI provider is unavailable");
@@ -258,7 +264,7 @@ public final class DashScopeAiGateway implements AiGateway {
 
     @SuppressWarnings("unchecked")
     private static <T> CallOutcome<T> call(ChatClient client, String model, PromptVersion prompt,
-                              String input, Class<T> outputType) {
+                              String input, Class<T> outputType, ObjectMapper mapper) {
         var response = client.prompt()
                 .system("You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
                         + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
@@ -272,7 +278,54 @@ public final class DashScopeAiGateway implements AiGateway {
         if (String.class.equals(outputType)) {
             return new CallOutcome<>((T) response.content(), usage[0], usage[1]);
         }
-        return new CallOutcome<>(response.entity(outputType), usage[0], usage[1]);
+        String content = response.content();
+        if (content == null || content.isBlank()) {
+            throw new IllegalStateException("AI provider returned empty structured output");
+        }
+        try {
+            JsonNode json = mapper.readTree(stripJsonFence(content));
+            if ("ai-command-parse".equals(prompt.name())) {
+                rejectRestrictedOutput(json);
+            }
+            T value = mapper
+                    .readerFor(outputType)
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .readValue(stripJsonFence(content));
+            return new CallOutcome<>(value, usage[0], usage[1]);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("AI provider returned invalid structured output", e);
+        }
+    }
+
+    private static String stripJsonFence(String content) {
+        String value = content.trim();
+        if (value.startsWith("```")) {
+            int firstNewline = value.indexOf('\n');
+            int lastFence = value.lastIndexOf("```");
+            if (firstNewline > 0 && lastFence > firstNewline) {
+                return value.substring(firstNewline + 1, lastFence).trim();
+            }
+        }
+        return value;
+    }
+
+    private static void rejectRestrictedOutput(JsonNode node) {
+        if (node == null) return;
+        if (node.isObject()) {
+            var fields = node.fields();
+            while (fields.hasNext()) {
+                var entry = fields.next();
+                String key = entry.getKey().replaceAll("[^A-Za-z0-9]", "").toLowerCase();
+                if (key.equals("tenantid") || key.equals("vendorid") || key.equals("outletid")
+                        || key.equals("userid") || key.equals("sql") || key.equals("apipath")
+                        || key.equals("odoomodel") || key.equals("tablename")) {
+                    throw new IllegalArgumentException("restricted control field in AI output");
+                }
+                rejectRestrictedOutput(entry.getValue());
+            }
+        } else if (node.isArray()) {
+            node.forEach(DashScopeAiGateway::rejectRestrictedOutput);
+        }
     }
 
     private static Integer[] usageTokens(org.springframework.ai.chat.model.ChatResponse response) {
@@ -314,6 +367,12 @@ public final class DashScopeAiGateway implements AiGateway {
             case VISION -> properties.getVisionModel();
             default -> properties.getPrimaryModel();
         };
+    }
+
+    private void requireEnabled() {
+        if (!aiProperties.enabled() || !properties.isEnabled()) {
+            throw new IllegalStateException("AI gateway is disabled");
+        }
     }
 
     private static void sleepBackoff(int attempt) {

@@ -132,7 +132,13 @@ public class OdooReplenishmentClient {
                 double unitsPerDay = recentUnits > 0 && previousUnits > 0
                         ? recentUnitsPerDay * 0.7 + previousUnitsPerDay * 0.3
                         : (recentUnitsPerDay > 0 ? recentUnitsPerDay : previousUnitsPerDay);
-                int suggestedQuantity = (int) Math.max(0, Math.ceil(unitsPerDay * cover - forecastStock));
+                double onOrder = virtual == null ? 0 : Math.max(0, virtual - onHand);
+                double backorder = virtual == null ? 0 : Math.max(0, -virtual);
+                double demandStdDev = Math.abs(recentUnitsPerDay - previousUnitsPerDay);
+                ReplenishmentDecisionEngine.Decision decision = ReplenishmentDecisionEngine.decide(
+                        new ReplenishmentDecisionEngine.Input(onHand, onOrder, backorder, unitsPerDay,
+                                demandStdDev, 1, cover, 1.65, 1, true));
+                int suggestedQuantity = (int) Math.max(0, Math.ceil(decision.suggestedQuantity()));
                 if (suggestedQuantity <= 0) {
                     continue;
                 }

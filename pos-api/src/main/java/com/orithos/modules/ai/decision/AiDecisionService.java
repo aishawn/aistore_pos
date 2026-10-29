@@ -5,6 +5,7 @@ import com.orithos.modules.ai.pricing.OdooPriceSuggestionClient;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
 import com.orithos.security.PermissionAccess;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,11 +19,25 @@ public class AiDecisionService {
     private final OdooReplenishmentClient replenishment;
     private final AiDecisionRepository repository;
     private final PermissionAccess permissions;
+    private final AiDecisionBacktestService backtests;
 
     public AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
                              AiDecisionRepository repository, PermissionAccess permissions) {
+        this(pricing, replenishment, repository, permissions, null);
+    }
+
+    @Autowired
+    public AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
+                             AiDecisionRepository repository, PermissionAccess permissions,
+                             AiDecisionBacktestService backtests) {
         this.pricing = pricing; this.replenishment = replenishment;
         this.repository = repository; this.permissions = permissions;
+        this.backtests = backtests;
+    }
+
+    public Map<String, Object> backtest(TenantContext tenant, String type, Instant from, Instant to) {
+        if (backtests == null) throw new BusinessException(50320, "Backtest service is unavailable");
+        return backtests.run(tenant, type, from, to);
     }
 
     public Map<String, Object> previewPricing(TenantContext tenant) {
