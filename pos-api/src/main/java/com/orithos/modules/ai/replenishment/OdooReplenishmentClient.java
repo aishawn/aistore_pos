@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.odoo.OdooSalesDomain;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
@@ -94,12 +95,10 @@ public class OdooReplenishmentClient {
             String recentFrom = ODOO_UTC.format(now.minus(Duration.ofDays(PERIOD_DAYS)).atZone(ZoneOffset.UTC));
             String previousFrom = ODOO_UTC.format(now.minus(Duration.ofDays(HISTORY_DAYS)).atZone(ZoneOffset.UTC));
 
-            List<Object> salesBase = List.of(
-                    List.of("order_id.company_id", "=", companyId),
-                    List.of("order_id.state", "in", PAID_STATES));
-            List<Object> recentDomain = new ArrayList<>(salesBase);
+            List<Object> scopedSalesBase = OdooSalesDomain.forCompany(companyId, vendor.getOdooPosConfigId(), PAID_STATES);
+            List<Object> recentDomain = new ArrayList<>(scopedSalesBase);
             recentDomain.add(List.of("order_id.date_order", ">=", recentFrom));
-            List<Object> previousDomain = new ArrayList<>(salesBase);
+            List<Object> previousDomain = new ArrayList<>(scopedSalesBase);
             previousDomain.add(List.of("order_id.date_order", ">=", previousFrom));
             previousDomain.add(List.of("order_id.date_order", "<", recentFrom));
 

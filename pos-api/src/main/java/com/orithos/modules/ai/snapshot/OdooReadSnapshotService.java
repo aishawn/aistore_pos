@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.odoo.OdooSalesDomain;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
@@ -124,10 +125,9 @@ public class OdooReadSnapshotService {
             }
 
             String from = dataAsOf.minus(historyDays, ChronoUnit.DAYS).toString();
-            List<Object> domain = List.of(
-                    List.of("order_id.company_id", "=", vendor.getOdooCompanyId()),
-                    List.of("order_id.state", "in", List.of("paid", "done", "invoiced")),
-                    List.of("order_id.date_order", ">=", from.replace('T', ' ').substring(0, 19)));
+            List<Object> domain = OdooSalesDomain.forCompany(vendor.getOdooCompanyId(),
+                    vendor.getOdooPosConfigId(), List.of("paid", "done", "invoiced"));
+            domain.add(List.of("order_id.date_order", ">=", from.replace('T', ' ').substring(0, 19)));
             List<Map<String, Object>> sales = readGroup(session, "pos.order.line", domain,
                     List.of("qty:sum", "price_subtotal:sum"), List.of("product_id"), context, MAX_SALES_GROUPS);
             int salesCount = 0;

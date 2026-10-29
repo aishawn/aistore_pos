@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.odoo.OdooSalesDomain;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
@@ -97,10 +98,8 @@ public class OdooPriceSuggestionClient {
             String recentFrom = ODOO_UTC.format(
                     Instant.now().minus(Duration.ofDays(HISTORY_DAYS)).atZone(ZoneOffset.UTC));
 
-            List<Object> salesDomain = List.of(
-                    List.of("order_id.company_id", "=", companyId),
-                    List.of("order_id.state", "in", PAID_STATES),
-                    List.of("order_id.date_order", ">=", recentFrom));
+            List<Object> salesDomain = OdooSalesDomain.forCompany(companyId, vendor.getOdooPosConfigId(), PAID_STATES);
+            salesDomain.add(List.of("order_id.date_order", ">=", recentFrom));
             List<Map<String, Object>> sales = readGroup(sessionId, "pos.order.line", salesDomain,
                     List.of("qty:sum"), List.of("product_id"), context, SALES_LIMIT);
             Map<Long, Double> soldMap = new HashMap<>();

@@ -65,8 +65,8 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## AI 生产化候选（未部署）
 
-- 候选分支 `codex/ai-prod-main` 当前 SHA：`d0359cedccc98e9d51d50547a3261f5b4cf001b6`；基于 `origin/main=e4d7d192fdbf490cb635ede22ff4302853e88be7`，未推送。
-- Java 21 `mvn -B clean verify`：**464 tests, 0 failures, 0 errors, BUILD SUCCESS**。这是本地精确候选验证，不是 Dokploy 远程门禁。
+- 候选分支 `codex/ai-prod-main` 当前 SHA：`803bba1a819b8dcdd41f8b32391686165e9b8fac`；当前远程 `origin/main=8b6ad27e` 已包含后续 shopfront 提交，候选尚未重放到该远程基线，未推送。
+- Java 21 `pos-api/mvn -B clean verify`：**464 tests, 0 failures, 0 errors, BUILD SUCCESS**（候选 HEAD `803bba1`）。这是本地精确候选验证，不是 Dokploy 远程门禁。
 - 已加入 tenant/outlet 绑定的 Odoo 只读快照同步：`POST /api/ai/snapshots/sync`；同步商品、库存、价格和销售汇总到 `odoo_read_snapshot`。后台刷新由 `APP_AI_SNAPSHOT_SYNC_ENABLED` 控制，默认关闭。
 - 定价/补货预览先生成快照，再使用版本化快照运行 `PricingDecisionEngine` / `ReplenishmentDecisionEngine`，决策快照保存 sourceVersion、dataAsOf、dataQuality 和算法结果；未开放任何 Odoo 写入。
 - 仍未完成：Dokploy 对该精确 SHA 的远程 Java 21 门禁、匹配 runtime 部署、SKR/Demo 线上只读回归、真实 Odoo 快照写入验证、1–3 家隔离门店回测。不要把该候选描述为已部署或生产 GO。
