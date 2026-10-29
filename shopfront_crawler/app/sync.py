@@ -421,7 +421,10 @@ async def sync_store(
                     sale is not None
                     and sale.updated_at is not None
                     and source_updated_at is not None
-                    and sale.updated_at == source_updated_at
+                    # SQLite drops timezone offsets from DateTime columns;
+                    # compare the wall-clock value after removing tzinfo so
+                    # an unchanged source row is recognized on retries.
+                    and sale.updated_at.replace(tzinfo=None) == source_updated_at.replace(tzinfo=None)
                     and (source_status is None or sale.status == source_status)
                     and sale.id in existing_sale_ids_with_items
                 ):
