@@ -1562,6 +1562,25 @@
 .dark .ov-radial-main .ov-node-icon svg {
   filter: drop-shadow(0 0 5px currentColor);
 }
+.dark .ov-radial-main .ov-ring-node-setup .ov-node-icon {
+  color: #e6c3ff !important;
+  background: linear-gradient(145deg, #3d3c58, #2a3045);
+  border-color: #8174a8;
+  box-shadow:
+    0 0 0 6px rgba(211, 187, 255, 0.16),
+    0 0 22px rgba(184, 144, 255, 0.2),
+    0 9px 26px rgba(0, 0, 0, 0.28);
+}
+.dark .ov-radial-main .ov-ring-node-setup > :is(button, a):hover .ov-node-icon,
+.dark .ov-radial-main .ov-ring-node-setup > :is(button, a):focus-visible .ov-node-icon,
+.dark .ov-radial-main .ov-ring-node-setup.ov-node-active .ov-node-icon {
+  color: #f3ddff !important;
+  border-color: #c2aff0;
+  box-shadow:
+    0 0 0 8px rgba(211, 187, 255, 0.23),
+    0 0 28px rgba(184, 144, 255, 0.34),
+    0 12px 30px rgba(0, 0, 0, 0.3);
+}
 .dark .ov-ai-bar.ov-ai-composer {
   background: rgba(24, 33, 47, 0.94);
   border-color: #53647a;

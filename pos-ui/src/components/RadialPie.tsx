@@ -240,7 +240,7 @@ export function RadialPie({
           return (
             <li
               key={item.id}
-              className={cn("ov-ring-node", selected && "ov-node-active")}
+              className={cn("ov-ring-node", `ov-ring-node-${item.id}`, selected && "ov-node-active")}
               style={
                 listMode
                   ? undefined
