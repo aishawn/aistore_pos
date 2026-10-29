@@ -1139,6 +1139,10 @@ async def push_pos_snapshot(
                 if job is not None:
                     job.payload = {**(job.payload or {}), "sales_offset": offset, "sale_total": total_sales}
                 db.commit()
+        if include_sales and result["sales_imported"] != total_sales:
+            result["mirror_errors"].append(
+                f"sales import incomplete: expected {total_sales}, imported {result['sales_imported']}"
+            )
         result.update({
             "status": "failed" if result["mirror_errors"] else "completed",
             "error": "; ".join(result["mirror_errors"]) if result["mirror_errors"] else None,

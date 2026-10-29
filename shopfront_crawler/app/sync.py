@@ -46,6 +46,17 @@ def parse_decimal(value: Any) -> Decimal | None:
         return None
 
 
+def merge_sale_detail(row: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any]:
+    """Merge a complete Sale response without discarding report fields."""
+    merged = dict(row)
+    for key, value in detail.items():
+        # A detail response is authoritative when it supplies a value, but a
+        # partial response must not erase items/payments already present.
+        if value not in (None, "", [], {}):
+            merged[key] = value
+    return merged
+
+
 def first(row: dict[str, Any], *names: str) -> Any:
     for name in names:
         if name in row:
@@ -327,7 +338,12 @@ async def sync_store(
                     try:
                         detail = await client.fetch_sale_detail(token, str(sale_id), settings.shopfront_sale_detail_query)
                         if isinstance(detail, dict):
-                            sale.raw_payload = detail
+                            # Detail queries often contain the only complete
+                            # items/payments payload. Merge it into the row
+                            # before processing structured fields so names,
+                            # images and payments are not stranded in JSON.
+                            row = merge_sale_detail(row, detail)
+                            sale.raw_payload = row
                     except ShopfrontError:
                         # The report remains usable when a tenant's GraphQL schema lacks the optional detail query.
                         pass

@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app import main
 from app.db import Base
 from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
-from app.sync import _upsert_sale_product
+from app.sync import _upsert_sale_product, merge_sale_detail
 
 
 @pytest.fixture
@@ -155,6 +155,18 @@ async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, m
     assert result["error"] == "POS temporarily unavailable"
     assert result["mirror_errors"]
     assert FakePosClient.instances[0].closed is True
+
+
+def test_merge_sale_detail_preserves_existing_fields_when_detail_is_partial():
+    merged = merge_sale_detail(
+        {"id": "sale-1", "items": [{"id": "line-1"}], "payments": [{"id": "p-1"}]},
+        {"items": [], "payments": [{"id": "p-2"}], "updatedAt": "2026-10-29T00:00:00Z"},
+    )
+
+    assert merged["id"] == "sale-1"
+    assert merged["items"] == [{"id": "line-1"}]
+    assert merged["payments"] == [{"id": "p-2"}]
+    assert merged["updatedAt"] == "2026-10-29T00:00:00Z"
 
 
 @pytest.mark.asyncio
