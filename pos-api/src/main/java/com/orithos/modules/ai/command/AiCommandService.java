@@ -41,13 +41,15 @@ public class AiCommandService {
     private final JdbcTemplate jdbc;
     private final AiCommandParser commandParser;
     private final boolean enabled;
+    private final boolean executionEnabled;
 
     public AiCommandService(AiCommandRepository repository, ObjectMapper mapper,
                             TenantContextFactory tenantContextFactory, ProductMapper productMapper,
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
                             AiCommandParser commandParser,
-                            @Value("${app.ai.commands.enabled:false}") boolean enabled) {
+                            @Value("${app.ai.commands.enabled:false}") boolean enabled,
+                            @Value("${app.ai.commands.execution-enabled:false}") boolean executionEnabled) {
         this.repository = repository;
         this.mapper = mapper;
         this.tenantContextFactory = tenantContextFactory;
@@ -58,6 +60,7 @@ public class AiCommandService {
         this.jdbc = jdbc;
         this.commandParser = commandParser;
         this.enabled = enabled;
+        this.executionEnabled = executionEnabled;
     }
 
     public CommandResponse parse(ParseRequest request) {
@@ -101,6 +104,10 @@ public class AiCommandService {
     @Transactional
     public CommandResponse confirm(UUID id, ConfirmRequest request) {
         requireEnabled();
+        if (!executionEnabled) {
+            throw new BusinessException(50303,
+                    "AI command execution is disabled. Preview is available; enable the execution switch only after Odoo UAT.");
+        }
         AdminAccess.requireAdmin();
         TenantContext tenant = tenantContextFactory.fromSecurity();
         AiCommandRepository.Row row = owned(id, tenant);

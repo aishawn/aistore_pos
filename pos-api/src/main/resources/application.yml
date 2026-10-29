@@ -123,6 +123,9 @@ app:
     enabled: ${AI_ENABLED:false}
     commands:
       enabled: ${AI_COMMANDS_ENABLED:false}
+      # Preview can be enabled for manual testing; execution stays off until Odoo UAT,
+      # tenant scoping and readback checks are complete.
+      execution-enabled: ${AI_COMMANDS_EXECUTION_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
     # Use the configured primary DashScope model when it supports native multimodal
