@@ -172,6 +172,12 @@ public class AiAssistantController {
         return ApiResult.ok(metricsService.get(hours));
     }
 
+    /** Administrator-only, non-sensitive audit schema diagnostics. */
+    @GetMapping("/metrics/diagnostics")
+    public ApiResult<Map<String, Object>> metricsDiagnostics() {
+        return ApiResult.ok(metricsService.auditDiagnostics());
+    }
+
     /**
      * Cloud speech-to-text (DashScope Qwen-ASR). Frontend falls back to Web Speech API on 503/error.
      *

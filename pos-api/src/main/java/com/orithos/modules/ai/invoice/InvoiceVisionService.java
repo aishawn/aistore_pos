@@ -6,6 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.DashScopeModelRouting;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.report.TenantContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,34 +63,42 @@ public class InvoiceVisionService {
             You are reading a photo of a liquor-store supplier TAX INVOICE for a POS.
             Extract the invoice. Reply JSON only, no markdown.
             {
-              "supplierName": "",
-              "abn": "",
-              "website": "",
-              "invoiceNumber": "",
-              "invoiceDate": "YYYY-MM-DD",
-              "customerName": "",
-              "customerAddress": "",
-              "attn": "",
-              "phone": "",
-              "deliveryFee": 0,
-              "gstIncluded": 0,
-              "totalPayable": 0,
-              "totalCases": 0,
-              "notes": "",
+              "supplierName": null,
+              "abn": null,
+              "website": null,
+              "invoiceNumber": null,
+              "invoiceDate": null,
+              "customerName": null,
+              "customerAddress": null,
+              "attn": null,
+              "phone": null,
+              "deliveryFee": null,
+              "gstIncluded": null,
+              "totalPayable": null,
+              "totalCases": null,
+              "notes": null,
               "lines": [
                 {
-                  "description": "",
-                  "brand": "",
-                  "packQty": 0,
-                  "qtyCases": 0,
-                  "unitPrice": 0,
-                  "lineTotal": 0
+                  "description": null,
+                  "brand": null,
+                  "packQty": null,
+                  "qtyCases": null,
+                  "unitPrice": null,
+                  "lineTotal": null
                 }
               ]
             }
             Dates are Australian DD/MM/YYYY on the paper; convert invoiceDate to YYYY-MM-DD.
             Skip empty wine/beer header rows. packQty is units per case. qtyCases is the Qty column (cases).
             unitPrice is the Price column (per case, GST inclusive). Use numbers, not currency symbols.
+            Transcribe only values visibly printed on the invoice. Never calculate missing values or change printed values to make them agree.
+            Compare printed figures only to detect a conflict; if the printed total differs from printed subtotal, GST, or line totals, preserve each visible value and state the conflict in notes for human review.
+            For every numeric field, return a JSON number without currency symbols; never return true/false or a formatted currency string.
+            gstIncluded is the numeric tax amount printed next to a GST, GST amount, or GST included label. Do not require the exact words "GST included" and do not infer GST from totals or line items. If no GST amount is printed, return null.
+            If a field is absent, obscured, or uncertain, return JSON null. Do not infer an obscured amount from line items or other totals.
+            Do not infer totalPayable from line items, or line values from multiplication. If printed totals conflict, preserve the printed values and state "Totals conflict; human review required" in notes.
+            If any key amount or identifier is obscured or uncertain, set that field to null, state "Human review required", and name the field in notes.
+            Never return a value for a field that notes explicitly describe as obscured or uncertain.
             """;
 
     private final AiProperties properties;
@@ -93,14 +106,20 @@ public class InvoiceVisionService {
     private final String apiKey;
     private final String baseUrl;
     private final RestClient restClient;
+    private final AiGateway aiGateway;
+    private final TenantContextFactory tenantContextFactory;
 
     public InvoiceVisionService(
             AiProperties properties,
             ObjectMapper objectMapper,
+            AiGateway aiGateway,
+            TenantContextFactory tenantContextFactory,
             @Value("${spring.ai.dashscope.api-key:}") String apiKey,
             @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.aiGateway = aiGateway;
+        this.tenantContextFactory = tenantContextFactory;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
                 ? "https://dashscope.aliyuncs.com"
@@ -112,7 +131,7 @@ public class InvoiceVisionService {
     }
 
     public TaxInvoiceRead read(MultipartFile file) {
-        if (!StringUtils.hasText(apiKey)) {
+        if (aiGateway == null && !StringUtils.hasText(apiKey)) {
             throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
         }
         if (file == null || file.isEmpty()) {
@@ -158,6 +177,15 @@ public class InvoiceVisionService {
         body.put("stream", false);
 
         try {
+            String text;
+            if (aiGateway != null) {
+                TenantContext scope = tenantContextFactory.fromSecurity();
+                Long outlet = scope.requireOutletId();
+                if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
+                text = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
+                                com.orithos.config.CorrelationIdContext.current()),
+                        AiTask.VISION, PROMPT, mime, bytes, null).value();
+            } else {
             JsonNode root = restClient.post()
                     .uri(multimodal
                             ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
@@ -167,7 +195,8 @@ public class InvoiceVisionService {
                     .body(body)
                     .retrieve()
                     .body(JsonNode.class);
-            String text = extractText(root);
+            text = extractText(root);
+            }
             TaxInvoiceRead read = parse(text, objectMapper);
             if (read == null || (!StringUtils.hasText(read.invoiceNumber())
                     && !StringUtils.hasText(read.supplierName())

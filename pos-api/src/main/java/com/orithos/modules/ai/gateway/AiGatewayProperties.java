@@ -15,6 +15,8 @@ public class AiGatewayProperties {
     private int tokensPerHour = 200000;
     private String primaryModel = "qwen-plus";
     private String fallbackModel = "qwen-flash";
+    private String transcriptionModel = "qwen3-asr-flash";
+    private String visionModel = "qwen3.8-flash";
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -32,4 +34,8 @@ public class AiGatewayProperties {
     public void setPrimaryModel(String primaryModel) { if (primaryModel != null && !primaryModel.isBlank()) this.primaryModel = primaryModel.trim(); }
     public String getFallbackModel() { return fallbackModel; }
     public void setFallbackModel(String fallbackModel) { if (fallbackModel != null && !fallbackModel.isBlank()) this.fallbackModel = fallbackModel.trim(); }
+    public String getTranscriptionModel() { return transcriptionModel; }
+    public void setTranscriptionModel(String transcriptionModel) { if (transcriptionModel != null && !transcriptionModel.isBlank()) this.transcriptionModel = transcriptionModel.trim(); }
+    public String getVisionModel() { return visionModel; }
+    public void setVisionModel(String visionModel) { if (visionModel != null && !visionModel.isBlank()) this.visionModel = visionModel.trim(); }
 }

@@ -1,15 +1,27 @@
 package com.orithos.modules.ai.gateway;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.common.BusinessException;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.DashScopeModelRouting;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Provider adapter for the existing Spring AI DashScope client. The adapter
@@ -23,10 +35,115 @@ public final class DashScopeAiGateway implements AiGateway {
 
     private final ObjectProvider<ChatClient> clients;
     private final AiGatewayProperties properties;
+    private final AiGatewayQuotaService quota;
+    private final AiGatewayUsageRecorder usageRecorder;
+    private final ObjectMapper objectMapper;
+    private final RestClient mediaClient;
+    private final String apiKey;
 
-    public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties) {
+    public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
+                              AiGatewayQuotaService quota,
+                              AiGatewayUsageRecorder usageRecorder,
+                              ObjectMapper objectMapper,
+                              @Value("${spring.ai.dashscope.api-key:}") String apiKey,
+                              @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.clients = clients;
         this.properties = properties;
+        this.quota = quota;
+        this.usageRecorder = usageRecorder;
+        this.objectMapper = objectMapper;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        String normalizedBaseUrl = baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", "");
+        this.mediaClient = RestClient.builder().baseUrl(normalizedBaseUrl).build();
+    }
+
+    @Override
+    public AiCompletion<String> completeMedia(AiTenantContext tenant, AiTask task, String prompt,
+                                               String mimeType, byte[] media, String languageHint) {
+        if (tenant == null || (task != AiTask.TRANSCRIPTION && task != AiTask.VISION)) {
+            throw new IllegalArgumentException("media task and tenant are required");
+        }
+        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        if (!StringUtils.hasText(apiKey)) throw new IllegalStateException("AI provider is not configured");
+        if (media == null || media.length == 0) throw new IllegalArgumentException("media is required");
+        String model = modelFor(task, false);
+        String dataUri = "data:" + mimeType + ";base64," + Base64.getEncoder().encodeToString(media);
+        Map<String, Object> body = task == AiTask.TRANSCRIPTION
+                ? transcriptionBody(model, dataUri, languageHint)
+                : visionBody(model, dataUri, mimeType, prompt);
+        String uri = task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
+                ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH : "/compatible-mode/v1/chat/completions";
+        RuntimeException last = null;
+        for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
+            try {
+                quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
+                Instant started = Instant.now();
+                JsonNode response = mediaClient.post().uri(uri).contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + apiKey).body(body).retrieve().body(JsonNode.class);
+                String text = extractText(response);
+                if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
+                Integer[] usage = usageTokens(response);
+                return completed(tenant, task, new AiCompletion<>(text, PROVIDER, model, usage[0], usage[1],
+                        Duration.between(started, Instant.now()), false));
+            } catch (BusinessException rejected) {
+                throw rejected;
+            } catch (RuntimeException failure) {
+                last = failure;
+                if (attempt < properties.getMaxRetries()) sleepBackoff(attempt);
+            }
+        }
+        log.warn("AI media request failed task={} correlationId={} type={}", task, tenant.correlationId(),
+                last == null ? "unknown" : last.getClass().getSimpleName());
+        throw last == null ? new IllegalStateException("AI provider request failed") : last;
+    }
+
+    private static Map<String, Object> transcriptionBody(String model, String dataUri, String language) {
+        Map<String, Object> audio = Map.of("data", dataUri);
+        Map<String, Object> item = Map.of("type", "input_audio", "input_audio", audio);
+        Map<String, Object> message = Map.of("role", "user", "content", List.of(item));
+        Map<String, Object> options = new LinkedHashMap<>();
+        options.put("enable_itn", true);
+        if (StringUtils.hasText(language)) options.put("language", language);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model); body.put("messages", List.of(message));
+        body.put("stream", false); body.put("asr_options", options);
+        return body;
+    }
+
+    private static Map<String, Object> visionBody(String model, String dataUri, String mime, String prompt) {
+        boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(model);
+        List<Map<String, Object>> content = multimodal
+                ? List.of(Map.of("image", dataUri), Map.of("text", prompt))
+                : List.of(Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
+                Map.of("type", "text", "text", prompt));
+        Map<String, Object> message = Map.of("role", "user", "content", content);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        if (multimodal) {
+            body.put("input", Map.of("messages", List.of(message)));
+            body.put("parameters", Map.of("result_format", "message"));
+            body.put("multiModel", true);
+        } else body.put("messages", List.of(message));
+        body.put("stream", false);
+        return body;
+    }
+
+    private static String extractText(JsonNode root) {
+        if (root == null) return null;
+        JsonNode choices = root.path("choices");
+        if (!choices.isArray()) choices = root.path("output").path("choices");
+        if (!choices.isArray() || choices.isEmpty()) return null;
+        JsonNode content = choices.get(0).path("message").path("content");
+        if (content.isTextual()) return content.asText();
+        if (content.isArray()) {
+            StringBuilder text = new StringBuilder();
+            for (JsonNode part : content) {
+                if (part.hasNonNull("text")) text.append(part.get("text").asText());
+                else if (part.isTextual()) text.append(part.asText());
+            }
+            return text.toString();
+        }
+        return null;
     }
 
     @Override
@@ -48,10 +165,13 @@ public final class DashScopeAiGateway implements AiGateway {
         String model = modelFor(task, false);
         for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
             try {
+                quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                T value = call(client, model, prompt, normalized, outputType);
-                return new AiCompletion<>(value, PROVIDER, model, 0, 0,
-                        Duration.between(started, Instant.now()), false);
+                CallOutcome<T> outcome = call(client, model, prompt, normalized, outputType);
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
+                        outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
+            } catch (BusinessException rejected) {
+                throw rejected;
             } catch (RuntimeException failure) {
                 last = failure;
                 if (attempt < properties.getMaxRetries()) {
@@ -63,10 +183,13 @@ public final class DashScopeAiGateway implements AiGateway {
         String fallback = modelFor(task, true);
         if (!fallback.equals(model)) {
             try {
+                quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                T value = call(client, fallback, prompt, normalized, outputType);
-                return new AiCompletion<>(value, PROVIDER, fallback, 0, 0,
-                        Duration.between(started, Instant.now()), true);
+                CallOutcome<T> outcome = call(client, fallback, prompt, normalized, outputType);
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
+                        outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
+            } catch (BusinessException rejected) {
+                throw rejected;
             } catch (RuntimeException failure) {
                 last = failure;
             }
@@ -76,8 +199,65 @@ public final class DashScopeAiGateway implements AiGateway {
         throw last == null ? new IllegalStateException("AI provider request failed") : last;
     }
 
+    @Override
+    public AiCompletion<String> completeWithTools(AiTenantContext tenant, AiTask task, PromptVersion prompt,
+                                                   String input, String systemPrompt, Object... tools) {
+        if (tenant == null || task == null || prompt == null) throw new IllegalArgumentException("AI gateway request is incomplete");
+        if (!properties.isEnabled()) throw new IllegalStateException("AI gateway is disabled");
+        String normalized = AiGatewayPolicy.validateInput(input, properties.getMaxInputChars());
+        ChatClient client = clients.getIfAvailable();
+        if (client == null) throw new IllegalStateException("AI provider is unavailable");
+        RuntimeException last = null;
+        String model = modelFor(task, false);
+        for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
+            try {
+                quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), systemPrompt, normalized));
+                Instant started = Instant.now();
+                var promptSpec = client.prompt().system(systemPrompt).user(normalized)
+                        .options(DashScopeChatOptions.builder().model(model)
+                                .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model))
+                                .temperature(0.1).maxToken(1024).build());
+                if (tools != null && tools.length > 0) promptSpec = promptSpec.tools(tools);
+                var response = promptSpec.call();
+                String value = response.content();
+                if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
+                Integer[] usage = usageTokens(response.chatResponse());
+                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, model, usage[0], usage[1],
+                        Duration.between(started, Instant.now()), false));
+            } catch (BusinessException rejected) {
+                throw rejected;
+            } catch (RuntimeException failure) {
+                last = failure;
+                if (attempt < properties.getMaxRetries()) sleepBackoff(attempt);
+            }
+        }
+        String fallback = modelFor(task, true);
+        if (!fallback.equals(model)) {
+            try {
+                quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), systemPrompt, normalized));
+                Instant started = Instant.now();
+                var promptSpec = client.prompt().system(systemPrompt).user(normalized)
+                        .options(DashScopeChatOptions.builder().model(fallback)
+                                .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(fallback))
+                                .temperature(0.1).maxToken(1024).build());
+                if (tools != null && tools.length > 0) promptSpec = promptSpec.tools(tools);
+                var response = promptSpec.call();
+                String value = response.content();
+                if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
+                Integer[] usage = usageTokens(response.chatResponse());
+                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, fallback, usage[0], usage[1],
+                        Duration.between(started, Instant.now()), true));
+            } catch (BusinessException rejected) {
+                throw rejected;
+            } catch (RuntimeException failure) { last = failure; }
+        }
+        log.warn("AI tool request failed task={} correlationId={} type={}", task, tenant.correlationId(),
+                last == null ? "unknown" : last.getClass().getSimpleName());
+        throw last == null ? new IllegalStateException("AI provider request failed") : last;
+    }
+
     @SuppressWarnings("unchecked")
-    private static <T> T call(ChatClient client, String model, PromptVersion prompt,
+    private static <T> CallOutcome<T> call(ChatClient client, String model, PromptVersion prompt,
                               String input, Class<T> outputType) {
         var response = client.prompt()
                 .system("You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
@@ -88,16 +268,50 @@ public final class DashScopeAiGateway implements AiGateway {
                         .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model))
                         .temperature(0.1).maxToken(1024).build())
                 .call();
+        Integer[] usage = usageTokens(response.chatResponse());
         if (String.class.equals(outputType)) {
-            return (T) response.content();
+            return new CallOutcome<>((T) response.content(), usage[0], usage[1]);
         }
-        return response.entity(outputType);
+        return new CallOutcome<>(response.entity(outputType), usage[0], usage[1]);
+    }
+
+    private static Integer[] usageTokens(org.springframework.ai.chat.model.ChatResponse response) {
+        if (response == null || response.getMetadata() == null) return new Integer[]{null, null};
+        return usageTokens(response.getMetadata().getUsage());
+    }
+
+    private static Integer[] usageTokens(Usage usage) {
+        return usage == null
+                ? new Integer[]{null, null}
+                : new Integer[]{nonNegative(usage.getPromptTokens()), nonNegative(usage.getCompletionTokens())};
+    }
+
+    private static Integer[] usageTokens(JsonNode response) {
+        JsonNode usage = response == null ? null : response.path("usage");
+        if (usage == null || usage.isMissingNode()) usage = response == null ? null : response.path("output").path("usage");
+        if (usage == null || usage.isMissingNode()) return new Integer[]{null, null};
+        JsonNode input = usage.path("prompt_tokens");
+        JsonNode output = usage.path("completion_tokens");
+        return new Integer[]{input.isNumber() ? nonNegative(input.asInt()) : null,
+                output.isNumber() ? nonNegative(output.asInt()) : null};
+    }
+
+    private static int nonNegative(Integer value) { return value == null ? 0 : Math.max(0, value); }
+    private static int nonNegative(int value) { return Math.max(0, value); }
+
+    private record CallOutcome<T>(T value, Integer inputTokens, Integer outputTokens) { }
+
+    private <T> AiCompletion<T> completed(AiTenantContext tenant, AiTask task, AiCompletion<T> completion) {
+        usageRecorder.recordSuccess(tenant, task, completion);
+        return completion;
     }
 
     private String modelFor(AiTask task, boolean fallback) {
         if (fallback) return properties.getFallbackModel();
         return switch (task) {
             case CLASSIFICATION -> properties.getFallbackModel();
+            case TRANSCRIPTION -> properties.getTranscriptionModel();
+            case VISION -> properties.getVisionModel();
             default -> properties.getPrimaryModel();
         };
     }

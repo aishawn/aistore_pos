@@ -151,6 +151,8 @@ app:
       tokens-per-hour: ${AI_GATEWAY_TOKENS_PER_HOUR:200000}
       primary-model: ${AI_GATEWAY_PRIMARY_MODEL:${AI_DASHSCOPE_MODEL:qwen-plus}}
       fallback-model: ${AI_GATEWAY_FALLBACK_MODEL:qwen-flash}
+      transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}}
+      vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}}
 
 # 日志级别
 logging:

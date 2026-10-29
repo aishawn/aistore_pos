@@ -86,6 +86,23 @@ class InvoiceVisionServiceTest {
     }
 
     @Test
+    void absentTaxAndTotalsStayNullInsteadOfBeingDefaulted() {
+        TaxInvoiceRead read = InvoiceVisionService.parse("""
+                {
+                  "supplierName": "Synthetic Test Supplier Pty Ltd",
+                  "gstIncluded": null,
+                  "totalPayable": null,
+                  "lines": [{"description": "Sparkling Water", "lineTotal": null}]
+                }
+                """, mapper);
+
+        assertNotNull(read);
+        assertNull(read.gstIncluded());
+        assertNull(read.totalPayable());
+        assertNull(read.lines().get(0).lineTotal());
+    }
+
+    @Test
     void malformedFieldsRemainUncertainWhileValidLinesAreKept() {
         TaxInvoiceRead read = InvoiceVisionService.parse("""
                 {

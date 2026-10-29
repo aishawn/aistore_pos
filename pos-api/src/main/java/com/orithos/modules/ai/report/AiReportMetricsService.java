@@ -31,6 +31,28 @@ public class AiReportMetricsService {
         return buildForVendor(vendorId, hours, since, generatedAt);
     }
 
+    /**
+     * Admin-only, non-sensitive schema diagnostics for investigating missing
+     * audit metrics without exposing database connection details.
+     */
+    public Map<String, Object> auditDiagnostics() {
+        AdminAccess.requireAdmin();
+        AuthUser user = CurrentUser.get();
+        long vendorId = user.vendorId() == null ? TenantContext.DEFAULT_VENDOR_ID : user.vendorId();
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            result.put("tableExists", mapper.auditTableExists());
+            result.put("allowedColumnType", mapper.allowedColumnType());
+            result.put("insertPrivilege", mapper.auditInsertPrivilege());
+            result.put("totalRows", mapper.auditRowCount());
+            result.put("vendorRows", mapper.auditVendorRowCount(vendorId));
+            result.put("vendorId", vendorId);
+        } catch (RuntimeException error) {
+            result.put("diagnosticError", error.getClass().getSimpleName());
+        }
+        return result;
+    }
+
     /** Platform rollup helper — no admin gate; caller must enforce platform access. */
     public AiReportMetricsResponse forVendor(long vendorId, int requestedHours) {
         int hours = Math.max(1, Math.min(requestedHours, 24 * 7));

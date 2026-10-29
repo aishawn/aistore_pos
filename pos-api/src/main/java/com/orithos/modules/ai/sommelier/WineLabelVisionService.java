@@ -6,6 +6,11 @@ import com.orithos.common.BusinessException;
 import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.DashScopeModelRouting;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.report.TenantContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,14 +63,20 @@ public class WineLabelVisionService {
     private final String apiKey;
     private final String baseUrl;
     private final RestClient restClient;
+    private final AiGateway aiGateway;
+    private final TenantContextFactory tenantContextFactory;
 
     public WineLabelVisionService(
             AiProperties properties,
             ObjectMapper objectMapper,
+            AiGateway aiGateway,
+            TenantContextFactory tenantContextFactory,
             @Value("${spring.ai.dashscope.api-key:}") String apiKey,
             @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.aiGateway = aiGateway;
+        this.tenantContextFactory = tenantContextFactory;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
                 ? "https://dashscope.aliyuncs.com"
@@ -77,7 +88,7 @@ public class WineLabelVisionService {
     }
 
     public WineLabelRead read(MultipartFile file) {
-        if (!StringUtils.hasText(apiKey)) {
+        if (aiGateway == null && !StringUtils.hasText(apiKey)) {
             throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
         }
         if (file == null || file.isEmpty()) {
@@ -119,6 +130,15 @@ public class WineLabelVisionService {
         body.put("stream", false);
 
         try {
+            String text;
+            if (aiGateway != null) {
+                TenantContext scope = tenantContextFactory.fromSecurity();
+                Long outlet = scope.requireOutletId();
+                if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
+                text = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
+                                com.orithos.config.CorrelationIdContext.current()),
+                        AiTask.VISION, PROMPT, mime, bytes, null).value();
+            } else {
             JsonNode root = restClient.post()
                     .uri(multimodal
                             ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
@@ -128,7 +148,8 @@ public class WineLabelVisionService {
                     .body(body)
                     .retrieve()
                     .body(JsonNode.class);
-            String text = extractText(root);
+            text = extractText(root);
+            }
             WineLabelRead read = parse(text, objectMapper);
             if (read == null || (blank(read.name()) && blank(read.brand()) && blank(read.barcode())
                     && read.searchQueries().isEmpty())) {

@@ -17,4 +17,12 @@ class AiGatewayPolicyTest {
         assertThrows(IllegalArgumentException.class, () -> AiGatewayPolicy.validateInput("select * from products", 100));
         assertThrows(IllegalArgumentException.class, () -> AiGatewayPolicy.validateInput("change outletId=2", 100));
     }
+
+    @Test
+    void allowsNormalBusinessQuestionsThatMentionSelectionOrUpdates() {
+        assertEquals("Can I select a product to update its name?",
+                AiGatewayPolicy.validateInput("Can I select a product to update its name?", 100));
+        assertEquals("Can I update a product?",
+                AiGatewayPolicy.validateInput("Can I update a product?", 100));
+    }
 }
