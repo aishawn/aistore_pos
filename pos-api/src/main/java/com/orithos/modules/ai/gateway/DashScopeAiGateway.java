@@ -77,10 +77,11 @@ public final class DashScopeAiGateway implements AiGateway {
                 : visionBody(model, dataUri, mimeType, prompt);
         String uri = task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
                 ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH : "/compatible-mode/v1/chat/completions";
+        // Reserve once per logical media request; retries reuse this reservation.
+        quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
         RuntimeException last = null;
         for (int attempt = 0; attempt <= properties.getMaxRetries(); attempt++) {
             try {
-                quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
                 Instant started = Instant.now();
                 JsonNode response = mediaClient.post().uri(uri).contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + apiKey).body(body).retrieve().body(JsonNode.class);
