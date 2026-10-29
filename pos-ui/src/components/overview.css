@@ -1494,10 +1494,90 @@
 
 .dark .ov-workspace {
   background:
-    radial-gradient(ellipse at 12% 8%, rgba(251, 146, 60, 0.1), transparent 34%),
-    radial-gradient(ellipse at 88% 70%, rgba(82, 170, 202, 0.1), transparent 42%),
-    linear-gradient(135deg, rgba(21, 28, 40, 0.88), rgba(28, 39, 56, 0.84)),
+    radial-gradient(ellipse at 12% 8%, rgba(251, 146, 60, 0.07), transparent 34%),
+    radial-gradient(ellipse at 88% 70%, rgba(82, 170, 202, 0.07), transparent 42%),
+    linear-gradient(135deg, rgba(21, 28, 40, 0.95), rgba(28, 39, 56, 0.93)),
     url("/images/workspace/background.webp") center / cover no-repeat;
+}
+.dark .ov-workspace .ov-summary {
+  background: linear-gradient(115deg, #222d3d 0%, #202a38 58%, #1e2938 100%);
+  border-color: #43536a;
+  box-shadow: inset 0 1px rgba(224, 234, 247, 0.07), 0 12px 30px rgba(0, 0, 0, 0.16);
+}
+.dark .ov-workspace .ov-summary-art {
+  mix-blend-mode: screen;
+  opacity: 0.08;
+}
+.dark .ov-workspace .ov-summary-icon {
+  color: #ffd2ad;
+  background: linear-gradient(145deg, #513a30, #382d2b);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 173, 0.22);
+}
+.dark .ov-workspace .ov-section-label h2 {
+  color: var(--brand-ink-strong);
+}
+.dark .ov-workspace .ov-section-label > span {
+  color: var(--brand-muted);
+}
+.dark .ov-workspace .ov-module {
+  background: linear-gradient(145deg, #263447 0%, #202a38 72%, #1d2735 100%);
+  border-color: #43536a;
+  box-shadow: inset 0 1px rgba(224, 234, 247, 0.07), 0 10px 26px rgba(0, 0, 0, 0.17);
+}
+.dark .ov-workspace .ov-module::after {
+  background: linear-gradient(135deg, rgba(225, 236, 250, 0.045), transparent 44%);
+}
+.dark .ov-workspace .ov-module-art {
+  mix-blend-mode: screen;
+  opacity: 0.075;
+  filter: saturate(0.65);
+}
+.dark .ov-workspace .ov-module:hover,
+.dark .ov-workspace .ov-module:focus-visible {
+  border-color: color-mix(in srgb, var(--ov-tone) 68%, #b9c9df);
+  box-shadow:
+    inset 0 1px rgba(224, 234, 247, 0.1),
+    0 0 0 3px color-mix(in srgb, var(--ov-tone) 18%, transparent),
+    0 14px 32px rgba(0, 0, 0, 0.25);
+}
+.dark .ov-workspace .ov-icon {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--ov-icon-tint) 86%, #ffffff 14%),
+    color-mix(in srgb, var(--ov-icon-tint) 96%, #111827 4%));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ov-tone) 48%, #ffffff 18%),
+    0 5px 14px rgba(0, 0, 0, 0.2);
+}
+.dark .ov-workspace .ov-icon svg {
+  color: var(--ov-tone);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+.dark .ov-workspace .ov-card-arrow {
+  background: color-mix(in srgb, var(--ov-tint) 82%, #ffffff 4%);
+  color: var(--ov-tone);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ov-tone) 30%, transparent);
+}
+.dark .ov-workspace .ov-module h3 {
+  color: var(--brand-ink-strong);
+}
+.dark .ov-workspace .ov-module p {
+  color: #bdc8d8;
+}
+.dark .ov-workspace .ov-briefing {
+  background: #202a38;
+  border-color: #43536a;
+  box-shadow: inset 0 1px rgba(224, 234, 247, 0.06), 0 10px 26px rgba(0, 0, 0, 0.14);
+}
+.dark .ov-workspace .ov-actions a {
+  background: #293649;
+  border-radius: 12px;
+}
+.dark .ov-workspace .ov-actions a + a {
+  border-left-color: #43536a;
+}
+.dark .ov-workspace .ov-actions a:hover,
+.dark .ov-workspace .ov-actions a:focus-visible {
+  background: #324258;
 }
 .dark .ov-skeleton > div {
   background: var(--brand-surface-muted);
