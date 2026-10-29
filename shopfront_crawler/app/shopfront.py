@@ -143,7 +143,7 @@ class ShopfrontClient:
         return data.get("data", data)
 
     async def fetch_sales(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
-        query = f'''SELECT BY_NAME, revenue, cost, revenue - cost AS "Profit", timestamp
+        query = f'''SELECT BY_NAME, revenue, cost, timestamp
 FROM sales
 BY outlet
 START '{start}'
@@ -156,7 +156,7 @@ UNCONSOLIDATED'''
                 raise
             # A few historical business dates reject an end date without a
             # time component. Retry that single-day window explicitly.
-            fallback = f'''SELECT BY_NAME, revenue, cost, revenue - cost AS "Profit", timestamp
+            fallback = f'''SELECT BY_NAME, revenue, cost, timestamp
 FROM sales
 BY outlet
 START '{start} 00:00:00'
@@ -169,7 +169,7 @@ UNCONSOLIDATED'''
                 # caller upserts by source ID, so the adjacent-day response is
                 # safe and preserves the target business date.
                 next_day = (date.fromisoformat(end) + timedelta(days=1)).isoformat()
-                adjacent = f'''SELECT BY_NAME, revenue, cost, revenue - cost AS "Profit", timestamp
+                adjacent = f'''SELECT BY_NAME, revenue, cost, timestamp
 FROM sales
 BY outlet
 START '{start}'
