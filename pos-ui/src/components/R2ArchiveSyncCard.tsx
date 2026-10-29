@@ -100,7 +100,7 @@ export function R2ArchiveSyncCard() {
 
   return (
     <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold text-[var(--oh-text)]">Shopfront archive mirror</h2>
@@ -115,11 +115,11 @@ export function R2ArchiveSyncCard() {
             A private, read-only Shopfront snapshot for development and testing. It is kept separate from Orithos products, stock and sales; sync runs only when requested.
           </p>
         </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => void refresh()} disabled={loading || busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+        <div className="flex w-full gap-2 sm:w-auto">
+          <button type="button" onClick={() => void refresh()} disabled={loading || busy} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60 sm:flex-none">
             {loading ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} Refresh
           </button>
-          <button type="button" onClick={() => void syncNow()} disabled={busy || loading || !status?.configured || status.state === "syncing"} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" onClick={() => void syncNow()} disabled={busy || loading || !status?.configured || status.state === "syncing"} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
             {busy || status?.state === "syncing" ? <LoaderCircle size={15} className="animate-spin" /> : <Clock3 size={15} />} Sync now
           </button>
         </div>
