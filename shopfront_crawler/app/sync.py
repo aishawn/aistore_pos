@@ -235,15 +235,22 @@ async def sync_store(
     try:
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
-        try:
-            rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
-        except ShopfrontError as exc:
-            counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         sale_rows: list[dict[str, Any]] = []
         try:
             sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone)
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
+        # Complete GraphQL Sale records are the authoritative source for
+        # summaries because they contain each transaction timestamp, stable ID,
+        # payments and line items. The Reporting API is range-aggregated by
+        # design, so using it first would assign a multi-day total to the
+        # window's first day. Keep it as a degraded fallback only when the
+        # complete Sale query is unavailable.
+        if not sale_rows:
+            try:
+                rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
+            except ShopfrontError as exc:
+                counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         # Reporting rows are the authoritative source for daily aggregates. The
         # GraphQL rows below are the authoritative source for complete sales.
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}
