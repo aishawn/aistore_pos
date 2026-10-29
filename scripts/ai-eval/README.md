@@ -39,6 +39,14 @@ Run the local fixture evaluator:
 node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utterances.jsonl
 ```
 
+Profile a fetched snapshot before using it for evaluation. The report keeps
+missing domains explicit: a product-only snapshot cannot certify sales,
+pricing, or replenishment quality.
+
+```powershell
+node scripts/ai-eval/profile-snapshot.mjs .local/skr-snapshot-live.json .local/skr-snapshot-profile.json
+```
+
 Run against a read-only assistant endpoint by setting `AI_EVAL_ENDPOINT` and
 `AI_EVAL_TOKEN`. The endpoint must be an assistant/query endpoint and must not
 be a command or write endpoint. A failed or unavailable endpoint is reported as
