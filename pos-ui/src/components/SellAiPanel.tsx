@@ -70,7 +70,8 @@ function clampAnchor(anchor: FloatAnchor, width: number, height: number, bottomI
   const margin = 8;
   const minX = width + margin;
   const minY = height + margin;
-  const maxX = Math.max(minX, window.innerWidth - margin);
+  const mobile = window.matchMedia("(max-width: 767px)").matches;
+  const maxX = Math.max(minX, window.innerWidth - (mobile ? 0 : margin));
   const maxY = Math.max(minY, window.innerHeight - bottomInset);
   return {
     x: Math.min(Math.max(minX, anchor.x), maxX),
@@ -84,7 +85,7 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
 
   const margin = 8;
   const minX = width + margin;
-  const maxX = Math.max(minX, window.innerWidth - margin);
+  const maxX = Math.max(minX, window.innerWidth - (mobile ? 0 : margin));
   const minY = height + (mobile ? 64 : margin);
   const maxY = Math.max(minY, window.innerHeight - bottomInset);
   const obstacles = Array.from(document.querySelectorAll<HTMLElement>(
@@ -133,18 +134,21 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
   let best = preferred;
   let bestScore = score(preferred);
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (let y = minY; y <= maxY; y += 32) {
-    for (let x = minX; x <= maxX; x += 32) {
-      const candidate = { x, y };
-      const candidateScore = score(candidate);
-      const distance = (x - preferred.x) ** 2 + (y - preferred.y) ** 2;
-      if (candidateScore < bestScore || (candidateScore === bestScore && distance < bestDistance)) {
-        best = candidate;
-        bestScore = candidateScore;
-        bestDistance = distance;
-      }
+  const consider = (candidate: FloatAnchor) => {
+    const candidateScore = score(candidate);
+    const distance = (candidate.x - preferred.x) ** 2 + (candidate.y - preferred.y) ** 2;
+    if (candidateScore < bestScore || (candidateScore === bestScore && distance < bestDistance)) {
+      best = candidate;
+      bestScore = candidateScore;
+      bestDistance = distance;
     }
+  };
+  for (let y = minY; y <= maxY; y += 32) {
+    for (let x = minX; x <= maxX; x += 32) consider({ x, y });
   }
+  // The stepped scan can miss the exact viewport edge, which is often the
+  // only clear strip beside a full-width mobile card.
+  for (const y of [minY, preferred.y, maxY]) consider({ x: maxX, y });
   return clampAnchor(best, width, height, bottomInset);
 }
 
