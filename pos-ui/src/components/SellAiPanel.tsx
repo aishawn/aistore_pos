@@ -124,7 +124,10 @@ function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bot
   if (mobile) {
     const lowerBottomInset = Math.max(bottomInset, 88);
     const lowerAnchor = { x: window.innerWidth - margin, y: window.innerHeight - lowerBottomInset };
-    if (score(lowerAnchor) <= score(preferred)) return clampAnchor(lowerAnchor, width, height, lowerBottomInset);
+    // Only use the predictable lower position when it is genuinely clear.
+    // Otherwise continue the grid search so the launcher does not cover
+    // async empty states or explanatory copy near the bottom of a page.
+    if (score(lowerAnchor) === 0) return clampAnchor(lowerAnchor, width, height, lowerBottomInset);
   }
 
   let best = preferred;
