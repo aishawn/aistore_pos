@@ -760,6 +760,7 @@ export function SellAiPanel({
   }
 
   useEffect(() => {
+    if (messages.length <= 1 && !busy) return;
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, busy]);
