@@ -43,6 +43,6 @@ export function formatOdooGroupedDate(value: string | null | undefined, options:
   try {
     return new Intl.DateTimeFormat("en-AU", { timeZone: parsed.hasTimezone ? undefined : "UTC", ...options }).format(parsed.date);
   } catch {
-    return value;
+    return value || "—";
   }
 }
