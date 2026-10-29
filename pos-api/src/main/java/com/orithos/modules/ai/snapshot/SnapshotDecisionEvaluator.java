@@ -26,6 +26,15 @@ public class SnapshotDecisionEvaluator {
         for (OdooReadSnapshotRepository.SnapshotRow row : repository.findVersion(tenant, sourceVersion, "PRICE")) {
             Map<String, Object> p = row.payload();
             String id = row.sourceRecordId();
+            if (!hasNumber(p, "listPrice") || !hasNumber(p, "standardPrice")
+                    || inventory.get(id) == null || !hasNumber(inventory.get(id).payload(), "qtyAvailable")) {
+                Map<String, Object> incomplete = new LinkedHashMap<>();
+                incomplete.put("productId", id); incomplete.put("name", p.get("name"));
+                incomplete.put("status", PricingDecisionEngine.Status.INSUFFICIENT_DATA.name());
+                incomplete.put("reason", "price, cost, or inventory data is missing");
+                items.add(incomplete);
+                continue;
+            }
             double units = number(sales.get(id), "units");
             double stock = number(inventory.get(id), "qtyAvailable");
             PricingDecisionEngine.Decision decision = PricingDecisionEngine.decide(
@@ -45,14 +54,27 @@ public class SnapshotDecisionEvaluator {
         List<Map<String, Object>> items = new ArrayList<>();
         for (OdooReadSnapshotRepository.SnapshotRow row : repository.findVersion(tenant, sourceVersion, "INVENTORY")) {
             String id = row.sourceRecordId();
+            Map<String, Object> payload = row.payload();
+            if (!hasNumber(payload, "qtyAvailable") || !hasNumber(payload, "onOrder")
+                    || !hasNumber(payload, "backorder") || !hasNumber(payload, "casePack")
+                    || !Boolean.TRUE.equals(payload.get("supplierAvailable"))) {
+                Map<String, Object> incomplete = new LinkedHashMap<>();
+                incomplete.put("productId", id); incomplete.put("name", payload.get("name"));
+                incomplete.put("status", ReplenishmentDecisionEngine.Status.INCOMPLETE_DATA.name());
+                incomplete.put("explanation", "supplier, on-order, backorder, or case-pack data is missing");
+                items.add(incomplete);
+                continue;
+            }
             double units = number(sales.get(id), "units");
-            double onHand = number(row.payload(), "qtyAvailable");
+            double onHand = number(payload, "qtyAvailable");
             double average = units / 28d;
             ReplenishmentDecisionEngine.Decision decision = ReplenishmentDecisionEngine.decide(
-                    new ReplenishmentDecisionEngine.Input(onHand, 0, 0, average, Math.sqrt(Math.max(average, 0)),
-                            7, 21, 1.65, 1, true));
+                    new ReplenishmentDecisionEngine.Input(onHand, number(payload, "onOrder"),
+                            number(payload, "backorder"), average, Math.sqrt(Math.max(average, 0)),
+                            number(payload, "leadTimeDays"), number(payload, "coverageDays"),
+                            number(payload, "serviceFactor"), number(payload, "casePack"), true));
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("productId", id); item.put("name", row.payload().get("name"));
+            item.put("productId", id); item.put("name", payload.get("name"));
             item.put("status", decision.status().name()); item.put("reorderPoint", decision.reorderPoint());
             item.put("safetyStock", decision.safetyStock()); item.put("suggestedQuantity", decision.suggestedQuantity());
             item.put("explanation", decision.explanation()); items.add(item);
@@ -76,5 +98,16 @@ public class SnapshotDecisionEvaluator {
 
     private static double number(OdooReadSnapshotRepository.SnapshotRow row, String key) {
         return row == null ? 0 : number(row.payload(), key);
+    }
+
+    private static boolean hasNumber(Map<String, Object> payload, String key) {
+        if (payload == null || payload.get(key) == null) return false;
+        if (payload.get(key) instanceof Number) return true;
+        try {
+            Double.parseDouble(payload.get(key).toString());
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 }

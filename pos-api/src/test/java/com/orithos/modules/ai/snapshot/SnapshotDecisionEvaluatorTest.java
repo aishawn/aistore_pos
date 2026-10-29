@@ -32,7 +32,7 @@ class SnapshotDecisionEvaluatorTest {
     }
 
     @Test
-    void replenishmentReplayUsesInventoryAndSalesSnapshot() {
+    void replenishmentReplayReportsIncompleteWhenSupplyInputsAreMissing() {
         String version = "v1";
         when(repository.findVersion(tenant, version, "INVENTORY")).thenReturn(List.of(row("10", Map.of(
                 "name", "Beer", "qtyAvailable", 0))));
@@ -42,7 +42,7 @@ class SnapshotDecisionEvaluatorTest {
 
         assertEquals("replenishment-rule-v1", result.get("algorithm"));
         Map<?, ?> item = (Map<?, ?>) ((List<?>) result.get("items")).get(0);
-        assertEquals("REVIEW", item.get("status"));
+        assertEquals("INCOMPLETE_DATA", item.get("status"));
     }
 
     private static OdooReadSnapshotRepository.SnapshotRow row(String id, Map<String, Object> payload) {
