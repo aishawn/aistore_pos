@@ -255,12 +255,34 @@ UNCONSOLIDATED'''
             "{ products(first: 100) { edges { node { id barcodes { code quantity } taxRate { id name } costTaxRate { id name } } } } }",
             "{ products(first: 100) { edges { node { id suppliers { id name } coreSupplier { id name } lastSupplier { id name } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",
-            "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel reorderLevelSingles reorderLevelCases outlet { id name } } } } } }",
-            "{ products(first: 100) { edges { node { id inventory { quantity reorderAmount reorderAmountSingles reorderAmountCases reorderLimit outlet { id name } } } } } }",
-            "{ products(first: 100) { edges { node { id inventory { quantity maxQuantity maxQuantitySingles maxQuantityCases onOrder outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity reorderAmount reorderLimit outlet { id name } } } } } }",
+            "{ products(first: 100) { edges { node { id inventory { quantity maxQuantity onOrder outlet { id name } } } } } }",
         )
         merged = {str(node.get("id")): dict(node) for node in nodes if isinstance(node, dict) and node.get("id")}
-        for optional_query in optional_queries:
+        # The configured/default query already requests almost every safe
+        # catalog field. Re-running every optional selection for all pages
+        # multiplies a catalog sync into hundreds of unnecessary requests.
+        # Only issue a supplemental query when its fields are absent from the
+        # original selection. A field present with a null value is still a
+        # valid response and must not trigger another full catalog scan.
+        optional_requirements = (
+            ("mdbId", "status", "type", "createdAt", "updatedAt", "deletedAt", "deleted", "tempProduct"),
+            ("category", "brand", "family", "tags"),
+            ("trackInventory", "caseQuantity", "useScales", "useBarcodeTemplates", "usePriceLabel", "requestQuantity", "requestPrice", "minimumOrderQuantity", "preventManualDiscounts", "ignorePriceHostChanges", "ignoreBarcodeHostChanges", "orderNotes", "invoiceNotes"),
+            ("cost", "lastCost", "averageCost", "globalCost", "globalLastCost", "globalAverageCost", "replacementCost", "costPercentage"),
+            ("prices", "quantity", "price", "priceEx", "decimalPlaceLength", "priceSet"),
+            ("barcodes", "code", "quantity", "taxRate", "costTaxRate"),
+            ("suppliers", "coreSupplier", "lastSupplier"),
+            ("inventory", "singleLevel", "caseLevel", "outlet"),
+            ("inventory", "reorderLevel"),
+            ("inventory", "reorderAmount", "reorderLimit"),
+            ("inventory", "maxQuantity", "onOrder"),
+        )
+        for index, optional_query in enumerate(optional_queries):
+            requirement = optional_requirements[index]
+            if all(re.search(rf"\b{re.escape(field)}\b", query) for field in requirement):
+                continue
             try:
                 for node in await self._fetch_connection_nodes(access_token, optional_query, "products"):
                     if not isinstance(node, dict) or not node.get("id"):
