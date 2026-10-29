@@ -363,7 +363,6 @@ async def sync_store(
             counts["phase"] = "sale_lookup"
             counts["current_sale_id"] = sale_id
             run.counts = counts
-            db.commit()
             if sale_id:
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
                 if sale is None:
