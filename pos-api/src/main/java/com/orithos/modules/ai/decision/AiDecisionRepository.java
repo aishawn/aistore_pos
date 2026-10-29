@@ -23,14 +23,20 @@ public class AiDecisionRepository {
     public AiDecisionRepository(JdbcTemplate jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
 
     public UUID insert(TenantContext tenant, String type, Instant asOf, String configVersion, Object decision) {
+        return insert(tenant, type, asOf, configVersion, "odoo-live", "unversioned", Map.of(), decision);
+    }
+
+    public UUID insert(TenantContext tenant, String type, Instant asOf, String configVersion,
+                       String sourceSystem, String sourceVersion, Object dataQuality, Object decision) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO ai_decision_snapshot
                 (id, vendor_id, outlet_id, decision_type, source_system, source_version,
-                 data_as_of, config_version, status, decision_json, created_by)
-                VALUES (?, ?, ?, ?, 'odoo-live', ?, ?, ?, 'PREVIEW', ?::jsonb, ?)
+                 data_as_of, config_version, status, decision_json, data_quality_json, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PREVIEW', ?::jsonb, ?::jsonb, ?)
                 """, id, tenant.vendorId(), tenant.requireOutletId(), type,
-                "unversioned", Timestamp.from(asOf), configVersion, json(decision), tenant.userId());
+                sourceSystem, sourceVersion, Timestamp.from(asOf), configVersion, json(decision),
+                json(dataQuality), tenant.userId());
         return id;
     }
 

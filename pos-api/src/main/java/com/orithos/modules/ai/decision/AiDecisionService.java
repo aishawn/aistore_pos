@@ -4,7 +4,10 @@ import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.pricing.OdooPriceSuggestionClient;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
+import com.orithos.modules.ai.snapshot.OdooReadSnapshotService;
+import com.orithos.modules.ai.snapshot.OdooReadSnapshotSyncResult;
 import com.orithos.security.PermissionAccess;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,29 +21,51 @@ public class AiDecisionService {
     private final OdooReplenishmentClient replenishment;
     private final AiDecisionRepository repository;
     private final PermissionAccess permissions;
+    private final OdooReadSnapshotService snapshots;
 
+    @Autowired
     public AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
-                             AiDecisionRepository repository, PermissionAccess permissions) {
+                             AiDecisionRepository repository, PermissionAccess permissions,
+                             OdooReadSnapshotService snapshots) {
         this.pricing = pricing; this.replenishment = replenishment;
-        this.repository = repository; this.permissions = permissions;
+        this.repository = repository; this.permissions = permissions; this.snapshots = snapshots;
+    }
+
+    /** Compatibility constructor for narrow unit tests that do not exercise the Odoo snapshot boundary. */
+    AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
+                      AiDecisionRepository repository, PermissionAccess permissions) {
+        this(pricing, replenishment, repository, permissions, null);
     }
 
     public Map<String, Object> previewPricing(TenantContext tenant) {
         permissions.requirePermission("ai.price_suggestions");
+        OdooReadSnapshotSyncResult source = syncSnapshot(tenant);
         var result = pricing.review(tenant);
         if (result == null) throw new BusinessException(50320, "Pricing source data is unavailable");
         Instant at = Instant.now();
-        UUID id = repository.insert(tenant, "PRICING", at, "rule-v1", result);
+        UUID id = insert(tenant, "PRICING", at, "rule-v1", source, result);
         return Map.of("snapshotId", id, "type", "PRICING", "status", "PREVIEW", "dataAsOf", at, "result", result);
     }
 
     public Map<String, Object> previewReplenishment(TenantContext tenant) {
         permissions.requirePermission("stock.replenishment");
+        OdooReadSnapshotSyncResult source = syncSnapshot(tenant);
         var result = replenishment.plan(tenant);
         if (result == null) throw new BusinessException(50320, "Replenishment source data is unavailable");
         Instant at = Instant.now();
-        UUID id = repository.insert(tenant, "REPLENISHMENT", at, "weighted-velocity-v1", result);
+        UUID id = insert(tenant, "REPLENISHMENT", at, "weighted-velocity-v1", source, result);
         return Map.of("snapshotId", id, "type", "REPLENISHMENT", "status", "PREVIEW", "dataAsOf", at, "result", result);
+    }
+
+    private OdooReadSnapshotSyncResult syncSnapshot(TenantContext tenant) {
+        return snapshots == null ? null : snapshots.sync(tenant, 56);
+    }
+
+    private UUID insert(TenantContext tenant, String type, Instant at, String config,
+                        OdooReadSnapshotSyncResult source, Object result) {
+        if (source == null) return repository.insert(tenant, type, at, config, result);
+        return repository.insert(tenant, type, source.dataAsOf(), config, "odoo-snapshot",
+                source.sourceVersion(), source.dataQuality(), result);
     }
 
     public List<Map<String, Object>> list(TenantContext tenant, String type, int limit) {
