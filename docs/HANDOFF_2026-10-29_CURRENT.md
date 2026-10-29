@@ -62,14 +62,14 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - 真实额度恢复前曾因当前进程缺少 `INITIAL_ADMIN_PASSWORD` 暂停线上 OCR；凭据随后从本机忽略环境文件安全注入，未写入证据或代码。
 - 认证变量已从本机忽略环境文件安全注入当前进程后完成 Demo 真实 provider OCR：合成税票字段 9/9 PASS，另一个双明细供应商票据样本的供应商、发票号、日期、两条明细、GST 和总额全部 PASS，预览写入边界 PASS，业务写入 0。该样本运行在当前线上 `8b6ad27ef54751b456fccb7c395b3e37d3ac6088`。
 - 同一双明细样本连续重复 3 次均 `apiCode=0`、全部字段 PASS，延迟分别为 27,933ms、30,881ms、18,572ms。当前仅证明小样本可用性；尚未取得 provider 账单成本、真实限流阈值或 provider 不可用时的降级证据。
-- OCR 候选工作树的后端/UI改动仍未提交或部署；线上 OCR 结果验证的是当前已部署 SHA，不应被解释为候选人工复核门禁已上线。
+- OCR 候选工作树的后端/UI改动尚未部署；线上 OCR 结果验证的是当前已部署 SHA，不应被解释为候选人工复核门禁已上线。
 - Demo 硬件/离线边界线上模拟 `docs/UAT_HARDWARE_OFFLINE_ONLINE_2026-10-29_CURRENT.json`：5/5 PASS，设备页明确显示打印机、钱箱、扫码器、EFTPOS 未连接/未验收，离线时阻止结算并解释恢复，0 page errors；仍不能替代客户现场设备验收或证明离线销售已支持。
 - Demo AI availability `docs/UAT_AI_AVAILABILITY_ONLINE_2026-10-29_CURRENT.json`：3/3 PASS，认证配置 `enabled=true`、AI composer 可用、页面无提交业务写入。AI metrics `docs/UAT_AI_METRICS_ONLINE_2026-10-29_CURRENT.json`：9/9 PASS，当前窗口总体 p50=15ms、p95=2693ms，`assistant:search_product` requests=28、p50=789ms、p95=1379ms、estimatedTokens=532；指标成本仍是估算 token，不是 provider 账单。
 - 本机 DashScope 单短问健康探针 `docs/UAT_AI_DASHSCOPE_HEALTH_2026-10-29_CURRENT.json` 为 `BLOCKED`（`ECONNRESET`）；该结果只说明本机直连 provider 网络不稳定，不能推翻已通过的线上应用 OCR 请求，也不能作为 provider 降级验收证据。
 - Wikimedia Commons 三张公开酒标复验 `docs/UAT_SOMMELIER_PUBLIC_LABELS_2026-10-29_RECHECK.json`：前两张 provider OCR 有响应，分别识别 M. Chapoutier / La Bernardine / 2004 与 Veigadares / Rías Baixas Blanco / 2002；第三张返回 `42901 AI provider quota exceeded`，整体 `BLOCKED`。两张均未命中店内商品（预期公开样本未保证店内有对应 SKU）；尚无逐字段人工真值标注，因此不能据此给出酒标准确率百分比。与发票 endpoint 小样本通过并存，说明上游额度/模型限制仍会影响酒标能力。
 - 酒标复验后的线上 AI 指标复读 `docs/UAT_AI_METRICS_ONLINE_2026-10-29_POST_LABELS.json`：24 小时 1,580 requests、1,116 allowed、464 rejected（29.37%）；其中 `assistant:quota` 381 rejected，指标页面仍 HTTP 200，但作为指标种子的 assistant 调用返回 42901，脚本标记 FAIL。代码默认 `AI provider requests/hour=120`、token cap=200,000；这个 outlet 的共享 provider cap 已被消耗，当前不能继续把真实视觉调用当作稳定可用能力。指标只记录 estimated tokens，不含供应商账单费用。
 - Demo 客户组 CRUD `docs/UAT_CUSTOMER_GROUPS_LIVE_CRUD_DEMO_2026-10-29_CURRENT.json`：8/8 PASS，创建、读取、重命名、删除和清理后回读通过，3 个 UAT 写入并确认清理；脚本自身报告 `runtimeMatchesSource=false`，因为脚本来源工作树 HEAD 与线上 SHA 不同，线上 SHA 已由独立 `/api/public/version` 核对。
-- 候选提交 `c113f325`（包含 OCR 代码和交接证据）已在 Java 21（`C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`）执行精确 SHA 的完整 `mvn -B clean verify`：449 tests、0 failures、0 errors、BUILD SUCCESS（50.409s）；候选分支已推送为 `origin/codex/ocr-release-candidate`，尚未合并 `main` 或部署。
+- 原候选提交 `c113f325` 曾在旧 main 上通过 449 tests；随后 owner 并行推进 `main` 到 `9ea4f79d`，候选已重放到该新基线，并保留新的 AI Gateway 接线及 OCR 修正。重放后的代码 SHA `7031f15b` 本机 Java 21 `mvn -B clean verify` 为 472 tests、0 failures、0 errors、BUILD SUCCESS；`pos-ui npm run typecheck` 通过。旧 PR SHA 检查不覆盖重放后的代码；需更新 PR 分支并等待最新 exact-SHA CI。
 - 历史续验记录曾观测到 `c7c87b1aff8dfe4a4ec399a802fe6642fee6c898`；当前线上 SHA 以本节第一条的 `8b6ad27ef54751b456fccb7c395b3e37d3ac6088` 为准。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
