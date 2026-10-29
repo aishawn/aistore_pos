@@ -76,6 +76,42 @@ def _non_empty(value: Any) -> bool:
     return value is not None and value != "" and value != [] and value != {}
 
 
+def _dedupe_sales(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """Collapse duplicate GraphQL edges while retaining the fullest Sale.
+
+    Shopfront can repeat an edge when a date window crosses a pagination
+    boundary. The database and POS use Sale ID as the idempotency key, so
+    counting every returned edge would make a healthy import look incomplete.
+    Merge optional fields from repeated edges and prefer the payload with
+    more line items or payments.
+    """
+    unique: dict[str, dict[str, Any]] = {}
+    without_id: list[dict[str, Any]] = []
+    duplicates = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
+        if not sale_id:
+            without_id.append(row)
+            continue
+        key = str(sale_id)
+        existing = unique.get(key)
+        if existing is None:
+            unique[key] = row
+            continue
+        duplicates += 1
+        for field, value in row.items():
+            if _non_empty(value) and not _non_empty(existing.get(field)):
+                existing[field] = value
+        for field in ("items", "payments"):
+            incoming = row.get(field)
+            current = existing.get(field)
+            if isinstance(incoming, list) and (not isinstance(current, list) or len(incoming) > len(current)):
+                existing[field] = incoming
+    return list(unique.values()) + without_id, duplicates
+
+
 def _upsert_sale_product(
     db: Session,
     store_key: str,
@@ -227,6 +263,9 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat())
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
+        sale_rows, duplicate_sales = _dedupe_sales(sale_rows)
+        if duplicate_sales:
+            counts["duplicate_sales_collapsed"] = duplicate_sales
         # Reporting rows are the authoritative source for daily aggregates. The
         # GraphQL rows below are the authoritative source for complete sales.
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}

@@ -1,5 +1,5 @@
 from app.shopfront import ShopfrontClient
-from app.sync import parse_decimal, verify_webhook
+from app.sync import _dedupe_sales, parse_decimal, verify_webhook
 
 
 def test_authorization_url_contains_required_parameters():
@@ -24,6 +24,18 @@ def test_webhook_signature_verification():
     signature = hmac.new(b"key", timestamp.encode() + body, hashlib.sha256).hexdigest()
     assert verify_webhook(body, signature, timestamp, "key")
     assert not verify_webhook(body, "bad", timestamp, "key")
+
+
+def test_duplicate_sale_edges_are_collapsed_and_merged():
+    rows, duplicates = _dedupe_sales([
+        {"id": "sale-1", "items": [{"id": "line-1"}], "payments": []},
+        {"id": "sale-1", "items": [{"id": "line-1"}, {"id": "line-2"}], "payments": [{"id": "pay-1"}]},
+        {"id": "sale-2", "items": []},
+    ])
+    assert duplicates == 1
+    assert [row["id"] for row in rows] == ["sale-1", "sale-2"]
+    assert len(rows[0]["items"]) == 2
+    assert rows[0]["payments"] == [{"id": "pay-1"}]
 
 
 def test_sale_query_requests_nested_product_fields():
