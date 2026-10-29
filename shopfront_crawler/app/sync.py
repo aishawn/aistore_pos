@@ -409,23 +409,15 @@ async def sync_store(
             run.counts = counts
             if sale_id:
                 sale = existing_sales.get(str(sale_id))
-                source_updated_at = parse_datetime(first(row, "updatedAt", "updated_at"))
-                source_status = first(row, "Status", "status")
-                # A retry of an unchanged sale should be a cheap idempotent
+                # A retry of an already mirrored sale should be a cheap idempotent
                 # no-op. Rewriting the full JSON payload and every line for
                 # already mirrored sales keeps SQLite in a long write
                 # transaction and can make the worker appear stuck on the
                 # first row of a historical window. Modified or incomplete
+                # sales are handled by the dedicated repair task, while new
                 # sales still take the full upsert path below.
                 if (
                     sale is not None
-                    and sale.updated_at is not None
-                    and source_updated_at is not None
-                    # SQLite drops timezone offsets from DateTime columns;
-                    # compare the wall-clock value after removing tzinfo so
-                    # an unchanged source row is recognized on retries.
-                    and sale.updated_at.replace(tzinfo=None) == source_updated_at.replace(tzinfo=None)
-                    and (source_status is None or sale.status == source_status)
                     and sale.id in existing_sale_ids_with_items
                 ):
                     counts["sales"] += 1
