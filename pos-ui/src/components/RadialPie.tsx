@@ -82,18 +82,25 @@ export function RadialPie({
   const id = useId();
   const activeId = pinned || preview;
   const active = destinations.find((item) => item.id === activeId);
+  // The dashboard keeps the radial relationship on phones; modal launchers
+  // remain a list so a small dialog does not become a cramped mini-canvas.
+  const mobileRadial = variant === "page" && compact;
   const listMode =
-    compact || (size.width > 0 && (size.width < 700 || size.height < 430));
+    variant === "modal"
+      ? compact || (size.width > 0 && (size.width < 700 || size.height < 430))
+      : !mobileRadial && size.width > 0 && (size.width < 700 || size.height < 430);
   const originX = size.width / 2;
-  const radius = Math.max(
-    0,
-    Math.min(
-      size.width / 2 - 106,
-      size.height / 2 - 86,
-      (size.width / 2 - 168) / 0.866,
-      218,
-    ),
-  );
+  const radius = mobileRadial
+    ? Math.max(0, Math.min(size.width * 0.34, size.height * 0.31, 122))
+    : Math.max(
+        0,
+        Math.min(
+          size.width / 2 - 106,
+          size.height / 2 - 86,
+          (size.width / 2 - 168) / 0.866,
+          218,
+        ),
+      );
   const close = (restore = false) => {
     const target = pinned || preview;
     setPinned(null);
@@ -144,6 +151,7 @@ export function RadialPie({
       className={cn(
         "ov-ring",
         variant === "modal" && "ov-ring-modal",
+        mobileRadial && "ov-ring-mobile-radial",
         listMode && "ov-ring-list",
         !entered && "opacity-0",
         className,

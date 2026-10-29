@@ -769,6 +769,17 @@
   .ov-radial-intro h2 { font-size: 32px; }
   .ov-radial-main .ov-radial-area { min-height: 0; margin-top: 8px; }
   .ov-radial-main .ov-ring { min-height: 0; }
+  .ov-radial-main .ov-ring-mobile-radial { min-height: 360px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-center { width: 132px; height: 132px; min-height: 132px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-center strong { font-size: 18px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-center > span:last-child { font-size: 12px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-node { width: 94px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-node > :is(button, a) { min-height: 102px; padding: 5px; gap: 6px; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-node-icon { width: 58px; height: 58px; box-shadow: 0 0 0 4px #ffffff8a, 0 7px 18px #25355018; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-node > :is(button, a) > span:last-child { font-size: 13px; line-height: 1.2; }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-node > :is(button, a) > small { display: none; }
+  .ov-radial-main .ov-ring-mobile-radial::before { width: min(100%, 360px); }
+  .ov-radial-main .ov-ring-mobile-radial::after { width: min(86%, 310px); }
   .ov-radial-main .ov-ring-center { width: auto; height: auto; min-height: 112px; box-shadow: 0 0 0 5px #ffffff88, 0 0 0 7px #ffc7a766, 0 12px 32px #e96b2528; }
   .ov-ring-node { width: auto; }
   .ov-radial-main .ov-node-icon { width: 68px; height: 68px; }
@@ -1024,6 +1035,25 @@
 
 .ov-ring-list .ov-node-active {
   grid-column: 1 / -1;
+}
+
+/* Dashboard radial layout on phones: keep the five destinations around the
+ * AI center while scaling the decorative rings to the available width. */
+@media (max-width: 767px) {
+  .ov-radial-main .ov-ring-mobile-radial {
+    min-height: 360px;
+  }
+  .ov-radial-main .ov-ring-mobile-radial .ov-ring-center {
+    width: 132px;
+    height: 132px;
+    min-height: 132px;
+  }
+  .ov-radial-main .ov-ring-mobile-radial::before {
+    width: min(100%, 360px);
+  }
+  .ov-radial-main .ov-ring-mobile-radial::after {
+    width: min(86%, 310px);
+  }
 }
 
 /* Workspace: soft glass surfaces and decorative artwork, isolated from Radial. */
