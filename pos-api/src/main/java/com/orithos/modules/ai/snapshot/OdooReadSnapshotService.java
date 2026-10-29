@@ -108,6 +108,8 @@ public class OdooReadSnapshotService {
             int productCount = 0;
             int inventoryCount = 0;
             int priceCount = 0;
+            int supplierCount = 0;
+            int purchaseLineCount = 0;
             for (Map<String, Object> product : products) {
                 long id = longId(product.get("id"));
                 if (id <= 0) continue;
@@ -134,9 +136,11 @@ public class OdooReadSnapshotService {
 
                 if (supplier != null) {
                     insert(tenant, "SUPPLIER", id, sourceVersion, dataAsOf, "VALID", supplier);
+                    supplierCount++;
                 }
                 if (purchase != null) {
                     insert(tenant, "PURCHASE_LINE", id, sourceVersion, dataAsOf, "VALID", purchase);
+                    purchaseLineCount++;
                 }
 
                 Map<String, Object> price = new LinkedHashMap<>();
@@ -177,7 +181,8 @@ public class OdooReadSnapshotService {
             quality.put("suppliers", suppliers.isEmpty() ? "INCOMPLETE" : "VALID");
             quality.put("purchaseLines", "VALID");
             return new OdooReadSnapshotSyncResult("SYNCED", tenant.vendorId(), outletId, sourceVersion,
-                    dataAsOf, productCount, inventoryCount, priceCount, salesCount, quality);
+                    dataAsOf, productCount, inventoryCount, priceCount, salesCount,
+                    supplierCount, purchaseLineCount, quality);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
