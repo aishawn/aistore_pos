@@ -1493,11 +1493,120 @@
 }
 
 .dark .ov-workspace {
-  background: linear-gradient(135deg, rgba(21, 28, 40, 0.94), rgba(28, 39, 56, 0.9)), url("/images/workspace/background.webp") center / cover no-repeat;
+  background:
+    radial-gradient(ellipse at 12% 8%, rgba(251, 146, 60, 0.1), transparent 34%),
+    radial-gradient(ellipse at 88% 70%, rgba(82, 170, 202, 0.1), transparent 42%),
+    linear-gradient(135deg, rgba(21, 28, 40, 0.88), rgba(28, 39, 56, 0.84)),
+    url("/images/workspace/background.webp") center / cover no-repeat;
 }
 .dark .ov-skeleton > div {
   background: var(--brand-surface-muted);
   border-color: var(--brand-line);
+}
+
+/* Dashboard dark-mode contrast: keep the artwork visible while giving every
+ * navigational control its own readable surface and interaction ring. */
+.dark .ov-page.ov-radial {
+  background-image:
+    radial-gradient(ellipse at 18% 18%, rgba(251, 146, 60, 0.12), transparent 34%),
+    radial-gradient(ellipse at 84% 64%, rgba(76, 157, 198, 0.12), transparent 42%),
+    linear-gradient(115deg, rgba(21, 28, 40, 0.88), rgba(28, 39, 56, 0.84)),
+    url("/images/dashboard-background.webp");
+}
+.dark .ov-radial-main .ov-ring::before {
+  border-color: rgba(188, 208, 235, 0.42);
+  box-shadow:
+    0 0 0 16px rgba(188, 208, 235, 0.07),
+    0 0 0 17px rgba(251, 146, 60, 0.28),
+    0 0 54px rgba(251, 146, 60, 0.14);
+}
+.dark .ov-radial-main .ov-ring::after {
+  border-color: rgba(251, 174, 103, 0.42);
+  box-shadow:
+    0 0 0 12px rgba(251, 174, 103, 0.09),
+    0 0 38px rgba(251, 174, 103, 0.12);
+}
+.dark .ov-radial-main .ov-ring-center {
+  background:
+    radial-gradient(ellipse at 78% 25%, rgba(100, 145, 192, 0.3), transparent 50%),
+    linear-gradient(145deg, #2d3b50, #202a38 72%);
+  border-color: #6d829e;
+  box-shadow:
+    inset 0 0 0 1px rgba(213, 227, 246, 0.2),
+    0 0 0 8px rgba(173, 194, 222, 0.1),
+    0 16px 40px rgba(0, 0, 0, 0.3);
+}
+.dark .ov-radial-main .ov-ring-center::after {
+  opacity: 0.2;
+  filter: saturate(0.8) brightness(1.1) blur(0.5px);
+}
+.dark .ov-radial-main .ov-node-icon {
+  background: linear-gradient(145deg, #34445a, #253246);
+  border-color: var(--brand-dashboard-icon-ring);
+  box-shadow:
+    0 0 0 6px rgba(173, 194, 222, 0.12),
+    0 9px 26px rgba(0, 0, 0, 0.26);
+}
+.dark .ov-radial-main .ov-ring-node > :is(button, a) {
+  color: var(--brand-ink-strong);
+}
+.dark .ov-radial-main .ov-ring-node > :is(button, a):hover .ov-node-icon,
+.dark .ov-radial-main .ov-ring-node > :is(button, a):focus-visible .ov-node-icon,
+.dark .ov-radial-main .ov-node-active .ov-node-icon {
+  border-color: #a9c0df;
+  box-shadow:
+    0 0 0 8px rgba(173, 194, 222, 0.18),
+    0 0 24px rgba(251, 146, 60, 0.24),
+    0 12px 30px rgba(0, 0, 0, 0.3);
+}
+.dark .ov-radial-main .ov-node-icon svg {
+  filter: drop-shadow(0 0 5px currentColor);
+}
+.dark .ov-ai-bar.ov-ai-composer {
+  background: rgba(24, 33, 47, 0.94);
+  border-color: #53647a;
+  box-shadow:
+    0 0 0 5px rgba(173, 194, 222, 0.08),
+    0 18px 44px rgba(0, 0, 0, 0.34),
+    inset 0 1px rgba(220, 232, 248, 0.18);
+}
+.dark .ov-ai-composer [data-assistant-composer] > form {
+  background: var(--brand-dashboard-control-bg) !important;
+  border-color: var(--brand-dashboard-control-border) !important;
+  box-shadow: inset 0 1px rgba(229, 238, 250, 0.1), 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+.dark .ov-ai-composer [data-assistant-composer] input {
+  color: var(--brand-ink-strong) !important;
+  caret-color: var(--brand-orange);
+}
+.dark .ov-ai-composer [data-assistant-composer] input::placeholder {
+  color: var(--brand-dashboard-placeholder) !important;
+  opacity: 1;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button:not([type="submit"]) {
+  color: #d2dceb !important;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button:not([type="submit"]):hover,
+.dark .ov-ai-composer [data-assistant-composer] form > button:not([type="submit"]):focus-visible {
+  color: #ffffff !important;
+  background: rgba(251, 146, 60, 0.2) !important;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button[type="submit"] {
+  color: #241205 !important;
+  background: #fb923c !important;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18), 0 8px 20px rgba(251, 146, 60, 0.28) !important;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button[type="submit"]:hover,
+.dark .ov-ai-composer [data-assistant-composer] form > button[type="submit"]:focus-visible {
+  background: #fdba74 !important;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button:focus-visible {
+  outline: 3px solid #fdba74 !important;
+  outline-offset: 2px;
+}
+.dark .ov-ai-composer [data-assistant-composer] form > button:disabled {
+  color: #7f8da2 !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 1199px) {
