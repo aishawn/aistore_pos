@@ -65,7 +65,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 
 ## AI 生产化候选（未部署）
 
-- 候选分支 `codex/ai-prod-main` 当前 HEAD：`0f03972a`（后端代码候选 `91df8028`）；已重放到当前 `origin/main=8b6ad27e`，尚未推送。
+- 候选分支 `codex/ai-prod-main` 当前 HEAD：`cc7a35d7`（后端代码候选 `cc7a35d7`）；已重放到当前 `origin/main=8b6ad27e`，尚未推送。
 - Java 21 `pos-api/mvn -B clean verify`：**464 tests, 0 failures, 0 errors, BUILD SUCCESS**（此前候选 `803bba1`）。代码 `91df8028` 尚未取得新的 exact-SHA 远程构建证据；此前构建结果不能覆盖本次改动。
 - 已加入 tenant/outlet 绑定的 Odoo 只读快照同步：`POST /api/ai/snapshots/sync`；同步商品、库存、价格和销售汇总到 `odoo_read_snapshot`。后台刷新由 `APP_AI_SNAPSHOT_SYNC_ENABLED` 控制，默认关闭。
 - 定价/补货预览先生成快照，再使用版本化快照运行 `PricingDecisionEngine` / `ReplenishmentDecisionEngine`，决策快照保存 sourceVersion、dataAsOf、dataQuality 和算法结果；未开放任何 Odoo 写入。
@@ -74,4 +74,5 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - 命令解析已通过 `AiCommandParser` 接入 `AiGateway`，严格校验结构化输出；确认执行器当前仍调用 Classic POS 商品/客户/价格表，不是 Odoo SoT，命令开关必须保持关闭，直到 Odoo 写适配器和回读审计完成。
 - 当前 CI workflow 未为 `codex/ai-prod-main` 配置 push 触发；环境未提供可用的 GitHub CLI/token 来创建 PR 或 dispatch 远程候选构建。远程 exact-SHA 门禁仍阻止推送 `pos-api`。
 - SKR 只读快照已成功生成（12,955 商品，价格/库存字段完整）；快照不含销售、供应商或客户数据，且存在 1,650 组重复商品名，已通过 `scripts/ai-eval/profile-snapshot.mjs` 标记价格/补货回测为 `BLOCKED`。
+- Odoo `aipos_uat` 只读探针确认 company 2 有 14 个 POS 商品、1 条供应商记录和 1 条采购行；company 16 有 14 个 POS 商品但没有供应商/采购行；company 3、13、14 当前没有 POS 商品。现有共享 UAT 数据不足以证明 1–3 家隔离门店的补货回测。
 - 仍未完成：Dokploy 对该精确 SHA 的远程 Java 21 门禁、匹配 runtime 部署、SKR/Demo 线上只读回归、真实 Odoo 快照写入验证、1–3 家隔离门店回测。不要把该候选描述为已部署或生产 GO。
