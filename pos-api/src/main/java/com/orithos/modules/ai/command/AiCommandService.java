@@ -70,7 +70,18 @@ public class AiCommandService {
         Long outlet = tenant.requireOutletId();
         if (outlet == null) throw new BusinessException(40021, "Your account is not bound to a store.");
         String text = request.text().trim();
-        Parsed parsed = commandParser.parse(tenant, text);
+        Parsed parsed;
+        try {
+            parsed = commandParser.parse(tenant, text);
+        } catch (BusinessException providerOrSchemaFailure) {
+            // Keep a narrow, deterministic fallback for the supported manual phrases.
+            // Unknown text still returns the original provider/schema failure.
+            try {
+                parsed = parseText(text);
+            } catch (BusinessException unsupportedText) {
+                throw providerOrSchemaFailure;
+            }
+        }
         UUID id = UUID.randomUUID();
         Instant expires = Instant.now().plus(10, ChronoUnit.MINUTES);
         String version = UUID.randomUUID().toString();
