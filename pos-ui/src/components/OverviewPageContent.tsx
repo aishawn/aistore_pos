@@ -124,29 +124,13 @@ export function OverviewPageContent({
   );
   const canReport = allowed.has("/reports/dashboard");
   const visible = modules.filter((item) => allowed.has(item.href));
-  // The radial command centre is a curated view of the same permission-filtered
-  // sidebar. Purchasing is a Stock child, so expose it as a direct command
-  // while preserving its existing permission gate.
+  // Keep the radial command centre to five permission-filtered primary
+  // destinations. Secondary Stock workflows remain inside the Stock module.
   const radialDestinations = (() => {
     const byId = new Map(destinations.map((item) => [item.id, item]));
-    const stock = byId.get("stock");
-    const purchasingChild = stock?.children?.find((child) => /purchase/i.test(child.label));
     const direct = ["sell", "stock", "customers", "reports", "setup"]
       .map((id) => byId.get(id))
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
-    if (purchasingChild) {
-      direct.splice(Math.min(2, direct.length), 0, {
-        ...(stock as NonNullable<typeof stock>),
-        id: "purchasing",
-        label: "Purchasing",
-        href: purchasingChild.href,
-        children: undefined,
-        icon: "sales",
-        tone: { iconBg: "#ede8ff", iconFg: "#7042d5", accent: "#7042d5" },
-        hint: purchasingChild.hint || "Orders and suppliers",
-        description: "Orders and suppliers",
-      });
-    }
     return direct.map((item) => ({
       ...item,
       children: undefined,
