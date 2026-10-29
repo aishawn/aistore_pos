@@ -30,11 +30,14 @@ public final class PricingDecisionEngine {
             return Decision.hold("current demand and stock are within policy bands");
         }
         double floor = input.cost() == 0 ? 0 : input.cost() / (1 - limits.minimumMargin());
-        target = Math.max(target, floor);
         double change = target / input.currentPrice() - 1;
-        if (Math.abs(change) > limits.maxChangeRate()) {
-            target = input.currentPrice() * (1 + Math.copySign(limits.maxChangeRate(), change));
+        double bounded = Math.abs(change) > limits.maxChangeRate()
+                ? input.currentPrice() * (1 + Math.copySign(limits.maxChangeRate(), change))
+                : target;
+        if (bounded + 1e-9 < floor) {
+            return Decision.hold("minimum margin conflicts with the maximum price-change limit");
         }
+        target = Math.max(bounded, floor);
         target = round(target, limits.roundingStep());
         if (target <= 0 || Math.abs(target - input.currentPrice()) < limits.minimumChange()) {
             return Decision.hold("calculated change is below the review threshold");

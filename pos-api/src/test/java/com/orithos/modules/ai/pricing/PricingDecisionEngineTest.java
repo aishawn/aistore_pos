@@ -23,4 +23,12 @@ class PricingDecisionEngineTest {
         assertEquals(PricingDecisionEngine.Status.INSUFFICIENT_DATA, PricingDecisionEngine.decide(
                 new PricingDecisionEngine.Input(0, 10, 1, 1, false, false), LIMITS).status());
     }
+
+    @Test
+    void refusesWhenMarginFloorCannotFitChangeLimit() {
+        var result = PricingDecisionEngine.decide(
+                new PricingDecisionEngine.Input(20, 19, .5, 150, false, false), LIMITS);
+        assertEquals(PricingDecisionEngine.Status.HOLD, result.status());
+        assertTrue(result.reason().contains("maximum price-change"));
+    }
 }
