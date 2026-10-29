@@ -347,6 +347,35 @@ async def sync_store(
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
+        # Load the existing rows for this window once. Per-sale ORM lookups
+        # made history retries needlessly slow and amplified SQLite lock
+        # contention. The maps preserve the same idempotent upsert behavior.
+        source_sale_ids = [
+            str(first(row, "ID", "id", "Sale ID", "sale_id"))
+            for row in sale_rows
+            if first(row, "ID", "id", "Sale ID", "sale_id")
+        ]
+        existing_sales = {
+            str(sale.shopfront_sale_id): sale
+            for sale in db.scalars(select(Sale).where(
+                Sale.store_key == store.store_key,
+                Sale.shopfront_sale_id.in_(source_sale_ids),
+            )).all()
+        } if source_sale_ids else {}
+        existing_items = db.scalars(select(SaleItem).join(Sale, SaleItem.sale_id == Sale.id).where(
+            Sale.store_key == store.store_key,
+            Sale.shopfront_sale_id.in_(source_sale_ids),
+        )).all() if source_sale_ids else []
+        sale_items_by_key = {
+            (item.sale_id, str(item.line_key)): item
+            for item in existing_items
+            if item.line_key is not None
+        }
+        legacy_items_by_product = {
+            (item.sale_id, str(item.shopfront_product_id)): item
+            for item in existing_items
+            if item.line_key is None and item.shopfront_product_id
+        }
         for sale_index, row in enumerate(sale_rows, start=1):
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
@@ -364,11 +393,12 @@ async def sync_store(
             counts["current_sale_id"] = sale_id
             run.counts = counts
             if sale_id:
-                sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
+                sale = existing_sales.get(str(sale_id))
                 if sale is None:
                     sale = Sale(store_key=store.store_key, shopfront_sale_id=str(sale_id))
                     db.add(sale)
                     db.flush()
+                    existing_sales[str(sale_id)] = sale
                 sale.invoice_id = first(row, "Invoice ID", "invoice_id", "invoiceId")
                 sale.status = first(row, "Status", "status")
                 sale.created_at = parse_datetime(first(row, "createdAt", "created_at", "timestamp"))
@@ -412,19 +442,16 @@ async def sync_store(
                     sale_product_ids.add(product_id)
                     _upsert_sale_product(db, store.store_key, product_id, product, item, sale_products)
                     line_key = str(item_id)
-                    sale_item = db.scalar(select(SaleItem).where(SaleItem.sale_id == sale.id, SaleItem.line_key == line_key))
+                    sale_item = sale_items_by_key.get((sale.id, line_key))
                     # Rows created by older versions have no line_key. Reuse a
                     # legacy row for the first matching line instead of making
                     # every retry duplicate it.
                     if sale_item is None:
-                        sale_item = db.scalar(select(SaleItem).where(
-                            SaleItem.sale_id == sale.id,
-                            SaleItem.shopfront_product_id == product_id,
-                            SaleItem.line_key.is_(None),
-                        ))
+                        sale_item = legacy_items_by_product.get((sale.id, product_id))
                     if sale_item is None:
                         sale_item = SaleItem(sale_id=sale.id, line_key=line_key, shopfront_product_id=product_id)
                         db.add(sale_item)
+                    sale_items_by_key[(sale.id, line_key)] = sale_item
                     sale_item.line_key = line_key
                     sale_item.quantity = parse_decimal(first(item, "quantity", "Quantity"))
                     sale_item.unit_price = parse_decimal(first(item, "basePrice", "unitPrice"))
