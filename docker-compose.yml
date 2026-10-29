@@ -64,6 +64,9 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@orithos.com.au}
       # AI assistant (DashScope). Defaults off; set AI_ENABLED=true + key in root .env
       AI_ENABLED: ${AI_ENABLED:-false}
+      # AI command parsing/preview is safe to expose for manual testing; execution remains off by default.
+      AI_COMMANDS_ENABLED: ${AI_COMMANDS_ENABLED:-true}
+      AI_COMMANDS_EXECUTION_ENABLED: ${AI_COMMANDS_EXECUTION_ENABLED:-false}
       AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
       AI_DASHSCOPE_MODEL: ${AI_DASHSCOPE_MODEL:-qwen-plus}
       AI_DASHSCOPE_CLASSIFY_MODEL: ${AI_DASHSCOPE_CLASSIFY_MODEL:-qwen-flash}
