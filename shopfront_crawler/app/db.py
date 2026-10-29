@@ -17,7 +17,10 @@ if url.startswith("sqlite:///"):
     Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
 engine = create_engine(
     url,
-    connect_args={"check_same_thread": False, "timeout": 30} if url.startswith("sqlite") else {},
+    # A stale worker or overlapping deployment must fail quickly and let the
+    # durable retry loop take over. A long SQLite lock timeout makes the whole
+    # async worker appear healthy while it is actually wedged.
+    connect_args={"check_same_thread": False, "timeout": 5} if url.startswith("sqlite") else {},
     pool_pre_ping=True,
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
@@ -39,7 +42,7 @@ def init_db() -> None:
         # read-only status/catalog endpoints available while a chunk commits.
         with engine.begin() as connection:
             connection.exec_driver_sql("PRAGMA journal_mode=WAL")
-            connection.exec_driver_sql("PRAGMA busy_timeout=30000")
+            connection.exec_driver_sql("PRAGMA busy_timeout=5000")
             connection.exec_driver_sql("PRAGMA synchronous=NORMAL")
     # ``create_all`` does not upgrade a persistent SQLite/PostgreSQL volume.
     # Keep all crawler schema evolution here so an old deployment volume is

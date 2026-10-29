@@ -360,6 +360,10 @@ async def sync_store(
                 run.counts = counts
                 db.commit()
             sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
+            counts["phase"] = "sale_lookup"
+            counts["current_sale_id"] = sale_id
+            run.counts = counts
+            db.commit()
             if sale_id:
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
                 if sale is None:
@@ -459,6 +463,7 @@ async def sync_store(
                     counts["current_sale_id"] = None
                     run.counts = counts
                     db.commit()
+            counts["phase"] = "sale_processed"
         if sale_rows:
             db.commit()
             # The periodic checkpoint above intentionally updates progress in
