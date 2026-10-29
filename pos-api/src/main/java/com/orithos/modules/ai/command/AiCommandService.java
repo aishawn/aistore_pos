@@ -39,12 +39,14 @@ public class AiCommandService {
     private final CustomerMapper customerMapper;
     private final CustomerService customerService;
     private final JdbcTemplate jdbc;
+    private final AiCommandParser commandParser;
     private final boolean enabled;
 
     public AiCommandService(AiCommandRepository repository, ObjectMapper mapper,
                             TenantContextFactory tenantContextFactory, ProductMapper productMapper,
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
+                            AiCommandParser commandParser,
                             @Value("${app.ai.commands.enabled:false}") boolean enabled) {
         this.repository = repository;
         this.mapper = mapper;
@@ -54,6 +56,7 @@ public class AiCommandService {
         this.customerMapper = customerMapper;
         this.customerService = customerService;
         this.jdbc = jdbc;
+        this.commandParser = commandParser;
         this.enabled = enabled;
     }
 
@@ -64,7 +67,7 @@ public class AiCommandService {
         Long outlet = tenant.requireOutletId();
         if (outlet == null) throw new BusinessException(40021, "Your account is not bound to a store.");
         String text = request.text().trim();
-        Parsed parsed = parseText(text);
+        Parsed parsed = commandParser.parse(tenant, text);
         UUID id = UUID.randomUUID();
         Instant expires = Instant.now().plus(10, ChronoUnit.MINUTES);
         String version = UUID.randomUUID().toString();
