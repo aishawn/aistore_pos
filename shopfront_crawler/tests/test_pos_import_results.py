@@ -208,6 +208,45 @@ async def test_sync_chunk_persists_pos_result_in_run_counts(db_session, monkeypa
 
 
 @pytest.mark.asyncio
+async def test_sync_chunk_rejects_pos_count_below_shopfront_source(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"sales": 10},
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        return {"status": "completed", "sales": 9, "sales_imported": 9, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    store = Store(store_key="skr", vendor="skr")
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        store,
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        True,
+    )
+
+    assert ok is False
+    failed = db_session.get(SyncRun, run.id)
+    assert failed.status == "failed"
+    assert "source=10, imported=9" in (failed.error or "")
+
+
+@pytest.mark.asyncio
 async def test_history_releases_writer_between_chunks_for_queued_repairs(db_session, monkeypatch):
     db_session.add(Store(store_key="skr", vendor="skr"))
     db_session.commit()
