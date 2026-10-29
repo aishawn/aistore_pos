@@ -84,10 +84,17 @@ public class AiCommandParser {
         if (items.size() > max || excluded.size() > max) throw new BusinessException(42220, "AI command item limit exceeded.");
         for (CommandItem item : items) validateItem(parsed.type(), item, true);
         for (CommandItem item : excluded) validateItem(parsed.type(), item, false);
+        Set<String> allowedChanges = switch (parsed.type()) {
+            case UPDATE_PRODUCT, UPDATE_CUSTOMER -> Set.of("field");
+            case PREVIEW_PRICE_CHANGE -> Set.of("percent", "direction", "amount");
+            case PREVIEW_REPLENISHMENT -> Set.of("request", "target", "quantity");
+        };
         if (parsed.changes() != null) {
             for (String key : parsed.changes().keySet()) {
                 String normalized = key == null ? "" : key.toLowerCase(Locale.ROOT).replace("-", "");
-                if (CONTROL_KEYS.contains(normalized)) throw new BusinessException(42220, "AI command contains a restricted field.");
+                if (CONTROL_KEYS.contains(normalized) || !allowedChanges.contains(normalized)) {
+                    throw new BusinessException(42220, "AI command contains an unsupported field.");
+                }
             }
         }
     }
