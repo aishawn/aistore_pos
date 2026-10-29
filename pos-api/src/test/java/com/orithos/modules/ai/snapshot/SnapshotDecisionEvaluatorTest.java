@@ -45,6 +45,21 @@ class SnapshotDecisionEvaluatorTest {
         assertEquals("INCOMPLETE_DATA", item.get("status"));
     }
 
+    @Test
+    void replenishmentReplayUsesCompleteSupplyInputs() {
+        String version = "v2";
+        when(repository.findVersion(tenant, version, "INVENTORY")).thenReturn(List.of(row("10", Map.of(
+                "name", "Beer", "qtyAvailable", 0, "onOrder", 0, "backorder", 0,
+                "casePack", 1, "supplierAvailable", true, "leadTimeDays", 7,
+                "coverageDays", 21, "serviceFactor", 1.65))));
+        when(repository.findVersion(tenant, version, "SALE_LINE")).thenReturn(List.of(row("10", Map.of("units", 28))));
+
+        Map<String, Object> result = evaluator.evaluateReplenishment(tenant, version);
+
+        Map<?, ?> item = (Map<?, ?>) ((List<?>) result.get("items")).get(0);
+        assertEquals("REVIEW", item.get("status"));
+    }
+
     private static OdooReadSnapshotRepository.SnapshotRow row(String id, Map<String, Object> payload) {
         return new OdooReadSnapshotRepository.SnapshotRow(id, "VALID", payload);
     }

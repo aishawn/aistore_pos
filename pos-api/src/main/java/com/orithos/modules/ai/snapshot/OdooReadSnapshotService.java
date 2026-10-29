@@ -39,6 +39,8 @@ public class OdooReadSnapshotService {
     private static final Logger log = LoggerFactory.getLogger(OdooReadSnapshotService.class);
     private static final int MAX_PRODUCTS = 2_000;
     private static final int MAX_SALES_GROUPS = 2_000;
+    private static final int MAX_SUPPLIER_ROWS = 5_000;
+    private static final int MAX_PURCHASE_LINES = 5_000;
     private static final int DEFAULT_HISTORY_DAYS = 56;
 
     private final ObjectMapper mapper;
@@ -94,6 +96,15 @@ public class OdooReadSnapshotService {
             String session = authenticate();
             Map<String, Object> context = context(vendor.getOdooCompanyId(), vendor.getOdooWarehouseId());
             List<Map<String, Object>> products = products(session, vendor.getOdooCompanyId(), context);
+            Map<Long, Long> templateByProduct = new LinkedHashMap<>();
+            for (Map<String, Object> product : products) {
+                long productId = longId(product.get("id"));
+                Long templateId = relationId(product.get("product_tmpl_id"));
+                if (productId > 0 && templateId != null && templateId > 0) templateByProduct.put(productId, templateId);
+            }
+            Map<Long, Map<String, Object>> suppliers = suppliers(session, vendor.getOdooCompanyId(),
+                    templateByProduct, context);
+            Map<Long, Map<String, Object>> purchases = purchaseLines(session, vendor.getOdooCompanyId(), context);
             int productCount = 0;
             int inventoryCount = 0;
             int priceCount = 0;
@@ -109,9 +120,24 @@ public class OdooReadSnapshotService {
                 inventory.put("name", text(product.get("display_name"), product.get("name")));
                 inventory.put("qtyAvailable", product.get("qty_available"));
                 inventory.put("virtualAvailable", product.get("virtual_available"));
+                Map<String, Object> supplier = suppliers.get(id);
+                Map<String, Object> purchase = purchases.get(id);
+                inventory.put("supplierAvailable", supplier != null);
+                if (supplier != null) {
+                    inventory.put("leadTimeDays", supplier.get("leadTimeDays"));
+                    inventory.put("minimumOrderQty", supplier.get("minimumOrderQty"));
+                }
+                inventory.put("onOrder", purchase == null ? 0d : purchase.get("onOrder"));
                 insert(tenant, "INVENTORY", id, sourceVersion, dataAsOf,
                         product.get("qty_available") == null ? "INCOMPLETE" : quality, inventory);
                 inventoryCount++;
+
+                if (supplier != null) {
+                    insert(tenant, "SUPPLIER", id, sourceVersion, dataAsOf, "VALID", supplier);
+                }
+                if (purchase != null) {
+                    insert(tenant, "PURCHASE_LINE", id, sourceVersion, dataAsOf, "VALID", purchase);
+                }
 
                 Map<String, Object> price = new LinkedHashMap<>();
                 price.put("productId", id);
@@ -131,6 +157,8 @@ public class OdooReadSnapshotService {
             List<Map<String, Object>> sales = readGroup(session, "pos.order.line", domain,
                     List.of("qty:sum", "price_subtotal:sum"), List.of("product_id"), context, MAX_SALES_GROUPS);
             int salesCount = 0;
+            String salesQuality = vendor.getOdooPosConfigId() != null && vendor.getOdooPosConfigId() > 0
+                    ? "VALID" : "PARTIAL_SCOPE";
             for (Map<String, Object> sale : sales) {
                 Long productId = relationId(sale.get("product_id"));
                 if (productId == null || productId <= 0) continue;
@@ -140,12 +168,14 @@ public class OdooReadSnapshotService {
                 payload.put("netSales", sale.get("price_subtotal"));
                 payload.put("historyDays", historyDays);
                 insert(tenant, "SALE_LINE", productId, sourceVersion, dataAsOf,
-                        sale.get("qty") == null ? "INCOMPLETE" : "VALID", payload);
+                        sale.get("qty") == null ? "INCOMPLETE" : salesQuality, payload);
                 salesCount++;
             }
             Map<String, String> quality = new LinkedHashMap<>();
             quality.put("products", productCount == products.size() ? "VALID" : "PARTIAL");
-            quality.put("sales", "VALID");
+            quality.put("sales", salesQuality);
+            quality.put("suppliers", suppliers.isEmpty() ? "INCOMPLETE" : "VALID");
+            quality.put("purchaseLines", "VALID");
             return new OdooReadSnapshotSyncResult("SYNCED", tenant.vendorId(), outletId, sourceVersion,
                     dataAsOf, productCount, inventoryCount, priceCount, salesCount, quality);
         } catch (BusinessException e) {
@@ -173,8 +203,68 @@ public class OdooReadSnapshotService {
         return searchRead(session, "product.product", List.of(
                         List.of("available_in_pos", "=", true), List.of("company_id", "=", companyId)),
                 List.of("id", "name", "display_name", "default_code", "list_price", "standard_price",
-                        "qty_available", "virtual_available", "taxes_id", "write_date"),
+                        "qty_available", "virtual_available", "taxes_id", "write_date", "product_tmpl_id"),
                 context, MAX_PRODUCTS, "id asc");
+    }
+
+    private Map<Long, Map<String, Object>> suppliers(String session, long companyId,
+                                                       Map<Long, Long> templateByProduct,
+                                                       Map<String, Object> context) throws Exception {
+        if (templateByProduct.isEmpty()) return Map.of();
+        List<Map<String, Object>> rows = searchRead(session, "product.supplierinfo",
+                List.of("|", List.of("company_id", "=", false), List.of("company_id", "=", companyId)),
+                List.of("id", "product_id", "product_tmpl_id", "partner_id", "delay", "min_qty", "price"),
+                context, MAX_SUPPLIER_ROWS, "id asc");
+        Map<Long, Map<String, Object>> byProduct = new LinkedHashMap<>();
+        Map<Long, Map<String, Object>> byTemplate = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("supplierInfoId", longId(row.get("id")));
+            payload.put("supplierId", relationId(row.get("partner_id")));
+            payload.put("supplierName", relationName(row.get("partner_id")));
+            payload.put("leadTimeDays", row.get("delay"));
+            payload.put("minimumOrderQty", row.get("min_qty"));
+            payload.put("unitCost", row.get("price"));
+            Long productId = relationId(row.get("product_id"));
+            Long templateId = relationId(row.get("product_tmpl_id"));
+            if (productId != null && productId > 0) byProduct.putIfAbsent(productId, payload);
+            if (templateId != null && templateId > 0) byTemplate.putIfAbsent(templateId, payload);
+        }
+        for (Map.Entry<Long, Long> entry : templateByProduct.entrySet()) {
+            if (!byProduct.containsKey(entry.getKey()) && byTemplate.containsKey(entry.getValue())) {
+                byProduct.put(entry.getKey(), new LinkedHashMap<>(byTemplate.get(entry.getValue())));
+            }
+        }
+        return byProduct;
+    }
+
+    private Map<Long, Map<String, Object>> purchaseLines(String session, long companyId,
+                                                          Map<String, Object> context) throws Exception {
+        List<Map<String, Object>> rows = searchRead(session, "purchase.order.line",
+                List.of(List.of("company_id", "=", companyId),
+                        List.of("state", "in", List.of("purchase", "done"))),
+                List.of("id", "product_id", "product_qty", "qty_received", "date_planned", "order_id"),
+                context, MAX_PURCHASE_LINES, "date_planned asc, id asc");
+        Map<Long, Map<String, Object>> result = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Long productId = relationId(row.get("product_id"));
+            if (productId == null || productId <= 0) continue;
+            Map<String, Object> payload = result.computeIfAbsent(productId, ignored -> {
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("productId", productId);
+                value.put("onOrder", 0d);
+                value.put("purchaseLineCount", 0);
+                return value;
+            });
+            double ordered = decimal(row.get("product_qty"));
+            double received = decimal(row.get("qty_received"));
+            payload.put("onOrder", decimal(payload.get("onOrder")) + Math.max(0d, ordered - received));
+            payload.put("purchaseLineCount", ((Number) payload.get("purchaseLineCount")).intValue() + 1);
+            if (!payload.containsKey("nextExpectedAt") && row.get("date_planned") != null) {
+                payload.put("nextExpectedAt", row.get("date_planned"));
+            }
+        }
+        return result;
     }
 
     private String authenticate() throws Exception {
@@ -259,7 +349,18 @@ public class OdooReadSnapshotService {
         return null;
     }
 
+    private static String relationName(Object relation) {
+        return relation instanceof List<?> pair && pair.size() > 1 && pair.get(1) != null
+                ? pair.get(1).toString().trim() : "";
+    }
+
     private static long longId(Object value) { return value instanceof Number n ? n.longValue() : 0L; }
+
+    private static double decimal(Object value) {
+        if (value == null || Boolean.FALSE.equals(value)) return 0d;
+        try { return Double.parseDouble(value.toString()); }
+        catch (RuntimeException ignored) { return 0d; }
+    }
 
     private static String text(Object primary, Object fallback) {
         String value = primary == null ? "" : primary.toString().trim();
