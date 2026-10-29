@@ -33,6 +33,21 @@ class SnapshotDecisionEvaluatorTest {
     }
 
     @Test
+    void pricingReplayUsesSnapshotHistoryDaysInsteadOfAHiddenFixedWindow() {
+        String version = "history-v1";
+        when(repository.findVersion(tenant, version, "PRICE")).thenReturn(List.of(row("10", Map.of(
+                "name", "Red", "listPrice", 10.0, "standardPrice", 8.0))));
+        when(repository.findVersion(tenant, version, "INVENTORY")).thenReturn(List.of(row("10", Map.of("qtyAvailable", 2))));
+        when(repository.findVersion(tenant, version, "SALE_LINE")).thenReturn(List.of(row("10", Map.of(
+                "units", 140, "historyDays", 56))));
+
+        Map<?, ?> item = (Map<?, ?>) ((List<?>) evaluator.evaluatePricing(tenant, version).get("items")).get(0);
+
+        assertEquals("HOLD", item.get("status"));
+        assertEquals(56.0, ((Number) item.get("historyDays")).doubleValue());
+    }
+
+    @Test
     void replenishmentReplayReportsIncompleteWhenSupplyInputsAreMissing() {
         String version = "v1";
         when(repository.findVersion(tenant, version, "INVENTORY")).thenReturn(List.of(row("10", Map.of(

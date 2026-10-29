@@ -51,6 +51,9 @@ public class OdooReadSnapshotService {
     private final String database;
     private final String username;
     private final String password;
+    private final double replenishmentCoverageDays;
+    private final double replenishmentServiceFactor;
+    private final double replenishmentCasePack;
 
     public OdooReadSnapshotService(
             ObjectMapper mapper,
@@ -59,7 +62,10 @@ public class OdooReadSnapshotService {
             @Value("${ODOO_BASE_URL:}") String baseUrl,
             @Value("${ODOO_DATABASE:aipos}") String database,
             @Value("${ODOO_SERVICE_USERNAME:}") String username,
-            @Value("${ODOO_SERVICE_PASSWORD:}") String password) {
+            @Value("${ODOO_SERVICE_PASSWORD:}") String password,
+            @Value("${app.ai.decision.replenishment.coverage-days:7}") double replenishmentCoverageDays,
+            @Value("${app.ai.decision.replenishment.service-factor:1.65}") double replenishmentServiceFactor,
+            @Value("${app.ai.decision.replenishment.case-pack:1}") double replenishmentCasePack) {
         this.mapper = mapper;
         this.vendorMapper = vendorMapper;
         this.jdbc = jdbc;
@@ -67,6 +73,9 @@ public class OdooReadSnapshotService {
         this.database = database == null ? "" : database.trim();
         this.username = username == null ? "" : username.trim();
         this.password = password == null ? "" : password;
+        this.replenishmentCoverageDays = positiveOrDefault(replenishmentCoverageDays, 7d);
+        this.replenishmentServiceFactor = positiveOrDefault(replenishmentServiceFactor, 1.65d);
+        this.replenishmentCasePack = positiveOrDefault(replenishmentCasePack, 1d);
     }
 
     public boolean isConfigured() {
@@ -122,6 +131,13 @@ public class OdooReadSnapshotService {
                 inventory.put("name", text(product.get("display_name"), product.get("name")));
                 inventory.put("qtyAvailable", product.get("qty_available"));
                 inventory.put("virtualAvailable", product.get("virtual_available"));
+                // Policy inputs are explicit and versioned. Backorder is zero for
+                // POS-only demand until a dedicated backorder source is configured.
+                inventory.put("backorder", 0d);
+                inventory.put("coverageDays", replenishmentCoverageDays);
+                inventory.put("serviceFactor", replenishmentServiceFactor);
+                inventory.put("casePack", replenishmentCasePack);
+                inventory.put("policyVersion", "replenishment-policy-v1");
                 Map<String, Object> supplier = suppliers.get(id);
                 Map<String, Object> purchase = purchases.get(id);
                 inventory.put("supplierAvailable", supplier != null);
@@ -370,6 +386,10 @@ public class OdooReadSnapshotService {
     private static String text(Object primary, Object fallback) {
         String value = primary == null ? "" : primary.toString().trim();
         return value.isBlank() && fallback != null ? fallback.toString().trim() : value;
+    }
+
+    private static double positiveOrDefault(double value, double fallback) {
+        return Double.isFinite(value) && value > 0d ? value : fallback;
     }
 
     private static String normalize(String value) { return value == null ? "" : value.trim().replaceAll("/+$", ""); }

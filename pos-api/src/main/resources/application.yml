@@ -166,6 +166,12 @@ app:
       sync-enabled: ${APP_AI_SNAPSHOT_SYNC_ENABLED:false}
       sync-delay-ms: ${APP_AI_SNAPSHOT_SYNC_DELAY_MS:21600000}
       sync-initial-delay-ms: ${APP_AI_SNAPSHOT_SYNC_INITIAL_DELAY_MS:60000}
+    decision:
+      replenishment:
+        # Explicit policy inputs captured in each immutable snapshot.
+        coverage-days: ${AI_REPLENISHMENT_COVERAGE_DAYS:7}
+        service-factor: ${AI_REPLENISHMENT_SERVICE_FACTOR:1.65}
+        case-pack: ${AI_REPLENISHMENT_CASE_PACK:1}
 
 # 日志级别
 logging:

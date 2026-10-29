@@ -37,14 +37,16 @@ public class SnapshotDecisionEvaluator {
                 continue;
             }
             double units = number(sales.get(id), "units");
+            double historyDays = positiveNumber(sales.get(id), "historyDays", 28d);
             double stock = number(inventory.get(id), "qtyAvailable");
             PricingDecisionEngine.Decision decision = PricingDecisionEngine.decide(
                     new PricingDecisionEngine.Input(number(p, "listPrice"), number(p, "standardPrice"),
-                            units / 28d, stock, false, false), PRICE_LIMITS);
+                            units / historyDays, stock, false, false), PRICE_LIMITS);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("productId", id); item.put("name", p.get("name")); item.put("status", decision.status().name());
             item.put("suggestedPrice", decision.suggestedPrice()); item.put("delta", decision.delta());
-            item.put("evidence", decision.evidence()); item.put("reason", decision.reason());
+            item.put("evidence", decision.evidence()); item.put("historyDays", historyDays);
+            item.put("reason", decision.reason());
             items.add(item);
         }
         return Map.of("algorithm", "pricing-rule-v1", "sourceVersion", sourceVersion, "items", items);
@@ -68,7 +70,8 @@ public class SnapshotDecisionEvaluator {
             }
             double units = number(sales.get(id), "units");
             double onHand = number(payload, "qtyAvailable");
-            double average = units / 28d;
+            double historyDays = positiveNumber(sales.get(id), "historyDays", 28d);
+            double average = units / historyDays;
             ReplenishmentDecisionEngine.Decision decision = ReplenishmentDecisionEngine.decide(
                     new ReplenishmentDecisionEngine.Input(onHand, number(payload, "onOrder"),
                             number(payload, "backorder"), average, Math.sqrt(Math.max(average, 0)),
@@ -78,6 +81,7 @@ public class SnapshotDecisionEvaluator {
             item.put("productId", id); item.put("name", payload.get("name"));
             item.put("status", decision.status().name()); item.put("reorderPoint", decision.reorderPoint());
             item.put("safetyStock", decision.safetyStock()); item.put("suggestedQuantity", decision.suggestedQuantity());
+            item.put("historyDays", historyDays);
             item.put("explanation", decision.explanation()); items.add(item);
         }
         return Map.of("algorithm", "replenishment-rule-v1", "sourceVersion", sourceVersion, "items", items);
@@ -162,6 +166,11 @@ public class SnapshotDecisionEvaluator {
 
     private static double number(OdooReadSnapshotRepository.SnapshotRow row, String key) {
         return row == null ? 0 : number(row.payload(), key);
+    }
+
+    private static double positiveNumber(OdooReadSnapshotRepository.SnapshotRow row, String key, double fallback) {
+        double value = number(row, key);
+        return value > 0d && Double.isFinite(value) ? value : fallback;
     }
 
     private static boolean hasNumber(Map<String, Object> payload, String key) {
