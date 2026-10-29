@@ -18,10 +18,10 @@ export function OverviewHeader({
       <div className="ov-heading min-w-0">
         <div className="ov-brand"><OrithosLogo /></div>
         <p className="ov-eyebrow">{greeting}</p>
-        <h1 title={company}>
+        <h1 title={company} className="ov-header-title">
           {active === "workspace"
-            ? <><span>Your store, </span><em>at a glance.</em></>
-            : <><span>Your store. </span><em>One intelligence.</em></>}
+            ? <><span className="ov-title-line">Your store, </span><em className="ov-title-line">at a glance.</em></>
+            : <><span className="ov-title-line">Your store. </span><em className="ov-title-line">One intelligence.</em></>}
         </h1>
         {active === "radial" ? <p className="ov-tagline">Sell smarter. Manage better. Grow further with Orithos AI.</p> : null}
       </div>

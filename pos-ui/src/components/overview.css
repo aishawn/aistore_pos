@@ -1051,7 +1051,10 @@
     justify-content: flex-end;
     gap: 0;
   }
-  .ov-radial .ov-toolbar > :first-child { display: none; }
+  /* Keep the mobile header focused on identity; view switching lives in the
+   * avatar menu so the radial workspace can use the full first screen. */
+  .ov-radial .ov-toolbar [data-dashboard-layout-switcher] { display: none; }
+  .ov-radial .ov-toolbar [data-dashboard-account-control] { display: inline-flex; }
   .ov-radial .ov-eyebrow {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -1064,7 +1067,7 @@
     grid-row: 3;
     max-width: 360px;
     margin: 4px 0 0;
-    font-size: 30px;
+    font-size: 32px;
     line-height: 1.12;
     letter-spacing: 0;
   }
@@ -1080,6 +1083,8 @@
     height: auto;
     padding-bottom: 132px;
   }
+  .ov-radial .ov-header-title .ov-title-line { display: block; }
+  .ov-radial .ov-header-title em.ov-title-line { margin-top: 2px; }
 }
 
 .ov-ring-list .ov-node-active {

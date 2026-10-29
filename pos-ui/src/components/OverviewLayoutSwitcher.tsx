@@ -15,6 +15,7 @@ export function OverviewLayoutSwitcher({
     <div
       role="navigation"
       aria-label="Dashboard layout options"
+      data-dashboard-layout-switcher
       className={cn(
         "inline-flex items-center gap-0.5 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-0.5 shadow-sm backdrop-blur-md",
         className,

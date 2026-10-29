@@ -15,6 +15,7 @@ export function OverviewAccountControl({ className, showLogo = true }: { classNa
 
   return (
     <div
+      data-dashboard-account-control
       className={cn("flex shrink-0 items-center gap-1.5 sm:gap-2", className)}
     >
       {showLogo ? <Link
