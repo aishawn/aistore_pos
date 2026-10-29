@@ -53,6 +53,7 @@ export function ScanInvoicePage() {
   const [previewIsPdf, setPreviewIsPdf] = useState(false);
   const [sourceType, setSourceType] = useState<InvoiceScanSourceType>("upload");
   const [scan, setScan] = useState<InvoiceScanPayload | null>(null);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +151,7 @@ export function ScanInvoicePage() {
     const revision = ++scanRevision.current;
     setError(null);
     setScan(null);
+    setReviewConfirmed(false);
     setLoading(true);
     setSourceType(nextSource);
     try {
@@ -218,10 +220,12 @@ export function ScanInvoicePage() {
   }
 
   function patch(update: Partial<InvoiceScanPayload>) {
+    setReviewConfirmed(false);
     setScan((current) => (current ? { ...current, ...update } : current));
   }
 
   function patchLine(index: number, update: Partial<InvoiceScanLine>) {
+    setReviewConfirmed(false);
     setScan((current) => {
       if (!current) return current;
       const lines = [...(current.lines ?? [])];
@@ -231,11 +235,12 @@ export function ScanInvoicePage() {
   }
 
   async function saveDraft() {
-    if (!scan) return;
+    if (!scan || !reviewConfirmed) return;
     setSaving(true);
     setError(null);
     try {
       const saved = await createInvoiceScan({
+        reviewConfirmed: true,
         sourceType,
         sourceFilename: selectedFile?.name ?? null,
         sourceContentType: selectedFile?.type ?? null,
@@ -400,7 +405,7 @@ export function ScanInvoicePage() {
                 <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
                   <h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice details</h2>
                   <p className="mt-1 text-xs text-[var(--oh-muted)]">
-                    Check supplier and document totals, then save a draft to continue matching and receiving.
+                    Check and correct supplier, GST and totals against the original before saving a draft.
                     {!lookupsReady && " Lookup lists are unavailable until Orithos options reload."}
                   </p>
                 </div>
@@ -436,11 +441,12 @@ export function ScanInvoicePage() {
                     </div>
                   </label>
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                   <label className="flex flex-col"><span className={labelClass}>Invoice number</span><input value={scan.invoiceNumber ?? ""} onChange={(e) => patch({ invoiceNumber: e.target.value })} className={fieldClass} /></label>
                   <label className="flex flex-col"><span className={labelClass}>Invoice date</span><input type="date" value={toIsoDate(scan.invoiceDate)} onChange={(e) => patch({ invoiceDate: e.target.value })} className={fieldClass} /></label>
                   <label className="flex flex-col"><span className={labelClass}>Due date</span><input type="date" value={toIsoDate(scan.dueDate)} onChange={(e) => patch({ dueDate: e.target.value })} className={fieldClass} /></label>
-                  <label className="flex flex-col"><span className={labelClass}>Total payable</span><input readOnly value={money(scan.totalPayable)} className={`${fieldClass} bg-[var(--oh-surface)] font-semibold tabular-nums`} /></label>
+                  <label className="flex flex-col"><span className={labelClass}>GST included</span><input aria-label="GST included" type="number" min="0" step="0.01" value={scan.gstIncluded ?? ""} onChange={(e) => patch({ gstIncluded: e.target.value === "" ? null : Number(e.target.value) })} className={`${fieldClass} tabular-nums`} /></label>
+                  <label className="flex flex-col"><span className={labelClass}>Total payable</span><input aria-label="Total payable" type="number" min="0" step="0.01" value={scan.totalPayable ?? ""} onChange={(e) => patch({ totalPayable: e.target.value === "" ? null : Number(e.target.value) })} className={`${fieldClass} font-semibold tabular-nums`} /></label>
                 </div>
               </section>
 
@@ -478,6 +484,15 @@ export function ScanInvoicePage() {
                   ))}
                 </div>
               </section>
+              <label className="flex min-h-11 items-start gap-3 py-2 text-sm leading-5 text-[var(--oh-text)]">
+                <input
+                  type="checkbox"
+                  checked={reviewConfirmed}
+                  onChange={(e) => setReviewConfirmed(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--oh-primary)]"
+                />
+                <span>I have checked the supplier, invoice details, GST, total and line items against the original invoice.</span>
+              </label>
             </>
           )}
         </div>
@@ -485,10 +500,10 @@ export function ScanInvoicePage() {
 
       <footer className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Next: match each line to Products, then confirm to receive stock." : "Choose a PDF or photo to begin."}</p>
+          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? reviewConfirmed ? "Next: match each line to Products, then confirm to receive stock." : "Review the original invoice and confirm its details before saving." : "Choose a PDF or photo to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Link href="/purchases?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)]">Cancel</Link>
-            <button type="button" onClick={() => void saveDraft()} disabled={!scan || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
+            <button type="button" onClick={() => void saveDraft()} disabled={!scan || !reviewConfirmed || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
               {saving ? "Saving…" : "Save draft → match products"}
             </button>
           </div>

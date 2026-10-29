@@ -55,7 +55,6 @@ public class InvoiceVisionService {
 
     private static final Logger log = LoggerFactory.getLogger(InvoiceVisionService.class);
     static final long MAX_BYTES = 8L * 1024 * 1024;
-    static final int MIN_IMAGE_DIMENSION = 32;
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter AU = DateTimeFormatter.ofPattern("d/M/uuuu");
@@ -110,7 +109,6 @@ public class InvoiceVisionService {
     private final RestClient restClient;
     private final AiGateway aiGateway;
     private final TenantContextFactory tenantContextFactory;
-
     public InvoiceVisionService(
             AiProperties properties,
             ObjectMapper objectMapper,
@@ -219,18 +217,6 @@ public class InvoiceVisionService {
         }
     }
 
-    /** Reject malformed or clearly unusable images before spending provider quota. */
-    static void validateImage(byte[] bytes) {
-        try (ByteArrayInputStream input = new ByteArrayInputStream(bytes)) {
-            BufferedImage image = ImageIO.read(input);
-            if (image == null || image.getWidth() < MIN_IMAGE_DIMENSION || image.getHeight() < MIN_IMAGE_DIMENSION) {
-                throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a clear image at least 32x32 pixels.");
-            }
-        } catch (IOException e) {
-            throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a JPEG, PNG, or PDF invoice.");
-        }
-    }
-
     static TaxInvoiceRead parse(String raw, ObjectMapper mapper) {
         if (!StringUtils.hasText(raw)) return null;
         String json = raw.trim();
@@ -257,7 +243,7 @@ public class InvoiceVisionService {
                     ));
                 }
             }
-            return new TaxInvoiceRead(
+            TaxInvoiceRead read = new TaxInvoiceRead(
                     text(node, "supplierName"),
                     text(node, "abn"),
                     text(node, "website"),
@@ -274,9 +260,49 @@ public class InvoiceVisionService {
                     text(node, "notes"),
                     lines
             );
+            return flagUnreconciledTotals(read);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static TaxInvoiceRead flagUnreconciledTotals(TaxInvoiceRead read) {
+        if (read.totalPayable() == null || read.lines().isEmpty()
+                || read.lines().stream().anyMatch(line -> line.lineTotal() == null)) {
+            return read;
+        }
+        BigDecimal lineTotal = read.lines().stream()
+                .map(TaxInvoiceRead.Line::lineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal delivery = read.deliveryFee() == null ? BigDecimal.ZERO : read.deliveryFee();
+        BigDecimal gst = read.gstIncluded() == null ? BigDecimal.ZERO : read.gstIncluded();
+        BigDecimal payable = read.totalPayable();
+        boolean reconciles = matches(lineTotal.add(delivery), payable)
+                || matches(lineTotal.add(delivery).add(gst), payable);
+        if (reconciles || (read.notes() != null && read.notes().toLowerCase(Locale.ROOT).contains("human review"))) {
+            return read;
+        }
+        String note = StringUtils.hasText(read.notes()) ? read.notes().trim() + " " : "";
+        note += "Totals conflict; human review required. Line totals do not reconcile with the payable total.";
+        return new TaxInvoiceRead(read.supplierName(), read.abn(), read.website(), read.invoiceNumber(),
+                read.invoiceDate(), read.customerName(), read.customerAddress(), read.attn(), read.phone(),
+                read.deliveryFee(), read.gstIncluded(), read.totalPayable(), read.totalCases(), note, read.lines());
+    }
+
+    /** Reject malformed or clearly unusable images before spending provider quota. */
+    static void validateImage(byte[] bytes) {
+        try (ByteArrayInputStream input = new ByteArrayInputStream(bytes)) {
+            BufferedImage image = ImageIO.read(input);
+            if (image == null || image.getWidth() < 32 || image.getHeight() < 32) {
+                throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a clear image at least 32x32 pixels.");
+            }
+        } catch (IOException e) {
+            throw new BusinessException(40013, "Photo is not a usable invoice image. Upload a JPEG, PNG, or PDF invoice.");
+        }
+    }
+
+    private static boolean matches(BigDecimal left, BigDecimal right) {
+        return left.subtract(right).abs().compareTo(new BigDecimal("0.02")) <= 0;
     }
 
     static String extractText(JsonNode root) {
