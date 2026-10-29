@@ -1,8 +1,9 @@
 # AI command implementation status
 
 The first implementation slice adds controlled AI command drafts under
-the /api/ai/commands endpoints. The feature is disabled by default with
-AI_COMMANDS_ENABLED=false.
+the /api/ai/commands endpoints. UAT enables command parsing and preview with
+AI_COMMANDS_ENABLED=true; execution remains disabled with
+AI_COMMANDS_EXECUTION_ENABLED=false.
 
 Implemented:
 
