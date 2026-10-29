@@ -11,6 +11,8 @@ import com.orithos.modules.product.Product;
 import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.ProductService;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.security.AdminAccess;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +40,7 @@ public class AiCommandService {
     private final ProductService productService;
     private final CustomerMapper customerMapper;
     private final CustomerService customerService;
+    private final OdooReportQueryService odooReports;
     private final JdbcTemplate jdbc;
     private final AiCommandParser commandParser;
     private final boolean enabled;
@@ -47,6 +50,7 @@ public class AiCommandService {
                             TenantContextFactory tenantContextFactory, ProductMapper productMapper,
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
+                            OdooReportQueryService odooReports,
                             AiCommandParser commandParser,
                             @Value("${app.ai.commands.enabled:false}") boolean enabled,
                             @Value("${app.ai.commands.execution-enabled:false}") boolean executionEnabled) {
@@ -58,6 +62,7 @@ public class AiCommandService {
         this.customerMapper = customerMapper;
         this.customerService = customerService;
         this.jdbc = jdbc;
+        this.odooReports = odooReports;
         this.commandParser = commandParser;
         this.enabled = enabled;
         this.executionEnabled = executionEnabled;
@@ -77,7 +82,7 @@ public class AiCommandService {
             // Keep a narrow, deterministic fallback for the supported manual phrases.
             // Unknown text still returns the original provider/schema failure.
             try {
-                parsed = parseText(text);
+                parsed = parseText(tenant, text);
             } catch (BusinessException unsupportedText) {
                 throw providerOrSchemaFailure;
             }
@@ -234,7 +239,7 @@ public class AiCommandService {
         }
     }
 
-    private Parsed parseText(String text) {
+    private Parsed parseText(TenantContext tenant, String text) {
         String lower = text.toLowerCase(Locale.ROOT);
         if (lower.contains("补货") || lower.contains("replenish") || lower.contains("restock")) {
             return new Parsed(AiCommandType.PREVIEW_REPLENISHMENT, BigDecimal.valueOf(.96),
@@ -244,15 +249,14 @@ public class AiCommandService {
         }
         Matcher price = Pattern.compile("(?i)(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?([A-Za-z0-9][A-Za-z0-9 ._-]{1,80}?).*?(\\d+(?:\\.\\d+)?)\\s*%").matcher(text);
         if (price.find()) {
-            Product p = productMapper.findActiveByName(price.group(1).trim());
-            if (p == null) throw new BusinessException(40422, "Product must match exactly before a price preview can be created.");
-            BigDecimal before = firstPrice(p.getId());
+            OdooProductMatch p = findOdooProduct(tenant, price.group(1).trim());
+            BigDecimal before = p.price();
             if (before == null) throw new BusinessException(40926, "This product has no current price.");
             BigDecimal pct = new BigDecimal(price.group(2)).divide(BigDecimal.valueOf(100));
             boolean down = lower.contains("lower") || lower.contains("decrease") || lower.contains("降低") || lower.contains("下调");
             BigDecimal after = before.multiply(down ? BigDecimal.ONE.subtract(pct) : BigDecimal.ONE.add(pct))
                     .setScale(2, RoundingMode.HALF_UP);
-            CommandItem item = new CommandItem(p.getId(), p.getName(), "price", before.toPlainString(),
+            CommandItem item = new CommandItem(p.id(), p.name(), "price", before.toPlainString(),
                     after.toPlainString(), "current store price preview", "READY");
             return new Parsed(AiCommandType.PREVIEW_PRICE_CHANGE, BigDecimal.valueOf(.94),
                     "将调整 1 个商品的当前销售价；确认后才会写入。", List.of(item),
@@ -261,9 +265,8 @@ public class AiCommandService {
         }
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
         if (product.find()) {
-            Product p = productMapper.findActiveByName(product.group(1).trim());
-            if (p == null) throw new BusinessException(40422, "Product name must match exactly.");
-            CommandItem item = new CommandItem(p.getId(), p.getName(), "name", p.getName(),
+            OdooProductMatch p = findOdooProduct(tenant, product.group(1).trim());
+            CommandItem item = new CommandItem(p.id(), p.name(), "name", p.name(),
                     product.group(2).trim(), "exact product name match", "READY");
             return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.98),
                     "将修改 1 个商品的显示名称。", List.of(item), Map.of("field", "name"), List.of());
@@ -292,6 +295,29 @@ public class AiCommandService {
         List<ProductPrice> prices = productMapper.findPricesByProductId(productId);
         return prices == null || prices.isEmpty() ? null : prices.getFirst().getPrice();
     }
+
+    private OdooProductMatch findOdooProduct(TenantContext tenant, String query) {
+        if (odooReports == null) throw new BusinessException(50320, "Odoo product source is unavailable.");
+        OdooReportQueryService.ProductSearchResult result = odooReports.searchProducts(tenant, query, 3);
+        if (result.error() != null) throw new BusinessException(50320, "Odoo product source is unavailable.");
+        if (result.rows().size() != 1) {
+            throw new BusinessException(40422, "Product name must match exactly one Odoo product.");
+        }
+        Map<String, Object> row = result.rows().getFirst();
+        Object id = row.get("id");
+        if (!(id instanceof Number number) || number.longValue() <= 0) {
+            throw new BusinessException(40422, "Odoo product has no valid record ID.");
+        }
+        Object rawPrice = row.get("list_price");
+        BigDecimal price = null;
+        if (rawPrice != null) {
+            try { price = new BigDecimal(rawPrice.toString()); }
+            catch (NumberFormatException ignored) { }
+        }
+        return new OdooProductMatch(number.longValue(), String.valueOf(row.getOrDefault("name", query)), price);
+    }
+
+    private record OdooProductMatch(Long id, String name, BigDecimal price) { }
 
     private boolean isConfirmation(String text) {
         String value = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
