@@ -403,13 +403,8 @@ function DashboardAiBar({ onSend, disabled }: { onSend: (question: string, eleme
   }, []);
   if (!hasPermission("ai.assistant")) return null;
   return (
-    <div ref={bar} className="ov-ai-bar ov-ai-composer">
+    <div ref={bar} className="ov-ai-bar ov-ai-composer ov-ai-mobile-dock">
       <AssistantComposer value={input} onChange={setInput} disabled={disabled || available === false} voiceAvailable={voiceAvailable} placeholder={available === false ? "AI chat is off for this store" : "Ask Orithos anything about your store..."} onSend={question => onSend(question, bar.current ?? undefined)} />
-      <div className="ov-ai-suggestions" aria-label="Suggested questions">
-        <button type="button" disabled={disabled || available === false} onClick={() => setInput("Check low stock items and suggest what to reorder")}><Package size={14} /> Check low stock</button>
-        <button type="button" disabled={disabled || available === false} onClick={() => setInput("Review my store's sales performance")}><BarChart3 size={14} /> Review sales</button>
-        <button type="button" disabled={disabled || available === false} onClick={() => setInput("Find opportunities to grow my store")}><Lightbulb size={14} /> Find an opportunity</button>
-      </div>
     </div>
   );
 }

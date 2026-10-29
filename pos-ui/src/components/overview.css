@@ -1030,6 +1030,7 @@
 @media (max-width: 767px) {
   .ov-radial .ov-container {
     height: auto;
+    padding-bottom: 132px;
   }
 }
 
@@ -1459,3 +1460,24 @@
   .ov-ai-composer .ov-ai-suggestions { padding-bottom: 2px; }
 }
 @media (max-width: 480px) { .ov-ai-composer .ov-ai-suggestions { justify-content: flex-start; } }
+
+/* Keep Dashboard chat reachable while the radial menu and insight panels
+ * scroll underneath it. The safe-area inset prevents the composer from
+ * colliding with the phone gesture bar. */
+@media (max-width: 767px) {
+  .ov-ai-mobile-dock {
+    position: fixed;
+    z-index: 40;
+    right: 12px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 12px;
+    width: auto;
+    margin: 0;
+    padding: 8px;
+    border-radius: 22px;
+    box-shadow: 0 12px 34px #25355026, 0 0 0 1px #ffffffcc;
+  }
+  .ov-ai-mobile-dock > [data-assistant-composer] {
+    min-width: 0;
+  }
+}
