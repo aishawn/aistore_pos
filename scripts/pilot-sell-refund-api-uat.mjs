@@ -14,6 +14,9 @@ const env = Object.fromEntries(envText.split(/\r?\n/).filter((line) => line && !
 const base = (process.env.PILOT_BASE_URL ?? "https://skr.orithos.com.au").replace(/\/+$/, "");
 const username = process.env.PILOT_USERNAME ?? env.PILOT_USERNAME ?? "shawn";
 const password = process.env.PILOT_PASSWORD ?? env.PILOT_PASSWORD;
+const requireGst = process.env.PILOT_REQUIRE_GST === "true";
+const allowNegativeStock = process.env.PILOT_ALLOW_NEGATIVE_STOCK === "true";
+const productQuery = process.env.PILOT_PRODUCT_QUERY;
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_SELL_REFUND_API_SKR_2026-10-29.json");
 const checks = [];
 const record = (name, ok, detail = null) => checks.push({ name, status: ok ? "PASS" : "FAIL", ...(detail === null ? {} : { detail }) });
@@ -44,20 +47,20 @@ try {
   record("open register and cash method", bootstrap.response.ok() && Number.isSafeInteger(config?.id) && Number.isSafeInteger(cash?.id) && Boolean(config?.session), { configId: config?.id, sessionId: config?.session?.id, paymentMethodId: cash?.id });
   if (!config?.id || !cash?.id) throw new Error("NO_OPEN_REGISTER");
 
-  const products = await call("POST", "/api/odoo/records", { type: "products", limit: 80 });
-  const product = (products.body.items ?? []).find((item) => item.available_in_pos !== false && Number(item.price_included ?? item.list_price ?? 0) > 0 && Number(item.price_included ?? item.list_price ?? 0) < 40 && Number(item.free_qty ?? item.qty_available ?? 0) > 0);
+  const products = await call("POST", "/api/odoo/records", { type: "products", limit: 100, ...(productQuery ? { query: productQuery } : {}) });
+  const product = (products.body.items ?? []).find((item) => item.available_in_pos !== false && Number(item.price_included ?? item.list_price ?? 0) > 0 && Number(item.price_included ?? item.list_price ?? 0) < 40 && (allowNegativeStock || Number(item.free_qty ?? item.qty_available ?? 0) > 0) && (!requireGst || (Array.isArray(item.taxes_id) && item.taxes_id.length > 0)));
   const beforeQty = Number(product?.free_qty ?? product?.qty_available ?? 0);
-  record("find sellable stocked product", products.response.ok() && Number.isSafeInteger(product?.id) && beforeQty > 0, { productId: product?.id, beforeQty });
+  record("find sellable stocked product", products.response.ok() && Number.isSafeInteger(product?.id) && (allowNegativeStock ? Number.isFinite(beforeQty) : beforeQty > 0), { productId: product?.id, beforeQty, requireGst, allowNegativeStock, productQuery: productQuery ?? null });
   if (!product?.id) throw new Error("NO_SELLABLE_PRODUCT");
 
   const lines = [{ productId: product.id, quantity: 1 }];
   const quote = await call("POST", "/api/odoo/checkout/quote", { configId: config.id, paymentMethodId: cash.id, lines });
   const total = Number(quote.body.total);
-  record("quote returns total and signature", quote.response.ok() && Number.isFinite(total) && total > 0 && typeof quote.body.signature === "string", { status: quote.response.status(), total, tax: quote.body.tax });
+  record("quote returns total and signature", quote.response.ok() && Number.isFinite(total) && total > 0 && typeof quote.body.signature === "string" && (!requireGst || Number(quote.body.tax) > 0), { status: quote.response.status(), total, tax: quote.body.tax, requireGst });
   if (!quote.body.signature) throw new Error("QUOTE_FAILED");
 
   const sale = await call("POST", "/api/odoo/checkout", { configId: config.id, paymentMethodId: cash.id, orderUuid: randomUUID(), tendered: total, expectedQuote: quote.body.signature, lines });
-  record("cash sale is confirmed", sale.response.status() === 201 && sale.body.isRefund === false && Number.isSafeInteger(sale.body.saleId), { status: sale.response.status(), saleId: sale.body.saleId, receipt: sale.body.receipt, total: sale.body.total, gst: sale.body.gst });
+  record("cash sale is confirmed", sale.response.status() === 201 && sale.body.isRefund === false && Number.isSafeInteger(sale.body.saleId) && (!requireGst || Number(sale.body.gst) > 0), { status: sale.response.status(), saleId: sale.body.saleId, receipt: sale.body.receipt, total: sale.body.total, gst: sale.body.gst, requireGst });
   if (!sale.body.saleId) throw new Error("SALE_FAILED");
 
   const detail = await call("GET", `/api/odoo/sales/${sale.body.saleId}`);
@@ -66,7 +69,7 @@ try {
   if (!sourceLine?.id) throw new Error("SALE_DETAIL_FAILED");
 
   const refund = await call("POST", "/api/odoo/checkout", { configId: config.id, paymentMethodId: cash.id, orderUuid: randomUUID(), tendered: total, refundOfOrderId: sale.body.saleId, lines: [{ productId: product.id, quantity: -1, refundedOrderLineId: sourceLine.id }] });
-  record("full cash refund is confirmed", refund.response.status() === 201 && refund.body.isRefund === true && Number(refund.body.total) === total, { status: refund.response.status(), refundId: refund.body.saleId, receipt: refund.body.receipt, total: refund.body.total, gst: refund.body.gst });
+  record("full cash refund is confirmed", refund.response.status() === 201 && refund.body.isRefund === true && Number(refund.body.total) === total && (!requireGst || Number(refund.body.gst) > 0), { status: refund.response.status(), refundId: refund.body.saleId, receipt: refund.body.receipt, total: refund.body.total, gst: refund.body.gst, requireGst });
 
   const afterProducts = await call("POST", "/api/odoo/records", { type: "products", query: String(product.barcode || product.default_code || product.name).slice(0, 120), limit: 100 });
   const after = (afterProducts.body.items ?? []).find((item) => item.id === product.id);
@@ -84,8 +87,10 @@ try {
   await client?.dispose();
 }
 
-const output = { generatedAt: new Date().toISOString(), target: base, username, scope: "Odoo POS API cash sale -> full refund -> inventory and history reconciliation", status: checks.every((check) => check.status === "PASS"), checks };
+const allPassed = checks.every((check) => check.status === "PASS");
+const blocked = requireGst && checks.some((check) => check.name === "find sellable stocked product" && check.status === "FAIL");
+const output = { generatedAt: new Date().toISOString(), target: base, username, scope: "Odoo POS API cash sale -> full refund -> inventory and history reconciliation", status: allPassed ? "PASS" : blocked ? "BLOCKED" : "FAIL", checks };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, status: output.status, checks: checks.length, passed: checks.filter((check) => check.status === "PASS").length }));
-if (!output.status) process.exitCode = 1;
+if (output.status !== "PASS") process.exitCode = output.status === "BLOCKED" ? 2 : 1;

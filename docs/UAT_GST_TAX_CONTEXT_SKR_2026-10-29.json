@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-29T00:05:00.000Z",
+  "target": "https://skr.orithos.com.au",
+  "runtimeVerifiedAgainst": "b9d623211bd431fb06f2983f025972050ce7f1d7",
+  "database": "aipos_uat",
+  "scope": "read-only inspection of effective POS tax data in the current Odoo company context; no product, tax, stock, sale, or refund writes",
+  "companyId": 5,
+  "sampleProduct": {
+    "id": 2998,
+    "name": "MCW HANWOOD 10YO GR TAWNY750ML",
+    "listPrice": 29.99,
+    "freeQty": 5,
+    "globalProductTaxes": [3],
+    "companyContextProductTaxes": [],
+    "posApiTaxes": [],
+    "posApiPriceTax": 0
+  },
+  "finding": "Tax 3 is present on the globally read product record but is absent when Odoo evaluates the product under allowed_company_ids=[5], force_company=5. The POS catalogue therefore quotes zero GST for this sample despite positive stock.",
+  "status": "BLOCKED-GST-COMPANY-TAX-MAPPING",
+  "businessWrites": 0
+}

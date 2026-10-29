@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-10-29T00:04:32.471Z",
+  "target": "https://skr.orithos.com.au",
+  "username": "shawn",
+  "scope": "Odoo POS API cash sale -> full refund -> inventory and history reconciliation",
+  "status": "BLOCKED",
+  "checks": [
+    {
+      "name": "login",
+      "status": "PASS",
+      "detail": 200
+    },
+    {
+      "name": "Odoo session warmup",
+      "status": "PASS",
+      "detail": 200
+    },
+    {
+      "name": "open register and cash method",
+      "status": "PASS",
+      "detail": {
+        "configId": 4,
+        "sessionId": 2,
+        "paymentMethodId": 8
+      }
+    },
+    {
+      "name": "find sellable stocked product",
+      "status": "FAIL",
+      "detail": {
+        "beforeQty": 0,
+        "requireGst": true,
+        "allowNegativeStock": true,
+        "productQuery": "MCW HANWOOD CAB MERLOT"
+      }
+    },
+    {
+      "name": "run",
+      "status": "FAIL",
+      "detail": "NO_SELLABLE_PRODUCT"
+    }
+  ]
+}

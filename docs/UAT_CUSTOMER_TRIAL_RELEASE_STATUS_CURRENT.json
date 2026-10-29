@@ -50,7 +50,7 @@
     "backup restore application smoke",
     "cash close for the historical oversized session is blocked from POS with HTTP 409; the session still needs Orithos closure or replacement",
     "stocktake concurrency and recovery",
-    "GST reconciliation with a correctly taxed product",
+    "GST reconciliation blocked: SKR Odoo company 5 maps sampled product taxes to empty and POS quotes zero GST",
     "formal tenant isolation"
   ]
 }

@@ -43,12 +43,14 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - 关班订单量预检线上复验 `docs/UAT_CASH_CLOSE_PREFLIGHT_SKR_2026-10-29.json`：SKR `configId=4/sessionId=2` 的 153,453 张订单在 478ms 内返回 HTTP 409，未写入现金且 session 未变化；已避免旧 runtime 的 Cloudflare 502 等待，但该历史超大 session 仍需在 Orithos 中关闭或新开 register。
 - SKR 合成税票 OCR `docs/UAT_AI_VALID_INVOICE_OCR_ONLINE_SKR_2026-10-29.json`：9/9 字段匹配 PASS，约束为合成图片、预览接口、0 Odoo 写入，不能替代真实供应商票据现场准确率。
 - SKR AI 指标 `docs/UAT_AI_METRICS_ONLINE_SKR_2026-10-29.json`：24 小时窗口和权限/UI 检查 PASS；总体 p50 716ms、p95 2699ms，`assistant:search_product` p50 837ms、p95 1585ms、estimatedTokens 4808；成本仍为估算 token，非供应商账单。
+- SKR GST 上下文只读扫描 `docs/UAT_GST_TAX_CONTEXT_SKR_2026-10-29.json`：商品 2998 全局税率为 `[3]`，但在当前公司 `5` 上下文下 Odoo 返回空税率，POS catalogue `price_tax=0`；说明当前公司税率映射/商品财税数据不能作为 GST 销售验收样本，未进行改价或造税率写入。
+- GST 销售/退款闭环脚本 `docs/UAT_GST_SELL_REFUND_API_SKR_2026-10-29.json` 因当前 POS 商品上下文均没有有效 GST 商品而记为 `BLOCKED`；未创建销售、退款或其他业务写入。
 - SKR AI 启用门禁 `docs/UAT_AI_ENABLED_GATE_ONLINE_SKR_2026-10-29.json`：价格建议只读页面、AI assistant、酒类查找页和无价格写入监听均 PASS；脚本已兼容当前 `/assistant` 路由和进程环境认证。
 - SKR 离线/硬件边界 `docs/UAT_HARDWARE_OFFLINE_STATUS_ONLINE_SKR_2026-10-29.json`、`docs/UAT_OFFLINE_CAPABILITY_ONLINE_SKR_2026-10-29.json`：浏览器网络模拟和 UI 状态 PASS；没有升级为现场设备或离线销售支持。
 
 ## 当前结论：NO-GO（正式生产）
 
-仍需完成：正常规模 session 的正确/错误现金盘点关班和重试、盘点并发与恢复、两租户越权、备份恢复后的登录与 POS 交易、真实硬件（打印机/钱箱/扫码器/EFTPOS）和真实脱敏票据 OCR。GST 正确税率商品仍缺少可对账样本；AI provider 图片/OCR 仍受上游配额限制，不能作为客户承诺能力。
+仍需完成：正常规模 session 的正确/错误现金盘点关班和重试、盘点并发与恢复、两租户越权、备份恢复后的登录与 POS 交易、真实硬件（打印机/钱箱/扫码器/EFTPOS）和真实脱敏票据 OCR。GST 公司税率映射需先由 Odoo 配置确认，再用正确税率商品做销售/退款对账；AI provider 图片/OCR 仍受上游配额限制，不能作为客户承诺能力。
 
 共享 `aipos_uat` 只适合受控试用和调试。客户试用应限制商品、交易量和管理员权限，并每日核对销售、GST、库存与现金关班。
 
