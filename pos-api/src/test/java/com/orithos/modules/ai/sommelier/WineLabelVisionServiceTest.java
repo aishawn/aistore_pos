@@ -78,4 +78,13 @@ class WineLabelVisionServiceTest {
         assertTrue(message.contains("qwen-vl-plus"));
         assertTrue(message.contains("AI_DASHSCOPE_BASE_URL"));
     }
+
+    @Test
+    void promptKeepsWineNameSeparateFromGrapeVarietal() {
+        String prompt = WineLabelVisionService.PROMPT.toLowerCase().replaceAll("\\s+", " ");
+
+        assertTrue(prompt.contains("if the label says \"vino rosso\", set name to \"vino rosso\""));
+        assertTrue(prompt.contains("varietal field is only a grape variety"));
+        assertTrue(prompt.contains("rosso, bianco, blanco, red, white, or rose are not grape varieties"));
+    }
 }

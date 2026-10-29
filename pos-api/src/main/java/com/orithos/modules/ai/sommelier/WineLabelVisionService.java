@@ -42,7 +42,7 @@ public class WineLabelVisionService {
     private static final Logger log = LoggerFactory.getLogger(WineLabelVisionService.class);
     static final long MAX_BYTES = 6L * 1024 * 1024;
 
-    private static final String PROMPT = """
+    static final String PROMPT = """
             You are reading a photo of a wine bottle label for a liquor store POS.
             Extract the label text. Reply JSON only, no markdown.
             {
@@ -54,6 +54,12 @@ public class WineLabelVisionService {
               "queries": ["short search phrases a store might use"]
             }
             queries should include the producer + wine name, and a shorter brand + varietal phrase.
+            The name field must preserve the exact wine/cuvee/product wording printed on the label,
+            separate from producer, vintage, and grape variety. For example, if the label says
+            "Vino Rosso", set name to "Vino Rosso". The varietal field is only a grape variety
+            such as Shiraz or Cabernet Sauvignon. Style or colour words such as Rosso, Bianco,
+            Blanco, Red, White, or Rose are not grape varieties and must not replace the wine name.
+            Do not translate or normalize the visible product wording.
             If a barcode/EAN is visible, put digits only in barcode.
             If this is not a wine label, still fill name with any product wording you can read.
             """;
