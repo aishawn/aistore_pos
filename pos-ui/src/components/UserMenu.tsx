@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { DoorClosed, History, Moon, Sun, Wifi, WifiOff } from "lucide-react";
+import { DoorClosed, History, LayoutDashboard, Moon, Sun, Wifi, WifiOff } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -130,6 +130,24 @@ export function UserMenu({
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-[var(--oh-border)] pt-3">
+        <div className="grid grid-cols-2 gap-2 md:hidden" aria-label="Dashboard views">
+          <Link
+            href="/dashboard"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--oh-primary)] bg-[var(--oh-orange-light)] px-2 py-2 text-sm font-semibold text-[var(--brand-control)] no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <LayoutDashboard size={17} aria-hidden="true" />
+            Radial
+          </Link>
+          <Link
+            href="/dashboard/workspace"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-2 py-2 text-sm font-semibold text-[var(--oh-text)] no-underline transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <LayoutDashboard size={17} aria-hidden="true" />
+            Workspace
+          </Link>
+        </div>
         {onCloseRegister ? (
           <button
             type="button"

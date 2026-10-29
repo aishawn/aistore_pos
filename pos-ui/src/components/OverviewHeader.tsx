@@ -15,7 +15,7 @@ export function OverviewHeader({
 }) {
   return (
     <header className="ov-header">
-      <div className="min-w-0">
+      <div className="ov-heading min-w-0">
         <div className="ov-brand"><OrithosLogo /></div>
         <p className="ov-eyebrow">{greeting}</p>
         <h1 title={company}>
