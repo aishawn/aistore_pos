@@ -25,8 +25,10 @@
   --brand-line: #e3e7ee;
   --brand-line-strong: #cbd3df;
   --brand-success: #117250;
+  --brand-on-success: #ffffff;
   --brand-success-tint: #edfaf5;
   --brand-danger: #b91c1c;
+  --brand-on-danger: #ffffff;
   --brand-danger-tint: #fef2f2;
   --brand-info: #245be6;
   --brand-on-info: #ffffff;
@@ -78,8 +80,10 @@
   --brand-line: #3c495c;
   --brand-line-strong: #596a80;
   --brand-success: #6ee7b7;
+  --brand-on-success: #052e22;
   --brand-success-tint: #14382f;
   --brand-danger: #fca5a5;
+  --brand-on-danger: #450a0a;
   --brand-danger-tint: #44272b;
   --brand-info: #93b4ff;
   --brand-on-info: #111b2c;

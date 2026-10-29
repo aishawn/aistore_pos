@@ -1495,27 +1495,6 @@
   border-color: var(--brand-line);
 }
 
-.dark .ai-assistant-shell .ai-assistant-backdrop {
-  opacity: 0.3;
-  filter: saturate(0.65) brightness(0.5);
-}
-.dark .ai-assistant-shell .ai-assistant-wash {
-  background: linear-gradient(to top, rgba(21, 28, 40, 0.28), rgba(21, 28, 40, 0.72), transparent);
-}
-.dark .ai-assistant-shell aside {
-  border-color: var(--brand-line);
-  background: color-mix(in srgb, var(--brand-surface) 88%, transparent);
-}
-.dark .ai-assistant-shell section > div:first-child {
-  background: radial-gradient(circle at 50% 0%, rgba(56, 39, 31, 0.25), transparent 54%), linear-gradient(180deg, rgba(21, 28, 40, 0.08), rgba(21, 28, 40, 0.42));
-}
-.dark .ai-assistant-shell section button {
-  border-color: var(--brand-line);
-  background: color-mix(in srgb, var(--brand-surface) 90%, transparent);
-}
-.dark .ai-assistant-shell section button:hover {
-  background: var(--brand-surface-muted);
-}
 @media (max-width: 1199px) {
   .ov-workspace .ov-container { padding: 28px 32px 64px; }
   .ov-workspace .ov-header { flex-wrap: wrap; }

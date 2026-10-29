@@ -169,6 +169,13 @@ html.dark {
     color: var(--oh-text) !important;
   }
 
+  .dark .text-slate-500,
+  .dark .text-slate-600,
+  .dark .text-neutral-500,
+  .dark .text-neutral-600 {
+    color: var(--oh-text-secondary) !important;
+  }
+
   .dark .text-gray-500,
   .dark .text-gray-600,
   .dark .text-gray-700 {
@@ -314,8 +321,13 @@ html.dark .bg-blue-50\/40 {
 }
 
 html.dark .bg-amber-50\/70,
-html.dark .bg-yellow-50\/70 {
+html.dark .bg-yellow-50\/70,
+html.dark .bg-amber-50\/45 {
   background-color: var(--brand-warning-tint) !important;
+}
+
+html.dark .bg-sky-50\/80 {
+  background-color: var(--brand-info-tint) !important;
 }
 
 html.dark .bg-white\/60,
@@ -338,8 +350,11 @@ html.dark .hover\:bg-slate-50\/80:hover {
 
 html.dark .border-blue-100,
 html.dark .border-sky-100,
+html.dark .border-white\/40,
 html.dark .border-white\/70,
-html.dark .border-white\/85 {
+html.dark .border-white\/80,
+html.dark .border-white\/85,
+html.dark .border-white\/90 {
   border-color: var(--brand-line) !important;
 }
 
@@ -355,6 +370,168 @@ html.dark .text-amber-900\/80,
 html.dark .text-yellow-950\/80,
 html.dark .text-yellow-900\/80 {
   color: var(--brand-warning) !important;
+}
+
+html.dark .text-red-800\/80 {
+  color: var(--brand-danger) !important;
+}
+
+/* Keep common status and classification utilities readable on dark surfaces. */
+html.dark :is(.bg-amber-100, .bg-yellow-100) {
+  background-color: var(--brand-warning-tint) !important;
+}
+html.dark :is(.bg-red-100, .bg-rose-100) {
+  background-color: var(--brand-danger-tint) !important;
+}
+html.dark :is(.bg-emerald-100, .bg-green-100) {
+  background-color: var(--brand-success-tint) !important;
+}
+html.dark :is(.bg-sky-100, .bg-blue-100) {
+  background-color: var(--brand-info-tint) !important;
+}
+html.dark :is(.bg-indigo-50, .bg-violet-50, .bg-purple-50) {
+  background-color: var(--brand-module-purple-tint) !important;
+}
+html.dark :is(
+  .hover\:bg-amber-50:hover, .hover\:bg-amber-100:hover,
+  .hover\:bg-yellow-50:hover, .hover\:bg-yellow-100:hover
+) {
+  background-color: var(--brand-warning-tint) !important;
+}
+html.dark :is(.hover\:bg-red-50:hover, .hover\:bg-red-100:hover, .hover\:bg-rose-50:hover, .hover\:bg-rose-100:hover) {
+  background-color: var(--brand-danger-tint) !important;
+}
+html.dark :is(.hover\:bg-emerald-50:hover, .hover\:bg-emerald-100:hover, .hover\:bg-green-50:hover, .hover\:bg-green-100:hover) {
+  background-color: var(--brand-success-tint) !important;
+}
+html.dark :is(.hover\:bg-sky-50:hover, .hover\:bg-sky-100:hover, .hover\:bg-blue-50:hover, .hover\:bg-blue-100:hover) {
+  background-color: var(--brand-info-tint) !important;
+}
+html.dark :is(.hover\:bg-indigo-50:hover, .hover\:bg-violet-50:hover, .hover\:bg-purple-50:hover) {
+  background-color: var(--brand-module-purple-tint) !important;
+}
+
+html.dark :is(
+  .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900,
+  .text-yellow-700, .text-yellow-800, .text-yellow-900
+) {
+  color: var(--brand-warning) !important;
+}
+html.dark :is(
+  .text-red-600, .text-red-700, .text-red-800, .text-red-900,
+  .text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900
+) {
+  color: var(--brand-danger) !important;
+}
+html.dark :is(
+  .text-green-600, .text-green-700, .text-green-800, .text-green-900,
+  .text-green-950, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-emerald-950,
+  .text-teal-700, .text-teal-800
+) {
+  color: var(--brand-success) !important;
+}
+html.dark :is(
+  .text-sky-700, .text-sky-800, .text-sky-900,
+  .text-blue-700, .text-blue-800, .text-blue-900
+) {
+  color: var(--brand-info) !important;
+}
+html.dark :is(.text-indigo-700, .text-violet-700, .text-purple-700) {
+  color: var(--brand-module-purple) !important;
+}
+
+html.dark :is(.border-amber-200, .border-amber-300, .border-yellow-200, .border-yellow-300) {
+  border-color: var(--brand-warning) !important;
+}
+html.dark :is(.border-red-200, .border-red-300, .border-rose-200, .border-rose-300) {
+  border-color: var(--brand-danger) !important;
+}
+html.dark :is(.border-green-200, .border-green-300, .border-green-800, .border-emerald-200, .border-emerald-300, .border-emerald-800, .border-teal-200) {
+  border-color: var(--brand-success) !important;
+}
+html.dark :is(.border-sky-200, .border-sky-300, .border-blue-200, .border-blue-300) {
+  border-color: var(--brand-info) !important;
+}
+html.dark :is(.border-indigo-200, .border-violet-200, .border-purple-200) {
+  border-color: var(--brand-module-purple) !important;
+}
+
+html.dark [class~="bg-[var(--oh-info)]"].text-white {
+  color: var(--brand-on-info) !important;
+}
+html.dark [class~="bg-[var(--oh-success)]"].text-white {
+  color: var(--brand-on-success) !important;
+}
+html.dark [class~="bg-[var(--oh-danger)]"].text-white {
+  color: var(--brand-on-danger) !important;
+}
+html.dark [class~="bg-[var(--oh-tile-green-text)]"].text-white {
+  color: var(--brand-on-success) !important;
+}
+html.dark [class~="bg-[var(--sf-muted)]"].text-white {
+  background-color: var(--oh-surface-inverse) !important;
+}
+html.dark [class~="bg-[#00a3ee]"],
+html.dark [class~="bg-[#3aa0e3]"],
+html.dark [class~="bg-[#5cb3e0]"],
+html.dark [class~="hover:bg-[#0090d4]"]:hover,
+html.dark [class~="hover:bg-[#4aa8d8]"]:hover,
+html.dark [class~="hover:bg-[#4aa3d0]"]:hover {
+  background-color: var(--brand-info) !important;
+}
+html.dark [class~="bg-[#00a3ee]"].text-white,
+html.dark [class~="bg-[#3aa0e3]"].text-white,
+html.dark [class~="bg-[#5cb3e0]"].text-white {
+  color: var(--brand-on-info) !important;
+}
+html.dark [class~="bg-[#3cb44b]"],
+html.dark [class~="hover:bg-[#35a042]"]:hover {
+  background-color: var(--brand-success) !important;
+}
+html.dark [class~="bg-[#3cb44b]"].text-white {
+  color: var(--brand-on-success) !important;
+}
+html.dark [class~="hover:bg-red-700"]:hover {
+  background-color: var(--brand-danger) !important;
+  color: var(--brand-on-danger) !important;
+}
+html.dark [class~="bg-[#f7f8f8]"],
+html.dark [class~="bg-[#eee]"] {
+  background-color: var(--brand-surface-muted) !important;
+}
+html.dark [class~="bg-[#fdecea]"],
+html.dark [class~="bg-[#fff5f5]"] {
+  background-color: var(--brand-danger-tint) !important;
+}
+html.dark [class~="text-[#e2231a]"],
+html.dark [class~="text-[#c62828]"] {
+  color: var(--brand-danger) !important;
+}
+html.dark [class~="bg-[#e2231a]"],
+html.dark [class~="bg-[#c91c14]"] {
+  background-color: var(--brand-danger) !important;
+}
+html.dark [class~="bg-[#f5a623]"] {
+  background-color: var(--brand-warning) !important;
+}
+html.dark [class~="bg-[#6cc04a]"] {
+  background-color: var(--brand-success) !important;
+}
+html.dark [class~="border-[#3cb44b]"] {
+  border-color: var(--brand-success) !important;
+}
+html.dark [class~="text-[#3cb44b]"] {
+  color: var(--brand-success) !important;
+}
+html.dark [class~="text-[#00a3ee]"],
+html.dark [class~="hover:text-[#0090d4]"]:hover {
+  color: var(--brand-info) !important;
+}
+html.dark [class~="border-[#6eb5e0]"] {
+  border-color: var(--brand-info) !important;
+}
+html.dark [class~="bg-[#2b6cb0]"] {
+  background-color: var(--brand-info) !important;
 }
 
 html {
@@ -387,6 +564,7 @@ html::-webkit-scrollbar-track {
 
 .dark {
   --oh-surface-inverse: #0f172a;
+  --oh-navy: #111b2c;
   --background: var(--brand-canvas);
   --foreground: var(--brand-ink);
   --card: var(--brand-surface);

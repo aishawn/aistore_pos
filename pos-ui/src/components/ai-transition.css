@@ -140,6 +140,85 @@
 }
 .ai-transition-error button { min-height: 44px; padding: 8px 12px; border-radius: 10px; background: #fff0e4; color: #9b390d; white-space: nowrap; }
 .ai-transition-error button:focus-visible { outline: 2px solid #f67832; outline-offset: 3px; }
+.dark .ai-transition-wash {
+  background: radial-gradient(circle at var(--ai-transition-x, 50%) var(--ai-transition-y, 50%), #38271f 0%, #1c2738 48%, #151c28 100%);
+}
+.dark .ai-transition-core {
+  border-color: var(--brand-line-strong);
+  box-shadow: inset 0 0 0 1px var(--brand-line), 0 0 48px rgba(251, 146, 60, 0.12);
+}
+.dark .ai-transition-core::after {
+  background:
+    radial-gradient(ellipse at 78% 30%, var(--brand-info-tint), transparent 48%),
+    radial-gradient(circle at 32% 24%, var(--brand-surface) 0%, var(--brand-surface-muted) 100%);
+}
+.dark .ai-transition-core::before {
+  opacity: 0.08;
+  filter: saturate(0.4) brightness(0.75) blur(1px);
+}
+.dark .ai-transition-spark {
+  color: var(--brand-orange);
+}
+.dark .ai-transition-caption strong {
+  color: var(--brand-ink);
+}
+.dark .ai-transition-caption span {
+  color: var(--brand-muted);
+}
+.dark .ai-transition-orbit {
+  stroke: var(--brand-line-strong);
+  opacity: 0.55;
+}
+.dark .ai-transition-orbit-two {
+  stroke: var(--brand-orange);
+  opacity: 0.5;
+}
+.dark .ai-transition-error {
+  border: 1px solid var(--brand-line);
+  background: var(--brand-surface);
+  color: var(--brand-ink);
+  box-shadow: var(--brand-shadow);
+}
+.dark .ai-transition-error button {
+  background: var(--brand-warning-tint);
+  color: var(--brand-warning);
+}
+.dark .ai-transition-error button:focus-visible {
+  outline-color: var(--brand-focus);
+}
+.dark .ai-assistant-shell .ai-assistant-backdrop {
+  opacity: 0.3;
+  filter: saturate(0.65) brightness(0.5);
+}
+.dark .ai-assistant-shell .ai-assistant-wash {
+  background: linear-gradient(to top, rgba(21, 28, 40, 0.28), rgba(21, 28, 40, 0.72), transparent);
+}
+.dark .ai-assistant-shell aside {
+  border-color: var(--brand-line);
+  background: color-mix(in srgb, var(--brand-surface) 88%, transparent);
+}
+.dark .ai-assistant-shell section > div:first-child {
+  background: radial-gradient(circle at 50% 0%, rgba(56, 39, 31, 0.25), transparent 54%), linear-gradient(180deg, rgba(21, 28, 40, 0.08), rgba(21, 28, 40, 0.42));
+}
+.dark .ai-assistant-shell section button {
+  border-color: var(--brand-line);
+  background: color-mix(in srgb, var(--brand-surface) 90%, transparent);
+}
+.dark .ai-assistant-shell section button:hover {
+  background: var(--brand-surface-muted);
+}
+.dark .ai-assistant-shell [class~="bg-[#eaf1ff]"] {
+  background: var(--brand-info-tint);
+  color: var(--brand-info);
+}
+.dark .ai-assistant-shell [class~="bg-[#e7f8f3]"] {
+  background: var(--brand-success-tint);
+  color: var(--brand-success);
+}
+.dark .ai-assistant-shell [class~="bg-[#fff5df]"] {
+  background: var(--brand-warning-tint);
+  color: var(--brand-warning);
+}
 @media (max-width: 767px) {
   .ai-transition-orbits { width: 112vw; height: 112vw; }
   .ai-transition-orbit-two, .ai-transition-orbit-three, .ai-transition-orbit-arc, .ai-transition-particles { display: none; }
