@@ -29,7 +29,7 @@ export function Header({
   const tabIndex = checkoutKeyboard ? -1 : undefined;
 
   return (
-    <header className="relative shrink-0 bg-[var(--oh-header-bg)] font-sans print:hidden">
+    <header className="oh-app-header relative shrink-0 bg-[var(--oh-header-bg)] font-sans print:hidden">
       <div className="flex h-[var(--oh-header-height)] items-center justify-between border-b border-[var(--oh-border)]">
         <button
           type="button"

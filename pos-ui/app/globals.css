@@ -599,6 +599,17 @@ html.dark {
   background-image: none !important;
 }
 
+/* Keep the shared POS header clear of phone cutouts. env() is zero on
+ * ordinary browsers, so the existing header rhythm remains unchanged there. */
+.oh-app-header {
+  box-sizing: border-box;
+}
+@media (max-width: 767px) {
+  .oh-app-header {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 .oh-brand-mark {
   display: inline-flex;
   align-items: center;
