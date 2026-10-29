@@ -158,6 +158,10 @@ app:
       fallback-model: ${AI_GATEWAY_FALLBACK_MODEL:qwen-flash}
       transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}}
       vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}}
+    snapshot:
+      sync-enabled: ${APP_AI_SNAPSHOT_SYNC_ENABLED:false}
+      sync-delay-ms: ${APP_AI_SNAPSHOT_SYNC_DELAY_MS:21600000}
+      sync-initial-delay-ms: ${APP_AI_SNAPSHOT_SYNC_INITIAL_DELAY_MS:60000}
 
 # 日志级别
 logging:

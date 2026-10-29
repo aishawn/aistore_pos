@@ -12,6 +12,15 @@ import java.util.List;
 @Mapper
 public interface VendorMapper {
 
+    @Select("""
+            SELECT * FROM vendor
+            WHERE outlet_id IS NOT NULL
+              AND odoo_company_id IS NOT NULL
+              AND odoo_provision_status = 'ready'
+            ORDER BY id
+            """)
+    List<Vendor> readyOdooBindings();
+
     @Select("SELECT * FROM vendor WHERE id = #{id}")
     Vendor findById(Long id);
 
