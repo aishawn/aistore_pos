@@ -599,6 +599,13 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
+            source_sales = int(sync_counts.get("sales") or 0)
+            imported_sales = int(pos_result.get("sales_imported") or 0)
+            if source_sales and imported_sales < source_sales:
+                raise RuntimeError(
+                    "POS sales import is smaller than Shopfront source: "
+                    f"source={source_sales}, imported={imported_sales}"
+                )
             # The IDs are an in-process filter for this chunk, not durable
             # progress state. Keeping only the count makes status reads and
             # run-row commits substantially smaller for long histories.
