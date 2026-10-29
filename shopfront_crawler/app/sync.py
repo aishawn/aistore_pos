@@ -7,7 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from cryptography.fernet import Fernet
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
@@ -280,6 +280,11 @@ async def sync_store(
     sale_product_ids: set[str] = set()
     sale_products: dict[str, Product] = {}
     try:
+        # A blocked lock or malformed database statement must fail the chunk
+        # and be retried by the scheduler. Without a server-side timeout the
+        # worker can remain stuck forever after a checkpoint.
+        if db.bind is not None and db.bind.dialect.name == "postgresql":
+            db.execute(text("SET statement_timeout = '30s'"))
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
         sale_rows: list[dict[str, Any]] = []
@@ -343,6 +348,17 @@ async def sync_store(
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
         for sale_index, row in enumerate(sale_rows, start=1):
+            # Persist a heartbeat before each batch. This makes the exact
+            # blocking sale visible through the status API even if the next
+            # database operation never returns.
+            if sale_index == 1 or (sale_index - 1) % 10 == 0:
+                counts["sales_fetched"] = len(sale_rows)
+                counts["sales_processed"] = sale_index - 1
+                counts["stage"] = "sales"
+                counts["current_sale_index"] = sale_index
+                counts["current_sale_id"] = first(row, "ID", "id", "Sale ID", "sale_id")
+                run.counts = counts
+                db.commit()
             sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
             if sale_id:
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
@@ -435,10 +451,12 @@ async def sync_store(
                 # Do not hold SQLite's writer lock for the duration of a
                 # large GraphQL history window. This also makes a completed
                 # subset durable if the process is restarted mid-chunk.
-                if sale_index % 50 == 0:
+                if sale_index % 10 == 0:
                     counts["sales_fetched"] = len(sale_rows)
                     counts["sales_processed"] = sale_index
                     counts["stage"] = "sales"
+                    counts["current_sale_index"] = sale_index + 1
+                    counts["current_sale_id"] = None
                     run.counts = counts
                     db.commit()
         if sale_rows:
