@@ -59,6 +59,7 @@ class AiCommandParserTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
                 eq(com.fasterxml.jackson.databind.JsonNode.class)))
                 .thenReturn(new AiCompletion<>(new ObjectMapper().getNodeFactory().textNode("""
+                        <think>choose the product update intent</think>
                         ```json
                         {"type":"UPDATE_PRODUCT","confidence":0.98,"summary":"rename one product",
                          "items":[{"id":123,"name":"VB Cans","field":"name","before":"VB Cans","after":"Victoria Bitter","reason":"exact match","status":"READY"}],

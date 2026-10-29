@@ -83,10 +83,30 @@ public class AiCommandParser {
         JsonNode current = value;
         for (int depth = 0; depth < 3; depth++) {
             if (current.isTextual()) {
-                current = mapper.readTree(stripJsonFence(current.asText()));
+                current = mapper.readTree(extractJsonObject(current.asText()));
                 continue;
             }
             if (current.isObject() && current.has("type")) return current;
+            if (current.isArray()) {
+                JsonNode next = null;
+                for (JsonNode item : current) {
+                    if (item.isObject() && item.has("type")) {
+                        next = item;
+                        break;
+                    }
+                    if (item.isTextual()) {
+                        next = item;
+                        break;
+                    }
+                    if (item.isObject() && item.has("text")) {
+                        next = item.get("text");
+                        break;
+                    }
+                }
+                if (next == null) return current;
+                current = next;
+                continue;
+            }
             JsonNode next = null;
             for (String key : List.of("output", "result", "data", "content")) {
                 JsonNode candidate = current.get(key);
@@ -110,6 +130,14 @@ public class AiCommandParser {
                     : value.substring(3, value.length() - 3);
         }
         return value.trim();
+    }
+
+    private static String extractJsonObject(String text) {
+        String value = stripJsonFence(text);
+        int start = value.indexOf('{');
+        int end = value.lastIndexOf('}');
+        if (start >= 0 && end > start) return value.substring(start, end + 1).trim();
+        return value;
     }
 
     private void validate(AiCommandService.Parsed parsed) {

@@ -77,14 +77,23 @@ public class AiCommandService {
         String text = request.text().trim();
         Parsed parsed;
         try {
-            parsed = commandParser.parse(tenant, text);
-        } catch (BusinessException providerOrSchemaFailure) {
-            // Keep a narrow, deterministic fallback for the supported manual phrases.
-            // Unknown text still returns the original provider/schema failure.
+            // Resolve explicit, supported command phrases deterministically first.
+            // This keeps manual preview commands available when the model provider is
+            // slow or temporarily returns a non-conforming response. Odoo remains the
+            // source of record for all resolved IDs and current values.
+            parsed = parseText(tenant, text);
+        } catch (BusinessException deterministic) {
+            if (deterministic.getCode() != 40027) throw deterministic;
             try {
-                parsed = parseText(tenant, text);
-            } catch (BusinessException unsupportedText) {
-                throw providerOrSchemaFailure;
+                parsed = commandParser.parse(tenant, text);
+            } catch (BusinessException providerOrSchemaFailure) {
+                // Keep a narrow deterministic fallback for provider failures on
+                // phrases that were not recognized before the Gateway call.
+                try {
+                    parsed = parseText(tenant, text);
+                } catch (BusinessException unsupportedText) {
+                    throw providerOrSchemaFailure;
+                }
             }
         }
         UUID id = UUID.randomUUID();
