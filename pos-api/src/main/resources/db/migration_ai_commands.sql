@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS ai_command_audit (
   correlation_id VARCHAR(128),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Compatibility columns for databases created by the earlier command schema.
+-- CREATE TABLE IF NOT EXISTS does not reconcile an already existing table, so
+-- keep the repository contract available during rolling deployments.
+ALTER TABLE ai_command_draft ADD COLUMN IF NOT EXISTS payload_json TEXT;
+ALTER TABLE ai_command_draft ADD COLUMN IF NOT EXISTS version VARCHAR(64);
+ALTER TABLE ai_command_draft ADD COLUMN IF NOT EXISTS command_version VARCHAR(64);
+ALTER TABLE ai_command_draft ALTER COLUMN command_version DROP NOT NULL;
+ALTER TABLE ai_command_audit ADD COLUMN IF NOT EXISTS detail TEXT;
