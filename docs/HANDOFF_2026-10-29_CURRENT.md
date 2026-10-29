@@ -67,7 +67,7 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - Demo AI availability `docs/UAT_AI_AVAILABILITY_ONLINE_2026-10-29_CURRENT.json`：3/3 PASS，认证配置 `enabled=true`、AI composer 可用、页面无提交业务写入。AI metrics `docs/UAT_AI_METRICS_ONLINE_2026-10-29_CURRENT.json`：9/9 PASS，当前窗口总体 p50=15ms、p95=2693ms，`assistant:search_product` requests=28、p50=789ms、p95=1379ms、estimatedTokens=532；指标成本仍是估算 token，不是 provider 账单。
 - 本机 DashScope 单短问健康探针 `docs/UAT_AI_DASHSCOPE_HEALTH_2026-10-29_CURRENT.json` 为 `BLOCKED`（`ECONNRESET`）；该结果只说明本机直连 provider 网络不稳定，不能推翻已通过的线上应用 OCR 请求，也不能作为 provider 降级验收证据。
 - Demo 客户组 CRUD `docs/UAT_CUSTOMER_GROUPS_LIVE_CRUD_DEMO_2026-10-29_CURRENT.json`：8/8 PASS，创建、读取、重命名、删除和清理后回读通过，3 个 UAT 写入并确认清理；脚本自身报告 `runtimeMatchesSource=false`，因为脚本来源工作树 HEAD 与线上 SHA 不同，线上 SHA 已由独立 `/api/public/version` 核对。
-- 候选提交 `6220f125e9b84597410b2f6befc08cd8c9aa4763` 已在 Java 21（`C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`）执行完整 `mvn -B clean verify`：449 tests、0 failures、0 errors、BUILD SUCCESS（49.064s）；候选分支已推送为 `origin/codex/ocr-release-candidate`，尚未合并 `main` 或部署。
+- 候选提交 `c113f325`（包含 OCR 代码和交接证据）已在 Java 21（`C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`）执行精确 SHA 的完整 `mvn -B clean verify`：449 tests、0 failures、0 errors、BUILD SUCCESS（50.409s）；候选分支已推送为 `origin/codex/ocr-release-candidate`，尚未合并 `main` 或部署。
 - 历史续验记录曾观测到 `c7c87b1aff8dfe4a4ec399a802fe6642fee6c898`；当前线上 SHA 以本节第一条的 `8b6ad27ef54751b456fccb7c395b3e37d3ac6088` 为准。
 - 未认证公开巡检：根路径和受保护业务路由均按预期 307 到 `/login?next=...`；登录页 HTTP 200；关键路由未发现 5xx。
 - 候选 `pos-ui` `npm run typecheck` 通过；硬件/离线线上验收脚本 `node --check` 通过。
