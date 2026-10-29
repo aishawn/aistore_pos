@@ -660,7 +660,13 @@ async def push_pos_snapshot(
     except (KeyError, ValueError):
         local_zone = timezone.utc
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
-    if start is not None and end is not None:
+    if run is not None and start is not None and end is not None:
+        # A history sync has just upserted the exact source rows that belong
+        # to this run. Use its durable sync timestamp so sales with a missing
+        # or malformed source timestamp are still imported. Full snapshots
+        # retain the normal date filter below.
+        sales_query = sales_query.where(Sale.synced_at >= run.started_at)
+    elif start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
