@@ -1,8 +1,9 @@
 import asyncio
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -177,7 +178,13 @@ END '{next_day}'
 UNCONSOLIDATED'''
                 return await self.run_report(access_token, adjacent)
 
-    async def fetch_sales_graphql(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
+    async def fetch_sales_graphql(
+        self,
+        access_token: str,
+        start: str,
+        end: str,
+        timezone_name: str = "Australia/Adelaide",
+    ) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
         query = """
         query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
@@ -200,8 +207,14 @@ UNCONSOLIDATED'''
           }
         }
         """
-        start_value = f"{start}T00:00:00Z"
-        end_value = f"{end}T23:59:59Z"
+        try:
+            local_zone = ZoneInfo(timezone_name)
+        except (KeyError, ValueError):
+            local_zone = timezone.utc
+        local_start = datetime.combine(date.fromisoformat(start), time.min, tzinfo=local_zone)
+        local_end = datetime.combine(date.fromisoformat(end) + timedelta(days=1), time.min, tzinfo=local_zone) - timedelta(microseconds=1)
+        start_value = local_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        end_value = local_end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         variables = {"startDate": start_value, "endDate": end_value}
         try:
             return await self._fetch_connection_nodes(access_token, query, "sales", variables)

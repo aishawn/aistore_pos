@@ -4,6 +4,7 @@ import secrets
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from cryptography.fernet import Fernet
 from sqlalchemy import select
@@ -67,9 +68,17 @@ def parse_datetime(value: Any) -> datetime | None:
     return None
 
 
-def business_date(value: Any, fallback: date) -> str:
+def business_date(value: Any, fallback: date, timezone_name: str = "Australia/Adelaide") -> str:
     parsed = parse_datetime(value)
-    return (parsed.date() if parsed else fallback).isoformat()
+    if parsed is None:
+        return fallback.isoformat()
+    try:
+        local_zone = ZoneInfo(timezone_name)
+    except (KeyError, ValueError):
+        local_zone = timezone.utc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=local_zone)
+    return parsed.astimezone(local_zone).date().isoformat()
 
 
 def _non_empty(value: Any) -> bool:
@@ -232,7 +241,7 @@ async def sync_store(
             counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         sale_rows: list[dict[str, Any]] = []
         try:
-            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat())
+            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone)
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
         # Reporting rows are the authoritative source for daily aggregates. The
@@ -240,7 +249,7 @@ async def sync_store(
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}
         for row in rows:
             timestamp = first(row, "timestamp", "Timestamp", "created_at", "createdAt")
-            key = (business_date(timestamp, start), first(row, "by_name", "BY_NAME", "Name", "name", "outlet"))
+            key = (business_date(timestamp, start, store.timezone), first(row, "by_name", "BY_NAME", "Name", "name", "outlet"))
             agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
             agg["revenue"] += parse_decimal(first(row, "Revenue", "revenue")) or Decimal(0)
             agg["cost"] += parse_decimal(first(row, "Cost of Goods Sold", "cost")) or Decimal(0)
@@ -254,7 +263,7 @@ async def sync_store(
             # aggregate source for that range instead of dropping the day.
             for row in sale_rows:
                 timestamp = first(row, "createdAt", "created_at", "timestamp")
-                key = (business_date(timestamp, start), first(row, "outlet", "outletName", "outlet_name"))
+                key = (business_date(timestamp, start, store.timezone), first(row, "outlet", "outletName", "outlet_name"))
                 agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
                 revenue = parse_decimal(first(row, "totalPrice", "total_price")) or Decimal(0)
                 cost = parse_decimal(first(row, "totalCost", "total_cost")) or Decimal(0)
