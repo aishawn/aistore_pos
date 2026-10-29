@@ -1,11 +1,11 @@
 {
   "generatedAt": "2026-10-29",
   "target": "https://demo.orithos.com.au",
-  "runtimeSha": "b9d623211bd431fb06f2983f025972050ce7f1d7",
-  "frontendSha": "b9d623211bd431fb06f2983f025972050ce7f1d7",
-  "backendSha": "b9d623211bd431fb06f2983f025972050ce7f1d7",
-  "sourceShaAtAudit": "b9d623211bd431fb06f2983f025972050ce7f1d7",
-  "verifiedCodeCandidateSha": "b9d623211bd431fb06f2983f025972050ce7f1d7",
+  "runtimeSha": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
+  "frontendSha": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
+  "backendSha": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
+  "sourceShaAtAudit": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
+  "verifiedCodeCandidateSha": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
   "sourceRuntimeMatch": true,
   "databaseMode": "shared-uat",
   "odooDatabase": "aipos_uat",
@@ -50,7 +50,7 @@
     "backup restore application smoke",
     "cash close for the historical oversized session is blocked from POS with HTTP 409; the session still needs Orithos closure or replacement",
     "stocktake concurrency and recovery",
-    "GST reconciliation blocked: SKR Odoo company 5 maps sampled product taxes to empty and POS quotes zero GST",
+    "GST reconciliation blocked: POS company 5 has zero active sale taxes and no fiscal position; existing 10% taxes belong to companies 1 and 2",
     "formal tenant isolation"
   ]
 }

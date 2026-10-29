@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-29T00:12:00.000Z",
+  "target": "https://skr.orithos.com.au",
+  "runtimeVerifiedAgainst": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
+  "database": "aipos_uat",
+  "scope": "read-only Odoo POS/company/tax configuration inspection; no writes",
+  "posConfig": {
+    "id": 4,
+    "companyId": 5,
+    "defaultFiscalPosition": false,
+    "fiscalPositions": []
+  },
+  "taxes": {
+    "activeSaleTaxCountForCompany5": 0,
+    "taxId3": { "name": "10% GST", "companyId": 1 },
+    "taxId44": { "name": "10% GST", "companyId": 2 },
+    "company5HasCompanySpecificTenPercentGst": false
+  },
+  "finding": "The register's company has no active sale tax and no fiscal position. The existing 10% GST records belong to other companies and are not applicable under company 5. Do not copy or assign them without the store's accounting configuration being confirmed.",
+  "status": "BLOCKED-ODOO-COMPANY-TAX-SETUP",
+  "businessWrites": 0
+}

@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-10-29T00:05:00.000Z",
   "target": "https://skr.orithos.com.au",
-  "runtimeVerifiedAgainst": "b9d623211bd431fb06f2983f025972050ce7f1d7",
+  "runtimeVerifiedAgainst": "c7c87b1aff8dfe4a4ec399a802fe6642fee6c898",
   "database": "aipos_uat",
   "scope": "read-only inspection of effective POS tax data in the current Odoo company context; no product, tax, stock, sale, or refund writes",
   "companyId": 5,
@@ -15,7 +15,7 @@
     "posApiTaxes": [],
     "posApiPriceTax": 0
   },
-  "finding": "Tax 3 is present on the globally read product record but is absent when Odoo evaluates the product under allowed_company_ids=[5], force_company=5. The POS catalogue therefore quotes zero GST for this sample despite positive stock.",
+  "finding": "Tax 3 belongs to company 1 and is not applicable to company 5. Further read-only inspection confirmed that company 5 has no active sale tax and the POS config has no fiscal position; see UAT_GST_ROOT_CAUSE_SKR_2026-10-29.json.",
   "status": "BLOCKED-GST-COMPANY-TAX-MAPPING",
   "businessWrites": 0
 }
