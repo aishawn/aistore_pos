@@ -64,14 +64,37 @@ public class AiDecisionRepository {
     }
 
     public List<Map<String, Object>> list(TenantContext tenant, String type, int limit) {
-        return jdbc.queryForList("""
+        List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT id, decision_type AS type, source_system AS source, source_version AS sourceVersion,
-                       data_as_of AS dataAsOf, computed_at AS computedAt, config_version AS configVersion,
-                       status, decision_json AS decision, data_quality_json AS dataQuality
+                       data_as_of AS "dataAsOf", computed_at AS "computedAt", config_version AS "configVersion",
+                       status, decision_json AS decision, data_quality_json AS "dataQuality"
                 FROM ai_decision_snapshot
                 WHERE vendor_id = ? AND outlet_id = ? AND decision_type = ?
                 ORDER BY computed_at DESC LIMIT ?
                 """, tenant.vendorId(), tenant.requireOutletId(), type, Math.max(1, Math.min(limit, 100)));
+        return rows.stream().map(row -> {
+            Map<String, Object> normalized = new java.util.LinkedHashMap<>(row);
+            normalized.computeIfPresent("decision", (key, value) -> jsonValue(value));
+            normalized.computeIfPresent("dataQuality", (key, value) -> jsonValue(value));
+            return normalized;
+        }).toList();
+    }
+
+    private Object jsonValue(Object value) {
+        String raw = value instanceof String text ? text : postgresJsonValue(value);
+        if (raw == null) return value;
+        try { return mapper.readValue(raw, Object.class); }
+        catch (JsonProcessingException ignored) { return value; }
+    }
+
+    private String postgresJsonValue(Object value) {
+        if (value == null || !"org.postgresql.util.PGobject".equals(value.getClass().getName())) return null;
+        try {
+            Object raw = value.getClass().getMethod("getValue").invoke(value);
+            return raw == null ? null : raw.toString();
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
     }
 
     private String json(Object value) {
