@@ -30,6 +30,7 @@ sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
 snapshot_lock = __import__("asyncio").Lock()
 active_sync_tasks: dict[str, asyncio.Task] = {}
+active_job_tasks: dict[int, asyncio.Task] = {}
 
 
 @app.on_event("startup")
@@ -136,12 +137,38 @@ async def startup() -> None:
         __import__("asyncio").create_task(run_catalog_snapshot_job(job_id))
     for job_id in interrupted_sales_repair_ids:
         __import__("asyncio").create_task(run_sales_repair_job(job_id))
+    asyncio.create_task(queued_job_reaper())
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
     if scheduler.running:
         scheduler.shutdown(wait=False)
+
+
+async def queued_job_reaper() -> None:
+    """Recover queued durable jobs after a BackgroundTask is lost."""
+    while True:
+        await asyncio.sleep(15)
+        db = next(get_db())
+        try:
+            jobs = db.scalars(
+                select(SyncJob)
+                .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
+                .order_by(SyncJob.id)
+            ).all()
+            for job in jobs:
+                if job.id in active_job_tasks:
+                    continue
+                if job.job_type == "snapshot":
+                    runner = run_full_snapshot_job
+                elif job.job_type == "catalog_snapshot":
+                    runner = run_catalog_snapshot_job
+                else:
+                    runner = run_sales_repair_job
+                active_job_tasks[job.id] = asyncio.create_task(runner(job.id))
+        finally:
+            db.close()
 
 
 @app.get("/healthz")
@@ -232,10 +259,22 @@ async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_d
 
 
 async def run_full_snapshot_job(job_id: int) -> None:
-    # Full snapshots and history/catalog jobs share the same database writer.
-    # Serialize all durable crawler writes through sync_lock.
-    async with sync_lock:
-        db = next(get_db())
+    task = asyncio.current_task()
+    if task is not None:
+        active_job_tasks[job_id] = task
+    try:
+        # Full snapshots and history/catalog jobs share the same database writer.
+        # Serialize all durable crawler writes through sync_lock.
+        async with sync_lock:
+            db = next(get_db())
+            # existing body is intentionally kept inside the lock
+            await _run_full_snapshot_body(job_id, db)
+    finally:
+        if task is not None and active_job_tasks.get(job_id) is task:
+            active_job_tasks.pop(job_id, None)
+
+
+async def _run_full_snapshot_body(job_id: int, db: Session) -> None:
         run = None
         try:
             job = db.get(SyncJob, job_id)
@@ -322,11 +361,25 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
 
 
 async def run_catalog_snapshot_job(job_id: int) -> None:
-    await _run_catalog_job(job_id, include_sales=False)
+    task = asyncio.current_task()
+    if task is not None:
+        active_job_tasks[job_id] = task
+    try:
+        await _run_catalog_job(job_id, include_sales=False)
+    finally:
+        if task is not None and active_job_tasks.get(job_id) is task:
+            active_job_tasks.pop(job_id, None)
 
 
 async def run_sales_repair_job(job_id: int) -> None:
-    await _run_catalog_job(job_id, include_sales=True)
+    task = asyncio.current_task()
+    if task is not None:
+        active_job_tasks[job_id] = task
+    try:
+        await _run_catalog_job(job_id, include_sales=True)
+    finally:
+        if task is not None and active_job_tasks.get(job_id) is task:
+            active_job_tasks.pop(job_id, None)
 
 
 @app.post("/api/stores/{store_key}/pos/full-snapshot")
