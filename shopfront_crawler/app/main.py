@@ -131,6 +131,29 @@ def require_store(store_key: str, db: Session) -> Store:
     return store
 
 
+def should_include_supply_chain(db: Session, store_key: str) -> bool:
+    """Decide whether a daily run should pay for the full supply-chain scan.
+
+    Sales and inventory are deliberately checked every day. Supplier and
+    purchase-order directories are much slower and are refreshed on a weekly
+    cadence unless the last run was partial or failed.
+    """
+    if not settings.shopfront_enable_supply_chain:
+        return False
+    latest = db.scalar(
+        select(SyncJob)
+        .where(SyncJob.store_key == store_key, SyncJob.job_type == "supply_chain")
+        .order_by(desc(SyncJob.id))
+        .limit(1)
+    )
+    if latest is None or latest.status != "completed" or latest.finished_at is None:
+        return True
+    finished = latest.finished_at
+    if finished.tzinfo is None:
+        finished = finished.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - finished >= timedelta(days=max(1, settings.shopfront_supply_chain_interval_days))
+
+
 @app.get("/auth/shopfront/{store_key}/start")
 def start_auth(store_key: str, db: Session = Depends(get_db)) -> RedirectResponse:
     store = require_store(store_key, db)
@@ -202,7 +225,7 @@ async def trigger_sync(store_key: str, from_date: date | None = None, to_date: d
         raise HTTPException(409, f"A {active.job_type} job is already active for this store")
     end = to_date or (datetime.now(ZoneInfo(store.timezone)).date() - timedelta(days=1))
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
-    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": settings.shopfront_enable_supply_chain})
+    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": should_include_supply_chain(db, store.store_key)})
     db.add(job)
     db.commit()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
@@ -471,7 +494,7 @@ def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)
             continue
         end = datetime.now(ZoneInfo(row.timezone)).date() - timedelta(days=1)
         start = end - timedelta(days=settings.sync_lookback_days - 1)
-        job = SyncJob(store_key=key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"skill": "shopfront-sync-daily", "include_supply_chain": settings.shopfront_enable_supply_chain})
+        job = SyncJob(store_key=key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"skill": "shopfront-sync-daily", "include_supply_chain": should_include_supply_chain(db, key)})
         db.add(job)
         db.flush()
         queued.append({"store": key, "job_id": job.id, "from": start, "to": end})
@@ -481,10 +504,15 @@ def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)
 
 @app.get("/shopfront-reconcile")
 def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(None, alias="date"), db: Session = Depends(get_db)) -> dict:
-    require_store(store, db)
-    target = reconcile_date or (datetime.now(ZoneInfo(settings.sync_timezone)).date() - timedelta(days=1))
+    store_row = require_store(store, db)
+    local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
+    target = reconcile_date or (datetime.now(local_zone).date() - timedelta(days=1))
+    # Sale timestamps are persisted as UTC by SQLite and PostgreSQL. Convert
+    # the store's local business-day boundaries before filtering the rows.
+    utc_start = datetime.combine(target, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+    utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
     summary_count = db.scalar(select(func.coalesce(func.sum(DailySalesSummary.transaction_count), 0)).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())) or 0
-    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= datetime.combine(target, datetime.min.time()), Sale.created_at < datetime.combine(target + timedelta(days=1), datetime.min.time()))) or 0
+    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)) or 0
     missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store, or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""))) or 0
     return {"store": store, "date": target, "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention", "summary_transaction_count": int(summary_count), "sale_count": int(sale_count), "sale_items_missing_name": int(missing_names), "source": "crawler_database"}
 
@@ -1659,7 +1687,7 @@ async def scheduled_sync() -> None:
                 from_date=start.isoformat(),
                 to_date=end.isoformat(),
                 cursor_date=start.isoformat(),
-                payload={"include_supply_chain": settings.shopfront_enable_supply_chain},
+                payload={"include_supply_chain": should_include_supply_chain(db, store_key)},
             ))
         db.commit()
     finally:

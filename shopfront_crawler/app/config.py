@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # The full purchase-order directory can take several minutes to paginate.
     # Keep the bound finite while avoiding false partial results on large stores.
     shopfront_supply_chain_timeout_seconds: int = 900
+    # Supplier and purchase-order directories change less often than sales.
+    # Run the expensive full directory scan on this cadence; sales/inventory
+    # remain on the daily three-day compensation window.
+    shopfront_supply_chain_interval_days: int = 7
     history_chunk_days: int = 14
     shopfront_history_start_year: int = 2010
     pos_api_base_url: str = ""
