@@ -142,11 +142,15 @@ def should_include_supply_chain(db: Session, store_key: str) -> bool:
         return False
     latest = db.scalar(
         select(SyncJob)
-        .where(SyncJob.store_key == store_key, SyncJob.job_type == "supply_chain")
-        .order_by(desc(SyncJob.id))
+        .where(
+            SyncJob.store_key == store_key,
+            SyncJob.job_type == "supply_chain",
+            SyncJob.status == "completed",
+        )
+        .order_by(desc(SyncJob.finished_at), desc(SyncJob.id))
         .limit(1)
     )
-    if latest is None or latest.status != "completed" or latest.finished_at is None:
+    if latest is None or latest.finished_at is None:
         return True
     finished = latest.finished_at
     if finished.tzinfo is None:
