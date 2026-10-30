@@ -4,7 +4,7 @@
   "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
   "sourceSnapshot": "forecast-service\\fixtures\\skr-snapshot-demo.json",
   "sourceSnapshotSha": "b41e612e31ad08332b0f6d96fd73ec6123724dae",
-  "runtimeSha": "529b949dac9fa173190b807e380d20e0edaddea9",
+  "runtimeSha": "9b3e8a51ba5fbdba640d1965cf5a9fab92e6f694",
   "model": "seasonal_naive_v1",
   "modelVersion": "1",
   "horizonDays": 7,
