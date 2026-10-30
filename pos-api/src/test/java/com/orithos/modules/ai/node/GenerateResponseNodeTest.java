@@ -98,4 +98,23 @@ class GenerateResponseNodeTest {
         assertEquals(answer, node.apply(state).get("answer"));
         verifyNoInteractions(chatClient, config, properties, tools);
     }
+
+    @Test
+    void genericStockClarificationDoesNotCallTheModel() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        AiProperties properties = mock(AiProperties.class);
+        PosAssistantTools tools = mock(PosAssistantTools.class);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class))
+                .thenReturn(Optional.of("Why can't I find anything in stock?"));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("qa"));
+        when(state.value("intent_summary", String.class)).thenReturn(Optional.empty());
+
+        GenerateResponseNode node = new GenerateResponseNode(chatClient, config, properties, tools);
+
+        assertEquals("Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+                node.apply(state).get("answer"));
+        verifyNoInteractions(chatClient, config, properties, tools);
+    }
 }

@@ -74,6 +74,13 @@ public class GenerateResponseNode implements NodeAction {
             return Map.of("answer", summary);
         }
 
+        // Generic stock questions have no product entity to resolve. Keep them
+        // deterministic so a provider delay cannot turn a clarification into a
+        // 30-second timeout.
+        if (isGenericStockClarification(question)) {
+            return Map.of("answer", deterministicFallback(question, intent));
+        }
+
         if (!LLM_INTENTS.contains(intent)) {
             return Map.of("answer", cannedAnswer(intent, summary, question));
         }
@@ -173,6 +180,17 @@ public class GenerateResponseNode implements NodeAction {
         return chinese
                 ? "AI 暂时不可用。请打开对应的商品、库存、报表或采购页面继续操作。"
                 : "AI is temporarily unavailable. Open the relevant products, stock, reports, or purchasing page to continue.";
+    }
+
+    private static boolean isGenericStockClarification(String question) {
+        if (question == null || question.isBlank()) return false;
+        String normalized = question.trim().toLowerCase();
+        return normalized.matches(".*(?:why\\s+can(?:'t|not)\\s+(?:i|you)\\s+(?:find|see)\\s+anything(?:\\s+in\\s+(?:stock|inventory))?|"
+                + "nothing\\s+(?:is\\s+)?(?:showing|appears|comes\\s+up)(?:\\s+for\\s+(?:stock|inventory))?|"
+                + "(?:no|zero)\\s+(?:results?|stock|inventory)(?:\\s+(?:showing|found|available)|\\s+for\\s+(?:stock|inventory))?|"
+                + "(?:can(?:'t|not)\\s+find\\s+inventory|inventory\\s+(?:isn't|is\\s+not)\\s+showing|"
+                + "why\\s+can(?:'t|not)\\s+you\\s+find\\s+the\\s+stock)|"
+                + "库存(?:没有|没|不)显示|查不到库存|没有库存结果|什么都查不到|什么也查不到).*" );
     }
 
     private static String cannedAnswer(String intent, String summary, String question) {
