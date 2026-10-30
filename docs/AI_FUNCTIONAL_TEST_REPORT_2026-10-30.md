@@ -11,7 +11,7 @@
 | Assistant 代表性问法 | `AI_EVAL_SKR_2026-10-28.md` | 12/12 PASS | SKR 只读，覆盖销售、库存、推荐、补货、安全边界 |
 | Assistant 完整目录 | 同上 | 最高 387/387 PASS | 后续一次 385 PASS、2 BLOCKED，原因为 HTTP 502 |
 | Assistant 固定本地样本 | `AI_EVAL_LOCAL_0C91B1B2.json` | 13 PASS / 0 FAIL / 0 BLOCKED | 结构化断言、双语、上下文和安全边界 |
-| Java AI/权限/命令/补货测试 | Maven Surefire | 479 tests / 0 failures / 0 errors | 当前源码自动化回归 |
+| Java AI/权限/命令/补货测试 | Maven Surefire | 481 tests / 0 failures / 0 errors | 当前源码自动化回归，含 2 个预测快照持久化测试 |
 | Python 预测基线 | `reports/ai-forecast-eval.json` | 执行 PASS，质量 FAIL | 含缺货商品平均 WAPE 52.94% |
 | 业务写入保护 | 全部只读评测 | 0 writes | Assistant 评测不调用确认或业务写接口 |
 | 预测结果审计 | 当前源码 | 已实现 | 每次成功预测保存 `ai_forecast_snapshot`，绑定租户、门店、模型和 source version |

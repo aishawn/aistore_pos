@@ -82,7 +82,7 @@ public class ForecastService {
         return response;
     }
 
-    private void persistSnapshot(TenantContext tenant, ForecastDtos.Response response) {
+    void persistSnapshot(TenantContext tenant, ForecastDtos.Response response) {
         try {
             jdbc.update("""
                     INSERT INTO ai_forecast_snapshot
