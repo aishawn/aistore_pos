@@ -754,7 +754,8 @@ async def push_pos_snapshot(
         local_zone = ZoneInfo(source_store.timezone if source_store else settings.sync_timezone)
     except (KeyError, ValueError):
         local_zone = timezone.utc
-    sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id)
+    repair_job = bool(job is not None and job.job_type == "sales_repair")
+    sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id.desc() if repair_job else Sale.id)
     if run is not None and start is not None and end is not None:
         # A history sync has just upserted the exact source rows that belong
         # to this run. Use its durable sync timestamp so sales with a missing
@@ -765,13 +766,14 @@ async def push_pos_snapshot(
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
-    total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
-    repair_job = bool(job is not None and job.job_type == "sales_repair")
-    if repair_job and total_sales > 500:
-        # POS repair is a compensation pass for the newest changes. Replaying
-        # the entire historical ledger would create hundreds of Odoo requests
-        # even when only a few recent sales are missing or modified.
-        sales_offset = max(int(sales_offset or 0), total_sales - 500)
+    if repair_job:
+        # POS repair is a compensation pass for the newest changes. A fixed
+        # keyset window avoids counting and scanning the entire ledger.
+        sales_query = sales_query.limit(500)
+        total_sales = 500 if include_sales else 0
+        sales_offset = 0
+    else:
+        total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_enabled = bool(
