@@ -49,11 +49,12 @@ query ShopfrontInventory($after: Cursor) {
 """
 
 SUPPLIERS_QUERY = """
+# Contact.name is not exposed by every Shopfront tenant; use portable fields.
 query ShopfrontSuppliers($after: Cursor) {
   suppliers(first: 100, after: $after) {
     edges { node { id name mdbId status businessNumber orderNotes comments
       defaultOrderTax minimumOrderValue maximumOrderValue defaultDaysUntilDue
-      contact { name email phone } } }
+      contact { email phone } } }
     pageInfo { hasNextPage endCursor }
   }
 }
