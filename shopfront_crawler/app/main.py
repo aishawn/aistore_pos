@@ -158,6 +158,22 @@ def should_include_supply_chain(db: Session, store_key: str) -> bool:
     return datetime.now(timezone.utc) - finished >= timedelta(days=max(1, settings.shopfront_supply_chain_interval_days))
 
 
+def preferred_summary_rows(rows: list[DailySalesSummary]) -> list[DailySalesSummary]:
+    """Drop a consolidated null-outlet row when outlet rows exist.
+
+    Shopfront reports can return both the store total and its outlet detail.
+    Keeping both in the API makes consumers double count the same day.
+    """
+    grouped: dict[str, list[DailySalesSummary]] = {}
+    for row in rows:
+        grouped.setdefault(row.business_date, []).append(row)
+    selected: list[DailySalesSummary] = []
+    for date_rows in grouped.values():
+        named = [row for row in date_rows if row.outlet and str(row.outlet).strip()]
+        selected.extend(named or date_rows)
+    return sorted(selected, key=lambda row: (row.business_date, row.outlet or ""))
+
+
 @app.get("/auth/shopfront/{store_key}/start")
 def start_auth(store_key: str, db: Session = Depends(get_db)) -> RedirectResponse:
     store = require_store(store_key, db)
@@ -515,7 +531,8 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
     # the store's local business-day boundaries before filtering the rows.
     utc_start = datetime.combine(target, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
     utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
-    summary_count = db.scalar(select(func.coalesce(func.sum(DailySalesSummary.transaction_count), 0)).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())) or 0
+    summary_rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())).all()
+    summary_count = sum(int(row.transaction_count or 0) for row in preferred_summary_rows(summary_rows))
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)) or 0
     status_rows = db.execute(
         select(Sale.status, func.count(Sale.id))
@@ -2145,6 +2162,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
 def daily_sales(store: str, report_date: date, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == report_date.isoformat())).all()
+    rows = preferred_summary_rows(rows)
     return {"data": [{"business_date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count, "tax": x.tax, "discount": x.discount, "currency": x.currency, "synced_at": x.synced_at} for x in rows], "source": "shopfront_reporting", "synced_at": max((x.synced_at for x in rows), default=None)}
 
 
@@ -2152,6 +2170,7 @@ def daily_sales(store: str, report_date: date, db: Session = Depends(get_db)) ->
 def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date = Query(alias="to"), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date >= from_date.isoformat(), DailySalesSummary.business_date <= to_date.isoformat()).order_by(DailySalesSummary.business_date)).all()
+    rows = preferred_summary_rows(rows)
     return {"data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count} for x in rows], "source": "shopfront_reporting"}
 
 
