@@ -1045,6 +1045,10 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                             job.cursor_date = cursor.isoformat()
                             job.heartbeat_at = datetime.now(timezone.utc)
                             job.phase = f"sync:{cursor.isoformat()}"
+                            # A restart marker is historical context only;
+                            # once this chunk commits, status should reflect
+                            # the currently healthy worker.
+                            job.error = None
                             db.commit()
     finally:
         db.close()
