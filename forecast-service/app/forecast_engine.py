@@ -54,7 +54,8 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
     for series in request.series:
         if len(series.units) <= request.horizonDays + 7:
             results.append(BacktestItem(productId=series.productId, wape=None, mae=None,
-                                        bias=None, status="BLOCKED"))
+                                        bias=None, status="BLOCKED", dataQuality="INCOMPLETE",
+                                        censoredDays=sum(series.stockoutFlags), evaluationCensoredDays=0))
             continue
         train = series.units[:-request.horizonDays]
         actual = [max(0.0, float(x)) for x in series.units[-request.horizonDays:]]
@@ -66,7 +67,9 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
         mae = sum(abs(e) for e in errors) / len(errors)
         bias = sum(errors) / len(errors)
         results.append(BacktestItem(productId=series.productId, wape=wape, mae=mae,
-                                    bias=bias, status="PASS" if quality != "INCOMPLETE" else "BLOCKED"))
+                                    bias=bias, status="PASS" if quality != "INCOMPLETE" else "BLOCKED",
+                                    dataQuality=quality, censoredDays=sum(train_flags),
+                                    evaluationCensoredDays=sum(series.stockoutFlags[-request.horizonDays:])))
     return BacktestResponse(model=MODEL, modelVersion="1", items=results)
 
 

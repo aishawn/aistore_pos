@@ -61,6 +61,9 @@ class BacktestItem(BaseModel):
     mae: float | None
     bias: float | None
     status: Literal["PASS", "BLOCKED"]
+    dataQuality: Literal["VALID", "CENSORED_DEMAND", "INSUFFICIENT_HISTORY", "INCOMPLETE"] = "VALID"
+    censoredDays: int = 0
+    evaluationCensoredDays: int = 0
 
 
 class BacktestResponse(BaseModel):
