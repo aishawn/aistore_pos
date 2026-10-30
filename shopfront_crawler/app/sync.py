@@ -450,6 +450,31 @@ async def sync_store(
                     Product.shopfront_product_id.in_(source_product_ids),
                 )).all()
             })
+        # Recent compensation windows are normally composed almost entirely
+        # of already mirrored sales. Validate the source version/status in one
+        # pass and avoid entering the per-sale ORM path when the whole window
+        # is unchanged. This also prevents one malformed legacy row from
+        # blocking an otherwise idempotent retry.
+        unchanged_sales = 0
+        if sale_rows and source_sale_ids and len(existing_sales) == len(source_sale_ids):
+            for source_id, row in zip(source_sale_ids, sale_rows):
+                sale = existing_sales.get(source_id)
+                incoming_updated = parse_datetime(first(row, "updatedAt", "updated_at"))
+                if sale is None or incoming_updated is None or sale.updated_at is None:
+                    break
+                incoming_cmp = incoming_updated.replace(tzinfo=timezone.utc) if incoming_updated.tzinfo is None else incoming_updated.astimezone(timezone.utc)
+                stored_cmp = sale.updated_at.replace(tzinfo=timezone.utc) if sale.updated_at.tzinfo is None else sale.updated_at.astimezone(timezone.utc)
+                if incoming_cmp != stored_cmp or first(row, "Status", "status") != sale.status:
+                    break
+                unchanged_sales += 1
+            if unchanged_sales == len(sale_rows):
+                counts["sales"] = len(sale_rows)
+                counts["sales_fetched"] = len(sale_rows)
+                counts["sales_processed"] = len(sale_rows)
+                counts["sales_skipped_unchanged"] = len(sale_rows)
+                counts["stage"] = "sales_skipped_unchanged"
+                sale_product_ids.update(source_product_ids)
+                sale_rows = []
         for sale_index, row in enumerate(sale_rows, start=1):
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
