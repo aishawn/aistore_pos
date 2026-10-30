@@ -417,8 +417,15 @@ async def sync_store(
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
         sale_rows: list[dict[str, Any]] = []
+        outlet_ids: list[str] = []
         try:
-            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone, progress_callback)
+            outlet_rows = await client.fetch_outlets(token)
+            outlet_ids = [str(row["id"]) for row in outlet_rows if isinstance(row, dict) and row.get("id") and not row.get("deleted")]
+            counts["outlets"] = len(outlet_ids)
+        except ShopfrontError as exc:
+            counts["warnings"].append({"stage": "outlets", "message": str(exc)[:500]})
+        try:
+            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone, progress_callback, outlet_ids or None)
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
         # Complete GraphQL Sale records are authoritative for summaries because
@@ -431,6 +438,11 @@ async def sync_store(
             except ShopfrontError as exc:
                 counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         sale_rows, duplicate_sales = _dedupe_sales(sale_rows)
+        for row in sale_rows:
+            register = row.get("register") if isinstance(row.get("register"), dict) else {}
+            outlet = register.get("outlet") if isinstance(register.get("outlet"), dict) else {}
+            if outlet.get("name"):
+                row["_outlet_name"] = outlet["name"]
         if duplicate_sales:
             counts["duplicate_sales_collapsed"] = duplicate_sales
         # Reporting rows are the authoritative source for daily aggregates. The
@@ -452,7 +464,7 @@ async def sync_store(
             # aggregate source for that range instead of dropping the day.
             for row in sale_rows:
                 timestamp = first(row, "createdAt", "created_at", "timestamp")
-                key = (business_date(timestamp, start, store.timezone), first(row, "outlet", "outletName", "outlet_name"))
+                key = (business_date(timestamp, start, store.timezone), first(row, "outlet", "outletName", "outlet_name", "_outlet_name"))
                 agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
                 revenue = parse_decimal(first(row, "totalPrice", "total_price")) or Decimal(0)
                 cost = parse_decimal(first(row, "totalCost", "total_cost")) or Decimal(0)

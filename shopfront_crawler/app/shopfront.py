@@ -211,20 +211,23 @@ UNCONSOLIDATED'''
         end: str,
         timezone_name: str = "Australia/Adelaide",
         progress_callback: Any | None = None,
+        outlet_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
+        outlet_clause = ", outlets: $outlets" if outlet_ids else ""
         query = """
-        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
-          sales(startDate: $startDate, endDate: $endDate, after: $after) {
+        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+          sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+              register { id outlet { id name } }
               items { id quantity cost basePrice tax totalPrice item { id ... on Product { name barcodes { code quantity } } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }
           }
         }
-        """
+        """ % outlet_clause
         try:
             local_zone = ZoneInfo(timezone_name)
         except (KeyError, ValueError):
@@ -234,24 +237,32 @@ UNCONSOLIDATED'''
         start_value = local_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         end_value = local_end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         variables = {"startDate": start_value, "endDate": end_value}
+        if outlet_ids:
+            variables["outlets"] = outlet_ids
         try:
             return await self._fetch_connection_nodes(access_token, query, "sales", variables, progress_callback)
         except ShopfrontError:
             # Optional Product fields differ between Shopfront tenants. Keep
             # core Sale, item name, barcode, and payment sync available.
             basic_query = """
-            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
-              sales(startDate: $startDate, endDate: $endDate, after: $after) {
+            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+              sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
                 edges { node {
                   id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+                  register { id outlet { id name } }
                   items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
                   payments { id amount status subtype }
                 } }
                 pageInfo { hasNextPage endCursor }
               }
             }
-            """
+            """ % outlet_clause
             return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables, progress_callback)
+
+    async def fetch_outlets(self, access_token: str) -> list[dict[str, Any]]:
+        data = await self.graphql(access_token, "{ outlets { id name deleted } }")
+        rows = data.get("outlets", data)
+        return rows if isinstance(rows, list) else []
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
         try:
