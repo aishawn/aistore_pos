@@ -990,11 +990,20 @@ async def push_pos_snapshot(
 
     product_items_by_source = {str(item["source_id"]): item for item in product_items if item.get("source_id")}
     current_source_ids = set(product_items_by_source)
-    archived_query = sale_item_query.where(
-        SaleItem.shopfront_product_id.is_not(None),
-        ~SaleItem.shopfront_product_id.in_(current_source_ids),
-    ) if current_source_ids else sale_item_query
-    archived_sale_items = db.scalars(archived_query).all()
+    missing_name_query = sale_item_query.where(
+        or_(SaleItem.product_name.is_(None), SaleItem.product_name == "")
+    )
+    missing_name_count = db.scalar(select(func.count()).select_from(missing_name_query.subquery())) or 0
+    if missing_name_count and current_source_ids:
+        archived_query = sale_item_query.where(
+            SaleItem.shopfront_product_id.is_not(None),
+            ~SaleItem.shopfront_product_id.in_(current_source_ids),
+        )
+        archived_sale_items = db.scalars(archived_query).all()
+    elif missing_name_count:
+        archived_sale_items = db.scalars(sale_item_query).all()
+    else:
+        archived_sale_items = []
     for sale_item in archived_sale_items:
         historical = historical_product_payload(sale_item)
         if not historical:
