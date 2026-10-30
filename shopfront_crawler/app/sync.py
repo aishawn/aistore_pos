@@ -397,6 +397,7 @@ async def sync_store(
     include_catalog: bool = True,
     defer_completion: bool = False,
     products_updated_after: str | None = None,
+    progress_callback: Any | None = None,
 ) -> SyncRun:
     run = SyncRun(store_key=store.store_key, from_date=start.isoformat(), to_date=end.isoformat())
     db.add(run)
@@ -417,7 +418,7 @@ async def sync_store(
         rows: list[dict[str, Any]] = []
         sale_rows: list[dict[str, Any]] = []
         try:
-            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone)
+            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone, progress_callback)
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
         # Complete GraphQL Sale records are authoritative for summaries because

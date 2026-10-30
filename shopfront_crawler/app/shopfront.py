@@ -209,6 +209,7 @@ UNCONSOLIDATED'''
         start: str,
         end: str,
         timezone_name: str = "Australia/Adelaide",
+        progress_callback: Any | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
         query = """
@@ -233,7 +234,7 @@ UNCONSOLIDATED'''
         end_value = local_end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         variables = {"startDate": start_value, "endDate": end_value}
         try:
-            return await self._fetch_connection_nodes(access_token, query, "sales", variables)
+            return await self._fetch_connection_nodes(access_token, query, "sales", variables, progress_callback)
         except ShopfrontError:
             # Optional Product fields differ between Shopfront tenants. Keep
             # core Sale, item name, barcode, and payment sync available.
@@ -249,7 +250,7 @@ UNCONSOLIDATED'''
               }
             }
             """
-            return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables)
+            return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables, progress_callback)
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
         try:
@@ -375,6 +376,7 @@ UNCONSOLIDATED'''
         query: str,
         field: str,
         variables: dict[str, Any] | None = None,
+        progress_callback: Any | None = None,
     ) -> list[dict[str, Any]]:
         paged_query = _add_cursor_pagination(query, field)
         result: list[dict[str, Any]] = []
@@ -391,6 +393,8 @@ UNCONSOLIDATED'''
                 for edge in edges
                 if isinstance(edge, dict) and isinstance(edge.get("node"), dict)
             )
+            if progress_callback is not None:
+                await progress_callback(field, len(result))
             page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
             if not page_info.get("hasNextPage"):
                 return result

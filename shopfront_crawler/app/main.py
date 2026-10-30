@@ -862,6 +862,16 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
+        async def report_progress(field: str, item_count: int) -> None:
+            if job_id is None:
+                return
+            job = db.get(SyncJob, job_id)
+            if job is None or job.status == "cancelled":
+                return
+            job.phase = f"{field}:fetched:{item_count}"
+            job.heartbeat_at = datetime.now(timezone.utc)
+            db.commit()
+
         # Keep the run open until the POS/Odoo mirror has acknowledged every
         # batch. A source-only completion must never advance the history cursor
         # while the downstream import is still running.
@@ -878,6 +888,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             include_catalog=include_catalog,
             defer_completion=True,
             products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
+            progress_callback=report_progress,
         )
         if run.status == "failed":
             return False
