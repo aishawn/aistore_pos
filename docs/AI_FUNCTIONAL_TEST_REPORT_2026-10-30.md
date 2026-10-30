@@ -14,6 +14,7 @@
 | Java AI/权限/命令/补货测试 | Maven Surefire | 479 tests / 0 failures / 0 errors | 当前源码自动化回归 |
 | Python 预测基线 | `reports/ai-forecast-eval.json` | 执行 PASS，质量 FAIL | 含缺货商品平均 WAPE 52.94% |
 | 业务写入保护 | 全部只读评测 | 0 writes | Assistant 评测不调用确认或业务写接口 |
+| 预测结果审计 | 当前源码 | 已实现 | 每次成功预测保存 `ai_forecast_snapshot`，绑定租户、门店、模型和 source version |
 
 ## 预测结果
 
@@ -39,6 +40,8 @@ SKR Assistant 历史报告使用的 runtime SHA（例如 `77904468`、`822495ea`
 3. 在真实 SKR 快照完成 7/14/28 天滚动回测；
 4. 价格弹性、促销增量毛利和天气/节假日特征验证；
 5. 真实 provider 故障、成本和 P95 延迟的完整线上评测。
+
+预测快照写入失败时，接口仍返回只读预测并记录告警；这避免审计存储短暂故障导致业务侧得到伪造的零需求结果。快照持久化本身仍应在部署环境做一次数据库集成验证。
 
 ## 发布判断
 

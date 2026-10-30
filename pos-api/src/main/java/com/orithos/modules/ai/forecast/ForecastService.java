@@ -1,12 +1,18 @@
 package com.orithos.modules.ai.forecast;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,15 +21,17 @@ import java.util.Map;
 
 @Service
 public class ForecastService {
+    private static final Logger log = LoggerFactory.getLogger(ForecastService.class);
     private final JdbcTemplate jdbc;
     private final ForecastClient client;
+    private final ObjectMapper mapper;
     private final boolean enabled;
     private final int maxHistoryDays;
 
-    public ForecastService(JdbcTemplate jdbc, ForecastClient client,
+    public ForecastService(JdbcTemplate jdbc, ForecastClient client, ObjectMapper mapper,
                            @Value("${app.ai.forecast.enabled:false}") boolean enabled,
                            @Value("${app.ai.forecast.max-history-days:365}") int maxHistoryDays) {
-        this.jdbc = jdbc; this.client = client; this.enabled = enabled;
+        this.jdbc = jdbc; this.client = client; this.mapper = mapper; this.enabled = enabled;
         this.maxHistoryDays = Math.max(14, Math.min(maxHistoryDays, 730));
     }
 
@@ -68,8 +76,32 @@ public class ForecastService {
                 ORDER BY data_as_of DESC LIMIT 1
                 """, rs -> rs.next() ? rs.getString(1) : "unknown",
                 tenant.vendorId(), tenant.requireOutletId());
-        return client.forecast(new ForecastDtos.Request(tenant.vendorId(), tenant.requireOutletId(), horizon,
+        ForecastDtos.Response response = client.forecast(new ForecastDtos.Request(tenant.vendorId(), tenant.requireOutletId(), horizon,
                 sourceVersion, LocalDate.now(), series));
+        persistSnapshot(tenant, response);
+        return response;
+    }
+
+    private void persistSnapshot(TenantContext tenant, ForecastDtos.Response response) {
+        try {
+            jdbc.update("""
+                    INSERT INTO ai_forecast_snapshot
+                      (id, vendor_id, outlet_id, forecast_type, model_name, model_version,
+                       source_version, horizon_days, data_as_of, status, forecast_json)
+                    VALUES (?, ?, ?, 'SALES', ?, ?, ?, ?, ?, 'COMPLETED', ?::jsonb)
+                    """, java.util.UUID.randomUUID(), tenant.vendorId(), tenant.requireOutletId(),
+                    response.model(), response.modelVersion(), response.sourceVersion(), response.horizonDays(),
+                    Timestamp.from(Instant.now()), json(response));
+        } catch (RuntimeException error) {
+            // Forecasts remain read-only and usable when audit storage is temporarily unavailable.
+            log.warn("AI forecast snapshot persistence failed vendorId={} outletId={} causeType={}",
+                    tenant.vendorId(), tenant.requireOutletId(), error.getClass().getSimpleName());
+        }
+    }
+
+    private String json(Object value) {
+        try { return mapper.writeValueAsString(value); }
+        catch (JsonProcessingException error) { throw new IllegalArgumentException("forecast JSON encoding failed", error); }
     }
 
     private record Daily(LocalDate date, double units, boolean stockoutFlag) { }
