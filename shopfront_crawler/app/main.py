@@ -652,9 +652,20 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         raise HTTPException(409, "Supply-chain scopes are disabled; enable them and reauthorize Shopfront first")
     token = await access_token(db, settings, store)
     client = get_client(settings, store)
+    errors: list[dict[str, str]] = []
     try:
-        suppliers = await client.fetch_suppliers(token)
-        orders = await client.fetch_purchase_orders(token)
+        # Keep the two permission domains independent. Shopfront may grant
+        # purchase-order access while withholding the supplier directory.
+        try:
+            suppliers = await client.fetch_suppliers(token)
+        except ShopfrontError as exc:
+            suppliers = []
+            errors.append({"entity": "suppliers", "message": str(exc)[:500]})
+        try:
+            orders = await client.fetch_purchase_orders(token)
+        except ShopfrontError as exc:
+            orders = []
+            errors.append({"entity": "purchase_orders", "message": str(exc)[:500]})
     finally:
         await client.close()
 
@@ -697,7 +708,12 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         row.synced_at = now
         order_count += 1
     db.commit()
-    result = {"status": "completed", "suppliers": supplier_count, "purchase_orders": order_count}
+    result = {
+        "status": "partial" if errors else "completed",
+        "suppliers": supplier_count,
+        "purchase_orders": order_count,
+        "errors": errors,
+    }
     if settings.pos_import_enabled:
         pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
         try:
@@ -1656,13 +1672,23 @@ async def run_daily_sync_job(job_id: int) -> None:
                 job.phase = "supply_chain"
                 job.heartbeat_at = datetime.now(timezone.utc)
                 db.commit()
-                job.payload = {**(job.payload or {}), "supply_chain": await sync_supply_chain(db, store)}
+                supply_chain = await sync_supply_chain(db, store)
+                job.payload = {**(job.payload or {}), "supply_chain": supply_chain}
+                if supply_chain.get("status") == "partial":
+                    job.status = "partial"
+                    job.error = "; ".join(
+                        f"{item.get('entity')}: {item.get('message')}"
+                        for item in supply_chain.get("errors", [])
+                    )[:2000]
         db.refresh(job)
         if job.status == "running":
             job.status = "completed"
+        if job.status == "partial":
+            job.phase = "completed_with_warnings"
+        else:
             job.phase = "completed"
-            job.finished_at = datetime.now(timezone.utc)
-            db.commit()
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
     except Exception as exc:
         job = db.get(SyncJob, job_id)
         if job:
@@ -1690,8 +1716,13 @@ async def run_supply_chain_job(job_id: int) -> None:
         if not job or not store:
             raise RuntimeError("Store not found for supply-chain sync")
         job.payload = await sync_supply_chain(db, store)
-        job.status = "completed"
-        job.phase = "completed"
+        job.status = "partial" if job.payload.get("status") == "partial" else "completed"
+        if job.status == "partial":
+            job.error = "; ".join(
+                f"{item.get('entity')}: {item.get('message')}"
+                for item in job.payload.get("errors", [])
+            )[:2000]
+        job.phase = "completed_with_warnings" if job.status == "partial" else "completed"
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
     except Exception as exc:
