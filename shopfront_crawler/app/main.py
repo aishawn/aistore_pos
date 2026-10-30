@@ -957,10 +957,16 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
             source_sales = int(sync_counts.get("sales") or 0)
             imported_sales = int(pos_result.get("sales_imported") or 0)
-            if source_sales and imported_sales < source_sales:
+            unchanged_sales = int(sync_counts.get("sales_skipped_unchanged") or 0)
+            # A compensation window normally contains already mirrored sales.
+            # Those rows are intentionally skipped by the crawler and do not
+            # need a second POS write; validate only rows that changed or were
+            # newly created during this run.
+            required_sales = max(0, source_sales - unchanged_sales)
+            if imported_sales < required_sales:
                 raise RuntimeError(
                     "POS sales import is smaller than Shopfront source: "
-                    f"source={source_sales}, imported={imported_sales}"
+                    f"required={required_sales}, source={source_sales}, imported={imported_sales}"
                 )
             # The IDs are an in-process filter for this chunk, not durable
             # progress state. Keeping only the count makes status reads and
