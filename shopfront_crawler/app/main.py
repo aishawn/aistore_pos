@@ -830,6 +830,26 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                     existing_products = db.scalar(
                         select(func.count()).select_from(Product).where(Product.store_key == store_key)
                     ) or 0
+                    # Older deployments had a complete catalog but no durable
+                    # checkpoint. Seed it from the newest local product sync so
+                    # the first post-upgrade daily run is incremental instead
+                    # of re-downloading every product.
+                    if job and job.job_type == "daily_sync" and existing_products:
+                        checkpoint = db.scalar(select(ShopfrontSyncCheckpoint).where(
+                            ShopfrontSyncCheckpoint.store_key == store_key,
+                            ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
+                        ))
+                        if checkpoint is None:
+                            latest_product_sync = db.scalar(select(func.max(Product.synced_at)).where(Product.store_key == store_key))
+                            if latest_product_sync:
+                                checkpoint = ShopfrontSyncCheckpoint(
+                                    store_key=store_key,
+                                    checkpoint_key="catalog",
+                                    value=latest_product_sync.isoformat(),
+                                    updated_at=datetime.now(timezone.utc),
+                                )
+                                db.add(checkpoint)
+                                db.commit()
                     include_catalog = bool(job and job.job_type == "daily_sync") or existing_products == 0
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
