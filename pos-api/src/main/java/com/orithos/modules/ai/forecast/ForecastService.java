@@ -34,13 +34,15 @@ public class ForecastService {
         Map<Long, List<Daily>> grouped = new LinkedHashMap<>();
         jdbc.query("""
                 SELECT product_id, business_date, units_sold
+                       , stockout_flag, data_quality_status
                 FROM ai_sales_daily
                 WHERE vendor_id = ? AND outlet_id = ?
                   AND business_date >= CURRENT_DATE - (? * INTERVAL '1 day')
-                  AND data_quality_status = 'VALID'
+                  AND data_quality_status IN ('VALID', 'CENSORED_DEMAND')
                 ORDER BY product_id, business_date
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> grouped.computeIfAbsent(rs.getLong("product_id"), ignored -> new ArrayList<>())
-                .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"))),
+                .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"),
+                        rs.getBoolean("stockout_flag") || "CENSORED_DEMAND".equals(rs.getString("data_quality_status")))),
                 tenant.vendorId(), tenant.requireOutletId(), maxHistoryDays);
         for (Map.Entry<Long, List<Daily>> entry : grouped.entrySet()) {
             if (entry.getValue().size() < 2) continue;
@@ -50,10 +52,14 @@ public class ForecastService {
             LocalDate start = end.minusDays(maxHistoryDays - 1L);
             List<LocalDate> dates = new ArrayList<>();
             List<Double> units = new ArrayList<>();
+            List<Boolean> stockoutFlags = new ArrayList<>();
+            Map<LocalDate, Boolean> stockoutByDate = new HashMap<>();
+            for (Daily daily : entry.getValue()) stockoutByDate.put(daily.date(), daily.stockoutFlag());
             for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
                 dates.add(day); units.add(byDate.getOrDefault(day, 0d));
+                stockoutFlags.add(stockoutByDate.getOrDefault(day, false));
             }
-            series.add(new ForecastDtos.Series(entry.getKey(), dates, units));
+            series.add(new ForecastDtos.Series(entry.getKey(), dates, units, stockoutFlags));
         }
         if (series.isEmpty()) throw new BusinessException(40431, "No valid daily sales history is available.");
         String sourceVersion = jdbc.query("""
@@ -66,5 +72,5 @@ public class ForecastService {
                 sourceVersion, LocalDate.now(), series));
     }
 
-    private record Daily(LocalDate date, double units) { }
+    private record Daily(LocalDate date, double units, boolean stockoutFlag) { }
 }

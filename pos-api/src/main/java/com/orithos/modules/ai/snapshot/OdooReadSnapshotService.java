@@ -256,18 +256,20 @@ public class OdooReadSnapshotService {
         jdbc.update("""
                 INSERT INTO ai_sales_daily
                   (vendor_id, outlet_id, product_id, business_date, units_sold, net_sales,
-                   orders_count, source_system, source_version, data_as_of, data_quality_status)
-                VALUES (?, ?, ?, CAST(? AS DATE), ?, ?, ?, 'odoo', ?, ?, ?)
+                   orders_count, stockout_flag, source_system, source_version, data_as_of, data_quality_status)
+                VALUES (?, ?, ?, CAST(? AS DATE), ?, ?, ?, ?, 'odoo', ?, ?, ?)
                 ON CONFLICT (vendor_id, outlet_id, product_id, business_date, source_system)
                 DO UPDATE SET units_sold = EXCLUDED.units_sold,
                               net_sales = EXCLUDED.net_sales,
                               orders_count = EXCLUDED.orders_count,
+                              stockout_flag = EXCLUDED.stockout_flag,
                               source_version = EXCLUDED.source_version,
                               data_as_of = EXCLUDED.data_as_of,
                               data_quality_status = EXCLUDED.data_quality_status
                 """, tenant.vendorId(), tenant.requireOutletId(), productId,
                 payload.get("businessDate"), decimal(payload.get("units")),
                 decimal(payload.get("netSales")), (int) decimal(payload.get("ordersCount")),
+                Boolean.TRUE.equals(payload.get("stockoutFlag")),
                 sourceVersion, Timestamp.from(dataAsOf), quality == null ? "VALID" : quality);
     }
 
