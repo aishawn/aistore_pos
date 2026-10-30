@@ -48,6 +48,31 @@ query ShopfrontInventory($after: Cursor) {
 }
 """
 
+SUPPLIERS_QUERY = """
+query ShopfrontSuppliers($after: Cursor) {
+  suppliers(first: 100, after: $after) {
+    edges { node { id name mdbId status businessNumber orderNotes comments
+      defaultOrderTax minimumOrderValue maximumOrderValue defaultDaysUntilDue
+      contact { name email phone } } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+PURCHASE_ORDERS_QUERY = """
+query ShopfrontPurchaseOrders($after: Cursor) {
+  orders(type: ORDER, first: 100, after: $after) {
+    edges { node { id type status completed undergoingReview orderDate dueDate
+      invoiceNumber reference notes internalNotes includeFreight totalCost
+      lineCount expectedTotal feePercentage createdAt sentAt receivedAt
+      products { caseQuantity orderedQuantity receivedQuantity baseCost orderedCost
+        fees freight paymentFees rebate supplierCode itemsPerWeek supplier { id name }
+        item { id name mdbId barcodes { code } } } } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
 
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
@@ -323,6 +348,31 @@ UNCONSOLIDATED'''
                 continue
         return list(merged.values())
 
+    async def fetch_products_incremental(self, access_token: str, updated_after: str) -> list[dict[str, Any]]:
+        """Fetch products changed in metadata or inventory since the saved cursor."""
+        base = CATALOG_QUERY.replace(
+            "query ShopfrontCatalog($after: Cursor)",
+            "query ShopfrontCatalog($after: Cursor, $since: DateTime)",
+        )
+        queries = (
+            base.replace("products(first: 100, after: $after)", "products(first: 100, updatedAfter: $since, after: $after)"),
+            base.replace("products(first: 100, after: $after)", "products(first: 100, lastStocktakedAfter: $since, after: $after)"),
+        )
+        merged: dict[str, dict[str, Any]] = {}
+        for query in queries:
+            nodes = await self._fetch_connection_nodes(
+                access_token,
+                query,
+                "products",
+                variables={"since": updated_after},
+            )
+            for node in nodes:
+                if not isinstance(node, dict) or not node.get("id"):
+                    continue
+                target = merged.setdefault(str(node["id"]), {})
+                target.update(node)
+        return list(merged.values())
+
     async def _fetch_connection_nodes(
         self,
         access_token: str,
@@ -452,6 +502,12 @@ UNCONSOLIDATED'''
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, query, "products")
+
+    async def fetch_suppliers(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, SUPPLIERS_QUERY, "suppliers")
+
+    async def fetch_purchase_orders(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, PURCHASE_ORDERS_QUERY, "orders")
 
     async def fetch_sale_detail(self, access_token: str, sale_id: str, query: str) -> dict[str, Any]:
         data = await self.graphql(access_token, query, {"id": sale_id})

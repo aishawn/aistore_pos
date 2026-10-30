@@ -78,3 +78,8 @@ class OrithosClient:
 
     async def match_status(self, store_key: str) -> dict[str, Any]:
         return await self._get("/api/integrations/shopfront/match-status", {"storeKey": store_key})
+
+    async def data(self, store_key: str, data_type: str, page: int = 1, size: int = 500) -> dict[str, Any]:
+        return await self._get("/api/integrations/shopfront/data", {
+            "storeKey": store_key, "type": data_type, "page": page, "size": size,
+        })

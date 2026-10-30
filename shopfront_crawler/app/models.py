@@ -170,7 +170,45 @@ class Product(Base):
     price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    catalog_last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (UniqueConstraint("store_key", "shopfront_product_id", name="uq_product"),)
+
+
+class ShopfrontSupplier(Base):
+    __tablename__ = "shopfront_suppliers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    business_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "source_id", name="uq_shopfront_supplier"),)
+
+
+class ShopfrontPurchaseOrder(Base):
+    __tablename__ = "shopfront_purchase_orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
+    supplier_source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    order_date: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    total_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "source_id", name="uq_shopfront_purchase_order"),)
+
+
+class ShopfrontSyncCheckpoint(Base):
+    __tablename__ = "shopfront_sync_checkpoints"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    checkpoint_key: Mapped[str] = mapped_column(String(64))
+    value: Mapped[str] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "checkpoint_key", name="uq_shopfront_sync_checkpoint"),)
 
 
 class InventorySnapshot(Base):

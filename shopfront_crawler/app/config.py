@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # Webhook permissions are optional and can make the consent request fail
     # before the Shopfront application has been granted them.
     shopfront_enable_webhooks: bool = False
+    shopfront_enable_supply_chain: bool = False
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
@@ -80,9 +81,16 @@ class Settings(BaseSettings):
                 continue
             if scope in optional_webhook_scopes and not self.shopfront_enable_webhooks:
                 continue
+            if scope in {"see_suppliers", "see_stock_management"} and not self.shopfront_enable_supply_chain:
+                continue
             if scope and scope not in scopes:
                 scopes.append(scope)
         self.shopfront_scopes = " ".join(scopes)
+        if self.shopfront_enable_supply_chain:
+            for scope in ("see_suppliers", "see_stock_management"):
+                if scope not in scopes:
+                    scopes.append(scope)
+            self.shopfront_scopes = " ".join(scopes)
 
         # Older Dokploy environments used a minimal query. Treat it as a
         # legacy default so newly deployed workers fetch the complete safe
