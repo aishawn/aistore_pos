@@ -131,12 +131,16 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
 
 
 def _group_labels(series: Series) -> dict[str, str]:
+    if series.stockoutDataQuality and series.stockoutDataQuality != "VALID":
+        stockout_label = "UNKNOWN"
+    else:
+        stockout_label = None
     flags = series.stockoutFlags or [False] * len(series.units)
     ratio = sum(flags) / len(series.units) if series.units else 0.0
     average = sum(max(0.0, float(value)) for value in series.units) / len(series.units) if series.units else 0.0
     return {
         "category": str(getattr(series, "category", None) or "UNKNOWN"),
-        "stockoutRatio": "NONE" if ratio == 0 else "LOW_1_10" if ratio <= 0.10 else "HIGH_GT_10",
+        "stockoutRatio": stockout_label or ("NONE" if ratio == 0 else "LOW_1_10" if ratio <= 0.10 else "HIGH_GT_10"),
         "volume": "LOW_LE_2" if average <= 2 else "MEDIUM_2_10" if average <= 10 else "HIGH_GT_10",
     }
 

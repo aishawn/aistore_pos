@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import MODEL_NAMES, rolling_metrics
+from scripts.ai_forecast_eval import MODEL_NAMES, _group_labels, rolling_metrics
 
 
 class ForecastEvaluationTests(unittest.TestCase):
@@ -58,6 +58,11 @@ class ForecastEvaluationTests(unittest.TestCase):
             result = rolling_metrics(series, 7, model)
             self.assertEqual("PASS", result["status"], model)
             self.assertIsNotNone(result["meanWape"], model)
+
+    def test_missing_inventory_history_is_not_reported_as_no_stockout(self):
+        series = Series(productId=9, category="WINE", dates=[], units=[],
+                        stockoutDataQuality="UNAVAILABLE_HISTORICAL_INVENTORY")
+        self.assertEqual("UNKNOWN", _group_labels(series)["stockoutRatio"])
 
 
 if __name__ == "__main__":
