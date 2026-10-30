@@ -383,7 +383,7 @@ def sync_status(store: str | None = None, db: Session = Depends(get_db)) -> dict
     if store:
         query = query.where(SyncJob.store_key == store)
     jobs = db.scalars(query.limit(20)).all()
-    return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "error": j.error, "created_at": j.created_at, "finished_at": j.finished_at} for j in jobs]}
+    return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "result": j.payload, "error": j.error, "created_at": j.created_at, "started_at": j.started_at, "finished_at": j.finished_at} for j in jobs]}
 
 
 @app.get("/api/sync/coverage")
@@ -467,11 +467,12 @@ async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=
     require_store(store, db)
     crawler_rows = db.scalars(select(Product).where(Product.store_key == store)).all()
     crawler_by_id = {str(row.shopfront_product_id): row for row in crawler_rows}
-    referenced = set(db.scalars(
+    referenced = {str(source_id) for source_id in db.scalars(
         select(SaleItem.shopfront_product_id)
         .join(Sale, SaleItem.sale_id == Sale.id)
         .where(Sale.store_key == store, SaleItem.shopfront_product_id.is_not(None))
-    ).all())
+    ).all() if source_id}
+    crawler_expected_ids = set(crawler_by_id) | referenced
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         pos_ids: set[str] = set()
@@ -499,22 +500,35 @@ async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=
                 pos_names[key] = row.get("name")
             page += 1
             pages_read += 1
+        if len(pos_ids) != total:
+            raise PosIntegrationError(
+                f"POS product pagination returned {len(pos_ids)} unique source IDs for {total} staged rows"
+            )
         crawler_only = sorted(set(crawler_by_id) - pos_ids)
+        expected_only = sorted(crawler_expected_ids - pos_ids)
         pos_only = sorted(pos_ids - set(crawler_by_id))
+        pos_historical_only = sorted(source_id for source_id in pos_only if source_id in referenced)
+        pos_unexplained_only = sorted(source_id for source_id in pos_only if source_id not in referenced)
         return {
             "data": {
                 "store": store,
                 "crawler": {
                     "total": len(crawler_by_id),
+                    "expected_including_historical_sale_references": len(crawler_expected_ids),
                     "catalog_seen_since_tracking": sum(1 for p in crawler_rows if p.catalog_last_seen_at is not None),
                     "catalog_unconfirmed_with_sales_reference": sum(1 for p in crawler_rows if p.catalog_last_seen_at is None and p.shopfront_product_id in referenced),
                     "unclassified": sum(1 for p in crawler_rows if p.catalog_last_seen_at is None and p.shopfront_product_id not in referenced),
                 },
                 "pos_total": len(pos_ids),
                 "crawler_missing_in_pos": {"count": len(crawler_only), "source_ids": crawler_only[:preview]},
+                "crawler_expected_missing_in_pos": {"count": len(expected_only), "source_ids": expected_only[:preview]},
                 "pos_only": {
                     "count": len(pos_only),
                     "source_ids": [{"source_id": source_id, "name": pos_names.get(source_id), "referenced_by_historical_sale": source_id in referenced} for source_id in pos_only[:preview]],
+                },
+                "pos_only_classification": {
+                    "historical_sale_references": {"count": len(pos_historical_only), "source_ids": pos_historical_only[:preview]},
+                    "unexplained": {"count": len(pos_unexplained_only), "source_ids": pos_unexplained_only[:preview]},
                 },
                 "automatic_deletion_performed": False,
             },
@@ -1342,7 +1356,9 @@ async def run_daily_sync_job(job_id: int) -> None:
         if job.status == "running" and (job.payload or {}).get("include_supply_chain"):
             store = db.scalar(select(Store).where(Store.store_key == job.store_key))
             if store:
-                job.payload = {**(job.payload or {}), "supply_chain": await sync_supply_chain(db, settings, store)}
+                supply_chain = await sync_supply_chain(db, settings, store)
+                pos_supply_chain = await push_pos_supply_chain(db, job.store_key)
+                job.payload = {**(job.payload or {}), "supply_chain": supply_chain, "pos_supply_chain": pos_supply_chain}
         db.refresh(job)
         if job.status == "running":
             job.status = "completed"
@@ -1373,7 +1389,9 @@ async def run_supply_chain_job(job_id: int) -> None:
         job = db.get(SyncJob, job_id)
         store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
         if job and store:
-            job.payload = await sync_supply_chain(db, settings, store)
+            supply_chain = await sync_supply_chain(db, settings, store)
+            pos_supply_chain = await push_pos_supply_chain(db, job.store_key)
+            job.payload = {"supply_chain": supply_chain, "pos_supply_chain": pos_supply_chain}
             job.status = "completed"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
@@ -1386,6 +1404,48 @@ async def run_supply_chain_job(job_id: int) -> None:
             db.commit()
     finally:
         db.close()
+
+
+async def push_pos_supply_chain(db: Session, store_key: str) -> dict:
+    if not settings.pos_import_enabled:
+        return {"status": "skipped", "reason": "POS staging integration is disabled", "suppliers": 0, "purchase_orders": 0}
+
+    suppliers = db.scalars(select(ShopfrontSupplier).where(ShopfrontSupplier.store_key == store_key).order_by(ShopfrontSupplier.source_id)).all()
+    orders = db.scalars(select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store_key).order_by(ShopfrontPurchaseOrder.source_id)).all()
+    supplier_items = [{
+        "source_id": row.source_id,
+        "name": row.name,
+        "business_number": row.business_number,
+        "status": row.status,
+        "raw_payload": row.raw_payload or {},
+    } for row in suppliers]
+    order_items = [{
+        "source_id": row.source_id,
+        "supplier_source_id": row.supplier_source_id,
+        "status": row.status,
+        "order_date": row.order_date,
+        "total_cost": row.total_cost,
+        "raw_payload": row.raw_payload or {},
+    } for row in orders]
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        supplier_batches = 0
+        order_batches = 0
+        for offset in range(0, len(supplier_items), 250):
+            await client.upsert_suppliers(jsonable_encoder({"store_key": store_key, "items": supplier_items[offset:offset + 250]}))
+            supplier_batches += 1
+        for offset in range(0, len(order_items), 250):
+            await client.upsert_purchase_orders(jsonable_encoder({"store_key": store_key, "items": order_items[offset:offset + 250]}))
+            order_batches += 1
+        return {
+            "status": "completed",
+            "suppliers": len(supplier_items),
+            "purchase_orders": len(order_items),
+            "supplier_batches": supplier_batches,
+            "purchase_order_batches": order_batches,
+        }
+    finally:
+        await client.close()
 
 
 async def process_next_job() -> None:

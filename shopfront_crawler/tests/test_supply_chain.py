@@ -31,6 +31,36 @@ def test_purchase_order_query_is_limited_to_supplier_orders():
     assert "authentication" not in PURCHASE_ORDERS_QUERY.lower()
 
 
+def test_orithos_client_exposes_supplier_and_purchase_order_staging_routes():
+    import asyncio
+    import json
+
+    import httpx
+
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append((request.url.path, json.loads(request.read())))
+        return httpx.Response(200, json={"data": {"status": "STAGED"}})
+
+    async def run():
+        from app.pos import OrithosClient
+
+        client = OrithosClient("https://pos.invalid", "token", True, httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        await client.upsert_suppliers({"store_key": "skr", "items": [{"source_id": "supplier-1"}]})
+        await client.upsert_purchase_orders({"store_key": "skr", "items": [{"source_id": "order-1"}]})
+        await client.close()
+
+    asyncio.run(run())
+
+    assert [path for path, _ in requests] == [
+        "/api/integrations/shopfront/suppliers:upsert",
+        "/api/integrations/shopfront/purchase-orders:upsert",
+    ]
+    assert requests[0][1]["items"][0]["source_id"] == "supplier-1"
+    assert requests[1][1]["items"][0]["source_id"] == "order-1"
+
+
 def test_supplier_payload_recursively_removes_credentials():
     source = {
         "id": "supplier-1",

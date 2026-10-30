@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import main
 from app.db import Base
-from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
+from app.models import InventorySnapshot, Product, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
@@ -167,6 +167,85 @@ def test_merge_sale_detail_preserves_existing_fields_when_detail_is_partial():
     assert merged["items"] == [{"id": "line-1"}]
     assert merged["payments"] == [{"id": "p-2"}]
     assert merged["updatedAt"] == "2026-10-29T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_push_pos_supply_chain_stages_all_supplier_and_order_ids(db_session, monkeypatch):
+    seed_snapshot(db_session)
+    db_session.add_all([
+        ShopfrontSupplier(store_key="skr", source_id="supplier-1", name="Supplier", business_number="ABN-1", status="ACTIVE", raw_payload={"id": "supplier-1"}),
+        ShopfrontPurchaseOrder(store_key="skr", source_id="order-1", supplier_source_id="supplier-1", status="RECEIVED", order_date="2026-10-29", total_cost=Decimal("12.50"), raw_payload={"id": "order-1"}),
+    ])
+    db_session.commit()
+
+    class FakePosClient:
+        instances = []
+
+        def __init__(self, *args):
+            self.suppliers = []
+            self.orders = []
+            self.instances.append(self)
+
+        async def upsert_suppliers(self, payload):
+            self.suppliers.extend(payload["items"])
+
+        async def upsert_purchase_orders(self, payload):
+            self.orders.extend(payload["items"])
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    result = await main.push_pos_supply_chain(db_session, "skr")
+
+    assert result["status"] == "completed"
+    assert result["suppliers"] == 1
+    assert result["purchase_orders"] == 1
+    assert FakePosClient.instances[0].suppliers[0]["source_id"] == "supplier-1"
+    assert FakePosClient.instances[0].orders[0]["source_id"] == "order-1"
+
+
+@pytest.mark.asyncio
+async def test_product_reconcile_classifies_historical_sale_references(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        Product(store_key="skr", shopfront_product_id="catalog-1", name="Current item"),
+        Sale(
+            store_key="skr",
+            shopfront_sale_id="sale-1",
+            created_at=datetime(2026, 10, 29),
+            updated_at=datetime(2026, 10, 29),
+            items=[SaleItem(shopfront_product_id="archived-1", product_name="Archived item")],
+        ),
+    ])
+    db_session.commit()
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def data(self, store, data_type, page=1, size=500):
+            return {"data": {"total": 3, "data": [
+                {"source_id": "catalog-1", "name": "Current item"},
+                {"source_id": "archived-1", "name": "Archived item"},
+                {"source_id": "unexplained-1", "name": "Extra item"},
+            ]}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    result = await main.reconcile_pos_products(store="skr", preview=10, db=db_session)
+    data = result["data"]
+
+    assert data["crawler"]["total"] == 1
+    assert data["crawler"]["expected_including_historical_sale_references"] == 2
+    assert data["crawler_expected_missing_in_pos"]["count"] == 0
+    assert data["pos_only_classification"]["historical_sale_references"]["count"] == 1
+    assert data["pos_only_classification"]["unexplained"]["source_ids"] == ["unexplained-1"]
+    assert data["automatic_deletion_performed"] is False
 
 
 @pytest.mark.asyncio

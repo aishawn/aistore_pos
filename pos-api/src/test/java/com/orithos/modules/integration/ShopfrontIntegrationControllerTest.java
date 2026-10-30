@@ -67,6 +67,52 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).update(contains("DELETE FROM shopfront_inventory WHERE store_key = ?"), eq("skr"));
     }
 
+    @Test
+    void persistsSuppliersAndPurchaseOrdersByStoreAndExternalId() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "persistShadow", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        persistShadow.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        persistShadow.invoke(controller, "suppliers", "skr", Map.of("outlet_id", "48"),
+                mapper.readTree("[{\"source_id\":\"supplier-1\",\"name\":\"Supplier\",\"raw_payload\":{\"id\":\"supplier-1\"}}]"), false);
+        persistShadow.invoke(controller, "purchase_orders", "skr", Map.of("outlet_id", "48"),
+                mapper.readTree("[{\"source_id\":\"order-1\",\"supplier_source_id\":\"supplier-1\",\"status\":\"RECEIVED\",\"raw_payload\":{\"id\":\"order-1\"}}]"), false);
+
+        verify(jdbc).update(contains("INSERT INTO shopfront_supplier"), any(Object[].class));
+        verify(jdbc).update(contains("INSERT INTO shopfront_purchase_order"), any(Object[].class));
+    }
+
+    @Test
+    void pagesProductMirrorByImmutableSourceId() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("ORDER BY source_id ASC"), any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(contains("SELECT COUNT(*) FROM shopfront_product"), eq(Integer.class), eq("skr")))
+                .thenReturn(11016);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        controller.data("token", "skr", "products", 2, 500);
+
+        verify(jdbc).queryForList(contains("ORDER BY source_id ASC"), any(Object[].class));
+    }
+
     @ParameterizedTest
     @MethodSource("mappingFlags")
     void mappingFlagAcceptsOnlyKnownEnabledValues(Object flag, boolean expected) throws Exception {
