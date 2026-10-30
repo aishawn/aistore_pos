@@ -47,16 +47,24 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
                                     p80=average, p90=average) for _ in range(horizon)]
         else:
             raise ValueError(f"unsupported evaluation model: {model}")
-        actual = [max(0.0, float(value)) for value in series.units[end:end + horizon]]
-        errors = [point.p50 - value for point, value in zip(points, actual)]
+        evaluation_flags = series.stockoutFlags[end:end + horizon] if series.stockoutFlags else []
+        comparable = [
+            (point, max(0.0, float(value)))
+            for index, (point, value) in enumerate(zip(points, series.units[end:end + horizon]))
+            if not (index < len(evaluation_flags) and evaluation_flags[index])
+        ]
+        if not comparable:
+            continue
+        errors = [point.p50 - value for point, value in comparable]
+        actual = [value for _, value in comparable]
         denominator = sum(actual)
         windows.append({
             "wape": sum(abs(error) for error in errors) / denominator if denominator else None,
             "mae": sum(abs(error) for error in errors) / len(errors),
             "bias": sum(errors) / len(errors),
-            "p80Coverage": sum(value <= point.p80 for point, value in zip(points, actual)) / len(actual),
-            "p90Coverage": sum(value <= point.p90 for point, value in zip(points, actual)) / len(actual),
-            "censored": any(series.stockoutFlags[end:end + horizon]) or any(series.stockoutFlags[:end]),
+            "p80Coverage": sum(value <= point.p80 for point, value in comparable) / len(actual),
+            "p90Coverage": sum(value <= point.p90 for point, value in comparable) / len(actual),
+            "censored": any(evaluation_flags) or any(series.stockoutFlags[:end]),
         })
     if not windows:
         return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
@@ -78,6 +86,10 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
 
 def main() -> int:
     snapshot = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "forecast-service" / "fixtures" / "skr-snapshot-demo.json"
+    if not snapshot.is_absolute():
+        snapshot = (Path.cwd() / snapshot).resolve()
+    if not snapshot.is_file():
+        raise FileNotFoundError(f"forecast snapshot not found: {snapshot}")
     report_path = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "reports" / "ai-forecast-eval.json"
     payload = json.loads(snapshot.read_text(encoding="utf-8"))
     request = BacktestRequest(horizonDays=payload.get("horizonDays", 7), series=[Series(**item) for item in payload["series"]])
@@ -93,7 +105,7 @@ def main() -> int:
         "status": execution_status,
         "qualityGate": "PASS" if wapes and sum(wapes) / len(wapes) <= 0.30 else "FAIL",
         "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
-        "sourceSnapshot": str(snapshot.relative_to(ROOT)),
+        "sourceSnapshot": str(snapshot.relative_to(ROOT)) if snapshot.is_relative_to(ROOT) else str(snapshot),
         "sourceSnapshotSha": source_sha(snapshot),
         "runtimeSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "model": result.model,
