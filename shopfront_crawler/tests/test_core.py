@@ -80,6 +80,31 @@ def test_report_continuation_key_is_consumed():
     assert b'"key":"next"' in calls[1]
 
 
+def test_transient_shopfront_failure_is_retried():
+    import asyncio
+    import httpx
+
+    attempts = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts.append(request.url.path)
+        if len(attempts) < 3:
+            return httpx.Response(503, text="temporary")
+        return httpx.Response(200, json={"data": {"ok": True}})
+
+    async def run():
+        client = ShopfrontClient(
+            "skr", "client", "secret", "http://localhost/callback", "scope",
+            http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+        result = await client.graphql("token", "{ ok }")
+        await client.close()
+        return result
+
+    assert asyncio.run(run()) == {"ok": True}
+    assert len(attempts) == 3
+
+
 def test_product_catalog_fetch_follows_cursor_pages():
     import asyncio
     import json

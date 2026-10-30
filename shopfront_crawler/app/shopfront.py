@@ -113,17 +113,38 @@ class ShopfrontClient:
     async def _request(self, path: str, access_token: str, **kwargs: Any) -> httpx.Response:
         headers = kwargs.pop("headers", {})
         headers.update({"Authorization": f"Bearer {access_token}", "Accept": "application/json", "Content-Type": "application/json", "User-Agent": "OrithosShopfrontCrawler/0.1"})
-        response = await self.http.post(f"{self.base_url}{path}", headers=headers, **kwargs)
-        if response.status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 60
-            await asyncio.sleep(min(wait_seconds, 120))
-            response = await self.http.post(f"{self.base_url}{path}", headers=headers, **kwargs)
+        url = f"{self.base_url}{path}"
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                response = await self.http.post(url, headers=headers, **kwargs)
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront request failed after {max_attempts} attempts: {exc}") from exc
+                await asyncio.sleep(2 ** attempt)
+                continue
+
             if response.status_code == 429:
-                raise ShopfrontError(f"Shopfront rate limit; retry after {response.headers.get('Retry-After', 'unknown')} seconds")
-        if response.status_code >= 400:
-            raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
-        return response
+                retry_after = response.headers.get("Retry-After")
+                wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 60
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront rate limit; retry after {response.headers.get('Retry-After', 'unknown')} seconds")
+                await asyncio.sleep(min(wait_seconds, 120))
+                continue
+
+            if response.status_code in {500, 502, 503, 504}:
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
+                retry_after = response.headers.get("Retry-After")
+                wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 2 ** attempt
+                await asyncio.sleep(min(wait_seconds, 30))
+                continue
+
+            if response.status_code >= 400:
+                raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
+            return response
+
+        raise ShopfrontError("Shopfront request failed without a response")
 
     async def run_report(self, access_token: str, query: str) -> list[dict[str, Any]]:
         pages: list[dict[str, Any]] = []
