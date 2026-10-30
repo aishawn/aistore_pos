@@ -6,15 +6,14 @@ The snapshot is intentionally a file, never a live Odoo/SKR connection.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "forecast-service"))
-from app.forecast_engine import backtest
-from app.schemas import BacktestRequest, Series
+from app.forecast_engine import backtest, forecast
+from app.schemas import BacktestRequest, ForecastRequest, Series
 
 
 def source_sha(snapshot: Path) -> str:
@@ -22,6 +21,48 @@ def source_sha(snapshot: Path) -> str:
         return subprocess.check_output(["git", "hash-object", str(snapshot)], cwd=ROOT, text=True).strip()
     except (OSError, subprocess.SubprocessError):
         return "unavailable"
+
+
+def rolling_metrics(series: Series, horizon: int) -> dict:
+    """Evaluate every available horizon ending at the snapshot tail."""
+    if len(series.units) <= horizon + 7:
+        return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
+    windows = []
+    first_origin = max(14, horizon + 7)
+    for end in range(first_origin, len(series.units) + 1, horizon):
+        if end + horizon > len(series.units):
+            break
+        train = Series(productId=series.productId, dates=series.dates[:end], units=series.units[:end],
+                       stockoutFlags=series.stockoutFlags[:end])
+        response = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=horizon,
+                                             forecastStartDate=series.dates[end - 1], series=[train]))
+        points = response.items[0].forecast
+        actual = [max(0.0, float(value)) for value in series.units[end:end + horizon]]
+        errors = [point.p50 - value for point, value in zip(points, actual)]
+        denominator = sum(actual)
+        windows.append({
+            "wape": sum(abs(error) for error in errors) / denominator if denominator else None,
+            "mae": sum(abs(error) for error in errors) / len(errors),
+            "bias": sum(errors) / len(errors),
+            "p80Coverage": sum(value <= point.p80 for point, value in zip(points, actual)) / len(actual),
+            "p90Coverage": sum(value <= point.p90 for point, value in zip(points, actual)) / len(actual),
+            "censored": any(series.stockoutFlags[end:end + horizon]) or any(series.stockoutFlags[:end]),
+        })
+    if not windows:
+        return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
+    numeric = lambda name: [row[name] for row in windows if row[name] is not None]
+    return {
+        "productId": series.productId,
+        "horizonDays": horizon,
+        "status": "PASS",
+        "windowCount": len(windows),
+        "meanWape": sum(numeric("wape")) / len(numeric("wape")) if numeric("wape") else None,
+        "meanMae": sum(numeric("mae")) / len(numeric("mae")),
+        "meanBias": sum(numeric("bias")) / len(numeric("bias")),
+        "p80Coverage": sum(numeric("p80Coverage")) / len(numeric("p80Coverage")),
+        "p90Coverage": sum(numeric("p90Coverage")) / len(numeric("p90Coverage")),
+        "censoredWindowCount": sum(1 for row in windows if row["censored"]),
+    }
 
 
 def main() -> int:
@@ -33,6 +74,7 @@ def main() -> int:
     items = [item.model_dump() for item in result.items]
     eligible = [item for item in items if item["status"] == "PASS"]
     wapes = [item["wape"] for item in eligible if item["wape"] is not None]
+    rolling = [rolling_metrics(series, horizon) for horizon in (7, 14, 28) for series in request.series]
     execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
     report = {
         "status": execution_status,
@@ -48,6 +90,7 @@ def main() -> int:
         "passCount": len(eligible),
         "blockedCount": len(items) - len(eligible),
         "meanWape": sum(wapes) / len(wapes) if wapes else None,
+        "rollingBacktest": rolling,
         "items": items,
         "writeRequests": [],
         "dataSourceMode": "fixed_read_only_snapshot",

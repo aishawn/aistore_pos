@@ -27,9 +27,17 @@ positive bias 2.29 units/day. This is a deliberate failure signal: observed
 sales during a stockout are not complete demand, so the baseline should not be
 promoted to production replenishment.
 
+The rolling 7-day run produced two windows per product. The stable product
+remained at 0% WAPE. The censored product averaged 52.94% WAPE with 92.86%
+P80/P90 coverage and one censored window. Rolling 14-day and 28-day results are
+`BLOCKED` because the demo snapshot has only 28 days; these are not treated as
+passing results.
+
 ## Regression checks
 
 - Python syntax and forecast smoke tests: PASS.
+- Rolling 7/14/28-day evaluator: PASS as a run; 14/28-day horizons correctly
+  reported `BLOCKED` for insufficient history.
 - Input date/unit and stockout flag alignment validation: PASS.
 - Java Maven suite: PASS, 477 tests, 0 failures, 0 errors.
 - `git diff --check`: PASS.

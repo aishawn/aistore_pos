@@ -71,4 +71,6 @@ The runner writes `reports/ai-forecast-eval.json` and records both the source
 snapshot SHA and runtime SHA. `status` describes whether the run completed;
 `qualityGate` is a separate model quality decision. A high WAPE on a series
 with stockout flags is expected to trigger review, not to be hidden as a zero
-demand result. The runner always reports `writeRequests: []`.
+demand result. The runner evaluates rolling 7/14/28-day windows and marks a
+horizon `BLOCKED` when the snapshot does not contain enough history. The runner
+always reports `writeRequests: []`.
