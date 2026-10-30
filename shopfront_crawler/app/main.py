@@ -58,7 +58,9 @@ async def startup() -> None:
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             job.status = "queued"
-            job.error = "requeued after crawler restart"
+            # The job is healthy and resumable; keep restart history in the
+            # run records instead of exposing a stale error on live status.
+            job.error = None
             resumed_stores.add(job_key)
         # Keep only the newest queued snapshot job of each type. The durable
         # worker below will pick up the surviving queued job after startup.
