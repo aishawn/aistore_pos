@@ -124,6 +124,11 @@ def _sale_is_complete_and_unchanged(
             return False
     if first(row, "Status", "status") != sale.status:
         return False
+    # Once the source version and status match, the sale is already mirrored.
+    # Nested GraphQL fields are intentionally not used as a gate because older
+    # rows can have equivalent data with a different field shape.
+    if incoming_updated is not None and sale.updated_at is not None:
+        return True
     items = row.get("items")
     if not isinstance(items, list) or not items:
         return False
