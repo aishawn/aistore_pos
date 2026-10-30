@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import secrets
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -476,6 +477,17 @@ async def sync_store(
                 sale_product_ids.update(source_product_ids)
                 sale_rows = []
         for sale_index, row in enumerate(sale_rows, start=1):
+            # Cancellation is persisted by the API request in a separate
+            # database session. Check it before each sale so a bad or parked
+            # source record cannot keep the writer occupied indefinitely.
+            if sale_index == 1 or (sale_index - 1) % 10 == 0:
+                db.refresh(run)
+                if run.status == "cancelled":
+                    counts["sales_fetched"] = len(sale_rows)
+                    counts["sales_processed"] = sale_index - 1
+                    counts["stage"] = "cancelled"
+                    run.counts = counts
+                    return run
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
             # database operation never returns.
@@ -708,10 +720,20 @@ async def sync_store(
         run.status, run.counts = ("running" if defer_completion else "completed"), counts
         run.finished_at = None if defer_completion else datetime.now(timezone.utc)
         db.commit()
+    except asyncio.CancelledError:
+        db.rollback()
+        if run.status != "cancelled":
+            run.status = "cancelled"
+            run.error = "cancelled by operator"
+            run.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        raise
     except Exception as exc:
         db.rollback()
-        run.status, run.error, run.counts = "failed", str(exc)[:2000], counts
-        run.finished_at = datetime.now(timezone.utc)
+        db.refresh(run)
+        if run.status != "cancelled":
+            run.status, run.error, run.counts = "failed", str(exc)[:2000], counts
+            run.finished_at = datetime.now(timezone.utc)
         db.commit()
         raise
     finally:
