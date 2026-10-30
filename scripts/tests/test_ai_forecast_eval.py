@@ -64,6 +64,19 @@ class ForecastEvaluationTests(unittest.TestCase):
                         stockoutDataQuality="UNAVAILABLE_HISTORICAL_INVENTORY")
         self.assertEqual("UNKNOWN", _group_labels(series)["stockoutRatio"])
 
+    def test_model_comparison_covers_all_horizons_and_group_dimensions(self):
+        report_path = ROOT / "reports" / "test-ai-forecast-eval.json"
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/ai_forecast_eval.py"),
+                                 str(ROOT / "forecast-service/fixtures/skr-snapshot-demo.json"),
+                                 str(report_path)], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(0, result.returncode, result.stderr)
+        report = json.loads(report_path.read_text())
+        self.assertEqual(36, len(report["modelComparison"]))
+        self.assertEqual({7, 14, 28}, {row["horizonDays"] for row in report["modelComparison"]})
+        self.assertEqual({"category", "stockoutRatio", "volume"},
+                         {row["groupBy"] for row in report["modelComparison"]})
+        report_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()

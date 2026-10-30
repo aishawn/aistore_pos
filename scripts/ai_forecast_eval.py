@@ -171,14 +171,15 @@ def main() -> int:
                for horizon in (7, 14, 28) for series in request.series]
     comparison = []
     for model in MODEL_NAMES:
-        rows = [rolling_metrics(series, 7, model) for series in request.series]
-        for labels in ("category", "stockoutRatio", "volume"):
-            groups = {}
-            for series, row in zip(request.series, rows):
-                key = _group_labels(series)[labels]
-                groups.setdefault(key, []).append(row)
-            comparison.append({"model": model, "groupBy": labels,
-                               "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
+        for horizon in (7, 14, 28):
+            rows = [rolling_metrics(series, horizon, model) for series in request.series]
+            for labels in ("category", "stockoutRatio", "volume"):
+                groups = {}
+                for series, row in zip(request.series, rows):
+                    key = _group_labels(series)[labels]
+                    groups.setdefault(key, []).append(row)
+                comparison.append({"model": model, "horizonDays": horizon, "groupBy": labels,
+                                   "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
     execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
     report = {
         "status": execution_status,
