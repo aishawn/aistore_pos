@@ -435,20 +435,47 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     def non_empty(value: object) -> bool:
         return value is not None and value != "" and value != [] and value != {}
 
-    fields = {"name": 0, "description": 0, "barcode": 0, "sku": 0, "category": 0, "brand": 0, "image": 0, "alternate_images": 0, "price": 0, "cost": 0}
+    fields = {
+        "name": 0,
+        "description": 0,
+        "barcode": 0,
+        "sku": 0,
+        "category": 0,
+        "brand": 0,
+        "family": 0,
+        "image": 0,
+        "alternate_images": 0,
+        "tags": 0,
+        "price": 0,
+        "cost": 0,
+        "tax_rate": 0,
+        "track_inventory": 0,
+        "source_created_at": 0,
+        "source_updated_at": 0,
+    }
     for product in products:
         raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+        category = raw.get("category") if isinstance(raw.get("category"), dict) else raw.get("category")
+        brand = raw.get("brand") if isinstance(raw.get("brand"), dict) else raw.get("brand")
+        family = raw.get("family") if isinstance(raw.get("family"), dict) else raw.get("family")
+        tax_rate = raw.get("taxRate") or raw.get("tax_rate")
         values = {
             "name": product.name or raw.get("name"),
             "description": raw.get("description"),
             "barcode": product.barcode or raw.get("barcode") or raw.get("barcodes"),
             "sku": product.sku or raw.get("sku") or raw.get("mdbId"),
-            "category": product.category or raw.get("category"),
-            "brand": product.brand or raw.get("brand"),
-            "image": raw.get("image"),
+            "category": product.category or (category.get("name") if isinstance(category, dict) else category),
+            "brand": product.brand or (brand.get("name") if isinstance(brand, dict) else brand),
+            "family": family.get("name") if isinstance(family, dict) else family,
+            "image": raw.get("image") or raw.get("image_url") or raw.get("imageUrl"),
             "alternate_images": raw.get("alternateImages") or raw.get("alternate_images"),
-            "price": product.price or raw.get("price") or raw.get("prices"),
-            "cost": product.cost or raw.get("cost"),
+            "tags": raw.get("tags"),
+            "price": product.price if product.price is not None else (raw.get("price") or raw.get("prices")),
+            "cost": product.cost if product.cost is not None else raw.get("cost"),
+            "tax_rate": tax_rate,
+            "track_inventory": raw.get("trackInventory") if "trackInventory" in raw else raw.get("track_inventory"),
+            "source_created_at": raw.get("createdAt") or raw.get("source_created_at"),
+            "source_updated_at": raw.get("updatedAt") or raw.get("source_updated_at"),
         }
         for field, value in values.items():
             if non_empty(value):
@@ -1379,7 +1406,7 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
             "family_id": family.get("id"),
             "description": raw.get("description"),
             "image": raw.get("image"),
-            "alternate_images": raw.get("alternateImages") or [],
+            "alternate_images": raw.get("alternateImages") or raw.get("alternate_images") or [],
             "tags": raw.get("tags") or [],
             "track_inventory": raw.get("trackInventory"),
             "case_quantity": raw.get("caseQuantity"),
@@ -1573,8 +1600,8 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
             "cost": x.cost,
             "price": x.price,
             "prices": raw.get("prices") or [],
-            "tax_rate": raw.get("taxRate"),
-            "cost_tax_rate": raw.get("costTaxRate"),
+            "tax_rate": raw.get("taxRate") or raw.get("tax_rate"),
+            "cost_tax_rate": raw.get("costTaxRate") or raw.get("cost_tax_rate"),
             "status": raw.get("status"),
             "type": raw.get("type"),
             "source_created_at": raw.get("createdAt"),
