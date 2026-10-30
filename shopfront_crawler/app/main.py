@@ -940,15 +940,18 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             return False
         sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
-            # Historical chunks only need the catalog on the first chunk. For
-            # later chunks, push sales when present and avoid rewriting the
-            # same full product/inventory snapshot for every empty date range.
-            push_kwargs = {"run": run, "include_catalog": include_catalog}
-            product_source_ids = sync_counts.get("product_source_ids")
-            if product_source_ids:
-                # Later history chunks push only products discovered in their
-                # SaleItems; the first chunk still sends the complete catalog.
+            # A catalog query may be incremental even when ``include_catalog``
+            # is true. Only a first full snapshot should resend every product
+            # and inventory row; later runs push changed catalog rows plus
+            # products referenced by the current sales window.
+            full_catalog = bool(sync_counts.get("catalog_full_snapshot"))
+            catalog_source_ids = sync_counts.get("catalog_source_ids") or []
+            sale_product_ids = sync_counts.get("product_source_ids") or []
+            product_source_ids = sorted(set(catalog_source_ids) | set(sale_product_ids))
+            push_kwargs = {"run": run, "include_catalog": full_catalog}
+            if not full_catalog:
                 push_kwargs["product_source_ids"] = product_source_ids
+                push_kwargs["inventory_source_ids"] = catalog_source_ids
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
@@ -1005,6 +1008,7 @@ async def push_pos_snapshot(
     run: SyncRun | None = None,
     include_catalog: bool = True,
     product_source_ids: list[str] | None = None,
+    inventory_source_ids: list[str] | None = None,
     include_sales: bool = True,
     sales_offset: int = 0,
     job: SyncJob | None = None,
@@ -1015,7 +1019,12 @@ async def push_pos_snapshot(
         ids = sorted({str(value) for value in (product_source_ids or []) if value})
         products_query = products_query.where(Product.shopfront_product_id.in_(ids)) if ids else products_query.where(False)
     products = db.scalars(products_query).all()
-    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all() if include_catalog else []
+    if include_catalog:
+        inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
+    else:
+        inventory_ids = sorted({str(value) for value in (inventory_source_ids or []) if value})
+        inventory_query = select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)
+        inventory = db.scalars(inventory_query.where(InventorySnapshot.shopfront_product_id.in_(inventory_ids))).all() if inventory_ids else []
     source_store = db.scalar(select(Store).where(Store.store_key == store_key))
     try:
         local_zone = ZoneInfo(source_store.timezone if source_store else settings.sync_timezone)
