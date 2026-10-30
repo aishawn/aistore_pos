@@ -918,24 +918,25 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
         ))
         keepalive_task = asyncio.create_task(keepalive()) if job_id is not None else None
-        try:
-            run = await sync_store(
-                db,
-                settings,
-                store,
-                start,
-                end,
-                include_catalog=include_catalog,
-                defer_completion=True,
-                products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
-                progress_callback=report_progress,
-            )
-        finally:
+        async def stop_keepalive() -> None:
             if keepalive_task is not None:
                 keepalive_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await keepalive_task
+
+        run = await sync_store(
+            db,
+            settings,
+            store,
+            start,
+            end,
+            include_catalog=include_catalog,
+            defer_completion=True,
+            products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
+            progress_callback=report_progress,
+        )
         if run.status == "failed":
+            await stop_keepalive()
             return False
         sync_counts = dict(run.counts or {})
         if settings.pos_import_enabled:
@@ -976,8 +977,11 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             catalog_checkpoint.value = sync_counts["catalog_cursor"]
             catalog_checkpoint.updated_at = datetime.now(timezone.utc)
         db.commit()
+        await stop_keepalive()
         return True
     except Exception as exc:
+        if "stop_keepalive" in locals():
+            await stop_keepalive()
         failed_run = db.scalars(select(SyncRun).where(SyncRun.store_key == store_key, SyncRun.from_date == start.isoformat(), SyncRun.to_date == end.isoformat()).order_by(desc(SyncRun.started_at))).first()
         if failed_run:
             failed_run.status = "superseded" if start < end else "failed"
