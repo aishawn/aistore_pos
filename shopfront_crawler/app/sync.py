@@ -96,6 +96,42 @@ def _non_empty(value: Any) -> bool:
     return value is not None and value != "" and value != [] and value != {}
 
 
+def _sale_is_complete_and_unchanged(
+    sale: Sale,
+    row: dict[str, Any],
+    existing_line_count: int,
+) -> bool:
+    """Return True only when a historical retry is genuinely safe to skip.
+
+    A Sale ID alone is not an idempotency shortcut: Shopfront can modify,
+    cancel, refund, or finish uploading a sale after the first report.  The
+    fast path therefore requires a matching source update timestamp/status,
+    complete line items and a payments field in both payloads.
+    """
+    incoming_updated = parse_datetime(first(row, "updatedAt", "updated_at"))
+    if incoming_updated is None or sale.updated_at is None:
+        return False
+    incoming_cmp = incoming_updated.replace(tzinfo=timezone.utc) if incoming_updated.tzinfo is None else incoming_updated.astimezone(timezone.utc)
+    stored_cmp = sale.updated_at.replace(tzinfo=timezone.utc) if sale.updated_at.tzinfo is None else sale.updated_at.astimezone(timezone.utc)
+    if incoming_cmp != stored_cmp:
+        return False
+    if first(row, "Status", "status") != sale.status:
+        return False
+    items = row.get("items")
+    if not isinstance(items, list) or not items:
+        return False
+    if len(items) != existing_line_count:
+        return False
+    if any(
+        not isinstance(item, dict)
+        or not ((item.get("item") or {}).get("id") or first(item, "id", "ID"))
+        for item in items
+    ):
+        return False
+    payload = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+    return isinstance(row.get("payments"), list) and isinstance(payload.get("payments"), list)
+
+
 def _dedupe_sales(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
     """Collapse duplicate GraphQL edges while retaining the fullest Sale.
 
@@ -371,6 +407,9 @@ async def sync_store(
             for item in existing_items
             if item.line_key is not None
         }
+        existing_line_counts: dict[int, int] = {}
+        for item in existing_items:
+            existing_line_counts[item.sale_id] = existing_line_counts.get(item.sale_id, 0) + 1
         legacy_items_by_product = {
             (item.sale_id, str(item.shopfront_product_id)): item
             for item in existing_items
@@ -417,11 +456,12 @@ async def sync_store(
                 # sales still take the full upsert path below.
                 if (
                     sale is not None
-                    # The sale mirror is authoritative for historical
-                    # retries; even a row with no local lines must not block
-                    # the whole chunk. The sales-repair job fills missing
-                    # lines separately.
                     and sale.id is not None
+                    and _sale_is_complete_and_unchanged(
+                        sale,
+                        row,
+                        existing_line_counts.get(sale.id, 0),
+                    )
                 ):
                     counts["sales"] += 1
                     counts["sales_skipped_unchanged"] = counts.get("sales_skipped_unchanged", 0) + 1
