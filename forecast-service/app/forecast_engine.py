@@ -58,18 +58,34 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
                                         censoredDays=sum(series.stockoutFlags), evaluationCensoredDays=0))
             continue
         train = series.units[:-request.horizonDays]
-        actual = [max(0.0, float(x)) for x in series.units[-request.horizonDays:]]
+        evaluation = series.units[-request.horizonDays:]
         train_flags = series.stockoutFlags[:-request.horizonDays] if series.stockoutFlags else []
+        evaluation_flags = series.stockoutFlags[-request.horizonDays:] if series.stockoutFlags else []
         predicted, quality, _ = _normalise(train, request.horizonDays, train_flags)
-        errors = [p - a for p, a in zip(predicted, actual)]
-        denominator = sum(actual)
+        evaluation_censored = sum(evaluation_flags)
+        comparable = [
+            (prediction, max(0.0, float(actual)))
+            for index, (prediction, actual) in enumerate(zip(predicted, evaluation))
+            if not (index < len(evaluation_flags) and evaluation_flags[index])
+        ]
+        if not comparable:
+            results.append(BacktestItem(productId=series.productId, wape=None, mae=None,
+                                        bias=None, status="BLOCKED", dataQuality="CENSORED_DEMAND",
+                                        censoredDays=sum(train_flags),
+                                        evaluationCensoredDays=evaluation_censored))
+            continue
+        errors = [prediction - actual for prediction, actual in comparable]
+        actual_values = [actual for _, actual in comparable]
+        denominator = sum(actual_values)
         wape = sum(abs(e) for e in errors) / denominator if denominator else None
         mae = sum(abs(e) for e in errors) / len(errors)
         bias = sum(errors) / len(errors)
+        if evaluation_censored:
+            quality = "CENSORED_DEMAND"
         results.append(BacktestItem(productId=series.productId, wape=wape, mae=mae,
                                     bias=bias, status="PASS" if quality != "INCOMPLETE" else "BLOCKED",
                                     dataQuality=quality, censoredDays=sum(train_flags),
-                                    evaluationCensoredDays=sum(series.stockoutFlags[-request.horizonDays:])))
+                                    evaluationCensoredDays=evaluation_censored))
     return BacktestResponse(model=MODEL, modelVersion="1", items=results)
 
 
