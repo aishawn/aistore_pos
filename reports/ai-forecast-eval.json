@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "qualityGate": "FAIL",
+  "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
+  "sourceSnapshot": "forecast-service\\fixtures\\skr-snapshot-demo.json",
+  "sourceSnapshotSha": "b41e612e31ad08332b0f6d96fd73ec6123724dae",
+  "runtimeSha": "0c5d24538da8f99067307e630f7c64db1dbfefdd",
+  "model": "seasonal_naive_v1",
+  "modelVersion": "1",
+  "horizonDays": 7,
+  "seriesCount": 2,
+  "passCount": 2,
+  "blockedCount": 0,
+  "meanWape": 0.5294117647058824,
+  "items": [
+    {
+      "productId": 1001,
+      "wape": 0.0,
+      "mae": 0.0,
+      "bias": 0.0,
+      "status": "PASS"
+    },
+    {
+      "productId": 1002,
+      "wape": 1.0588235294117647,
+      "mae": 2.5714285714285716,
+      "bias": 2.2857142857142856,
+      "status": "PASS"
+    }
+  ],
+  "writeRequests": [],
+  "dataSourceMode": "fixed_read_only_snapshot"
+}
