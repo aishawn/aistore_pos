@@ -137,14 +137,15 @@ def _sale_is_complete_and_unchanged(
         return False
     if not isinstance(row.get("payments"), list) or not isinstance(payload.get("payments"), list):
         return False
-    # Compare the small fields that can change without requiring a full ORM
-    # rewrite. The raw payload retains the exact source line/payment data.
+    # The source update timestamp and status are the authoritative version
+    # markers. GraphQL may reorder/shape nested fields between requests, so do
+    # not require byte-for-byte equality of items/payments here.
     for field_names in (("totalPrice", "total_price", "Total Price"), ("totalTax", "total_tax", "Tax Amount"), ("totalDiscount", "total_discount", "Discount Amount"), ("totalCost", "total_cost", "Cost")):
         incoming_value = first(row, *field_names)
         stored_value = first(payload, *field_names)
         if incoming_value is not None and stored_value is not None and str(incoming_value) != str(stored_value):
             return False
-    return row.get("items") == payload.get("items") and row.get("payments") == payload.get("payments")
+    return True
 
 
 def _dedupe_sales(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
