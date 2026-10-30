@@ -138,6 +138,7 @@ def main() -> int:
             "stockoutDataQuality": "INFERRED_FROM_STOCK_MOVES",
         })
     series.sort(key=lambda item: sum(item["units"]), reverse=True)
+    inferred_flag_days = sum(sum(1 for flag in item["stockoutFlags"] if flag) for item in series)
     snapshot = {
         "snapshotVersion": f"skr-odoo-readonly-{date.today().isoformat()}",
         "source": "odoo-readonly-jsonrpc",
@@ -145,6 +146,11 @@ def main() -> int:
         "historyDays": history_days, "orders": len(orders), "orderLines": len(lines),
         "series": series[:2000],
         "stockoutDataQuality": "INFERRED_FROM_STOCK_MOVES",
+        "stockoutInference": {
+            "doneMoveRows": len(moves), "locationRows": len(location_rows),
+            "productsWithInferredStockout": sum(any(item["stockoutFlags"]) for item in series),
+            "inferredStockoutDays": inferred_flag_days,
+        },
         "writeRequests": [],
     }
     output.parent.mkdir(parents=True, exist_ok=True)
