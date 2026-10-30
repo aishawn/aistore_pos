@@ -276,7 +276,12 @@ public class AiCommandService {
                     List.of());
         }
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
-        if (product.find()) {
+        boolean productMatched = product.find();
+        if (!productMatched) {
+            product = Pattern.compile("(?i)(?:rename|change|update)\\s+(.+?)\\s+to\\s+(.+)").matcher(text);
+            productMatched = product.find();
+        }
+        if (productMatched) {
             OdooProductMatch p = findOdooProduct(tenant, product.group(1).trim());
             CommandItem item = new CommandItem(p.id(), p.name(), "name", p.name(),
                     product.group(2).trim(), "exact product name match", "READY");
