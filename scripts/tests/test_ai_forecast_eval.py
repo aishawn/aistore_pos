@@ -11,6 +11,13 @@ sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
 from scripts.ai_forecast_eval import MODEL_NAMES, _group_labels, rolling_metrics
 
+import importlib.util
+MOVE_MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-sales-snapshot.py"
+move_module_spec = importlib.util.spec_from_file_location("skr_snapshot", MOVE_MODULE_PATH)
+move_module = importlib.util.module_from_spec(move_module_spec)
+move_module_spec.loader.exec_module(move_module)
+move_delta = move_module.move_delta
+
 
 class ForecastEvaluationTests(unittest.TestCase):
     def test_rolling_metrics_excludes_censored_holdout_days(self):
@@ -67,6 +74,11 @@ class ForecastEvaluationTests(unittest.TestCase):
         inferred = Series(productId=10, dates=[date(2026, 1, 1)], units=[1],
                           stockoutFlags=[True], stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
         self.assertEqual("HIGH_GT_10", _group_labels(inferred)["stockoutRatio"])
+
+    def test_stock_move_direction_is_signed_by_location_usage(self):
+        self.assertEqual(-3.0, move_delta("internal", "customer", 3))
+        self.assertEqual(4.0, move_delta("supplier", "internal", 4))
+        self.assertEqual(0.0, move_delta("internal", "internal", 99))
 
     def test_model_comparison_covers_all_horizons_and_group_dimensions(self):
         report_path = ROOT / "reports" / "test-ai-forecast-eval.json"

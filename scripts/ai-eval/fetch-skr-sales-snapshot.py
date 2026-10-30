@@ -56,6 +56,15 @@ class Odoo:
         })
 
 
+def move_delta(source_usage: str | None, destination_usage: str | None, quantity: float) -> float:
+    """Return the change to internal stock for a completed stock move."""
+    if source_usage == "internal" and destination_usage != "internal":
+        return -abs(quantity)
+    if source_usage != "internal" and destination_usage == "internal":
+        return abs(quantity)
+    return 0.0
+
+
 def main() -> int:
     values = env_values()
     base = values.get("ODOO_BASE_URL", "https://odoo.orithos.com.au")
@@ -114,8 +123,7 @@ def main() -> int:
         quantity = float(move.get("quantity") or 0)
         if not product_id or not quantity or not move.get("date"):
             continue
-        delta = -quantity if source == "internal" and destination != "internal" else \
-                quantity if source != "internal" and destination == "internal" else 0.0
+        delta = move_delta(source, destination, quantity)
         if delta:
             moves_by_product[product_id].append((date.fromisoformat(str(move["date"])[:10]), delta))
     series = []
