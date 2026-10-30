@@ -4,7 +4,7 @@
   "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
   "sourceSnapshot": "forecast-service\\fixtures\\skr-snapshot-demo.json",
   "sourceSnapshotSha": "b41e612e31ad08332b0f6d96fd73ec6123724dae",
-  "runtimeSha": "9b3e8a51ba5fbdba640d1965cf5a9fab92e6f694",
+  "runtimeSha": "3bb8ca051608808bc1be516cc735a94b96790c4b",
   "model": "seasonal_naive_v1",
   "modelVersion": "1",
   "horizonDays": 7,
@@ -64,14 +64,20 @@
       "wape": 0.0,
       "mae": 0.0,
       "bias": 0.0,
-      "status": "PASS"
+      "status": "PASS",
+      "dataQuality": "VALID",
+      "censoredDays": 0,
+      "evaluationCensoredDays": 0
     },
     {
       "productId": 1002,
       "wape": 1.0588235294117647,
       "mae": 2.5714285714285716,
       "bias": 2.2857142857142856,
-      "status": "PASS"
+      "status": "PASS",
+      "dataQuality": "VALID",
+      "censoredDays": 0,
+      "evaluationCensoredDays": 3
     }
   ],
   "writeRequests": [],
