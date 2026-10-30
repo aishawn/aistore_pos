@@ -46,6 +46,17 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void quantitySummaryUsesUnitsInsteadOfAud() {
+        OverAllState state = state("", List.of(
+                Map.of("date", "2026-10-19", "qty", 2.25),
+                Map.of("date", "2026-10-20", "qty", 3.5)), "2026-10-19", "2026-10-20");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_qty"));
+
+        assertEquals("Quantity sold for 2026-10-19 to 2026-10-20 total 5.75 units (2 days).",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void averageTicketSummaryIncludesAudAndUsesSingularSale() {
         OverAllState state = state("", List.of(Map.of("sales", 12.99, "tickets", 1, "aov", 12.99)));
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));

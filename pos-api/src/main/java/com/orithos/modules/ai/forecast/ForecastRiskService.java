@@ -26,17 +26,16 @@ public class ForecastRiskService {
         for (ForecastDtos.Item item : response.items()) {
             Inventory current = inventory.get(item.productId());
             if (current == null || current.onHand() == null) continue;
-            double cumulative = 0d;
-            int day = 0;
-            for (int index = 0; index < item.forecast().size(); index++) {
-                ForecastDtos.Point point = item.forecast().get(index);
-                cumulative += point.p50();
-                if (cumulative > current.onHand()) { day = index + 1; break; }
-            }
+            double availableStock = current.projectedAvailable() == null
+                    ? current.onHand() : current.projectedAvailable();
+            int day = firstStockoutDay(item.forecast(), availableStock);
+            double cumulative = day == 0 ? 0d : item.forecast().subList(0, day).stream()
+                    .mapToDouble(ForecastDtos.Point::p50).sum();
             if (day > 0) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("productId", item.productId()); row.put("stockoutInDays", day);
-                row.put("onHand", current.onHand()); row.put("forecastDemand", cumulative);
+                row.put("onHand", current.onHand()); row.put("availableStock", availableStock);
+                row.put("forecastDemand", cumulative);
                 row.put("severity", day <= Math.max(1, current.leadTimeDays()) ? "CRITICAL" : "WARNING");
                 row.put("confidence", item.confidence()); row.put("reason", "forecast demand exceeds available stock");
                 stockout.add(row);
@@ -58,7 +57,9 @@ public class ForecastRiskService {
     private Map<Long, Inventory> inventory(TenantContext tenant) {
         Map<Long, Inventory> result = new LinkedHashMap<>();
         jdbc.query("""
-                SELECT product_id, on_hand, COALESCE((p.payload->>'standard_price')::numeric, 0) AS cost,
+                SELECT product_id, on_hand,
+                       COALESCE((inv.payload->>'virtualAvailable')::numeric, i.on_hand) AS available_stock,
+                       COALESCE((p.payload->>'standard_price')::numeric, 0) AS cost,
                        COALESCE((inv.payload->>'leadTimeDays')::numeric, 0) AS lead_time
                 FROM ai_inventory_daily i
                 LEFT JOIN LATERAL (
@@ -75,7 +76,8 @@ public class ForecastRiskService {
                 ) inv ON TRUE
                 WHERE i.vendor_id = ? AND i.outlet_id = ? AND i.business_date = CURRENT_DATE
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.put(rs.getLong("product_id"), new Inventory(
-                        asDouble(rs.getObject("on_hand")), asDouble(rs.getObject("cost")),
+                        asDouble(rs.getObject("on_hand")), asDouble(rs.getObject("available_stock")),
+                        asDouble(rs.getObject("cost")),
                         rs.getInt("lead_time"))), tenant.vendorId(), tenant.requireOutletId());
         return result;
     }
@@ -84,5 +86,14 @@ public class ForecastRiskService {
         return value instanceof Number number ? number.doubleValue() : null;
     }
 
-    private record Inventory(Double onHand, Double cost, int leadTimeDays) { }
+    static int firstStockoutDay(List<ForecastDtos.Point> forecast, double availableStock) {
+        double cumulative = 0d;
+        for (int index = 0; index < forecast.size(); index++) {
+            cumulative += forecast.get(index).p50();
+            if (cumulative > availableStock) return index + 1;
+        }
+        return 0;
+    }
+
+    private record Inventory(Double onHand, Double projectedAvailable, Double cost, int leadTimeDays) { }
 }

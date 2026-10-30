@@ -55,13 +55,26 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
         if len(series.units) <= request.horizonDays + 7:
             results.append(BacktestItem(productId=series.productId, wape=None, mae=None,
                                         bias=None, status="BLOCKED", dataQuality="INCOMPLETE",
-                                        censoredDays=sum(series.stockoutFlags), evaluationCensoredDays=0))
+                                        censoredDays=sum(series.stockoutFlags), evaluationCensoredDays=0,
+                                        evaluationObservedDays=0))
             continue
         train = series.units[:-request.horizonDays]
-        actual = [max(0.0, float(x)) for x in series.units[-request.horizonDays:]]
+        target_flags = series.stockoutFlags[-request.horizonDays:] if series.stockoutFlags else [False] * request.horizonDays
+        target = list(zip(series.units[-request.horizonDays:], target_flags))
+        observed_days = [(index, max(0.0, float(value))) for index, (value, censored) in enumerate(target)
+                         if not censored]
         train_flags = series.stockoutFlags[:-request.horizonDays] if series.stockoutFlags else []
         predicted, quality, _ = _normalise(train, request.horizonDays, train_flags)
-        errors = [p - a for p, a in zip(predicted, actual)]
+        evaluation_censored_days = sum(target_flags)
+        if not observed_days:
+            results.append(BacktestItem(productId=series.productId, wape=None, mae=None, bias=None,
+                                        status="BLOCKED", dataQuality="CENSORED_DEMAND",
+                                        censoredDays=sum(train_flags),
+                                        evaluationCensoredDays=evaluation_censored_days,
+                                        evaluationObservedDays=0))
+            continue
+        errors = [predicted[index] - actual for index, actual in observed_days]
+        actual = [value for _, value in observed_days]
         denominator = sum(actual)
         wape = sum(abs(e) for e in errors) / denominator if denominator else None
         mae = sum(abs(e) for e in errors) / len(errors)
@@ -69,7 +82,8 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
         results.append(BacktestItem(productId=series.productId, wape=wape, mae=mae,
                                     bias=bias, status="PASS" if quality != "INCOMPLETE" else "BLOCKED",
                                     dataQuality=quality, censoredDays=sum(train_flags),
-                                    evaluationCensoredDays=sum(series.stockoutFlags[-request.horizonDays:])))
+                                    evaluationCensoredDays=evaluation_censored_days,
+                                    evaluationObservedDays=len(observed_days)))
     return BacktestResponse(model=MODEL, modelVersion="1", items=results)
 
 

@@ -60,7 +60,7 @@ public class ReportRespondNode implements NodeAction {
             case "report_aov" -> formatAov(rows.get(0), from, to);
             case "report_stock" -> formatStock(rows, slots.get("query"));
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"));
-            case "report_qty" -> formatSeries(rows, "qty", "Quantity", from, to);
+            case "report_qty" -> formatQuantitySeries(rows, from, to);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
         };
@@ -76,6 +76,17 @@ public class ReportRespondNode implements NodeAction {
         String sum = "AUD " + money(total);
         int days = rows.size();
         return label + " for " + range + " total " + sum + " (" + days + (days == 1 ? " day)." : " days).");
+    }
+
+    private String formatQuantitySeries(List<Map<String, Object>> rows, String from, String to) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map<String, Object> row : rows) {
+            total = total.add(ReportQueryService.toDecimal(row.get("qty")));
+        }
+        int days = rows.size();
+        return "Quantity sold for " + rangeText(from, to) + " total "
+                + total.stripTrailingZeros().toPlainString() + " units ("
+                + days + (days == 1 ? " day)." : " days).");
     }
 
     private String formatAov(Map<String, Object> row, String from, String to) {

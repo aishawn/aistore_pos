@@ -42,7 +42,9 @@ public final class PricingDecisionEngine {
         if (target <= 0 || Math.abs(target - input.currentPrice()) < limits.minimumChange()) {
             return Decision.hold("calculated change is below the review threshold");
         }
-        return new Decision(Status.REVIEW, round(target, 2), round(target - input.currentPrice(), 2),
+        double delta = BigDecimal.valueOf(target).subtract(BigDecimal.valueOf(input.currentPrice()))
+                .setScale(2, RoundingMode.HALF_UP).doubleValue();
+        return new Decision(Status.REVIEW, target, delta,
                 List.of("demand=" + input.averageDailyUnits(), "stock=" + input.stockUnits()), "policy recommendation");
     }
 

@@ -1,0 +1,55 @@
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from datetime import date, timedelta
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "forecast-service"))
+from app.schemas import Series
+from scripts.ai_forecast_eval import rolling_metrics
+
+
+class ForecastEvaluationTests(unittest.TestCase):
+    def test_rolling_metrics_excludes_censored_holdout_days(self):
+        payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+        series = Series(**payload["series"][1])
+
+        result = rolling_metrics(series, 7)
+
+        self.assertEqual("PASS", result["status"])
+        self.assertEqual(2, result["windowCount"])
+        self.assertEqual(1, result["censoredWindowCount"])
+        self.assertLess(result["meanWape"], 0.20)
+
+    def test_rolling_metrics_blocks_fully_censored_windows_without_crashing(self):
+        start = date(2026, 1, 1)
+        series = Series(productId=2,
+                        dates=[start + timedelta(days=index) for index in range(21)],
+                        units=[4.0] * 21, stockoutFlags=[False] * 14 + [True] * 7)
+
+        result = rolling_metrics(series, 7)
+
+        self.assertEqual("BLOCKED", result["status"])
+        self.assertEqual(1, result["blockedWindowCount"])
+        self.assertIsNone(result["meanMae"])
+        self.assertIsNone(result["p80Coverage"])
+
+    def test_cli_accepts_relative_snapshot_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report = Path(temp_dir) / "report.json"
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/ai_forecast_eval.py"),
+                 "forecast-service/fixtures/skr-snapshot-demo.json", str(report)],
+                cwd=ROOT, capture_output=True, text=True, check=False,
+            )
+            report_exists = report.exists()
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(report_exists)
+
+
+if __name__ == "__main__":
+    unittest.main()
