@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.forecast;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,6 +14,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ForecastServiceSnapshotTest {
     private static final TenantContext TENANT = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of());
@@ -41,5 +44,16 @@ class ForecastServiceSnapshotTest {
         ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), true, 56);
 
         assertDoesNotThrow(() -> service.persistSnapshot(TENANT, RESPONSE));
+    }
+
+    @Test
+    void disabledForecastFailsBeforeReadingTenantData() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ForecastService service = new ForecastService(jdbc, mock(ForecastClient.class), new ObjectMapper(), false, 56);
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.forecast(TENANT, 7));
+
+        assertEquals(50332, error.getCode());
+        org.mockito.Mockito.verifyNoInteractions(jdbc);
     }
 }
