@@ -78,8 +78,17 @@ public class GenerateResponseNode implements NodeAction {
             return Map.of("answer", cannedAnswer(intent, summary, question));
         }
 
-        String system = configService.getSnapshot()
-                .promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
+        // Some deterministic clarification paths should never touch the provider
+        // or the runtime prompt store. This keeps them available during outages
+        // and makes the safety boundary explicit.
+        if (isGenericStockClarification(question)) {
+            return Map.of("answer", deterministicFallback(question, intent));
+        }
+
+        var snapshot = configService == null ? null : configService.getSnapshot();
+        String system = snapshot == null
+                ? FALLBACK_RESPOND
+                : snapshot.promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
         String history = state.value("conversation_history", String.class).orElse("");
         String storeContext = state.value("store_context", String.class).orElse("");
 
@@ -173,6 +182,11 @@ public class GenerateResponseNode implements NodeAction {
         return chinese
                 ? "AI 暂时不可用。请打开对应的商品、库存、报表或采购页面继续操作。"
                 : "AI is temporarily unavailable. Open the relevant products, stock, reports, or purchasing page to continue.";
+    }
+
+    private static boolean isGenericStockClarification(String question) {
+        String normalized = question == null ? "" : question.trim().toLowerCase();
+        return normalized.matches(".*(?:why can'?t i find anything in stock|why can'?t i find anything|nothing found in stock|查不到库存|库存什么都查不到|库存里什么都没有).*");
     }
 
     private static String cannedAnswer(String intent, String summary, String question) {
