@@ -766,6 +766,12 @@ async def push_pos_snapshot(
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
         sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
     total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
+    repair_job = bool(job is not None and job.job_type == "sales_repair")
+    if repair_job and total_sales > 500:
+        # POS repair is a compensation pass for the newest changes. Replaying
+        # the entire historical ledger would create hundreds of Odoo requests
+        # even when only a few recent sales are missing or modified.
+        sales_offset = max(int(sales_offset or 0), total_sales - 500)
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_enabled = bool(
@@ -993,7 +999,6 @@ async def push_pos_snapshot(
     # Sales-repair is used after the crawler's coverage check. When every
     # SaleItem already has a name, do not scan the full historical line table;
     # the current catalog and persisted line payload are already sufficient.
-    repair_job = bool(job is not None and job.job_type == "sales_repair")
     missing_name_query = sale_item_query.where(
         or_(SaleItem.product_name.is_(None), SaleItem.product_name == "")
     )
