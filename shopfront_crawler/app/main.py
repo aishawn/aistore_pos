@@ -990,10 +990,14 @@ async def push_pos_snapshot(
 
     product_items_by_source = {str(item["source_id"]): item for item in product_items if item.get("source_id")}
     current_source_ids = set(product_items_by_source)
+    # Sales-repair is used after the crawler's coverage check. When every
+    # SaleItem already has a name, do not scan the full historical line table;
+    # the current catalog and persisted line payload are already sufficient.
+    repair_job = bool(job is not None and job.job_type == "sales_repair")
     missing_name_query = sale_item_query.where(
         or_(SaleItem.product_name.is_(None), SaleItem.product_name == "")
     )
-    missing_name_count = db.scalar(select(func.count()).select_from(missing_name_query.subquery())) or 0
+    missing_name_count = 0 if repair_job else (db.scalar(select(func.count()).select_from(missing_name_query.subquery())) or 0)
     if missing_name_count and current_source_ids:
         archived_query = sale_item_query.where(
             SaleItem.shopfront_product_id.is_not(None),
