@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     # Keep the crawler-to-POS mirror enabled by default. Formal Odoo business
     # writes remain separately gated below.
     pos_import_enabled: bool = True
+    # Historical compensation can re-read unchanged sales to validate report
+    # counts. Once a catalog snapshot has been mirrored, re-sending every
+    # product referenced by those unchanged sales adds latency without
+    # changing POS state. Keep the switch configurable for recovery.
+    pos_skip_unchanged_history_products: bool = True
     odoo_api_base_url: str = ""
     odoo_api_token: str = ""
     odoo_api_database: str = ""

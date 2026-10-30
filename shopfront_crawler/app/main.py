@@ -1047,6 +1047,17 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             catalog_source_ids = sync_counts.get("catalog_source_ids") or []
             sale_product_ids = sync_counts.get("product_source_ids") or []
             product_source_ids = sorted(set(catalog_source_ids) | set(sale_product_ids))
+            source_sales = int(sync_counts.get("sales") or 0)
+            unchanged_sales = int(sync_counts.get("sales_skipped_unchanged") or 0)
+            skip_stable_history_products = bool(
+                settings.pos_skip_unchanged_history_products
+                and not full_catalog
+                and not catalog_source_ids
+                and source_sales > 0
+                and unchanged_sales == source_sales
+            )
+            if skip_stable_history_products:
+                product_source_ids = []
             push_kwargs = {"run": run, "include_catalog": full_catalog}
             if not full_catalog:
                 push_kwargs["product_source_ids"] = product_source_ids
@@ -1054,9 +1065,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
-            source_sales = int(sync_counts.get("sales") or 0)
             imported_sales = int(pos_result.get("sales_imported") or 0)
-            unchanged_sales = int(sync_counts.get("sales_skipped_unchanged") or 0)
             # A compensation window normally contains already mirrored sales.
             # Those rows are intentionally skipped by the crawler and do not
             # need a second POS write; validate only rows that changed or were
@@ -1073,6 +1082,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             if product_source_ids is not None:
                 sync_counts["product_source_id_count"] = len(product_source_ids)
                 sync_counts.pop("product_source_ids", None)
+            sync_counts["pos_products_skipped_unchanged"] = skip_stable_history_products
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
         else:
             run.counts = {"sync": sync_counts}
