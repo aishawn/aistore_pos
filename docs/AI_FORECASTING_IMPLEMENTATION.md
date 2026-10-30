@@ -73,4 +73,6 @@ snapshot SHA and runtime SHA. `status` describes whether the run completed;
 with stockout flags is expected to trigger review, not to be hidden as a zero
 demand result. The runner evaluates rolling 7/14/28-day windows and marks a
 horizon `BLOCKED` when the snapshot does not contain enough history. The runner
-always reports `writeRequests: []`.
+also compares the seasonal baseline with a seven-day moving-average challenger;
+model promotion requires a fixed-snapshot improvement, not model complexity.
+It always reports `writeRequests: []`.

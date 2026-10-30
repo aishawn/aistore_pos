@@ -23,7 +23,7 @@ def source_sha(snapshot: Path) -> str:
         return "unavailable"
 
 
-def rolling_metrics(series: Series, horizon: int) -> dict:
+def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v1") -> dict:
     """Evaluate every available horizon ending at the snapshot tail."""
     if len(series.units) <= horizon + 7:
         return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
@@ -34,9 +34,19 @@ def rolling_metrics(series: Series, horizon: int) -> dict:
             break
         train = Series(productId=series.productId, dates=series.dates[:end], units=series.units[:end],
                        stockoutFlags=series.stockoutFlags[:end])
-        response = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=horizon,
-                                             forecastStartDate=series.dates[end - 1], series=[train]))
-        points = response.items[0].forecast
+        if model == "seasonal_naive_v1":
+            response = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=horizon,
+                                                 forecastStartDate=series.dates[end - 1], series=[train]))
+            points = response.items[0].forecast
+        elif model == "moving_average_7_v1":
+            from app.schemas import ForecastPoint
+            usable = [value for index, value in enumerate(train.units)
+                      if not (index < len(train.stockoutFlags) and train.stockoutFlags[index])]
+            average = sum(usable[-7:]) / len(usable[-7:]) if usable else 0.0
+            points = [ForecastPoint(date=series.dates[end - 1], p50=average,
+                                    p80=average, p90=average) for _ in range(horizon)]
+        else:
+            raise ValueError(f"unsupported evaluation model: {model}")
         actual = [max(0.0, float(value)) for value in series.units[end:end + horizon]]
         errors = [point.p50 - value for point, value in zip(points, actual)]
         denominator = sum(actual)
@@ -54,6 +64,7 @@ def rolling_metrics(series: Series, horizon: int) -> dict:
     return {
         "productId": series.productId,
         "horizonDays": horizon,
+        "model": model,
         "status": "PASS",
         "windowCount": len(windows),
         "meanWape": sum(numeric("wape")) / len(numeric("wape")) if numeric("wape") else None,
@@ -74,7 +85,9 @@ def main() -> int:
     items = [item.model_dump() for item in result.items]
     eligible = [item for item in items if item["status"] == "PASS"]
     wapes = [item["wape"] for item in eligible if item["wape"] is not None]
-    rolling = [rolling_metrics(series, horizon) for horizon in (7, 14, 28) for series in request.series]
+    rolling = [rolling_metrics(series, horizon, model)
+               for model in ("seasonal_naive_v1", "moving_average_7_v1")
+               for horizon in (7, 14, 28) for series in request.series]
     execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
     report = {
         "status": execution_status,
