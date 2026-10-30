@@ -121,7 +121,7 @@ public class SommelierService {
     public PitchResponse pitch(PitchRequest request, TenantContext tenant) {
         WineCandidate wine = requireWine(request.productId(), tenant);
         CustomerWineProfile profile = request.profile() == null ? null : toProfile(request.profile());
-        String text = pitchService.pitch(wine, profile, request.length());
+        String text = pitchService.pitch(wine, profile, request.length(), tenant);
         return new PitchResponse(wine.productId(), request.length(), text);
     }
 
@@ -151,7 +151,7 @@ public class SommelierService {
         if (direction != null) {
             alts = matcher.similar(catalog.listWines(tenant), wine, direction);
         }
-        String answer = pitchService.answer(wine, request.question(), alts);
+        String answer = pitchService.answer(wine, request.question(), alts, tenant);
         List<RecommendCard> cards = new ArrayList<>();
         for (WineMatcher.ScoredWine s : alts) {
             cards.add(toCard(s, direction == null ? "alt" : direction,

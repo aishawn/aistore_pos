@@ -110,12 +110,13 @@ public class OdooReplenishmentClient {
                     List.of(
                             List.of("available_in_pos", "=", true),
                             List.of("company_id", "=", companyId)),
-                    List.of("id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"),
+                    List.of("id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id", "seller_ids"),
                     context, MAX_PRODUCTS, "name asc, id asc");
 
             Map<Long, Double> recentSold = soldMap(recentSales);
             Map<Long, Double> previousSold = soldMap(previousSales);
             List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
+            List<String> dataGaps = new ArrayList<>();
             for (Map<String, Object> product : products) {
                 long id = longId(product.get("id"));
                 if (id <= 0) {
@@ -123,9 +124,18 @@ public class OdooReplenishmentClient {
                 }
                 double recentUnits = recentSold.getOrDefault(id, 0d);
                 double previousUnits = previousSold.getOrDefault(id, 0d);
-                double onHand = decimal(product.get("qty_available"));
-                Double virtual = optionalDecimal(product.get("virtual_available"));
-                double forecastStock = virtual != null ? virtual : onHand;
+                Double onHandValue = optionalDecimal(product.get("qty_available"));
+                Double virtualValue = optionalDecimal(product.get("virtual_available"));
+                if (onHandValue == null && virtualValue == null) {
+                    dataGaps.add(productLabel(product) + ": inventory unavailable");
+                    continue;
+                }
+                if (!hasRelation(product.get("seller_ids"))) {
+                    dataGaps.add(productLabel(product) + ": supplier unavailable");
+                    continue;
+                }
+                double onHand = onHandValue == null ? virtualValue : onHandValue;
+                double forecastStock = virtualValue != null ? virtualValue : onHand;
                 double recentUnitsPerDay = recentUnits / PERIOD_DAYS;
                 double previousUnitsPerDay = previousUnits / PERIOD_DAYS;
                 double unitsPerDay = recentUnits > 0 && previousUnits > 0
@@ -152,7 +162,8 @@ public class OdooReplenishmentClient {
                     .thenComparing(ReplenishmentSuggestion::name));
             int needing = suggestions.size();
             List<ReplenishmentSuggestion> top = suggestions.stream().limit(3).toList();
-            return new ReplenishmentPlan(cover, needing, top);
+            return new ReplenishmentPlan(cover, needing, top,
+                    dataGaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", cappedGaps(dataGaps), now);
         } catch (Exception e) {
             log.warn("Odoo replenishment brief unavailable vendorId={} causeType={}",
                     tenant.vendorId(), e.getClass().getSimpleName());
@@ -168,6 +179,7 @@ public class OdooReplenishmentClient {
             int coverageDays) {
         int cover = coverageDays > 0 ? coverageDays : DEFAULT_COVERAGE_DAYS;
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
+        List<String> dataGaps = new ArrayList<>();
         for (Map<String, Object> product : products) {
             long id = longId(product.get("id"));
             if (id <= 0) {
@@ -175,9 +187,14 @@ public class OdooReplenishmentClient {
             }
             double recentUnits = recentSold.getOrDefault(id, 0d);
             double previousUnits = previousSold.getOrDefault(id, 0d);
-            double onHand = decimal(product.get("qty_available"));
-            Double virtual = optionalDecimal(product.get("virtual_available"));
-            double forecastStock = virtual != null ? virtual : onHand;
+            Double onHandValue = optionalDecimal(product.get("qty_available"));
+            Double virtualValue = optionalDecimal(product.get("virtual_available"));
+            if (onHandValue == null && virtualValue == null) {
+                dataGaps.add(productLabel(product) + ": inventory unavailable");
+                continue;
+            }
+            double onHand = onHandValue == null ? virtualValue : onHandValue;
+            double forecastStock = virtualValue != null ? virtualValue : onHand;
             double recentUnitsPerDay = recentUnits / PERIOD_DAYS;
             double previousUnitsPerDay = previousUnits / PERIOD_DAYS;
             double unitsPerDay = recentUnits > 0 && previousUnits > 0
@@ -199,7 +216,24 @@ public class OdooReplenishmentClient {
         suggestions.sort(Comparator
                 .comparingDouble(ReplenishmentSuggestion::suggestedQuantity).reversed()
                 .thenComparing(ReplenishmentSuggestion::name));
-        return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(3).toList());
+        return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(3).toList(),
+                dataGaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", cappedGaps(dataGaps), Instant.now());
+    }
+
+    private static List<String> cappedGaps(List<String> gaps) {
+        return gaps == null ? List.of() : gaps.stream().distinct().limit(20).toList();
+    }
+
+    private static String productLabel(Map<String, Object> product) {
+        String name = text(product.get("display_name"));
+        if (name.isBlank()) name = text(product.get("name"));
+        return name.isBlank() ? "product-" + longId(product.get("id")) : name;
+    }
+
+    private static boolean hasRelation(Object value) {
+        if (value == null) return false;
+        if (value instanceof List<?> list) return !list.isEmpty();
+        return relationId(value) != null;
     }
 
     private Map<Long, Double> soldMap(List<Map<String, Object>> rows) {

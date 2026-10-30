@@ -1,9 +1,17 @@
 package com.orithos.modules.ai.sommelier;
 
+import com.orithos.config.CorrelationIdContext;
+import com.orithos.modules.ai.gateway.AiCompletion;
+import com.orithos.modules.ai.gateway.AiGateway;
+import com.orithos.modules.ai.gateway.AiTask;
+import com.orithos.modules.ai.gateway.AiTenantContext;
+import com.orithos.modules.ai.gateway.PromptVersion;
+import com.orithos.modules.ai.report.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,9 +24,66 @@ public class WinePitchService {
     private static final Logger log = LoggerFactory.getLogger(WinePitchService.class);
 
     private final ObjectProvider<ChatClient> chatClient;
+    private final ObjectProvider<AiGateway> gateway;
 
     public WinePitchService(ObjectProvider<ChatClient> chatClient) {
+        this(chatClient, null);
+    }
+
+    @Autowired
+    public WinePitchService(ObjectProvider<ChatClient> chatClient, ObjectProvider<AiGateway> gateway) {
         this.chatClient = chatClient;
+        this.gateway = gateway;
+    }
+
+    /** Gateway-backed path used by authenticated production requests. */
+    public String pitch(WineCandidate wine, CustomerWineProfile customer, String length, TenantContext tenant) {
+        String fallback = template(wine, customer, length);
+        AiGateway provider = gateway == null ? null : gateway.getIfAvailable();
+        if (!validScope(provider, tenant)) return fallback;
+        try {
+            AiCompletion<String> completion = provider.complete(
+                    scope(tenant), AiTask.EXPLANATION,
+                    new PromptVersion("sommelier-pitch", "v1", ""),
+                    llmUser(wine, customer, length), String.class);
+            return clean(completion.value(), fallback);
+        } catch (RuntimeException failure) {
+            log.debug("Gateway pitch fallback type={}", failure.getClass().getSimpleName());
+            return fallback;
+        }
+    }
+
+    /** Gateway-backed path used by authenticated production requests. */
+    public String answer(WineCandidate wine, String question, List<WineMatcher.ScoredWine> alts,
+                         TenantContext tenant) {
+        String fallback = cannedAnswer(wine, question, alts);
+        AiGateway provider = gateway == null ? null : gateway.getIfAvailable();
+        if (!validScope(provider, tenant)) return answer(wine, question, alts);
+        try {
+            AiCompletion<String> completion = provider.complete(
+                    scope(tenant), AiTask.EXPLANATION,
+                    new PromptVersion("sommelier-answer", "v1", ""),
+                    questionUser(wine, question, alts), String.class);
+            return clean(completion.value(), fallback);
+        } catch (RuntimeException failure) {
+            log.debug("Gateway answer fallback type={}", failure.getClass().getSimpleName());
+            return fallback;
+        }
+    }
+
+    private static boolean validScope(AiGateway provider, TenantContext tenant) {
+        return provider != null && tenant != null && tenant.vendorId() > 0 && tenant.userId() > 0
+                && tenant.requireOutletId() != null && tenant.requireOutletId() > 0;
+    }
+
+    private static AiTenantContext scope(TenantContext tenant) {
+        return new AiTenantContext(tenant.vendorId(), tenant.requireOutletId(), tenant.userId(),
+                CorrelationIdContext.current());
+    }
+
+    private static String clean(String value, String fallback) {
+        if (value == null || value.isBlank()) return fallback;
+        return value.replace('"', ' ').replace('\n', ' ').trim();
     }
 
     public String pitch(WineCandidate wine, CustomerWineProfile customer, String length) {

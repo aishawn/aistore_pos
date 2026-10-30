@@ -17,6 +17,7 @@ public class AiGatewayProperties {
     private String fallbackModel = "qwen-flash";
     private String transcriptionModel = "qwen3-asr-flash";
     private String visionModel = "qwen3.8-flash";
+    private String fallbackVisionModel = "qwen-vl-plus";
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -38,4 +39,6 @@ public class AiGatewayProperties {
     public void setTranscriptionModel(String transcriptionModel) { if (transcriptionModel != null && !transcriptionModel.isBlank()) this.transcriptionModel = transcriptionModel.trim(); }
     public String getVisionModel() { return visionModel; }
     public void setVisionModel(String visionModel) { if (visionModel != null && !visionModel.isBlank()) this.visionModel = visionModel.trim(); }
+    public String getFallbackVisionModel() { return fallbackVisionModel; }
+    public void setFallbackVisionModel(String fallbackVisionModel) { if (fallbackVisionModel != null && !fallbackVisionModel.isBlank()) this.fallbackVisionModel = fallbackVisionModel.trim(); }
 }

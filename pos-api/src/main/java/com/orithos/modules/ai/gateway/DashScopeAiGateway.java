@@ -3,11 +3,13 @@ package com.orithos.modules.ai.gateway;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,6 +21,7 @@ import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.net.http.HttpClient;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,7 +61,14 @@ public final class DashScopeAiGateway implements AiGateway {
         this.aiProperties = aiProperties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         String normalizedBaseUrl = baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", "");
-        this.mediaClient = RestClient.builder().baseUrl(normalizedBaseUrl).build();
+        Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(timeout).build());
+        requestFactory.setReadTimeout(timeout);
+        this.mediaClient = RestClient.builder().baseUrl(normalizedBaseUrl)
+                .requestFactory(requestFactory)
+                .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
+                .build();
     }
 
     @Override
@@ -95,6 +105,29 @@ public final class DashScopeAiGateway implements AiGateway {
             } catch (RuntimeException failure) {
                 last = failure;
                 if (attempt < properties.getMaxRetries()) sleepBackoff(attempt);
+            }
+        }
+        if (task == AiTask.VISION) {
+            String fallback = properties.getFallbackVisionModel();
+            if (StringUtils.hasText(fallback) && !fallback.equals(model)) {
+                String fallbackUri = DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
+                        ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
+                        : "/compatible-mode/v1/chat/completions";
+                Map<String, Object> fallbackBody = visionBody(fallback, dataUri, mimeType, prompt);
+                try {
+                    JsonNode response = mediaClient.post().uri(fallbackUri).contentType(MediaType.APPLICATION_JSON)
+                            .header("Authorization", "Bearer " + apiKey).body(fallbackBody)
+                            .retrieve().body(JsonNode.class);
+                    String text = extractText(response);
+                    if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
+                    Integer[] usage = usageTokens(response);
+                    return completed(tenant, task, new AiCompletion<>(text, PROVIDER, fallback, usage[0], usage[1],
+                            Duration.ZERO, true));
+                } catch (BusinessException rejected) {
+                    throw rejected;
+                } catch (RuntimeException failure) {
+                    last = failure;
+                }
             }
         }
         log.warn("AI media request failed task={} correlationId={} type={}", task, tenant.correlationId(),

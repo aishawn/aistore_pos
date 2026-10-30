@@ -5,6 +5,9 @@ import { request } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.PILOT_BASE_URL ?? "https://skr.orithos.com.au").replace(/\/+$/, "");
+if (new URL(base).hostname === "skr.orithos.com.au") {
+  throw new Error("SKR business writes are disabled; run this probe only against the demo store");
+}
 const username = process.env.PILOT_USERNAME ?? "shawn";
 const password = process.env.PILOT_PASSWORD;
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? `docs/UAT_PURCHASE_RECEIVE_SKR_${new Date().toISOString().slice(0, 10)}.json`);

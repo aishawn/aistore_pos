@@ -107,4 +107,19 @@ class ReplenishmentChatBriefTest {
         assertTrue(plan.top().get(0).suggestedQuantity() == 19);
         assertTrue(plan.top().get(0).name().contains("Lager"));
     }
+
+    @Test
+    void missingInventoryIsReportedInsteadOfBeingTreatedAsZero() {
+        List<Map<String, Object>> products = List.of(Map.of(
+                "id", 11,
+                "display_name", "Unknown Stock Product",
+                "uom_id", List.of(1, "Units")));
+
+        ReplenishmentPlan plan = OdooReplenishmentClient.fromMaps(
+                products, Map.of(11L, 28d), Map.of(), 21);
+
+        assertTrue(plan.top().isEmpty());
+        assertTrue("DATA_INCOMPLETE".equals(plan.dataQualityStatus()));
+        assertTrue(plan.dataGaps().stream().anyMatch(gap -> gap.contains("inventory unavailable")));
+    }
 }

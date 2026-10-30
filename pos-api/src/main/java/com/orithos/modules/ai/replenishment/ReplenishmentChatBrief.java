@@ -29,6 +29,14 @@ public class ReplenishmentChatBrief {
             if (plan == null) {
                 return unavailableMessage(question);
             }
+            if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())
+                    && (plan.top() == null || plan.top().isEmpty())) {
+                String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
+                return chinese
+                        ? "补货建议数据不完整，暂不生成数量：" + gaps + "。请补齐库存或供应商资料后重试。"
+                        : "Replenishment data is incomplete, so no quantities were generated: "
+                                + gaps + ". Complete inventory or supplier data and retry.";
+            }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
                 return chinese
                         ? "当前库存可覆盖目标周期，暂时没有补货数量建议。打开补货页面查看。"
