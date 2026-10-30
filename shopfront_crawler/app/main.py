@@ -560,7 +560,7 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
 
 
 @app.post("/api/sync/cleanup-summaries")
-def cleanup_stale_summaries(store: str = "skr", db: Session = Depends(get_db)) -> dict:
+def cleanup_stale_summaries(store: str = "skr", dates: str | None = None, db: Session = Depends(get_db)) -> dict:
     """Remove only verified stale consolidated summary rows.
 
     Older UTC based runs could leave an outlet-less row on the previous local
@@ -570,37 +570,52 @@ def cleanup_stale_summaries(store: str = "skr", db: Session = Depends(get_db)) -
     """
     store_row = require_store(store, db)
     local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
-    summaries = db.scalars(select(DailySalesSummary).where(
+    requested_dates = {value.strip() for value in (dates or "").split(",") if value.strip()}
+    summary_query = select(DailySalesSummary).where(
         DailySalesSummary.store_key == store,
         DailySalesSummary.outlet.is_(None),
-    )).all()
+    )
+    if requested_dates:
+        summary_query = summary_query.where(DailySalesSummary.business_date.in_(requested_dates))
+    summaries = db.scalars(summary_query).all()
+    summary_dates = {date.fromisoformat(row.business_date) for row in summaries}
+    named_dates = {
+        str(value)
+        for value in db.scalars(select(DailySalesSummary.business_date).where(
+            DailySalesSummary.store_key == store,
+            DailySalesSummary.outlet.is_not(None),
+        )).all()
+    }
+    if summary_dates:
+        min_date = min(summary_dates) - timedelta(days=1)
+        max_date = max(summary_dates) + timedelta(days=2)
+        range_start = datetime.combine(min_date, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        range_end = datetime.combine(max_date, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        sale_timestamps = db.scalars(select(Sale.created_at).where(
+            Sale.store_key == store,
+            Sale.created_at >= range_start,
+            Sale.created_at < range_end,
+        )).all()
+    else:
+        sale_timestamps = []
+    sale_counts_by_date: dict[date, int] = {}
+    for timestamp in sale_timestamps:
+        if timestamp is None:
+            continue
+        aware = timestamp.replace(tzinfo=timezone.utc) if timestamp.tzinfo is None else timestamp
+        local_date = aware.astimezone(local_zone).date()
+        sale_counts_by_date[local_date] = sale_counts_by_date.get(local_date, 0) + 1
     removed: list[str] = []
     for summary in summaries:
         target = date.fromisoformat(summary.business_date)
-        utc_start = datetime.combine(target, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
-        utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
-        same_day_sales = db.scalar(select(func.count(Sale.id)).where(
-            Sale.store_key == store,
-            Sale.created_at >= utc_start,
-            Sale.created_at < utc_end,
-        )) or 0
-        named_same_day = db.scalar(select(func.count(DailySalesSummary.id)).where(
-            DailySalesSummary.store_key == store,
-            DailySalesSummary.business_date == summary.business_date,
-            DailySalesSummary.outlet.is_not(None),
-        )) or 0
+        same_day_sales = sale_counts_by_date.get(target, 0)
+        named_same_day = summary.business_date in named_dates
         if named_same_day or same_day_sales:
             if named_same_day:
                 db.delete(summary)
                 removed.append(summary.business_date)
             continue
-        neighbour_start = datetime.combine(target - timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
-        neighbour_end = datetime.combine(target + timedelta(days=2), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
-        neighbour_sales = db.scalar(select(func.count(Sale.id)).where(
-            Sale.store_key == store,
-            Sale.created_at >= neighbour_start,
-            Sale.created_at < neighbour_end,
-        )) or 0
+        neighbour_sales = sum(sale_counts_by_date.get(target + timedelta(days=offset), 0) for offset in (-1, 1))
         if neighbour_sales and int(summary.transaction_count or 0) > 0:
             db.delete(summary)
             removed.append(summary.business_date)
