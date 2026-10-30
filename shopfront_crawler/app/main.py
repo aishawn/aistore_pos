@@ -1,4 +1,6 @@
 import asyncio
+import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -15,7 +17,7 @@ from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .db import get_db, init_db
+from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
@@ -862,6 +864,22 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
 
 async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
     try:
+        async def keepalive() -> None:
+            while True:
+                await asyncio.sleep(30)
+                heartbeat_db = SessionLocal()
+                try:
+                    if job_id is None:
+                        return
+                    heartbeat_job = heartbeat_db.get(SyncJob, job_id)
+                    if heartbeat_job is None or heartbeat_job.status != "running":
+                        return
+                    heartbeat_job.heartbeat_at = datetime.now(timezone.utc)
+                    heartbeat_job.phase = heartbeat_job.phase or "sync:active"
+                    heartbeat_db.commit()
+                finally:
+                    heartbeat_db.close()
+
         async def report_progress(field: str, item_count: int) -> None:
             if job_id is None:
                 return
@@ -879,17 +897,24 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             ShopfrontSyncCheckpoint.store_key == store_key,
             ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
         ))
-        run = await sync_store(
-            db,
-            settings,
-            store,
-            start,
-            end,
-            include_catalog=include_catalog,
-            defer_completion=True,
-            products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
-            progress_callback=report_progress,
-        )
+        keepalive_task = asyncio.create_task(keepalive()) if job_id is not None else None
+        try:
+            run = await sync_store(
+                db,
+                settings,
+                store,
+                start,
+                end,
+                include_catalog=include_catalog,
+                defer_completion=True,
+                products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
+                progress_callback=report_progress,
+            )
+        finally:
+            if keepalive_task is not None:
+                keepalive_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await keepalive_task
         if run.status == "failed":
             return False
         sync_counts = dict(run.counts or {})
