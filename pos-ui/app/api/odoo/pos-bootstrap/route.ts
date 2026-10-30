@@ -49,6 +49,7 @@ type OdooPaymentMethod = {
   name: string;
   type: string;
   is_cash_count: boolean;
+  company_id?: [number, string] | false;
 };
 
 type OdooCashRounding = { id: number; rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" };
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
         }, correlationId)) ?? []
       : [];
     const methodIds = [...new Set(configs.flatMap((config) => config.payment_method_ids))];
-    const paymentMethods = methodIds.length
+    let paymentMethods = methodIds.length
       ? (await rpc<OdooPaymentMethod[]>(sessionId, "pos.payment.method", "search_read", [[
           ["id", "in", methodIds],
         ]], {
@@ -169,6 +170,56 @@ export async function GET(request: NextRequest) {
           limit: 100,
         }, correlationId)) ?? []
       : [];
+
+    // Older test registers can have the shared Card method provisioned in Odoo
+    // but missing from the register's payment_method_ids. Repair that linkage
+    // from the POS so EFTPOS is usable without requiring an Odoo administrator.
+    const configNeedsCard = configs.some((config) => {
+      const configured = config.payment_method_ids
+        .map((id) => paymentMethods.find((method) => method.id === id))
+        .filter(Boolean);
+      return !configured.some((method) => !method!.is_cash_count);
+    });
+    if (configNeedsCard) {
+      const companyIdsWithMissingCard = [...new Set(configs
+        .filter((config) => {
+          const configured = config.payment_method_ids
+            .map((id) => paymentMethods.find((method) => method.id === id))
+            .filter(Boolean);
+          return !configured.some((method) => !method!.is_cash_count);
+        })
+        .map((config) => Array.isArray(config.company_id) ? config.company_id[0] : null)
+        .filter((id): id is number => typeof id === "number"))];
+      const existingCards = companyIdsWithMissingCard.length
+        ? (await rpc<OdooPaymentMethod[]>(sessionId, "pos.payment.method", "search_read", [[
+            ["company_id", "in", companyIdsWithMissingCard],
+            ["name", "=", "Card"],
+            ["is_cash_count", "=", false],
+          ]], {
+            fields: ["id", "name", "type", "is_cash_count", "company_id"],
+            limit: 100,
+          }, correlationId)) ?? []
+        : [];
+      const cardByCompany = new Map<number, OdooPaymentMethod>();
+      for (const card of existingCards) {
+        const companyId = Array.isArray(card.company_id) ? card.company_id[0] : null;
+        if (typeof companyId === "number") cardByCompany.set(companyId, card);
+      }
+      for (const config of configs) {
+        const companyId = Array.isArray(config.company_id) ? config.company_id[0] : null;
+        if (typeof companyId !== "number") continue;
+        const configured = config.payment_method_ids
+          .map((id) => paymentMethods.find((method) => method.id === id))
+          .filter(Boolean);
+        if (configured.some((method) => !method!.is_cash_count)) continue;
+        const card = cardByCompany.get(companyId);
+        if (!card) continue;
+        const nextIds = [...new Set([...config.payment_method_ids, card.id])];
+        await rpc(sessionId, "pos.config", "write", [[config.id], { payment_method_ids: [[6, 0, nextIds]] }], {}, correlationId);
+        config.payment_method_ids = nextIds;
+        paymentMethods = [...paymentMethods, card];
+      }
+    }
     const roundingIds = [...new Set(configs.map((config) => Array.isArray(config.rounding_method) ? config.rounding_method[0] : null).filter((id): id is number => typeof id === "number"))];
     const roundingMethods = roundingIds.length
       ? (await rpc<OdooCashRounding[]>(sessionId, "account.cash.rounding", "search_read", [[
