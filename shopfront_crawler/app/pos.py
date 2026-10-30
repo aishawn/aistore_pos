@@ -73,8 +73,19 @@ class OrithosClient:
     async def upsert_sales(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/sales:upsert", payload)
 
+    async def upsert_suppliers(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._post("/api/integrations/shopfront/suppliers:upsert", payload)
+
+    async def upsert_purchase_orders(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._post("/api/integrations/shopfront/purchase-orders:upsert", payload)
+
     async def snapshot(self, store_key: str) -> dict[str, Any]:
         return await self._get("/api/integrations/shopfront/snapshot", {"storeKey": store_key})
 
     async def match_status(self, store_key: str) -> dict[str, Any]:
         return await self._get("/api/integrations/shopfront/match-status", {"storeKey": store_key})
+
+    async def data(self, store_key: str, data_type: str, page: int = 1, size: int = 500) -> dict[str, Any]:
+        return await self._get("/api/integrations/shopfront/data", {
+            "storeKey": store_key, "type": data_type, "page": page, "size": size,
+        })

@@ -101,6 +101,9 @@ def init_db() -> None:
         "sale_items": {
             "line_key": "VARCHAR(128)",
         },
+        "products": {
+            "catalog_last_seen_at": "TIMESTAMP",
+        },
     }
     inspector = inspect(engine)
     with engine.begin() as connection:

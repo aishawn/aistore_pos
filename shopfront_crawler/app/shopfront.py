@@ -48,6 +48,31 @@ query ShopfrontInventory($after: Cursor) {
 }
 """
 
+SUPPLIERS_QUERY = """
+query ShopfrontSuppliers($after: Cursor) {
+  suppliers(first: 100, after: $after) {
+    edges { node { id name mdbId status businessNumber orderNotes comments
+      defaultOrderTax minimumOrderValue maximumOrderValue defaultDaysUntilDue
+      contact { name email phone } } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+PURCHASE_ORDERS_QUERY = """
+query ShopfrontPurchaseOrders($after: Cursor) {
+  orders(type: ORDER, first: 100, after: $after) {
+    edges { node { id type status completed undergoingReview orderDate dueDate
+      invoiceNumber reference notes internalNotes includeFreight totalCost
+      lineCount expectedTotal feePercentage createdAt sentAt receivedAt
+      products { caseQuantity orderedQuantity receivedQuantity baseCost orderedCost
+        fees freight paymentFees rebate supplierCode itemsPerWeek supplier { id name }
+        item { id name mdbId barcodes { code } } } } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
 
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
@@ -440,6 +465,12 @@ UNCONSOLIDATED'''
             except Exception as exc:
                 last_error = exc
         raise ShopfrontError(f"Shopfront product ID query failed: {last_error}")
+
+    async def fetch_suppliers(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, SUPPLIERS_QUERY, "suppliers")
+
+    async def fetch_purchase_orders(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, PURCHASE_ORDERS_QUERY, "orders")
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, query, "products")
