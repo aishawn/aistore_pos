@@ -16,6 +16,7 @@ const env = fs.existsSync(envPath)
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME || "admin";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ||
   "docs/UAT_AI_STOCK_CLARIFICATION_VARIANTS_ONLINE_CURRENT.json");
@@ -59,11 +60,13 @@ if (!password) {
   let runtime = {};
   try {
     const login = await context.post(`${base}/api/auth/login`, {
-      data: { username: "admin", password },
+      data: { username, password },
       headers: { Origin: base },
     });
     const loginBody = await login.json().catch(() => ({}));
-    if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+    if (!login.ok() || loginBody.code !== 0) {
+      throw new Error(`LOGIN_FAILED_${login.status()}_CODE_${loginBody.code ?? "missing"}_USER_${username}`);
+    }
 
     const version = await context.get(`${base}/api/public/version`);
     runtime = await version.json().catch(() => ({}));
