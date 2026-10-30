@@ -989,7 +989,13 @@ async def push_pos_snapshot(
         }
 
     product_items_by_source = {str(item["source_id"]): item for item in product_items if item.get("source_id")}
-    for sale_item in db.scalars(sale_item_query).yield_per(1000):
+    current_source_ids = set(product_items_by_source)
+    archived_query = sale_item_query.where(
+        SaleItem.shopfront_product_id.is_not(None),
+        ~SaleItem.shopfront_product_id.in_(current_source_ids),
+    ) if current_source_ids else sale_item_query
+    archived_sale_items = db.scalars(archived_query).all()
+    for sale_item in archived_sale_items:
         historical = historical_product_payload(sale_item)
         if not historical:
             continue
@@ -1005,18 +1011,11 @@ async def push_pos_snapshot(
             if not existing.get(key) and value:
                 existing[key] = value
 
-    # Historical SaleItems can point at archived products that are no longer in
-    # the current catalog. Earlier repair runs only looked at product payloads
-    # already present in ``product_items_by_source``; that skipped the common
-    # case where the SaleItem itself had a source ID but no nested Product
-    # object. Collect those IDs explicitly so the archived-product lookup can
-    # restore names and every available product field.
-    missing_ids: set[str] = {
-        source_id
-        for source_id, item in product_items_by_source.items()
-        if not item.get("name")
-    }
-    for sale_item in db.scalars(sale_item_query).yield_per(1000):
+    # Only inspect SaleItems whose source product is absent from the current
+    # catalog. Scanning all historical lines twice made sales-repair take
+    # hours even when every current product already had a complete name.
+    missing_ids: set[str] = set()
+    for sale_item in archived_sale_items:
         source_id = str(sale_item.shopfront_product_id or "").strip()
         if not source_id:
             continue
