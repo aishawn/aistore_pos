@@ -657,13 +657,13 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         # Keep the two permission domains independent. Shopfront may grant
         # purchase-order access while withholding the supplier directory.
         try:
-            suppliers = await client.fetch_suppliers(token)
-        except ShopfrontError as exc:
+            suppliers = await asyncio.wait_for(client.fetch_suppliers(token), timeout=120)
+        except Exception as exc:
             suppliers = []
             errors.append({"entity": "suppliers", "message": str(exc)[:500]})
         try:
-            orders = await client.fetch_purchase_orders(token)
-        except ShopfrontError as exc:
+            orders = await asyncio.wait_for(client.fetch_purchase_orders(token), timeout=120)
+        except Exception as exc:
             orders = []
             errors.append({"entity": "purchase_orders", "message": str(exc)[:500]})
     finally:
