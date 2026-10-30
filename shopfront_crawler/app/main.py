@@ -559,6 +559,55 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
     }
 
 
+@app.post("/api/sync/cleanup-summaries")
+def cleanup_stale_summaries(store: str = "skr", db: Session = Depends(get_db)) -> dict:
+    """Remove only verified stale consolidated summary rows.
+
+    Older UTC based runs could leave an outlet-less row on the previous local
+    business date while the complete Sale rows were stored on the next local
+    date. Require a neighbouring local-day Sale before deleting such a row so
+    uncovered historical dates remain untouched.
+    """
+    store_row = require_store(store, db)
+    local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
+    summaries = db.scalars(select(DailySalesSummary).where(
+        DailySalesSummary.store_key == store,
+        DailySalesSummary.outlet.is_(None),
+    )).all()
+    removed: list[str] = []
+    for summary in summaries:
+        target = date.fromisoformat(summary.business_date)
+        utc_start = datetime.combine(target, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        same_day_sales = db.scalar(select(func.count(Sale.id)).where(
+            Sale.store_key == store,
+            Sale.created_at >= utc_start,
+            Sale.created_at < utc_end,
+        )) or 0
+        named_same_day = db.scalar(select(func.count(DailySalesSummary.id)).where(
+            DailySalesSummary.store_key == store,
+            DailySalesSummary.business_date == summary.business_date,
+            DailySalesSummary.outlet.is_not(None),
+        )) or 0
+        if named_same_day or same_day_sales:
+            if named_same_day:
+                db.delete(summary)
+                removed.append(summary.business_date)
+            continue
+        neighbour_start = datetime.combine(target - timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        neighbour_end = datetime.combine(target + timedelta(days=2), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        neighbour_sales = db.scalar(select(func.count(Sale.id)).where(
+            Sale.store_key == store,
+            Sale.created_at >= neighbour_start,
+            Sale.created_at < neighbour_end,
+        )) or 0
+        if neighbour_sales and int(summary.transaction_count or 0) > 0:
+            db.delete(summary)
+            removed.append(summary.business_date)
+    db.commit()
+    return {"store": store, "removed_count": len(removed), "removed_dates": sorted(set(removed)), "source": "crawler_database"}
+
+
 @app.get("/api/sync/coverage")
 def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     """Return read-only source coverage metrics for verification and handoff."""
