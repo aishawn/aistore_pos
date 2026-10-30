@@ -85,8 +85,17 @@ public class GenerateResponseNode implements NodeAction {
             return Map.of("answer", cannedAnswer(intent, summary, question));
         }
 
-        String system = configService.getSnapshot()
-                .promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
+        // Some deterministic clarification paths should never touch the provider
+        // or the runtime prompt store. This keeps them available during outages
+        // and makes the safety boundary explicit.
+        if (isGenericStockClarification(question)) {
+            return Map.of("answer", deterministicFallback(question, intent));
+        }
+
+        var snapshot = configService == null ? null : configService.getSnapshot();
+        String system = snapshot == null
+                ? FALLBACK_RESPOND
+                : snapshot.promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
         String history = state.value("conversation_history", String.class).orElse("");
         String storeContext = state.value("store_context", String.class).orElse("");
 

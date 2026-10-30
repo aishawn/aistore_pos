@@ -42,15 +42,18 @@ public final class PricingDecisionEngine {
         if (target <= 0 || Math.abs(target - input.currentPrice()) < limits.minimumChange()) {
             return Decision.hold("calculated change is below the review threshold");
         }
-        double delta = BigDecimal.valueOf(target).subtract(BigDecimal.valueOf(input.currentPrice()))
-                .setScale(2, RoundingMode.HALF_UP).doubleValue();
-        return new Decision(Status.REVIEW, target, delta,
+        double delta = roundCents(target - input.currentPrice());
+        return new Decision(Status.REVIEW, roundCents(target), delta,
                 List.of("demand=" + input.averageDailyUnits(), "stock=" + input.stockUnits()), "policy recommendation");
     }
 
     private static double round(double value, double step) {
         if (step <= 0) return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
         return BigDecimal.valueOf(Math.ceil(value / step - 1e-9) * step).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private static double roundCents(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     public enum Status { REVIEW, HOLD, INSUFFICIENT_DATA }
