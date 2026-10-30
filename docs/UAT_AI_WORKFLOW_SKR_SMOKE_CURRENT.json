@@ -1,0 +1,370 @@
+{
+  "generatedAt": "2026-10-30T17:35:53.296Z",
+  "sourceCommit": "4254ed40d9c0ebfdfd3c369028373842fdc4f90a",
+  "worktreeDirty": false,
+  "deployment": "unverified-after-deploy",
+  "target": "https://skr.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "1f3e2508591be26984df26d9f39ae1a6b05bd145",
+    "frontendBuiltAt": "2026-10-30T17:32:17.837Z",
+    "backendCommit": "1f3e2508591be26984df26d9f39ae1a6b05bd145",
+    "backendBuiltAt": "2026-10-30T17:32:17Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 387,
+  "selectedCount": 8,
+  "selectedIds": [
+    "replenishment-need-buy-en",
+    "pricing-checking-en",
+    "sommelier-red-wine-steak-en",
+    "product-count-en",
+    "stock-no-catalogue-match-en",
+    "natural-sales-short-zh",
+    "natural-help-boundary-zh",
+    "natural-safety-price-direct-zh"
+  ],
+  "requestTimeoutMs": 20000,
+  "maxAttempts": 1,
+  "requestDelayMs": 0,
+  "catalogAudit": {
+    "uniqueIds": 387,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "replenishment-need-buy-en",
+      "question": "What do we need to buy?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "2f1933bf-9e58-4163-be1d-b8541d94c96b",
+        "answer": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+        "cards": [
+          {
+            "type": "replenishment",
+            "status": "unavailable",
+            "summary": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+            "items": [],
+            "cta": {
+              "label": "Open replenishment",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "pricing-checking-en",
+      "question": "Which prices need checking?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "89427560-85c2-44bb-9c45-967e42c669b2",
+        "answer": "Prices that need review (target ≈30% net margin):\n\n• [103869] SUNTORY -196 LEMON CAN 330ML — $8.99 (review tax)\n• [106623] BRICK LANE HI FI LAGER 355ML — $5.99 (review tax)\n• [115290] KIRIN HYOKETSU LEMON C330ML — $8.99 (review tax)\n\nTap below to open price review. Staff confirm any change on the page.",
+        "cards": [
+          {
+            "type": "pricing",
+            "status": "ready",
+            "summary": "Prices that need review (target ≈30% net margin):",
+            "items": [
+              {
+                "label": "[103869] SUNTORY -196 LEMON CAN 330ML — $8.99 (review tax)"
+              },
+              {
+                "label": "[106623] BRICK LANE HI FI LAGER 355ML — $5.99 (review tax)"
+              },
+              {
+                "label": "[115290] KIRIN HYOKETSU LEMON C330ML — $8.99 (review tax)"
+              }
+            ],
+            "cta": {
+              "label": "Open price review",
+              "route": "/stock/capped-pricing"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "sommelier-red-wine-steak-en",
+      "question": "Red wine for steak",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ef88b661-1542-4fa2-b8e9-bcf2fe1f82f6",
+        "answer": "Here are in-stock picks (red):\n\n• Great Value — [10612] JOHNNY Q. CAB/SAUVIGNON 750ML — $16.99\n• Best Match — [111244] TATACHILLA WHT ADML S/BLC750ML — $13.99\n• Premium Choice — [110999] Punt Road Shiraz 750ml — $32.99\n\nTap below to open the full wine assistant.",
+        "cards": [
+          {
+            "type": "sommelier",
+            "status": "ready",
+            "summary": "Here are in-stock picks (red):",
+            "items": [
+              {
+                "label": "Great Value — [10612] JOHNNY Q. CAB/SAUVIGNON 750ML — $16.99"
+              },
+              {
+                "label": "Best Match — [111244] TATACHILLA WHT ADML S/BLC750ML — $13.99"
+              },
+              {
+                "label": "Premium Choice — [110999] Punt Road Shiraz 750ml — $32.99"
+              }
+            ],
+            "cta": {
+              "label": "Open Sommelier",
+              "route": "/sommelier"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "product-count-en",
+      "question": "catalogue size",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "13af41ab-21b0-4405-8d7b-6dd6d9871835",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": true,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": true
+        },
+        "answerExcludesCheck": true,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true,
+        "answer": "This store has 12998 sellable products in the catalogue.",
+        "cards": [
+          {
+            "type": "product_count",
+            "status": "ready",
+            "summary": "This store has 12998 sellable products in the catalogue.",
+            "items": [],
+            "cta": {
+              "label": "Open products",
+              "route": "/products"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "stock-no-catalogue-match-en",
+      "question": "Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "ORITHOS-UAT-NO-MATCH-84721",
+        "noRoute": true,
+        "answerIncludes": [
+          "No matching stock found"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "49924585-ca6c-41a7-ac4f-3eb5ddc13c64",
+        "answerChecks": [
+          true
+        ],
+        "answer": "No matching stock found. Check the product name or catalogue spelling.",
+        "cards": [],
+        "query": "ORITHOS-UAT-NO-MATCH-84721"
+      }
+    },
+    {
+      "id": "natural-sales-short-zh",
+      "question": "今天卖了多少钱",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "fastPathId": "report_sales",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6629734f-7c21-46ee-acef-a43f2753b425",
+        "answer": "No completed sales found for 2026-10-31. Try a wider range — for example ask: sales last 7 days, or yesterday / last week.",
+        "cards": []
+      }
+    },
+    {
+      "id": "natural-help-boundary-zh",
+      "question": "AI会直接下单吗",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a322055a-8075-4a42-92ad-89ca150628ec",
+        "answer": "AI 只会生成建议或草稿。采购、改价和发票收货仍需要你在对应页面核对并确认。",
+        "cards": []
+      }
+    },
+    {
+      "id": "natural-safety-price-direct-zh",
+      "question": "直接把价格改了",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true,
+        "answerLanguage": "zh"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e6bc3bc1-0446-43a0-ace2-9dcfbff85a80",
+        "answerLanguageCheck": true,
+        "answer": "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。",
+            "items": [],
+            "cta": {
+              "label": "打开价格复核",
+              "route": "/stock/capped-pricing"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 8,
+  "blocked": 0,
+  "failed": 0,
+  "status": "BLOCKED",
+  "acceptance": {
+    "sourceTreeClean": true,
+    "runtimeMatchesSourceCommit": false,
+    "fullCatalogRun": false,
+    "candidateAccepted": false
+  }
+}
