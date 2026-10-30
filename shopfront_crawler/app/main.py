@@ -29,6 +29,7 @@ scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
 snapshot_lock = __import__("asyncio").Lock()
+active_sync_tasks: dict[str, asyncio.Task] = {}
 
 
 @app.on_event("startup")
@@ -539,11 +540,21 @@ def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
         run.error = "cancelled by operator"
         run.finished_at = datetime.now(timezone.utc)
         db.commit()
+        task = active_sync_tasks.get(run.store_key)
+        if task is not None and task is not asyncio.current_task() and not task.done():
+            task.cancel()
     return {"status": run.status, "run_id": run.id}
 
 
 async def run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
-    await _run_sync_background(store_key, start, end, job_id)
+    task = asyncio.current_task()
+    if task is not None:
+        active_sync_tasks[store_key] = task
+    try:
+        await _run_sync_background(store_key, start, end, job_id)
+    finally:
+        if task is not None and active_sync_tasks.get(store_key) is task:
+            active_sync_tasks.pop(store_key, None)
 
 
 async def _run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
