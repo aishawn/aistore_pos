@@ -72,6 +72,10 @@ def init_db() -> None:
             "created_at": "TIMESTAMP",
             "started_at": "TIMESTAMP",
             "finished_at": "TIMESTAMP",
+            "heartbeat_at": "TIMESTAMP",
+            "phase": "VARCHAR(64)",
+            "attempts": "INTEGER DEFAULT 0",
+            "max_attempts": "INTEGER DEFAULT 5",
         },
         "store_mappings": {
             "shopfront_outlet": "VARCHAR(255)",
@@ -158,4 +162,7 @@ def init_db() -> None:
         connection.execute(text(
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_inventory_snapshot "
             "ON inventory_snapshots (store_key, shopfront_product_id, outlet_id)"
+        ))
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS shopfront_sync_checkpoints (id INTEGER PRIMARY KEY, store_key VARCHAR(64) NOT NULL, checkpoint_key VARCHAR(64) NOT NULL, value VARCHAR(64) NOT NULL, updated_at TIMESTAMP, CONSTRAINT uq_shopfront_sync_checkpoint UNIQUE (store_key, checkpoint_key))"
         ))

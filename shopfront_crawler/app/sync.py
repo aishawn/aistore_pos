@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -317,6 +317,56 @@ def get_client(settings: Settings, store: Store) -> ShopfrontClient:
     return ShopfrontClient(store.vendor, settings.shopfront_client_id, settings.shopfront_client_secret, settings.shopfront_redirect_uri, settings.shopfront_scopes)
 
 
+async def sync_supply_chain(db: Session, settings: Settings, store: Store) -> dict[str, int]:
+    if not settings.shopfront_enable_supply_chain:
+        raise ShopfrontError("Supply-chain sync is disabled; grant see_suppliers and see_stock_management, then enable SHOPFRONT_ENABLE_SUPPLY_CHAIN and re-authorize")
+    token = await access_token(db, settings, store)
+    client = get_client(settings, store)
+    counts = {"suppliers": 0, "purchase_orders": 0}
+    try:
+        suppliers = await client.fetch_suppliers(token)
+        orders = await client.fetch_purchase_orders(token)
+        now = datetime.now(timezone.utc)
+        for source in suppliers:
+            source_id = str(source.get("id") or "").strip()
+            if not source_id:
+                continue
+            row = db.scalar(select(ShopfrontSupplier).where(ShopfrontSupplier.store_key == store.store_key, ShopfrontSupplier.source_id == source_id))
+            if row is None:
+                row = ShopfrontSupplier(store_key=store.store_key, source_id=source_id)
+                db.add(row)
+            row.name = source.get("name")
+            row.business_number = source.get("businessNumber")
+            row.status = source.get("status")
+            row.raw_payload = without_credentials(source)
+            row.synced_at = now
+            counts["suppliers"] += 1
+        for source in orders:
+            source_id = str(source.get("id") or "").strip()
+            if not source_id:
+                continue
+            row = db.scalar(select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store.store_key, ShopfrontPurchaseOrder.source_id == source_id))
+            if row is None:
+                row = ShopfrontPurchaseOrder(store_key=store.store_key, source_id=source_id)
+                db.add(row)
+            lines = source.get("products") if isinstance(source.get("products"), list) else []
+            supplier = next((line.get("supplier") for line in lines if isinstance(line, dict) and isinstance(line.get("supplier"), dict) and line["supplier"].get("id")), {})
+            row.supplier_source_id = str(supplier["id"]) if supplier.get("id") is not None else None
+            row.status = source.get("status")
+            row.order_date = str(source.get("orderDate")) if source.get("orderDate") is not None else None
+            row.total_cost = parse_decimal(source.get("totalCost"))
+            row.raw_payload = without_credentials(source)
+            row.synced_at = now
+            counts["purchase_orders"] += 1
+        db.commit()
+        return counts
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        await client.close()
+
+
 async def access_token(db: Session, settings: Settings, store: Store) -> str:
     token = db.scalar(select(ShopfrontToken).where(ShopfrontToken.store_key == store.store_key))
     if token is None:
@@ -346,12 +396,15 @@ async def sync_store(
     end: date,
     include_catalog: bool = True,
     defer_completion: bool = False,
+    products_updated_after: str | None = None,
 ) -> SyncRun:
     run = SyncRun(store_key=store.store_key, from_date=start.isoformat(), to_date=end.isoformat())
     db.add(run)
     db.commit()
     client = get_client(settings, store)
     counts = {"summaries": 0, "sales": 0, "products": 0, "products_from_sales": 0, "inventory": 0, "warnings": []}
+    catalog_cursor = datetime.now(timezone.utc).isoformat() if include_catalog else None
+    catalog_sync_complete = False
     sale_product_ids: set[str] = set()
     sale_products: dict[str, Product] = {}
     try:
@@ -659,7 +712,11 @@ async def sync_store(
         products = []
         if include_catalog:
             try:
-                products = await client.fetch_products(token, settings.shopfront_products_query)
+                if products_updated_after:
+                    products = await client.fetch_products_incremental(token, products_updated_after)
+                else:
+                    products = await client.fetch_products(token, settings.shopfront_products_query)
+                catalog_sync_complete = True
             except ShopfrontError as exc:
                 # Catalog schema/permission problems must not discard successful sales data.
                 products = []
@@ -735,6 +792,12 @@ async def sync_store(
                         sale_item.product_name = name
         counts["products_from_sales"] = len(sale_product_ids)
         counts["product_source_ids"] = sorted(sale_product_ids)
+        counts["catalog_source_ids"] = sorted({
+            str(first(item, "id", "ID")) for item in products if first(item, "id", "ID")
+        })
+        counts["catalog_sync_complete"] = catalog_sync_complete
+        counts["catalog_full_snapshot"] = bool(catalog_sync_complete and include_catalog and not products_updated_after)
+        counts["catalog_cursor"] = catalog_cursor if catalog_sync_complete else None
         run.status, run.counts = ("running" if defer_completion else "completed"), counts
         run.finished_at = None if defer_completion else datetime.now(timezone.utc)
         db.commit()

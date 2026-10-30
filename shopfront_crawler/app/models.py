@@ -64,6 +64,20 @@ class SyncJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    phase: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=5)
+
+
+class ShopfrontSyncCheckpoint(Base):
+    __tablename__ = "shopfront_sync_checkpoints"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    checkpoint_key: Mapped[str] = mapped_column(String(64))
+    value: Mapped[str] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "checkpoint_key", name="uq_shopfront_sync_checkpoint"),)
 
 
 class StoreMapping(Base):

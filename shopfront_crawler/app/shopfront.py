@@ -339,6 +339,36 @@ UNCONSOLIDATED'''
                 continue
         return list(merged.values())
 
+    async def fetch_products_incremental(self, access_token: str, updated_after: str) -> list[dict[str, Any]]:
+        """Fetch products changed since the last fully acknowledged catalog sync."""
+        base = CATALOG_QUERY.replace(
+            "query ShopfrontCatalog($after: Cursor)",
+            "query ShopfrontCatalog($after: Cursor, $since: DateTime)",
+        )
+        queries = (
+            base.replace(
+                "products(first: 100, after: $after)",
+                "products(first: 100, updatedAfter: $since, after: $after)",
+            ),
+            base.replace(
+                "products(first: 100, after: $after)",
+                "products(first: 100, lastStocktakedAfter: $since, after: $after)",
+            ),
+        )
+        merged: dict[str, dict[str, Any]] = {}
+        for query in queries:
+            nodes = await self._fetch_connection_nodes(
+                access_token,
+                query,
+                "products",
+                variables={"since": updated_after},
+            )
+            for node in nodes:
+                if not isinstance(node, dict) or not node.get("id"):
+                    continue
+                merged.setdefault(str(node["id"]), {}).update(node)
+        return list(merged.values())
+
     async def _fetch_connection_nodes(
         self,
         access_token: str,

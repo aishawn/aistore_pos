@@ -59,7 +59,9 @@ POST /api/pos/import/sales?store=skr
 
 商品对账按 Shopfront 外部 ID 比较。POS 返回的唯一 ID 数与分页总数不一致时，对账会失败关闭，不会报告不完整差异，也不会自动删除商品。供应商与采购订单以只读影子镜像保存，不会创建 Odoo 供应商、采购单或收货。需要在 Shopfront Application 获得 `see_suppliers`、`see_stock_management` 权限后设置 `SHOPFRONT_ENABLE_SUPPLY_CHAIN=true` 并重新授权；未启用时不把可选 scopes 加入 OAuth 请求。
 
-每日任务默认在 `02:00 Australia/Adelaide` 执行，并重新同步前 3 个营业日。历史任务使用 14 天分片，每个分片独立记录，服务重启后可通过 `/api/sync/status` 和失败运行重试。
+每日任务默认在 `02:00 Australia/Adelaide` 执行，并重新同步前 3 个营业日。首次目录同步是全量；之后使用 Shopfront 支持的 `updatedAfter` 和 `lastStocktakedAfter` 过滤器，只合并变化的商品和库存，并在下游镜像确认后推进 checkpoint。历史任务使用 14 天分片，每个分片独立记录。
+
+长任务全部写入 `sync_jobs`，由内置持久 worker 每 2 秒领取；服务重启后会重新排队遗留任务，心跳超过 `WORKER_STALE_AFTER_SECONDS` 的任务会自动回收。需要拆分 Dokploy 服务时，可运行 `python -m app.worker`，它与 Web 服务共用同一数据库队列。
 
 当历史任务正在运行时，可以单独执行 `pos/catalog-snapshot` 刷新商品、价格、条码、描述、图片、标签和库存；执行 `pos/sales-repair` 重新推送已保存销售并回填 SaleItem 名称。这两个任务使用持久化 job，支持通过 `/api/sync/status` 查看状态，不会重复创建历史任务或扣减库存。
 

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
 from sqlalchemy import desc, func, or_, select, update
@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, verify_webhook, without_credentials
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -48,12 +48,6 @@ async def startup() -> None:
             run.finished_at = datetime.now(timezone.utc)
         interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running").order_by(SyncJob.store_key, desc(SyncJob.id))).all()
         resumed_stores: set[tuple[str, str]] = set()
-        interrupted_history_ids: list[int] = []
-        interrupted_discovery_ids: list[int] = []
-        interrupted_snapshot_ids: list[int] = []
-        interrupted_catalog_ids: list[int] = []
-        interrupted_sales_repair_ids: list[int] = []
-        queued_history_ids: list[int] = []
         for job in interrupted:
             job_key = (job.store_key, job.job_type)
             if job_key in resumed_stores:
@@ -64,19 +58,8 @@ async def startup() -> None:
             job.status = "queued"
             job.error = "requeued after crawler restart"
             resumed_stores.add(job_key)
-            if job.job_type == "history":
-                interrupted_history_ids.append(job.id)
-            elif job.job_type == "discover":
-                interrupted_discovery_ids.append(job.id)
-            elif job.job_type == "snapshot":
-                interrupted_snapshot_ids.append(job.id)
-            elif job.job_type == "catalog_snapshot":
-                interrupted_catalog_ids.append(job.id)
-            elif job.job_type == "sales_repair":
-                interrupted_sales_repair_ids.append(job.id)
-        # A snapshot can be persisted as queued immediately before a process
-        # restart, before its BackgroundTask gets a chance to claim it. Start
-        # the newest queued snapshot for each store so it cannot remain stuck.
+        # Keep only the newest queued snapshot job of each type. The durable
+        # worker below will pick up the surviving queued job after startup.
         queued_snapshots = db.scalars(
             select(SyncJob)
             .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
@@ -91,16 +74,9 @@ async def startup() -> None:
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             queued_snapshot_keys.add(key)
-            if job.job_type == "snapshot":
-                interrupted_snapshot_ids.append(job.id)
-            elif job.job_type == "catalog_snapshot":
-                interrupted_catalog_ids.append(job.id)
-            elif job.job_type == "sales_repair":
-                interrupted_sales_repair_ids.append(job.id)
 
-        # A history request is persisted before its BackgroundTask starts.
-        # If the process restarts in that window, resume the newest queued
-        # range instead of leaving it permanently queued behind a dead lock.
+        # Keep only the newest queued history job for a store; the worker
+        # resumes it from its persisted cursor.
         queued_histories = db.scalars(
             select(SyncJob)
             .where(SyncJob.status == "queued", SyncJob.job_type == "history")
@@ -114,7 +90,6 @@ async def startup() -> None:
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             queued_history_stores.add(job.store_key)
-            queued_history_ids.append(job.id)
         db.commit()
     finally:
         db.close()
@@ -124,51 +99,22 @@ async def startup() -> None:
         id="shopfront-sync",
         replace_existing=True,
     )
+    scheduler.add_job(
+        process_next_job,
+        "interval",
+        seconds=2,
+        id="shopfront-durable-worker",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
     scheduler.start()
-    for job_id in interrupted_history_ids:
-        __import__("asyncio").create_task(run_history_job(job_id))
-    for job_id in queued_history_ids:
-        __import__("asyncio").create_task(run_history_job(job_id))
-    for job_id in interrupted_discovery_ids:
-        __import__("asyncio").create_task(run_history_discovery(job_id))
-    for job_id in interrupted_snapshot_ids:
-        __import__("asyncio").create_task(run_full_snapshot_job(job_id))
-    for job_id in interrupted_catalog_ids:
-        __import__("asyncio").create_task(run_catalog_snapshot_job(job_id))
-    for job_id in interrupted_sales_repair_ids:
-        __import__("asyncio").create_task(run_sales_repair_job(job_id))
-    asyncio.create_task(queued_job_reaper())
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
     if scheduler.running:
         scheduler.shutdown(wait=False)
-
-
-async def queued_job_reaper() -> None:
-    """Recover queued durable jobs after a BackgroundTask is lost."""
-    while True:
-        await asyncio.sleep(15)
-        db = next(get_db())
-        try:
-            jobs = db.scalars(
-                select(SyncJob)
-                .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
-                .order_by(SyncJob.id)
-            ).all()
-            for job in jobs:
-                if job.id in active_job_tasks:
-                    continue
-                if job.job_type == "snapshot":
-                    runner = run_full_snapshot_job
-                elif job.job_type == "catalog_snapshot":
-                    runner = run_catalog_snapshot_job
-                else:
-                    runner = run_sales_repair_job
-                active_job_tasks[job.id] = asyncio.create_task(runner(job.id))
-        finally:
-            db.close()
 
 
 @app.get("/healthz")
@@ -247,15 +193,17 @@ def save_pos_mapping(store_key: str, payload: dict, db: Session = Depends(get_db
 
 
 @app.post("/api/stores/{store_key}/sync")
-async def trigger_sync(store_key: str, background_tasks: BackgroundTasks, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+async def trigger_sync(store_key: str, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
     active = active_job(db, store.store_key)
     if active:
         raise HTTPException(409, f"A {active.job_type} job is already active for this store")
-    end = to_date or date.today()
+    end = to_date or (datetime.now(ZoneInfo(store.timezone)).date() - timedelta(days=1))
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
-    background_tasks.add_task(run_sync_background, store.store_key, start, end)
-    return {"status": "queued", "store": store.store_key, "from": start, "to": end}
+    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": settings.shopfront_enable_supply_chain})
+    db.add(job)
+    db.commit()
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
 
 
 async def run_full_snapshot_job(job_id: int) -> None:
@@ -277,11 +225,20 @@ async def run_full_snapshot_job(job_id: int) -> None:
 async def _run_full_snapshot_body(job_id: int, db: Session) -> None:
         run = None
         try:
-            job = db.get(SyncJob, job_id)
-            if not job or job.status != "queued":
+            claimed = db.execute(update(SyncJob).where(
+                SyncJob.id == job_id,
+                SyncJob.status == "queued",
+            ).values(
+                status="running",
+                started_at=datetime.now(timezone.utc),
+                heartbeat_at=datetime.now(timezone.utc),
+                phase="pos_snapshot",
+                attempts=SyncJob.attempts + 1,
+            ))
+            db.commit()
+            if claimed.rowcount != 1:
                 return
-            job.status = "running"
-            job.started_at = datetime.now(timezone.utc)
+            job = db.get(SyncJob, job_id)
             run = SyncRun(store_key=job.store_key, status="running", counts={"type": "full_snapshot"})
             db.add(run)
             db.commit()
@@ -319,11 +276,20 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
         db = next(get_db())
         run = None
         try:
-            job = db.get(SyncJob, job_id)
-            if not job or job.status != "queued":
+            claimed = db.execute(update(SyncJob).where(
+                SyncJob.id == job_id,
+                SyncJob.status == "queued",
+            ).values(
+                status="running",
+                started_at=datetime.now(timezone.utc),
+                heartbeat_at=datetime.now(timezone.utc),
+                phase="pos_snapshot",
+                attempts=SyncJob.attempts + 1,
+            ))
+            db.commit()
+            if claimed.rowcount != 1:
                 return
-            job.status = "running"
-            job.started_at = datetime.now(timezone.utc)
+            job = db.get(SyncJob, job_id)
             run = SyncRun(store_key=job.store_key, status="running", counts={"type": job.job_type})
             db.add(run)
             db.commit()
@@ -383,7 +349,7 @@ async def run_sales_repair_job(job_id: int) -> None:
 
 
 @app.post("/api/stores/{store_key}/pos/full-snapshot")
-async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+async def start_full_snapshot(store_key: str, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
     active = active_job(db, store.store_key)
     if active:
@@ -391,12 +357,11 @@ async def start_full_snapshot(store_key: str, background_tasks: BackgroundTasks,
     job = SyncJob(store_key=store.store_key, job_type="snapshot", status="queued")
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_full_snapshot_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "crawler database to POS and Odoo mirrors"}
 
 
 @app.post("/api/stores/{store_key}/pos/catalog-snapshot")
-async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+async def start_catalog_snapshot(store_key: str, db: Session = Depends(get_db)) -> dict:
     """Refresh product metadata and inventory without waiting for history."""
     store = require_store(store_key, db)
     active = active_job(db, store.store_key)
@@ -405,12 +370,11 @@ async def start_catalog_snapshot(store_key: str, background_tasks: BackgroundTas
     job = SyncJob(store_key=store.store_key, job_type="catalog_snapshot", status="queued")
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_catalog_snapshot_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "products and inventory"}
 
 
 @app.post("/api/stores/{store_key}/pos/sales-repair")
-async def start_sales_repair(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+async def start_sales_repair(store_key: str, db: Session = Depends(get_db)) -> dict:
     """Re-push saved sales so SaleItem names and source metadata are repaired."""
     store = require_store(store_key, db)
     # A repair rewrites the same Sale/Product rows as history chunks. Queueing
@@ -429,7 +393,6 @@ async def start_sales_repair(store_key: str, background_tasks: BackgroundTasks, 
     job = SyncJob(store_key=store.store_key, job_type="sales_repair", status="queued")
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_sales_repair_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "saved sales and SaleItem metadata"}
 
 
@@ -438,28 +401,26 @@ def active_job(db: Session, store_key: str) -> SyncJob | None:
 
 
 @app.post("/api/stores/{store_key}/history/discover")
-async def discover_history(store_key: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+async def discover_history(store_key: str, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
     if active_job(db, store.store_key):
         raise HTTPException(409, "A sync job is already active for this store")
     job = SyncJob(store_key=store.store_key, job_type="discover", status="queued")
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_history_discovery, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key}
 
 
 @app.post("/api/stores/{store_key}/history/sync")
-async def start_history_sync(store_key: str, background_tasks: BackgroundTasks, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+async def start_history_sync(store_key: str, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
     if active_job(db, store.store_key):
         raise HTTPException(409, "A sync job is already active for this store")
-    end = to_date or date.today()
+    end = to_date or datetime.now(ZoneInfo(store.timezone)).date()
     start = from_date or date(settings.shopfront_history_start_year, 1, 1)
     job = SyncJob(store_key=store.store_key, job_type="history", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat())
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_history_job, job.id)
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
 
 
@@ -469,7 +430,61 @@ def sync_status(store: str | None = None, db: Session = Depends(get_db)) -> dict
     if store:
         query = query.where(SyncJob.store_key == store)
     jobs = db.scalars(query.limit(20)).all()
-    return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "error": j.error, "created_at": j.created_at, "finished_at": j.finished_at} for j in jobs]}
+    return {"data": [{"id": j.id, "store": j.store_key, "type": j.job_type, "status": j.status, "phase": j.phase, "attempts": j.attempts, "from": j.from_date, "to": j.to_date, "cursor": j.cursor_date, "heartbeat_at": j.heartbeat_at, "error": j.error, "created_at": j.created_at, "started_at": j.started_at, "finished_at": j.finished_at, "payload": j.payload} for j in jobs]}
+
+
+@app.get("/shopfront-audit")
+def shopfront_audit(store: str = "skr", db: Session = Depends(get_db)) -> dict:
+    require_store(store, db)
+    active = active_job(db, store)
+    checkpoint = db.scalar(select(ShopfrontSyncCheckpoint).where(
+        ShopfrontSyncCheckpoint.store_key == store,
+        ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
+    ))
+    return {
+        "store": store,
+        "status": "running" if active else "ready",
+        "active_job": ({"id": active.id, "type": active.job_type, "status": active.status, "phase": active.phase} if active else None),
+        "catalog_checkpoint": checkpoint.value if checkpoint else None,
+        "counts": {
+            "products": db.scalar(select(func.count(Product.id)).where(Product.store_key == store)) or 0,
+            "sales": db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0,
+            "sale_items": db.scalar(select(func.count(SaleItem.id)).join(Sale, Sale.id == SaleItem.sale_id).where(Sale.store_key == store)) or 0,
+            "inventory": db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0,
+            "suppliers": db.scalar(select(func.count(ShopfrontSupplier.id)).where(ShopfrontSupplier.store_key == store)) or 0,
+            "purchase_orders": db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0,
+        },
+        "source": "crawler_database",
+    }
+
+
+@app.post("/shopfront-sync-daily")
+def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)) -> dict:
+    today_by_store = {}
+    queued = []
+    keys = [store] if store else list(settings.stores())
+    for key in keys:
+        row = require_store(key, db)
+        if active_job(db, key):
+            continue
+        end = datetime.now(ZoneInfo(row.timezone)).date() - timedelta(days=1)
+        start = end - timedelta(days=settings.sync_lookback_days - 1)
+        job = SyncJob(store_key=key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"skill": "shopfront-sync-daily", "include_supply_chain": settings.shopfront_enable_supply_chain})
+        db.add(job)
+        db.flush()
+        queued.append({"store": key, "job_id": job.id, "from": start, "to": end})
+    db.commit()
+    return {"status": "queued", "jobs": queued}
+
+
+@app.get("/shopfront-reconcile")
+def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(None, alias="date"), db: Session = Depends(get_db)) -> dict:
+    require_store(store, db)
+    target = reconcile_date or (datetime.now(ZoneInfo(settings.sync_timezone)).date() - timedelta(days=1))
+    summary_count = db.scalar(select(func.coalesce(func.sum(DailySalesSummary.transaction_count), 0)).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())) or 0
+    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= datetime.combine(target, datetime.min.time()), Sale.created_at < datetime.combine(target + timedelta(days=1), datetime.min.time()))) or 0
+    missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store, or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""))) or 0
+    return {"store": store, "date": target, "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention", "summary_transaction_count": int(summary_count), "sale_count": int(sale_count), "sale_items_missing_name": int(missing_names), "source": "crawler_database"}
 
 
 @app.get("/api/sync/coverage")
@@ -713,12 +728,13 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
 @app.post("/api/stores/{store_key}/supply-chain/sync")
 async def supply_chain_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
-    try:
-        result = await sync_supply_chain(db, store)
-    except PosIntegrationError as exc:
-        db.rollback()
-        raise HTTPException(502, str(exc)) from exc
-    return {"data": result, "source": "shopfront_supply_chain_mirror"}
+    active = active_job(db, store.store_key)
+    if active:
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="supply_chain", status="queued")
+    db.add(job)
+    db.commit()
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_supply_chain_mirror"}
 
 
 @app.get("/api/suppliers")
@@ -740,7 +756,7 @@ def list_purchase_orders(store: str, page: int = Query(1, ge=1), size: int = Que
 
 
 @app.post("/api/sync/runs/{run_id}/retry")
-async def retry_sync_run(run_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)) -> dict:
+async def retry_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
     run = db.get(SyncRun, run_id)
     if run is None:
         raise HTTPException(404, "Sync run not found")
@@ -749,7 +765,6 @@ async def retry_sync_run(run_id: int, background_tasks: BackgroundTasks, db: Ses
     job = SyncJob(store_key=run.store_key, job_type="history", status="queued", from_date=run.from_date, to_date=run.to_date, cursor_date=run.from_date)
     db.add(job)
     db.commit()
-    background_tasks.add_task(run_history_job, job.id)
     return {"status": "queued", "job_id": job.id, "retry_run_id": run.id}
 
 
@@ -809,10 +824,11 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # history job with an empty catalog needs the initial snapshot.
                 include_catalog = cursor == start
                 if job_id is not None and include_catalog:
+                    job = db.get(SyncJob, job_id)
                     existing_products = db.scalar(
                         select(func.count()).select_from(Product).where(Product.store_key == store_key)
                     ) or 0
-                    include_catalog = existing_products == 0
+                    include_catalog = bool(job and job.job_type == "daily_sync") or existing_products == 0
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
                 async with sync_lock:
@@ -837,6 +853,8 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                             break
                         if job is not None:
                             job.cursor_date = cursor.isoformat()
+                            job.heartbeat_at = datetime.now(timezone.utc)
+                            job.phase = f"sync:{cursor.isoformat()}"
                             db.commit()
     finally:
         db.close()
@@ -847,6 +865,10 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
         # Keep the run open until the POS/Odoo mirror has acknowledged every
         # batch. A source-only completion must never advance the history cursor
         # while the downstream import is still running.
+        catalog_checkpoint = db.scalar(select(ShopfrontSyncCheckpoint).where(
+            ShopfrontSyncCheckpoint.store_key == store_key,
+            ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
+        ))
         run = await sync_store(
             db,
             settings,
@@ -855,6 +877,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             end,
             include_catalog=include_catalog,
             defer_completion=True,
+            products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
         )
         if run.status == "failed":
             return False
@@ -890,6 +913,12 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             run.counts = {"sync": sync_counts}
         run.status = "completed"
         run.finished_at = datetime.now(timezone.utc)
+        if include_catalog and sync_counts.get("catalog_sync_complete") and sync_counts.get("catalog_cursor"):
+            if catalog_checkpoint is None:
+                catalog_checkpoint = ShopfrontSyncCheckpoint(store_key=store_key, checkpoint_key="catalog", value="")
+                db.add(catalog_checkpoint)
+            catalog_checkpoint.value = sync_counts["catalog_cursor"]
+            catalog_checkpoint.updated_at = datetime.now(timezone.utc)
         db.commit()
         return True
     except Exception as exc:
@@ -1514,16 +1543,146 @@ async def scheduled_sync() -> None:
             if active:
                 logger.info("Skipping scheduled sync for store=%s; active job=%s/%s", store_key, active.id, active.job_type)
                 continue
-            await run_sync_background(store_key, start, end)
-            if settings.shopfront_enable_supply_chain:
-                store = db.scalar(select(Store).where(Store.store_key == store_key))
-                if store is not None:
-                    try:
-                        await sync_supply_chain(db, store)
-                    except Exception:
-                        logger.exception("Scheduled Shopfront supply-chain mirror failed: store=%s", store_key)
+            db.add(SyncJob(
+                store_key=store_key,
+                job_type="daily_sync",
+                status="queued",
+                from_date=start.isoformat(),
+                to_date=end.isoformat(),
+                cursor_date=start.isoformat(),
+                payload={"include_supply_chain": settings.shopfront_enable_supply_chain},
+            ))
+        db.commit()
     finally:
         db.close()
+
+
+async def run_daily_sync_job(job_id: int) -> None:
+    db = next(get_db())
+    try:
+        now = datetime.now(timezone.utc)
+        claimed = db.execute(update(SyncJob).where(
+            SyncJob.id == job_id,
+            SyncJob.status == "queued",
+        ).values(status="running", started_at=now, heartbeat_at=now, phase="sales_incremental", attempts=SyncJob.attempts + 1))
+        db.commit()
+        if claimed.rowcount != 1:
+            return
+        job = db.get(SyncJob, job_id)
+        if not job:
+            return
+        await run_sync_background(job.store_key, date.fromisoformat(job.from_date), date.fromisoformat(job.to_date), job.id)
+        db.refresh(job)
+        if job.status != "running":
+            return
+        if (job.payload or {}).get("include_supply_chain"):
+            store = db.scalar(select(Store).where(Store.store_key == job.store_key))
+            if store:
+                job.phase = "supply_chain"
+                job.heartbeat_at = datetime.now(timezone.utc)
+                db.commit()
+                job.payload = {**(job.payload or {}), "supply_chain": await sync_supply_chain(db, store)}
+        db.refresh(job)
+        if job.status == "running":
+            job.status = "completed"
+            job.phase = "completed"
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+    except Exception as exc:
+        job = db.get(SyncJob, job_id)
+        if job:
+            job.status = "failed"
+            job.error = str(exc)[:2000]
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+    finally:
+        db.close()
+
+
+async def run_supply_chain_job(job_id: int) -> None:
+    db = next(get_db())
+    try:
+        now = datetime.now(timezone.utc)
+        claimed = db.execute(update(SyncJob).where(
+            SyncJob.id == job_id,
+            SyncJob.status == "queued",
+        ).values(status="running", started_at=now, heartbeat_at=now, phase="supply_chain", attempts=SyncJob.attempts + 1))
+        db.commit()
+        if claimed.rowcount != 1:
+            return
+        job = db.get(SyncJob, job_id)
+        store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
+        if not job or not store:
+            raise RuntimeError("Store not found for supply-chain sync")
+        job.payload = await sync_supply_chain(db, store)
+        job.status = "completed"
+        job.phase = "completed"
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception as exc:
+        job = db.get(SyncJob, job_id)
+        if job:
+            job.status = "failed"
+            job.error = str(exc)[:2000]
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+    finally:
+        db.close()
+
+
+async def process_next_job() -> None:
+    """Dispatch one persisted job; handlers claim it atomically before work."""
+    db = next(get_db())
+    try:
+        stale_before = datetime.now(timezone.utc) - timedelta(seconds=settings.worker_stale_after_seconds)
+        db.execute(update(SyncJob).where(
+            SyncJob.status == "running",
+            SyncJob.heartbeat_at.is_not(None),
+            SyncJob.heartbeat_at < stale_before,
+        ).values(status="queued", error="requeued after stale worker heartbeat"))
+        db.commit()
+        job = db.scalar(select(SyncJob).where(SyncJob.status == "queued").order_by(SyncJob.id).limit(1))
+        job_id = job.id if job else None
+        job_type = job.job_type if job else None
+    finally:
+        db.close()
+    if job_id is None:
+        return
+    handlers = {
+        "history": run_history_job,
+        "discover": run_history_discovery,
+        "snapshot": run_full_snapshot_job,
+        "catalog_snapshot": run_catalog_snapshot_job,
+        "sales_repair": run_sales_repair_job,
+        "daily_sync": run_daily_sync_job,
+        "supply_chain": run_supply_chain_job,
+    }
+    handler = handlers.get(job_type)
+    if handler is None:
+        db = next(get_db())
+        try:
+            row = db.get(SyncJob, job_id)
+            if row and row.status == "queued":
+                row.status = "failed"
+                row.error = f"unsupported job type: {job_type}"
+                row.finished_at = datetime.now(timezone.utc)
+                db.commit()
+        finally:
+            db.close()
+        return
+    try:
+        await handler(job_id)
+    except Exception as exc:
+        db = next(get_db())
+        try:
+            row = db.get(SyncJob, job_id)
+            if row and row.status == "running":
+                row.status = "failed"
+                row.error = str(exc)[:2000]
+                row.finished_at = datetime.now(timezone.utc)
+                db.commit()
+        finally:
+            db.close()
 
 
 async def run_history_job(job_id: int) -> None:
@@ -1539,7 +1698,7 @@ async def _run_history_job(job_id: int) -> None:
         claimed = db.execute(
             update(SyncJob)
             .where(SyncJob.id == job_id, SyncJob.status == "queued")
-            .values(status="running", started_at=datetime.now(timezone.utc))
+            .values(status="running", started_at=datetime.now(timezone.utc), heartbeat_at=datetime.now(timezone.utc), phase="history", attempts=SyncJob.attempts + 1)
         )
         db.commit()
         if claimed.rowcount != 1:
@@ -1575,7 +1734,7 @@ async def run_history_discovery(job_id: int) -> None:
         claimed = db.execute(
             update(SyncJob)
             .where(SyncJob.id == job_id, SyncJob.status == "queued")
-            .values(status="running", started_at=datetime.now(timezone.utc))
+            .values(status="running", started_at=datetime.now(timezone.utc), heartbeat_at=datetime.now(timezone.utc), phase="discover", attempts=SyncJob.attempts + 1)
         )
         db.commit()
         if claimed.rowcount != 1:

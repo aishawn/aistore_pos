@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     sync_lookback_days: int = 3
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
+    worker_poll_seconds: int = 2
+    worker_stale_after_seconds: int = 900
     history_chunk_days: int = 14
     shopfront_history_start_year: int = 2010
     pos_api_base_url: str = ""
