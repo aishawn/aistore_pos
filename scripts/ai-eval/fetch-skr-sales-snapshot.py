@@ -97,17 +97,45 @@ def main() -> int:
             daily[product_id][order_dates[order_id]] += float(row.get("qty") or 0)
 
     dates = [start + timedelta(days=index) for index in range(history_days)]
+    candidate_ids = sorted(daily, key=lambda product_id: sum(daily[product_id].values()), reverse=True)[:2000]
+    location_rows = odoo.read("stock.location", [], ["id", "usage"], 100000)
+    usages = {row["id"]: row.get("usage") for row in location_rows}
+    moves: list[dict] = []
+    for offset in range(0, len(candidate_ids), 500):
+        moves.extend(odoo.read("stock.move", [
+            ["company_id", "=", company_id], ["product_id", "in", candidate_ids[offset:offset + 500]],
+            ["date", ">=", f"{start} 00:00:00"], ["state", "=", "done"],
+        ], ["product_id", "date", "quantity", "location_id", "location_dest_id"], 100000))
+    moves_by_product: dict[int, list[tuple[date, float]]] = defaultdict(list)
+    for move in moves:
+        product_id = (move.get("product_id") or [None])[0]
+        source = usages.get((move.get("location_id") or [None])[0])
+        destination = usages.get((move.get("location_dest_id") or [None])[0])
+        quantity = float(move.get("quantity") or 0)
+        if not product_id or not quantity or not move.get("date"):
+            continue
+        delta = -quantity if source == "internal" and destination != "internal" else \
+                quantity if source != "internal" and destination == "internal" else 0.0
+        if delta:
+            moves_by_product[product_id].append((date.fromisoformat(str(move["date"])[:10]), delta))
     series = []
-    for product_id, by_day in daily.items():
+    for product_id in candidate_ids:
         product = products[product_id]
+        by_day = daily[product_id]
         units = [round(by_day.get(str(day), 0.0), 4) for day in dates]
         if sum(units) <= 0:
             continue
+        current_stock = float(product.get("qty_available") or 0)
+        product_moves = moves_by_product.get(product_id, [])
+        stockout_flags = []
+        for day in dates:
+            after_day = sum(delta for move_day, delta in product_moves if move_day > day)
+            stockout_flags.append(current_stock - after_day <= 0)
         series.append({
             "productId": product_id, "category": (product.get("categ_id") or [None, None])[1],
             "dates": [str(day) for day in dates], "units": units,
-            "stockoutFlags": [False] * len(dates),
-            "stockoutDataQuality": "UNAVAILABLE_HISTORICAL_INVENTORY",
+            "stockoutFlags": stockout_flags,
+            "stockoutDataQuality": "INFERRED_FROM_STOCK_MOVES",
         })
     series.sort(key=lambda item: sum(item["units"]), reverse=True)
     snapshot = {
@@ -116,7 +144,7 @@ def main() -> int:
         "companyId": company_id, "generatedAt": date.today().isoformat(),
         "historyDays": history_days, "orders": len(orders), "orderLines": len(lines),
         "series": series[:2000],
-        "stockoutDataQuality": "UNAVAILABLE_HISTORICAL_INVENTORY",
+        "stockoutDataQuality": "INFERRED_FROM_STOCK_MOVES",
         "writeRequests": [],
     }
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -131,7 +131,7 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
 
 
 def _group_labels(series: Series) -> dict[str, str]:
-    if series.stockoutDataQuality and series.stockoutDataQuality != "VALID":
+    if series.stockoutDataQuality and series.stockoutDataQuality not in ("VALID", "INFERRED_FROM_STOCK_MOVES"):
         stockout_label = "UNKNOWN"
     else:
         stockout_label = None

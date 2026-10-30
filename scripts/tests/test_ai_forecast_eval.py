@@ -64,6 +64,10 @@ class ForecastEvaluationTests(unittest.TestCase):
                         stockoutDataQuality="UNAVAILABLE_HISTORICAL_INVENTORY")
         self.assertEqual("UNKNOWN", _group_labels(series)["stockoutRatio"])
 
+        inferred = Series(productId=10, dates=[date(2026, 1, 1)], units=[1],
+                          stockoutFlags=[True], stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
+        self.assertEqual("HIGH_GT_10", _group_labels(inferred)["stockoutRatio"])
+
     def test_model_comparison_covers_all_horizons_and_group_dimensions(self):
         report_path = ROOT / "reports" / "test-ai-forecast-eval.json"
         result = subprocess.run([sys.executable, str(ROOT / "scripts/ai_forecast_eval.py"),
