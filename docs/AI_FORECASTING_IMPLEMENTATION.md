@@ -58,3 +58,17 @@ on fixed SKR snapshots and rolling WAPE/MAE/Bias and interval coverage results.
 4. Review stockout and overstock alerts in one isolated store for at least four weeks.
 5. Add weather, public holidays, promotions and censored-demand correction only after the baseline is measurable.
 6. Keep purchase draft and purchase confirmation switches off until Odoo write/readback and audit UAT passes.
+
+## Reproducible evaluation
+
+Run the read-only fixed snapshot evaluation from the repository root:
+
+```text
+python scripts/ai_forecast_eval.py
+```
+
+The runner writes `reports/ai-forecast-eval.json` and records both the source
+snapshot SHA and runtime SHA. `status` describes whether the run completed;
+`qualityGate` is a separate model quality decision. A high WAPE on a series
+with stockout flags is expected to trigger review, not to be hidden as a zero
+demand result. The runner always reports `writeRequests: []`.

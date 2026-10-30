@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Series(BaseModel):
@@ -9,6 +9,14 @@ class Series(BaseModel):
     dates: list[date]
     units: list[float]
     stockoutFlags: list[bool] = []
+
+    @model_validator(mode="after")
+    def validate_alignment(self):
+        if self.dates and len(self.dates) != len(self.units):
+            raise ValueError("dates and units must have the same length")
+        if self.stockoutFlags and len(self.stockoutFlags) != len(self.units):
+            raise ValueError("stockoutFlags and units must have the same length")
+        return self
 
 
 class ForecastRequest(BaseModel):
@@ -30,7 +38,7 @@ class ForecastPoint(BaseModel):
 class ForecastItem(BaseModel):
     productId: int
     forecast: list[ForecastPoint]
-    dataQuality: Literal["VALID", "INSUFFICIENT_HISTORY", "INCOMPLETE"]
+    dataQuality: Literal["VALID", "INSUFFICIENT_HISTORY", "INCOMPLETE", "CENSORED_DEMAND"]
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
 
 
