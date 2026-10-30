@@ -63,6 +63,7 @@ public class AiCommandParser {
             var reader = mapper.readerFor(AiCommandService.Parsed.class)
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
             AiCommandService.Parsed parsed = reader.readValue(structured.traverse(mapper));
+            parsed = normalizeUnresolvedItems(parsed);
             validate(parsed);
             return parsed;
         } catch (BusinessException rejected) {
@@ -173,18 +174,49 @@ public class AiCommandParser {
                 || (ready && (item.id() == null || item.id() <= 0))) {
             throw new BusinessException(42220, "AI command item is incomplete.");
         }
-        if (!ready) return;
         Set<String> allowed = switch (type) {
             case UPDATE_PRODUCT -> PRODUCT_FIELDS;
             case UPDATE_CUSTOMER -> CUSTOMER_FIELDS;
             case PREVIEW_PRICE_CHANGE -> Set.of("price");
             case PREVIEW_REPLENISHMENT -> Set.of("quantity", "replenishment");
         };
-        if (item.field() == null || !allowed.contains(item.field().toLowerCase(Locale.ROOT))) {
+        if (item.field() != null && !allowed.contains(item.field().toLowerCase(Locale.ROOT))) {
+            throw new BusinessException(42220, "AI command field is not enabled.");
+        }
+        if (!ready) return;
+        if (item.field() == null || item.field().isBlank()) {
             throw new BusinessException(42220, "AI command field is not enabled.");
         }
         if (item.status() != null && !Set.of("READY", "EXCLUDED").contains(item.status().toUpperCase(Locale.ROOT))) {
             throw new BusinessException(42220, "AI command item status is invalid.");
         }
+    }
+
+    /**
+     * A model can understand the requested entity while the server cannot
+     * resolve it to a tenant-scoped record. Preserve that information as an
+     * excluded item so the UI can ask for clarification instead of returning
+     * a provider/schema error.
+     */
+    private AiCommandService.Parsed normalizeUnresolvedItems(AiCommandService.Parsed parsed) {
+        if (parsed == null || parsed.items() == null || parsed.items().isEmpty()) return parsed;
+        List<CommandItem> ready = new java.util.ArrayList<>();
+        List<CommandItem> excluded = new java.util.ArrayList<>(
+                parsed.excluded() == null ? List.of() : parsed.excluded());
+        for (CommandItem item : parsed.items()) {
+            if (item != null && item.id() != null && item.id() > 0) {
+                ready.add(item);
+            } else {
+                // Validate the name and any supplied field before storing it.
+                validateItem(parsed.type(), item, false);
+                excluded.add(new CommandItem(null, item.name(), item.field(), item.before(), item.after(),
+                        item.reason() == null || item.reason().isBlank()
+                                ? "No unique business record matched; clarification is required"
+                                : item.reason(),
+                        "EXCLUDED"));
+            }
+        }
+        return new AiCommandService.Parsed(parsed.type(), parsed.confidence(), parsed.summary(),
+                List.copyOf(ready), parsed.changes(), List.copyOf(excluded));
     }
 }

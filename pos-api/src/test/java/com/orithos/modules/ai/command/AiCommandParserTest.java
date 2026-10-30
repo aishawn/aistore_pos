@@ -88,4 +88,22 @@ class AiCommandParserTest {
 
         assertEquals(AiCommandType.UPDATE_PRODUCT, parsed.type());
     }
+
+    @Test
+    void turnsUnresolvedModelItemIntoExcludedClarification() throws Exception {
+        when(gateway.complete(org.mockito.ArgumentMatchers.any(), eq(AiTask.COMMAND_PARSE),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString(),
+                eq(com.fasterxml.jackson.databind.JsonNode.class)))
+                .thenReturn(new AiCompletion<>(new ObjectMapper().readTree("""
+                        {"type":"UPDATE_PRODUCT","confidence":0.45,"summary":"find one product",
+                         "items":[{"name":"ABC-DOES-NOT-EXIST","field":"name","after":"New name"}],
+                         "changes":{"field":"name"},"excluded":[]}
+                        """), "test", "test", 1, 1, Duration.ZERO, false));
+
+        AiCommandService.Parsed parsed = parser.parse(tenant, "rename ABC-DOES-NOT-EXIST to New name");
+
+        assertEquals(0, parsed.items().size());
+        assertEquals(1, parsed.excluded().size());
+        assertEquals("EXCLUDED", parsed.excluded().getFirst().status());
+    }
 }
