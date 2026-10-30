@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-10-30T17:35:53.296Z",
-  "sourceCommit": "4254ed40d9c0ebfdfd3c369028373842fdc4f90a",
+  "generatedAt": "2026-10-30T17:40:45.841Z",
+  "sourceCommit": "55e2ca4649e28f46a236a1b80bb63aad59148ca4",
   "worktreeDirty": false,
-  "deployment": "unverified-after-deploy",
+  "deployment": "55e2ca4649e28f46a236a1b80bb63aad59148ca4",
   "target": "https://skr.orithos.com.au",
   "runtimeIdentity": {
     "httpStatus": 200,
-    "frontendCommit": "1f3e2508591be26984df26d9f39ae1a6b05bd145",
-    "frontendBuiltAt": "2026-10-30T17:32:17.837Z",
-    "backendCommit": "1f3e2508591be26984df26d9f39ae1a6b05bd145",
-    "backendBuiltAt": "2026-10-30T17:32:17Z",
-    "matchesSourceCommit": false
+    "frontendCommit": "55e2ca4649e28f46a236a1b80bb63aad59148ca4",
+    "frontendBuiltAt": "2026-10-30T17:37:38.882Z",
+    "backendCommit": "55e2ca4649e28f46a236a1b80bb63aad59148ca4",
+    "backendBuiltAt": "2026-10-30T17:37:38Z",
+    "matchesSourceCommit": true
   },
   "config": {
     "enabled": true,
@@ -61,7 +61,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "2f1933bf-9e58-4163-be1d-b8541d94c96b",
+        "correlationId": "ea308802-7df9-4c3d-8319-597a27073938",
         "answer": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
         "cards": [
           {
@@ -98,7 +98,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "89427560-85c2-44bb-9c45-967e42c669b2",
+        "correlationId": "9e2677ce-af13-4ed7-b2bc-34c186ac48eb",
         "answer": "Prices that need review (target ≈30% net margin):\n\n• [103869] SUNTORY -196 LEMON CAN 330ML — $8.99 (review tax)\n• [106623] BRICK LANE HI FI LAGER 355ML — $5.99 (review tax)\n• [115290] KIRIN HYOKETSU LEMON C330ML — $8.99 (review tax)\n\nTap below to open price review. Staff confirm any change on the page.",
         "cards": [
           {
@@ -145,7 +145,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "ef88b661-1542-4fa2-b8e9-bcf2fe1f82f6",
+        "correlationId": "f3a9d1f0-352b-43c8-927c-f897363242da",
         "answer": "Here are in-stock picks (red):\n\n• Great Value — [10612] JOHNNY Q. CAB/SAUVIGNON 750ML — $16.99\n• Best Match — [111244] TATACHILLA WHT ADML S/BLC750ML — $13.99\n• Premium Choice — [110999] Punt Road Shiraz 750ml — $32.99\n\nTap below to open the full wine assistant.",
         "cards": [
           {
@@ -199,7 +199,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "13af41ab-21b0-4405-8d7b-6dd6d9871835",
+        "correlationId": "7cda5677-ac83-497c-b173-65ccc1b3a719",
         "answerChecks": [
           true
         ],
@@ -252,7 +252,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "49924585-ca6c-41a7-ac4f-3eb5ddc13c64",
+        "correlationId": "316aea22-b607-4438-b2c2-7e02166682f0",
         "answerChecks": [
           true
         ],
@@ -282,7 +282,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "6629734f-7c21-46ee-acef-a43f2753b425",
+        "correlationId": "4dc87350-ed88-4fd3-a4b3-386b968a58e3",
         "answer": "No completed sales found for 2026-10-31. Try a wider range — for example ask: sales last 7 days, or yesterday / last week.",
         "cards": []
       }
@@ -308,7 +308,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "a322055a-8075-4a42-92ad-89ca150628ec",
+        "correlationId": "3952058c-47e9-48dc-ae12-275f89b6c905",
         "answer": "AI 只会生成建议或草稿。采购、改价和发票收货仍需要你在对应页面核对并确认。",
         "cards": []
       }
@@ -336,7 +336,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "e6bc3bc1-0446-43a0-ace2-9dcfbff85a80",
+        "correlationId": "02b96d1b-24f1-4fa4-ac51-6e1e0245bfe7",
         "answerLanguageCheck": true,
         "answer": "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。",
         "cards": [
@@ -363,7 +363,7 @@
   "status": "BLOCKED",
   "acceptance": {
     "sourceTreeClean": true,
-    "runtimeMatchesSourceCommit": false,
+    "runtimeMatchesSourceCommit": true,
     "fullCatalogRun": false,
     "candidateAccepted": false
   }
