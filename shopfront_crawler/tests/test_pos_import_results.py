@@ -170,6 +170,70 @@ def test_merge_sale_detail_preserves_existing_fields_when_detail_is_partial():
 
 
 @pytest.mark.asyncio
+async def test_product_reconcile_rejects_duplicate_or_missing_pos_pages(db_session, monkeypatch):
+    db_session.add(Store(store_key="skr", vendor="skr"))
+    db_session.commit()
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def data(self, store, data_type, page=1, size=500):
+            return {"data": {"total": 2, "data": [
+                {"source_id": "product-1"},
+                {"source_id": "product-1"},
+            ]}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    with pytest.raises(main.HTTPException) as failure:
+        await main.reconcile_pos_products(store="skr", db=db_session)
+    assert failure.value.status_code == 502
+    assert "1 unique source IDs for 2 rows" in failure.value.detail
+
+
+@pytest.mark.asyncio
+async def test_product_reconcile_separates_historical_references_from_unexplained_ids(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        Product(store_key="skr", shopfront_product_id="current-1", name="Current", catalog_last_seen_at=datetime(2026, 10, 30)),
+        Sale(
+            store_key="skr",
+            shopfront_sale_id="sale-old",
+            created_at=datetime(2024, 1, 1),
+            updated_at=datetime(2024, 1, 1),
+            items=[SaleItem(shopfront_product_id="archived-1", product_name="Archived")],
+        ),
+    ])
+    db_session.commit()
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def data(self, store, data_type, page=1, size=500):
+            return {"data": {"total": 3, "data": [
+                {"source_id": "current-1", "name": "Current"},
+                {"source_id": "archived-1", "name": "Archived"},
+                {"source_id": "extra-1", "name": "Unexplained"},
+            ]}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    result = await main.reconcile_pos_products(store="skr", preview=200, db=db_session)
+    data = result["data"]
+    assert data["pos_only_classification"]["historical_sale_references"]["source_ids"] == ["archived-1"]
+    assert data["pos_only_classification"]["unexplained"]["source_ids"] == ["extra-1"]
+    assert data["automatic_deletion_performed"] is False
+
+
+@pytest.mark.asyncio
 async def test_sync_chunk_persists_pos_result_in_run_counts(db_session, monkeypatch):
     run = SyncRun(
         store_key="skr",

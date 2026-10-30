@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, verify_webhook
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -559,6 +559,184 @@ async def pos_coverage(store: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(502, str(exc)) from exc
     finally:
         await client.close()
+
+
+@app.get("/api/pos/products/reconcile")
+async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=1000), db: Session = Depends(get_db)) -> dict:
+    """Compare immutable Shopfront IDs; reject incomplete/unstable POS pagination."""
+    require_store(store, db)
+    crawler_rows = db.scalars(select(Product).where(Product.store_key == store)).all()
+    crawler_by_id = {str(row.shopfront_product_id): row for row in crawler_rows if row.shopfront_product_id}
+    referenced = {str(source_id) for source_id in db.scalars(
+        select(SaleItem.shopfront_product_id)
+        .join(Sale, SaleItem.sale_id == Sale.id)
+        .where(Sale.store_key == store, SaleItem.shopfront_product_id.is_not(None))
+    ).all() if source_id}
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        pos_by_id: dict[str, dict] = {}
+        total: int | None = None
+        page = 1
+        while True:
+            response = await client.data(store, "products", page=page, size=500)
+            payload = response.get("data", response)
+            rows = payload.get("data", []) if isinstance(payload, dict) else []
+            if total is None:
+                total = int(payload.get("total", 0))
+            for row in rows:
+                source_id = row.get("source_id")
+                if source_id is not None:
+                    pos_by_id[str(source_id)] = row
+            if len(rows) < 500:
+                break
+            page += 1
+        if len(pos_by_id) != (total or 0):
+            raise PosIntegrationError(
+                f"POS product pagination is incomplete or duplicated: {len(pos_by_id)} unique source IDs for {total} rows"
+            )
+        crawler_ids = set(crawler_by_id)
+        pos_ids = set(pos_by_id)
+        crawler_missing = sorted(crawler_ids - pos_ids)
+        pos_only = sorted(pos_ids - crawler_ids)
+        historical_only = [source_id for source_id in pos_only if source_id in referenced]
+        unexplained = [source_id for source_id in pos_only if source_id not in referenced]
+        return {
+            "data": {
+                "store": store,
+                "crawler": {
+                    "total": len(crawler_ids),
+                    "catalog_seen_since_tracking": sum(1 for row in crawler_rows if row.catalog_last_seen_at is not None),
+                    "catalog_unconfirmed_with_sales_reference": sum(1 for row in crawler_rows if row.catalog_last_seen_at is None and row.shopfront_product_id in referenced),
+                    "unclassified": sum(1 for row in crawler_rows if row.catalog_last_seen_at is None and row.shopfront_product_id not in referenced),
+                    "historical_sale_reference_ids": len(referenced),
+                },
+                "pos_total": len(pos_ids),
+                "crawler_missing_in_pos": {"count": len(crawler_missing), "source_ids": crawler_missing[:preview]},
+                "pos_only": {"count": len(pos_only), "source_ids": [
+                    {"source_id": source_id, "name": pos_by_id[source_id].get("name"), "referenced_by_historical_sale": source_id in referenced}
+                    for source_id in pos_only[:preview]
+                ]},
+                "pos_only_classification": {
+                    "historical_sale_references": {"count": len(historical_only), "source_ids": historical_only[:preview]},
+                    "unexplained": {"count": len(unexplained), "source_ids": unexplained[:preview]},
+                },
+                "automatic_deletion_performed": False,
+            },
+            "source": "shopfront_crawler_vs_orithos_staging",
+        }
+    except PosIntegrationError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    finally:
+        await client.close()
+
+
+async def sync_supply_chain(db: Session, store: Store) -> dict:
+    if not settings.shopfront_enable_supply_chain:
+        raise HTTPException(409, "Supply-chain scopes are disabled; enable them and reauthorize Shopfront first")
+    token = await access_token(db, settings, store)
+    client = get_client(settings, store)
+    try:
+        suppliers = await client.fetch_suppliers(token)
+        orders = await client.fetch_purchase_orders(token)
+    finally:
+        await client.close()
+
+    now = datetime.now(timezone.utc)
+    supplier_count = 0
+    order_count = 0
+    for source in suppliers:
+        source_id = str(source.get("id") or "").strip()
+        if not source_id:
+            continue
+        row = db.scalar(select(ShopfrontSupplier).where(
+            ShopfrontSupplier.store_key == store.store_key, ShopfrontSupplier.source_id == source_id,
+        ))
+        if row is None:
+            row = ShopfrontSupplier(store_key=store.store_key, source_id=source_id)
+            db.add(row)
+        row.name = source.get("name")
+        row.business_number = source.get("businessNumber")
+        row.status = source.get("status")
+        row.raw_payload = without_credentials(source)
+        row.synced_at = now
+        supplier_count += 1
+    for source in orders:
+        source_id = str(source.get("id") or "").strip()
+        if not source_id:
+            continue
+        row = db.scalar(select(ShopfrontPurchaseOrder).where(
+            ShopfrontPurchaseOrder.store_key == store.store_key, ShopfrontPurchaseOrder.source_id == source_id,
+        ))
+        if row is None:
+            row = ShopfrontPurchaseOrder(store_key=store.store_key, source_id=source_id)
+            db.add(row)
+        lines = source.get("products") if isinstance(source.get("products"), list) else []
+        supplier = next((line.get("supplier") for line in lines if isinstance(line, dict) and isinstance(line.get("supplier"), dict) and line["supplier"].get("id")), {})
+        row.supplier_source_id = str(supplier["id"]) if supplier.get("id") is not None else None
+        row.status = source.get("status")
+        row.order_date = str(source.get("orderDate")) if source.get("orderDate") is not None else None
+        row.total_cost = parse_decimal(source.get("totalCost"))
+        row.raw_payload = without_credentials(source)
+        row.synced_at = now
+        order_count += 1
+    db.commit()
+    result = {"status": "completed", "suppliers": supplier_count, "purchase_orders": order_count}
+    if settings.pos_import_enabled:
+        pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
+        try:
+            supplier_rows = db.scalars(select(ShopfrontSupplier).where(ShopfrontSupplier.store_key == store.store_key).order_by(ShopfrontSupplier.source_id)).all()
+            order_rows = db.scalars(select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store.store_key).order_by(ShopfrontPurchaseOrder.source_id)).all()
+            for offset in range(0, len(supplier_rows), 250):
+                batch = supplier_rows[offset:offset + 250]
+                response = await pos_client.upsert_suppliers(jsonable_encoder({"store_key": store.store_key, "items": [
+                    {"source_id": item.source_id, "name": item.name, "business_number": item.business_number, "status": item.status, "raw_payload": item.raw_payload}
+                    for item in batch
+                ]}))
+                staged = response.get("data", response)
+                if staged.get("status") != "STAGED":
+                    raise PosIntegrationError(f"Supplier mirror batch was not staged: {staged.get('status', 'unknown')}")
+            for offset in range(0, len(order_rows), 250):
+                batch = order_rows[offset:offset + 250]
+                response = await pos_client.upsert_purchase_orders(jsonable_encoder({"store_key": store.store_key, "items": [
+                    {"source_id": item.source_id, "supplier_source_id": item.supplier_source_id, "status": item.status, "order_date": item.order_date, "total_cost": item.total_cost, "raw_payload": item.raw_payload}
+                    for item in batch
+                ]}))
+                staged = response.get("data", response)
+                if staged.get("status") != "STAGED":
+                    raise PosIntegrationError(f"Purchase-order mirror batch was not staged: {staged.get('status', 'unknown')}")
+            result["pos_staged"] = {"suppliers": len(supplier_rows), "purchase_orders": len(order_rows)}
+        finally:
+            await pos_client.close()
+    return result
+
+
+@app.post("/api/stores/{store_key}/supply-chain/sync")
+async def supply_chain_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
+    store = require_store(store_key, db)
+    try:
+        result = await sync_supply_chain(db, store)
+    except PosIntegrationError as exc:
+        db.rollback()
+        raise HTTPException(502, str(exc)) from exc
+    return {"data": result, "source": "shopfront_supply_chain_mirror"}
+
+
+@app.get("/api/suppliers")
+def list_suppliers(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+    require_store(store, db)
+    query = select(ShopfrontSupplier).where(ShopfrontSupplier.store_key == store).order_by(ShopfrontSupplier.source_id)
+    rows = db.scalars(query.offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(ShopfrontSupplier.id)).where(ShopfrontSupplier.store_key == store)) or 0
+    return {"data": [{"source_id": row.source_id, "name": row.name, "business_number": row.business_number, "status": row.status, "raw_payload": row.raw_payload, "synced_at": row.synced_at} for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_suppliers"}
+
+
+@app.get("/api/purchase-orders")
+def list_purchase_orders(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+    require_store(store, db)
+    query = select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store).order_by(ShopfrontPurchaseOrder.source_id)
+    rows = db.scalars(query.offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0
+    return {"data": [{"source_id": row.source_id, "supplier_source_id": row.supplier_source_id, "status": row.status, "order_date": row.order_date, "total_cost": row.total_cost, "raw_payload": row.raw_payload, "synced_at": row.synced_at} for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_purchase_orders"}
 
 
 @app.post("/api/sync/runs/{run_id}/retry")
@@ -1337,6 +1515,13 @@ async def scheduled_sync() -> None:
                 logger.info("Skipping scheduled sync for store=%s; active job=%s/%s", store_key, active.id, active.job_type)
                 continue
             await run_sync_background(store_key, start, end)
+            if settings.shopfront_enable_supply_chain:
+                store = db.scalar(select(Store).where(Store.store_key == store_key))
+                if store is not None:
+                    try:
+                        await sync_supply_chain(db, store)
+                    except Exception:
+                        logger.exception("Scheduled Shopfront supply-chain mirror failed: store=%s", store_key)
     finally:
         db.close()
 

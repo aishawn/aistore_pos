@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import secrets
 import asyncio
+import re
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -95,6 +96,22 @@ def business_date(value: Any, fallback: date, timezone_name: str = "Australia/Ad
 
 def _non_empty(value: Any) -> bool:
     return value is not None and value != "" and value != [] and value != {}
+
+
+_SENSITIVE_SUPPLIER_KEYS = {"authentication", "username", "password", "accountnumber", "token", "accesstoken", "refreshtoken", "apitoken", "apikey", "secret"}
+
+
+def without_credentials(value: Any) -> Any:
+    """Remove credential and account-number fields before persisting source payloads."""
+    if isinstance(value, dict):
+        return {
+            key: without_credentials(item)
+            for key, item in value.items()
+            if re.sub(r"[^a-z]", "", str(key).lower()) not in _SENSITIVE_SUPPLIER_KEYS
+        }
+    if isinstance(value, list):
+        return [without_credentials(item) for item in value]
+    return value
 
 
 def _sale_is_complete_and_unchanged(
@@ -668,6 +685,7 @@ async def sync_store(
             product.price = parse_decimal(first(item, "price", "Price", "retailPrice")) or (parse_decimal(prices[0].get("price")) if prices and isinstance(prices[0], dict) else None)
             product.raw_payload = item
             product.synced_at = datetime.now(timezone.utc)
+            product.catalog_last_seen_at = product.synced_at
             counts["products"] += 1
             inventory = item.get("inventory")
             inventory_rows = inventory if isinstance(inventory, list) else ([inventory] if isinstance(inventory, dict) else [])

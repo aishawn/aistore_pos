@@ -104,7 +104,7 @@ def test_product_catalog_fetch_follows_cursor_pages():
     assert calls[2]["variables"]["after"] is None
 
 
-def test_sales_query_requests_product_metadata_and_falls_back_for_tenant_schema():
+def test_sales_query_keeps_line_product_identity_and_falls_back_for_tenant_schema():
     import asyncio
     import json
     import httpx
@@ -126,6 +126,7 @@ def test_sales_query_requests_product_metadata_and_falls_back_for_tenant_schema(
 
     assert asyncio.run(run()) == []
     assert len(calls) == 2
-    for field in ("category { id name }", "prices { quantity price", "taxRate { id name }", "inventory { outlet { id name }"):
+    for field in ("id clientId status invoiceId", "name barcodes { code quantity }", "payments { id amount status subtype }"):
         assert field in calls[0]
+    assert "category" not in calls[0]
     assert "field not supported" not in calls[1]
