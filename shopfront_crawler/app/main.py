@@ -531,6 +531,9 @@ def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
             job.error = "cancelled by operator"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
+            task = active_sync_tasks.get(job.store_key)
+            if task is not None and task is not asyncio.current_task() and not task.done():
+                task.cancel()
         return {"status": job.status, "run_id": job.id, "type": "job"}
     run = db.get(SyncRun, run_id)
     if run is None:
