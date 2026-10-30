@@ -28,9 +28,10 @@ public class ForecastRiskService {
             if (current == null || current.onHand() == null) continue;
             double cumulative = 0d;
             int day = 0;
-            for (ForecastDtos.Point point : item.forecast()) {
+            for (int index = 0; index < item.forecast().size(); index++) {
+                ForecastDtos.Point point = item.forecast().get(index);
                 cumulative += point.p50();
-                if (cumulative > current.onHand()) { day = item.forecast().indexOf(point) + 1; break; }
+                if (cumulative > current.onHand()) { day = index + 1; break; }
             }
             if (day > 0) {
                 Map<String, Object> row = new LinkedHashMap<>();
@@ -74,9 +75,13 @@ public class ForecastRiskService {
                 ) inv ON TRUE
                 WHERE i.vendor_id = ? AND i.outlet_id = ? AND i.business_date = CURRENT_DATE
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.put(rs.getLong("product_id"), new Inventory(
-                        (Double) rs.getObject("on_hand"), (Double) rs.getObject("cost"),
+                        asDouble(rs.getObject("on_hand")), asDouble(rs.getObject("cost")),
                         rs.getInt("lead_time"))), tenant.vendorId(), tenant.requireOutletId());
         return result;
+    }
+
+    private static Double asDouble(Object value) {
+        return value instanceof Number number ? number.doubleValue() : null;
     }
 
     private record Inventory(Double onHand, Double cost, int leadTimeDays) { }
