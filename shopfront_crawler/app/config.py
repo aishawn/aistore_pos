@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     sync_daily_minute: int = 0
     worker_poll_seconds: int = 2
     worker_stale_after_seconds: int = 900
+    # Commit historical Sale writes in bounded batches. A value of 1 keeps
+    # the old per-sale durability behavior; larger values reduce database
+    # round trips while the persisted cursor and idempotent source IDs keep
+    # retries safe after a restart.
+    sync_sale_commit_batch_size: int = 25
     # The full purchase-order directory can take several minutes to paginate.
     # Keep the bound finite while avoiding false partial results on large stores.
     shopfront_supply_chain_timeout_seconds: int = 900

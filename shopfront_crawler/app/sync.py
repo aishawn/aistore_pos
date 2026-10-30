@@ -408,6 +408,7 @@ async def sync_store(
     catalog_sync_complete = False
     sale_product_ids: set[str] = set()
     sale_products: dict[str, Product] = {}
+    commit_batch_size = max(1, int(getattr(settings, "sync_sale_commit_batch_size", 25)))
     try:
         # A blocked lock or malformed database statement must fail the chunk
         # and be retried by the scheduler. Without a server-side timeout the
@@ -579,20 +580,22 @@ async def sync_store(
                 sale_rows = []
         for sale_index, row in enumerate(sale_rows, start=1):
             # Cancellation is persisted by the API request in a separate
-            # database session. Check it before each sale so a bad or parked
-            # source record cannot keep the writer occupied indefinitely.
-            if sale_index >= 1:
+            # database session. Check it at each commit boundary so a bad or
+            # parked source record cannot keep the writer occupied indefinitely.
+            checkpoint_due = sale_index == 1 or (sale_index - 1) % commit_batch_size == 0
+            if checkpoint_due:
                 db.refresh(run)
                 if run.status == "cancelled":
                     counts["sales_fetched"] = len(sale_rows)
                     counts["sales_processed"] = sale_index - 1
                     counts["stage"] = "cancelled"
                     run.counts = counts
+                    db.rollback()
                     return run
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
             # database operation never returns.
-            if sale_index == 1 or (sale_index - 1) % 10 == 0:
+            if checkpoint_due:
                 counts["sales_fetched"] = len(sale_rows)
                 counts["sales_processed"] = sale_index - 1
                 counts["stage"] = "sales"
@@ -625,7 +628,7 @@ async def sync_store(
                     counts["sales"] += 1
                     counts["sales_skipped_unchanged"] = counts.get("sales_skipped_unchanged", 0) + 1
                     counts["phase"] = "sale_skipped_unchanged"
-                    if sale_index % 1 == 0:
+                    if sale_index % commit_batch_size == 0 or sale_index == len(sale_rows):
                         counts["sales_fetched"] = len(sale_rows)
                         counts["sales_processed"] = sale_index
                         counts["stage"] = "sales"
@@ -721,7 +724,7 @@ async def sync_store(
                 # Do not hold SQLite's writer lock for the duration of a
                 # large GraphQL history window. This also makes a completed
                 # subset durable if the process is restarted mid-chunk.
-                if sale_index % 1 == 0:
+                if sale_index % commit_batch_size == 0 or sale_index == len(sale_rows):
                     counts["sales_fetched"] = len(sale_rows)
                     counts["sales_processed"] = sale_index
                     counts["stage"] = "sales"
