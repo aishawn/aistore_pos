@@ -4,7 +4,7 @@
   "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
   "sourceSnapshot": "forecast-service\\fixtures\\skr-snapshot-demo.json",
   "sourceSnapshotSha": "b41e612e31ad08332b0f6d96fd73ec6123724dae",
-  "runtimeSha": "3bb8ca051608808bc1be516cc735a94b96790c4b",
+  "runtimeSha": "34eeb7003cb8437e9b3de36f991a4461151b2bca",
   "model": "seasonal_naive_v1",
   "modelVersion": "1",
   "horizonDays": 7,
@@ -16,6 +16,7 @@
     {
       "productId": 1001,
       "horizonDays": 7,
+      "model": "seasonal_naive_v1",
       "status": "PASS",
       "windowCount": 2,
       "meanWape": 0.0,
@@ -28,6 +29,7 @@
     {
       "productId": 1002,
       "horizonDays": 7,
+      "model": "seasonal_naive_v1",
       "status": "PASS",
       "windowCount": 2,
       "meanWape": 0.5294117647058824,
@@ -35,6 +37,52 @@
       "meanBias": 1.1428571428571428,
       "p80Coverage": 0.9285714285714286,
       "p90Coverage": 0.9285714285714286,
+      "censoredWindowCount": 1
+    },
+    {
+      "productId": 1001,
+      "horizonDays": 14,
+      "status": "BLOCKED"
+    },
+    {
+      "productId": 1002,
+      "horizonDays": 14,
+      "status": "BLOCKED"
+    },
+    {
+      "productId": 1001,
+      "horizonDays": 28,
+      "status": "BLOCKED"
+    },
+    {
+      "productId": 1002,
+      "horizonDays": 28,
+      "status": "BLOCKED"
+    },
+    {
+      "productId": 1001,
+      "horizonDays": 7,
+      "model": "moving_average_7_v1",
+      "status": "PASS",
+      "windowCount": 2,
+      "meanWape": 0.15734989648033126,
+      "meanMae": 1.5510204081632655,
+      "meanBias": 5.075305255429287e-16,
+      "p80Coverage": 0.5714285714285714,
+      "p90Coverage": 0.5714285714285714,
+      "censoredWindowCount": 0
+    },
+    {
+      "productId": 1002,
+      "horizonDays": 7,
+      "model": "moving_average_7_v1",
+      "status": "PASS",
+      "windowCount": 2,
+      "meanWape": 0.5523300229182583,
+      "meanMae": 1.489795918367347,
+      "meanBias": 1.1428571428571428,
+      "p80Coverage": 0.6428571428571428,
+      "p90Coverage": 0.6428571428571428,
       "censoredWindowCount": 1
     },
     {
