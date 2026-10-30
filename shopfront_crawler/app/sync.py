@@ -109,12 +109,19 @@ def _sale_is_complete_and_unchanged(
     complete line items and a payments field in both payloads.
     """
     incoming_updated = parse_datetime(first(row, "updatedAt", "updated_at"))
-    if incoming_updated is None or sale.updated_at is None:
-        return False
-    incoming_cmp = incoming_updated.replace(tzinfo=timezone.utc) if incoming_updated.tzinfo is None else incoming_updated.astimezone(timezone.utc)
-    stored_cmp = sale.updated_at.replace(tzinfo=timezone.utc) if sale.updated_at.tzinfo is None else sale.updated_at.astimezone(timezone.utc)
-    if incoming_cmp != stored_cmp:
-        return False
+    payload = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+    # Some Shopfront report variants omit updatedAt. In that case compare the
+    # immutable business fields and structured children against the stored
+    # payload. This keeps retries fast while still detecting edits.
+    if incoming_updated is not None and sale.updated_at is not None:
+        incoming_cmp = incoming_updated.replace(tzinfo=timezone.utc) if incoming_updated.tzinfo is None else incoming_updated.astimezone(timezone.utc)
+        stored_cmp = sale.updated_at.replace(tzinfo=timezone.utc) if sale.updated_at.tzinfo is None else sale.updated_at.astimezone(timezone.utc)
+        if incoming_cmp != stored_cmp:
+            return False
+    elif incoming_updated is None and sale.updated_at is not None:
+        stored_updated = payload.get("updatedAt") or payload.get("updated_at")
+        if stored_updated and str(stored_updated) != str(first(row, "updatedAt", "updated_at")):
+            return False
     if first(row, "Status", "status") != sale.status:
         return False
     items = row.get("items")
@@ -128,8 +135,16 @@ def _sale_is_complete_and_unchanged(
         for item in items
     ):
         return False
-    payload = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
-    return isinstance(row.get("payments"), list) and isinstance(payload.get("payments"), list)
+    if not isinstance(row.get("payments"), list) or not isinstance(payload.get("payments"), list):
+        return False
+    # Compare the small fields that can change without requiring a full ORM
+    # rewrite. The raw payload retains the exact source line/payment data.
+    for field_names in (("totalPrice", "total_price", "Total Price"), ("totalTax", "total_tax", "Tax Amount"), ("totalDiscount", "total_discount", "Discount Amount"), ("totalCost", "total_cost", "Cost")):
+        incoming_value = first(row, *field_names)
+        stored_value = first(payload, *field_names)
+        if incoming_value is not None and stored_value is not None and str(incoming_value) != str(stored_value):
+            return False
+    return row.get("items") == payload.get("items") and row.get("payments") == payload.get("payments")
 
 
 def _dedupe_sales(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
