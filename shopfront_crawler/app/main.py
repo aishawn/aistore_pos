@@ -517,8 +517,24 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
     utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
     summary_count = db.scalar(select(func.coalesce(func.sum(DailySalesSummary.transaction_count), 0)).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())) or 0
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)) or 0
+    status_rows = db.execute(
+        select(Sale.status, func.count(Sale.id))
+        .where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)
+        .group_by(Sale.status)
+    ).all()
+    sale_status_counts = {str(status or "UNKNOWN"): int(count) for status, count in status_rows}
     missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store, or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""))) or 0
-    return {"store": store, "date": target, "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention", "summary_transaction_count": int(summary_count), "sale_count": int(sale_count), "sale_items_missing_name": int(missing_names), "source": "crawler_database"}
+    return {
+        "store": store,
+        "date": target,
+        "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention",
+        "summary_transaction_count": int(summary_count),
+        "sale_count": int(sale_count),
+        "difference": int(sale_count) - int(summary_count),
+        "sale_status_counts": sale_status_counts,
+        "sale_items_missing_name": int(missing_names),
+        "source": "crawler_database",
+    }
 
 
 @app.get("/api/sync/coverage")
