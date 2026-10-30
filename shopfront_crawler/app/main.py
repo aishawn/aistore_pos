@@ -331,7 +331,7 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
                 db,
                 job.store_key,
                 run=run,
-                include_catalog=True,
+                include_catalog=not include_sales,
                 include_sales=include_sales,
                 sales_offset=int((job.payload or {}).get("sales_offset", 0) or 0),
                 job=job,
