@@ -540,7 +540,12 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
         .group_by(Sale.status)
     ).all()
     sale_status_counts = {str(status or "UNKNOWN"): int(count) for status, count in status_rows}
-    missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store, or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""))) or 0
+    missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
+        Sale.store_key == store,
+        Sale.created_at >= utc_start,
+        Sale.created_at < utc_end,
+        or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
+    )) or 0
     return {
         "store": store,
         "date": target,

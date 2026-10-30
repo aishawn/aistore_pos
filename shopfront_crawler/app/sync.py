@@ -488,6 +488,24 @@ async def sync_store(
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
+        # A previous report sync may have stored a consolidated or UTC-dated
+        # row that is not present in the current authoritative window. Keep
+        # those stale rows from inflating later trend and reconciliation APIs.
+        # Only clean when the source query completed without a sales warning;
+        # a failed query must never erase a valid prior summary.
+        source_warning_stages = {str(w.get("stage")) for w in counts["warnings"] if isinstance(w, dict)}
+        source_query_ok = not source_warning_stages.intersection({"sales_detail", "sales_report"})
+        if source_query_ok:
+            valid_summary_keys = set(aggregates)
+            existing_summaries = db.scalars(select(DailySalesSummary).where(
+                DailySalesSummary.store_key == store.store_key,
+                DailySalesSummary.business_date >= start.isoformat(),
+                DailySalesSummary.business_date <= end.isoformat(),
+            )).all()
+            for existing_summary in existing_summaries:
+                key = (existing_summary.business_date, existing_summary.outlet)
+                if key not in valid_summary_keys:
+                    db.delete(existing_summary)
         # Load the existing rows for this window once. Per-sale ORM lookups
         # made history retries needlessly slow and amplified SQLite lock
         # contention. The maps preserve the same idempotent upsert behavior.
