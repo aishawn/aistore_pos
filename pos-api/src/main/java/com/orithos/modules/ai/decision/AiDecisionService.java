@@ -4,6 +4,8 @@ import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.pricing.OdooPriceSuggestionClient;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
+import com.orithos.modules.ai.forecast.ForecastDtos;
+import com.orithos.modules.ai.forecast.ForecastService;
 import com.orithos.modules.ai.snapshot.OdooReadSnapshotService;
 import com.orithos.modules.ai.snapshot.OdooReadSnapshotSyncResult;
 import com.orithos.modules.ai.snapshot.SnapshotDecisionEvaluator;
@@ -24,19 +26,22 @@ public class AiDecisionService {
     private final PermissionAccess permissions;
     private final OdooReadSnapshotService snapshots;
     private final SnapshotDecisionEvaluator evaluator;
+    private final ForecastService forecast;
 
     @Autowired
     public AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
                              AiDecisionRepository repository, PermissionAccess permissions,
-                             OdooReadSnapshotService snapshots, SnapshotDecisionEvaluator evaluator) {
+                             OdooReadSnapshotService snapshots, SnapshotDecisionEvaluator evaluator,
+                             ForecastService forecast) {
         this.pricing = pricing; this.replenishment = replenishment;
         this.repository = repository; this.permissions = permissions; this.snapshots = snapshots; this.evaluator = evaluator;
+        this.forecast = forecast;
     }
 
     /** Compatibility constructor for narrow unit tests that do not exercise the Odoo snapshot boundary. */
     AiDecisionService(OdooPriceSuggestionClient pricing, OdooReplenishmentClient replenishment,
                       AiDecisionRepository repository, PermissionAccess permissions) {
-        this(pricing, replenishment, repository, permissions, null, null);
+        this(pricing, replenishment, repository, permissions, null, null, null);
     }
 
     public Map<String, Object> previewPricing(TenantContext tenant) {
@@ -57,8 +62,10 @@ public class AiDecisionService {
         if (result == null) throw new BusinessException(50320, "Replenishment source data is unavailable");
         Instant at = Instant.now();
         Map<String, Object> engine = evaluateReplenishment(tenant, source);
+        Map<String, Object> forecastResult = forecastPreview(tenant);
         UUID id = insert(tenant, "REPLENISHMENT", at, "weighted-velocity-v1", source, Map.of("liveResult", result, "engine", engine));
-        return Map.of("snapshotId", id, "type", "REPLENISHMENT", "status", "PREVIEW", "dataAsOf", at, "result", result, "engine", engine);
+        return Map.of("snapshotId", id, "type", "REPLENISHMENT", "status", "PREVIEW", "dataAsOf", at,
+                "result", result, "engine", engine, "forecast", forecastResult);
     }
 
     private OdooReadSnapshotSyncResult syncSnapshot(TenantContext tenant) {
@@ -73,6 +80,18 @@ public class AiDecisionService {
     private Map<String, Object> evaluateReplenishment(TenantContext tenant, OdooReadSnapshotSyncResult source) {
         return evaluator == null || source == null ? Map.of("status", "NOT_AVAILABLE")
                 : evaluator.evaluateReplenishment(tenant, source.sourceVersion());
+    }
+
+    private Map<String, Object> forecastPreview(TenantContext tenant) {
+        if (forecast == null) return Map.of("status", "NOT_CONFIGURED");
+        try {
+            ForecastDtos.Response response = forecast.forecast(tenant, 14);
+            return Map.of("status", "AVAILABLE", "model", response.model(),
+                    "modelVersion", response.modelVersion(), "sourceVersion", response.sourceVersion(),
+                    "horizonDays", response.horizonDays(), "items", response.items());
+        } catch (BusinessException error) {
+            return Map.of("status", "UNAVAILABLE", "code", error.getCode(), "reason", error.getMessage());
+        }
     }
 
     private UUID insert(TenantContext tenant, String type, Instant at, String config,

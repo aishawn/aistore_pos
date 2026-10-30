@@ -9,6 +9,15 @@
 #   Backend   http://localhost:8080
 #   Login     admin / value of INITIAL_ADMIN_PASSWORD in .env
 services:
+  forecast-service:
+    build:
+      context: ./forecast-service
+      dockerfile: Dockerfile
+    image: orithos-forecast-service:latest
+    restart: unless-stopped
+    expose:
+      - "8000"
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -38,6 +47,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      forecast-service:
+        condition: service_started
     environment:
       RUNTIME_ENVIRONMENT: ${RUNTIME_ENVIRONMENT:-production}
       POSTGRESQL_URL: ${POSTGRESQL_URL:?Set POSTGRESQL_URL in Dokploy}
@@ -89,6 +100,11 @@ services:
       AI_REPLENISHMENT_COVERAGE_DAYS: ${AI_REPLENISHMENT_COVERAGE_DAYS:-7}
       AI_REPLENISHMENT_SERVICE_FACTOR: ${AI_REPLENISHMENT_SERVICE_FACTOR:-1.65}
       AI_REPLENISHMENT_CASE_PACK: ${AI_REPLENISHMENT_CASE_PACK:-1}
+      AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
+      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-http://forecast-service:8000}
+      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-10000}
+      AI_FORECAST_MAX_HISTORY_DAYS: ${AI_FORECAST_MAX_HISTORY_DAYS:-365}
+      AI_FORECAST_MAX_PRODUCTS: ${AI_FORECAST_MAX_PRODUCTS:-2000}
       AI_REPORT_RO_USER: ${AI_REPORT_RO_USER:-orithos_ai_ro}
       AI_REPORT_RO_PASSWORD: ${AI_REPORT_RO_PASSWORD:-}
       # Sommelier / AI catalogue SoT — same service account as frontend auto-recover.

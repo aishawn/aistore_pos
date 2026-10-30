@@ -149,6 +149,8 @@ public class OdooReadSnapshotService {
                 inventory.put("onOrder", purchase == null ? 0d : purchase.get("onOrder"));
                 insert(tenant, "INVENTORY", id, sourceVersion, dataAsOf,
                         product.get("qty_available") == null ? "INCOMPLETE" : quality, inventory);
+                insertDailyInventory(tenant, id, inventory, sourceVersion, dataAsOf,
+                        product.get("qty_available") == null ? "INCOMPLETE" : quality);
                 inventoryCount++;
 
                 if (supplier != null) {
@@ -192,6 +194,34 @@ public class OdooReadSnapshotService {
                         sale.get("qty") == null ? "INCOMPLETE" : salesQuality, payload);
                 salesCount++;
             }
+            // Keep a daily grain for forecasting. The aggregate SALE_LINE rows above
+            // remain for the existing rule previews and backwards compatibility.
+            List<Map<String, Object>> dailySales;
+            try {
+                dailySales = readGroup(session, "pos.order.line", domain,
+                        List.of("qty:sum", "price_subtotal:sum", "id:count"),
+                        List.of("product_id", "order_id.date_order:day"), context, MAX_SALES_GROUPS);
+            } catch (RuntimeException unsupportedDailyGrouping) {
+                log.warn("Odoo daily sales grouping unavailable vendorId={} outletId={} causeType={}",
+                        tenant.vendorId(), outletId, unsupportedDailyGrouping.getClass().getSimpleName());
+                dailySales = List.of();
+            }
+            int dailySalesCount = 0;
+            for (Map<String, Object> sale : dailySales) {
+                Long productId = relationId(sale.get("product_id"));
+                String day = text(sale.get("order_id.date_order:day"), sale.get("order_id.date_order"));
+                if (productId == null || productId <= 0 || day.isBlank()) continue;
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("productId", productId);
+                payload.put("businessDate", day.length() >= 10 ? day.substring(0, 10) : day);
+                payload.put("units", sale.get("qty"));
+                payload.put("netSales", sale.get("price_subtotal"));
+                payload.put("ordersCount", sale.get("id_count"));
+                payload.put("sourceVersion", sourceVersion);
+                insertDailySales(tenant, productId, payload, sourceVersion, dataAsOf,
+                        sale.get("qty") == null ? "INCOMPLETE" : salesQuality);
+                dailySalesCount++;
+            }
             Map<String, String> quality = new LinkedHashMap<>();
             quality.put("products", productCount == products.size() ? "VALID" : "PARTIAL");
             quality.put("sales", salesQuality);
@@ -219,6 +249,48 @@ public class OdooReadSnapshotService {
                 """, tenant.vendorId(), tenant.requireOutletId(), type, String.valueOf(sourceId), version,
                 eventTime == null ? null : Timestamp.from(eventTime),
                 quality == null ? "VALID" : quality, mapper.writeValueAsString(payload));
+    }
+
+    private void insertDailySales(TenantContext tenant, long productId, Map<String, Object> payload,
+                                  String sourceVersion, Instant dataAsOf, String quality) throws Exception {
+        jdbc.update("""
+                INSERT INTO ai_sales_daily
+                  (vendor_id, outlet_id, product_id, business_date, units_sold, net_sales,
+                   orders_count, source_system, source_version, data_as_of, data_quality_status)
+                VALUES (?, ?, ?, CAST(? AS DATE), ?, ?, ?, 'odoo', ?, ?, ?)
+                ON CONFLICT (vendor_id, outlet_id, product_id, business_date, source_system)
+                DO UPDATE SET units_sold = EXCLUDED.units_sold,
+                              net_sales = EXCLUDED.net_sales,
+                              orders_count = EXCLUDED.orders_count,
+                              source_version = EXCLUDED.source_version,
+                              data_as_of = EXCLUDED.data_as_of,
+                              data_quality_status = EXCLUDED.data_quality_status
+                """, tenant.vendorId(), tenant.requireOutletId(), productId,
+                payload.get("businessDate"), decimal(payload.get("units")),
+                decimal(payload.get("netSales")), (int) decimal(payload.get("ordersCount")),
+                sourceVersion, Timestamp.from(dataAsOf), quality == null ? "VALID" : quality);
+    }
+
+    private void insertDailyInventory(TenantContext tenant, long productId, Map<String, Object> payload,
+                                      String sourceVersion, Instant dataAsOf, String quality) {
+        jdbc.update("""
+                INSERT INTO ai_inventory_daily
+                  (vendor_id, outlet_id, product_id, business_date, on_hand,
+                   virtual_available, on_order, stockout_flag, source_version,
+                   data_as_of, data_quality_status)
+                VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (vendor_id, outlet_id, product_id, business_date)
+                DO UPDATE SET on_hand = EXCLUDED.on_hand,
+                              virtual_available = EXCLUDED.virtual_available,
+                              on_order = EXCLUDED.on_order,
+                              stockout_flag = EXCLUDED.stockout_flag,
+                              source_version = EXCLUDED.source_version,
+                              data_as_of = EXCLUDED.data_as_of,
+                              data_quality_status = EXCLUDED.data_quality_status
+                """, tenant.vendorId(), tenant.requireOutletId(), productId,
+                decimal(payload.get("qtyAvailable")), decimal(payload.get("virtualAvailable")),
+                decimal(payload.get("onOrder")), decimal(payload.get("qtyAvailable")) <= 0d,
+                sourceVersion, Timestamp.from(dataAsOf), quality == null ? "VALID" : quality);
     }
 
     private List<Map<String, Object>> products(String session, long companyId, Map<String, Object> context)
