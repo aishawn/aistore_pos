@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class Series(BaseModel):
     productId: int = Field(gt=0)
+    category: str | None = None
     dates: list[date]
     units: list[float]
     stockoutFlags: list[bool] = []

@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import rolling_metrics
+from scripts.ai_forecast_eval import MODEL_NAMES, rolling_metrics
 
 
 class ForecastEvaluationTests(unittest.TestCase):
@@ -23,6 +23,7 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual(2, result["windowCount"])
         self.assertEqual(1, result["censoredWindowCount"])
         self.assertLess(result["meanWape"], 0.20)
+        self.assertLess(result["weightedWape"], 0.20)
 
     def test_rolling_metrics_blocks_fully_censored_windows_without_crashing(self):
         start = date(2026, 1, 1)
@@ -49,6 +50,14 @@ class ForecastEvaluationTests(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(report_exists)
+
+    def test_all_baselines_return_metrics(self):
+        payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+        series = Series(**payload["series"][0])
+        for model in MODEL_NAMES:
+            result = rolling_metrics(series, 7, model)
+            self.assertEqual("PASS", result["status"], model)
+            self.assertIsNotNone(result["meanWape"], model)
 
 
 if __name__ == "__main__":
