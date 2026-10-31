@@ -55,3 +55,34 @@ be a command or write endpoint. A failed or unavailable endpoint is reported as
 For live dynamic product checks, use `run-skr-live.mjs` with the generated
 JSONL. It checks the runtime SHA, intent, route, product query and empty
 `writeRequests`, with exponential retry for transient 502/503/504 responses.
+
+## SKR forecast history (read-only)
+
+The product snapshot does not contain historical sales. Use the separate
+forecast fetcher to read completed SKR POS orders and their product lines:
+
+```powershell
+$env:SKR_USERNAME = "..."
+$env:SKR_PASSWORD = "..."
+$env:SKR_PRODUCT_SNAPSHOT = ".local/skr-snapshot-live.json"
+$env:SKR_FORECAST_MAX_ORDERS = "5000"
+$env:SKR_FORECAST_DETAIL_CONCURRENCY = "6"
+$env:SKR_FORECAST_SNAPSHOT_OUTPUT = ".local/skr-forecast-snapshot-live.json"
+node scripts/ai-eval/fetch-skr-forecast-readonly.mjs
+```
+
+This collector only calls authenticated `GET`/read endpoints. It removes
+customer data and stores product/date aggregates. If the order cap is reached,
+the output is explicitly `INCOMPLETE_ORDER_CAP` and must not be used as a
+production backtest. The output also records that stockout and inventory
+history are unavailable until those read-only sources are added.
+
+`ai_forecast_eval.py` rejects sparse selling-day observations as contiguous
+daily demand. When order pagination is verified complete, it can create an
+exploratory zero-filled series to compare seasonal-naive, moving-average,
+Croston SBA and TSB baselines. This is not production acceptance: an open-day
+calendar, historical stockout flags and historical inventory are still needed.
+It reports `BLOCKED` when those inputs are missing or when the model quality
+gate fails. Low-frequency products with fewer than 14 selling days are not
+scored by the seasonal baseline and remain blocked pending intermittent-demand
+model evaluation.
