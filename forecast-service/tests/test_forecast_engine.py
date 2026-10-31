@@ -49,6 +49,13 @@ class ForecastBacktestTests(unittest.TestCase):
         self.assertEqual("moving_average_7_v1", result.items[0].model)
         self.assertEqual("croston_sba_v1", result.items[1].model)
 
+        tsb = ForecastRequest(vendorId=1, outletId=1, horizonDays=3, series=[
+            Series(productId=3, selectedModel="tsb_v1",
+                   dates=[date(2026, 1, 1) + timedelta(days=index) for index in range(15)],
+                   units=[0.0, 0.0, 5.0] * 5),
+        ])
+        self.assertEqual("tsb_v1", forecast(tsb).items[0].model)
+
     def test_scores_only_observed_days_when_evaluation_period_is_censored(self):
         result = backtest(BacktestRequest(horizonDays=3, series=[make_series([True, False, False])]))
         item = result.items[0]

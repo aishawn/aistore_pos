@@ -9,7 +9,7 @@ class Series(BaseModel):
     category: str | None = None
     stockoutDataQuality: str | None = None
     selectedModel: Literal["seasonal_naive_v1", "moving_average_7_v1",
-                           "exponential_smoothing_v1", "croston_sba_v1"] | None = None
+                           "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1"] | None = None
     dates: list[date]
     units: list[float]
     stockoutFlags: list[bool] = []

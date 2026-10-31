@@ -24,7 +24,7 @@ def source_sha(snapshot: Path) -> str:
         return "unavailable"
 
 
-MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1")
+MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1")
 
 
 def _points(values: list[float], start_date, horizon: int, spread: float = 0.0) -> list[ForecastPoint]:
@@ -60,6 +60,22 @@ def _forecast_points(train: Series, horizon: int, model: str) -> list[ForecastPo
             intervals = [nonzero[0][0] + 1] + [index - previous for (previous, _), (index, _) in zip(nonzero, nonzero[1:])]
             interval = sum(intervals) / len(intervals)
             values = [0.95 * demand / max(interval, 1.0)] * horizon
+    elif model == "tsb_v1":
+        # Teunter-Syntetos-Babai: update demand size and occurrence
+        # probability separately, which decays stale intermittent demand.
+        nonzero = [value for value in usable if value > 0]
+        if not nonzero:
+            values = [0.0] * horizon
+        else:
+            demand = nonzero[0]
+            probability = 1.0 if usable[0] > 0 else 0.0
+            alpha_demand, alpha_probability = 0.20, 0.20
+            for value in usable[1:]:
+                occurrence = 1.0 if value > 0 else 0.0
+                probability = alpha_probability * occurrence + (1 - alpha_probability) * probability
+                if value > 0:
+                    demand = alpha_demand * value + (1 - alpha_demand) * demand
+            values = [probability * demand] * horizon
     else:
         raise ValueError(f"unsupported evaluation model: {model}")
     return _points(values, train.dates[-1], horizon, spread)

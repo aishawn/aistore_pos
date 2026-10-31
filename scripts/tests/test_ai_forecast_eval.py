@@ -87,11 +87,17 @@ class ForecastEvaluationTests(unittest.TestCase):
                                  str(report_path)], cwd=ROOT, capture_output=True, text=True, check=False)
         self.assertEqual(0, result.returncode, result.stderr)
         report = json.loads(report_path.read_text())
-        self.assertEqual(36, len(report["modelComparison"]))
+        self.assertEqual(45, len(report["modelComparison"]))
         self.assertEqual({7, 14, 28}, {row["horizonDays"] for row in report["modelComparison"]})
         self.assertEqual({"category", "stockoutRatio", "volume"},
                          {row["groupBy"] for row in report["modelComparison"]})
         report_path.unlink(missing_ok=True)
+
+    def test_tsb_is_available_for_intermittent_demand(self):
+        payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+        series = Series(**payload["series"][0])
+        result = rolling_metrics(series, 7, "tsb_v1")
+        self.assertEqual("PASS", result["status"])
 
     def test_model_selection_is_per_product_and_blocks_fully_censored_series(self):
         payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())

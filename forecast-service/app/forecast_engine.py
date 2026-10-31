@@ -38,6 +38,19 @@ def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | N
             demand = mean(value for _, value in nonzero)
             intervals = [nonzero[0][0] + 1] + [index - previous for (previous, _), (index, _) in zip(nonzero, nonzero[1:])]
             baseline = [0.95 * demand / max(mean(intervals), 1.0)] * horizon
+    elif model == "tsb_v1":
+        nonzero = [value for value in clean if value > 0]
+        if not nonzero:
+            baseline = [0.0] * horizon
+        else:
+            demand = nonzero[0]
+            probability = 1.0 if clean[0] > 0 else 0.0
+            for value in clean[1:]:
+                occurrence = 1.0 if value > 0 else 0.0
+                probability = 0.20 * occurrence + 0.80 * probability
+                if value > 0:
+                    demand = 0.20 * value + 0.80 * demand
+            baseline = [probability * demand] * horizon
     else:
         # A seven-day seasonal baseline is robust, explainable, and deterministic.
         week = clean[-7:] if len(clean) >= 7 else clean
