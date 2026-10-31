@@ -20,6 +20,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Service
 public class ForecastService {
@@ -34,7 +40,7 @@ public class ForecastService {
     public ForecastService(JdbcTemplate jdbc, ForecastClient client, ObjectMapper mapper,
                            @Value("${app.ai.forecast.enabled:false}") boolean enabled,
                            @Value("${app.ai.forecast.max-history-days:365}") int maxHistoryDays,
-                           @Value("${app.ai.forecast.max-products:2000}") int maxProducts) {
+                           @Value("${app.ai.forecast.max-products:500}") int maxProducts) {
         this.jdbc = jdbc; this.client = client; this.mapper = mapper; this.enabled = enabled;
         this.maxHistoryDays = Math.max(14, Math.min(maxHistoryDays, 730));
         this.maxProducts = Math.max(1, Math.min(maxProducts, 2000));
@@ -92,12 +98,31 @@ public class ForecastService {
         series.forEach(item -> expectedProducts.add(item.productId()));
         List<ForecastDtos.Item> items = new ArrayList<>();
         ForecastDtos.Response firstBatch = null;
-        for (List<ForecastDtos.Series> batch : batches(series, maxProducts)) {
-            ForecastDtos.Response batchResponse = client.forecast(new ForecastDtos.Request(
-                    tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion, LocalDate.now(), batch));
-            validateBatchCoverage(batch, batchResponse);
-            if (firstBatch == null) firstBatch = batchResponse;
-            items.addAll(batchResponse.items());
+        List<List<ForecastDtos.Series>> requestBatches = batches(series, maxProducts);
+        ExecutorService executor = Executors.newFixedThreadPool(Math.min(4, requestBatches.size()));
+        try {
+            List<Future<ForecastDtos.Response>> responses = new ArrayList<>();
+            for (List<ForecastDtos.Series> batch : requestBatches) {
+                responses.add(executor.submit(() -> client.forecast(new ForecastDtos.Request(
+                        tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion, LocalDate.now(), batch))));
+            }
+            for (int index = 0; index < requestBatches.size(); index++) {
+                List<ForecastDtos.Series> batch = requestBatches.get(index);
+                ForecastDtos.Response batchResponse;
+                try {
+                    batchResponse = responses.get(index).get(120, TimeUnit.SECONDS);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new BusinessException(50331, "Forecast service was interrupted.");
+                } catch (ExecutionException | TimeoutException error) {
+                    throw new BusinessException(50331, "Forecast service is temporarily unavailable.");
+                }
+                validateBatchCoverage(batch, batchResponse);
+                if (firstBatch == null) firstBatch = batchResponse;
+                items.addAll(batchResponse.items());
+            }
+        } finally {
+            executor.shutdownNow();
         }
         ForecastDtos.Response response = new ForecastDtos.Response(firstBatch.model(), firstBatch.modelVersion(),
                 sourceVersion, horizon, items);
