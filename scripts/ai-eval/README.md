@@ -107,3 +107,14 @@ environment variables. Every output carries `snapshotVersion`, `capturedAt`,
 `dataQuality`, `warehouseScope`, and an empty `writeRequests` list. Keep the
 files for at least 8 weeks before replacing inferred `stock.move` stockout
 flags in acceptance backtests.
+
+On Windows, register the daily task from the repository root. The task reads
+the ignored `.env` file at runtime and performs read-only JSON-RPC calls:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/ai-eval/register-daily-inventory-snapshot.ps1
+```
+
+Use `Unregister-ScheduledTask -TaskName Orithos-AI-Daily-Inventory-Snapshot`
+to remove it. In deployed environments, store the resulting snapshots on an
+access-controlled persistent volume rather than in Git.
