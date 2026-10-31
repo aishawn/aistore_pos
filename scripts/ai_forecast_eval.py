@@ -29,10 +29,19 @@ MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothin
 
 def apply_inventory_history(series: Series, history: dict) -> Series:
     """Apply complete historical stock observations, retaining their provenance."""
-    if history.get("qualityWarnings") or str(history.get("backtestReadiness", "")).startswith("BLOCKED"):
-        return series
     products = {str(item.get("productId")): item for item in history.get("products", [])}
     product = products.get(str(series.productId))
+    warnings = history.get("qualityWarnings", [])
+    if any(item.get("productId") is None for item in warnings):
+        return series
+    warning_product_ids = {
+        str(item.get("productId")) for item in warnings
+        if item.get("productId") is not None
+    }
+    if str(series.productId) in warning_product_ids:
+        return series.model_copy(update={
+            "stockoutDataQuality": "EXCLUDED_SUSPECT_HISTORICAL_INVENTORY",
+        })
     observations = {str(item.get("date")): item for item in (product or {}).get("observations", [])}
     expected_dates = [value.isoformat() for value in series.dates]
     if not observations:
@@ -371,12 +380,37 @@ def main() -> int:
     report_path = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "reports" / "ai-forecast-eval.json"
     payload = json.loads(snapshot.read_text(encoding="utf-8"))
     raw_series = [Series(**item) for item in payload["series"]]
+    source_sales_observation_count = sum(len(series.units) for series in raw_series)
     inventory_history_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
     inventory_history = None
     if inventory_history_path:
         inventory_history = json.loads(inventory_history_path.read_text(encoding="utf-8"))
+        history_dates = inventory_history.get("snapshotDates") or sorted({
+            str(row.get("date"))
+            for product in inventory_history.get("products", [])
+            for row in product.get("observations", [])
+            if row.get("date")
+        })
+        if history_dates:
+            first_history_date, last_history_date = min(history_dates), max(history_dates)
+            aligned_series = []
+            for series in raw_series:
+                indexes = [index for index, value in enumerate(series.dates)
+                           if first_history_date <= value.isoformat() <= last_history_date]
+                if not indexes:
+                    aligned_series.append(series)
+                    continue
+                update = {
+                    "dates": [series.dates[index] for index in indexes],
+                    "units": [series.units[index] for index in indexes],
+                }
+                if series.stockoutFlags:
+                    update["stockoutFlags"] = [series.stockoutFlags[index] for index in indexes]
+                aligned_series.append(series.model_copy(update=update))
+            raw_series = aligned_series
         raw_series = [apply_native_inventory_history(series, inventory_history) for series in raw_series]
     request = BacktestRequest(horizonDays=payload.get("horizonDays", 7), series=raw_series)
+    aligned_sales_observation_count = sum(len(series.units) for series in request.series)
     result = backtest(request)
     items = [item.model_dump() for item in result.items]
     eligible = [item for item in items if item["status"] == "PASS"]
@@ -417,11 +451,39 @@ def main() -> int:
                     groups.setdefault(key, []).append(row)
                 comparison.append({"model": model, "horizonDays": horizon, "groupBy": labels,
                                    "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
-    inventory_rejected = bool(inventory_history and (
+    history_data_quality = inventory_history.get("dataQuality") if inventory_history else None
+    research_history_ready = bool(inventory_history and (
+        inventory_history.get("researchBacktestReadiness") in {
+            "READY", "READY_WITH_PRODUCT_EXCLUSIONS",
+        }
+        or (
+            history_data_quality == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"
+            and inventory_history.get("missingObservationCount", 0) == 0
+            and inventory_history.get("observedDays", 0) > 0
+        )
+    ))
+    inventory_rejected = bool(inventory_history and not research_history_ready and (
         inventory_history.get("qualityWarnings")
         or str(inventory_history.get("backtestReadiness", "")).startswith("BLOCKED")
+        or history_data_quality == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"
     ))
-    execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) and not inventory_rejected else "BLOCKED"
+    excluded_inventory_products = {
+        str(row.get("productId")) for row in (inventory_history or {}).get("qualityWarnings", [])
+        if row.get("productId") is not None
+    }
+    research_readiness = None
+    if inventory_history:
+        research_readiness = inventory_history.get("researchBacktestReadiness")
+        if research_readiness is None:
+            research_readiness = (
+                "READY_WITH_PRODUCT_EXCLUSIONS" if research_history_ready and excluded_inventory_products
+                else "READY" if research_history_ready else "BLOCKED"
+            )
+    inventory_evaluation_dates = [value.isoformat() for value in request.series[0].dates] if inventory_history and request.series else []
+    execution_status = (
+        "BLOCKED" if not eligible or inventory_rejected else
+        "PARTIAL" if any(item["status"] != "PASS" for item in items) else "PASS"
+    )
     business_metrics = _business_metrics(selected_rolling, cost_model)
     report = {
         "status": execution_status,
@@ -453,7 +515,10 @@ def main() -> int:
         "businessMetrics": business_metrics,
         "coldStartSimilarity": cold_start,
         "inventoryHistory": {
-            "status": "REJECTED_QUALITY_GATE" if inventory_rejected else "APPLIED" if inventory_history else "NOT_PROVIDED",
+            "status": "REJECTED_QUALITY_GATE" if inventory_rejected else (
+                "APPLIED_WITH_PRODUCT_EXCLUSIONS" if excluded_inventory_products
+                else "APPLIED" if inventory_history else "NOT_PROVIDED"
+            ),
             "path": str(inventory_history_path) if inventory_history_path else None,
             "dataQuality": inventory_history.get("dataQuality") if inventory_history else None,
             "backtestReadiness": inventory_history.get("backtestReadiness") if inventory_history else None,
@@ -461,6 +526,11 @@ def main() -> int:
             "researchOnly": bool(inventory_history and inventory_history.get("dataQuality") == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"),
             "inventoryConsistencyStatus": inventory_history.get("inventoryConsistencyStatus") if inventory_history else None,
             "qualityWarnings": inventory_history.get("qualityWarnings", []) if inventory_history else [],
+            "excludedProductCount": len(excluded_inventory_products),
+            "researchBacktestReadiness": research_readiness,
+            "evaluationDateRange": [inventory_evaluation_dates[0], inventory_evaluation_dates[-1]] if inventory_evaluation_dates else [],
+            "salesObservationsBeforeAlignment": source_sales_observation_count,
+            "salesObservationsAfterAlignment": aligned_sales_observation_count,
         },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)

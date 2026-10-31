@@ -152,6 +152,21 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual([False, True], result.stockoutFlags)
         self.assertEqual("INFERRED_FROM_STOCK_MOVES", result.stockoutDataQuality)
 
+    def test_product_scoped_inventory_warning_does_not_block_other_products(self):
+        series = Series(productId=22, dates=[date(2026, 10, 1), date(2026, 10, 2)],
+                        units=[1, 0], stockoutFlags=[False, False])
+        history = {"dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+                   "qualityWarnings": [{"productId": 21, "code": "STOCK_SALES_CONFLICT"}],
+                   "products": [{"productId": 22, "observations": [
+                       {"date": "2026-10-01", "isStockout": False},
+                       {"date": "2026-10-02", "isStockout": True},
+                   ]}]}
+
+        result = apply_inventory_history(series, history)
+
+        self.assertEqual([False, True], result.stockoutFlags)
+        self.assertEqual("RECONSTRUCTED_FROM_ODOO_TO_DATE", result.stockoutDataQuality)
+
     def test_cli_marks_suspect_inventory_history_blocked(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)

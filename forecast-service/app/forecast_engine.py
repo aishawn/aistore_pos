@@ -77,7 +77,7 @@ def _order_cycle_exposure(predicted: list[float], actual: list[float]) -> tuple[
     This is a comparable planning proxy, not reconstruction of historical stock.
     Units are rounded as in the replenishment UI; holding uses closing stock.
     """
-    stock = float(ceil(sum(predicted)))
+    stock = float(ceil(sum(predicted) - 1e-9))
     missed = inventory_unit_days = 0.0
     for demand in actual:
         missed += max(0.0, demand - stock)

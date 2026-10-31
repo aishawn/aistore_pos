@@ -14,10 +14,12 @@ import java.time.LocalDate;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ForecastService {
@@ -27,12 +29,15 @@ public class ForecastService {
     private final ObjectMapper mapper;
     private final boolean enabled;
     private final int maxHistoryDays;
+    private final int maxProducts;
 
     public ForecastService(JdbcTemplate jdbc, ForecastClient client, ObjectMapper mapper,
                            @Value("${app.ai.forecast.enabled:false}") boolean enabled,
-                           @Value("${app.ai.forecast.max-history-days:365}") int maxHistoryDays) {
+                           @Value("${app.ai.forecast.max-history-days:365}") int maxHistoryDays,
+                           @Value("${app.ai.forecast.max-products:2000}") int maxProducts) {
         this.jdbc = jdbc; this.client = client; this.mapper = mapper; this.enabled = enabled;
         this.maxHistoryDays = Math.max(14, Math.min(maxHistoryDays, 730));
+        this.maxProducts = Math.max(1, Math.min(maxProducts, 2000));
     }
 
     public ForecastDtos.Response forecast(TenantContext tenant, int horizonDays) {
@@ -83,10 +88,51 @@ public class ForecastService {
                 ORDER BY data_as_of DESC LIMIT 1
                 """, rs -> rs.next() ? rs.getString(1) : "unknown",
                 tenant.vendorId(), tenant.requireOutletId());
-        ForecastDtos.Response response = client.forecast(new ForecastDtos.Request(tenant.vendorId(), tenant.requireOutletId(), horizon,
-                sourceVersion, LocalDate.now(), series));
+        Set<Long> expectedProducts = new HashSet<>();
+        series.forEach(item -> expectedProducts.add(item.productId()));
+        List<ForecastDtos.Item> items = new ArrayList<>();
+        ForecastDtos.Response firstBatch = null;
+        for (List<ForecastDtos.Series> batch : batches(series, maxProducts)) {
+            ForecastDtos.Response batchResponse = client.forecast(new ForecastDtos.Request(
+                    tenant.vendorId(), tenant.requireOutletId(), horizon, sourceVersion, LocalDate.now(), batch));
+            validateBatchCoverage(batch, batchResponse);
+            if (firstBatch == null) firstBatch = batchResponse;
+            items.addAll(batchResponse.items());
+        }
+        ForecastDtos.Response response = new ForecastDtos.Response(firstBatch.model(), firstBatch.modelVersion(),
+                sourceVersion, horizon, items);
+        if (items.size() != expectedProducts.size()
+                || items.stream().map(ForecastDtos.Item::productId).distinct().count() != expectedProducts.size()) {
+            throw new BusinessException(50331, "Forecast results do not cover the requested products.");
+        }
         persistSnapshot(tenant, response);
         return response;
+    }
+
+    private static void validateBatchCoverage(List<ForecastDtos.Series> requested, ForecastDtos.Response response) {
+        if (response == null || response.items() == null) {
+            throw new BusinessException(50331, "Forecast service returned an incomplete result.");
+        }
+        Set<Long> requestedIds = requested.stream().map(ForecastDtos.Series::productId)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<Long> returnedIds = new HashSet<>();
+        for (ForecastDtos.Item item : response.items()) {
+            if (item == null || !returnedIds.add(item.productId())) {
+                throw new BusinessException(50331, "Forecast service returned duplicate or invalid products.");
+            }
+        }
+        if (!requestedIds.equals(returnedIds)) {
+            throw new BusinessException(50331, "Forecast results do not match the requested products.");
+        }
+    }
+
+    static List<List<ForecastDtos.Series>> batches(List<ForecastDtos.Series> series, int batchSize) {
+        if (batchSize < 1) throw new IllegalArgumentException("batchSize must be positive");
+        List<List<ForecastDtos.Series>> batches = new ArrayList<>();
+        for (int offset = 0; offset < series.size(); offset += batchSize) {
+            batches.add(List.copyOf(series.subList(offset, Math.min(series.size(), offset + batchSize))));
+        }
+        return List.copyOf(batches);
     }
 
     void persistSnapshot(TenantContext tenant, ForecastDtos.Response response) {

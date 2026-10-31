@@ -177,6 +177,10 @@ def validate_sales_inventory_consistency(sales_snapshot: dict[str, Any], history
 
     history["inventoryConsistencyStatus"] = "SUSPECT" if warnings else "NO_CONTRADICTION_DETECTED"
     history["qualityWarnings"] = warnings
+    history["researchBacktestReadiness"] = (
+        "BLOCKED_INCOMPLETE_HISTORY" if history.get("missingObservationCount", 0) else
+        "READY_WITH_PRODUCT_EXCLUSIONS" if warnings else "READY"
+    )
     if warnings:
         history["backtestReadiness"] = "BLOCKED_DATA_QUALITY"
     return history

@@ -62,9 +62,12 @@ native inventory history exists.
 4. Review stockout and overstock alerts in one isolated store for at least four weeks.
 5. Add weather, public holidays, promotions and censored-demand correction only after the baseline is measurable.
 6. Keep purchase draft and purchase confirmation switches off until Odoo write/readback and audit UAT passes.
-7. Build `scripts/ai-eval/build-inventory-history.py` output after at least 28
-   native daily snapshots; do not use `stock.move` inferred flags as a native
-   stockout substitute before that gate.
+7. For development research, use `fetch-skr-historical-inventory.py` to
+   reconstruct historical `qty_available` with Odoo `to_date`; exclude
+   product-level contradictions and label the results reconstructed.
+8. Require at least 28 continuous native daily snapshots only for production
+   stockout/replenishment acceptance. Reconstructed history is not a substitute
+   for that production gate.
 
 ## Reproducible evaluation
 
