@@ -262,6 +262,9 @@ services:
       NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
       NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
       ODOO_STOCKTAKE_WRITE_ENABLED: ${ODOO_STOCKTAKE_WRITE_ENABLED:-false}
+      AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
+      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-http://forecast-service:8000}
+      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-10000}
       # Used by the server-side Odoo session/data bridge. Keep credentials out
       # of the browser bundle. Staff may sign in with their own Odoo users, or
       # an optional least-privilege service account can restore sessions.
