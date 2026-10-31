@@ -239,7 +239,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   const suggestedItems = useMemo(() => data?.products.filter((product) => product.suggestedQuantity > 0) ?? [], [data]);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
-  const outOfStockWithDemand = suggestedItems.filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
+  const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
   const showR2DisplayNote = useMemo(
     () => (data?.products ?? []).some((product) => looksLikeR2ImportMarker(product.name) || looksLikeR2ImportMarker(product.sku)),
@@ -532,8 +532,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(totalSuggestedUnits)}</span> <span className="text-[var(--oh-muted)]">suggested units · {planCoverageDays}d</span></p>
         <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(outOfStockWithDemand)}</span> <span className="text-[var(--oh-muted)]">out of stock with demand</span></p>
         <p className="text-[var(--oh-muted)]">{number.format(data?.products.length ?? 0)} POS products in plan</p>
+        {(data?.reviewRequiredCount ?? 0) > 0 && <p className="text-amber-900">{number.format(data?.reviewRequiredCount ?? 0)} need data review; excluded from order value and forecast-risk totals.</p>}
         {data?.businessMetrics?.suggestedOrderValue !== null && data?.businessMetrics?.suggestedOrderValue !== undefined && <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">${number.format(data.businessMetrics.suggestedOrderValue)}</span> <span className="text-[var(--oh-muted)]">estimated order value</span></p>}
-        {data?.businessMetrics?.productsWithExpectedStockout !== undefined && <p><span className="font-semibold tabular-nums text-red-700">{number.format(data.businessMetrics.productsWithExpectedStockout)}</span> <span className="text-[var(--oh-muted)]">forecast stockout risks</span></p>}
+        {data?.businessMetrics?.productsWithExpectedStockout !== undefined && <p><span className="font-semibold tabular-nums text-red-700">{number.format(data.businessMetrics.productsWithExpectedStockout)}</span> <span className="text-[var(--oh-muted)]">forecast risks (review items excluded)</span></p>}
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
