@@ -84,9 +84,11 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
                       promotion_quality: str = "NOT_CAPTURED") -> dict[str, Any]:
     """Convert an Odoo product row into the stable snapshot contract."""
     product_type = row.get("type") or row.get("detailed_type")
-    # Physical and consumable products are stockable; services and recharge
-    # products must not create replenishment recommendations.
+    # Physical and consumable products are stockable. Purchase eligibility is
+    # kept separate so services and non-purchasable virtual products cannot
+    # create replenishment recommendations.
     is_stockable = product_type in ("product", "consu")
+    is_purchaseable = bool(row.get("purchase_ok", False))
     return {
         "productId": row.get("id"),
         "templateId": many2one_id(row.get("product_tmpl_id")),
@@ -97,7 +99,8 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "productType": product_type,
         "isStockable": is_stockable,
         "isSellable": bool(row.get("sale_ok", True)),
-        "isPurchaseable": bool(row.get("purchase_ok", False)),
+        "isPurchaseable": is_purchaseable,
+        "isReplenishmentEligible": is_stockable and is_purchaseable,
         "warehouseId": warehouse.get("id") if warehouse else None,
         "warehouse": warehouse.get("name") if warehouse else None,
         "availableQty": float(row.get("qty_available") or 0),
@@ -214,7 +217,8 @@ def main() -> int:
         "warehouses": [{"id": row.get("id"), "name": row.get("name")} for row in warehouses],
         "fields": ["availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty",
                    "price", "cost", "leadTimeDays", "promotionStatus",
-                   "productType", "isStockable", "isSellable", "isPurchaseable"],
+                   "productType", "isStockable", "isSellable", "isPurchaseable",
+                   "isReplenishmentEligible"],
         "products": snapshot_products,
         "writeRequests": [],
     }

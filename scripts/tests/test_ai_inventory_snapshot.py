@@ -51,9 +51,11 @@ class InventorySnapshotTests(unittest.TestCase):
         self.assertEqual("product", product["productType"])
         self.assertTrue(product["isStockable"])
         self.assertTrue(product["isPurchaseable"])
+        self.assertTrue(product["isReplenishmentEligible"])
 
         service = MODULE.normalise_product({"id": 14, "type": "service"}, None)
         self.assertFalse(service["isStockable"])
+        self.assertFalse(service["isReplenishmentEligible"])
 
         promoted = MODULE.normalise_product({"id": 13, "product_tmpl_id": [9, "Promo"]}, None,
                                             promotion={"id": 44, "compute_price": "percentage", "percent_price": 15},
