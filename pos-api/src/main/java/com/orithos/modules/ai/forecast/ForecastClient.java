@@ -18,6 +18,8 @@ import java.time.Duration;
 
 @Component
 public class ForecastClient {
+    private static final long LARGE_REQUEST_BYTES = 50_000L;
+    private static final Duration LARGE_REQUEST_TIMEOUT = Duration.ofSeconds(120);
     private static final Logger log = LoggerFactory.getLogger(ForecastClient.class);
     private final ObjectMapper mapper;
     private final HttpClient http;
@@ -41,9 +43,12 @@ public class ForecastClient {
         try {
             String body = mapper.writeValueAsString(request);
             byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+            Duration requestTimeout = bodyBytes.length > LARGE_REQUEST_BYTES
+                    ? timeout.compareTo(LARGE_REQUEST_TIMEOUT) > 0 ? timeout : LARGE_REQUEST_TIMEOUT
+                    : timeout;
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/v1/forecast/sales"))
-                    .timeout(timeout)
+                    .timeout(requestTimeout)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes))
                     .build();
