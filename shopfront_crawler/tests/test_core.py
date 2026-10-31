@@ -44,6 +44,15 @@ def test_sale_commit_batch_setting_has_bounded_default():
     assert Settings().sync_sale_commit_batch_size == 25
 
 
+def test_count_validation_is_present_before_history_cursor_advances():
+    import inspect
+    from app import sync
+
+    source = inspect.getsource(sync.sync_store)
+    assert "Shopfront report/Sale count mismatch" in source
+    assert "complete Sale query returned no rows" in source
+
+
 def test_sale_query_requests_nested_product_fields():
     # Keep this assertion close to the client contract without making a live
     # request. The nested Product selection is required for item names.
