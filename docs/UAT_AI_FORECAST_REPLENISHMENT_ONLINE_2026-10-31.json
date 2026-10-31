@@ -1,7 +1,7 @@
 {
   "date": "2026-10-31",
   "scope": "read-only AI forecast and replenishment regression",
-  "runtimeSha": "d84467651a61ea88d0bec47042cbc5872d159349",
+  "runtimeSha": "0c76d1e0fe360aa650c087008a7244a96ff90fa5",
   "hosts": {
     "demo": "https://demo.orithos.com.au",
     "skr": "https://skr.orithos.com.au"
@@ -35,6 +35,15 @@
       "note": "Read-only regression; product count intentionally omitted because the response is large."
     }
   ],
+  "assistantReadonlyProbe": {
+    "host": "skr",
+    "questionClass": "replenishment-risk",
+    "httpStatus": 200,
+    "applicationCode": 42901,
+    "status": "BLOCKED_PROVIDER_QUOTA",
+    "writeRequests": [],
+    "note": "The assistant route was reachable and failed closed on the configured AI usage limit; no provider call or business write was made."
+  },
   "limitations": [
     "Formal native-inventory backtest remains blocked until at least 28 continuous daily snapshots exist.",
     "No purchase order or inventory business write was executed."
