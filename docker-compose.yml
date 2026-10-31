@@ -255,6 +255,7 @@ services:
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.server.port=3000
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.passhostheader=true
     environment:
+      RFQ_IDEMPOTENCY_DB: /var/lib/orithos/rfq/requests.sqlite
       NODE_ENV: production
       RUNTIME_ENVIRONMENT: ${RUNTIME_ENVIRONMENT:-production}
       NEXT_TELEMETRY_DISABLED: "1"
@@ -279,8 +280,10 @@ services:
       R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront
     volumes:
       - shopfront-archive:/var/lib/orithos/shopfront:ro
+      - rfq-requests:/var/lib/orithos/rfq
 
 volumes:
+  rfq-requests:
   redis-data:
   shopfront-archive:
   shopfront-crawler-data:

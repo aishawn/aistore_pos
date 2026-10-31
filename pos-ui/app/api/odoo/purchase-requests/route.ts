@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { RfqJournal } from "@/lib/rfq-idempotency";
 import { replenishmentIssues } from "@/lib/replenishment-safety";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
@@ -124,6 +126,8 @@ export async function POST(request: NextRequest) {
   try { await requirePermission(request, "stock.replenishment"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
+  const requestId = request.headers.get("Idempotency-Key");
+  if (!requestId || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) return NextResponse.json({ message: "Refresh the RFQ review before creating a draft." }, { status: 400 });
 
   let body: Record<string, unknown>;
   try {
@@ -178,7 +182,7 @@ export async function POST(request: NextRequest) {
       ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false; qty_available?: number; virtual_available?: number; standard_price?: number; list_price?: number; uom_po_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
         ["id", "in", Array.from(lineMap.keys())],
-        ["company_id", "in", [false, companyId]],
+        ["company_id", "=", companyId],
       ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "qty_available", "virtual_available", "standard_price", "list_price"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }, correlationId),
     ]);
@@ -203,6 +207,19 @@ export async function POST(request: NextRequest) {
       }];
     });
     const approvalNote = makeReplenishmentNotes(Number(coverageDays), String(method), Array.from(lineMap, ([productId, line]) => ({ productId, ...line })), products ?? []);
+    const journalPath = process.env.RFQ_IDEMPOTENCY_DB?.trim();
+    if (!journalPath) throw new OdooRequestError("Draft RFQ request storage is unavailable. No order was created.", 503);
+    const journal = new RfqJournal(journalPath);
+    const scope = `${odooBaseUrl()}:${process.env.ODOO_DATABASE}:${companyId}`;
+    const digest = createHash("sha256").update(JSON.stringify({ supplierId, coverageDays, method, lines: [...lineMap].sort((a, b) => a[0] - b[0]) })).digest("hex");
+    const reservation = journal.reserve(scope, requestId, digest);
+    if (reservation.state === "CONFLICT") return NextResponse.json({ message: "This RFQ review was already submitted with different quantities. Check purchases before starting another review." }, { status: 409 });
+    if (reservation.state === "PENDING") return NextResponse.json({ code: "RFQ_REQUEST_PENDING", message: "This request is processing or its outcome needs checking. No second order was created. Check Orithos purchases before starting a new review." }, { status: 409 });
+    if (reservation.state === "DONE") return NextResponse.json({ ...reservation.response.body, replayed: true }, { status: reservation.response.status, headers: { "Cache-Control": "no-store" } });
+    const receipt = (body: Record<string, unknown>) => {
+      journal.complete(scope, requestId, digest, { body, status: 201 });
+      return NextResponse.json(body, { status: 201, headers: { "Cache-Control": "no-store" } });
+    };
     const orderId = await callOdoo<number>(sessionId, "purchase.order", "create", [{
       partner_id: Number(supplierId),
       company_id: companyId,
@@ -244,7 +261,7 @@ export async function POST(request: NextRequest) {
       })) throw new Error("Draft RFQ quantities or units could not be verified");
       orderName = order.name;
     } catch {
-      return NextResponse.json({
+      return receipt({
         id: orderId,
         name: orderName,
         supplier: supplier.name,
@@ -252,17 +269,17 @@ export async function POST(request: NextRequest) {
         auditSaved,
         readbackVerified: false,
         warning: "The draft was created and the approval audit was saved, but its draft state, quantities or units could not be verified. Open it in Orithos; do not retry creation.",
-      }, { status: 201, headers: { "Cache-Control": "no-store" } });
+      });
     }
     const baseUrl = odooBaseUrl();
-    return NextResponse.json({
+    return receipt({
       id: orderId,
       name: orderName,
       supplier: supplier.name,
       url: `${baseUrl}/web#id=${orderId}&model=purchase.order&view_type=form`,
       auditSaved,
       readbackVerified: true,
-    }, { status: 201, headers: { "Cache-Control": "no-store" } });
+    });
   } catch (error) {
     return jsonError(error);
   }

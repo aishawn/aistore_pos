@@ -792,6 +792,7 @@ export interface OdooDraftRfq {
 }
 
 export async function createOdooDraftRfq(input: {
+  requestId: string;
   supplierId: number;
   coverageDays: number;
   method: string;
@@ -799,10 +800,10 @@ export async function createOdooDraftRfq(input: {
 }): Promise<OdooDraftRfq> {
   const response = await fetchOdooApi("/api/odoo/purchase-requests", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": input.requestId },
     credentials: "same-origin",
     cache: "no-store",
-    body: JSON.stringify(input),
+    body: JSON.stringify({ supplierId: input.supplierId, coverageDays: input.coverageDays, method: input.method, lines: input.lines }),
   });
   const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {

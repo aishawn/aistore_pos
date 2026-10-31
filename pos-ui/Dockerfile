@@ -123,6 +123,7 @@ COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # COPY --from=builder --chown=node:node /app/.next/cache ./.next/cache
 
 # Switch to non-root user for security best practices
+RUN mkdir -p /var/lib/orithos/rfq && chown node:node /var/lib/orithos/rfq
 USER node
 
 # Expose port 3000 to allow HTTP traffic

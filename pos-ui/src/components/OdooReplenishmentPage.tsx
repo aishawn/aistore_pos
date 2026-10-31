@@ -156,6 +156,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const requestRevision = useRef(0);
   const rfqSupplierRevision = useRef(0);
   const rfqInFlight = useRef(false);
+  const rfqRequestId = useRef("");
   const rfqSupplierRef = useRef<HTMLSelectElement>(null);
   const methodCloseRef = useRef<HTMLButtonElement>(null);
   const helpButtonRef = useRef<HTMLButtonElement>(null);
@@ -278,6 +279,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   function openRfqDialog() {
     if (!canCreateRfq) return;
+    rfqRequestId.current = crypto.randomUUID();
     const lines = selectedSuggested.slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
       name: friendlyProductName(product.name),
@@ -335,6 +337,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setRfqError(null);
     try {
       const result = await createOdooDraftRfq({
+        requestId: rfqRequestId.current,
         supplierId,
         coverageDays,
         method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
