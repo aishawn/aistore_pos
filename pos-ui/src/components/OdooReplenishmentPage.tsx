@@ -85,6 +85,7 @@ type ReplenishmentData = {
   catalogueCoverage?: { status: string; loadedProducts: number; eligibleProducts: number; forecastedProducts: number };
   salesHistory?: { timezone: string; timezoneVerified: boolean };
   reviewRequiredCount?: number;
+  reviewIssueCounts?: Record<string, number>;
   excludedProductCount?: number;
   productEligibility?: string;
   generatedAt: string;
@@ -826,7 +827,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         </nav>}
         {data?.catalogueCoverage?.status === "COMPLETE" && <p role="status" className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Complete catalogue: {data.catalogueCoverage.loadedProducts} POS products checked · {data.catalogueCoverage.eligibleProducts} eligible for replenishment. Search and totals include every page.</p>}
         {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">Store timezone uses {data.salesHistory.timezone} as a fallback. Verify the store state in Orithos; forecast confidence is reduced.</p>}
-        {(data?.reviewRequiredCount ?? 0) > 0 && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">{data?.reviewRequiredCount} products need stock, cost or purchase unit checks. Their purchase suggestions are paused. Choose “Review data” to inspect them.</p>}
+        {(data?.reviewRequiredCount ?? 0) > 0 && <div role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"><p>{data?.reviewRequiredCount} products need stock, cost or purchase unit checks. Their purchase suggestions are paused. Choose “Review data” to inspect them.</p><p className="mt-1 text-xs">Reasons: {Object.entries(data?.reviewIssueCounts ?? {}).map(([issue, count]) => `${issue.replaceAll("_", " ").toLowerCase()} ${count}`).join(" · ") || "details unavailable"}.</p></div>}
         {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">This plan has incomplete catalogue coverage. Refresh before relying on store totals.</p>}
       </section>
 

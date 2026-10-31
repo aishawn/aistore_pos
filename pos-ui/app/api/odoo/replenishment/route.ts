@@ -459,6 +459,10 @@ export async function GET(request: NextRequest) {
       return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
     };
     const expectedStockoutDays = replenishmentItems.map((item) => item.expectedStockoutDaysAfterReplenishment).filter((value): value is number => typeof value === "number");
+    const reviewIssueCounts: Record<string, number> = {};
+    for (const item of replenishmentItems) {
+      for (const issue of item.dataIssues) reviewIssueCounts[issue] = (reviewIssueCounts[issue] ?? 0) + 1;
+    }
 
     const responseBody = {
       company: companies?.[0]?.name ?? "Current company",
@@ -476,6 +480,7 @@ export async function GET(request: NextRequest) {
           units: Array.from({ length: HISTORY_DAYS }, (_, index) => dailyByProduct.get(item.id)?.get(shiftDay(historyStart, index)) ?? 0),
         })) : undefined,
       reviewRequiredCount: replenishmentItems.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
+      reviewIssueCounts,
       excludedProductCount,
       productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
