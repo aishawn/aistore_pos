@@ -143,7 +143,9 @@ The history marks `actualStockoutDates` only when native `availableQty <= 0`,
 records `incomingQty` and supplier lead time for each product-day, and detects
 list-price changes. Promotion state remains explicitly `NOT_CAPTURED` until a
 promotion or pricelist source is added; it is never inferred from a price
-change. Until 28 daily snapshots exist, the output is marked
+change. The collector also reads active Odoo pricelist rules and records
+promotion rule transitions when product or template rules match; no matching
+rule is reported separately from an unavailable pricelist source. Until 28 daily snapshots exist, the output is marked
 `backtestReadiness=INSUFFICIENT_HISTORY` and must not replace the inferred
 stockout flags in an acceptance backtest. The history also reports
 `missingSnapshotDates` and `continuityStatus=GAPS_PRESENT` when the scheduler

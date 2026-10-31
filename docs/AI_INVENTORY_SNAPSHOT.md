@@ -5,7 +5,7 @@ inventory state with read-only JSON-RPC calls. It writes one immutable file per
 UTC capture date under `.local/ai-eval/inventory-snapshots/YYYY-MM-DD/inventory.json`.
 
 Each product records Odoo's native `qty_available`, `virtual_available`,
-`incoming_qty`, `outgoing_qty`, category, current list price, `standard_price`, and the shortest
+`incoming_qty`, `outgoing_qty`, category, current list price, `standard_price`, active Odoo pricelist rule metadata, and the shortest
 configured supplier delay. The file also records the company, warehouse scope,
 capture timestamp, source database, data-quality label, and an empty
 `writeRequests` audit list. Missing supplier lead time is kept as `null`.

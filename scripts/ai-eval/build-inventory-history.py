@@ -89,8 +89,14 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                 "price": _number(product.get("price")),
                 "cost": _number(product.get("cost")),
                 "isStockout": _number(product.get("availableQty")) is not None and _number(product.get("availableQty")) <= 0,
-                "promotionStatus": "UNKNOWN",
-                "promotionDataQuality": "NOT_CAPTURED",
+                "promotionStatus": product.get("promotionStatus", "UNKNOWN"),
+                "promotionDataQuality": product.get("promotionDataQuality", snapshot.get("promotionDataQuality", "NOT_CAPTURED")),
+                "promotionRuleId": product.get("promotionRuleId"),
+                "promotionDateStart": product.get("promotionDateStart"),
+                "promotionDateEnd": product.get("promotionDateEnd"),
+                "promotionComputePrice": product.get("promotionComputePrice"),
+                "promotionFixedPrice": _number(product.get("promotionFixedPrice")),
+                "promotionPercentPrice": _number(product.get("promotionPercentPrice")),
             }
             grouped.setdefault(key, []).append({"product": product, "observation": observation})
 
@@ -101,7 +107,9 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         observations: list[dict[str, Any]] = []
         stockout_dates: list[str] = []
         price_changes: list[dict[str, Any]] = []
+        promotion_changes: list[dict[str, Any]] = []
         previous_price: float | None = None
+        previous_promotion: tuple[Any, Any] | None = None
         for entry in entries:
             current = entry["observation"]
             price = current["price"]
@@ -113,11 +121,17 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
             else:
                 current["priceChangeFrom"] = None
                 current["priceChangeTo"] = None
+            promotion = (current["promotionStatus"], current["promotionRuleId"])
+            current["promotionChanged"] = previous_promotion is not None and promotion != previous_promotion
+            if current["promotionChanged"]:
+                promotion_changes.append({"date": current["date"], "from": previous_promotion[0], "to": current["promotionStatus"],
+                                          "fromRuleId": previous_promotion[1], "toRuleId": current["promotionRuleId"]})
             if current["isStockout"]:
                 stockout_dates.append(current["date"])
             observations.append(current)
             if price is not None:
                 previous_price = price
+            previous_promotion = promotion
         products.append({
             "productId": first.get("productId"),
             "templateId": first.get("templateId"),
@@ -128,7 +142,8 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
             "observations": observations,
             "actualStockoutDates": stockout_dates,
             "priceChanges": price_changes,
-            "promotionDataQuality": "NOT_CAPTURED",
+            "promotionChanges": promotion_changes,
+            "promotionDataQuality": observations[0]["promotionDataQuality"] if observations else "NOT_CAPTURED",
         })
     products.sort(key=lambda product: (str(product.get("name") or ""), int(product.get("productId") or 0)))
     return {
@@ -144,7 +159,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
         "backtestReadiness": "READY_FOR_NATIVE_STOCKOUT_BACKTEST" if len(snapshots) >= 28 else "INSUFFICIENT_HISTORY",
         "stockoutDefinition": "observed availableQty <= 0 at a native Odoo snapshot",
-        "promotionDataQuality": "NOT_CAPTURED",
+        "promotionDataQuality": str(snapshots[0].get("promotionDataQuality", "NOT_CAPTURED")),
         "products": products,
         "writeRequests": [],
     }

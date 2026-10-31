@@ -31,13 +31,19 @@ def snapshot(date, quantity, price, *, version=None):
 
 class InventoryHistoryTests(unittest.TestCase):
     def test_build_history_records_native_stockout_and_price_change(self):
-        result = MODULE.build_history([snapshot("2026-10-01", 4, 19.99), snapshot("2026-10-02", 0, 21.99)])
+        first = snapshot("2026-10-01", 4, 19.99)
+        second = snapshot("2026-10-02", 0, 21.99)
+        first["promotionDataQuality"] = second["promotionDataQuality"] = "ODOO_PRICELIST_RULES_READ"
+        first["products"][0]["promotionStatus"] = "ACTIVE_RULE"
+        first["products"][0]["promotionRuleId"] = 44
+        result = MODULE.build_history([first, second])
         product = result["products"][0]
         self.assertEqual("NATIVE_ODOO_DAILY_SNAPSHOTS", result["dataQuality"])
         self.assertEqual("INSUFFICIENT_HISTORY", result["backtestReadiness"])
         self.assertEqual(["2026-10-02"], product["actualStockoutDates"])
         self.assertEqual([{"date": "2026-10-02", "from": 19.99, "to": 21.99}], product["priceChanges"])
-        self.assertEqual("NOT_CAPTURED", product["promotionDataQuality"])
+        self.assertEqual("ODOO_PRICELIST_RULES_READ", product["promotionDataQuality"])
+        self.assertEqual(1, len(product["promotionChanges"]))
         self.assertEqual([], result["writeRequests"])
         self.assertEqual(3.0, product["observations"][0]["incomingQty"])
         self.assertEqual(11.25, product["observations"][0]["cost"])

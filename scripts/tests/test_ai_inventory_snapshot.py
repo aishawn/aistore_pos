@@ -45,6 +45,12 @@ class InventorySnapshotTests(unittest.TestCase):
         self.assertEqual("Wine", product["category"])
         self.assertEqual("MID_15_30", product["priceBand"])
         self.assertEqual(11.25, product["cost"])
+
+        promoted = MODULE.normalise_product({"id": 13, "product_tmpl_id": [9, "Promo"]}, None,
+                                            promotion={"id": 44, "compute_price": "percentage", "percent_price": 15},
+                                            promotion_quality="ODOO_PRICELIST_RULES_READ")
+        self.assertEqual("ACTIVE_RULE", promoted["promotionStatus"])
+        self.assertEqual(44, promoted["promotionRuleId"])
         self.assertEqual(5, product["leadTimeDays"])
         self.assertIsNone(product["warehouseId"])
 

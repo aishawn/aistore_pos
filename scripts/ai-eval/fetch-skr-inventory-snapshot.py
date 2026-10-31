@@ -79,7 +79,9 @@ def price_band(value: Any) -> str | None:
 
 
 def normalise_product(row: dict[str, Any], lead_time_days: float | None,
-                      warehouse: dict[str, Any] | None = None) -> dict[str, Any]:
+                      warehouse: dict[str, Any] | None = None,
+                      promotion: dict[str, Any] | None = None,
+                      promotion_quality: str = "NOT_CAPTURED") -> dict[str, Any]:
     """Convert an Odoo product row into the stable snapshot contract."""
     return {
         "productId": row.get("id"),
@@ -97,6 +99,14 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "price": float(row.get("list_price") or 0),
         "cost": float(row.get("standard_price")) if row.get("standard_price") is not None else None,
         "leadTimeDays": lead_time_days,
+        "promotionStatus": "ACTIVE_RULE" if promotion else "UNKNOWN",
+        "promotionDataQuality": promotion_quality,
+        "promotionRuleId": promotion.get("id") if promotion else None,
+        "promotionDateStart": promotion.get("date_start") if promotion else None,
+        "promotionDateEnd": promotion.get("date_end") if promotion else None,
+        "promotionComputePrice": promotion.get("compute_price") if promotion else None,
+        "promotionFixedPrice": promotion.get("fixed_price") if promotion else None,
+        "promotionPercentPrice": promotion.get("percent_price") if promotion else None,
         "active": bool(row.get("active", True)),
     }
 
@@ -145,8 +155,42 @@ def main() -> int:
         # the inventory capture useful and expose the missing value as null.
         pass
 
+    promotion_by_product: dict[int, dict[str, Any]] = {}
+    promotion_by_template: dict[int, dict[str, Any]] = {}
+    promotion_quality = "ODOO_PRICELIST_RULES_READ"
+    try:
+        price_lists = odoo.read("product.pricelist", [
+            ["company_id", "=", company_id], ["active", "=", True]
+        ], ["id"], 1000)
+        price_list_ids = [int(row.get("id")) for row in price_lists if row.get("id")]
+        rules = odoo.read("product.pricelist.item", [["pricelist_id", "in", price_list_ids]], [
+            "id", "product_id", "product_tmpl_id", "date_start", "date_end",
+            "compute_price", "fixed_price", "percent_price"
+        ], 100000) if price_list_ids else []
+        today = captured_at.date().isoformat()
+        for rule in rules if isinstance(rules, list) else []:
+            start = str(rule.get("date_start") or "")[:10]
+            end = str(rule.get("date_end") or "")[:10]
+            if (start and today < start) or (end and today > end):
+                continue
+            product_id = many2one_id(rule.get("product_id"))
+            template_id = many2one_id(rule.get("product_tmpl_id"))
+            if product_id is not None:
+                promotion_by_product.setdefault(product_id, rule)
+            elif template_id is not None:
+                promotion_by_template.setdefault(template_id, rule)
+    except RuntimeError:
+        promotion_quality = "ODOO_PRICELIST_RULES_UNAVAILABLE"
+
     snapshot_products = [
-        normalise_product(row, lead_times.get(many2one_id(row.get("product_tmpl_id"))), warehouse)
+        normalise_product(
+            row,
+            lead_times.get(many2one_id(row.get("product_tmpl_id"))),
+            warehouse,
+            promotion_by_product.get(int(row.get("id")))
+            or promotion_by_template.get(many2one_id(row.get("product_tmpl_id"))),
+            promotion_quality,
+        )
         for row in products
     ]
     snapshot = {
@@ -156,10 +200,11 @@ def main() -> int:
         "companyId": company_id,
         "capturedAt": captured_at.isoformat(),
         "dataQuality": "NATIVE_ODOO_CURRENT_QUANTITIES",
+        "promotionDataQuality": promotion_quality,
         "warehouseScope": "SINGLE_WAREHOUSE" if warehouse else "COMPANY_AGGREGATE",
         "warehouses": [{"id": row.get("id"), "name": row.get("name")} for row in warehouses],
         "fields": ["availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty",
-                   "price", "cost", "leadTimeDays"],
+                   "price", "cost", "leadTimeDays", "promotionStatus"],
         "products": snapshot_products,
         "writeRequests": [],
     }
