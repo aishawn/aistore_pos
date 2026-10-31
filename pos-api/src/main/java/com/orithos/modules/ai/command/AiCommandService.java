@@ -357,7 +357,8 @@ public class AiCommandService {
             if (category.find()) categoryToken = category.group(1);
         }
         if (odooReports == null) return unresolvedPricePreviewRequest(text);
-        OdooReportQueryService.ProductCatalogResult catalog = odooReports.listPriceProducts(tenant);
+        OdooReportQueryService.ProductCatalogResult catalog = odooReports.searchPriceProducts(
+                tenant, threshold, lowerBound, categoryToken);
         if (catalog.error() != null) return unresolvedPricePreviewRequest(text);
         BigDecimal pct = new BigDecimal(percent.group(1)).divide(BigDecimal.valueOf(100));
         List<CommandItem> items = new ArrayList<>();

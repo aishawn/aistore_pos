@@ -334,6 +334,76 @@ public class OdooReportQueryService {
         return relationName(product.get("categ_id"));
     }
 
+    /** Read only the bounded price slice needed for a command preview. */
+    public ProductCatalogResult searchPriceProducts(TenantContext tenant, BigDecimal threshold,
+                                                     boolean lowerBound, String categoryToken) {
+        if (tenant == null || tenant.requireOutletId() == null) return ProductCatalogResult.fail("NO_STORE");
+        if (!tenant.canQueryReport()) return ProductCatalogResult.fail("NO_PERMISSION");
+        if (!configured()) return ProductCatalogResult.fail("ODOO_REPORT_NOT_CONFIGURED");
+        try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return ProductCatalogResult.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
+            long companyId = vendor.getOdooCompanyId();
+            String sessionId = authenticate();
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
+            Map<Long, String> categories = new LinkedHashMap<>();
+            List<Object> categoryDomain = new ArrayList<>();
+            addCompanyScope(categoryDomain, companyId);
+            for (Map<String, Object> category : searchRead(sessionId, "pos.category", categoryDomain,
+                    List.of("id", "name"), context, MAX_GROUPS, "name asc, id asc")) {
+                Object id = category.get("id");
+                if (id instanceof Number number) categories.put(number.longValue(), String.valueOf(category.getOrDefault("name", "")));
+            }
+            List<Long> categoryIds = categories.entrySet().stream()
+                    .filter(entry -> categoryNameMatches(entry.getValue(), categoryToken))
+                    .map(Map.Entry::getKey).toList();
+            if (categoryToken != null && !categoryToken.isBlank() && categoryIds.isEmpty()) {
+                return ProductCatalogResult.ok(List.of());
+            }
+            List<Object> domain = productDomain(companyId);
+            domain.add(List.of("list_price", lowerBound ? "<=" : ">=", threshold));
+            if (!categoryIds.isEmpty()) domain.add(List.of("pos_categ_ids", "in", categoryIds));
+            List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
+                    List.of("id", "display_name", "name", "list_price", "qty_available", "categ_id", "pos_categ_ids"),
+                    context, 51, "list_price asc, name asc, id asc");
+            if (products.size() > 50) products = products.subList(0, 50);
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Map<String, Object> product : products) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", product.get("id"));
+                row.put("name", product.getOrDefault("display_name", product.getOrDefault("name", "")));
+                row.put("list_price", decimal(product.get("list_price")));
+                row.put("quantity", decimal(product.get("qty_available")));
+                row.put("category", productCategories(product, categories));
+                rows.add(row);
+            }
+            return ProductCatalogResult.ok(rows);
+        } catch (Exception e) {
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String error = failure != null && "ODOO_RPC_ERROR".equals(failure.kind())
+                    && "AccessError".equals(failure.rpcType()) ? "NO_PERMISSION" : "ODOO_REPORT_UNAVAILABLE";
+            log.warn("AI bounded price search unavailable vendorId={} failureKind={} rpcType={} causeType={}",
+                    tenant.vendorId(), failure == null ? "" : failure.kind(),
+                    failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
+            return ProductCatalogResult.fail(error);
+        }
+    }
+
+    private static boolean categoryNameMatches(String category, String token) {
+        if (token == null || token.isBlank()) return true;
+        String value = category.toLowerCase(java.util.Locale.ROOT);
+        String wanted = token.toLowerCase(java.util.Locale.ROOT);
+        if (wanted.contains("红酒") || wanted.contains("red wine")) return value.contains("wine") || value.contains("red");
+        if (wanted.contains("葡萄酒") || wanted.equals("wine")) return value.contains("wine");
+        if (wanted.contains("啤酒") || wanted.equals("beer")) return value.contains("beer");
+        if (wanted.contains("烈酒") || wanted.contains("白酒") || wanted.equals("spirits") || wanted.equals("liquor")) return value.contains("spirit") || value.contains("liquor");
+        return value.contains(wanted);
+    }
+
     public ZoneId businessTimezone(TenantContext tenant) {
         if (tenant == null || !tenant.canQueryReport() || !configured()) return AustraliaTime.ZONE;
         Vendor vendor;
