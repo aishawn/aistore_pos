@@ -174,11 +174,11 @@ export async function POST(request: NextRequest) {
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[
         ["id", "=", Number(supplierId)],
         ["supplier_rank", ">", 0],
-        ["company_id", "=", companyId],
+        ["company_id", "in", [false, companyId]],
       ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false; qty_available?: number; virtual_available?: number; standard_price?: number; list_price?: number; uom_po_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
         ["id", "in", Array.from(lineMap.keys())],
-        ["company_id", "=", companyId],
+        ["company_id", "in", [false, companyId]],
       ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "qty_available", "virtual_available", "standard_price", "list_price"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }, correlationId),
     ]);

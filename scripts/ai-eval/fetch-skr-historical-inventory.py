@@ -140,6 +140,48 @@ def build_history(product_ids: list[int], dates: list[date], rows_by_date: dict[
     }
 
 
+def validate_sales_inventory_consistency(sales_snapshot: dict[str, Any], history: dict[str, Any],
+                                         *, minimum_history_days: int = 28,
+                                         minimum_selling_days: int = 14) -> dict[str, Any]:
+    """Flag persistent nonpositive balances that conflict with repeated sales."""
+    inventory_by_product = {
+        str(product.get("productId")): product
+        for product in history.get("products", [])
+    }
+    warnings = []
+    for series in sales_snapshot.get("series", []):
+        product_id = series.get("productId")
+        product = inventory_by_product.get(str(product_id))
+        observations = (product or {}).get("observations", [])
+        dates = [str(value) for value in series.get("dates", [])]
+        units = series.get("units", [])
+        if len(observations) < minimum_history_days or len(dates) != len(units):
+            continue
+        observations_by_date = {str(row.get("date")): row for row in observations}
+        matched = [observations_by_date[day] for day in dates if day in observations_by_date]
+        if len(matched) < minimum_history_days:
+            continue
+        selling_days = sum(1 for quantity in units if quantity is not None and float(quantity) > 0)
+        nonpositive_days = sum(
+            1 for row in matched
+            if row.get("availableQty") is not None and float(row["availableQty"]) <= 0
+        )
+        if nonpositive_days == len(matched) and selling_days >= minimum_selling_days:
+            warnings.append({
+                "code": "PERSISTENT_NONPOSITIVE_STOCK_WITH_REPEATED_SALES",
+                "productId": product_id,
+                "observedDays": len(matched),
+                "nonpositiveStockDays": nonpositive_days,
+                "sellingDays": selling_days,
+            })
+
+    history["inventoryConsistencyStatus"] = "SUSPECT" if warnings else "NO_CONTRADICTION_DETECTED"
+    history["qualityWarnings"] = warnings
+    if warnings:
+        history["backtestReadiness"] = "BLOCKED_DATA_QUALITY"
+    return history
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sales-snapshot", type=Path, required=True,
@@ -208,12 +250,15 @@ def main() -> int:
 
     history = build_history(product_ids, dates, rows_by_date,
                             company_id=company_id, timezone_name=timezone_name)
+    validate_sales_inventory_consistency(snapshot, history)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(history, indent=2), encoding="utf-8")
     checkpoint_path.unlink(missing_ok=True)
     print(json.dumps({"output": str(args.output), "dates": len(dates), "products": len(product_ids),
                       "dataQuality": history["dataQuality"],
                       "backtestReadiness": history["backtestReadiness"],
+                      "inventoryConsistencyStatus": history["inventoryConsistencyStatus"],
+                      "qualityWarningCount": len(history["qualityWarnings"]),
                       "nativeSnapshotAcceptanceReadiness": history["nativeSnapshotAcceptanceReadiness"],
                       "missingObservationCount": history["missingObservationCount"],
                       "writeRequests": history["writeRequests"]}))
