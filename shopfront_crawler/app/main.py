@@ -484,6 +484,12 @@ def sync_status(store: str | None = None, db: Session = Depends(get_db)) -> dict
 def shopfront_audit(store: str = "skr", db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     active = active_job(db, store)
+    status_rows = db.execute(
+        select(Sale.status, func.count(Sale.id))
+        .where(Sale.store_key == store)
+        .group_by(Sale.status)
+    ).all()
+    status_counts = {str(status or "UNKNOWN"): int(count) for status, count in status_rows}
     checkpoint = db.scalar(select(ShopfrontSyncCheckpoint).where(
         ShopfrontSyncCheckpoint.store_key == store,
         ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
@@ -500,6 +506,8 @@ def shopfront_audit(store: str = "skr", db: Session = Depends(get_db)) -> dict:
             "inventory": db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0,
             "suppliers": db.scalar(select(func.count(ShopfrontSupplier.id)).where(ShopfrontSupplier.store_key == store)) or 0,
             "purchase_orders": db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0,
+            "sale_status": status_counts,
+            "incomplete_sales": status_counts.get("INCOMPLETE", 0),
         },
         "source": "crawler_database",
     }
@@ -535,7 +543,9 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
     utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
     summary_rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())).all()
     summary_count = sum(int(row.transaction_count or 0) for row in preferred_summary_rows(summary_rows))
-    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)) or 0
+    sale_window = [Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end]
+    sale_count = db.scalar(select(func.count(Sale.id)).where(*sale_window, Sale.status != "PARKED")) or 0
+    parked_count = db.scalar(select(func.count(Sale.id)).where(*sale_window, Sale.status == "PARKED")) or 0
     status_rows = db.execute(
         select(Sale.status, func.count(Sale.id))
         .where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)
@@ -556,6 +566,7 @@ def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(
         "sale_count": int(sale_count),
         "difference": int(sale_count) - int(summary_count),
         "sale_status_counts": sale_status_counts,
+        "parked_excluded": int(parked_count),
         "sale_items_missing_name": int(missing_names),
         "source": "crawler_database",
     }
@@ -2202,11 +2213,31 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
     require_store(store, db)
     run = await _stage_pos_import(store, "sales", db)
     rows = db.scalars(select(Sale).where(Sale.store_key == store)).all()
-    incomplete = [x.shopfront_sale_id for x in rows if not x.shopfront_sale_id or not x.items]
+    incomplete = []
+    incomplete_reasons: dict[str, int] = {}
+    for sale in rows:
+        raw = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+        status = str(sale.status or "").upper()
+        payments = raw.get("payments") if isinstance(raw.get("payments"), list) else []
+        reasons = []
+        if not sale.shopfront_sale_id:
+            reasons.append("missing_sale_id")
+        if not sale.items:
+            reasons.append("missing_items")
+        if status in {"INCOMPLETE", "PARKED"}:
+            reasons.append(f"status_{status.lower()}")
+        if status == "COMPLETED" and not payments:
+            reasons.append("missing_payments")
+        if not status:
+            reasons.append("missing_status")
+        if reasons:
+            incomplete.append(sale.shopfront_sale_id)
+            for reason in reasons:
+                incomplete_reasons[reason] = incomplete_reasons.get(reason, 0) + 1
     if incomplete and settings.pos_business_write_enabled:
         run.status = "blocked"
         run.error = f"Sale detail is incomplete for {len(incomplete)} sales; formal POS import is blocked"
-        run.counts = {"sales": len(rows), "blocked": len(incomplete)}
+        run.counts = {"sales": len(rows), "blocked": len(incomplete), "blocked_reasons": incomplete_reasons}
         db.commit()
         return {"status": run.status, "run_id": run.id, "counts": run.counts, "error": run.error}
     products_by_source = {str(product.shopfront_product_id): product for product in db.scalars(select(Product).where(Product.store_key == store)).all()}
