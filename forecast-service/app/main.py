@@ -21,7 +21,7 @@ async def log_request_validation_error(request: Request, error: RequestValidatio
             body_size = -1
         error_paths = [
             ".".join(str(part) for part in item.get("loc", ())) + ":" + str(item.get("type", "unknown"))
-            for item in error.errors(include_input=False)[:12]
+            for item in error.errors()[:12]
         ]
         log.warning(
             "Forecast request validation failed path=%s contentLength=%s bodyBytes=%s contentType=%s errors=%s",

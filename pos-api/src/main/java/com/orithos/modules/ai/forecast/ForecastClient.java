@@ -30,24 +30,29 @@ public class ForecastClient {
         this.mapper = mapper;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
         this.timeout = Duration.ofMillis(Math.max(500, timeoutMs));
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+        this.http = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
     }
 
     public ForecastDtos.Response forecast(ForecastDtos.Request request) {
         if (baseUrl.isBlank()) throw new BusinessException(50331, "Forecast service is not configured.");
         try {
             String body = mapper.writeValueAsString(request);
+            byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/v1/forecast/sales"))
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .header("Content-Length", String.valueOf(bodyBytes.length))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes))
                     .build();
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 if (response.statusCode() == 422) {
                     log.warn("Forecast service rejected request payloadBytes={} validationErrors={}",
-                            body.getBytes(StandardCharsets.UTF_8).length, validationErrorPaths(response.body()));
+                            bodyBytes.length, validationErrorPaths(response.body()));
                 }
                 throw new BusinessException(50331, "Forecast service returned an error.");
             }
