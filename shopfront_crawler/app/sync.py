@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -360,6 +360,53 @@ async def sync_supply_chain(db: Session, settings: Settings, store: Store) -> di
             counts["purchase_orders"] += 1
         db.commit()
         return counts
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        await client.close()
+
+
+async def sync_customers(db: Session, settings: Settings, store: Store) -> dict[str, int]:
+    if not settings.shopfront_enable_customers:
+        raise ShopfrontError("Customer sync is disabled; enable SHOPFRONT_ENABLE_CUSTOMERS and re-authorize Shopfront")
+    token = await access_token(db, settings, store)
+    client = get_client(settings, store)
+    count = 0
+    try:
+        customers = await client.fetch_customers(token)
+        now = datetime.now(timezone.utc)
+        for source in customers:
+            source_id = str(source.get("id") or "").strip()
+            if not source_id:
+                continue
+            row = db.scalar(select(ShopfrontCustomer).where(
+                ShopfrontCustomer.store_key == store.store_key,
+                ShopfrontCustomer.source_id == source_id,
+            ))
+            if row is None:
+                row = ShopfrontCustomer(store_key=store.store_key, source_id=source_id)
+                db.add(row)
+            emails = source.get("emails") if isinstance(source.get("emails"), list) else []
+            group = source.get("customerGroup") if isinstance(source.get("customerGroup"), dict) else {}
+            row.client_id = source.get("clientId")
+            row.code = source.get("code")
+            row.name = source.get("name")
+            row.first_name = source.get("firstName")
+            row.last_name = source.get("lastName")
+            row.company = source.get("company")
+            row.email = str(emails[0]) if emails else None
+            row.phone = source.get("phone")
+            row.mobile = source.get("mobile")
+            row.customer_group = group.get("name")
+            row.loyalty_points = parse_decimal(source.get("loyaltyPoints"))
+            row.current_owing = parse_decimal(source.get("currentOwing"))
+            row.deleted = bool(source.get("deleted")) if source.get("deleted") is not None else None
+            row.raw_payload = without_credentials(source)
+            row.synced_at = now
+            count += 1
+        db.commit()
+        return {"customers": count}
     except Exception:
         db.rollback()
         raise
