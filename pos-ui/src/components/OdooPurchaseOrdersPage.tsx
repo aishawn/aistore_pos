@@ -9,6 +9,7 @@ import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { StockTransfersPage } from "@/components/admin/StockTransfersPage";
 import { CreateStockTransferPage } from "@/components/admin/CreateStockTransferPage";
+import { ShopfrontPurchasingGate } from "@/components/ShopfrontPurchasingDirectory";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -103,6 +104,13 @@ function PurchaseOrdersEmptyState({ filtered, onReset }: { filtered: boolean; on
 }
 
 export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolean }) {
+  const params = useSearchParams();
+  const native = <OdooNativePurchaseOrdersPage embedded={embedded} />;
+  if (["transfers", "transfer-new"].includes(params.get("tab") || "")) return native;
+  return <ShopfrontPurchasingGate kind="purchase-orders">{native}</ShopfrontPurchasingGate>;
+}
+
+function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean }) {
   const Container = embedded ? "section" : "main";
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
