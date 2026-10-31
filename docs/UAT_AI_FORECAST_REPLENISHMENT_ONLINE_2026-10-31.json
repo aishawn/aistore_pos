@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-31",
+  "scope": "read-only AI forecast and replenishment regression",
+  "runtimeSha": "d84467651a61ea88d0bec47042cbc5872d159349",
+  "hosts": {
+    "demo": "https://demo.orithos.com.au",
+    "skr": "https://skr.orithos.com.au"
+  },
+  "checks": [
+    {
+      "host": "demo",
+      "login": "PASS",
+      "odooSession": "PASS",
+      "replenishment": "PASS",
+      "httpStatus": 200,
+      "productCount": 14,
+      "writeRequests": 0,
+      "fieldsVerified": [
+        "leadTimeDays",
+        "daysOfStockAfterReplenishment",
+        "risk",
+        "confidence",
+        "dataQuality",
+        "reasonParts",
+        "method"
+      ]
+    },
+    {
+      "host": "skr",
+      "login": "PASS",
+      "odooSession": "PASS",
+      "replenishment": "PASS",
+      "httpStatus": 200,
+      "writeRequests": 0,
+      "note": "Read-only regression; product count intentionally omitted because the response is large."
+    }
+  ],
+  "limitations": [
+    "Formal native-inventory backtest remains blocked until at least 28 continuous daily snapshots exist.",
+    "No purchase order or inventory business write was executed."
+  ]
+}
