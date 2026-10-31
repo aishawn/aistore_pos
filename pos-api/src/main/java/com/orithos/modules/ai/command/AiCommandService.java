@@ -345,7 +345,7 @@ public class AiCommandService {
         if (!bound.find()) return null;
         BigDecimal threshold = parsePriceNumber(bound.group(1));
         if (threshold == null) return null;
-        boolean lowerBound = bound.group(0).matches("(?i).*(?:超过|高于|大于|over|above).*" );
+        boolean lowerBound = !bound.group(0).matches("(?i).*(?:超过|高于|大于|over|above).*" );
         String lower = text.toLowerCase(Locale.ROOT);
         boolean down = lower.contains("lower") || lower.contains("decrease")
                 || text.contains("降低") || text.contains("下调");
@@ -365,7 +365,7 @@ public class AiCommandService {
         for (Map<String, Object> row : catalog.rows()) {
             BigDecimal price = decimalValue(row.get("list_price"));
             String category = String.valueOf(row.getOrDefault("category", ""));
-            if (price == null || (lowerBound ? price.compareTo(threshold) <= 0 : price.compareTo(threshold) >= 0)) continue;
+            if (price == null || (lowerBound ? price.compareTo(threshold) > 0 : price.compareTo(threshold) < 0)) continue;
             if (categoryToken != null && !categoryMatches(category, categoryToken)) continue;
             Object idValue = row.get("id");
             Long id = idValue instanceof Number number ? number.longValue() : null;
