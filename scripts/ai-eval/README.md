@@ -153,3 +153,17 @@ rule is reported separately from an unavailable pricelist source. Until 28 daily
 stockout flags in an acceptance backtest. The history also reports
 `missingSnapshotDates` and `continuityStatus=GAPS_PRESENT` when the scheduler
 misses a day.
+
+Validate a captured file before using it in a backtest. Structural failures
+return exit code `1`; operational warnings return `2` and are recorded in the
+report so a scheduler can alert without silently accepting suspicious data:
+
+```powershell
+python scripts/ai-eval/validate-inventory-snapshot.py `
+  .local/ai-eval/inventory-snapshots/2026-10-31/inventory.json `
+  --report .local/ai-eval/inventory-snapshots/2026-10-31/validation.json
+```
+
+The validator checks the native source marker, immutable/write-free contract,
+timestamp and version, product ID uniqueness, required inventory/supplier/
+promotion fields, warehouse scope, and large product-count changes.

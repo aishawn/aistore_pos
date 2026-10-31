@@ -8,13 +8,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $python = (Get-Command python -ErrorAction Stop).Source
-$collector = Join-Path $RepositoryRoot 'scripts/ai-eval/fetch-skr-inventory-snapshot.py'
-if (-not (Test-Path -LiteralPath $collector)) {
-  throw "Inventory collector not found: $collector"
+$runner = Join-Path $RepositoryRoot 'scripts/ai-eval/run-daily-inventory-snapshot.ps1'
+if (-not (Test-Path -LiteralPath $runner)) {
+  throw "Inventory snapshot runner not found: $runner"
 }
 
-$action = New-ScheduledTaskAction -Execute $python `
-  -Argument ('"{0}"' -f $collector) `
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}" -RepositoryRoot "{1}"' -f $runner, $RepositoryRoot) `
   -WorkingDirectory $WorkingDirectory
 $trigger = New-ScheduledTaskTrigger -Daily -At $StartTime
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
@@ -24,4 +24,4 @@ if ($RunNow) {
   Start-ScheduledTask -TaskName $TaskName
 }
 
-Get-ScheduledTask -TaskName $TaskName | Select-Object TaskName, State, @{Name='StartTime'; Expression={$StartTime.ToString('s')}}, @{Name='Collector'; Expression={$collector}}
+Get-ScheduledTask -TaskName $TaskName | Select-Object TaskName, State, @{Name='StartTime'; Expression={$StartTime.ToString('s')}}, @{Name='Runner'; Expression={$runner}}
