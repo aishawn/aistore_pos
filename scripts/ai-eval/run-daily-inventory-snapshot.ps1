@@ -14,4 +14,9 @@ $snapshot = Get-ChildItem -LiteralPath $root -Filter inventory.json -File -Recur
 if (-not $snapshot) { throw "No inventory snapshot was produced under $root" }
 $report = Join-Path $snapshot.DirectoryName 'validation.json'
 & $python $validator $snapshot.FullName --report $report
-exit $LASTEXITCODE
+$validationExit = $LASTEXITCODE
+$historyBuilder = Join-Path $RepositoryRoot 'scripts/ai-eval/build-inventory-history.py'
+$historyOutput = Join-Path $RepositoryRoot '.local/ai-eval/inventory-history.json'
+& $python $historyBuilder --input (Join-Path $RepositoryRoot '.local/ai-eval/inventory-snapshots') --output $historyOutput
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+exit $validationExit

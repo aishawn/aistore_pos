@@ -167,3 +167,8 @@ python scripts/ai-eval/validate-inventory-snapshot.py `
 The validator checks the native source marker, immutable/write-free contract,
 timestamp and version, product ID uniqueness, required inventory/supplier/
 promotion fields, warehouse scope, and large product-count changes.
+
+The scheduled runner also rebuilds `.local/ai-eval/inventory-history.json`
+after each successful capture. It does not require 28 days during daily
+operation; the history remains explicitly marked `INSUFFICIENT_HISTORY` until
+the acceptance threshold is reached.
