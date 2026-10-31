@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       sessionId,
       "res.partner",
       "search_read",
-      [[["supplier_rank", ">", 0], ["company_id", "=", companyId]]],
+      [[["supplier_rank", ">", 0], ["company_id", "in", [false, companyId]]]],
       { fields: ["id", "name", "email"], limit: 500, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } },
       correlationId,
     );
