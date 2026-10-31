@@ -21,6 +21,8 @@ type StockMove = {
   date: string;
   location_id: Relation;
   location_dest_id: Relation;
+  location_usage: string;
+  location_dest_usage: string;
   company_id: Relation;
   write_date: string;
 };
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
     const rows = await scope.rpc<StockMove[]>("stock.move", "search_read", [domain], {
       fields: [
         "id", "product_id", "product_uom_qty", "product_qty", "quantity", "state", "date",
-        "location_id", "location_dest_id", "company_id", "write_date",
+        "location_id", "location_dest_id", "location_usage", "location_dest_usage", "company_id", "write_date",
       ],
       limit: limit + 1,
       offset,
@@ -123,8 +125,10 @@ export async function GET(request: NextRequest) {
       date: row.date,
       sourceLocationId: relationId(row.location_id),
       sourceLocation: relationName(row.location_id),
+      sourceUsage: row.location_usage,
       destinationLocationId: relationId(row.location_dest_id),
       destinationLocation: relationName(row.location_dest_id),
+      destinationUsage: row.location_dest_usage,
       companyId: relationId(row.company_id),
       writeDate: row.write_date,
     }));
