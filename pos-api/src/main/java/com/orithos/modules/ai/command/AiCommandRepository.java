@@ -54,9 +54,9 @@ public class AiCommandRepository {
 
     public int cancelPreview(UUID id, String expectedVersion) {
         return jdbc.update("UPDATE ai_command_draft SET status = ?, version = ?, " +
-                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ? AND version = ?",
+                        "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN (?, ?) AND version = ?",
                 AiCommandStatus.CANCELLED.name(), UUID.randomUUID().toString(), id.toString(),
-                AiCommandStatus.PREVIEWED.name(), expectedVersion);
+                AiCommandStatus.DRAFT.name(), AiCommandStatus.PREVIEWED.name(), expectedVersion);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
