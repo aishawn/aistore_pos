@@ -1,0 +1,114 @@
+{
+  "scope": "OFFLINE_HELD_OUT_PLANNING_PROXY_NOT_REALIZED_SAVINGS",
+  "salesHistory": {
+    "timezone": "Australia/Adelaide",
+    "timezoneVerified": false,
+    "timezoneSource": "COMPANY_ADDRESS_FALLBACK_REVIEW_REQUIRED",
+    "startDate": "2026-09-06",
+    "endDateExclusive": "2026-11-01",
+    "fromUtc": "2026-09-05 14:30:00",
+    "toUtc": "2026-10-31 13:30:00",
+    "completeDaysOnly": true,
+    "dailyRows": 1067,
+    "refunds": "SIGNED_NET_UNITS"
+  },
+  "sourceGeneratedAt": "2026-10-31T15:41:16.233Z",
+  "inputSeries": 20,
+  "skippedInvalidCostsOrShortHistory": 18,
+  "evaluatedSeries": 2,
+  "evaluatedCycles": 4,
+  "differentSelectedModels": 0,
+  "policy": {
+    "annualHoldingRate": 0.25,
+    "annualObsolescenceRate": 0.1,
+    "serviceLevel": 0.9
+  },
+  "totals": {
+    "businessCost": {
+      "missedUnits": 2.0,
+      "inventoryUnitDays": 137.0,
+      "observedDemand": 25.0,
+      "lostMargin": 2.08,
+      "holdingCost": 0.464486301369863,
+      "obsolescenceCost": 0.1857945205479452,
+      "servicePenalty": 1.0400000000000003,
+      "totalPlanningCost": 3.7702808219178086,
+      "fillRate": 0.92
+    },
+    "wape": {
+      "missedUnits": 2.0,
+      "inventoryUnitDays": 137.0,
+      "observedDemand": 25.0,
+      "lostMargin": 2.08,
+      "holdingCost": 0.464486301369863,
+      "obsolescenceCost": 0.1857945205479452,
+      "servicePenalty": 1.0400000000000003,
+      "totalPlanningCost": 3.7702808219178086,
+      "fillRate": 0.92
+    }
+  },
+  "limitations": [
+    "No native historical opening-stock or delivery trajectory used",
+    "Each seven-day cycle assumes immediate arrival and zero opening stock",
+    "Only valid cost/price series evaluated; not representative of the entire store",
+    "Service penalty is measured per held-out cycle; target rates are planning assumptions",
+    "Historical stockout censorship is unknown; observed sales can understate true demand"
+  ],
+  "inputSha256": "295e3b8fb32d9e0b9b185785824c4a90e7139f0100f860a83a9e0a911db58c24",
+  "coldStartProxy": {
+    "scope": "MASKED_MATURE_SKUS_NOT_REAL_NEW_LAUNCH_ACCURACY",
+    "eligibleAnalogCases": 10,
+    "heldoutDays": 7,
+    "donorFutureDaysUsed": 0,
+    "brandFieldAvailable": false,
+    "observedDemandUnits": 84.0,
+    "absoluteCycleErrorUnits": 60.0,
+    "zeroHistoryBaselineErrorUnits": 84.0,
+    "cycleWape": 0.7142857142857143,
+    "confidence": "LOW",
+    "limitations": [
+      "Mature SKU masking is a proxy, not real product launch evidence",
+      "When brand metadata is absent matching uses category and price band only",
+      "No-sales purchase suggestions remain paused regardless of analog forecasts"
+    ]
+  },
+  "featuresSha256": "751854d5a6167031ab5d023e682e0a63d090117327c8c6cfcc492683a81a5d8d",
+  "initialUnguardedComparison": {
+    "businessCost": {
+      "missedUnits": 5.0,
+      "inventoryUnitDays": 123.0,
+      "observedDemand": 25.0,
+      "lostMargin": 5.2,
+      "holdingCost": 0.4170205479452055,
+      "obsolescenceCost": 0.1668082191780822,
+      "servicePenalty": 4.16,
+      "totalPlanningCost": 9.943828767123287,
+      "fillRate": 0.8
+    },
+    "wape": {
+      "missedUnits": 2.0,
+      "inventoryUnitDays": 137.0,
+      "observedDemand": 25.0,
+      "lostMargin": 2.08,
+      "holdingCost": 0.464486301369863,
+      "obsolescenceCost": 0.1857945205479452,
+      "servicePenalty": 1.0400000000000003,
+      "totalPlanningCost": 3.7702808219178086,
+      "fillRate": 0.92
+    }
+  },
+  "stage": "LOCALLY_VERIFIED_CANDIDATE_NOT_YET_DEPLOYED",
+  "verifiedAt": "2026-10-31T17:19:37.726396+00:00",
+  "checks": {
+    "forecastUnitTests": 22,
+    "typecheck": "PASS",
+    "lintErrors": 0,
+    "existingReactWarnings": 2,
+    "skrBusinessWrites": 0
+  },
+  "assessment": "Development regression: the initial negative comparison informed guard design; this is not a fresh test of financial improvement.",
+  "sourceContentHashes": {
+    "forecast-service/app/forecast_engine.py": "f7e9984aa242a04663b646d9409c9113d90358cc48c7a97be63b47d9603c0e48",
+    "forecast-service/app/schemas.py": "93ab67f2b7432040607b7e70759fd62fcfaf58b5f1021945d6cd626f3ac1e5be"
+  }
+}

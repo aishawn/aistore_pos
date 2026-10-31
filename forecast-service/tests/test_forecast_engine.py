@@ -117,9 +117,11 @@ class ForecastBacktestTests(unittest.TestCase):
                 Series(productId=1, dates=dates, units=[0., 0., 0., 1., 0., 0., 12.] * 8, unitCost=10, unitPrice=price),
             ])).items[0]
         low, high = run(11), run(30)
-        self.assertEqual("rolling_business_cost_aud_per_day", high.selectionMetric)
-        self.assertGreater(high.candidateScores["moving_average_7_v1"], low.candidateScores["moving_average_7_v1"])
-        self.assertEqual(min(high.candidateScores, key=high.candidateScores.get), high.model)
+        self.assertEqual("rolling_wape_cost_validation_fallback", high.selectionMetric)
+        self.assertGreater(high.candidateScores["tsb_v1"], low.candidateScores["tsb_v1"])
+        self.assertEqual(high.candidateScores["moving_average_7_v1"], low.candidateScores["moving_average_7_v1"])
+        self.assertEqual(0, high.candidateBusinessCosts["moving_average_7_v1"].lostMarginPerDay)
+        self.assertEqual(min(high.candidateScores.values()), high.candidateScores[high.model])
 
     def test_new_product_analogs_require_matching_category_brand_and_price_band(self):
         dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(56)]

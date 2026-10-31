@@ -27,6 +27,7 @@ import {
 } from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import type { InventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
+import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 type ReplenishmentProduct = {
   id: number;
@@ -59,6 +60,9 @@ type ReplenishmentProduct = {
   selectionStatus?: string | null;
   selectionMetric?: string | null;
   candidateScores?: Record<string, number>;
+  candidateBusinessCosts?: Record<string, ForecastBusinessCost>;
+  selectionValidation?: Record<string, string | number>;
+  analogCount?: number;
   p50?: number | null;
   p80?: number | null;
   p90?: number | null;
@@ -115,11 +119,28 @@ function riskLabel(risk: ReplenishmentProduct["risk"]) {
   return risk ? labels[risk] : "Risk unavailable";
 }
 
+function ForecastSelectionExplanation({ product }: { product: ReplenishmentProduct }) {
+  const cost = product.method ? product.candidateBusinessCosts?.[product.method] : undefined;
+  if (product.selectionStatus === "ANALOG_COLD_START") return <p className="text-xs">Similar-product estimate from {product.analogCount ?? 0} comparables · low confidence. Check category, brand and price band before ordering.</p>;
+  if (!cost) return product.selectionMetric === "rolling_wape" ? <p className="text-xs">Selection uses forecast error because comparable cost inputs are unavailable.</p> : null;
+  const money = (value: number) => value.toLocaleString("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return <div className="space-y-1 text-xs">
+    <p className="font-semibold">{product.selectionValidation?.status === "COST_VALIDATED" ? "Cost selection passed three recent validation cycles." : "WAPE baseline retained: cost selection has not passed three separate recent validation cycles."}</p>
+    <p className="font-semibold">Simulated planning cost: {money(cost.totalCostPerDay)} / day · demand fulfilled {number.format(cost.fillRate * 100)}%</p>
+    <p>Lost margin {money(cost.lostMarginPerDay)} · holding {money(cost.holdingCostPerDay)} · slow-stock risk {money(cost.obsolescenceCostPerDay)} · service penalty {money(cost.servicePenaltyPerDay)} per day.</p>
+    <p>{cost.evaluatedFolds} evaluation cycles, {cost.evaluatedDays} observed days. Comparison assumes an immediate delivery and zero opening stock each cycle; check actual stock, supplier delivery times and cost assumptions before ordering.</p>
+  </div>;
+}
+
 function riskClass(risk: ReplenishmentProduct["risk"]) {
   return risk === "HIGH" ? "bg-red-50 text-red-800" : risk === "MEDIUM" ? "bg-amber-50 text-amber-800" : risk === "LOW" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700";
 }
 
-type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string };
+type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string; adjustmentReason: string };
+
+function approvalReason(line: DraftRfqLine) {
+  return line.adjustmentReason.trim() ? `Reviewer quantity adjustment: ${line.adjustmentReason.trim()}. Forecast rationale: ${line.reason}` : line.reason;
+}
 
 function trendLabel(product: ReplenishmentProduct, periodDays: number) {
   if (product.trend === "new") return <span className="rounded-full bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">New demand</span>;
@@ -289,6 +310,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       suggestedQuantity: product.suggestedQuantity,
       quantity: product.suggestedQuantity,
       reason: product.reason || product.reasonParts?.join(" ") || "",
+      adjustmentReason: "",
     }));
     setRfqLines(lines);
     setRfqSupplierId("");
@@ -334,6 +356,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       setRfqError(`Enter quantities from 0 to ${MAX_RFQ_QUANTITY.toLocaleString("en-AU")} for every product.`);
       return;
     }
+    if (rfqLines.some((line) => line.quantity !== line.suggestedQuantity && !line.adjustmentReason.trim())) {
+      setRfqError("Explain each quantity change so the approval audit records your decision.");
+      return;
+    }
     rfqInFlight.current = true;
     setRfqSubmitting(true);
     setRfqError(null);
@@ -343,27 +369,32 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         supplierId,
         coverageDays,
         method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
-        lines: rfqLines.map(({ productId, quantity, suggestedQuantity, reason }) => ({ productId, quantity, suggestedQuantity, reason })),
+        lines: rfqLines.map((line) => ({ productId: line.productId, quantity: line.quantity, suggestedQuantity: line.suggestedQuantity, reason: approvalReason(line) })),
       });
       const supplier = rfqSuppliers.find((item) => item.id === supplierId);
-      const audit = appendReplenishmentAudit({
-        company: data?.company ?? "Current company",
-        coverageDays,
-        method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
-        supplierId,
-        supplierName: supplier?.name ?? result.supplier,
-        rfqName: result.name,
-        rfqUrl: result.url,
-        lines: rfqLines.map((line) => ({
-          productId: line.productId,
-          name: line.name,
-          suggestedQuantity: line.suggestedQuantity,
-          orderedQuantity: line.quantity,
-          reason: line.reason,
-        })),
-      });
-      setAuditEntries((current) => [audit, ...current].slice(0, 40));
-      setCreatedRfq(result);
+      let displayResult = result;
+      try {
+        const audit = appendReplenishmentAudit({
+          company: data?.company ?? "Current company",
+          coverageDays,
+          method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
+          supplierId,
+          supplierName: supplier?.name ?? result.supplier,
+          rfqName: result.name,
+          rfqUrl: result.url,
+          lines: rfqLines.map((line) => ({
+            productId: line.productId,
+            name: line.name,
+            suggestedQuantity: line.suggestedQuantity,
+            orderedQuantity: line.quantity,
+            reason: approvalReason(line),
+          })),
+        });
+        setAuditEntries((current) => [audit, ...current].slice(0, 40));
+      } catch {
+        displayResult = { ...result, warning: [result.warning, "Browser history could not be saved. Check this draft in Orithos before starting another review."].filter(Boolean).join(" ") };
+      }
+      setCreatedRfq(displayResult);
       setRfqOpen(false);
     } catch (cause) {
       setRfqError(cause instanceof Error ? cause.message : "Could not create the draft RFQ.");
@@ -425,6 +456,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked and use the rules fallback.
             </p>
           )}
+          {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
           {showR2DisplayNote && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               Import prefixes such as R2 TEST are hidden in product names; SKUs may still start with R2- for reconciliation.
@@ -467,8 +499,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
       {createdRfq && (
         <div
-          role={createdRfq.auditSaved ? "status" : "alert"}
-          className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm ${createdRfq.auditSaved ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"}`}
+          role={createdRfq.auditSaved && createdRfq.readbackVerified !== false && !createdRfq.warning ? "status" : "alert"}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm ${createdRfq.auditSaved && createdRfq.readbackVerified !== false && !createdRfq.warning ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"}`}
         >
           <span>
             <strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed.{" "}
@@ -637,6 +669,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                             <div><dt className="text-[var(--oh-muted)]">Trend · {data?.periodDays}d</dt><dd className="mt-0.5">{trendLabel(product, data?.periodDays ?? 28)}</dd></div>
                           </dl>
                         )}
+                        <ForecastSelectionExplanation product={product} />
                         <ul className="ml-1 list-disc space-y-1 pl-4">
                           {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}
                         </ul>
@@ -761,6 +794,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                               <div><dt className="text-[var(--oh-muted)]">Trend</dt><dd className="mt-0.5">{trendLabel(product, data?.periodDays ?? 28)}</dd></div>
                             </dl>
                           )}
+                          <ForecastSelectionExplanation product={product} />
                           <ul className="list-disc space-y-1 pl-4">
                             {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => (
                               <li key={part}>{part}</li>
@@ -862,6 +896,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <input type="number" min="0" max={MAX_RFQ_QUANTITY} step="0.01" value={line.quantity} onChange={(event) => { const value = Number(event.target.value); setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number.isFinite(value) ? value : 0 } : item)); }} disabled={rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] px-2 text-sm font-semibold tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60" />
                     </label>
                     <p className="hidden text-right text-sm text-[var(--oh-muted)] sm:block">{line.unit}</p>
+                    {line.quantity !== line.suggestedQuantity && <label className="col-span-full grid gap-1 text-[13px] font-medium text-[var(--oh-muted)]">Reason for quantity change
+                      <textarea required maxLength={300} value={line.adjustmentReason} onChange={(event) => setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, adjustmentReason: event.target.value } : item))} disabled={rfqSubmitting} rows={2} className="w-full rounded-md border border-[var(--oh-border)] px-2 py-2 text-sm text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60" />
+                    </label>}
                   </div>)}
                   {!rfqLines.length && <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No products selected for this RFQ.</p>}
                 </div>

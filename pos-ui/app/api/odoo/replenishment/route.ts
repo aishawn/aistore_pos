@@ -4,6 +4,7 @@ import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
 import { readInventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
+import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "@/lib/replenishment-safety";
@@ -64,6 +65,8 @@ type ForecastServiceItem = {
   selectionStatus?: string;
   selectionMetric?: string | null;
   candidateScores?: Record<string, number>;
+  candidateBusinessCosts?: Record<string, ForecastBusinessCost>;
+  selectionValidation?: Record<string, string | number>;
   dataQuality?: string;
   confidence?: string;
   analogCount?: number;
@@ -76,6 +79,7 @@ type ForecastServiceResponse = {
   sourceVersion?: string;
   costPolicy?: { annualHoldingRate: number; annualObsolescenceRate: number; serviceLevel: number };
   costPolicySource?: string;
+  businessCostBasis?: string;
   items?: ForecastServiceItem[];
 };
 
@@ -257,14 +261,15 @@ export async function GET(request: NextRequest) {
       }
     }
     const forecastItems = new Map<number, ForecastServiceItem>();
-    let forecastMeta: Pick<ForecastServiceResponse, "modelVersion" | "sourceVersion" | "costPolicy" | "costPolicySource"> = {};
+    let forecastMeta: Pick<ForecastServiceResponse, "modelVersion" | "sourceVersion" | "costPolicy" | "costPolicySource" | "businessCostBasis"> = {};
     if (forecastEnabled()) {
       const dates = Array.from({ length: HISTORY_DAYS }, (_, index) => shiftDay(historyStart, index));
       const series = eligibleProducts.map((product) => {
         const values = dailyByProduct.get(Number(product.id)) ?? new Map<string, number>();
         const createdDay = typeof product.create_date === "string" ? salesDate(product.create_date, timezone) : null;
-        const isNew = Boolean(createdDay && createdDay > historyStart && !dates.some((date) => date < createdDay && (values.get(date) ?? 0) > 0));
-        const observedDates = isNew && createdDay ? dates.filter((date) => date > createdDay) : dates;
+        const hasCreationBoundary = Boolean(createdDay && createdDay > historyStart && !dates.some((date) => date < createdDay && (values.get(date) ?? 0) > 0));
+        const isNew = Boolean(hasCreationBoundary && createdDay && createdDay > shiftDay(today, -28));
+        const observedDates = hasCreationBoundary && createdDay ? dates.filter((date) => date > createdDay) : dates;
         const cost = Number(product.standard_price);
         const price = Number(product.list_price);
         return { productId: Number(product.id), dates: observedDates, units: observedDates.map((date) => values.get(date) ?? 0), stockoutFlags: [],
@@ -275,7 +280,7 @@ export async function GET(request: NextRequest) {
 
       });
       const forecastResponse = await callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), forecastStartDate: shiftDay(today, -1), sourceVersion: "odoo_pos_order_line_local_complete_days_v2", series });
-      forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource };
+      forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource, businessCostBasis: forecastResponse.businessCostBasis };
       for (const item of forecastResponse.items ?? []) forecastItems.set(Number(item.productId), item);
     }
     const replenishmentItems = eligibleProducts.map((product) => {
@@ -385,6 +390,8 @@ export async function GET(request: NextRequest) {
         selectionStatus: forecastItem?.selectionStatus ?? null,
         selectionMetric: forecastItem?.selectionMetric ?? null,
         candidateScores: forecastItem?.candidateScores ?? {},
+        candidateBusinessCosts: forecastItem?.candidateBusinessCosts ?? {},
+        selectionValidation: forecastItem?.selectionValidation ?? {},
         analogCount: forecastItem?.analogCount ?? 0,
         p50: hasUsableForecast ? forecastP50 : null,
         p80: hasUsableForecast ? forecastP80 : null,
@@ -433,6 +440,7 @@ export async function GET(request: NextRequest) {
         status: forecastEnabled() ? "AVAILABLE" : "DISABLED",
         costPolicy: forecastMeta.costPolicy ?? null,
         costPolicySource: forecastMeta.costPolicySource ?? null,
+        businessCostBasis: forecastMeta.businessCostBasis ?? null,
       },
       businessMetrics: {
         inventoryValue: sumNullable("inventoryValue"),

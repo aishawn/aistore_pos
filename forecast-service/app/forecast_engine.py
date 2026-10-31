@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from statistics import mean, median, pstdev
+from math import ceil
 
 from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
                        ForecastItem, ForecastPoint, ForecastRequest, ForecastResponse,
@@ -59,15 +60,33 @@ def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | N
         amount = mean(nonzero) if nonzero else 0.0
         baseline = [probability * amount] * horizon
     else:
-        # A seven-day seasonal baseline is robust, explainable, and deterministic.
-        week = clean[-7:] if len(clean) >= 7 else clean
-        baseline = week * ((horizon + len(week) - 1) // len(week))
+        # Removing censored days must not shift a Friday peak onto Thursday.
+        weekday_values = {}
+        for index, value in enumerate(values):
+            if value is not None and not (index < len(flags) and flags[index]):
+                weekday_values[index % 7] = max(0.0, float(value))
+        baseline = [weekday_values.get((len(values) + offset) % 7, mean(clean)) for offset in range(horizon)]
     quality = "CENSORED_DEMAND" if censored else "VALID"
     confidence = "LOW" if censored else ("HIGH" if len(clean) >= 56 else "MEDIUM")
     return baseline[:horizon], quality, confidence
 
 
-def _select_model(series, horizon: int = 7, policy=None) -> tuple[str, str, dict[str, float], str | None]:
+def _order_cycle_exposure(predicted: list[float], actual: list[float]) -> tuple[float, float]:
+    """One simulated order arrives at cycle start; carry unsold units across days.
+
+    This is a comparable planning proxy, not reconstruction of historical stock.
+    Units are rounded as in the replenishment UI; holding uses closing stock.
+    """
+    stock = float(ceil(sum(predicted)))
+    missed = inventory_unit_days = 0.0
+    for demand in actual:
+        missed += max(0.0, demand - stock)
+        stock = max(0.0, stock - demand)
+        inventory_unit_days += stock
+    return missed, inventory_unit_days
+
+
+def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = True) -> tuple[str, str, dict[str, float], str | None, dict, dict]:
     """Select using rolling business loss when costs are valid, otherwise WAPE.
 
     The service deliberately refuses to call a short series a validated model
@@ -76,46 +95,97 @@ def _select_model(series, horizon: int = 7, policy=None) -> tuple[str, str, dict
     """
     values = [max(0.0, float(value)) for value in series.units]
     if len(values) < 28:
-        return MODEL, "INSUFFICIENT_HISTORY", {}, None
+        return MODEL, "INSUFFICIENT_HISTORY", {}, None, {}, {}
     flags = series.stockoutFlags or []
     use_cost = policy is not None and series.unitCost is not None and series.unitPrice is not None and series.unitPrice > series.unitCost
     scores: dict[str, float] = {}
+    cost_details = {}
+    wape_scores = {}
     for candidate in MODEL_NAMES:
         errors: list[float] = []
         actual_total = 0.0
-        business_loss = 0.0
         observed = 0
+        folds = 0
         missed_units = 0.0
+        inventory_unit_days = 0.0
         for end in range(14, len(values) - horizon + 1, horizon):
             train = values[:end]
             train_flags = flags[:end] if flags else []
             predicted, _, _ = _normalise(train, horizon, train_flags, candidate)
-            for offset, actual in enumerate(values[end:end + horizon]):
+            actual_cycle = values[end:end + horizon]
+            # Unobserved demand prevents an honest inventory trajectory.
+            if use_cost and any(flags[end:end + horizon]):
+                continue
+            folds += 1
+            if use_cost:
+                missed, exposure = _order_cycle_exposure(predicted, actual_cycle)
+                missed_units += missed
+                inventory_unit_days += exposure
+            for offset, actual in enumerate(actual_cycle):
                 if end + offset < len(flags) and flags[end + offset]:
                     continue
                 errors.append(abs(predicted[offset] - actual))
                 actual_total += actual
                 observed += 1
-                if use_cost:
-                    missed = max(0.0, actual - predicted[offset])
-                    missed_units += missed
-                    excess = max(0.0, predicted[offset] - actual)
-                    margin = series.unitPrice - series.unitCost
-                    # Lost gross profit and capital carrying/obsolescence exposure.
-                    business_loss += missed * margin + excess * series.unitCost * (policy.annualHoldingRate + policy.annualObsolescenceRate) * horizon / 365
 
         if errors and actual_total > 0:
+            wape_scores[candidate] = sum(errors) / actual_total
             if use_cost:
                 # Penalise missed demand beyond the requested service level.
                 shortfall = max(0.0, missed_units - (1 - policy.serviceLevel) * actual_total)
-                business_loss += shortfall * (series.unitPrice - series.unitCost)
-                scores[candidate] = business_loss / observed
+                margin = series.unitPrice - series.unitCost
+                lost_margin = missed_units * margin / observed
+                holding = inventory_unit_days * series.unitCost * policy.annualHoldingRate / 365 / observed
+                obsolescence = inventory_unit_days * series.unitCost * policy.annualObsolescenceRate / 365 / observed
+                service_penalty = shortfall * margin / observed
+                scores[candidate] = lost_margin + holding + obsolescence + service_penalty
+                cost_details[candidate] = {"lostMarginPerDay": lost_margin, "holdingCostPerDay": holding,
+                    "obsolescenceCostPerDay": obsolescence, "servicePenaltyPerDay": service_penalty,
+                    "totalCostPerDay": scores[candidate], "fillRate": 1 - missed_units / actual_total,
+                    "evaluatedDays": observed, "evaluatedFolds": folds}
             else:
                 scores[candidate] = sum(errors) / actual_total
     if not scores:
-        return MODEL, "BLOCKED", {}, None
+        return MODEL, "BLOCKED", {}, None, {}, {}
     winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
-    return winner, "ROLLING_BACKTEST", scores, "rolling_business_cost_aud_per_day" if use_cost else "rolling_wape"
+    validation = {}
+    metric = "rolling_business_cost_aud_per_day" if use_cost else "rolling_wape"
+    if use_cost and validate_cost:
+        baseline = min(wape_scores, key=lambda candidate: (wape_scores[candidate], candidate))
+        winner, metric = baseline, "rolling_wape_cost_validation_fallback"
+        validation = {"status": "INSUFFICIENT_UNCENSORED_VALIDATION"}
+        # Fix candidate identities before three untouched non-overlapping cycles.
+        validation_days = horizon * 3
+        if len(values) >= 28 + validation_days and not any(flags[-validation_days:]):
+            start = len(values) - validation_days
+            prefix = series.model_copy(update={"units": series.units[:start], "dates": series.dates[:start],
+                                               "stockoutFlags": flags[:start] if flags else []})
+            cost_candidate = _select_model(prefix, horizon, policy, False)
+            wape_candidate = _select_model(prefix, horizon, None, False)
+            actual_cycles = [values[end:end+horizon] for end in range(start, len(values), horizon)]
+            if cost_candidate[1] == wape_candidate[1] == "ROLLING_BACKTEST" and all(sum(cycle) > 0 for cycle in actual_cycles):
+                losses = [[], []]
+                missed_totals = [0., 0.]
+                for end, actual in zip(range(start, len(values), horizon), actual_cycles):
+                    for index, candidate in enumerate((cost_candidate[0], wape_candidate[0])):
+                        prediction = _normalise(values[:end], horizon, flags[:end], candidate)[0]
+                        missed, exposure = _order_cycle_exposure(prediction, actual)
+                        margin = series.unitPrice - series.unitCost
+                        loss = missed * margin + exposure * series.unitCost * (policy.annualHoldingRate + policy.annualObsolescenceRate) / 365
+                        loss += max(0., missed - (1-policy.serviceLevel)*sum(actual)) * margin
+                        losses[index].append(loss)
+                        missed_totals[index] += missed
+                cost_score, baseline_score = sum(losses[0])/validation_days, sum(losses[1])/validation_days
+                fill = 1 - missed_totals[0]/sum(values[-validation_days:])
+                wins = sum(a < b for a, b in zip(losses[0], losses[1]))
+                approved = cost_score < baseline_score and fill >= policy.serviceLevel and wins >= 2
+                validation = {"status": "COST_VALIDATED" if approved else "BASELINE_RETAINED",
+                              "costCandidate": cost_candidate[0], "baselineCandidate": wape_candidate[0],
+                              "costCandidateCostPerDay": cost_score, "baselineCostPerDay": baseline_score,
+                              "costCandidateFillRate": fill, "validationDays": float(validation_days), "winningCycles": float(wins)}
+                if approved:
+                    winner, metric = cost_candidate[0], "rolling_business_cost_validated_aud_per_day"
+    return winner, "ROLLING_BACKTEST", scores, metric, cost_details, validation
 
 
 def forecast(request: ForecastRequest) -> ForecastResponse:
@@ -123,26 +193,28 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
     items: list[ForecastItem] = []
     for series in request.series:
         if series.selectedModel:
-            model, selection_status, candidate_scores, metric = series.selectedModel, "EXPLICIT", {}, None
+            model, selection_status, candidate_scores, metric, cost_details, validation = series.selectedModel, "EXPLICIT", {}, None, {}, {}
         else:
-            model, selection_status, candidate_scores, metric = _select_model(series, min(request.horizonDays, 7), request.costPolicy)
+            model, selection_status, candidate_scores, metric, cost_details, validation = _select_model(series, min(request.horizonDays, 7), request.costPolicy)
         values, quality, confidence = _normalise(series.units, request.horizonDays, series.stockoutFlags, model)
         if selection_status in ("BLOCKED", "INSUFFICIENT_HISTORY"):
             confidence = "LOW"
         analog_count = 0
         analog_spread = 0.0
-        if series.isNew and len(series.units) < 28 and series.category and series.priceBand:
+        if not series.selectedModel and series.isNew and len(series.units) < 28 and series.category and series.priceBand:
+            cutoff = series.dates[-1] if series.dates else request.forecastStartDate or today
             donors = [other for other in request.series
                       if other.productId != series.productId and not other.isNew and len(other.units) >= 28
                       and other.category == series.category and other.priceBand == series.priceBand
                       and (not series.brand or other.brand == series.brand)
+                      and other.dates[-1] == cutoff
                       and sum(other.units[-28:]) > 0 and not any(other.stockoutFlags[-28:])]
             if len(donors) >= 3:
                 analog_count = len(donors)
                 analog_spread = pstdev(max(0.0, value) for donor in donors for value in donor.units[-28:])
                 values = [median(mean(max(0.0, v) for v in donor.units[-28:]) for donor in donors)] * request.horizonDays
                 model, selection_status, metric = "analog_category_brand_price_v1", "ANALOG_COLD_START", None
-                candidate_scores, quality, confidence = {}, "INSUFFICIENT_HISTORY", "LOW"
+                candidate_scores, cost_details, validation, quality, confidence = {}, {}, {}, "INSUFFICIENT_HISTORY", "LOW"
         usable_tail = [value for index, value in enumerate(series.units[-28:], start=max(0, len(series.units) - 28))
                        if not (index < len(series.stockoutFlags) and series.stockoutFlags[index])]
         spread = max(analog_spread, pstdev(usable_tail) if len(usable_tail) > 1 else 0.0)
@@ -155,9 +227,12 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
                                   selectionStatus=selection_status,
                                   selectionMetric=metric, analogCount=analog_count,
                                   candidateScores=candidate_scores, forecast=points,
+                                  candidateBusinessCosts=cost_details,
+                                  selectionValidation=validation,
                                   dataQuality=quality, confidence=confidence))
-    return ForecastResponse(model="per_product_selected", modelVersion="3", sourceVersion=request.sourceVersion,
-                            horizonDays=request.horizonDays, items=items, costPolicy=request.costPolicy)
+    return ForecastResponse(model="per_product_selected", modelVersion="4", sourceVersion=request.sourceVersion,
+                            horizonDays=request.horizonDays, items=items, costPolicy=request.costPolicy,
+                            costPolicySource="REQUEST_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED" if "costPolicy" in request.model_fields_set else "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED")
 
 
 def backtest(request: BacktestRequest) -> BacktestResponse:

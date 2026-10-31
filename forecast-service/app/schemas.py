@@ -1,5 +1,5 @@
-from datetime import date
-from typing import Literal
+from datetime import date, timedelta
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -17,13 +17,15 @@ class Series(BaseModel):
                            "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1",
                            "two_stage_occurrence_v1"] | None = None
     dates: list[date]
-    units: list[float]
+    units: list[Annotated[float, Field(allow_inf_nan=False)]]
     stockoutFlags: list[bool] = []
 
     @model_validator(mode="after")
     def validate_alignment(self):
-        if self.dates and len(self.dates) != len(self.units):
+        if len(self.dates) != len(self.units):
             raise ValueError("dates and units must have the same length")
+        if any(current != previous + timedelta(days=1) for previous, current in zip(self.dates, self.dates[1:])):
+            raise ValueError("dates must be unique consecutive daily observations")
         if self.stockoutFlags and len(self.stockoutFlags) != len(self.units):
             raise ValueError("stockoutFlags and units must have the same length")
         return self
@@ -53,12 +55,25 @@ class ForecastPoint(BaseModel):
     p90: float = Field(ge=0)
 
 
+class BusinessCostScore(BaseModel):
+    lostMarginPerDay: float
+    holdingCostPerDay: float
+    obsolescenceCostPerDay: float
+    servicePenaltyPerDay: float
+    totalCostPerDay: float
+    fillRate: float
+    evaluatedDays: int
+    evaluatedFolds: int
+
+
 class ForecastItem(BaseModel):
     productId: int
     model: str = "seasonal_naive_v1"
     selectionStatus: Literal["EXPLICIT", "ROLLING_BACKTEST", "INSUFFICIENT_HISTORY", "BLOCKED", "ANALOG_COLD_START"] = "INSUFFICIENT_HISTORY"
     selectionMetric: str | None = None
     candidateScores: dict[str, float] = Field(default_factory=dict)
+    candidateBusinessCosts: dict[str, BusinessCostScore] = Field(default_factory=dict)
+    selectionValidation: dict[str, float | str] = Field(default_factory=dict)
     analogCount: int = 0
     forecast: list[ForecastPoint]
     dataQuality: Literal["VALID", "INSUFFICIENT_HISTORY", "INCOMPLETE", "CENSORED_DEMAND"]
@@ -73,6 +88,7 @@ class ForecastResponse(BaseModel):
     items: list[ForecastItem]
     costPolicy: InventoryCostPolicy | None = None
     costPolicySource: str = "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED"
+    businessCostBasis: str = "SIMULATED_ORDER_CYCLE_ZERO_OPENING_STOCK_IMMEDIATE_DELIVERY_NOT_REALIZED_SAVINGS"
 
 
 class BacktestRequest(BaseModel):

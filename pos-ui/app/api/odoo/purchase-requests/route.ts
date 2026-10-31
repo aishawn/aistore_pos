@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
     if (!Number.isSafeInteger(suggestedQuantity) || Number(suggestedQuantity) < 0 || Number(suggestedQuantity) > 100_000 || typeof reason !== "string" || reason.length > 2000) {
       return NextResponse.json({ message: "Refresh the replenishment plan before creating this RFQ" }, { status: 400 });
     }
+    if (quantity !== suggestedQuantity && !reason.trim()) return NextResponse.json({ message: "Explain changed quantities before creating the draft RFQ." }, { status: 400 });
     if (lineMap.has(Number(productId))) return NextResponse.json({ message: "A product can only appear once on an RFQ" }, { status: 400 });
     lineMap.set(Number(productId), { quantity, suggestedQuantity: Number(suggestedQuantity), reason: reason.trim() });
   }
@@ -268,7 +269,7 @@ export async function POST(request: NextRequest) {
         url: `${odooBaseUrl()}/web#id=${orderId}&model=purchase.order&view_type=form`,
         auditSaved,
         readbackVerified: false,
-        warning: "The draft was created and the approval audit was saved, but its draft state, quantities or units could not be verified. Open it in Orithos; do not retry creation.",
+        warning: `The draft was created. ${auditSaved ? "The approval audit was saved." : "The approval audit needs checking."} Its draft state, quantities or units could not be verified. Open it in Orithos; do not retry creation.`,
       });
     }
     const baseUrl = odooBaseUrl();
