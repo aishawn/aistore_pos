@@ -275,6 +275,8 @@ public class AiCommandService {
                     Map.of("percent", price.group(2), "direction", down ? "decrease" : "increase"),
                     List.of());
         }
+        Parsed broadPrice = broadPricePreviewRequest(tenant, text);
+        if (broadPrice != null) return broadPrice;
         Parsed unresolvedPrice = unresolvedPricePreviewRequest(text);
         if (unresolvedPrice != null) return unresolvedPrice;
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
@@ -333,6 +335,80 @@ public class AiCommandService {
                 "已识别价格调整方向和百分比，但需要在价格页面确认匹配商品后才能生成预览。",
                 List.of(), Map.of("percent", matcher.group(1), "direction", direction),
                 List.of(excluded));
+    }
+
+    /** Resolve bounded category/range price requests against the tenant-scoped Odoo catalogue. */
+    private Parsed broadPricePreviewRequest(TenantContext tenant, String text) {
+        Matcher percent = Pattern.compile("(?i).*?(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?(\\d+(?:\\.\\d+)?)\\s*%.*").matcher(text.trim());
+        if (!percent.matches()) return null;
+        Matcher bound = Pattern.compile("(?i)(?:低于|少于|不到|under|below|less than|超过|高于|大于|over|above)\\s*(?:AUD\\s*|\\$)?(\\d+(?:\\.\\d+)?|十|二十|三十|五十|一百)").matcher(text);
+        if (!bound.find()) return null;
+        BigDecimal threshold = parsePriceNumber(bound.group(1));
+        if (threshold == null) return null;
+        boolean lowerBound = bound.group(0).matches("(?i).*(?:超过|高于|大于|over|above).*" );
+        String lower = text.toLowerCase(Locale.ROOT);
+        boolean down = lower.contains("lower") || lower.contains("decrease")
+                || text.contains("降低") || text.contains("下调");
+        String categoryToken = null;
+        if (text.matches("(?is).*?(红酒|葡萄酒|啤酒|白酒|烈酒).*")) {
+            categoryToken = text.replaceAll("(?is).*?(红酒|葡萄酒|啤酒|白酒|烈酒).*", "$1");
+        } else if (lower.matches("(?s).*?(red wine|white wine|wine|beer|spirits|liquor).*")) {
+            Matcher category = Pattern.compile("(?i)(red wine|white wine|wine|beer|spirits|liquor)").matcher(text);
+            if (category.find()) categoryToken = category.group(1);
+        }
+        if (odooReports == null) return unresolvedPricePreviewRequest(text);
+        OdooReportQueryService.ProductCatalogResult catalog = odooReports.listPriceProducts(tenant);
+        if (catalog.error() != null) return unresolvedPricePreviewRequest(text);
+        BigDecimal pct = new BigDecimal(percent.group(1)).divide(BigDecimal.valueOf(100));
+        List<CommandItem> items = new ArrayList<>();
+        for (Map<String, Object> row : catalog.rows()) {
+            BigDecimal price = decimalValue(row.get("list_price"));
+            String category = String.valueOf(row.getOrDefault("category", ""));
+            if (price == null || (lowerBound ? price.compareTo(threshold) <= 0 : price.compareTo(threshold) >= 0)) continue;
+            if (categoryToken != null && !categoryMatches(category, categoryToken)) continue;
+            Object idValue = row.get("id");
+            Long id = idValue instanceof Number number ? number.longValue() : null;
+            String name = String.valueOf(row.getOrDefault("name", "")).trim();
+            if (id == null || id <= 0 || name.isBlank()) continue;
+            BigDecimal after = price.multiply(down ? BigDecimal.ONE.subtract(pct) : BigDecimal.ONE.add(pct))
+                    .setScale(2, RoundingMode.HALF_UP);
+            if (items.size() < MAX_PRODUCTS) {
+                items.add(new CommandItem(id, name, "price", price.toPlainString(), after.toPlainString(),
+                        "current Odoo POS catalogue price; bounded preview", "READY"));
+            }
+        }
+        if (items.isEmpty()) return unresolvedPricePreviewRequest(text);
+        return new Parsed(AiCommandType.PREVIEW_PRICE_CHANGE, BigDecimal.valueOf(.92),
+                "将预览 " + items.size() + " 个商品的当前销售价变化；确认后才会写入。", items,
+                Map.of("percent", percent.group(1), "direction", down ? "decrease" : "increase",
+                        "amount", threshold.toPlainString()), List.of());
+    }
+
+    private static BigDecimal parsePriceNumber(String value) {
+        return switch (value) {
+            case "十" -> BigDecimal.TEN;
+            case "二十" -> BigDecimal.valueOf(20);
+            case "三十" -> BigDecimal.valueOf(30);
+            case "五十" -> BigDecimal.valueOf(50);
+            case "一百" -> BigDecimal.valueOf(100);
+            default -> decimalValue(value);
+        };
+    }
+
+    private static BigDecimal decimalValue(Object value) {
+        if (value == null) return null;
+        try { return new BigDecimal(String.valueOf(value)); }
+        catch (NumberFormatException ignored) { return null; }
+    }
+
+    private static boolean categoryMatches(String category, String token) {
+        String value = category.toLowerCase(Locale.ROOT);
+        String wanted = token.toLowerCase(Locale.ROOT);
+        if (wanted.contains("红酒") || wanted.contains("red wine")) return value.contains("wine") || value.contains("red");
+        if (wanted.contains("葡萄酒") || wanted.equals("wine")) return value.contains("wine");
+        if (wanted.contains("啤酒") || wanted.equals("beer")) return value.contains("beer");
+        if (wanted.contains("烈酒") || wanted.contains("白酒") || wanted.equals("spirits") || wanted.equals("liquor")) return value.contains("spirit") || value.contains("liquor");
+        return value.contains(wanted);
     }
 
     /** Keep an unresolved product change as a non-confirmable draft when the

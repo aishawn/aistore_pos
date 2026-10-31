@@ -264,6 +264,52 @@ public class OdooReportQueryService {
         }
     }
 
+    /** Read the complete POS catalogue needed for a bounded price preview. */
+    public ProductCatalogResult listPriceProducts(TenantContext tenant) {
+        if (tenant == null) return ProductCatalogResult.fail("NO_STORE");
+        if (tenant.requireOutletId() == null) return ProductCatalogResult.fail("NO_OUTLET");
+        if (!tenant.canQueryReport()) return ProductCatalogResult.fail("NO_PERMISSION");
+        if (!configured()) return ProductCatalogResult.fail("ODOO_REPORT_NOT_CONFIGURED");
+        try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null
+                    || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return ProductCatalogResult.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
+            long companyId = vendor.getOdooCompanyId();
+            String sessionId = authenticate();
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
+            List<Map<String, Object>> products = searchReadPages(sessionId, "product.product",
+                    productDomain(companyId),
+                    List.of("id", "display_name", "name", "list_price", "qty_available", "categ_id"),
+                    context, MAX_RECOMMENDATION_PRODUCTS, "name asc, id asc");
+            if (products.size() > MAX_RECOMMENDATION_PRODUCTS) {
+                return ProductCatalogResult.fail("ODOO_REPORT_TOO_LARGE");
+            }
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Map<String, Object> product : products) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", product.get("id"));
+                row.put("name", product.getOrDefault("display_name", product.getOrDefault("name", "")));
+                row.put("list_price", decimal(product.get("list_price")));
+                row.put("quantity", decimal(product.get("qty_available")));
+                row.put("category", relationName(product.get("categ_id")));
+                rows.add(row);
+            }
+            return ProductCatalogResult.ok(rows);
+        } catch (Exception e) {
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String error = failure != null && "ODOO_RPC_ERROR".equals(failure.kind())
+                    && "AccessError".equals(failure.rpcType()) ? "NO_PERMISSION" : "ODOO_REPORT_UNAVAILABLE";
+            log.warn("AI price catalogue unavailable vendorId={} failureKind={} rpcType={} causeType={}",
+                    tenant.vendorId(), failure == null ? "" : failure.kind(),
+                    failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
+            return ProductCatalogResult.fail(error);
+        }
+    }
+
     public ZoneId businessTimezone(TenantContext tenant) {
         if (tenant == null || !tenant.canQueryReport() || !configured()) return AustraliaTime.ZONE;
         Vendor vendor;
