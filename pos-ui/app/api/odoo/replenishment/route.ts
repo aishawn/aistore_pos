@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
         ["company_id", "=", companyId],
-        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", "type", "sale_ok", "purchase_ok"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }, correlationId),
     ]);
 
@@ -113,7 +113,12 @@ export async function GET(request: NextRequest) {
       leadTimeQuality = "UNKNOWN";
     }
     const hasLeadTime = leadTimes.size > 0;
-    const replenishmentItems = (products ?? []).map((product) => {
+    const eligibleProducts = (products ?? []).filter((product) => {
+      const productType = String(product.type ?? "");
+      return ["product", "consu"].includes(productType) && product.purchase_ok === true;
+    });
+    const excludedProductCount = (products ?? []).length - eligibleProducts.length;
+    const replenishmentItems = eligibleProducts.map((product) => {
       const id = Number(product.id);
       const recentUnits = recentSold.get(id) ?? 0;
       const previousUnits = previousSold.get(id) ?? 0;
@@ -199,6 +204,8 @@ export async function GET(request: NextRequest) {
       coverageDays,
       products: replenishmentItems,
       truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (recentSales?.length ?? 0) >= MAX_PRODUCTS || (previousSales?.length ?? 0) >= MAX_PRODUCTS,
+      excludedProductCount,
+      productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
       dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
