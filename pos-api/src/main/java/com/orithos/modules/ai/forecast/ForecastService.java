@@ -48,6 +48,7 @@ public class ForecastService {
 
     public ForecastDtos.Response forecast(TenantContext tenant, int horizonDays) {
         if (!enabled) throw new BusinessException(50332, "AI forecast is disabled.");
+        long startedAt = System.nanoTime();
         int horizon = Math.max(1, Math.min(horizonDays, 90));
         List<ForecastDtos.Series> series = new ArrayList<>();
         Map<Long, List<Daily>> grouped = new LinkedHashMap<>();
@@ -70,6 +71,8 @@ public class ForecastService {
                 .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"),
                         rs.getBoolean("stockout_flag") || "CENSORED_DEMAND".equals(rs.getString("data_quality_status")))),
                 tenant.vendorId(), tenant.requireOutletId(), maxHistoryDays);
+        log.info("AI forecast history loaded vendorId={} outletId={} products={} elapsedMs={}",
+                tenant.vendorId(), tenant.requireOutletId(), grouped.size(), elapsedMs(startedAt));
         for (Map.Entry<Long, List<Daily>> entry : grouped.entrySet()) {
             if (entry.getValue().size() < 2) continue;
             Map<LocalDate, Double> byDate = new HashMap<>();
@@ -117,6 +120,8 @@ public class ForecastService {
                 } catch (ExecutionException | TimeoutException error) {
                     throw new BusinessException(50331, "Forecast service is temporarily unavailable.");
                 }
+                log.info("AI forecast batch completed vendorId={} outletId={} batch={} of {} products={} elapsedMs={}",
+                        tenant.vendorId(), tenant.requireOutletId(), index + 1, requestBatches.size(), batch.size(), elapsedMs(startedAt));
                 validateBatchCoverage(batch, batchResponse);
                 if (firstBatch == null) firstBatch = batchResponse;
                 items.addAll(batchResponse.items());
@@ -131,7 +136,13 @@ public class ForecastService {
             throw new BusinessException(50331, "Forecast results do not cover the requested products.");
         }
         persistSnapshot(tenant, response);
+        log.info("AI forecast completed vendorId={} outletId={} products={} elapsedMs={}",
+                tenant.vendorId(), tenant.requireOutletId(), items.size(), elapsedMs(startedAt));
         return response;
+    }
+
+    private static long elapsedMs(long startedAt) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     }
 
     static void validateBatchCoverage(List<ForecastDtos.Series> requested, ForecastDtos.Response response) {
