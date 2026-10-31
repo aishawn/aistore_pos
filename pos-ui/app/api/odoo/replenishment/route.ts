@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { readInventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "@/lib/replenishment-safety";
@@ -422,6 +423,7 @@ export async function GET(request: NextRequest) {
       excludedProductCount,
       productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
+      inventoryHistory: await readInventorySnapshotStatus(companyId),
       dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
       forecast: {
         enabled: forecastEnabled(),

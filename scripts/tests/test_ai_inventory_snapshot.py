@@ -129,7 +129,7 @@ class InventorySnapshotTests(unittest.TestCase):
         client.opener = Opener()
 
         with patch.object(MODULE.time, "sleep"):
-            result = client.call("/rpc", {"method": "read"})
+            result = client.call("/rpc", {"method": "search_read"})
 
         self.assertEqual({"ok": True}, result)
         self.assertEqual(2, client.opener.calls)

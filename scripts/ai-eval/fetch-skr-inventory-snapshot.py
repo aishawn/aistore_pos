@@ -48,6 +48,8 @@ class Odoo:
         })
 
     def call(self, path: str, params: dict[str, Any]) -> Any:
+        if path != "/web/session/authenticate" and params.get("method") not in {"search_read", "search_count"}:
+            raise RuntimeError("Inventory collector only permits read methods")
         payload = {"jsonrpc": "2.0", "method": "call", "params": params, "id": 1}
         request = urllib.request.Request(
             self.base + path, data=json.dumps(payload).encode(),
@@ -285,7 +287,12 @@ def main() -> int:
     }
     destination = output_path(root, captured_at, business_timezone)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+    temporary = destination.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8") as output:
+        json.dump(snapshot, output, allow_nan=False)
+        output.flush()
+        os.fsync(output.fileno())
+    temporary.replace(destination)
     print(json.dumps({"output": str(destination), "products": len(snapshot_products),
                       "capturedAt": snapshot["capturedAt"], "businessDate": business_date,
                       "dataQuality": snapshot["dataQuality"]}))

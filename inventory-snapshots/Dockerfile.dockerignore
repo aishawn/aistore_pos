@@ -1,0 +1,7 @@
+**
+!scripts/
+!scripts/ai-eval/
+!scripts/ai-eval/fetch-skr-inventory-snapshot.py
+!scripts/ai-eval/inventory-snapshot-worker.py
+!inventory-snapshots/
+!inventory-snapshots/Dockerfile

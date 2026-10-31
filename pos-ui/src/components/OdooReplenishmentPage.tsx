@@ -26,6 +26,7 @@ import {
   truncateSku,
 } from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import type { InventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
 
 type ReplenishmentProduct = {
   id: number;
@@ -82,6 +83,7 @@ type ReplenishmentData = {
   excludedProductCount?: number;
   productEligibility?: string;
   generatedAt: string;
+  inventoryHistory?: InventorySnapshotStatus;
   dataQuality?: string;
   forecast?: {
     enabled: boolean;
@@ -442,6 +444,20 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       </header>
 
       {data && (loading || refreshing) && <p role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Updating replenishment…</p>}
+
+      {data && <section aria-label="Daily inventory history" className={`rounded-md border px-4 py-3 text-sm ${data.inventoryHistory?.status === "FRESH" ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
+        <p className="font-semibold">Daily inventory history · {({ FRESH: "Up to date", STALE: "Capture overdue", REVIEW: "Needs review", UNAVAILABLE: "Not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]}</p>
+        {data.inventoryHistory?.lastSuccessAt ? <>
+          <p className="mt-1">Last successful capture {formatStoreEpoch(Date.parse(data.inventoryHistory.lastSuccessAt), data.inventoryHistory.businessTimezone ?? storeTimezone)} · {data.inventoryHistory.capturedProducts?.toLocaleString("en-AU")} / {data.inventoryHistory.expectedProducts?.toLocaleString("en-AU")} products ({Math.round((data.inventoryHistory.productCoverage ?? 0) * 100)}%) · {data.inventoryHistory.capturedWarehouses} / {data.inventoryHistory.expectedWarehouses} warehouses.</p>
+          <details className="mt-2">
+            <summary className="cursor-pointer font-medium underline underline-offset-2">Capture details and missing fields</summary>
+            <p className="mt-2">{data.inventoryHistory.observedDays} observed daily captures · {data.inventoryHistory.gapDays} missing dates. Collection is building an inventory history; this does not establish forecast accuracy.</p>
+            <p className="mt-1">Capture timezone: {data.inventoryHistory.businessTimezone}. Confirm it matches the store location.</p>
+            <p className="mt-1">Missing product fields: {Object.entries(data.inventoryHistory.missingFields ?? {}).map(([field, count]) => `${({ availableQty: "on hand", virtualAvailableQty: "forecast stock", incomingQty: "incoming", outgoingQty: "outgoing", cost: "cost", leadTimeDays: "supplier lead time" } as Record<string, string>)[field] ?? field}: ${count}`).join(" · ")}. Missing warehouse quantity fields: {data.inventoryHistory.missingWarehouseQuantityFields ?? 0}.</p>
+            {data.inventoryHistory.lastAttemptStatus === "FAILED" && <p className="mt-1 font-semibold">The latest capture failed. The last successful history is retained; ask an administrator to check collection.</p>}
+          </details>
+        </> : <p className="mt-1">A successful daily capture has not been verified for this store. Current stock readings do not replace a saved inventory history.</p>}
+      </section>}
 
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 

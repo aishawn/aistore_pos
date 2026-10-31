@@ -9,6 +9,21 @@
 #   Backend   http://localhost:8080
 #   Login     admin / value of INITIAL_ADMIN_PASSWORD in .env
 services:
+  inventory-snapshots:
+    build:
+      context: .
+      dockerfile: inventory-snapshots/Dockerfile
+    restart: unless-stopped
+    environment:
+      ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_DATABASE: ${ODOO_DATABASE:?Set ODOO_DATABASE in Dokploy}
+      ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
+      ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
+      INVENTORY_SNAPSHOT_TARGETS: ${INVENTORY_SNAPSHOT_TARGETS:-[]}
+      INVENTORY_SNAPSHOT_ROOT: /data
+    volumes:
+      - inventory-snapshots:/data
+
   forecast-service:
     build:
       context: ./forecast-service
@@ -256,6 +271,7 @@ services:
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.passhostheader=true
     environment:
       RFQ_IDEMPOTENCY_DB: /var/lib/orithos/rfq/requests.sqlite
+      INVENTORY_SNAPSHOT_ROOT: /var/lib/orithos/inventory-snapshots
       NODE_ENV: production
       RUNTIME_ENVIRONMENT: ${RUNTIME_ENVIRONMENT:-production}
       NEXT_TELEMETRY_DISABLED: "1"
@@ -281,8 +297,10 @@ services:
     volumes:
       - shopfront-archive:/var/lib/orithos/shopfront:ro
       - rfq-requests:/var/lib/orithos/rfq
+      - inventory-snapshots:/var/lib/orithos/inventory-snapshots:ro
 
 volumes:
+  inventory-snapshots:
   rfq-requests:
   redis-data:
   shopfront-archive:
