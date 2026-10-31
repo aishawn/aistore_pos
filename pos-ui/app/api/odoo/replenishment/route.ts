@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
     const dailySalesPromise = forecastEnabled()
-      ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom]], ["qty:sum"], ["product_id", "order_id.date_order:day"], { limit: MAX_PRODUCTS * 60, lazy: false }, correlationId)
+      ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom]], ["qty:sum"], ["product_id", "order_id.date_order:day"]], { limit: MAX_PRODUCTS * 60, lazy: false }, correlationId)
       : Promise.resolve([] as Array<Record<string, unknown>>);
     const [recentSales, previousSales, products, companies, dailySales] = await Promise.all([
       rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
