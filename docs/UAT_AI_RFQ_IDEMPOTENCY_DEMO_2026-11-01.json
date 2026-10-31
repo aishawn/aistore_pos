@@ -1,0 +1,47 @@
+{
+  "verifiedAt": "2026-10-31T16:43:14.015859+00:00",
+  "sourceSha": "95e9b14b5414fefa34cdc46ea8cde1e3ae15bce8",
+  "target": "https://demo.orithos.com.au",
+  "database": "aipos_uat",
+  "companyId": 127,
+  "isolated": false,
+  "businessWrites": {
+    "createdDraftId": 93749,
+    "createdDraftName": "P02372",
+    "confirmed": false,
+    "sent": false,
+    "skrWrites": 0
+  },
+  "checks": {
+    "concurrentStatuses": [
+      409,
+      201
+    ],
+    "replayedStatus": 201,
+    "returnedIds": [
+      93749,
+      93749
+    ],
+    "changedPayloadStatus": 409,
+    "newOrderCount": 1,
+    "state": "draft",
+    "productId": 518006,
+    "quantity": 1,
+    "unitId": 1,
+    "auditCount": 1
+  },
+  "deployment": {
+    "composeId": "y4IqIQ8dvwEYL06Hppkjc",
+    "deploymentId": "mtww1RvpQvwJdB905wlwH",
+    "status": "done",
+    "backendTests": 489,
+    "backendFailures": 0,
+    "backendErrors": 0
+  },
+  "limitations": [
+    "Manual quantity 0 to 1; no positive-demand forecast or full UI acceptance claim",
+    "Cross-deployment replay will be checked after the documentation auto-deployment",
+    "No automatic reconciliation for pending outcomes; check purchases before a new review",
+    "Shared frontend volume; multiple hosts require shared transactional storage"
+  ]
+}
