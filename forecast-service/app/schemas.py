@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field, model_validator
 class Series(BaseModel):
     productId: int = Field(gt=0)
     category: str | None = None
+    brand: str | None = None
+    priceBand: str | None = None
+    isNew: bool = False
     stockoutDataQuality: str | None = None
     selectedModel: Literal["seasonal_naive_v1", "moving_average_7_v1",
                            "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1",

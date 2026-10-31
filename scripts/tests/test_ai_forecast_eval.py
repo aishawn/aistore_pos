@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import MODEL_NAMES, _business_metrics, _group_labels, rolling_metrics, select_model
+from scripts.ai_forecast_eval import (MODEL_NAMES, _business_metrics, _group_labels,
+                                      cold_start_similarity, rolling_metrics, select_model)
 
 import importlib.util
 MOVE_MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-sales-snapshot.py"
@@ -139,6 +140,18 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual("CONFIGURED", configured["status"])
         self.assertEqual(30.0, configured["stockoutLoss"])
         self.assertEqual(2.5, configured["holdingCost"])
+
+    def test_cold_start_uses_matching_mature_products_and_marks_inferred_quality(self):
+        start = date(2026, 1, 1)
+        peer = Series(productId=201, category="Wine", brand="Example", priceBand="MID",
+                      dates=[start + timedelta(days=index) for index in range(21)], units=[2.0] * 21)
+        new = Series(productId=202, category="Wine", brand="Example", priceBand="MID",
+                     isNew=True, dates=[start + timedelta(days=index) for index in range(3)], units=[0.0, 1.0, 0.0])
+        result = cold_start_similarity(new, [new, peer], 7)
+        self.assertEqual("PASS", result["status"])
+        self.assertEqual("INFERRED_FROM_SIMILAR_PRODUCTS", result["dataQuality"])
+        self.assertEqual([2.0] * 7, result["forecast"])
+        self.assertEqual(201, result["matches"][0]["productId"])
 
 
 if __name__ == "__main__":

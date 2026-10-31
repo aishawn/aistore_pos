@@ -210,6 +210,43 @@ def _demand_profile(series: Series) -> str:
     return "GENERAL"
 
 
+def _similarity_score(target: Series, peer: Series) -> int:
+    """Score only declared product metadata; never compare product IDs."""
+    score = 0
+    if target.category and target.category == peer.category:
+        score += 4
+    if target.brand and target.brand == peer.brand:
+        score += 3
+    if target.priceBand and target.priceBand == peer.priceBand:
+        score += 2
+    return score
+
+
+def cold_start_similarity(target: Series, peers: list[Series], horizon: int = 7) -> dict:
+    """Build an explainable cold-start forecast from mature similar products."""
+    if len(target.units) >= 14 and not target.isNew:
+        return {"productId": target.productId, "status": "NOT_NEEDED", "matches": []}
+    candidates = [peer for peer in peers if peer.productId != target.productId and len(peer.units) >= 14
+                  and _similarity_score(target, peer) > 0]
+    ranked = sorted(candidates, key=lambda peer: (_similarity_score(target, peer), sum(peer.units)), reverse=True)
+    selected = ranked[:5]
+    if not selected:
+        return {"productId": target.productId, "status": "BLOCKED", "matches": [],
+                "reason": "no_mature_product_with_matching_category_brand_or_price_band"}
+    forecasts = []
+    for peer in selected:
+        usable = [max(0.0, float(value)) for index, value in enumerate(peer.units)
+                  if not peer.stockoutFlags or not peer.stockoutFlags[index]]
+        forecasts.append(sum(usable[-7:]) / len(usable[-7:]) if usable else 0.0)
+    baseline = sum(forecasts) / len(forecasts)
+    return {"productId": target.productId, "status": "PASS", "model": "cold_start_similarity_v1",
+            "forecast": [round(baseline, 4)] * horizon,
+            "matches": [{"productId": peer.productId, "score": _similarity_score(target, peer),
+                         "category": peer.category, "brand": peer.brand, "priceBand": peer.priceBand}
+                        for peer in selected],
+            "dataQuality": "INFERRED_FROM_SIMILAR_PRODUCTS"}
+
+
 def _group_labels(series: Series) -> dict[str, str]:
     if series.stockoutDataQuality and series.stockoutDataQuality not in ("VALID", "INFERRED_FROM_STOCK_MOVES"):
         stockout_label = "UNKNOWN"
@@ -278,6 +315,8 @@ def main() -> int:
                for model in MODEL_NAMES
                for horizon in (7, 14, 28) for series in request.series]
     model_selections = [select_model(series, 7) for series in request.series]
+    cold_start = [cold_start_similarity(series, request.series, 7) for series in request.series
+                  if series.isNew or len(series.units) < 14]
     selected_counts = {}
     for selection in model_selections:
         model = selection.get("selectedModel") or "BLOCKED"
@@ -328,6 +367,7 @@ def main() -> int:
             "selectedModelCounts": selected_counts,
         },
         "businessMetrics": business_metrics,
+        "coldStartSimilarity": cold_start,
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

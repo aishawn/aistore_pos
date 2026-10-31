@@ -68,6 +68,14 @@ def many2one_name(value: Any) -> str | None:
     return value[1] if isinstance(value, list) and len(value) > 1 else None
 
 
+def price_band(value: Any) -> str | None:
+    """Stable coarse price band for cold-start similarity; GST-inclusive list price."""
+    if value is None:
+        return None
+    price = float(value)
+    return "LOW_LE_15" if price <= 15 else "MID_15_30" if price <= 30 else "HIGH_GT_30"
+
+
 def normalise_product(row: dict[str, Any], lead_time_days: float | None,
                       warehouse: dict[str, Any] | None = None) -> dict[str, Any]:
     """Convert an Odoo product row into the stable snapshot contract."""
@@ -76,6 +84,8 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "templateId": many2one_id(row.get("product_tmpl_id")),
         "name": row.get("display_name"),
         "category": many2one_name(row.get("categ_id")),
+        "brand": many2one_name(row.get("brand_id")),
+        "priceBand": price_band(row.get("list_price")),
         "warehouseId": warehouse.get("id") if warehouse else None,
         "warehouse": warehouse.get("name") if warehouse else None,
         "availableQty": float(row.get("qty_available") or 0),

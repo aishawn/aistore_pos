@@ -30,6 +30,7 @@ class InventorySnapshotTests(unittest.TestCase):
         self.assertEqual(12.0, product["availableQty"])
         self.assertEqual(9.0, product["virtualAvailableQty"])
         self.assertEqual("Wine", product["category"])
+        self.assertEqual("MID_15_30", product["priceBand"])
         self.assertEqual(5, product["leadTimeDays"])
         self.assertIsNone(product["warehouseId"])
 
