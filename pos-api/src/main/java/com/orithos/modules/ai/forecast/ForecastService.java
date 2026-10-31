@@ -41,12 +41,19 @@ public class ForecastService {
         List<ForecastDtos.Series> series = new ArrayList<>();
         Map<Long, List<Daily>> grouped = new LinkedHashMap<>();
         jdbc.query("""
-                SELECT product_id, business_date, units_sold
-                       , stockout_flag, data_quality_status
-                FROM ai_sales_daily
-                WHERE vendor_id = ? AND outlet_id = ?
-                  AND business_date >= CURRENT_DATE - (? * INTERVAL '1 day')
-                  AND data_quality_status IN ('VALID', 'CENSORED_DEMAND')
+                SELECT COALESCE(s.product_id, i.product_id) AS product_id,
+                       COALESCE(s.business_date, i.business_date) AS business_date,
+                       COALESCE(s.units_sold, 0) AS units_sold,
+                       COALESCE(i.stockout_flag, s.stockout_flag, false) AS stockout_flag,
+                       COALESCE(i.data_quality_status, s.data_quality_status) AS data_quality_status
+                FROM ai_sales_daily s
+                FULL OUTER JOIN ai_inventory_daily i
+                  ON i.vendor_id = s.vendor_id AND i.outlet_id = s.outlet_id
+                 AND i.product_id = s.product_id AND i.business_date = s.business_date
+                WHERE COALESCE(s.vendor_id, i.vendor_id) = ?
+                  AND COALESCE(s.outlet_id, i.outlet_id) = ?
+                  AND COALESCE(s.business_date, i.business_date) >= CURRENT_DATE - (? * INTERVAL '1 day')
+                  AND (s.product_id IS NULL OR s.data_quality_status IN ('VALID', 'CENSORED_DEMAND'))
                 ORDER BY product_id, business_date
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> grouped.computeIfAbsent(rs.getLong("product_id"), ignored -> new ArrayList<>())
                 .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"),
