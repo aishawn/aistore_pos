@@ -38,6 +38,12 @@ def test_duplicate_sale_edges_are_collapsed_and_merged():
     assert rows[0]["payments"] == [{"id": "pay-1"}]
 
 
+def test_sale_commit_batch_setting_has_bounded_default():
+    from app.config import Settings
+
+    assert Settings().sync_sale_commit_batch_size == 25
+
+
 def test_sale_query_requests_nested_product_fields():
     # Keep this assertion close to the client contract without making a live
     # request. The nested Product selection is required for item names.
@@ -72,6 +78,31 @@ def test_report_continuation_key_is_consumed():
     rows = asyncio.run(run())
     assert [row["Revenue"] for row in rows] == ["$1", "$2"]
     assert b'"key":"next"' in calls[1]
+
+
+def test_transient_shopfront_failure_is_retried():
+    import asyncio
+    import httpx
+
+    attempts = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts.append(request.url.path)
+        if len(attempts) < 3:
+            return httpx.Response(503, text="temporary")
+        return httpx.Response(200, json={"data": {"ok": True}})
+
+    async def run():
+        client = ShopfrontClient(
+            "skr", "client", "secret", "http://localhost/callback", "scope",
+            http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+        result = await client.graphql("token", "{ ok }")
+        await client.close()
+        return result
+
+    assert asyncio.run(run()) == {"ok": True}
+    assert len(attempts) == 3
 
 
 def test_product_catalog_fetch_follows_cursor_pages():

@@ -58,7 +58,9 @@ async def startup() -> None:
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             job.status = "queued"
-            job.error = "requeued after crawler restart"
+            # The job is healthy and resumable; keep restart history in the
+            # run records instead of exposing a stale error on live status.
+            job.error = None
             resumed_stores.add(job_key)
         # Keep only the newest queued snapshot job of each type. The durable
         # worker below will pick up the surviving queued job after startup.
@@ -1045,6 +1047,10 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                             job.cursor_date = cursor.isoformat()
                             job.heartbeat_at = datetime.now(timezone.utc)
                             job.phase = f"sync:{cursor.isoformat()}"
+                            # A restart marker is historical context only;
+                            # once this chunk commits, status should reflect
+                            # the currently healthy worker.
+                            job.error = None
                             db.commit()
     finally:
         db.close()
