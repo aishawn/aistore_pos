@@ -1,0 +1,38 @@
+{
+  "verifiedAt": "2026-10-31T18:13:55.073051+00:00",
+  "stage": "DEPLOYED_CACHE_READ_ONLY_VERIFIED",
+  "sourceSha": "5698591aaf1e11f334251c46b62bd0918d02a113",
+  "target": "https://skr.orithos.com.au",
+  "scope": "SKR_READ_ONLY",
+  "requests": [
+    {
+      "query": "coverageDays=14",
+      "status": 200,
+      "cache": "MISS",
+      "products": 12984,
+      "forecastModelVersion": "5",
+      "elapsedMs": 46984
+    },
+    {
+      "query": "coverageDays=14",
+      "status": 200,
+      "cache": "HIT",
+      "products": 12984,
+      "forecastModelVersion": "5",
+      "elapsedMs": 2006
+    },
+    {
+      "query": "coverageDays=14&validateSales=true",
+      "status": 200,
+      "cache": "MISS",
+      "products": 12984,
+      "forecastModelVersion": "5",
+      "elapsedMs": 40178
+    }
+  ],
+  "businessWrites": 0,
+  "notes": [
+    "Five-minute process-local tenant cache reduces repeated plan reads; validation requests bypass cache.",
+    "Cache is an optimization only; it does not make inventory history fresh or prove forecast accuracy."
+  ]
+}
