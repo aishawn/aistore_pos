@@ -4,6 +4,8 @@ import { join } from "node:path";
 export type InventorySnapshotStatus = {
   status: "UNAVAILABLE" | "FRESH" | "STALE" | "REVIEW";
   lastSuccessAt?: string;
+  latestBusinessDate?: string;
+  firstBusinessDate?: string;
   lastAttemptAt?: string;
   lastAttemptStatus?: string;
   businessTimezone?: string;
@@ -16,6 +18,7 @@ export type InventorySnapshotStatus = {
   missingWarehouseQuantityFields?: number;
   observedDays?: number;
   gapDays?: number;
+  invalidSnapshots?: number;
 };
 
 export async function readInventorySnapshotStatus(companyId: number): Promise<InventorySnapshotStatus> {
@@ -27,7 +30,7 @@ export async function readInventorySnapshotStatus(companyId: number): Promise<In
     if (!value.lastSuccessAt) return { status: "UNAVAILABLE", lastAttemptAt: value.lastAttemptAt, lastAttemptStatus: value.lastAttemptStatus };
     const age = Date.now() - Date.parse(value.lastSuccessAt);
     if (!Number.isFinite(age) || age < 0) return { status: "UNAVAILABLE" };
-    const fields: Array<keyof InventorySnapshotStatus> = ["lastSuccessAt", "lastAttemptAt", "lastAttemptStatus", "businessTimezone", "expectedProducts", "capturedProducts", "productCoverage", "expectedWarehouses", "capturedWarehouses", "missingFields", "missingWarehouseQuantityFields", "observedDays", "gapDays"];
+    const fields: Array<keyof InventorySnapshotStatus> = ["lastSuccessAt", "latestBusinessDate", "firstBusinessDate", "lastAttemptAt", "lastAttemptStatus", "businessTimezone", "expectedProducts", "capturedProducts", "productCoverage", "expectedWarehouses", "capturedWarehouses", "missingFields", "missingWarehouseQuantityFields", "observedDays", "gapDays", "invalidSnapshots"];
     const metadata = Object.fromEntries(fields.map((field) => [field, value[field]]));
     const review = value.lastAttemptStatus === "FAILED" || value.productCoverage !== 1 || value.expectedWarehouses < 1 || value.capturedWarehouses !== value.expectedWarehouses
       || Object.values(value.missingFields ?? {}).some((count) => Number(count) > 0) || value.missingWarehouseQuantityFields > 0 || value.gapDays > 0 || value.invalidSnapshots > 0;
