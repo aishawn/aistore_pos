@@ -10,6 +10,7 @@ const productSnapshotPath = process.env.SKR_PRODUCT_SNAPSHOT || ".local/skr-snap
 const outputPath = process.env.SKR_FORECAST_SNAPSHOT_OUTPUT || ".local/skr-forecast-snapshot-live.json";
 const period = process.env.SKR_SALES_PERIOD || "180d";
 const maxOrders = Math.max(1, Number.parseInt(process.env.SKR_FORECAST_MAX_ORDERS || "5000", 10));
+const maxInventoryMoves = Math.max(1, Number.parseInt(process.env.SKR_FORECAST_MAX_INVENTORY_MOVES || "100000", 10));
 const detailConcurrency = Math.max(1, Math.min(12, Number.parseInt(process.env.SKR_FORECAST_DETAIL_CONCURRENCY || "6", 10)));
 const requestTimeoutMs = Math.max(5000, Math.min(60000, Number.parseInt(process.env.SKR_FORECAST_REQUEST_TIMEOUT_MS || "20000", 10)));
 const maxAttempts = Math.max(1, Math.min(4, Number.parseInt(process.env.SKR_FORECAST_MAX_ATTEMPTS || "3", 10)));
@@ -77,6 +78,34 @@ async function records(payload) {
     }
   }
   throw lastError || new Error("SKR records request failed");
+}
+
+async function inventoryHistory(payload) {
+  let lastError;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await page.evaluate(async ({ query, timeoutMs }) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const token = localStorage.getItem("sf_token");
+          const params = new URLSearchParams(query);
+          const response = await fetch(`/api/odoo/inventory-history?${params.toString()}`, {
+            headers: token ? { authorization: `Bearer ${token}` } : {},
+            credentials: "include",
+            signal: controller.signal,
+          });
+          return { status: response.status, body: await response.json().catch(() => ({})) };
+        } finally {
+          clearTimeout(timer);
+        }
+      }, { query: payload, timeoutMs: requestTimeoutMs });
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < maxAttempts) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError || new Error("SKR inventory history request failed");
 }
 
 async function saleDetail(id) {
@@ -168,6 +197,34 @@ for (let index = 0; index < orders.length; index += detailConcurrency) {
   }
 }
 
+const periodDays = Math.max(1, Number.parseInt(period, 10) || 180);
+const inventoryFrom = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+const inventoryTo = new Date();
+const inventoryMoves = [];
+const inventoryDiagnostics = [];
+let inventoryOffset = 0;
+let inventoryHasNext = true;
+let inventoryHistoryComplete = true;
+while (inventoryHasNext && inventoryMoves.length < maxInventoryMoves) {
+  const result = await inventoryHistory({
+    from: inventoryFrom.toISOString(),
+    to: inventoryTo.toISOString(),
+    limit: "1000",
+    offset: String(inventoryOffset),
+  });
+  const items = Array.isArray(result.body?.items) ? result.body.items : [];
+  inventoryDiagnostics.push({ offset: inventoryOffset, status: result.status, itemCount: items.length });
+  if (result.status < 200 || result.status >= 300) {
+    inventoryHistoryComplete = false;
+    break;
+  }
+  inventoryMoves.push(...items.slice(0, maxInventoryMoves - inventoryMoves.length));
+  inventoryHasNext = result.body?.hasNext === true;
+  inventoryOffset += items.length;
+  if (!items.length) break;
+}
+if (inventoryHasNext) inventoryHistoryComplete = false;
+
 const byProduct = new Map();
 for (const row of daily.values()) {
   const series = byProduct.get(row.productId) || new Map();
@@ -187,7 +244,7 @@ const series = [...byProduct.entries()].map(([productId, dates]) => {
 const sourceVersion = `skr-sales-${new Date().toISOString()}`;
 const snapshot = {
   schemaVersion: 1,
-  source: "skr-readonly-api-sales-lines",
+  source: "skr-readonly-api-sales-lines-and-stock-moves",
   sourceBase: base,
   sourceVersion,
   generatedAt: new Date().toISOString(),
@@ -198,6 +255,7 @@ const snapshot = {
   outletId: productsSnapshot.outletId ?? null,
   series,
   salesDaily: [...daily.values()],
+  inventoryMoves,
   inventoryCurrent: Array.isArray(productsSnapshot.products) ? productsSnapshot.products.map((product) => ({
     productId: product.id,
     stock: product.stock,
@@ -207,13 +265,16 @@ const snapshot = {
   dataQuality: {
     status: detailDiagnostics.some((item) => item.status < 200 || item.status >= 300)
       ? "INCOMPLETE_DETAIL_FAILURES"
-      : (hasNext ? "INCOMPLETE_ORDER_CAP" : "SALES_ONLY"),
+      : (hasNext ? "INCOMPLETE_ORDER_CAP" : inventoryHistoryComplete ? "SALES_AND_INVENTORY_MOVES" : "INCOMPLETE_INVENTORY_HISTORY"),
     orderPaginationComplete: !hasNext,
     orderLimitReached: orders.length >= maxOrders,
     detailFailures: detailDiagnostics.filter((item) => item.status < 200 || item.status >= 300).length,
     zeroSalesDays: "UNAVAILABLE",
     stockoutHistory: "UNAVAILABLE",
-    inventoryHistory: "UNAVAILABLE",
+    inventoryHistory: inventoryHistoryComplete ? "AVAILABLE" : "INCOMPLETE",
+    inventoryHistoryMoveCount: inventoryMoves.length,
+    inventoryHistoryFrom: inventoryFrom.toISOString(),
+    inventoryHistoryTo: inventoryTo.toISOString(),
     suppliers: "NOT_FETCHED",
     promotions: "NOT_FETCHED",
     detailConcurrency,
@@ -225,12 +286,14 @@ const snapshot = {
     productSeries: series.length,
     salesDaily: daily.size,
     detailFailures: detailDiagnostics.filter((item) => item.status < 200 || item.status >= 300).length,
+    inventoryMoves: inventoryMoves.length,
   },
   fetchDiagnostics: {
     orders: diagnostics,
     orderPaginationComplete: !hasNext,
     orderLimitReached: orders.length >= maxOrders,
     details: detailDiagnostics,
+    inventory: inventoryDiagnostics,
   },
 };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
