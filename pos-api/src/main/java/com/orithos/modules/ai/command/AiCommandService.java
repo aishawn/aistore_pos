@@ -259,6 +259,8 @@ public class AiCommandService {
                     List.of(new CommandItem(null, "", "", null, null,
                             "需要先打开补货页核对库存和供应商", "EXCLUDED")));
         }
+        Parsed broadPrice = broadPricePreviewRequest(tenant, text);
+        if (broadPrice != null) return broadPrice;
         Matcher price = Pattern.compile("(?i)(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?([A-Za-z0-9][A-Za-z0-9 ._-]{1,80}?).*?(\\d+(?:\\.\\d+)?)\\s*%").matcher(text);
         if (price.find()) {
             OdooProductMatch p = findOdooProduct(tenant, price.group(1).trim());
@@ -275,8 +277,6 @@ public class AiCommandService {
                     Map.of("percent", price.group(2), "direction", down ? "decrease" : "increase"),
                     List.of());
         }
-        Parsed broadPrice = broadPricePreviewRequest(tenant, text);
-        if (broadPrice != null) return broadPrice;
         Parsed unresolvedPrice = unresolvedPricePreviewRequest(text);
         if (unresolvedPrice != null) return unresolvedPrice;
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
