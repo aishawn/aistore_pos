@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { FilePlus2, LoaderCircle, ReceiptText, Search } from "lucide-react";
 import {
+  ApiError,
   apiFailureMessage,
   listInvoiceScans,
   type InvoiceScanSession,
@@ -65,6 +66,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -72,6 +74,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
   }, [query]);
 
   const load = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
     setError(null);
     try {
@@ -81,19 +84,25 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
         limit: 50,
         offset: 0,
       });
+      if (currentRequest !== requestId.current) return;
       setItems(page.items ?? []);
       setTotal(page.total ?? 0);
     } catch (cause) {
+      if (currentRequest !== requestId.current) return;
       setItems([]);
       setTotal(0);
-      setError(apiFailureMessage(cause, "Could not load invoice scans.", "Please sign in again."));
+      const message = apiFailureMessage(cause, "Could not load invoice scans. Please try Refresh.", "Please sign in again.");
+      setError(cause instanceof ApiError && cause.status >= 500
+        ? "Invoice history is temporarily unavailable. Please try Refresh."
+        : message);
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, [debouncedQuery, status]);
 
   useEffect(() => {
     void load();
+    return () => { requestId.current += 1; };
   }, [load]);
 
   return (
@@ -133,6 +142,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
               <button
                 type="button"
                 onClick={() => void load()}
+                disabled={loading}
                 className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
               >
                 Refresh

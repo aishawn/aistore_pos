@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-31T05:31:39.060Z",
+  "target": "https://skr.orithos.com.au",
+  "businessWrites": 0,
+  "runtime": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "a03b6919811c00ed60c0fb3a20acaa0754c68c33",
+      "builtAt": "2026-10-31T05:13:51.709Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "a03b6919811c00ed60c0fb3a20acaa0754c68c33",
+      "builtAt": "2026-10-31T05:13:51Z"
+    }
+  },
+  "checks": [
+    {
+      "url": "/api/invoice-scans?limit=50&offset=0",
+      "status": 500,
+      "code": null,
+      "total": null
+    },
+    {
+      "url": "/api/invoice-scans?status=draft&limit=50&offset=0",
+      "status": 500,
+      "code": null,
+      "total": null
+    },
+    {
+      "url": "/api/invoice-scans?query=invoice-diagnostic-no-match&limit=50&offset=0",
+      "status": 500,
+      "code": null,
+      "total": null
+    },
+    {
+      "url": "/api/invoice-scans?status=draft&query=invoice-diagnostic-no-match&limit=50&offset=0",
+      "status": 200,
+      "code": 0,
+      "total": 0
+    },
+    {
+      "url": "/api/odoo/session",
+      "status": 200,
+      "connected": true
+    }
+  ],
+  "diagnosis": "PostgreSQL cannot infer the type of the nullable status/query parameters (parameter $2); confirmed in Dokploy backend logs.",
+  "candidateStatus": "Implemented; frontend typecheck and targeted lint passed; backend tests NOT RUN; not pushed or deployed. Remote pre-push gate blocked by Dokploy host terminal SSH authentication failure."
+}

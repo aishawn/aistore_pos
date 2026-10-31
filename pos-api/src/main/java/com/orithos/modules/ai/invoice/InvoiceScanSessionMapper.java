@@ -26,14 +26,14 @@ public interface InvoiceScanSessionMapper {
             FROM invoice_scan_session
             WHERE vendor_id = #{vendorId}
               AND discarded_at IS NULL
-              AND (#{status} IS NULL OR status = #{status})
+              AND (#{status,jdbcType=VARCHAR} IS NULL OR status = #{status,jdbcType=VARCHAR})
               AND (
-                #{query} IS NULL
-                OR supplier_name LIKE CONCAT('%', #{query}, '%')
-                OR invoice_number LIKE CONCAT('%', #{query}, '%')
-                OR supplier_abn LIKE CONCAT('%', #{query}, '%')
+                #{query,jdbcType=VARCHAR} IS NULL
+                OR supplier_name LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
+                OR invoice_number LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
+                OR supplier_abn LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
               )
-            ORDER BY updated_at DESC
+            ORDER BY updated_at DESC, id DESC
             LIMIT #{limit} OFFSET #{offset}
             """)
     List<InvoiceScanSessionEntity> list(@Param("vendorId") long vendorId,
@@ -47,12 +47,12 @@ public interface InvoiceScanSessionMapper {
             FROM invoice_scan_session
             WHERE vendor_id = #{vendorId}
               AND discarded_at IS NULL
-              AND (#{status} IS NULL OR status = #{status})
+              AND (#{status,jdbcType=VARCHAR} IS NULL OR status = #{status,jdbcType=VARCHAR})
               AND (
-                #{query} IS NULL
-                OR supplier_name LIKE CONCAT('%', #{query}, '%')
-                OR invoice_number LIKE CONCAT('%', #{query}, '%')
-                OR supplier_abn LIKE CONCAT('%', #{query}, '%')
+                #{query,jdbcType=VARCHAR} IS NULL
+                OR supplier_name LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
+                OR invoice_number LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
+                OR supplier_abn LIKE CONCAT('%', #{query,jdbcType=VARCHAR}, '%')
               )
             """)
     long count(@Param("vendorId") long vendorId,
@@ -82,8 +82,8 @@ public interface InvoiceScanSessionMapper {
               AND discarded_at IS NULL
               AND invoice_number = #{invoiceNumber}
               AND (
-                (#{odooSupplierId} IS NOT NULL AND odoo_supplier_id = #{odooSupplierId})
-                OR (#{supplierAbn} IS NOT NULL AND supplier_abn = #{supplierAbn})
+                (#{odooSupplierId,jdbcType=BIGINT} IS NOT NULL AND odoo_supplier_id = #{odooSupplierId,jdbcType=BIGINT})
+                OR (#{supplierAbn,jdbcType=VARCHAR} IS NOT NULL AND supplier_abn = #{supplierAbn,jdbcType=VARCHAR})
               )
               AND status IN ('draft', 'matched', 'po_created', 'received')
             ORDER BY id DESC

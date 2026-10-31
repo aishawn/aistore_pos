@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-10-31 SKR 发票历史 500 修复候选（未发布）
+
+- 只读复现：登录/Odoo session 正常；发票列表无筛选、仅状态、仅搜索均 HTTP 500，两个筛选都有值时 HTTP 200。日志确认为 PostgreSQL 无法推断空参数 `$2` 的类型。
+- 基于 `origin/main=a03b6919` 的隔离候选已修复 list/count/查重的 nullable JDBC 参数类型，并增加稳定排序、前端请求竞态保护和可重试错误提示。
+- Node 24 TypeScript、定向 ESLint、diff 检查通过；Java 回归测试已编写但未运行。Dokploy 服务器终端 SSH 认证失败，远程精确 SHA Java 21 推送前门禁未完成；未提交、推送或部署，线上故障仍存在。业务写入 0。
+- 详见 `INVOICE_HISTORY_500_FIX_2026-10-31.md` 与 `UAT_INVOICE_HISTORY_500_SKR_2026-10-31.json`。恢复远程验证能力后再完成验证、发布及 SKR 只读回归。
+
 ## 当前部署
 
 - Demo POS：`https://demo.orithos.com.au/`
