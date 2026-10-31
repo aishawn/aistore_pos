@@ -98,6 +98,58 @@ async function callForecastService(payload: unknown): Promise<ForecastServiceRes
   }
 }
 
+type DailySalesRow = Record<string, unknown> & {
+  product_id?: [number, string] | false;
+  qty?: number;
+  "order_id.date_order"?: string;
+  date_order?: string;
+};
+
+async function loadDailySales(sessionId: string, domain: unknown[], correlationId?: string | null): Promise<DailySalesRow[]> {
+  // Odoo 20 rejects related datetime group keys such as order_id.date_order:day
+  // on pos.order.line. Group by regular many2one fields, then resolve order
+  // dates in read-only batches and aggregate them in the API process.
+  const grouped = await rpc<Array<{ product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number }>>(
+    sessionId,
+    "pos.order.line",
+    "read_group",
+    [domain, ["qty:sum"], ["product_id", "order_id"]],
+    { limit: MAX_PRODUCTS * 60, lazy: false },
+    correlationId,
+  );
+  const orderIds = [...new Set((grouped ?? [])
+    .map((row) => Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0)
+    .filter((id) => id > 0))];
+  const orderDates = new Map<number, string>();
+  for (let offset = 0; offset < orderIds.length; offset += 5000) {
+    const orders = await rpc<Array<{ id?: number; date_order?: string }>>(
+      sessionId,
+      "pos.order",
+      "read",
+      [orderIds.slice(offset, offset + 5000)],
+      { fields: ["id", "date_order"], load: false },
+      correlationId,
+    );
+    for (const order of orders ?? []) {
+      const id = Number(order.id);
+      if (id > 0 && order.date_order) orderDates.set(id, String(order.date_order));
+    }
+  }
+  const daily = new Map<string, DailySalesRow>();
+  for (const row of grouped ?? []) {
+    const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
+    const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0;
+    const date = orderDates.get(orderId)?.slice(0, 10) ?? "";
+    const qty = Number(row.qty);
+    if (productId <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(qty)) continue;
+    const key = `${productId}|${date}`;
+    const current = daily.get(key);
+    if (current) current.qty = Number(current.qty ?? 0) + qty;
+    else daily.set(key, { product_id: row.product_id, qty, "order_id.date_order": date });
+  }
+  return [...daily.values()];
+}
+
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -132,7 +184,7 @@ export async function GET(request: NextRequest) {
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
     const dailySalesPromise = forecastEnabled()
-      ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom]], ["qty:sum"], ["product_id", "order_id.date_order:day"]], { limit: MAX_PRODUCTS * 60, lazy: false }, correlationId)
+      ? loadDailySales(sessionId, [...salesBaseDomain, ["order_id.date_order", ">=", previousFrom]], correlationId)
       : Promise.resolve([] as Array<Record<string, unknown>>);
     const [recentSales, previousSales, products, companies, dailySales] = await Promise.all([
       rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
