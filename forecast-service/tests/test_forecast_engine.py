@@ -33,7 +33,20 @@ class ForecastBacktestTests(unittest.TestCase):
         self.assertEqual("HIGH", decision.risk)
         self.assertEqual(2.0, decision.availableDays)
         self.assertEqual(6.0, decision.recommendedReplenishment)
+        self.assertEqual(3, decision.expectedStockoutDaysAfterReplenishment)
         self.assertIn("available_days_do_not_cover_lead_time", decision.reason)
+
+    def test_inventory_projection_reports_post_replenishment_stockout_days(self):
+        start = date(2026, 1, 1)
+        forecast_points = [ForecastPoint(date=start + timedelta(days=index), p50=5, p80=6, p90=7)
+                           for index in range(7)]
+        result = project_inventory(InventoryRequest(vendorId=1, outletId=1, items=[
+            InventoryItem(productId=1, onHand=1, onOrder=0, forecast=forecast_points,
+                          leadTimeDays=0, safetyStockDays=8, dataQuality="VALID")
+        ]))
+        decision = result.decisions[0]
+        self.assertEqual(39.0, decision.recommendedReplenishment)
+        self.assertEqual(0, decision.expectedStockoutDaysAfterReplenishment)
 
     def test_forecast_uses_the_model_selected_for_each_product(self):
         request = ForecastRequest(vendorId=1, outletId=1, horizonDays=3, series=[

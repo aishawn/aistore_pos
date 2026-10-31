@@ -111,6 +111,7 @@ class InventoryDecision(BaseModel):
     availableDays: float | None
     recommendedReplenishment: float
     projectedAfterReplenishment: float
+    expectedStockoutDaysAfterReplenishment: int | None = None
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
     reason: list[str]
     dataQuality: str

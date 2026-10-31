@@ -134,6 +134,14 @@ def project_inventory(request: InventoryRequest) -> InventoryResponse:
         coverage_demand = average_demand * coverage_days
         recommended = max(0.0, coverage_demand - running)
         projected_after = running + recommended - average_demand * item.leadTimeDays
+        post_replenishment_running = running + recommended
+        expected_stockout_days = None
+        if item.forecast:
+            expected_stockout_days = 0
+            for point in item.forecast:
+                post_replenishment_running -= max(0.0, point.p50)
+                if post_replenishment_running <= 0:
+                    expected_stockout_days += 1
         reasons: list[str] = []
         if available_days is None:
             risk = "UNKNOWN"
@@ -155,6 +163,7 @@ def project_inventory(request: InventoryRequest) -> InventoryResponse:
             productId=item.productId, risk=risk, availableDays=available_days,
             recommendedReplenishment=round(recommended, 4),
             projectedAfterReplenishment=round(projected_after, 4),
+            expectedStockoutDaysAfterReplenishment=expected_stockout_days,
             confidence="HIGH" if item.dataQuality == "VALID" and average_demand > 0 else "LOW",
             reason=reasons, dataQuality=item.dataQuality,
         ))
