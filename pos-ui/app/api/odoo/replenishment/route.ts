@@ -117,6 +117,10 @@ export async function GET(request: NextRequest) {
       const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - forecastStock));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       const daysOfStock = unitsPerDay > 0 ? forecastStock / unitsPerDay : null;
+      const risk = daysOfStock === null ? "UNKNOWN"
+        : daysOfStock <= 0 ? "HIGH"
+          : daysOfStock <= coverageDays ? "MEDIUM" : "LOW";
+      const confidence = soldUnits >= 14 ? "MEDIUM" : "LOW";
       const reasonParts: string[] = [];
       if (soldUnits <= 0) {
         reasonParts.push("No completed POS sales in the lookback window — suggestion is zero until demand appears.");
@@ -135,6 +139,8 @@ export async function GET(request: NextRequest) {
         if (trend === "down") reasonParts.push(`Trend down ${Math.abs(Number(trendPercent?.toFixed(0) ?? 0))}% vs prior period.`);
         if (trend === "new") reasonParts.push("New demand — sold recently with no prior-period sales.");
       }
+      if (risk === "UNKNOWN") reasonParts.push("Risk is unknown because there is no positive demand baseline.");
+      if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; treat the estimate as low confidence.");
       return {
         id,
         name: String(product.display_name ?? product.name ?? "Product"),
@@ -149,6 +155,9 @@ export async function GET(request: NextRequest) {
         onHand,
         forecastStock,
         daysOfStock,
+        risk,
+        confidence,
+        dataQuality: "NATIVE_CURRENT_STOCK_SALES_HISTORY",
         suggestedQuantity,
         reason: reasonParts.join(" "),
         reasonParts,
@@ -164,6 +173,7 @@ export async function GET(request: NextRequest) {
       products: replenishmentItems,
       truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (recentSales?.length ?? 0) >= MAX_PRODUCTS || (previousSales?.length ?? 0) >= MAX_PRODUCTS,
       generatedAt: new Date().toISOString(),
+      dataQuality: "NATIVE_CURRENT_STOCK_SALES_HISTORY",
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof ReplenishmentSessionExpiredError) {

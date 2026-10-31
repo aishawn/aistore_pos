@@ -41,6 +41,9 @@ type ReplenishmentProduct = {
   onHand: number;
   forecastStock: number;
   daysOfStock: number | null;
+  risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  confidence?: "HIGH" | "MEDIUM" | "LOW";
+  dataQuality?: string;
   suggestedQuantity: number;
   reason?: string;
   reasonParts?: string[];
@@ -55,6 +58,7 @@ type ReplenishmentData = {
   products: ReplenishmentProduct[];
   truncated: boolean;
   generatedAt: string;
+  dataQuality?: string;
 };
 
 type ListFilter = "suggestions" | "out_of_stock" | "all";
@@ -63,6 +67,15 @@ const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
 const MAX_RFQ_QUANTITY = 100_000;
+
+function riskLabel(risk: ReplenishmentProduct["risk"]) {
+  const labels = { LOW: "Low risk", MEDIUM: "Review", HIGH: "High risk", UNKNOWN: "Unknown risk" };
+  return risk ? labels[risk] : "Risk unavailable";
+}
+
+function riskClass(risk: ReplenishmentProduct["risk"]) {
+  return risk === "HIGH" ? "bg-red-50 text-red-800" : risk === "MEDIUM" ? "bg-amber-50 text-amber-800" : risk === "LOW" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700";
+}
 
 type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string };
 
@@ -507,6 +520,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       <div className="min-w-0">
                         <h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]" title={product.name}>{label}</h3>
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                          {product.confidence && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{product.confidence.toLowerCase()} confidence</span>}
+                        </div>
                       </div>
                       {product.suggestedQuantity > 0
                         ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span>
@@ -627,6 +644,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <td className="px-4 py-3">
                       <span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span>
                       <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
+                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
                     {showMoreColumns && (
