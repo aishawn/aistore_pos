@@ -91,7 +91,7 @@ model evaluation.
 
 Use the native Odoo collector for daily inventory history. It reads
 `qty_available`, `virtual_available`, incoming/outgoing quantities, supplier
-delay, current price band, category, and warehouse scope with read-only
+delay, current price band, Odoo `standard_price`, category, and warehouse scope with read-only
 JSON-RPC calls:
 
 ```powershell

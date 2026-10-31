@@ -87,6 +87,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                 "outgoingQty": _number(product.get("outgoingQty")),
                 "leadTimeDays": _number(product.get("leadTimeDays")),
                 "price": _number(product.get("price")),
+                "cost": _number(product.get("cost")),
                 "isStockout": _number(product.get("availableQty")) is not None and _number(product.get("availableQty")) <= 0,
                 "promotionStatus": "UNKNOWN",
                 "promotionDataQuality": "NOT_CAPTURED",

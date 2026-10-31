@@ -95,6 +95,7 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "incomingQty": float(row.get("incoming_qty") or 0),
         "outgoingQty": float(row.get("outgoing_qty") or 0),
         "price": float(row.get("list_price") or 0),
+        "cost": float(row.get("standard_price")) if row.get("standard_price") is not None else None,
         "leadTimeDays": lead_time_days,
         "active": bool(row.get("active", True)),
     }
@@ -124,7 +125,7 @@ def main() -> int:
     warehouse = warehouses[0] if len(warehouses) == 1 else None
     products = odoo.read("product.product", [["active", "=", True]], [
         "id", "display_name", "product_tmpl_id", "categ_id", "qty_available",
-        "virtual_available", "incoming_qty", "outgoing_qty", "list_price", "active",
+        "virtual_available", "incoming_qty", "outgoing_qty", "list_price", "standard_price", "active",
     ])
     # Supplier lead time is optional in Odoo installations.  Missing rows are
     # represented as null and never guessed from a default.
@@ -158,7 +159,7 @@ def main() -> int:
         "warehouseScope": "SINGLE_WAREHOUSE" if warehouse else "COMPANY_AGGREGATE",
         "warehouses": [{"id": row.get("id"), "name": row.get("name")} for row in warehouses],
         "fields": ["availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty",
-                   "price", "leadTimeDays"],
+                   "price", "cost", "leadTimeDays"],
         "products": snapshot_products,
         "writeRequests": [],
     }

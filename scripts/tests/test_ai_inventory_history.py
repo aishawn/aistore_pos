@@ -24,7 +24,7 @@ def snapshot(date, quantity, price, *, version=None):
             "warehouseId": 2, "warehouse": "Test Warehouse",
             "availableQty": quantity, "virtualAvailableQty": quantity + 2,
             "incomingQty": 3, "outgoingQty": 1, "leadTimeDays": 4,
-            "price": price,
+            "price": price, "cost": 11.25,
         }],
     }
 
@@ -40,6 +40,7 @@ class InventoryHistoryTests(unittest.TestCase):
         self.assertEqual("NOT_CAPTURED", product["promotionDataQuality"])
         self.assertEqual([], result["writeRequests"])
         self.assertEqual(3.0, product["observations"][0]["incomingQty"])
+        self.assertEqual(11.25, product["observations"][0]["cost"])
 
     def test_load_snapshots_deduplicates_retries_by_capture_date(self):
         with tempfile.TemporaryDirectory() as directory:
