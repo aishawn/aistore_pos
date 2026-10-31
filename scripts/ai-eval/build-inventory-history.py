@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -56,9 +56,19 @@ def _number(value: Any) -> float | None:
 
 
 def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
-    dates = [str(snapshot.get("capturedAt", ""))[:10] for snapshot in snapshots]
+    dates = sorted({str(snapshot.get("capturedAt", ""))[:10] for snapshot in snapshots})
+    parsed_dates = [date.fromisoformat(value) for value in dates if len(value) == 10]
+    missing_dates: list[str] = []
+    if parsed_dates:
+        known = set(parsed_dates)
+        cursor = min(parsed_dates)
+        while cursor <= max(parsed_dates):
+            if cursor not in known:
+                missing_dates.append(cursor.isoformat())
+            cursor += timedelta(days=1)
     grouped: dict[str, list[dict[str, Any]]] = {}
-    for snapshot, date in zip(snapshots, dates):
+    for snapshot in snapshots:
+        date_value = str(snapshot.get("capturedAt", ""))[:10]
         quality = str(snapshot.get("dataQuality") or "UNKNOWN")
         for product in snapshot.get("products", []):
             product_id = product.get("productId")
@@ -66,7 +76,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
                 continue
             key = str(product_id)
             observation = {
-                "date": date,
+                "date": date_value,
                 "snapshotVersion": snapshot.get("snapshotVersion"),
                 "dataQuality": quality,
                 "warehouseId": product.get("warehouseId"),
@@ -126,6 +136,10 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "snapshotDates": dates,
         "snapshotCount": len(snapshots),
+        "coverageDays": (max(parsed_dates) - min(parsed_dates)).days + 1 if parsed_dates else 0,
+        "observedDays": len(parsed_dates),
+        "missingSnapshotDates": missing_dates,
+        "continuityStatus": "CONTIGUOUS" if not missing_dates else "GAPS_PRESENT",
         "dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
         "backtestReadiness": "READY_FOR_NATIVE_STOCKOUT_BACKTEST" if len(snapshots) >= 28 else "INSUFFICIENT_HISTORY",
         "stockoutDefinition": "observed availableQty <= 0 at a native Odoo snapshot",

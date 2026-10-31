@@ -54,6 +54,13 @@ class InventoryHistoryTests(unittest.TestCase):
             self.assertEqual(1, len(loaded))
             self.assertEqual("retry", loaded[0]["snapshotVersion"])
 
+    def test_history_exposes_snapshot_gaps_as_data_quality(self):
+        result = MODULE.build_history([snapshot("2026-10-01", 4, 19.99), snapshot("2026-10-03", 4, 19.99)])
+        self.assertEqual(3, result["coverageDays"])
+        self.assertEqual(2, result["observedDays"])
+        self.assertEqual(["2026-10-02"], result["missingSnapshotDates"])
+        self.assertEqual("GAPS_PRESENT", result["continuityStatus"])
+
     def test_rejects_write_requests(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

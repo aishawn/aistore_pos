@@ -134,4 +134,6 @@ list-price changes. Promotion state remains explicitly `NOT_CAPTURED` until a
 promotion or pricelist source is added; it is never inferred from a price
 change. Until 28 daily snapshots exist, the output is marked
 `backtestReadiness=INSUFFICIENT_HISTORY` and must not replace the inferred
-stockout flags in an acceptance backtest.
+stockout flags in an acceptance backtest. The history also reports
+`missingSnapshotDates` and `continuityStatus=GAPS_PRESENT` when the scheduler
+misses a day.
