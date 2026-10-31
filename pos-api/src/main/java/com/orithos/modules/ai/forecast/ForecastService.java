@@ -109,7 +109,7 @@ public class ForecastService {
         return response;
     }
 
-    private static void validateBatchCoverage(List<ForecastDtos.Series> requested, ForecastDtos.Response response) {
+    static void validateBatchCoverage(List<ForecastDtos.Series> requested, ForecastDtos.Response response) {
         if (response == null || response.items() == null) {
             throw new BusinessException(50331, "Forecast service returned an incomplete result.");
         }
