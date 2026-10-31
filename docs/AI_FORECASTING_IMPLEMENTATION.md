@@ -54,6 +54,11 @@ WAPE with bias as a tie-breaker. Reports also expose service-level proxies and
 explicitly mark expected post-replenishment stockout days as unavailable until
 native inventory history exists.
 
+Online model selection is bounded to the three most recent weekly folds per
+product and candidate. This keeps full-catalogue requests within the
+application gateway budget. Offline evaluation continues to use complete
+rolling windows for model-quality reporting.
+
 ## Next gates
 
 1. Run the schema migration and perform a read-only SKR sync with a fixed source version.

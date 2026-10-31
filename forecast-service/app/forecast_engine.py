@@ -10,6 +10,7 @@ from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
 MODEL = "seasonal_naive_v1"
 MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1",
                "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
+MAX_MODEL_SELECTION_FOLDS = 3
 
 
 def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | None = None,
@@ -108,7 +109,10 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
         folds = 0
         missed_units = 0.0
         inventory_unit_days = 0.0
-        for end in range(14, len(values) - horizon + 1, horizon):
+        first_origin = 14
+        if len(values) > 14 + horizon * 8:
+            first_origin = max(14, len(values) - horizon * MAX_MODEL_SELECTION_FOLDS)
+        for end in range(first_origin, len(values) - horizon + 1, horizon):
             train = values[:end]
             train_flags = flags[:end] if flags else []
             predicted, _, _ = _normalise(train, horizon, train_flags, candidate)

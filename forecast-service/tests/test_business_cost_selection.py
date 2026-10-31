@@ -33,6 +33,15 @@ def test_cost_components_match_hand_calculated_inventory_unit_days():
     assert score.evaluatedFolds == 6 and score.evaluatedDays == 42
 
 
+def test_long_history_model_selection_uses_only_three_recent_weekly_folds():
+    item = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7,
+        series=[series([4, 5, 6, 7, 8, 9, 10] * 18, unitCost=10, unitPrice=30)])).items[0]
+
+    assert item.selectionStatus == "ROLLING_BACKTEST"
+    assert item.candidateBusinessCosts
+    assert {score.evaluatedFolds for score in item.candidateBusinessCosts.values()} == {3}
+
+
 def test_margin_and_capital_policy_change_model_and_service_tradeoff():
     units = [3,3,0,1,8,3,3,1,3,1,8,0,8,0,1,0,0,8,1,8,8,0,1,0,0,1,3,8,0,1,3,1,8,0,8,3,3,8,1,0,8,0,0,3,0,8,3,1,0,1,0,0,8,0,0,0]
     def run(price, holding, obsolete, service):
