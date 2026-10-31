@@ -138,6 +138,8 @@ export async function GET(request: NextRequest) {
       const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * targetDays - forecastStock));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       const daysOfStock = unitsPerDay > 0 ? forecastStock / unitsPerDay : null;
+      const daysOfStockAfterReplenishment = unitsPerDay > 0
+        ? (forecastStock + suggestedQuantity) / unitsPerDay : null;
       const risk = daysOfStock === null ? "UNKNOWN"
         : daysOfStock <= (leadTimeDays ?? coverageDays) ? "HIGH"
           : daysOfStock <= targetDays ? "MEDIUM" : "LOW";
@@ -178,6 +180,7 @@ export async function GET(request: NextRequest) {
         onHand,
         forecastStock,
         daysOfStock,
+        daysOfStockAfterReplenishment,
         leadTimeDays,
         risk,
         confidence,
