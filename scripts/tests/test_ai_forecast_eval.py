@@ -87,7 +87,7 @@ class ForecastEvaluationTests(unittest.TestCase):
                                  str(report_path)], cwd=ROOT, capture_output=True, text=True, check=False)
         self.assertEqual(0, result.returncode, result.stderr)
         report = json.loads(report_path.read_text())
-        self.assertEqual(45, len(report["modelComparison"]))
+        self.assertEqual(54, len(report["modelComparison"]))
         self.assertEqual({7, 14, 28}, {row["horizonDays"] for row in report["modelComparison"]})
         self.assertEqual({"category", "stockoutRatio", "volume"},
                          {row["groupBy"] for row in report["modelComparison"]})
@@ -98,6 +98,15 @@ class ForecastEvaluationTests(unittest.TestCase):
         series = Series(**payload["series"][0])
         result = rolling_metrics(series, 7, "tsb_v1")
         self.assertEqual("PASS", result["status"])
+
+    def test_two_stage_model_handles_sparse_sales(self):
+        start = date(2026, 1, 1)
+        series = Series(productId=101,
+                        dates=[start + timedelta(days=index) for index in range(28)],
+                        units=[0, 0, 0, 4] * 7)
+        result = rolling_metrics(series, 7, "two_stage_occurrence_v1")
+        self.assertEqual("PASS", result["status"])
+        self.assertGreaterEqual(result["meanMae"], 0)
 
     def test_model_selection_is_per_product_and_blocks_fully_censored_series(self):
         payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())

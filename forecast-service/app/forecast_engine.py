@@ -51,6 +51,11 @@ def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | N
                 if value > 0:
                     demand = 0.20 * value + 0.80 * demand
             baseline = [probability * demand] * horizon
+    elif model == "two_stage_occurrence_v1":
+        nonzero = [value for value in clean if value > 0]
+        probability = len(nonzero) / len(clean) if clean else 0.0
+        amount = mean(nonzero) if nonzero else 0.0
+        baseline = [probability * amount] * horizon
     else:
         # A seven-day seasonal baseline is robust, explainable, and deterministic.
         week = clean[-7:] if len(clean) >= 7 else clean

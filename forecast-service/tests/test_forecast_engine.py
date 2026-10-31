@@ -56,6 +56,13 @@ class ForecastBacktestTests(unittest.TestCase):
         ])
         self.assertEqual("tsb_v1", forecast(tsb).items[0].model)
 
+        two_stage = ForecastRequest(vendorId=1, outletId=1, horizonDays=3, series=[
+            Series(productId=4, selectedModel="two_stage_occurrence_v1",
+                   dates=[date(2026, 1, 1) + timedelta(days=index) for index in range(16)],
+                   units=[0.0, 0.0, 0.0, 4.0] * 4),
+        ])
+        self.assertEqual("two_stage_occurrence_v1", forecast(two_stage).items[0].model)
+
     def test_scores_only_observed_days_when_evaluation_period_is_censored(self):
         result = backtest(BacktestRequest(horizonDays=3, series=[make_series([True, False, False])]))
         item = result.items[0]

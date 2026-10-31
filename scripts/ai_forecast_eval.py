@@ -24,7 +24,7 @@ def source_sha(snapshot: Path) -> str:
         return "unavailable"
 
 
-MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1")
+MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
 
 
 def _points(values: list[float], start_date, horizon: int, spread: float = 0.0) -> list[ForecastPoint]:
@@ -76,6 +76,11 @@ def _forecast_points(train: Series, horizon: int, model: str) -> list[ForecastPo
                 if value > 0:
                     demand = alpha_demand * value + (1 - alpha_demand) * demand
             values = [probability * demand] * horizon
+    elif model == "two_stage_occurrence_v1":
+        nonzero = [value for value in usable if value > 0]
+        probability = len(nonzero) / len(usable) if usable else 0.0
+        amount = sum(nonzero) / len(nonzero) if nonzero else 0.0
+        values = [probability * amount] * horizon
     else:
         raise ValueError(f"unsupported evaluation model: {model}")
     return _points(values, train.dates[-1], horizon, spread)
