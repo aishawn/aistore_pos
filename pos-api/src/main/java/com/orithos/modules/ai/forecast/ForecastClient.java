@@ -45,7 +45,6 @@ public class ForecastClient {
                     .uri(URI.create(baseUrl + "/v1/forecast/sales"))
                     .timeout(timeout)
                     .header("Content-Type", "application/json")
-                    .header("Content-Length", String.valueOf(bodyBytes.length))
                     .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes))
                     .build();
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
