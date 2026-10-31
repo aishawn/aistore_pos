@@ -111,7 +111,7 @@ def main() -> int:
     username = values.get("ODOO_SERVICE_USERNAME") or values.get("ODOO_USER")
     password = values.get("ODOO_SERVICE_PASSWORD") or values.get("ODOO_PASS")
     company_id = int(os.environ.get("SKR_ODOO_COMPANY_ID", "5"))
-    root = Path(os.environ.get("SKR_INVENTORY_SNAPSHOT_ROOT", "data/ai-eval/inventory-snapshots"))
+    root = Path(os.environ.get("SKR_INVENTORY_SNAPSHOT_ROOT", ".local/ai-eval/inventory-snapshots"))
     if not username or not password:
         raise RuntimeError("ODOO service credentials are required")
 

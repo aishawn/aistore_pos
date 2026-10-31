@@ -118,3 +118,20 @@ powershell -ExecutionPolicy Bypass -File scripts/ai-eval/register-daily-inventor
 Use `Unregister-ScheduledTask -TaskName Orithos-AI-Daily-Inventory-Snapshot`
 to remove it. In deployed environments, store the resulting snapshots on an
 access-controlled persistent volume rather than in Git.
+
+After at least two capture dates exist, build the native product history used
+by backtests:
+
+```powershell
+python scripts/ai-eval/build-inventory-history.py `
+  --input .local/ai-eval/inventory-snapshots `
+  --output .local/ai-eval/inventory-history.json
+```
+
+The history marks `actualStockoutDates` only when native `availableQty <= 0`,
+records `incomingQty` and supplier lead time for each product-day, and detects
+list-price changes. Promotion state remains explicitly `NOT_CAPTURED` until a
+promotion or pricelist source is added; it is never inferred from a price
+change. Until 28 daily snapshots exist, the output is marked
+`backtestReadiness=INSUFFICIENT_HISTORY` and must not replace the inferred
+stockout flags in an acceptance backtest.

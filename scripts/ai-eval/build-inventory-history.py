@@ -1,0 +1,151 @@
+"""Build per-product native inventory history from immutable daily snapshots.
+
+The output distinguishes observed stockouts (native ``availableQty <= 0``) from
+historical stockouts inferred from stock moves.  Price changes are observable
+when two snapshots contain different list prices; promotion state remains
+unknown because a list-price snapshot does not prove a promotion.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+def _capture_datetime(snapshot: dict[str, Any], path: Path) -> datetime:
+    value = snapshot.get("capturedAt")
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+
+
+def load_snapshots(root: Path) -> list[dict[str, Any]]:
+    snapshots: list[tuple[datetime, Path, dict[str, Any]]] = []
+    for path in root.rglob("inventory.json"):
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(snapshot, dict):
+            raise ValueError(f"snapshot must be an object: {path}")
+        if snapshot.get("source") != "odoo-readonly-jsonrpc":
+            raise ValueError(f"snapshot source is not native Odoo: {path}")
+        if snapshot.get("writeRequests", []) != []:
+            raise ValueError(f"snapshot contains write requests: {path}")
+        snapshots.append((_capture_datetime(snapshot, path), path, snapshot))
+    snapshots.sort(key=lambda item: item[0])
+    if not snapshots:
+        raise ValueError(f"no inventory.json snapshots found under {root}")
+    # One observation per UTC date.  If a task was retried, keep the latest
+    # capture for that date rather than double-counting a product-day.
+    by_date: dict[str, tuple[datetime, Path, dict[str, Any]]] = {}
+    for item in snapshots:
+        by_date[item[0].date().isoformat()] = item
+    return [item[2] for item in sorted(by_date.values(), key=lambda item: item[0])]
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    dates = [str(snapshot.get("capturedAt", ""))[:10] for snapshot in snapshots]
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for snapshot, date in zip(snapshots, dates):
+        quality = str(snapshot.get("dataQuality") or "UNKNOWN")
+        for product in snapshot.get("products", []):
+            product_id = product.get("productId")
+            if product_id is None:
+                continue
+            key = str(product_id)
+            observation = {
+                "date": date,
+                "snapshotVersion": snapshot.get("snapshotVersion"),
+                "dataQuality": quality,
+                "warehouseId": product.get("warehouseId"),
+                "warehouse": product.get("warehouse"),
+                "availableQty": _number(product.get("availableQty")),
+                "virtualAvailableQty": _number(product.get("virtualAvailableQty")),
+                "incomingQty": _number(product.get("incomingQty")),
+                "outgoingQty": _number(product.get("outgoingQty")),
+                "leadTimeDays": _number(product.get("leadTimeDays")),
+                "price": _number(product.get("price")),
+                "isStockout": _number(product.get("availableQty")) is not None and _number(product.get("availableQty")) <= 0,
+                "promotionStatus": "UNKNOWN",
+                "promotionDataQuality": "NOT_CAPTURED",
+            }
+            grouped.setdefault(key, []).append({"product": product, "observation": observation})
+
+    products: list[dict[str, Any]] = []
+    for entries in grouped.values():
+        entries.sort(key=lambda entry: entry["observation"]["date"])
+        first = entries[0]["product"]
+        observations: list[dict[str, Any]] = []
+        stockout_dates: list[str] = []
+        price_changes: list[dict[str, Any]] = []
+        previous_price: float | None = None
+        for entry in entries:
+            current = entry["observation"]
+            price = current["price"]
+            current["priceChanged"] = previous_price is not None and price is not None and price != previous_price
+            if current["priceChanged"]:
+                current["priceChangeFrom"] = previous_price
+                current["priceChangeTo"] = price
+                price_changes.append({"date": current["date"], "from": previous_price, "to": price})
+            else:
+                current["priceChangeFrom"] = None
+                current["priceChangeTo"] = None
+            if current["isStockout"]:
+                stockout_dates.append(current["date"])
+            observations.append(current)
+            if price is not None:
+                previous_price = price
+        products.append({
+            "productId": first.get("productId"),
+            "templateId": first.get("templateId"),
+            "name": first.get("name"),
+            "category": first.get("category"),
+            "brand": first.get("brand"),
+            "priceBand": first.get("priceBand"),
+            "observations": observations,
+            "actualStockoutDates": stockout_dates,
+            "priceChanges": price_changes,
+            "promotionDataQuality": "NOT_CAPTURED",
+        })
+    products.sort(key=lambda product: (str(product.get("name") or ""), int(product.get("productId") or 0)))
+    return {
+        "historyVersion": "native-odoo-inventory-history-v1",
+        "source": "odoo-readonly-jsonrpc",
+        "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "snapshotDates": dates,
+        "snapshotCount": len(snapshots),
+        "dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "backtestReadiness": "READY_FOR_NATIVE_STOCKOUT_BACKTEST" if len(snapshots) >= 28 else "INSUFFICIENT_HISTORY",
+        "stockoutDefinition": "observed availableQty <= 0 at a native Odoo snapshot",
+        "promotionDataQuality": "NOT_CAPTURED",
+        "products": products,
+        "writeRequests": [],
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=Path, required=True, help="directory containing dated inventory.json snapshots")
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    history = build_history(load_snapshots(args.input))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(history, indent=2), encoding="utf-8")
+    print(json.dumps({"output": str(args.output), "snapshots": history["snapshotCount"], "products": len(history["products"]), "dataQuality": history["dataQuality"]}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -2,7 +2,7 @@
 
 `scripts/ai-eval/fetch-skr-inventory-snapshot.py` captures the current Odoo
 inventory state with read-only JSON-RPC calls. It writes one immutable file per
-UTC capture date under `data/ai-eval/inventory-snapshots/YYYY-MM-DD/inventory.json`.
+UTC capture date under `.local/ai-eval/inventory-snapshots/YYYY-MM-DD/inventory.json`.
 
 Each product records Odoo's native `qty_available`, `virtual_available`,
 `incoming_qty`, `outgoing_qty`, category, current list price, and the shortest
