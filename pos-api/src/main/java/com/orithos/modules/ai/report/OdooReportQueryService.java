@@ -283,10 +283,20 @@ public class OdooReportQueryService {
             Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
             List<Map<String, Object>> products = searchReadPages(sessionId, "product.product",
                     productDomain(companyId),
-                    List.of("id", "display_name", "name", "list_price", "qty_available", "categ_id"),
+                    List.of("id", "display_name", "name", "list_price", "qty_available", "categ_id", "pos_categ_ids"),
                     context, MAX_RECOMMENDATION_PRODUCTS, "name asc, id asc");
             if (products.size() > MAX_RECOMMENDATION_PRODUCTS) {
                 return ProductCatalogResult.fail("ODOO_REPORT_TOO_LARGE");
+            }
+            Map<Long, String> posCategories = new LinkedHashMap<>();
+            List<Object> categoryDomain = new ArrayList<>();
+            addCompanyScope(categoryDomain, companyId);
+            for (Map<String, Object> category : searchReadPages(sessionId, "pos.category", categoryDomain,
+                    List.of("id", "name"), context, MAX_GROUPS, "name asc, id asc")) {
+                Object id = category.get("id");
+                if (id instanceof Number number) {
+                    posCategories.put(number.longValue(), String.valueOf(category.getOrDefault("name", "")));
+                }
             }
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Map<String, Object> product : products) {
@@ -295,7 +305,7 @@ public class OdooReportQueryService {
                 row.put("name", product.getOrDefault("display_name", product.getOrDefault("name", "")));
                 row.put("list_price", decimal(product.get("list_price")));
                 row.put("quantity", decimal(product.get("qty_available")));
-                row.put("category", relationName(product.get("categ_id")));
+                row.put("category", productCategories(product, posCategories));
                 rows.add(row);
             }
             return ProductCatalogResult.ok(rows);
@@ -308,6 +318,20 @@ public class OdooReportQueryService {
                     failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
             return ProductCatalogResult.fail(error);
         }
+    }
+
+    private static String productCategories(Map<String, Object> product, Map<Long, String> posCategories) {
+        List<String> names = new ArrayList<>();
+        Object ids = product.get("pos_categ_ids");
+        if (ids instanceof List<?> list) {
+            for (Object id : list) {
+                if (id instanceof Number number && posCategories.containsKey(number.longValue())) {
+                    names.add(posCategories.get(number.longValue()));
+                }
+            }
+        }
+        if (!names.isEmpty()) return String.join(", ", names);
+        return relationName(product.get("categ_id"));
     }
 
     public ZoneId businessTimezone(TenantContext tenant) {
