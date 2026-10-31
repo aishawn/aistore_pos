@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import (MODEL_NAMES, _business_metrics, _group_labels,
+from scripts.ai_forecast_eval import (MODEL_NAMES, _business_metrics, _demand_profile, _group_labels,
                                       apply_native_inventory_history, cold_start_similarity,
                                       rolling_metrics, select_model)
 
@@ -204,6 +204,18 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual("INFERRED_FROM_SIMILAR_PRODUCTS", result["dataQuality"])
         self.assertEqual([2.0] * 7, result["forecast"])
         self.assertEqual(201, result["matches"][0]["productId"])
+
+    def test_demand_profile_distinguishes_weekly_pattern_from_constant_sales(self):
+        start = date(2026, 1, 1)
+        weekly = [2, 2, 2, 2, 2, 8, 10] * 4
+        weekly_series = Series(productId=301,
+                               dates=[start + timedelta(days=index) for index in range(len(weekly))],
+                               units=weekly)
+        constant = Series(productId=302,
+                          dates=[start + timedelta(days=index) for index in range(28)],
+                          units=[4.0] * 28)
+        self.assertEqual("WEEKLY_PATTERN_CANDIDATE", _demand_profile(weekly_series))
+        self.assertEqual("GENERAL", _demand_profile(constant))
 
 
 if __name__ == "__main__":

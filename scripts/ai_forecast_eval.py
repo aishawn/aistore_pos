@@ -237,10 +237,17 @@ def _demand_profile(series: Series) -> str:
         return "INTERMITTENT_OR_LOW_VOLUME"
     if average > 10 and zero_ratio <= 0.10:
         return "HIGH_VOLUME_STABLE"
-    if len(values) >= 14:
-        weekly = sum(abs(values[index] - values[index - 7]) for index in range(7, len(values)))
-        baseline = sum(values[7:]) or 1.0
-        if weekly / baseline < 0.45:
+    if average <= 2:
+        return "LOW_VOLUME"
+    if len(values) >= 21:
+        lag7_error = sum(abs(values[index] - values[index - 7])
+                         for index in range(7, len(values))) / (len(values) - 7)
+        mean_level = average or 1.0
+        mean_error = sum(abs(value - mean_level) for value in values) / len(values)
+        # A weekly profile is meaningful only when the 7-day lag predicts
+        # better than a flat baseline; a constant series is therefore stable,
+        # not incorrectly labelled seasonal.
+        if lag7_error < mean_error * 0.70:
             return "WEEKLY_PATTERN_CANDIDATE"
     return "GENERAL"
 
