@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @Component
@@ -45,8 +46,8 @@ public class ForecastClient {
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 if (response.statusCode() == 422) {
-                    log.warn("Forecast service rejected request with schema validation errors: {}",
-                            validationErrorPaths(response.body()));
+                    log.warn("Forecast service rejected request payloadBytes={} validationErrors={}",
+                            body.getBytes(StandardCharsets.UTF_8).length, validationErrorPaths(response.body()));
                 }
                 throw new BusinessException(50331, "Forecast service returned an error.");
             }
