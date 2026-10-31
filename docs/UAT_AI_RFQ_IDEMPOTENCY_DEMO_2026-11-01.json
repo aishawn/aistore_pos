@@ -40,8 +40,17 @@
   },
   "limitations": [
     "Manual quantity 0 to 1; no positive-demand forecast or full UI acceptance claim",
-    "Cross-deployment replay will be checked after the documentation auto-deployment",
     "No automatic reconciliation for pending outcomes; check purchases before a new review",
     "Shared frontend volume; multiple hosts require shared transactional storage"
-  ]
+  ],
+  "crossDeploymentReplay": {
+    "verifiedAt": "2026-10-31T16:46:37.273423+00:00",
+    "runtimeSha": "dec0a96f45996ddf0ae0c4fde71dd068a8f8538e",
+    "status": 201,
+    "replayed": true,
+    "sameDraftId": 93749,
+    "newOrderCountStill": 1,
+    "changedPayloadStatus": 409,
+    "auditCountStill": 1
+  }
 }
