@@ -85,10 +85,14 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
             windows.append({"status": "BLOCKED", "observedDays": 0,
                             "evaluationCensoredDays": censored_days, "censored": True,
                             "wape": None, "mae": None, "bias": None,
-                            "p80Coverage": None, "p90Coverage": None})
+                            "p80Coverage": None, "p90Coverage": None,
+                            "underForecastUnits": None, "overForecastUnits": None,
+                            "p50DemandCoverage": None})
             continue
         actual = [value for _, value in observed]
         errors = [point.p50 - value for point, value in observed]
+        under_forecast = sum(max(value - point.p50, 0.0) for point, value in observed)
+        over_forecast = sum(max(point.p50 - value, 0.0) for point, value in observed)
         denominator = sum(actual)
         windows.append({
             "status": "PASS",
@@ -101,6 +105,9 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
             "bias": sum(errors) / len(errors),
             "p80Coverage": sum(value <= point.p80 for point, value in observed) / len(observed),
             "p90Coverage": sum(value <= point.p90 for point, value in observed) / len(observed),
+            "underForecastUnits": under_forecast,
+            "overForecastUnits": over_forecast,
+            "p50DemandCoverage": sum(value <= point.p50 for point, value in observed) / len(observed),
             "censored": any(series.stockoutFlags[end:end + horizon]) or any(series.stockoutFlags[:end]),
         })
     if not windows:
@@ -126,6 +133,10 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
         "meanBias": mean("bias"),
         "p80Coverage": mean("p80Coverage"),
         "p90Coverage": mean("p90Coverage"),
+        "underForecastUnits": sum(row.get("underForecastUnits") or 0 for row in windows),
+        "overForecastUnits": sum(row.get("overForecastUnits") or 0 for row in windows),
+        "p50DemandCoverage": mean("p50DemandCoverage"),
+        "evaluationCensoredDays": sum(row.get("evaluationCensoredDays", 0) for row in windows),
         "censoredWindowCount": sum(1 for row in windows if row["censored"]),
     }
 
@@ -202,7 +213,35 @@ def _aggregate_group(rows: list[dict]) -> dict:
     return {"seriesCount": len(rows), "evaluatedSeriesCount": sum(row["status"] != "BLOCKED" for row in rows),
             "meanWape": avg("meanWape"), "meanMae": avg("meanMae"), "meanBias": avg("meanBias"),
             "weightedWape": absolute_error / actual_total if actual_total else None,
-            "p80Coverage": avg("p80Coverage"), "p90Coverage": avg("p90Coverage")}
+            "p80Coverage": avg("p80Coverage"), "p90Coverage": avg("p90Coverage"),
+            "p50DemandCoverage": avg("p50DemandCoverage"),
+            "underForecastUnits": sum(row.get("underForecastUnits") or 0 for row in rows),
+            "overForecastUnits": sum(row.get("overForecastUnits") or 0 for row in rows),
+            "evaluationCensoredDays": sum(row.get("evaluationCensoredDays", 0) for row in rows)}
+
+
+def _business_metrics(rows: list[dict], cost_model: dict | None = None) -> dict:
+    """Return decision metrics without inventing financial assumptions.
+
+    The unit proxies are always measurable from a sales backtest. Currency
+    values remain ``None`` until the merchant supplies costs in the snapshot.
+    """
+    under = sum(row.get("underForecastUnits") or 0 for row in rows)
+    over = sum(row.get("overForecastUnits") or 0 for row in rows)
+    censored_days = sum(row.get("evaluationCensoredDays", 0) for row in rows)
+    observed_days = sum(row.get("evaluatedWindowCount", 0) for row in rows)
+    costs = cost_model or {}
+    stockout_rate = censored_days / (censored_days + observed_days) if censored_days + observed_days else None
+    return {
+        "status": "CONFIGURED" if {"stockoutCostPerUnit", "holdingCostPerUnitDay"} <= costs.keys() else "COST_CONFIG_REQUIRED",
+        "stockoutLoss": under * float(costs["stockoutCostPerUnit"]) if "stockoutCostPerUnit" in costs else None,
+        "holdingCost": over * float(costs["holdingCostPerUnitDay"]) if "holdingCostPerUnitDay" in costs else None,
+        "expiryRisk": over * float(costs["expiryRiskPerUnit"]) if "expiryRiskPerUnit" in costs else None,
+        "stockoutUnitProxy": under,
+        "overstockUnitProxy": over,
+        "censoredDemandRate": stockout_rate,
+        "costModelSource": "snapshot.costModel" if costs else None,
+    }
 
 
 def main() -> int:
@@ -222,6 +261,11 @@ def main() -> int:
     for selection in model_selections:
         model = selection.get("selectedModel") or "BLOCKED"
         selected_counts[model] = selected_counts.get(model, 0) + 1
+    selected_rolling = [
+        rolling_metrics(series, 7, selection["selectedModel"])
+        for series, selection in zip(request.series, model_selections)
+        if selection.get("selectedModel")
+    ]
     comparison = []
     for model in MODEL_NAMES:
         for horizon in (7, 14, 28):
@@ -234,6 +278,7 @@ def main() -> int:
                 comparison.append({"model": model, "horizonDays": horizon, "groupBy": labels,
                                    "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
     execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
+    business_metrics = _business_metrics(selected_rolling, payload.get("costModel"))
     report = {
         "status": execution_status,
         "qualityGate": "PASS" if wapes and sum(wapes) / len(wapes) <= 0.30 else "FAIL",
@@ -261,6 +306,7 @@ def main() -> int:
             "metric": "weightedWape_then_absolute_bias",
             "selectedModelCounts": selected_counts,
         },
+        "businessMetrics": business_metrics,
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

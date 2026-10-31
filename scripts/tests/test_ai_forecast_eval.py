@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import MODEL_NAMES, _group_labels, rolling_metrics, select_model
+from scripts.ai_forecast_eval import MODEL_NAMES, _business_metrics, _group_labels, rolling_metrics, select_model
 
 import importlib.util
 MOVE_MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-sales-snapshot.py"
@@ -106,6 +106,24 @@ class ForecastEvaluationTests(unittest.TestCase):
         result = select_model(blocked, 7)
         self.assertEqual("BLOCKED", result["selectionStatus"])
         self.assertIsNone(result["selectedModel"])
+
+    def test_business_metrics_expose_unit_proxies_without_inventing_costs(self):
+        metrics = _business_metrics([{
+            "underForecastUnits": 3.0, "overForecastUnits": 5.0,
+            "evaluationCensoredDays": 2, "evaluatedWindowCount": 8,
+        }])
+        self.assertEqual("COST_CONFIG_REQUIRED", metrics["status"])
+        self.assertEqual(3.0, metrics["stockoutUnitProxy"])
+        self.assertIsNone(metrics["stockoutLoss"])
+
+        configured = _business_metrics([{
+            "underForecastUnits": 3.0, "overForecastUnits": 5.0,
+            "evaluationCensoredDays": 2, "evaluatedWindowCount": 8,
+        }], {"stockoutCostPerUnit": 10, "holdingCostPerUnitDay": 0.5,
+              "expiryRiskPerUnit": 2})
+        self.assertEqual("CONFIGURED", configured["status"])
+        self.assertEqual(30.0, configured["stockoutLoss"])
+        self.assertEqual(2.5, configured["holdingCost"])
 
 
 if __name__ == "__main__":
