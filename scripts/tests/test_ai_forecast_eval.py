@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
-from scripts.ai_forecast_eval import MODEL_NAMES, _group_labels, rolling_metrics
+from scripts.ai_forecast_eval import MODEL_NAMES, _group_labels, rolling_metrics, select_model
 
 import importlib.util
 MOVE_MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-sales-snapshot.py"
@@ -92,6 +92,20 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual({"category", "stockoutRatio", "volume"},
                          {row["groupBy"] for row in report["modelComparison"]})
         report_path.unlink(missing_ok=True)
+
+    def test_model_selection_is_per_product_and_blocks_fully_censored_series(self):
+        payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+        selected = select_model(Series(**payload["series"][0]), 7)
+        self.assertEqual("PASS", selected["selectionStatus"])
+        self.assertIn(selected["selectedModel"], MODEL_NAMES)
+        self.assertEqual("weightedWape_then_absolute_bias", selected["selectionMetric"])
+
+        start = date(2026, 1, 1)
+        blocked = Series(productId=99, dates=[start + timedelta(days=index) for index in range(21)],
+                         units=[2.0] * 21, stockoutFlags=[True] * 21)
+        result = select_model(blocked, 7)
+        self.assertEqual("BLOCKED", result["selectionStatus"])
+        self.assertIsNone(result["selectedModel"])
 
 
 if __name__ == "__main__":

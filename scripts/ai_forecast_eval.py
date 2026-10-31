@@ -130,6 +130,54 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
     }
 
 
+def select_model(series: Series, horizon: int = 7) -> dict:
+    """Choose a model for one product from rolling, uncensored backtests.
+
+    The selector is deliberately metric-driven.  A blocked or fully censored
+    candidate cannot win; among the remaining candidates weighted WAPE is the
+    primary objective, with a small absolute-bias tie breaker.  The demand
+    profile is returned as an explanation for the decision, not as a hidden
+    rule that overrides measured backtest performance.
+    """
+    rows = [rolling_metrics(series, horizon, model) for model in MODEL_NAMES]
+    eligible = [row for row in rows if row.get("status") != "BLOCKED" and row.get("weightedWape") is not None]
+    if not eligible:
+        return {
+            "productId": series.productId, "horizonDays": horizon,
+            "selectedModel": None, "selectionStatus": "BLOCKED",
+            "profile": _demand_profile(series), "candidates": rows,
+        }
+    winner = min(eligible, key=lambda row: (
+        row["weightedWape"], abs(row.get("meanBias") or 0.0), row["model"]))
+    return {
+        "productId": series.productId, "horizonDays": horizon,
+        "selectedModel": winner["model"], "selectionStatus": "PASS",
+        "profile": _demand_profile(series),
+        "selectionMetric": "weightedWape_then_absolute_bias",
+        "selectedMetrics": {name: winner.get(name) for name in
+                            ("weightedWape", "meanWape", "meanMae", "meanBias", "p80Coverage", "p90Coverage")},
+        "candidates": rows,
+    }
+
+
+def _demand_profile(series: Series) -> str:
+    values = [max(0.0, float(value)) for value in series.units]
+    if not values:
+        return "NO_HISTORY"
+    zero_ratio = sum(value == 0 for value in values) / len(values)
+    average = sum(values) / len(values)
+    if zero_ratio >= 0.70:
+        return "INTERMITTENT_OR_LOW_VOLUME"
+    if average > 10 and zero_ratio <= 0.10:
+        return "HIGH_VOLUME_STABLE"
+    if len(values) >= 14:
+        weekly = sum(abs(values[index] - values[index - 7]) for index in range(7, len(values)))
+        baseline = sum(values[7:]) or 1.0
+        if weekly / baseline < 0.45:
+            return "WEEKLY_PATTERN_CANDIDATE"
+    return "GENERAL"
+
+
 def _group_labels(series: Series) -> dict[str, str]:
     if series.stockoutDataQuality and series.stockoutDataQuality not in ("VALID", "INFERRED_FROM_STOCK_MOVES"):
         stockout_label = "UNKNOWN"
@@ -169,6 +217,11 @@ def main() -> int:
     rolling = [rolling_metrics(series, horizon, model)
                for model in MODEL_NAMES
                for horizon in (7, 14, 28) for series in request.series]
+    model_selections = [select_model(series, 7) for series in request.series]
+    selected_counts = {}
+    for selection in model_selections:
+        model = selection.get("selectedModel") or "BLOCKED"
+        selected_counts[model] = selected_counts.get(model, 0) + 1
     comparison = []
     for model in MODEL_NAMES:
         for horizon in (7, 14, 28):
@@ -201,6 +254,13 @@ def main() -> int:
         "writeRequests": [],
         "dataSourceMode": "fixed_read_only_snapshot",
         "modelComparison": comparison,
+        "modelSelection": model_selections,
+        "modelSelectionSummary": {
+            "horizonDays": 7,
+            "method": "per_product_rolling_backtest",
+            "metric": "weightedWape_then_absolute_bias",
+            "selectedModelCounts": selected_counts,
+        },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
