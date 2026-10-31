@@ -82,6 +82,7 @@ type ReplenishmentData = {
   coverageDays: number;
   products: ReplenishmentProduct[];
   truncated: boolean;
+  catalogueCoverage?: { status: string; loadedProducts: number; eligibleProducts: number; forecastedProducts: number };
   salesHistory?: { timezone: string; timezoneVerified: boolean };
   reviewRequiredCount?: number;
   excludedProductCount?: number;
@@ -159,6 +160,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [showMoreColumns, setShowMoreColumns] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ key: "", page: 1 });
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +264,11 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     });
   }, [data, listFilter, query]);
 
+  const pageKey = `${data?.generatedAt ?? ""}|${listFilter}|${query}`;
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / 100));
+  const currentPage = pagination.key === pageKey ? Math.min(pagination.page, pageCount) : 1;
+  const pageItems = useMemo(() => filteredItems.slice((currentPage - 1) * 100, currentPage * 100), [filteredItems, currentPage]);
+
   const selectedSuggested = useMemo(
     () => suggestedItems.filter((product) => selectedIds.has(product.id)),
     [suggestedItems, selectedIds],
@@ -273,8 +280,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const canCreateRfq = planReady && selectedSuggested.length > 0;
 
   const visibleSelectableIds = useMemo(
-    () => filteredItems.filter((product) => product.suggestedQuantity > 0).map((product) => product.id),
-    [filteredItems],
+    () => pageItems.filter((product) => product.suggestedQuantity > 0).map((product) => product.id),
+    [pageItems],
   );
   const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleSelectableIds.some((id) => selectedIds.has(id));
@@ -537,7 +544,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 {listFilter === "all" ? "All POS products" : listFilter === "out_of_stock" ? "Out of stock with demand" : "Replenishment suggestions"}
               </h2>
               <p className="mt-1 text-xs text-[var(--oh-muted)]">
-                {filteredItems.length} shown · {selectedSuggested.length} selected for RFQ
+                {filteredItems.length} matching · {selectedSuggested.length} selected for RFQ
                 {selectedSuggested.length > MAX_RFQ_LINES ? ` (first ${MAX_RFQ_LINES} used)` : ""}
               </p>
             </div>
@@ -604,7 +611,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       : "No POS products were returned by Orithos."
                 : "No POS products were returned by Orithos."}
             </p>
-          ) : filteredItems.map((product) => {
+          ) : pageItems.map((product) => {
             const label = friendlyProductName(product.name);
             const skuShort = truncateSku(product.sku);
             const selectable = product.suggestedQuantity > 0;
@@ -733,7 +740,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       : "No POS products were returned by Orithos."}
                   </td>
                 </tr>
-              ) : filteredItems.map((product) => {
+              ) : pageItems.map((product) => {
                 const label = friendlyProductName(product.name);
                 const skuShort = truncateSku(product.sku);
                 const selectable = product.suggestedQuantity > 0;
@@ -809,9 +816,17 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </tbody>
           </table>
         </div>
+        {filteredItems.length > 0 && <nav aria-label="Replenishment pages" className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] px-4 py-2 text-sm">
+          <span>{(currentPage - 1) * 100 + 1}–{Math.min(currentPage * 100, filteredItems.length)} of {filteredItems.length} · Page {currentPage} of {pageCount}</span>
+          <div className="flex gap-2">
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPagination({ key: pageKey, page: currentPage - 1 })} className="min-h-11 rounded border px-3 disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPagination({ key: pageKey, page: currentPage + 1 })} className="min-h-11 rounded border px-3 disabled:opacity-40">Next</button>
+          </div>
+        </nav>}
+        {data?.catalogueCoverage?.status === "COMPLETE" && <p role="status" className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Complete catalogue: {data.catalogueCoverage.loadedProducts} POS products checked · {data.catalogueCoverage.eligibleProducts} eligible for replenishment. Search and totals include every page.</p>}
         {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">Store timezone uses {data.salesHistory.timezone} as a fallback. Verify the store state in Orithos; forecast confidence is reduced.</p>}
         {(data?.reviewRequiredCount ?? 0) > 0 && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">{data?.reviewRequiredCount} products need stock, cost or purchase unit checks. Their purchase suggestions are paused. Choose “Review data” to inspect them.</p>}
-        {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Showing up to 1,000 products or product demand groups. Narrow the product catalogue in Orithos for a complete plan.</p>}
+        {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">This plan has incomplete catalogue coverage. Refresh before relying on store totals.</p>}
       </section>
 
       {auditEntries.length > 0 && (

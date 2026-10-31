@@ -138,6 +138,21 @@ class ForecastBacktestTests(unittest.TestCase):
         new.brand = "different"
         self.assertNotEqual("ANALOG_COLD_START", forecast(request).items[-1].selectionStatus)
 
+    def test_batches_preserve_full_analog_pool_and_return_targets_only(self):
+        dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(56)]
+        donors = [Series(productId=i, dates=dates, units=[float(i)] * 56,
+                         category="wine", brand="example", priceBand="mid") for i in (1, 2, 3)]
+        new = Series(productId=4, dates=dates[-7:], units=[0.] * 7, isNew=True,
+                     category="wine", brand="example", priceBand="mid")
+        full = forecast(ForecastRequest(vendorId=1, outletId=1, series=donors + [new]))
+        batched = forecast(ForecastRequest(vendorId=1, outletId=1, series=[new], referenceSeries=donors))
+        self.assertEqual([full.items[-1]], batched.items)
+        overlap = forecast(ForecastRequest(vendorId=1, outletId=1, series=[donors[0], new], referenceSeries=donors))
+        self.assertEqual(full.items[-1], overlap.items[-1])
+        self.assertEqual(3, overlap.items[-1].analogCount)
+        too_few = forecast(ForecastRequest(vendorId=1, outletId=1, series=[donors[0], new], referenceSeries=donors[:2]))
+        self.assertNotEqual("ANALOG_COLD_START", too_few.items[-1].selectionStatus)
+
     def test_scores_only_observed_days_when_evaluation_period_is_censored(self):
         result = backtest(BacktestRequest(horizonDays=3, series=[make_series([True, False, False])]))
         item = result.items[0]

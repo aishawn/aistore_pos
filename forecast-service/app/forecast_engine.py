@@ -191,6 +191,11 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
 def forecast(request: ForecastRequest) -> ForecastResponse:
     today = request.forecastStartDate or date.today()
     items: list[ForecastItem] = []
+    # Target rows take precedence; overlapping references must not inflate the
+    # three-donor threshold when a batch contains one of its own donors.
+    donor_pool = {series.productId: series for series in request.referenceSeries}
+    donor_pool.update({series.productId: series for series in request.series})
+    analog_cache = {}
     for series in request.series:
         if series.selectedModel:
             model, selection_status, candidate_scores, metric, cost_details, validation = series.selectedModel, "EXPLICIT", {}, None, {}, {}
@@ -203,16 +208,22 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
         analog_spread = 0.0
         if not series.selectedModel and series.isNew and len(series.units) < 28 and series.category and series.priceBand:
             cutoff = series.dates[-1] if series.dates else request.forecastStartDate or today
-            donors = [other for other in request.series
-                      if other.productId != series.productId and not other.isNew and len(other.units) >= 28
-                      and other.category == series.category and other.priceBand == series.priceBand
-                      and (not series.brand or other.brand == series.brand)
-                      and other.dates[-1] == cutoff
-                      and sum(other.units[-28:]) > 0 and not any(other.stockoutFlags[-28:])]
-            if len(donors) >= 3:
-                analog_count = len(donors)
-                analog_spread = pstdev(max(0.0, value) for donor in donors for value in donor.units[-28:])
-                values = [median(mean(max(0.0, v) for v in donor.units[-28:]) for donor in donors)] * request.horizonDays
+            key = (series.category, series.brand, series.priceBand, cutoff)
+            if key not in analog_cache:
+                donors = [other for other in donor_pool.values()
+                          if not other.isNew and len(other.units) >= 28
+                          and other.category == series.category and other.priceBand == series.priceBand
+                          and (not series.brand or other.brand == series.brand)
+                          and other.dates[-1] == cutoff
+                          and sum(other.units[-28:]) > 0 and not any(other.stockoutFlags[-28:])]
+                analog_cache[key] = (len(donors),
+                                     median(mean(max(0.0, v) for v in donor.units[-28:]) for donor in donors) if len(donors) >= 3 else 0.0,
+                                     pstdev(max(0.0, value) for donor in donors for value in donor.units[-28:]) if len(donors) >= 3 else 0.0)
+            donor_count, donor_mean, donor_spread = analog_cache[key]
+            if donor_count >= 3:
+                analog_count = donor_count
+                analog_spread = donor_spread
+                values = [donor_mean] * request.horizonDays
                 model, selection_status, metric = "analog_category_brand_price_v1", "ANALOG_COLD_START", None
                 candidate_scores, cost_details, validation, quality, confidence = {}, {}, {}, "INSUFFICIENT_HISTORY", "LOW"
         usable_tail = [value for index, value in enumerate(series.units[-28:], start=max(0, len(series.units) - 28))
@@ -230,7 +241,7 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
                                   candidateBusinessCosts=cost_details,
                                   selectionValidation=validation,
                                   dataQuality=quality, confidence=confidence))
-    return ForecastResponse(model="per_product_selected", modelVersion="4", sourceVersion=request.sourceVersion,
+    return ForecastResponse(model="per_product_selected", modelVersion="5", sourceVersion=request.sourceVersion,
                             horizonDays=request.horizonDays, items=items, costPolicy=request.costPolicy,
                             costPolicySource="REQUEST_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED" if "costPolicy" in request.model_fields_set else "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED")
 

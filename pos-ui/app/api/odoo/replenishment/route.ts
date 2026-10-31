@@ -4,6 +4,7 @@ import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
 import { readInventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
+import { readCompleteRows } from "@/lib/replenishment-pagination";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 56;
 const PERIOD_DAYS = 28;
-const MAX_PRODUCTS = 1000;
+const FORECAST_BATCH_SIZE = 500;
 const COVERAGE_OPTIONS = new Set([7, 14, 21, 28, 42]);
 const FORECAST_MODELS = new Set([
   "seasonal_naive_v1",
@@ -119,19 +120,26 @@ type DailySalesRow = Record<string, unknown> & {
 
 async function loadDailySales(sessionId: string, domain: unknown[], timezone: string, correlationId?: string | null): Promise<DailySalesRow[]> {
   // Odoo 20 rejects related datetime group keys such as order_id.date_order:day
-  // on pos.order.line. Group by regular many2one fields, then resolve order
-  // dates in read-only batches and aggregate them in the API process.
-  type Group = { product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
+  // on pos.order.line. Read signed lines by ID, resolve order dates in
+  // read-only batches, and aggregate locally. This avoids expensive grouped
+  // offsets when a full store has tens of thousands of order lines.
+  type Group = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
   const grouped: Group[] = [];
   const batchSize = 5000;
-  for (let offset = 0; ; offset += batchSize) {
-    const page = await rpc<Group[]>(sessionId, "pos.order.line", "read_group",
-      [domain, ["qty:sum"], ["product_id", "order_id"]],
-      { limit: batchSize, offset, orderby: "product_id, order_id", lazy: false }, correlationId);
+  let afterId = 0;
+  while (true) {
+    const page = await rpc<Group[]>(sessionId, "pos.order.line", "search_read",
+      [[...domain, ["id", ">", afterId]]],
+      { fields: ["id", "product_id", "order_id", "qty"], limit: batchSize, order: "id asc" }, correlationId);
     if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated.");
+    for (const line of page) {
+      const id = Number(line.id);
+      if (!Number.isSafeInteger(id) || id <= afterId) throw new Error("Sales history pagination is incomplete; no plan was generated.");
+      afterId = id;
+    }
     grouped.push(...page);
+    if (grouped.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
     if (page.length < batchSize) break;
-    if (grouped.length >= 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
   }
   const orderIds = [...new Set((grouped ?? [])
     .map((row) => Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0)
@@ -200,10 +208,15 @@ export async function GET(request: NextRequest) {
     ];
     const unitFields = await rpc<Record<string, unknown>>(sessionId, "product.product", "fields_get", [["uom_po_id", "brand_id"]], { attributes: ["type"] }, correlationId);
     const hasPurchaseUnit = Boolean(unitFields && Object.hasOwn(unitFields, "uom_po_id"));
+    const companyContext = { allowed_company_ids: [companyId], force_company: companyId };
+    const productDomain = [["available_in_pos", "=", true], ["company_id", "=", companyId]];
+    const productFields = ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "type", "sale_ok", "purchase_ok", "standard_price", "list_price", "categ_id", "create_date", ...(unitFields && Object.hasOwn(unitFields, "brand_id") ? ["brand_id"] : [])];
     const [products, companies] = await Promise.all([
-      rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
-        ["available_in_pos", "=", true], ["company_id", "=", companyId],
-      ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "type", "sale_ok", "purchase_ok", "standard_price", "list_price", "categ_id", "create_date", ...(unitFields && Object.hasOwn(unitFields, "brand_id") ? ["brand_id"] : [])], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+      readCompleteRows<Record<string, unknown>>(
+        () => rpc<number>(sessionId, "product.product", "search_count", [productDomain], { context: companyContext }, correlationId),
+        (afterId, limit) => rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[...productDomain, ["id", ">", afterId]]],
+          { fields: productFields, limit, order: "id asc", context: companyContext }, correlationId),
+      ),
       rpc<Array<{ name?: string; country_id?: [number, string]; state_id?: [number, string] }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name", "country_id", "state_id"], limit: 1 }, correlationId),
     ]);
     // Odoo 20 uses the base unit on purchase lines; older releases expose a separate purchase unit.
@@ -231,9 +244,13 @@ export async function GET(request: NextRequest) {
     try {
       const templateIds = (products ?? []).map((product) => Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0).filter((id) => id > 0);
       if (templateIds.length) {
-        const suppliers = await rpc<Array<{ product_tmpl_id?: [number, string]; delay?: number }>>(sessionId, "product.supplierinfo", "search_read", [[
-          ["product_tmpl_id", "in", templateIds],
-        ]], { fields: ["product_tmpl_id", "delay", "sequence"], limit: MAX_PRODUCTS * 2, order: "sequence asc, delay asc" }, correlationId);
+        const supplierDomain = [["product_tmpl_id", "in", templateIds]];
+        type Supplier = { id?: number; product_tmpl_id?: [number, string]; delay?: number };
+        const suppliers = await readCompleteRows<Supplier>(
+          () => rpc<number>(sessionId, "product.supplierinfo", "search_count", [supplierDomain], { context: companyContext }, correlationId),
+          (afterId, limit) => rpc<Supplier[]>(sessionId, "product.supplierinfo", "search_read", [[...supplierDomain, ["id", ">", afterId]]],
+            { fields: ["id", "product_tmpl_id", "delay"], limit, order: "id asc", context: companyContext }, correlationId),
+        );
         for (const supplier of suppliers ?? []) {
           const templateId = Array.isArray(supplier.product_tmpl_id) ? Number(supplier.product_tmpl_id[0]) : 0;
           const delay = Number(supplier.delay);
@@ -241,6 +258,7 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch {
+      leadTimes.clear();
       leadTimeQuality = "UNKNOWN";
     }
     const hasLeadTime = leadTimes.size > 0;
@@ -279,9 +297,30 @@ export async function GET(request: NextRequest) {
           isNew, unitCost: cost > 0 && price > cost ? cost : null, unitPrice: price > 0 ? price : null };
 
       });
-      const forecastResponse = await callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), forecastStartDate: shiftDay(today, -1), sourceVersion: "odoo_pos_order_line_local_complete_days_v2", series });
-      forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource, businessCostBasis: forecastResponse.businessCostBasis };
-      for (const item of forecastResponse.items ?? []) forecastItems.set(Number(item.productId), item);
+      // Zero-demand mature products remain in the complete plan with zero
+      // suggested quantity. Only targets with demand or a new-product boundary
+      // require model inference; donors remain available across every batch.
+      const targets = series.filter((item) => item.isNew || item.units.some((units) => units > 0));
+      const referenceSeries = series.filter((item) => !item.isNew && item.units.length >= 28 && item.units.slice(-28).reduce((sum, value) => sum + value, 0) > 0);
+      for (let offset = 0; offset < targets.length; offset += FORECAST_BATCH_SIZE * 2) {
+        const batches = [targets.slice(offset, offset + FORECAST_BATCH_SIZE), targets.slice(offset + FORECAST_BATCH_SIZE, offset + FORECAST_BATCH_SIZE * 2)].filter((batch) => batch.length);
+        const responses = await Promise.all(batches.map((batch) => callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), forecastStartDate: shiftDay(today, -1), sourceVersion: "odoo_pos_order_line_local_complete_days_v2", series: batch, referenceSeries })));
+        for (const [index, forecastResponse] of responses.entries()) {
+          if (forecastResponse.modelVersion !== "5") throw new ForecastServiceUnavailableError("Forecast service needs catalogue batch support");
+          const batch = batches[index];
+          const expectedIds = new Set(batch.map((item) => item.productId));
+          const receivedIds = new Set<number>();
+          for (const item of forecastResponse.items ?? []) {
+            const id = Number(item.productId);
+            if (!expectedIds.has(id) || receivedIds.has(id)) throw new ForecastServiceUnavailableError("Forecast coverage mismatch");
+            receivedIds.add(id);
+            forecastItems.set(id, item);
+          }
+          if (receivedIds.size !== expectedIds.size) throw new ForecastServiceUnavailableError("Forecast coverage incomplete");
+          if (forecastMeta.modelVersion && forecastMeta.modelVersion !== forecastResponse.modelVersion) throw new ForecastServiceUnavailableError("Forecast version changed during the read");
+          forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource, businessCostBasis: forecastResponse.businessCostBasis };
+        }
+      }
     }
     const replenishmentItems = eligibleProducts.map((product) => {
       const id = Number(product.id);
@@ -418,7 +457,8 @@ export async function GET(request: NextRequest) {
       periodDays: PERIOD_DAYS,
       coverageDays,
       products: replenishmentItems,
-      truncated: (products?.length ?? 0) >= MAX_PRODUCTS,
+      truncated: false,
+      catalogueCoverage: { status: "COMPLETE", loadedProducts: products.length, eligibleProducts: eligibleProducts.length, excludedProducts: excludedProductCount, forecastedProducts: forecastItems.size, zeroDemandProducts: replenishmentItems.filter((item) => item.soldUnits <= 0).length },
       salesHistory: { timezone, timezoneVerified, timezoneSource: timezoneVerified ? "ODOO_COMPANY_ADDRESS" : "COMPANY_ADDRESS_FALLBACK_REVIEW_REQUIRED", startDate: historyStart, endDateExclusive: today, fromUtc: historyFromUtc, toUtc: historyToUtc, completeDaysOnly: true, dailyRows: dailySales.length, refunds: "SIGNED_NET_UNITS" },
       salesValidation: request.nextUrl.searchParams.get("validateSales") === "true"
         ? [...replenishmentItems].filter((item) => item.soldUnits > 0).sort((a, b) => b.soldUnits - a.soldUnits).slice(0, 20).map((item) => ({

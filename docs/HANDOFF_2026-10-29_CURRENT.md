@@ -1,5 +1,15 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-01 AI replenishment full catalogue candidate
+
+- Removed the first-1,000 alphabetical catalogue cutoff. Keyset pages and before/after counts cover all active company-owned POS products (safe ceiling 25,000; fail closed above it or on incomplete reads). Supplier rows are also paginated; failed supplier reads clear partial lead-time data.
+- Sales now read signed order lines by ID and aggregate local business dates, avoiding full-store grouped-offset timeouts. Forecast targets run in bounded batches of 500, at most two requests concurrently, with full mature donor context and per-batch ID coverage checks. Service v5 is required; mixed old services fail closed.
+- Similar-product statistics are reused within a request, preserving the full-store donor result. UI shows 100 rows per page; search/totals cover all rows and select-all applies to the displayed page.
+- Local source + real read-only Odoo: 12,984 SKR products; 13,629 product/day rows; 20 highest-selling series x 56 days independently reconciled against 824 native lines, 1 refund and 11 UTC/local date crossings, zero mismatches. 11,956 products need data review; all unsafe/no-demand suggestions remain zero. No SKR business writes. See `UAT_AI_FULL_CATALOGUE_LOCAL_2026-11-01.json`. This is not deployment evidence.
+- Whole-company audit confirms Demo company 127 has zero completed POS orders since 2026-09-06; prior fixture recommendation UI + native draft creation does not establish native demand pilot acceptance. Do not seed invented fiscal sales, prices or taxes.
+- Still pending: exact-SHA deployment/live full-store and browser pagination checks, a second real scheduled server capture, physical SKR timezone confirmation, and genuine Demo positive-demand history. Shared `aipos_uat`, `isolated=false`, formal production NO-GO unchanged.
+
+
 ## 2026-10-31 SKR 发票历史 500 修复候选（未发布）
 
 - 只读复现：登录/Odoo session 正常；发票列表无筛选、仅状态、仅搜索均 HTTP 500，两个筛选都有值时 HTTP 200。日志确认为 PostgreSQL 无法推断空参数 `$2` 的类型。

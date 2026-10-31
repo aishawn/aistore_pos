@@ -46,6 +46,8 @@ class ForecastRequest(BaseModel):
     forecastStartDate: date | None = None
     costPolicy: InventoryCostPolicy = Field(default_factory=InventoryCostPolicy)
     series: list[Series] = Field(min_length=1, max_length=2000)
+    # Read-only donor context for batched targets: never forecast these again.
+    referenceSeries: list[Series] = Field(default_factory=list, max_length=25000)
 
 
 class ForecastPoint(BaseModel):
