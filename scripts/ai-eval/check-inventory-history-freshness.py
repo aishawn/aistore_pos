@@ -1,0 +1,61 @@
+"""Check whether the native inventory history is fresh and backtestable."""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def check(history: dict, now: datetime, max_age_hours: float, require_days: int) -> dict:
+    dates = history.get("snapshotDates")
+    generated = history.get("generatedAt")
+    if not isinstance(dates, list) or not dates or not isinstance(generated, str):
+        return {"status": "INVALID", "reason": "history_missing_snapshot_dates_or_generated_at"}
+    try:
+        generated_at = datetime.fromisoformat(generated.replace("Z", "+00:00"))
+        if generated_at.tzinfo is None:
+            generated_at = generated_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {"status": "INVALID", "reason": "generatedAt_invalid"}
+    age_hours = (now - generated_at.astimezone(timezone.utc)).total_seconds() / 3600
+    observed_days = int(history.get("observedDays") or len(dates))
+    continuity = history.get("continuityStatus")
+    reasons: list[str] = []
+    if age_hours > max_age_hours:
+        reasons.append("history_stale")
+    if continuity == "GAPS_PRESENT":
+        reasons.append("snapshot_date_gaps")
+    if require_days and observed_days < require_days:
+        reasons.append("insufficient_observed_days")
+    status = "FRESH" if not reasons else "STALE" if "history_stale" in reasons else "NOT_READY"
+    return {
+        "status": status,
+        "generatedAt": generated_at.isoformat(),
+        "ageHours": round(age_hours, 2),
+        "latestSnapshotDate": max(str(value) for value in dates),
+        "observedDays": observed_days,
+        "continuityStatus": continuity,
+        "backtestReadiness": history.get("backtestReadiness"),
+        "reasons": reasons,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("history", type=Path)
+    parser.add_argument("--max-age-hours", type=float, default=36)
+    parser.add_argument("--require-days", type=int, default=0)
+    args = parser.parse_args()
+    try:
+        history = json.loads(args.history.read_text(encoding="utf-8"))
+        report = check(history, datetime.now(timezone.utc), args.max_age_hours, args.require_days)
+    except (OSError, json.JSONDecodeError) as error:
+        print(json.dumps({"status": "INVALID", "reason": str(error)}))
+        return 1
+    print(json.dumps(report, ensure_ascii=False))
+    return 0 if report["status"] == "FRESH" and not report.get("reasons") else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

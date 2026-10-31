@@ -28,3 +28,16 @@ backtests must continue to label `stock.move`-derived flags as inferred until
 enough daily native snapshots exist to reconstruct actual stockout days. The
 replenishment decision layer must gate on `isReplenishmentEligible`; services
 and non-purchasable virtual products must not generate purchase recommendations.
+
+Check freshness separately from backtest readiness. The check reports `FRESH`,
+`STALE`, or `NOT_READY` and never treats an old history file as current:
+
+```powershell
+python scripts/ai-eval/check-inventory-history-freshness.py `
+  .local/ai-eval/inventory-history.json --max-age-hours 36 --require-days 28
+```
+
+The daily runner writes the diagnostic to
+`.local/ai-eval/inventory-history-freshness.json`. It remains read-only and
+does not fail the normal capture task merely because 28 days have not yet
+accumulated.

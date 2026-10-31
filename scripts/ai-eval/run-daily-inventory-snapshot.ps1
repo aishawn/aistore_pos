@@ -19,4 +19,8 @@ $historyBuilder = Join-Path $RepositoryRoot 'scripts/ai-eval/build-inventory-his
 $historyOutput = Join-Path $RepositoryRoot '.local/ai-eval/inventory-history.json'
 & $python $historyBuilder --input (Join-Path $RepositoryRoot '.local/ai-eval/inventory-snapshots') --output $historyOutput
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$freshnessChecker = Join-Path $RepositoryRoot 'scripts/ai-eval/check-inventory-history-freshness.py'
+$freshnessReport = Join-Path $RepositoryRoot '.local/ai-eval/inventory-history-freshness.json'
+& $python $freshnessChecker $historyOutput --max-age-hours 36 | Set-Content -LiteralPath $freshnessReport -Encoding utf8
+# Freshness is an operational diagnostic; snapshot validation remains the exit gate.
 exit $validationExit
