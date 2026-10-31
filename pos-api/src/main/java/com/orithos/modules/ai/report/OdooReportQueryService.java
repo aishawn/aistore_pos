@@ -368,7 +368,7 @@ public class OdooReportQueryService {
             domain.add(List.of("list_price", lowerBound ? "<=" : ">=", threshold));
             if (!categoryIds.isEmpty()) domain.add(List.of("pos_categ_ids", "in", categoryIds));
             List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
-                    List.of("id", "display_name", "name", "list_price", "qty_available", "categ_id", "pos_categ_ids"),
+                    List.of("id", "display_name", "name", "list_price", "qty_available", "pos_categ_ids"),
                     context, 51, "list_price asc, name asc, id asc");
             if (products.size() > 50) products = products.subList(0, 50);
             List<Map<String, Object>> rows = new ArrayList<>();
