@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 
@@ -18,9 +18,20 @@ def check(history: dict, now: datetime, max_age_hours: float, require_days: int)
             generated_at = generated_at.replace(tzinfo=timezone.utc)
     except ValueError:
         return {"status": "INVALID", "reason": "generatedAt_invalid"}
-    age_hours = (now - generated_at.astimezone(timezone.utc)).total_seconds() / 3600
-    observed_days = int(history.get("observedDays") or len(dates))
-    continuity = history.get("continuityStatus")
+    try:
+        parsed_dates = sorted({date.fromisoformat(value) for value in dates})
+        captured = history.get("latestCapturedAt")
+        # Legacy histories lack capture time: use UTC midnight conservatively.
+        captured_at = datetime.fromisoformat(captured.replace("Z", "+00:00")) if captured else datetime.combine(parsed_dates[-1], datetime.min.time(), timezone.utc)
+        if captured_at.tzinfo is None or captured_at.astimezone(timezone.utc).date() != parsed_dates[-1]:
+            raise ValueError("capture timestamp does not match snapshot dates")
+    except (ValueError, TypeError, AttributeError):
+        return {"status": "INVALID", "reason": "snapshot_capture_time_invalid"}
+    age_hours = (now - captured_at.astimezone(timezone.utc)).total_seconds() / 3600
+    if age_hours < 0:
+        return {"status": "INVALID", "reason": "snapshot_capture_in_future"}
+    observed_days = len(parsed_dates)
+    continuity = "CONTIGUOUS" if (parsed_dates[-1] - parsed_dates[0]).days + 1 == observed_days else "GAPS_PRESENT"
     reasons: list[str] = []
     if age_hours > max_age_hours:
         reasons.append("history_stale")
@@ -32,6 +43,7 @@ def check(history: dict, now: datetime, max_age_hours: float, require_days: int)
     return {
         "status": status,
         "generatedAt": generated_at.isoformat(),
+        "latestCapturedAt": captured_at.isoformat(),
         "ageHours": round(age_hours, 2),
         "latestSnapshotDate": max(str(value) for value in dates),
         "observedDays": observed_days,

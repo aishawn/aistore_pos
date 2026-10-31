@@ -160,6 +160,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "historyVersion": "native-odoo-inventory-history-v1",
         "source": "odoo-readonly-jsonrpc",
         "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "latestCapturedAt": max(datetime.fromisoformat(str(snapshot["capturedAt"]).replace("Z", "+00:00")).astimezone(timezone.utc) for snapshot in snapshots).isoformat(),
         "snapshotDates": dates,
         "snapshotCount": len(snapshots),
         "coverageDays": (max(parsed_dates) - min(parsed_dates)).days + 1 if parsed_dates else 0,

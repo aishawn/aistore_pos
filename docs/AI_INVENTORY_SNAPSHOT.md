@@ -32,6 +32,12 @@ and non-purchasable virtual products must not generate purchase recommendations.
 Check freshness separately from backtest readiness. The check reports `FRESH`,
 `STALE`, or `NOT_READY` and never treats an old history file as current:
 
+Freshness uses `latestCapturedAt` from the source snapshots, not the history
+file's rebuild time (`generatedAt`). Legacy histories use the latest UTC
+snapshot date at midnight conservatively. Distinct dates and continuity are
+recomputed; duplicate dates cannot inflate readiness. Future capture times
+fail closed with `INVALID`.
+
 ```powershell
 python scripts/ai-eval/check-inventory-history-freshness.py `
   .local/ai-eval/inventory-history.json --max-age-hours 36 --require-days 28
