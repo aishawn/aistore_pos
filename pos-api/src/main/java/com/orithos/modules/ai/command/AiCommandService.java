@@ -365,7 +365,8 @@ public class AiCommandService {
         for (Map<String, Object> row : catalog.rows()) {
             BigDecimal price = decimalValue(row.get("list_price"));
             String category = String.valueOf(row.getOrDefault("category", ""));
-            if (price == null || (lowerBound ? price.compareTo(threshold) > 0 : price.compareTo(threshold) < 0)) continue;
+            if (price == null || price.signum() <= 0
+                    || (lowerBound ? price.compareTo(threshold) > 0 : price.compareTo(threshold) < 0)) continue;
             if (categoryToken != null && !categoryMatches(category, categoryToken)) continue;
             Object idValue = row.get("id");
             Long id = idValue instanceof Number number ? number.longValue() : null;
