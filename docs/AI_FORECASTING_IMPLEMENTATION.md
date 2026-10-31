@@ -45,10 +45,14 @@ POST /v1/forecast/demand
 POST /v1/backtest
 ```
 
-The initial model is a deterministic seven-day seasonal baseline with P50,
-P80 and P90 values. It is intentionally a benchmark, not a claim that a
-foundation model is more accurate. A production model promotion must be based
-on fixed SKR snapshots and rolling WAPE/MAE/Bias and interval coverage results.
+The evaluator now compares seasonal-naive, moving-average, exponential
+smoothing, Croston SBA, TSB and a two-stage occurrence/quantity model. Each
+product selects its winner from rolling backtests. When the snapshot supplies
+both stockout and holding costs, selection uses business cost (under-forecast
+loss + overstock holding/expiry risk); otherwise it falls back to weighted
+WAPE with bias as a tie-breaker. Reports also expose service-level proxies and
+explicitly mark expected post-replenishment stockout days as unavailable until
+native inventory history exists.
 
 ## Next gates
 
@@ -58,6 +62,9 @@ on fixed SKR snapshots and rolling WAPE/MAE/Bias and interval coverage results.
 4. Review stockout and overstock alerts in one isolated store for at least four weeks.
 5. Add weather, public holidays, promotions and censored-demand correction only after the baseline is measurable.
 6. Keep purchase draft and purchase confirmation switches off until Odoo write/readback and audit UAT passes.
+7. Build `scripts/ai-eval/build-inventory-history.py` output after at least 28
+   native daily snapshots; do not use `stock.move` inferred flags as a native
+   stockout substitute before that gate.
 
 ## Reproducible evaluation
 
