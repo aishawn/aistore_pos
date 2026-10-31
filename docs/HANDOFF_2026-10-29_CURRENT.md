@@ -11,6 +11,7 @@
 - Follow-up UI correction in this commit counts stock <= 0 with positive sales across every product (1,189 in native SKR data), including products held for data review. Previous summary counted suggested orders only and misleadingly showed zero. Summary now explicitly labels excluded review items. Static checks passed; runtime verified on `12b25d761ffc1537e661dfe821f8c98e7ffdaa72`; 1,189 displayed correctly.
 - Replenishment read performance: `5698591a` adds a five-minute tenant-scoped process cache. Native SKR repeat read was 46.9s MISS, 2.0s HIT; `validateSales=true` bypassed cache and was 40.2s MISS. No business writes. Evidence `UAT_AI_REPLENISHMENT_CACHE_2026-11-01.json`.
 - Review reason summary `e2ce1bdd` is live and read-only verified: 8,360 negative-stock flags and 11,601 cost/price flags across 11,956 products (counts overlap); all affected suggestions remain zero. Evidence `UAT_AI_REPLENISHMENT_REVIEW_REASONS_2026-11-01.json`.
+- Inventory status `394fa92e` now exposes `latestBusinessDate`, `firstBusinessDate`, and `invalidSnapshots` in the authenticated response and UI. Live SKR readback reports latest business date `2026-11-01`, observed days `1`, gap days `0`, invalid snapshots `0`; the next real business date is still pending.
 - Still pending: follow-up summary runtime verification, a second real scheduled server capture, physical SKR timezone confirmation, and genuine Demo positive-demand history. Shared `aipos_uat`, `isolated=false`, formal production NO-GO unchanged.
 
 
