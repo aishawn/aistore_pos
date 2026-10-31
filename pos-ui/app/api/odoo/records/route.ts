@@ -374,7 +374,35 @@ export async function POST(request: NextRequest) {
     let items = rawItems.slice(0, limit);
     if (type === "products") items = await withTaxInclusivePrices(sessionId, items, correlationId);
 
-    return NextResponse.json({ items, limit, offset, hasNext }, { status: 200 });
+    let total: number | undefined;
+    if (type === "products") {
+      try {
+        const countResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
+          method: "POST",
+          headers: correlationHeaders(sessionId, correlationId),
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "call",
+            params: {
+              model: config.model,
+              method: "search_count",
+              args: [domain],
+              kwargs: { context },
+            },
+            id: Date.now(),
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(12_000),
+        });
+        const countPayload = await countResponse.json() as { result?: unknown; error?: unknown };
+        const count = Number(countPayload.result);
+        if (countResponse.ok && !countPayload.error && Number.isSafeInteger(count) && count >= 0) total = count;
+      } catch {
+        // Keep the paginated response usable if the optional count query times out.
+      }
+    }
+
+    return NextResponse.json({ items, limit, offset, hasNext, ...(total === undefined ? {} : { total }) }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;

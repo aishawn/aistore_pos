@@ -23,6 +23,8 @@ export interface OdooPage<T> {
   offset: number;
   /** True when the server found at least one record after this page. */
   hasNext?: boolean;
+  /** Exact number of records matching the current filters, when available. */
+  total?: number;
 }
 
 export interface OdooProductRecord {

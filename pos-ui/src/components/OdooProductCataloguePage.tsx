@@ -70,6 +70,7 @@ export function OdooProductCataloguePage() {
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -228,6 +229,7 @@ export function OdooProductCataloguePage() {
     if (connected !== true) return;
     const revision = ++requestRevision.current;
     setLoading(true);
+    setTotalCount(null);
     setError(null);
     try {
       const page = await searchOdooRecords<OdooProductRecord>("products", {
@@ -240,6 +242,7 @@ export function OdooProductCataloguePage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.hasNext === true);
+      setTotalCount(typeof page.total === "number" ? page.total : null);
       setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
@@ -418,7 +421,12 @@ export function OdooProductCataloguePage() {
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
       <header inert={stockBusy || categoryBusy} className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
+            {tab === "catalogue" && <span aria-live="polite" className="inline-flex min-h-7 items-center rounded-full border border-[var(--oh-border)] bg-white px-2.5 text-xs font-semibold tabular-nums text-[var(--oh-text-secondary)]">
+              {totalCount === null ? (loading ? "Loading count…" : "Count unavailable") : `${totalCount.toLocaleString("en-AU")} products`}
+            </span>}
+          </div>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
@@ -587,7 +595,7 @@ export function OdooProductCataloguePage() {
           </section>
 
           <footer className="flex shrink-0 flex-col gap-2 pr-24 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span role="status" aria-live="polite">{resultsPending ? "Loading products…" : items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
+            <span role="status" aria-live="polite">{resultsPending ? "Loading products…" : items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}${totalCount !== null ? ` of ${totalCount.toLocaleString("en-AU")}` : ""}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => Math.max(0, value - PAGE_SIZE)); }} disabled={offset === 0 || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
               <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => value + PAGE_SIZE); }} disabled={!hasNext || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
