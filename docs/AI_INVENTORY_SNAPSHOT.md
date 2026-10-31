@@ -5,8 +5,10 @@ inventory state with read-only JSON-RPC calls. It writes one immutable file per
 UTC capture date under `.local/ai-eval/inventory-snapshots/YYYY-MM-DD/inventory.json`.
 
 Each product records Odoo's native `qty_available`, `virtual_available`,
-`incoming_qty`, `outgoing_qty`, category, current list price, `standard_price`, active Odoo pricelist rule metadata, and the shortest
-configured supplier delay. The file also records the company, warehouse scope,
+`incoming_qty`, `outgoing_qty`, category, current list price, `standard_price`,
+product type (`productType`), and explicit `isStockable`, `isSellable`, and
+`isPurchaseable` flags. It also records active Odoo pricelist rule metadata and
+the shortest configured supplier delay. The file also records the company, warehouse scope,
 capture timestamp, source database, data-quality label, and an empty
 `writeRequests` audit list. Missing supplier lead time is kept as `null`.
 
@@ -23,4 +25,6 @@ The output is suitable for a daily scheduler. A company with multiple
 warehouses is explicitly marked `COMPANY_AGGREGATE`; the collector does not
 pretend company-level quantities belong to one warehouse. Historical stockout
 backtests must continue to label `stock.move`-derived flags as inferred until
-enough daily native snapshots exist to reconstruct actual stockout days.
+enough daily native snapshots exist to reconstruct actual stockout days. The
+replenishment decision layer must gate on `isStockable`; services and recharge
+products with zero quantities must not generate purchase recommendations.

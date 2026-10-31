@@ -22,6 +22,8 @@ def snapshot(date, quantity, price, *, version=None):
         "products": [{
             "productId": 7, "templateId": 7, "name": "Test Shiraz",
             "category": "Wine", "brand": "Test", "priceBand": "MID_15_30",
+            "productType": "product", "isStockable": True,
+            "isSellable": True, "isPurchaseable": True,
             "warehouseId": 2, "warehouse": "Test Warehouse",
             "availableQty": quantity, "virtualAvailableQty": quantity + 2,
             "incomingQty": 3, "outgoingQty": 1, "leadTimeDays": 4,
@@ -48,6 +50,8 @@ class InventoryHistoryTests(unittest.TestCase):
         self.assertEqual([], result["writeRequests"])
         self.assertEqual(3.0, product["observations"][0]["incomingQty"])
         self.assertEqual(11.25, product["observations"][0]["cost"])
+        self.assertTrue(product["isStockable"])
+        self.assertEqual("product", product["productType"])
 
     def test_load_snapshots_deduplicates_retries_by_capture_date(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -37,6 +37,9 @@ class InventorySnapshotTests(unittest.TestCase):
             "outgoing_qty": 7,
             "list_price": 19.95,
             "standard_price": 11.25,
+            "type": "product",
+            "sale_ok": True,
+            "purchase_ok": True,
             "active": True,
         }, 5)
         self.assertEqual(11, product["productId"])
@@ -45,6 +48,12 @@ class InventorySnapshotTests(unittest.TestCase):
         self.assertEqual("Wine", product["category"])
         self.assertEqual("MID_15_30", product["priceBand"])
         self.assertEqual(11.25, product["cost"])
+        self.assertEqual("product", product["productType"])
+        self.assertTrue(product["isStockable"])
+        self.assertTrue(product["isPurchaseable"])
+
+        service = MODULE.normalise_product({"id": 14, "type": "service"}, None)
+        self.assertFalse(service["isStockable"])
 
         promoted = MODULE.normalise_product({"id": 13, "product_tmpl_id": [9, "Promo"]}, None,
                                             promotion={"id": 44, "compute_price": "percentage", "percent_price": 15},

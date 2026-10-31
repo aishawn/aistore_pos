@@ -83,6 +83,10 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
                       promotion: dict[str, Any] | None = None,
                       promotion_quality: str = "NOT_CAPTURED") -> dict[str, Any]:
     """Convert an Odoo product row into the stable snapshot contract."""
+    product_type = row.get("type") or row.get("detailed_type")
+    # Physical and consumable products are stockable; services and recharge
+    # products must not create replenishment recommendations.
+    is_stockable = product_type in ("product", "consu")
     return {
         "productId": row.get("id"),
         "templateId": many2one_id(row.get("product_tmpl_id")),
@@ -90,6 +94,10 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "category": many2one_name(row.get("categ_id")),
         "brand": many2one_name(row.get("brand_id")),
         "priceBand": price_band(row.get("list_price")),
+        "productType": product_type,
+        "isStockable": is_stockable,
+        "isSellable": bool(row.get("sale_ok", True)),
+        "isPurchaseable": bool(row.get("purchase_ok", False)),
         "warehouseId": warehouse.get("id") if warehouse else None,
         "warehouse": warehouse.get("name") if warehouse else None,
         "availableQty": float(row.get("qty_available") or 0),
@@ -136,6 +144,7 @@ def main() -> int:
     products = odoo.read("product.product", [["active", "=", True]], [
         "id", "display_name", "product_tmpl_id", "categ_id", "qty_available",
         "virtual_available", "incoming_qty", "outgoing_qty", "list_price", "standard_price", "active",
+        "type", "sale_ok", "purchase_ok",
     ])
     # Supplier lead time is optional in Odoo installations.  Missing rows are
     # represented as null and never guessed from a default.
@@ -204,7 +213,8 @@ def main() -> int:
         "warehouseScope": "SINGLE_WAREHOUSE" if warehouse else "COMPANY_AGGREGATE",
         "warehouses": [{"id": row.get("id"), "name": row.get("name")} for row in warehouses],
         "fields": ["availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty",
-                   "price", "cost", "leadTimeDays", "promotionStatus"],
+                   "price", "cost", "leadTimeDays", "promotionStatus",
+                   "productType", "isStockable", "isSellable", "isPurchaseable"],
         "products": snapshot_products,
         "writeRequests": [],
     }
