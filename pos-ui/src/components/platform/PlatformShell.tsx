@@ -10,6 +10,7 @@ import { storeOrigin, tenantBaseDomain } from "@/lib/tenant-host";
 
 const NAV = [
   { href: "/platform/stores", label: "Stores" },
+  { href: "/platform/demo-reset", label: "Demo sandbox" },
   { href: "/platform/usage", label: "AI usage" },
   { href: "/platform/operations", label: "Operations" },
   { href: "/platform/failures", label: "Failures" },
