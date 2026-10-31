@@ -446,6 +446,44 @@ async def sync_store(
                 row["_outlet_name"] = outlet["name"]
         if duplicate_sales:
             counts["duplicate_sales_collapsed"] = duplicate_sales
+        # Do not advance a history cursor when the report and complete Sale
+        # sources disagree. Reports provide daily counts; GraphQL provides
+        # stable Sale IDs and line items. A mismatch must be retried, usually
+        # as smaller ranges, instead of becoming a silent historical gap.
+        source_warning_stages = {
+            str(w.get("stage")) for w in counts["warnings"] if isinstance(w, dict)
+        }
+        if rows and not sale_rows and "sales_detail" in source_warning_stages:
+            raise ShopfrontError(
+                "Sales report returned rows but complete Sale query returned no rows"
+            )
+        if rows and sale_rows:
+            report_counts: dict[str, int] = {}
+            sale_counts: dict[str, int] = {}
+            for report_row in rows:
+                report_date = business_date(
+                    first(report_row, "timestamp", "Timestamp", "created_at", "createdAt"),
+                    start,
+                    store.timezone,
+                )
+                report_counts[report_date] = report_counts.get(report_date, 0) + 1
+            for sale_row in sale_rows:
+                sale_date = business_date(
+                    first(sale_row, "createdAt", "created_at", "timestamp"),
+                    start,
+                    store.timezone,
+                )
+                sale_counts[sale_date] = sale_counts.get(sale_date, 0) + 1
+            mismatches = {
+                day: (report_counts.get(day, 0), sale_counts.get(day, 0))
+                for day in sorted(set(report_counts) | set(sale_counts))
+                if report_counts.get(day, 0) != sale_counts.get(day, 0)
+            }
+            if mismatches:
+                raise ShopfrontError(
+                    "Shopfront report/Sale count mismatch: "
+                    + str(mismatches)[:1500]
+                )
         # Reporting rows are the authoritative source for daily aggregates. The
         # GraphQL rows below are the authoritative source for complete sales.
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}
