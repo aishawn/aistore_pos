@@ -275,6 +275,8 @@ public class AiCommandService {
                     Map.of("percent", price.group(2), "direction", down ? "decrease" : "increase"),
                     List.of());
         }
+        Parsed unresolvedPrice = unresolvedPricePreviewRequest(text);
+        if (unresolvedPrice != null) return unresolvedPrice;
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
         boolean productMatched = product.find();
         if (!productMatched) {
@@ -308,6 +310,29 @@ public class AiCommandService {
         if (unresolved != null) return unresolved;
         throw new BusinessException(40027,
                 "请说明明确对象和变更，例如：把 VB Cans 的显示名称改成 Victoria Bitter。");
+    }
+
+    /**
+     * Keep broad price requests reviewable when the request contains a valid
+     * percentage and direction but no single product can be resolved safely.
+     * The draft is intentionally non-confirmable until the price page resolves
+     * the category/range against the current store pricelist.
+     */
+    private Parsed unresolvedPricePreviewRequest(String text) {
+        Matcher matcher = Pattern.compile("(?i).*?(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?(\\d+(?:\\.\\d+)?)\\s*%.*").matcher(text.trim());
+        if (!matcher.matches()) return null;
+        String lower = text.toLowerCase(Locale.ROOT);
+        boolean down = lower.contains("lower") || lower.contains("decrease")
+                || text.contains("降低") || text.contains("下调");
+        String direction = down ? "decrease" : "increase";
+        String target = text.trim();
+        CommandItem excluded = new CommandItem(null, target, "price", null, null,
+                "需要在价格页面按分类或价格区间解析当前生效价目表后才能预览",
+                "EXCLUDED");
+        return new Parsed(AiCommandType.PREVIEW_PRICE_CHANGE, BigDecimal.valueOf(.80),
+                "已识别价格调整方向和百分比，但需要在价格页面确认匹配商品后才能生成预览。",
+                List.of(), Map.of("percent", matcher.group(1), "direction", direction),
+                List.of(excluded));
     }
 
     /** Keep an unresolved product change as a non-confirmable draft when the
