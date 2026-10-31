@@ -140,6 +140,18 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual("CONFIGURED", configured["status"])
         self.assertEqual(30.0, configured["stockoutLoss"])
         self.assertEqual(2.5, configured["holdingCost"])
+        self.assertIsNone(configured["serviceLevel"])
+        self.assertIsNone(configured["expectedStockoutDaysAfterReplenishment"])
+        self.assertEqual("REQUIRES_NATIVE_INVENTORY_HISTORY", configured["stockoutDaysDataQuality"])
+
+    def test_cost_configured_selection_uses_business_cost(self):
+        payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+        selected = select_model(Series(**payload["series"][0]), 7,
+                                {"stockoutCostPerUnit": 50, "holdingCostPerUnitDay": 0.5,
+                                 "expiryRiskPerUnit": 1})
+        self.assertEqual("PASS", selected["selectionStatus"])
+        self.assertEqual("business_cost_then_absolute_bias", selected["selectionMetric"])
+        self.assertIsNotNone(selected["selectedMetrics"]["businessCost"])
 
     def test_cold_start_uses_matching_mature_products_and_marks_inferred_quality(self):
         start = date(2026, 1, 1)

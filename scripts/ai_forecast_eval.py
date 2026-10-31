@@ -86,7 +86,8 @@ def _forecast_points(train: Series, horizon: int, model: str) -> list[ForecastPo
     return _points(values, train.dates[-1], horizon, spread)
 
 
-def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v1") -> dict:
+def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v1",
+                    cost_model: dict | None = None) -> dict:
     """Evaluate every available horizon ending at the snapshot tail."""
     if len(series.units) <= horizon + 7:
         return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
@@ -115,7 +116,7 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
         under_forecast = sum(max(value - point.p50, 0.0) for point, value in observed)
         over_forecast = sum(max(point.p50 - value, 0.0) for point, value in observed)
         denominator = sum(actual)
-        windows.append({
+        window = {
             "status": "PASS",
             "observedDays": len(observed),
             "evaluationCensoredDays": censored_days,
@@ -130,7 +131,16 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
             "overForecastUnits": over_forecast,
             "p50DemandCoverage": sum(value <= point.p50 for point, value in observed) / len(observed),
             "censored": any(series.stockoutFlags[end:end + horizon]) or any(series.stockoutFlags[:end]),
-        })
+        }
+        if cost_model and {"stockoutCostPerUnit", "holdingCostPerUnitDay"} <= cost_model.keys():
+            window["businessCost"] = (
+                under_forecast * float(cost_model["stockoutCostPerUnit"])
+                + over_forecast * float(cost_model["holdingCostPerUnitDay"])
+                + over_forecast * float(cost_model.get("expiryRiskPerUnit", 0))
+            )
+        else:
+            window["businessCost"] = None
+        windows.append(window)
     if not windows:
         return {"productId": series.productId, "horizonDays": horizon, "status": "BLOCKED"}
     numeric = lambda name: [row[name] for row in windows if row[name] is not None]
@@ -138,6 +148,7 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
     mean = lambda name: sum(numeric(name)) / len(numeric(name)) if numeric(name) else None
     actual_total = sum(row["actualTotal"] for row in windows if row.get("actualTotal") is not None)
     absolute_error = sum(row["absoluteError"] for row in windows if row.get("absoluteError") is not None)
+    business_costs = [row["businessCost"] for row in windows if row.get("businessCost") is not None]
     return {
         "productId": series.productId,
         "horizonDays": horizon,
@@ -159,10 +170,11 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
         "p50DemandCoverage": mean("p50DemandCoverage"),
         "evaluationCensoredDays": sum(row.get("evaluationCensoredDays", 0) for row in windows),
         "censoredWindowCount": sum(1 for row in windows if row["censored"]),
+        "businessCost": sum(business_costs) if business_costs else None,
     }
 
 
-def select_model(series: Series, horizon: int = 7) -> dict:
+def select_model(series: Series, horizon: int = 7, cost_model: dict | None = None) -> dict:
     """Choose a model for one product from rolling, uncensored backtests.
 
     The selector is deliberately metric-driven.  A blocked or fully censored
@@ -171,7 +183,7 @@ def select_model(series: Series, horizon: int = 7) -> dict:
     profile is returned as an explanation for the decision, not as a hidden
     rule that overrides measured backtest performance.
     """
-    rows = [rolling_metrics(series, horizon, model) for model in MODEL_NAMES]
+    rows = [rolling_metrics(series, horizon, model, cost_model) for model in MODEL_NAMES]
     eligible = [row for row in rows if row.get("status") != "BLOCKED" and row.get("weightedWape") is not None]
     if not eligible:
         return {
@@ -179,15 +191,22 @@ def select_model(series: Series, horizon: int = 7) -> dict:
             "selectedModel": None, "selectionStatus": "BLOCKED",
             "profile": _demand_profile(series), "candidates": rows,
         }
-    winner = min(eligible, key=lambda row: (
-        row["weightedWape"], abs(row.get("meanBias") or 0.0), row["model"]))
+    cost_configured = cost_model and {"stockoutCostPerUnit", "holdingCostPerUnitDay"} <= cost_model.keys()
+    if cost_configured and any(row.get("businessCost") is not None for row in eligible):
+        winner = min(eligible, key=lambda row: (
+            row.get("businessCost", float("inf")), abs(row.get("meanBias") or 0.0), row["model"]))
+        selection_metric = "business_cost_then_absolute_bias"
+    else:
+        winner = min(eligible, key=lambda row: (
+            row["weightedWape"], abs(row.get("meanBias") or 0.0), row["model"]))
+        selection_metric = "weightedWape_then_absolute_bias"
     return {
         "productId": series.productId, "horizonDays": horizon,
         "selectedModel": winner["model"], "selectionStatus": "PASS",
         "profile": _demand_profile(series),
-        "selectionMetric": "weightedWape_then_absolute_bias",
+        "selectionMetric": selection_metric,
         "selectedMetrics": {name: winner.get(name) for name in
-                            ("weightedWape", "meanWape", "meanMae", "meanBias", "p80Coverage", "p90Coverage")},
+                            ("businessCost", "weightedWape", "meanWape", "meanMae", "meanBias", "p80Coverage", "p90Coverage")},
         "candidates": rows,
     }
 
@@ -275,6 +294,7 @@ def _aggregate_group(rows: list[dict]) -> dict:
             "p50DemandCoverage": avg("p50DemandCoverage"),
             "underForecastUnits": sum(row.get("underForecastUnits") or 0 for row in rows),
             "overForecastUnits": sum(row.get("overForecastUnits") or 0 for row in rows),
+            "businessCost": sum(row.get("businessCost") or 0 for row in rows) if any(row.get("businessCost") is not None for row in rows) else None,
             "evaluationCensoredDays": sum(row.get("evaluationCensoredDays", 0) for row in rows)}
 
 
@@ -290,6 +310,8 @@ def _business_metrics(rows: list[dict], cost_model: dict | None = None) -> dict:
     observed_days = sum(row.get("evaluatedWindowCount", 0) for row in rows)
     costs = cost_model or {}
     stockout_rate = censored_days / (censored_days + observed_days) if censored_days + observed_days else None
+    actual_units = sum(row.get("actualTotal") or 0 for row in rows)
+    service_level = max(0.0, 1.0 - under / actual_units) if actual_units else None
     return {
         "status": "CONFIGURED" if {"stockoutCostPerUnit", "holdingCostPerUnitDay"} <= costs.keys() else "COST_CONFIG_REQUIRED",
         "stockoutLoss": under * float(costs["stockoutCostPerUnit"]) if "stockoutCostPerUnit" in costs else None,
@@ -298,6 +320,10 @@ def _business_metrics(rows: list[dict], cost_model: dict | None = None) -> dict:
         "stockoutUnitProxy": under,
         "overstockUnitProxy": over,
         "censoredDemandRate": stockout_rate,
+        "serviceLevel": service_level,
+        "serviceLevelDefinition": "1 - under-forecast units / observed units; native inventory is required for fill-rate accuracy",
+        "expectedStockoutDaysAfterReplenishment": None,
+        "stockoutDaysDataQuality": "REQUIRES_NATIVE_INVENTORY_HISTORY",
         "costModelSource": "snapshot.costModel" if costs else None,
     }
 
@@ -311,10 +337,11 @@ def main() -> int:
     items = [item.model_dump() for item in result.items]
     eligible = [item for item in items if item["status"] == "PASS"]
     wapes = [item["wape"] for item in eligible if item["wape"] is not None]
-    rolling = [rolling_metrics(series, horizon, model)
+    cost_model = payload.get("costModel")
+    rolling = [rolling_metrics(series, horizon, model, cost_model)
                for model in MODEL_NAMES
                for horizon in (7, 14, 28) for series in request.series]
-    model_selections = [select_model(series, 7) for series in request.series]
+    model_selections = [select_model(series, 7, cost_model) for series in request.series]
     cold_start = [cold_start_similarity(series, request.series, 7) for series in request.series
                   if series.isNew or len(series.units) < 14]
     selected_counts = {}
@@ -338,7 +365,7 @@ def main() -> int:
                 comparison.append({"model": model, "horizonDays": horizon, "groupBy": labels,
                                    "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
     execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
-    business_metrics = _business_metrics(selected_rolling, payload.get("costModel"))
+    business_metrics = _business_metrics(selected_rolling, cost_model)
     report = {
         "status": execution_status,
         "qualityGate": "PASS" if wapes and sum(wapes) / len(wapes) <= 0.30 else "FAIL",
