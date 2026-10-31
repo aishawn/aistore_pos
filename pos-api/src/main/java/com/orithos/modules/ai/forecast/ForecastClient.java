@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,6 +17,7 @@ import java.time.Duration;
 
 @Component
 public class ForecastClient {
+    private static final Logger log = LoggerFactory.getLogger(ForecastClient.class);
     private final ObjectMapper mapper;
     private final HttpClient http;
     private final String baseUrl;
@@ -39,6 +44,10 @@ public class ForecastClient {
                     .build();
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                if (response.statusCode() == 422) {
+                    log.warn("Forecast service rejected request with schema validation errors: {}",
+                            validationErrorPaths(response.body()));
+                }
                 throw new BusinessException(50331, "Forecast service returned an error.");
             }
             return mapper.readValue(response.body(), ForecastDtos.Response.class);
@@ -46,6 +55,26 @@ public class ForecastClient {
             throw error;
         } catch (Exception error) {
             throw new BusinessException(50331, "Forecast service is temporarily unavailable.");
+        }
+    }
+
+    private String validationErrorPaths(String body) {
+        try {
+            JsonNode detail = mapper.readTree(body).path("detail");
+            if (!detail.isArray()) return "details unavailable";
+            java.util.List<String> errors = new java.util.ArrayList<>();
+            for (JsonNode error : detail) {
+                String location = java.util.stream.StreamSupport.stream(
+                                error.path("loc").spliterator(), false)
+                        .map(JsonNode::asText)
+                        .collect(java.util.stream.Collectors.joining("."));
+                String type = error.path("type").asText("unknown");
+                errors.add(location + ":" + type);
+                if (errors.size() == 12) break;
+            }
+            return errors.isEmpty() ? "details unavailable" : String.join(",", errors);
+        } catch (Exception ignored) {
+            return "details unavailable";
         }
     }
 }
