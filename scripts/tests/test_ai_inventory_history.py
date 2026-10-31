@@ -2,6 +2,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,6 +79,19 @@ class InventoryHistoryTests(unittest.TestCase):
             path.write_text(json.dumps(item), encoding="utf-8")
             with self.assertRaises(ValueError):
                 MODULE.load_snapshots(root)
+
+    def test_require_days_gate_is_nonzero_when_history_is_short(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            snapshot_path = root / "2026-10-01" / "inventory.json"
+            snapshot_path.parent.mkdir()
+            snapshot_path.write_text(json.dumps(snapshot("2026-10-01", 4, 19.99)), encoding="utf-8")
+            output = root / "history.json"
+            result = subprocess.run([
+                "python", str(MODULE_PATH), "--input", str(root), "--output", str(output), "--require-days", "28"
+            ], capture_output=True, text=True, check=False)
+            self.assertEqual(2, result.returncode)
+            self.assertTrue(output.exists())
 
 
 if __name__ == "__main__":

@@ -169,11 +169,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True, help="directory containing dated inventory.json snapshots")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--require-days", type=int, default=0,
+                        help="exit 2 when fewer than this many observed snapshot days exist")
     args = parser.parse_args()
     history = build_history(load_snapshots(args.input))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(history, indent=2), encoding="utf-8")
     print(json.dumps({"output": str(args.output), "snapshots": history["snapshotCount"], "products": len(history["products"]), "dataQuality": history["dataQuality"]}))
+    if args.require_days > 0 and history["observedDays"] < args.require_days:
+        return 2
     return 0
 
 

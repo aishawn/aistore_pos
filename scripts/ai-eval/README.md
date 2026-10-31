@@ -139,6 +139,9 @@ python scripts/ai-eval/build-inventory-history.py `
   --output .local/ai-eval/inventory-history.json
 ```
 
+Use `--require-days 28` in an acceptance job; it still writes the diagnostic
+history but exits with code `2` until 28 observed days exist.
+
 The history marks `actualStockoutDates` only when native `availableQty <= 0`,
 records `incomingQty` and supplier lead time for each product-day, and detects
 list-price changes. Promotion state remains explicitly `NOT_CAPTURED` until a
