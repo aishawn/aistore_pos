@@ -106,6 +106,8 @@ class ReplenishmentChatBriefTest {
         assertTrue(plan.itemsNeedingOrder() == 1);
         assertTrue(plan.top().get(0).suggestedQuantity() == 19);
         assertTrue(plan.top().get(0).name().contains("Lager"));
+        assertTrue(plan.top().get(0).onHand() == 2);
+        assertTrue(plan.top().get(0).forecastAvailable() == 2);
     }
 
     @Test

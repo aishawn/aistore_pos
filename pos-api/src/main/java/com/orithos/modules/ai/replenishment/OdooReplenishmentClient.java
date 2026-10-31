@@ -78,6 +78,10 @@ public class OdooReplenishmentClient {
     }
 
     public ReplenishmentPlan plan(TenantContext tenant, int coverageDays) {
+        return plan(tenant, coverageDays, 3);
+    }
+
+    public ReplenishmentPlan plan(TenantContext tenant, int coverageDays, int suggestionLimit) {
         if (tenant == null || !isConfigured()) {
             return null;
         }
@@ -87,6 +91,7 @@ public class OdooReplenishmentClient {
             return null;
         }
         int cover = coverageDays > 0 ? coverageDays : DEFAULT_COVERAGE_DAYS;
+        int resultLimit = Math.max(1, Math.min(50, suggestionLimit));
         try {
             long companyId = vendor.getOdooCompanyId();
             String sessionId = authenticate();
@@ -154,14 +159,15 @@ public class OdooReplenishmentClient {
                     name = "Product";
                 }
                 suggestions.add(new ReplenishmentSuggestion(
-                        id, name, unitName(product.get("uom_id")), suggestedQuantity, daysOfStock, unitsPerDay));
+                        id, name, unitName(product.get("uom_id")), suggestedQuantity, daysOfStock,
+                        unitsPerDay, onHand, forecastStock));
             }
             suggestions.sort(Comparator
                     .comparingDouble(ReplenishmentSuggestion::suggestedQuantity).reversed()
                     .thenComparing(Comparator.comparingDouble(ReplenishmentSuggestion::unitsPerDay).reversed())
                     .thenComparing(ReplenishmentSuggestion::name));
             int needing = suggestions.size();
-            List<ReplenishmentSuggestion> top = suggestions.stream().limit(3).toList();
+            List<ReplenishmentSuggestion> top = suggestions.stream().limit(resultLimit).toList();
             return new ReplenishmentPlan(cover, needing, top,
                     dataGaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", cappedGaps(dataGaps), now);
         } catch (Exception e) {
@@ -211,7 +217,7 @@ public class OdooReplenishmentClient {
             }
             suggestions.add(new ReplenishmentSuggestion(
                     id, name.isBlank() ? "Product" : name, unitName(product.get("uom_id")),
-                    suggestedQuantity, daysOfStock, unitsPerDay));
+                    suggestedQuantity, daysOfStock, unitsPerDay, onHand, forecastStock));
         }
         suggestions.sort(Comparator
                 .comparingDouble(ReplenishmentSuggestion::suggestedQuantity).reversed()

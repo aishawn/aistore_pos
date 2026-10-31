@@ -9,6 +9,12 @@ public record ReplenishmentSuggestion(
         String unit,
         double suggestedQuantity,
         Double daysOfStock,
-        double unitsPerDay
+        double unitsPerDay,
+        Double onHand,
+        Double forecastAvailable
 ) {
+    public ReplenishmentSuggestion(long productId, String name, String unit, double suggestedQuantity,
+                                   Double daysOfStock, double unitsPerDay) {
+        this(productId, name, unit, suggestedQuantity, daysOfStock, unitsPerDay, null, null);
+    }
 }

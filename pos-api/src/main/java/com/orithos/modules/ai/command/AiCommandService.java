@@ -12,6 +12,9 @@ import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.ProductService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
+import com.orithos.modules.ai.replenishment.ReplenishmentPlan;
+import com.orithos.modules.ai.replenishment.ReplenishmentSuggestion;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.security.AdminAccess;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,6 +44,7 @@ public class AiCommandService {
     private final CustomerMapper customerMapper;
     private final CustomerService customerService;
     private final OdooReportQueryService odooReports;
+    private final OdooReplenishmentClient replenishmentClient;
     private final JdbcTemplate jdbc;
     private final AiCommandParser commandParser;
     private final boolean enabled;
@@ -51,6 +55,7 @@ public class AiCommandService {
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
                             OdooReportQueryService odooReports,
+                            OdooReplenishmentClient replenishmentClient,
                             AiCommandParser commandParser,
                             @Value("${app.ai.commands.enabled:false}") boolean enabled,
                             @Value("${app.ai.commands.execution-enabled:false}") boolean executionEnabled) {
@@ -63,6 +68,7 @@ public class AiCommandService {
         this.customerService = customerService;
         this.jdbc = jdbc;
         this.odooReports = odooReports;
+        this.replenishmentClient = replenishmentClient;
         this.commandParser = commandParser;
         this.enabled = enabled;
         this.executionEnabled = executionEnabled;
@@ -98,7 +104,7 @@ public class AiCommandService {
         }
         if (parsed.items() == null) parsed = new Parsed(parsed.type(), parsed.confidence(), parsed.summary(),
                 List.of(), parsed.changes(), parsed.excluded() == null ? List.of() : parsed.excluded());
-        AiCommandStatus initialStatus = parsed.items().isEmpty() ? AiCommandStatus.DRAFT : AiCommandStatus.PREVIEWED;
+        AiCommandStatus initialStatus = initialStatus(parsed);
         UUID id = UUID.randomUUID();
         Instant expires = Instant.now().plus(10, ChronoUnit.MINUTES);
         String version = UUID.randomUUID().toString();
@@ -147,6 +153,10 @@ public class AiCommandService {
         if (row.expiresAt().isBefore(Instant.now())) {
             repository.updateStatus(id, AiCommandStatus.EXPIRED.name(), UUID.randomUUID().toString());
             throw new BusinessException(40921, "This change preview has expired. Create a new preview.");
+        }
+        if (AiCommandType.PREVIEW_REPLENISHMENT.name().equals(row.type())) {
+            throw new BusinessException(40925,
+                    "Replenishment is preview-only in this release and cannot be confirmed.");
         }
         if (!AiCommandStatus.PREVIEWED.name().equals(row.status())) {
             if (AiCommandStatus.APPLIED.name().equals(row.status())) return get(id);
@@ -254,10 +264,8 @@ public class AiCommandService {
     private Parsed parseText(TenantContext tenant, String text) {
         String lower = text.toLowerCase(Locale.ROOT);
         if (lower.contains("补货") || lower.contains("replenish") || lower.contains("restock")) {
-            return new Parsed(AiCommandType.PREVIEW_REPLENISHMENT, BigDecimal.valueOf(.96),
-                    "已生成补货建议预览；补货确认暂未开放。", List.of(), Map.of("request", text),
-                    List.of(new CommandItem(null, "", "", null, null,
-                            "需要先打开补货页核对库存和供应商", "EXCLUDED")));
+            return replenishmentPreview(text, replenishmentClient == null
+                    ? null : replenishmentClient.plan(tenant, 21, 50));
         }
         Parsed broadPrice = broadPricePreviewRequest(tenant, text);
         if (broadPrice != null) return broadPrice;
@@ -320,6 +328,84 @@ public class AiCommandService {
         if (unresolved != null) return unresolved;
         throw new BusinessException(40027,
                 "请说明明确对象和变更，例如：把 VB Cans 的显示名称改成 Victoria Bitter。");
+    }
+
+    static Parsed replenishmentPreview(String request, ReplenishmentPlan plan) {
+        if (plan == null) {
+            throw new BusinessException(50320, "Replenishment data is temporarily unavailable.");
+        }
+        boolean chinese = request != null && request.matches("(?s).*[\\u3400-\\u9fff].*");
+        List<CommandItem> items = plan.top().stream()
+                .map(item -> replenishmentItem(item, plan, chinese))
+                .toList();
+        List<CommandItem> excluded = new ArrayList<>();
+        for (String gap : plan.dataGaps()) {
+            excluded.add(new CommandItem(null, gap, "replenishment", null, null,
+                    gap, "EXCLUDED"));
+        }
+        int omitted = Math.max(0, plan.itemsNeedingOrder() - items.size());
+        if (omitted > 0) {
+            excluded.add(new CommandItem(null, omitted + " additional suggestions", "replenishment",
+                    null, null, "Open the replenishment page to review the remaining items", "EXCLUDED"));
+        }
+        String asOf = plan.dataAsOf().toString();
+        boolean incomplete = "DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus());
+        String summary;
+        if (incomplete && plan.itemsNeedingOrder() == 0) {
+            summary = chinese
+                    ? "补货建议数据不完整，无法给出完整结果（覆盖 " + plan.coverageDays() + " 天；数据时间 " + asOf + "）。"
+                    : "Replenishment data is incomplete, so a complete result cannot be generated ("
+                            + plan.coverageDays() + "-day coverage, data as of " + asOf + ").";
+        } else if (plan.itemsNeedingOrder() == 0) {
+            summary = chinese
+                    ? "当前没有商品需要补货建议（覆盖 " + plan.coverageDays() + " 天；数据时间 " + asOf + "）。"
+                    : "No replenishment quantities are currently suggested (" + plan.coverageDays()
+                            + "-day coverage, data as of " + asOf + ").";
+        } else {
+            summary = chinese
+                    ? "只读补货建议：" + plan.itemsNeedingOrder() + " 个商品需要审核，覆盖 "
+                            + plan.coverageDays() + " 天；当前显示 " + items.size() + " 项。数据时间 " + asOf + "。"
+                    : "Read-only replenishment preview: " + plan.itemsNeedingOrder()
+                            + " products need review for " + plan.coverageDays()
+                            + "-day coverage; showing " + items.size() + ". Data as of " + asOf + ".";
+        }
+        if (incomplete && plan.itemsNeedingOrder() > 0) {
+            summary += chinese ? " 部分商品因库存或供应商数据不全而被排除。"
+                    : " Some items were excluded because required data is incomplete.";
+        }
+        return new Parsed(AiCommandType.PREVIEW_REPLENISHMENT,
+                "VALID".equalsIgnoreCase(plan.dataQualityStatus())
+                        ? BigDecimal.valueOf(.96) : BigDecimal.valueOf(.70),
+                summary, items, Map.of("request", request, "target", "current outlet",
+                        "quantity", plan.itemsNeedingOrder()), excluded);
+    }
+
+    private static CommandItem replenishmentItem(ReplenishmentSuggestion item, ReplenishmentPlan plan,
+                                                 boolean chinese) {
+        String daysOfStock = item.daysOfStock() == null ? "unknown" :
+                BigDecimal.valueOf(item.daysOfStock()).setScale(1, RoundingMode.HALF_UP).toPlainString();
+        String reason = (chinese ? "覆盖 " : "coverage=") + plan.coverageDays()
+                + (chinese ? " 天；日均销量 " : " days; sales=")
+                + BigDecimal.valueOf(item.unitsPerDay()).setScale(3, RoundingMode.HALF_UP).toPlainString()
+                + (chinese ? " 件/天；库存覆盖约 " : " units/day; stock cover ≈")
+                + daysOfStock + (chinese ? " 天" : " days");
+        String before;
+        if (item.forecastAvailable() == null) {
+            before = daysOfStock + (chinese ? " 天库存" : " days cover");
+        } else {
+            String stock = BigDecimal.valueOf(item.forecastAvailable()).setScale(2, RoundingMode.HALF_UP)
+                    .stripTrailingZeros().toPlainString();
+            String onHand = item.onHand() == null ? "unknown" : BigDecimal.valueOf(item.onHand())
+                    .setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+            before = chinese
+                    ? "现有 " + onHand + " " + item.unit() + "；预计可用 " + stock + " " + item.unit()
+                            + "；约 " + daysOfStock + " 天覆盖"
+                    : onHand + " " + item.unit() + " on hand; " + stock + " " + item.unit()
+                            + " projected available; " + daysOfStock + "d cover";
+        }
+        return new CommandItem(item.productId(), item.name(), "quantity", before,
+                BigDecimal.valueOf(item.suggestedQuantity()).stripTrailingZeros().toPlainString(),
+                reason, "READY");
     }
 
     /**
@@ -481,8 +567,18 @@ public class AiCommandService {
 
     private CommandResponse response(UUID id, Parsed parsed, AiCommandStatus status, String version,
                                      Instant expires, List<String> writes) {
-        return new CommandResponse(id, parsed.type, status, parsed.confidence, status == AiCommandStatus.PREVIEWED,
+        boolean requiresConfirmation = requiresConfirmation(parsed.type, status);
+        return new CommandResponse(id, parsed.type, status, parsed.confidence, requiresConfirmation,
                 parsed.summary, parsed.items, parsed.excluded, parsed.changes, expires, version, writes);
+    }
+
+    static boolean requiresConfirmation(AiCommandType type, AiCommandStatus status) {
+        return status == AiCommandStatus.PREVIEWED && type != AiCommandType.PREVIEW_REPLENISHMENT;
+    }
+
+    static AiCommandStatus initialStatus(Parsed parsed) {
+        return parsed.type() == AiCommandType.PREVIEW_REPLENISHMENT || !parsed.items().isEmpty()
+                ? AiCommandStatus.PREVIEWED : AiCommandStatus.DRAFT;
     }
 
     private String write(Parsed parsed) {
