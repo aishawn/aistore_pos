@@ -1,0 +1,26 @@
+# Native inventory snapshot
+
+`scripts/ai-eval/fetch-skr-inventory-snapshot.py` captures the current Odoo
+inventory state with read-only JSON-RPC calls. It writes one immutable file per
+UTC capture date under `data/ai-eval/inventory-snapshots/YYYY-MM-DD/inventory.json`.
+
+Each product records Odoo's native `qty_available`, `virtual_available`,
+`incoming_qty`, `outgoing_qty`, category, current list price, and the shortest
+configured supplier delay. The file also records the company, warehouse scope,
+capture timestamp, source database, data-quality label, and an empty
+`writeRequests` audit list. Missing supplier lead time is kept as `null`.
+
+Run it from the repository root with the ignored `.env` containing the Odoo
+service credentials:
+
+```powershell
+python scripts/ai-eval/fetch-skr-inventory-snapshot.py
+```
+
+The default database is `aipos_uat` and the SKR company is `5`; override them
+with `ODOO_DATABASE` or `SKR_ODOO_COMPANY_ID` in the environment when needed.
+The output is suitable for a daily scheduler. A company with multiple
+warehouses is explicitly marked `COMPANY_AGGREGATE`; the collector does not
+pretend company-level quantities belong to one warehouse. Historical stockout
+backtests must continue to label `stock.move`-derived flags as inferred until
+enough daily native snapshots exist to reconstruct actual stockout days.
