@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
@@ -37,5 +38,16 @@ class AiCommandRepositoryTest {
         ArgumentCaptor<Object[]> values = ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(anyString(), values.capture());
         assertInstanceOf(Timestamp.class, values.getValue()[9]);
+    }
+
+    @Test
+    void cancellationAllowsDraftAndPreviewedCommandsOnly() {
+        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        repository.cancelPreview(UUID.randomUUID(), "version");
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).update(sql.capture(), any(Object[].class));
+        assertTrue(sql.getValue().contains("status IN (?, ?)"));
     }
 }
