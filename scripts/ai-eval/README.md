@@ -86,3 +86,24 @@ It reports `BLOCKED` when those inputs are missing or when the model quality
 gate fails. Low-frequency products with fewer than 14 selling days are not
 scored by the seasonal baseline and remain blocked pending intermittent-demand
 model evaluation.
+
+## Daily native inventory snapshot
+
+Use the native Odoo collector for daily inventory history. It reads
+`qty_available`, `virtual_available`, incoming/outgoing quantities, supplier
+delay, current price band, category, and warehouse scope with read-only
+JSON-RPC calls:
+
+```powershell
+python scripts/ai-eval/fetch-skr-inventory-snapshot.py
+```
+
+The collector accepts credentials from process environment variables (for
+example `ODOO_SERVICE_USERNAME` and `ODOO_SERVICE_PASSWORD`) or an ignored
+`.env` file. Store output outside Git or in an access-controlled snapshot
+volume. A Windows Task Scheduler action can run the command once per day from
+the repository root; a container scheduler can invoke it with the same
+environment variables. Every output carries `snapshotVersion`, `capturedAt`,
+`dataQuality`, `warehouseScope`, and an empty `writeRequests` list. Keep the
+files for at least 8 weeks before replacing inferred `stock.move` stockout
+flags in acceptance backtests.
