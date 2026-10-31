@@ -4,8 +4,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.forecast_engine import backtest, forecast
-from app.schemas import BacktestRequest, ForecastRequest, Series
+from app.forecast_engine import backtest, forecast, project_inventory
+from app.schemas import (BacktestRequest, ForecastPoint, ForecastRequest,
+                         InventoryItem, InventoryRequest, Series)
 
 
 def make_series(evaluation_flags: list[bool]) -> Series:
@@ -19,6 +20,21 @@ def make_series(evaluation_flags: list[bool]) -> Series:
 
 
 class ForecastBacktestTests(unittest.TestCase):
+    def test_inventory_projection_returns_read_only_replenishment_decision(self):
+        start = date(2026, 1, 1)
+        forecast_points = [ForecastPoint(date=start + timedelta(days=index), p50=2, p80=3, p90=4)
+                           for index in range(7)]
+        result = project_inventory(InventoryRequest(vendorId=1, outletId=1, items=[
+            InventoryItem(productId=1, onHand=4, onOrder=0, forecast=forecast_points,
+                          leadTimeDays=3, safetyStockDays=2, dataQuality="VALID")
+        ]))
+        self.assertEqual("READ_ONLY", result.status)
+        decision = result.decisions[0]
+        self.assertEqual("HIGH", decision.risk)
+        self.assertEqual(2.0, decision.availableDays)
+        self.assertEqual(6.0, decision.recommendedReplenishment)
+        self.assertIn("available_days_do_not_cover_lead_time", decision.reason)
+
     def test_forecast_uses_the_model_selected_for_each_product(self):
         request = ForecastRequest(vendorId=1, outletId=1, horizonDays=3, series=[
             Series(productId=1, selectedModel="moving_average_7_v1",

@@ -83,6 +83,9 @@ class InventoryItem(BaseModel):
     onHand: float = Field(ge=0)
     onOrder: float = Field(default=0, ge=0)
     forecast: list[ForecastPoint]
+    leadTimeDays: int = Field(default=0, ge=0, le=90)
+    safetyStockDays: int = Field(default=3, ge=0, le=90)
+    dataQuality: str = "UNKNOWN"
 
 
 class InventoryRequest(BaseModel):
@@ -98,6 +101,18 @@ class InventoryPoint(BaseModel):
     stockout: bool
 
 
+class InventoryDecision(BaseModel):
+    productId: int
+    risk: Literal["LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+    availableDays: float | None
+    recommendedReplenishment: float
+    projectedAfterReplenishment: float
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]
+    reason: list[str]
+    dataQuality: str
+
+
 class InventoryResponse(BaseModel):
     status: Literal["READ_ONLY"]
     items: list[InventoryPoint]
+    decisions: list[InventoryDecision] = []

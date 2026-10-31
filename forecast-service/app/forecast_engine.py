@@ -3,7 +3,7 @@ from statistics import mean, pstdev
 
 from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
                        ForecastItem, ForecastPoint, ForecastRequest, ForecastResponse,
-                       InventoryPoint, InventoryRequest, InventoryResponse)
+                       InventoryDecision, InventoryPoint, InventoryRequest, InventoryResponse)
 
 
 MODEL = "seasonal_naive_v1"
@@ -107,10 +107,41 @@ def backtest(request: BacktestRequest) -> BacktestResponse:
 
 def project_inventory(request: InventoryRequest) -> InventoryResponse:
     points: list[InventoryPoint] = []
+    decisions: list[InventoryDecision] = []
     for item in request.items:
         running = item.onHand + item.onOrder
+        average_demand = mean(max(0.0, point.p50) for point in item.forecast) if item.forecast else 0.0
+        available_days = running / average_demand if average_demand > 0 else None
+        coverage_days = item.leadTimeDays + item.safetyStockDays
+        coverage_demand = average_demand * coverage_days
+        recommended = max(0.0, coverage_demand - running)
+        projected_after = running + recommended - average_demand * item.leadTimeDays
+        reasons: list[str] = []
+        if available_days is None:
+            risk = "UNKNOWN"
+            reasons.append("forecast_has_no_positive_demand")
+        elif available_days <= item.leadTimeDays:
+            risk = "HIGH"
+            reasons.append("available_days_do_not_cover_lead_time")
+        elif available_days <= coverage_days:
+            risk = "MEDIUM"
+            reasons.append("available_days_below_lead_time_plus_safety_stock")
+        else:
+            risk = "LOW"
+            reasons.append("stock_covers_lead_time_and_safety_stock")
+        if item.onOrder > 0:
+            reasons.append("includes_on_order_quantity")
+        if item.dataQuality != "VALID":
+            reasons.append("inventory_data_quality_" + item.dataQuality.lower())
+        decisions.append(InventoryDecision(
+            productId=item.productId, risk=risk, availableDays=available_days,
+            recommendedReplenishment=round(recommended, 4),
+            projectedAfterReplenishment=round(projected_after, 4),
+            confidence="HIGH" if item.dataQuality == "VALID" and average_demand > 0 else "LOW",
+            reason=reasons, dataQuality=item.dataQuality,
+        ))
         for point in item.forecast:
             running -= point.p50
             points.append(InventoryPoint(productId=item.productId, date=point.date,
                                          projectedOnHand=round(running, 4), stockout=running <= 0))
-    return InventoryResponse(status="READ_ONLY", items=points)
+    return InventoryResponse(status="READ_ONLY", items=points, decisions=decisions)
