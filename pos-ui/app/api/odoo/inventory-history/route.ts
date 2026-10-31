@@ -25,10 +25,16 @@ type StockMove = {
   write_date: string;
 };
 
+class InventoryHistoryRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 function parseDate(value: string | null, fallback: Date): Date {
   if (!value) return fallback;
   const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime())) throw new Error("Inventory history date is invalid.");
+  if (!Number.isFinite(parsed.getTime())) throw new InventoryHistoryRequestError("Inventory history date is invalid.");
   return parsed;
 }
 
@@ -46,9 +52,11 @@ function errorResponse(error: unknown) {
     if (error.status === 401) response.cookies.delete("orithos_odoo_session");
     return response;
   }
+  if (error instanceof InventoryHistoryRequestError) {
+    return NextResponse.json({ message: error.message }, { status: 400 });
+  }
   const message = error instanceof Error ? error.message : "Inventory history is unavailable.";
-  const status = /invalid/.test(message) ? 400 : 502;
-  return NextResponse.json({ message }, { status });
+  return NextResponse.json({ message }, { status: 502 });
 }
 
 /** Read-only stock movement history for forecasting and audit; never calls an Odoo write method. */
@@ -68,15 +76,15 @@ export async function GET(request: NextRequest) {
     const defaultFrom = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
     const from = parseDate(params.get("from"), defaultFrom);
     const to = parseDate(params.get("to"), now);
-    if (from > to) throw new Error("Inventory history date range is invalid.");
+    if (from > to) throw new InventoryHistoryRequestError("Inventory history date range is invalid.");
     if ((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000) > MAX_RANGE_DAYS) {
-      throw new Error(`Inventory history range cannot exceed ${MAX_RANGE_DAYS} days.`);
+      throw new InventoryHistoryRequestError(`Inventory history range cannot exceed ${MAX_RANGE_DAYS} days.`);
     }
 
     const rawLimit = Number(params.get("limit") ?? 500);
     const rawOffset = Number(params.get("offset") ?? 0);
     if (!Number.isFinite(rawLimit) || !Number.isFinite(rawOffset)) {
-      throw new Error("Inventory history pagination is invalid.");
+      throw new InventoryHistoryRequestError("Inventory history pagination is invalid.");
     }
     const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(rawLimit)));
     const offset = Math.max(0, Math.floor(rawOffset));
@@ -89,7 +97,7 @@ export async function GET(request: NextRequest) {
     if (productId !== null) {
       const parsedProductId = Number(productId);
       if (!Number.isSafeInteger(parsedProductId) || parsedProductId < 1) {
-        throw new Error("Inventory history productId is invalid.");
+        throw new InventoryHistoryRequestError("Inventory history productId is invalid.");
       }
       domain.push(["product_id", "=", parsedProductId]);
     }
