@@ -21,7 +21,9 @@ def env_values() -> dict[str, str]:
     current = Path.cwd()
     while current != current.parent and not (current / ".env").exists():
         current = current.parent
-    values: dict[str, str] = {}
+    # Scheduled jobs and containers normally provide secrets through the
+    # process environment; local runs may provide them through ignored .env.
+    values: dict[str, str] = dict(os.environ)
     env_file = current / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():

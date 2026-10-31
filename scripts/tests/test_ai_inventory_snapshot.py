@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -13,6 +14,17 @@ SPEC.loader.exec_module(MODULE)
 
 
 class InventorySnapshotTests(unittest.TestCase):
+    def test_environment_values_include_process_environment(self):
+        previous = os.environ.get("SKR_TEST_ENV_VALUE")
+        os.environ["SKR_TEST_ENV_VALUE"] = "available-to-scheduler"
+        try:
+            self.assertEqual("available-to-scheduler", MODULE.env_values()["SKR_TEST_ENV_VALUE"])
+        finally:
+            if previous is None:
+                os.environ.pop("SKR_TEST_ENV_VALUE", None)
+            else:
+                os.environ["SKR_TEST_ENV_VALUE"] = previous
+
     def test_normalise_product_preserves_native_quantities_and_metadata(self):
         product = MODULE.normalise_product({
             "id": 11,
