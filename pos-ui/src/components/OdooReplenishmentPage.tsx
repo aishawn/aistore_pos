@@ -46,6 +46,8 @@ type ReplenishmentProduct = {
   risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   confidence?: "HIGH" | "MEDIUM" | "LOW";
   dataQuality?: string;
+  recommendationStatus?: "REVIEW_DATA" | "NO_DEMAND" | "READY";
+  dataIssues?: string[];
   suggestedQuantity: number;
   reason?: string;
   reasonParts?: string[];
@@ -75,6 +77,8 @@ type ReplenishmentData = {
   coverageDays: number;
   products: ReplenishmentProduct[];
   truncated: boolean;
+  salesHistory?: { timezone: string; timezoneVerified: boolean };
+  reviewRequiredCount?: number;
   excludedProductCount?: number;
   productEligibility?: string;
   generatedAt: string;
@@ -85,6 +89,7 @@ type ReplenishmentData = {
     modelVersion?: string | null;
     sourceVersion?: string | null;
     status: string;
+    costPolicy?: { annualHoldingRate: number; annualObsolescenceRate: number; serviceLevel: number } | null;
   };
   businessMetrics?: {
     inventoryValue: number | null;
@@ -96,7 +101,7 @@ type ReplenishmentData = {
   };
 };
 
-type ListFilter = "suggestions" | "out_of_stock" | "all";
+type ListFilter = "suggestions" | "out_of_stock" | "review" | "all";
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -150,6 +155,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
   const rfqSupplierRevision = useRef(0);
+  const rfqInFlight = useRef(false);
   const rfqSupplierRef = useRef<HTMLSelectElement>(null);
   const methodCloseRef = useRef<HTMLButtonElement>(null);
   const helpButtonRef = useRef<HTMLButtonElement>(null);
@@ -218,6 +224,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     const base = data?.products ?? [];
     const byFilter = listFilter === "suggestions"
       ? base.filter((product) => product.suggestedQuantity > 0)
+      : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
       : listFilter === "out_of_stock"
         ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)
         : base;
@@ -309,7 +316,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   async function submitRfq(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (rfqSubmitting) return;
+    if (rfqInFlight.current) return;
     const supplierId = Number(rfqSupplierId);
     if (!Number.isSafeInteger(supplierId) || supplierId < 1) {
       setRfqError("Choose a supplier for this draft RFQ.");
@@ -323,20 +330,21 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       setRfqError(`Enter quantities from 0 to ${MAX_RFQ_QUANTITY.toLocaleString("en-AU")} for every product.`);
       return;
     }
+    rfqInFlight.current = true;
     setRfqSubmitting(true);
     setRfqError(null);
     try {
       const result = await createOdooDraftRfq({
         supplierId,
         coverageDays,
-        method: data?.products.find((product) => product.method)?.method ?? "rules_v1_weighted_velocity",
+        method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
         lines: rfqLines.map(({ productId, quantity, suggestedQuantity, reason }) => ({ productId, quantity, suggestedQuantity, reason })),
       });
       const supplier = rfqSuppliers.find((item) => item.id === supplierId);
       const audit = appendReplenishmentAudit({
         company: data?.company ?? "Current company",
         coverageDays,
-        method: data?.products.find((product) => product.method)?.method ?? "rules_v1_weighted_velocity",
+        method: data?.forecast?.modelSelection ?? "rules_v1_weighted_velocity",
         supplierId,
         supplierName: supplier?.name ?? result.supplier,
         rfqName: result.name,
@@ -355,6 +363,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     } catch (cause) {
       setRfqError(cause instanceof Error ? cause.message : "Could not create the draft RFQ.");
     } finally {
+      rfqInFlight.current = false;
       setRfqSubmitting(false);
     }
   }
@@ -516,6 +525,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               >
                 <option value="suggestions">Suggestions only</option>
                 <option value="out_of_stock">Out of stock with demand</option>
+                <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
                 <option value="all">All products</option>
               </select>
             </label>
@@ -571,7 +581,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       </div>
                       {product.suggestedQuantity > 0
                         ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span>
-                        : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
+                        : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
                       <Metric label={`Sold · ${data?.historyDays}d`} value={number.format(product.soldUnits)} />
@@ -709,7 +719,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     <td className="px-4 py-3 text-right">
                       {product.suggestedQuantity > 0
                         ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span>
-                        : <span className="text-xs text-[var(--oh-muted)]">No order</span>}
+                        : <span className="text-xs text-[var(--oh-muted)]">{product.recommendationStatus === "REVIEW_DATA" ? "Review data" : "No order"}</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
                       <button
@@ -746,6 +756,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </tbody>
           </table>
         </div>
+        {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">Store timezone uses {data.salesHistory.timezone} as a fallback. Verify the store state in Orithos; forecast confidence is reduced.</p>}
+        {(data?.reviewRequiredCount ?? 0) > 0 && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">{data?.reviewRequiredCount} products need stock, cost or purchase unit checks. Their purchase suggestions are paused. Choose “Review data” to inspect them.</p>}
         {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Showing up to 1,000 products or product demand groups. Narrow the product catalogue in Orithos for a complete plan.</p>}
       </section>
 

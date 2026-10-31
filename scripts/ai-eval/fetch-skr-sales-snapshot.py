@@ -49,11 +49,23 @@ class Odoo:
             raise RuntimeError(error.get("message", "Odoo RPC failed"))
         return result.get("result") or {}
 
-    def read(self, model: str, domain: list, fields: list[str], limit: int = 100000) -> list[dict]:
+    def read(self, model: str, domain: list, fields: list[str], limit: int = 100000,
+             offset: int = 0) -> list[dict]:
         return self.call(f"/web/dataset/call_kw/{model}/search_read", {
             "model": model, "method": "search_read", "args": [domain],
-            "kwargs": {"fields": fields, "limit": limit},
+            "kwargs": {"fields": fields, "limit": limit, "offset": offset, "order": "id"},
         })
+
+
+def read_all(odoo: Odoo, model: str, domain: list, fields: list[str], page_size: int = 2000) -> list[dict]:
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        page = odoo.read(model, domain, fields, page_size, offset)
+        rows.extend(page)
+        if len(page) < page_size:
+            return rows
+        offset += len(page)
 
 
 def move_delta(source_usage: str | None, destination_usage: str | None, quantity: float) -> float:
@@ -73,6 +85,7 @@ def main() -> int:
     password = values.get("ODOO_SERVICE_PASSWORD") or values.get("ODOO_PASS")
     company_id = int(os.environ.get("SKR_ODOO_COMPANY_ID", "5"))
     history_days = max(28, min(180, int(os.environ.get("SKR_HISTORY_DAYS", "60"))))
+    move_page_size = max(100, min(10000, int(os.environ.get("SKR_MOVE_PAGE_SIZE", "2000"))))
     output = Path(os.environ.get("SKR_SALES_SNAPSHOT_OUTPUT", "data/ai-eval/skr-sales-snapshot.json"))
     if not username or not password:
         raise RuntimeError("ODOO service credentials are required")
@@ -111,10 +124,10 @@ def main() -> int:
     usages = {row["id"]: row.get("usage") for row in location_rows}
     moves: list[dict] = []
     for offset in range(0, len(candidate_ids), 500):
-        moves.extend(odoo.read("stock.move", [
+        moves.extend(read_all(odoo, "stock.move", [
             ["company_id", "=", company_id], ["product_id", "in", candidate_ids[offset:offset + 500]],
             ["date", ">=", f"{start} 00:00:00"], ["state", "=", "done"],
-        ], ["product_id", "date", "quantity", "location_id", "location_dest_id"], 100000))
+        ], ["product_id", "date", "quantity", "location_id", "location_dest_id"], move_page_size))
     moves_by_product: dict[int, list[tuple[date, float]]] = defaultdict(list)
     for move in moves:
         product_id = (move.get("product_id") or [None])[0]

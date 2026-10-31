@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from statistics import mean, pstdev
+from statistics import mean, median, pstdev
 
 from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
                        ForecastItem, ForecastPoint, ForecastRequest, ForecastResponse,
@@ -67,8 +67,8 @@ def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | N
     return baseline[:horizon], quality, confidence
 
 
-def _select_model(series, horizon: int = 7) -> tuple[str, str, dict[str, float]]:
-    """Select one model per product using rolling, uncensored WAPE.
+def _select_model(series, horizon: int = 7, policy=None) -> tuple[str, str, dict[str, float], str | None]:
+    """Select using rolling business loss when costs are valid, otherwise WAPE.
 
     The service deliberately refuses to call a short series a validated model
     selection. The caller still receives a deterministic seasonal-naive
@@ -76,12 +76,16 @@ def _select_model(series, horizon: int = 7) -> tuple[str, str, dict[str, float]]
     """
     values = [max(0.0, float(value)) for value in series.units]
     if len(values) < 28:
-        return MODEL, "INSUFFICIENT_HISTORY", {}
+        return MODEL, "INSUFFICIENT_HISTORY", {}, None
     flags = series.stockoutFlags or []
+    use_cost = policy is not None and series.unitCost is not None and series.unitPrice is not None and series.unitPrice > series.unitCost
     scores: dict[str, float] = {}
     for candidate in MODEL_NAMES:
         errors: list[float] = []
         actual_total = 0.0
+        business_loss = 0.0
+        observed = 0
+        missed_units = 0.0
         for end in range(14, len(values) - horizon + 1, horizon):
             train = values[:end]
             train_flags = flags[:end] if flags else []
@@ -91,12 +95,27 @@ def _select_model(series, horizon: int = 7) -> tuple[str, str, dict[str, float]]
                     continue
                 errors.append(abs(predicted[offset] - actual))
                 actual_total += actual
+                observed += 1
+                if use_cost:
+                    missed = max(0.0, actual - predicted[offset])
+                    missed_units += missed
+                    excess = max(0.0, predicted[offset] - actual)
+                    margin = series.unitPrice - series.unitCost
+                    # Lost gross profit and capital carrying/obsolescence exposure.
+                    business_loss += missed * margin + excess * series.unitCost * (policy.annualHoldingRate + policy.annualObsolescenceRate) * horizon / 365
+
         if errors and actual_total > 0:
-            scores[candidate] = sum(errors) / actual_total
+            if use_cost:
+                # Penalise missed demand beyond the requested service level.
+                shortfall = max(0.0, missed_units - (1 - policy.serviceLevel) * actual_total)
+                business_loss += shortfall * (series.unitPrice - series.unitCost)
+                scores[candidate] = business_loss / observed
+            else:
+                scores[candidate] = sum(errors) / actual_total
     if not scores:
-        return MODEL, "BLOCKED", {}
+        return MODEL, "BLOCKED", {}, None
     winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
-    return winner, "ROLLING_BACKTEST", scores
+    return winner, "ROLLING_BACKTEST", scores, "rolling_business_cost_aud_per_day" if use_cost else "rolling_wape"
 
 
 def forecast(request: ForecastRequest) -> ForecastResponse:
@@ -104,13 +123,29 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
     items: list[ForecastItem] = []
     for series in request.series:
         if series.selectedModel:
-            model, selection_status, candidate_scores = series.selectedModel, "EXPLICIT", {}
+            model, selection_status, candidate_scores, metric = series.selectedModel, "EXPLICIT", {}, None
         else:
-            model, selection_status, candidate_scores = _select_model(series, min(request.horizonDays, 7))
+            model, selection_status, candidate_scores, metric = _select_model(series, min(request.horizonDays, 7), request.costPolicy)
         values, quality, confidence = _normalise(series.units, request.horizonDays, series.stockoutFlags, model)
+        if selection_status in ("BLOCKED", "INSUFFICIENT_HISTORY"):
+            confidence = "LOW"
+        analog_count = 0
+        analog_spread = 0.0
+        if series.isNew and len(series.units) < 28 and series.category and series.priceBand:
+            donors = [other for other in request.series
+                      if other.productId != series.productId and not other.isNew and len(other.units) >= 28
+                      and other.category == series.category and other.priceBand == series.priceBand
+                      and (not series.brand or other.brand == series.brand)
+                      and sum(other.units[-28:]) > 0 and not any(other.stockoutFlags[-28:])]
+            if len(donors) >= 3:
+                analog_count = len(donors)
+                analog_spread = pstdev(max(0.0, value) for donor in donors for value in donor.units[-28:])
+                values = [median(mean(max(0.0, v) for v in donor.units[-28:]) for donor in donors)] * request.horizonDays
+                model, selection_status, metric = "analog_category_brand_price_v1", "ANALOG_COLD_START", None
+                candidate_scores, quality, confidence = {}, "INSUFFICIENT_HISTORY", "LOW"
         usable_tail = [value for index, value in enumerate(series.units[-28:], start=max(0, len(series.units) - 28))
                        if not (index < len(series.stockoutFlags) and series.stockoutFlags[index])]
-        spread = pstdev(usable_tail) if len(usable_tail) > 1 else 0.0
+        spread = max(analog_spread, pstdev(usable_tail) if len(usable_tail) > 1 else 0.0)
         points = []
         for offset, p50 in enumerate(values, start=1):
             p80 = max(p50, p50 + 0.84 * spread)
@@ -118,11 +153,11 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
             points.append(ForecastPoint(date=today + timedelta(days=offset), p50=p50, p80=p80, p90=p90))
         items.append(ForecastItem(productId=series.productId, model=model,
                                   selectionStatus=selection_status,
-                                  selectionMetric="rolling_wape" if candidate_scores else None,
+                                  selectionMetric=metric, analogCount=analog_count,
                                   candidateScores=candidate_scores, forecast=points,
                                   dataQuality=quality, confidence=confidence))
-    return ForecastResponse(model="per_product_selected", modelVersion="2", sourceVersion=request.sourceVersion,
-                            horizonDays=request.horizonDays, items=items)
+    return ForecastResponse(model="per_product_selected", modelVersion="3", sourceVersion=request.sourceVersion,
+                            horizonDays=request.horizonDays, items=items, costPolicy=request.costPolicy)
 
 
 def backtest(request: BacktestRequest) -> BacktestResponse:

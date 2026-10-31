@@ -4,6 +4,9 @@ import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
 
+import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
+import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "@/lib/replenishment-safety";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -19,6 +22,7 @@ const FORECAST_MODELS = new Set([
   "croston_sba_v1",
   "tsb_v1",
   "two_stage_occurrence_v1",
+  "analog_category_brand_price_v1",
 ]);
 
 type RpcEnvelope<T> = { result?: T; error?: { message?: string } };
@@ -61,6 +65,7 @@ type ForecastServiceItem = {
   candidateScores?: Record<string, number>;
   dataQuality?: string;
   confidence?: string;
+  analogCount?: number;
   forecast?: Array<{ p50?: number; p80?: number; p90?: number }>;
 };
 
@@ -68,6 +73,8 @@ type ForecastServiceResponse = {
   model?: string;
   modelVersion?: string;
   sourceVersion?: string;
+  costPolicy?: { annualHoldingRate: number; annualObsolescenceRate: number; serviceLevel: number };
+  costPolicySource?: string;
   items?: ForecastServiceItem[];
 };
 
@@ -105,18 +112,22 @@ type DailySalesRow = Record<string, unknown> & {
   date_order?: string;
 };
 
-async function loadDailySales(sessionId: string, domain: unknown[], correlationId?: string | null): Promise<DailySalesRow[]> {
+async function loadDailySales(sessionId: string, domain: unknown[], timezone: string, correlationId?: string | null): Promise<DailySalesRow[]> {
   // Odoo 20 rejects related datetime group keys such as order_id.date_order:day
   // on pos.order.line. Group by regular many2one fields, then resolve order
   // dates in read-only batches and aggregate them in the API process.
-  const grouped = await rpc<Array<{ product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number }>>(
-    sessionId,
-    "pos.order.line",
-    "read_group",
-    [domain, ["qty:sum"], ["product_id", "order_id"]],
-    { limit: MAX_PRODUCTS * 60, lazy: false },
-    correlationId,
-  );
+  type Group = { product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
+  const grouped: Group[] = [];
+  const batchSize = 5000;
+  for (let offset = 0; ; offset += batchSize) {
+    const page = await rpc<Group[]>(sessionId, "pos.order.line", "read_group",
+      [domain, ["qty:sum"], ["product_id", "order_id"]],
+      { limit: batchSize, offset, orderby: "product_id, order_id", lazy: false }, correlationId);
+    if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated.");
+    grouped.push(...page);
+    if (page.length < batchSize) break;
+    if (grouped.length >= 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
+  }
   const orderIds = [...new Set((grouped ?? [])
     .map((row) => Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0)
     .filter((id) => id > 0))];
@@ -139,9 +150,11 @@ async function loadDailySales(sessionId: string, domain: unknown[], correlationI
   for (const row of grouped ?? []) {
     const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
     const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0;
-    const date = orderDates.get(orderId)?.slice(0, 10) ?? "";
+    const orderDate = orderDates.get(orderId);
+    if (!orderDate) throw new Error("An order date is missing; no plan was generated.");
+    const date = salesDate(orderDate, timezone);
     const qty = Number(row.qty);
-    if (productId <= 0 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !Number.isFinite(qty)) continue;
+    if (productId <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(qty)) continue;
     const key = `${productId}|${date}`;
     const current = daily.get(key);
     if (current) current.qty = Number(current.qty ?? 0) + qty;
@@ -158,9 +171,6 @@ export async function GET(request: NextRequest) {
 
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
-  const now = Date.now();
-  const recentFrom = new Date(now - PERIOD_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
-  const previousFrom = new Date(now - HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
 
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -183,27 +193,33 @@ export async function GET(request: NextRequest) {
       ["order_id.company_id", "=", companyId],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
-    const dailySalesPromise = forecastEnabled()
-      ? loadDailySales(sessionId, [...salesBaseDomain, ["order_id.date_order", ">=", previousFrom]], correlationId)
-      : Promise.resolve([] as Array<Record<string, unknown>>);
-    const [recentSales, previousSales, products, companies, dailySales] = await Promise.all([
-      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
-      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
+    const unitFields = await rpc<Record<string, unknown>>(sessionId, "product.product", "fields_get", [["uom_po_id", "brand_id"]], { attributes: ["type"] }, correlationId);
+    const hasPurchaseUnit = Boolean(unitFields && Object.hasOwn(unitFields, "uom_po_id"));
+    const [products, companies] = await Promise.all([
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
-        ["available_in_pos", "=", true],
-        ["company_id", "=", companyId],
-        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", "type", "sale_ok", "purchase_ok", "standard_price", "list_price"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
-      rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }, correlationId),
-      dailySalesPromise,
+        ["available_in_pos", "=", true], ["company_id", "=", companyId],
+      ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "type", "sale_ok", "purchase_ok", "standard_price", "list_price", "categ_id", "create_date", ...(unitFields && Object.hasOwn(unitFields, "brand_id") ? ["brand_id"] : [])], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+      rpc<Array<{ name?: string; country_id?: [number, string]; state_id?: [number, string] }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name", "country_id", "state_id"], limit: 1 }, correlationId),
     ]);
-
+    // Odoo 20 uses the base unit on purchase lines; older releases expose a separate purchase unit.
+    if (!hasPurchaseUnit) for (const product of products ?? []) product.uom_po_id = product.uom_id;
+    const timezone = getOdooCompanyTimezone(companies?.[0]?.country_id, companies?.[0]?.state_id);
+    const timezoneVerified = Boolean(companies?.[0]?.country_id && companies?.[0]?.state_id);
+    const today = salesDate(new Date().toISOString(), timezone);
+    const historyStart = shiftDay(today, -HISTORY_DAYS);
+    const recentStart = shiftDay(today, -PERIOD_DAYS);
+    const historyFromUtc = localMidnightUtc(historyStart, timezone);
+    const historyToUtc = localMidnightUtc(today, timezone);
+    const dailySales = products?.length ? await loadDailySales(sessionId, [
+      ...salesBaseDomain, ["product_id", "in", products.map((p) => Number(p.id))],
+      ["order_id.date_order", ">=", historyFromUtc], ["order_id.date_order", "<", historyToUtc],
+    ], timezone, correlationId) : [];
     const recentSold = new Map<number, number>();
     const previousSold = new Map<number, number>();
-    for (const row of recentSales ?? []) {
-      if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) recentSold.set(row.product_id[0], Number(row.qty));
-    }
-    for (const row of previousSales ?? []) {
-      if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) previousSold.set(row.product_id[0], Number(row.qty));
+    for (const row of dailySales) {
+      if (!Array.isArray(row.product_id)) continue;
+      const target = String(row["order_id.date_order"]) >= recentStart ? recentSold : previousSold;
+      target.set(row.product_id[0], (target.get(row.product_id[0]) ?? 0) + Number(row.qty));
     }
     const leadTimes = new Map<number, number>();
     let leadTimeQuality: "AVAILABLE" | "UNKNOWN" = "AVAILABLE";
@@ -240,15 +256,25 @@ export async function GET(request: NextRequest) {
       }
     }
     const forecastItems = new Map<number, ForecastServiceItem>();
-    let forecastMeta: Pick<ForecastServiceResponse, "modelVersion" | "sourceVersion"> = {};
+    let forecastMeta: Pick<ForecastServiceResponse, "modelVersion" | "sourceVersion" | "costPolicy" | "costPolicySource"> = {};
     if (forecastEnabled()) {
-      const dates = Array.from({ length: HISTORY_DAYS }, (_, index) => new Date(now - (HISTORY_DAYS - 1 - index) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+      const dates = Array.from({ length: HISTORY_DAYS }, (_, index) => shiftDay(historyStart, index));
       const series = eligibleProducts.map((product) => {
         const values = dailyByProduct.get(Number(product.id)) ?? new Map<string, number>();
-        return { productId: Number(product.id), dates, units: dates.map((date) => values.get(date) ?? 0), stockoutFlags: [] };
+        const createdDay = typeof product.create_date === "string" ? salesDate(product.create_date, timezone) : null;
+        const isNew = Boolean(createdDay && createdDay > historyStart && !dates.some((date) => date < createdDay && (values.get(date) ?? 0) > 0));
+        const observedDates = isNew && createdDay ? dates.filter((date) => date > createdDay) : dates;
+        const cost = Number(product.standard_price);
+        const price = Number(product.list_price);
+        return { productId: Number(product.id), dates: observedDates, units: observedDates.map((date) => values.get(date) ?? 0), stockoutFlags: [],
+          category: Array.isArray(product.categ_id) ? String(product.categ_id[0]) : null,
+          brand: Array.isArray(product.brand_id) ? String(product.brand_id[0]) : null,
+          priceBand: price > 0 ? price <= 15 ? "LOW_LE_15" : price <= 30 ? "MID_15_30" : "HIGH_GT_30" : null,
+          isNew, unitCost: cost > 0 && price > cost ? cost : null, unitPrice: price > 0 ? price : null };
+
       });
-      const forecastResponse = await callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), sourceVersion: "odoo_pos_order_line_read_group_v1", series });
-      forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion };
+      const forecastResponse = await callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), forecastStartDate: shiftDay(today, -1), sourceVersion: "odoo_pos_order_line_local_complete_days_v2", series });
+      forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource };
       for (const item of forecastResponse.items ?? []) forecastItems.set(Number(item.productId), item);
     }
     const replenishmentItems = eligibleProducts.map((product) => {
@@ -275,29 +301,21 @@ export async function GET(request: NextRequest) {
       const targetDays = Math.max(coverageDays, leadTimeDays ?? 0);
       const forecastItem = forecastItems.get(id);
       const forecastPoints = forecastItem?.forecast ?? [];
-      const hasUsableForecast = Boolean(forecastItem && forecastPoints.length >= coverageDays && forecastItem.dataQuality === "VALID");
+      const hasUsableForecast = Boolean(forecastItem && forecastPoints.length >= coverageDays && (forecastItem.dataQuality === "VALID" || forecastItem.selectionStatus === "ANALOG_COLD_START") && forecastItem.selectionStatus !== "BLOCKED" && forecastItem.selectionStatus !== "INSUFFICIENT_HISTORY");
       const forecastP50 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p50) || 0), 0);
       const forecastP80 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p80) || 0), 0);
       const forecastP90 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p90) || 0), 0);
       const demandPerDay = hasUsableForecast ? forecastP50 / coverageDays : unitsPerDay;
-      const suggestedQuantity = Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
+      const dataIssues = replenishmentIssues(product);
+      const recommendationBlocked = dataIssues.length > 0 || soldUnits <= 0;
+      const suggestedQuantity = recommendationBlocked ? 0 : Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
       const postReplenishmentForecast = forecastStock + suggestedQuantity;
       let expectedStockoutDaysAfterReplenishment: number | null = null;
       let stockoutDemandUnitsAfterReplenishment: number | null = null;
-      if (hasUsableForecast) {
-        let running = postReplenishmentForecast;
-        let stockoutDays = 0;
-        let stockoutDemand = 0;
-        for (const point of forecastPoints.slice(0, coverageDays)) {
-          const demand = Math.max(0, Number(point.p50) || 0);
-          running -= demand;
-          if (running <= 0) {
-            stockoutDays += 1;
-            stockoutDemand += Math.max(0, -running);
-          }
-        }
-        expectedStockoutDaysAfterReplenishment = stockoutDays;
-        stockoutDemandUnitsAfterReplenishment = stockoutDemand;
+      if (hasUsableForecast && !recommendationBlocked) {
+        const projection = stockoutProjection(postReplenishmentForecast, forecastPoints.slice(0, coverageDays).map((point) => Number(point.p50) || 0));
+        expectedStockoutDaysAfterReplenishment = projection.days;
+        stockoutDemandUnitsAfterReplenishment = projection.unmetUnits;
       }
       const unitCost = Number(product.standard_price);
       const unitPrice = Number(product.list_price);
@@ -308,15 +326,18 @@ export async function GET(request: NextRequest) {
       const risk = daysOfStock === null ? "UNKNOWN"
         : daysOfStock <= (leadTimeDays ?? coverageDays) ? "HIGH"
           : daysOfStock <= targetDays ? "MEDIUM" : "LOW";
-      const confidence = hasUsableForecast ? String(forecastItem?.confidence ?? "LOW") : soldUnits >= 14 ? "MEDIUM" : "LOW";
+      const confidence = recommendationBlocked || !timezoneVerified ? "LOW" : hasUsableForecast ? String(forecastItem?.confidence ?? "LOW") : soldUnits >= 14 ? "MEDIUM" : "LOW";
       const reasonParts: string[] = [];
-      if (soldUnits <= 0) {
+      if (forecastItem?.selectionStatus === "ANALOG_COLD_START") reasonParts.push(`New product estimate from ${forecastItem.analogCount ?? 0} similar products in the same category, brand (when known) and price band. Low confidence; review before ordering.`);
+      if (dataIssues.length) {
+        reasonParts.push(`Data review required: ${dataIssues.join(", ")}. Purchase suggestion paused until stock, cost and purchase units are checked in Orithos.`);
+      } else if (soldUnits <= 0) {
         reasonParts.push("No completed POS sales in the lookback window — suggestion is zero until demand appears.");
       } else {
         reasonParts.push(hasUsableForecast
           ? `Forecast demand ≈ ${demandPerDay.toFixed(2)} ${unit}/day using ${forecastItem?.model ?? "selected model"}.`
           : `Demand ≈ ${unitsPerDay.toFixed(2)} ${unit}/day from ${HISTORY_DAYS}d sales (recent ${PERIOD_DAYS}d weighted 70%).`);
-        reasonParts.push(`Target cover ${coverageDays}d ⇒ need ≈ ${(unitsPerDay * coverageDays).toFixed(1)} ${unit}.`);
+        reasonParts.push(`Target cover ${coverageDays}d ⇒ need ≈ ${(demandPerDay * targetDays).toFixed(1)} ${unit}.`);
         reasonParts.push(`Forecast stock ${forecastStock.toFixed(1)} ${unit} (on hand ${onHand.toFixed(1)} incl. scheduled moves).`);
         if (suggestedQuantity > 0) {
           reasonParts.push(`Suggested order = ceil(need − forecast) = ${suggestedQuantity} ${unit}.`);
@@ -327,6 +348,7 @@ export async function GET(request: NextRequest) {
         if (trend === "down") reasonParts.push(`Trend down ${Math.abs(Number(trendPercent?.toFixed(0) ?? 0))}% vs prior period.`);
         if (trend === "new") reasonParts.push("New demand — sold recently with no prior-period sales.");
       }
+      if (!timezoneVerified) reasonParts.push(`Store address has no state; ${timezone} is the current fallback. Verify the store timezone before relying on daily patterns.`);
       if (leadTimeDays === null) reasonParts.push("Data quality warning: supplier lead time is unknown; coverage target is used as a fallback.");
       else reasonParts.push(`Supplier lead time ${leadTimeDays}d; target coverage uses ${targetDays}d.`);
       if (risk === "UNKNOWN") reasonParts.push("Risk is unknown because there is no positive demand baseline.");
@@ -349,17 +371,20 @@ export async function GET(request: NextRequest) {
         leadTimeDays,
         risk,
         confidence,
-        dataQuality: leadTimeQuality === "AVAILABLE" && leadTimeDays !== null ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+        recommendationStatus: dataIssues.length ? "REVIEW_DATA" : soldUnits <= 0 ? "NO_DEMAND" : "READY",
+        dataIssues,
+        dataQuality: dataIssues.length ? "REVIEW_REQUIRED" : leadTimeQuality === "AVAILABLE" && leadTimeDays !== null ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
         suggestedQuantity,
         reason: reasonParts.join(" "),
         reasonParts,
         method: hasUsableForecast && forecastItem?.model && FORECAST_MODELS.has(forecastItem.model) ? forecastItem.model : "rules_v1_weighted_velocity",
         modelVersion: hasUsableForecast ? forecastMeta.modelVersion ?? null : null,
         forecastQuality: hasUsableForecast ? forecastItem?.dataQuality ?? "UNKNOWN" : forecastEnabled() ? forecastItem?.dataQuality ?? "INSUFFICIENT_HISTORY" : "DISABLED",
-        forecastConfidence: hasUsableForecast ? forecastItem?.confidence ?? "LOW" : "LOW",
+        forecastConfidence: hasUsableForecast && !recommendationBlocked && timezoneVerified ? forecastItem?.confidence ?? "LOW" : "LOW",
         selectionStatus: forecastItem?.selectionStatus ?? null,
         selectionMetric: forecastItem?.selectionMetric ?? null,
         candidateScores: forecastItem?.candidateScores ?? {},
+        analogCount: forecastItem?.analogCount ?? 0,
         p50: hasUsableForecast ? forecastP50 : null,
         p80: hasUsableForecast ? forecastP80 : null,
         p90: hasUsableForecast ? forecastP90 : null,
@@ -374,7 +399,7 @@ export async function GET(request: NextRequest) {
       };
     }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
     const sumNullable = (field: "inventoryValue" | "suggestedOrderValue" | "stockoutRevenueAtRisk") => {
-      const values = replenishmentItems.map((item) => item[field]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      const values = replenishmentItems.filter((item) => item.recommendationStatus !== "REVIEW_DATA").map((item) => item[field]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
       return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
     };
     const expectedStockoutDays = replenishmentItems.map((item) => item.expectedStockoutDaysAfterReplenishment).filter((value): value is number => typeof value === "number");
@@ -385,7 +410,15 @@ export async function GET(request: NextRequest) {
       periodDays: PERIOD_DAYS,
       coverageDays,
       products: replenishmentItems,
-      truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (recentSales?.length ?? 0) >= MAX_PRODUCTS || (previousSales?.length ?? 0) >= MAX_PRODUCTS,
+      truncated: (products?.length ?? 0) >= MAX_PRODUCTS,
+      salesHistory: { timezone, timezoneVerified, timezoneSource: timezoneVerified ? "ODOO_COMPANY_ADDRESS" : "COMPANY_ADDRESS_FALLBACK_REVIEW_REQUIRED", startDate: historyStart, endDateExclusive: today, fromUtc: historyFromUtc, toUtc: historyToUtc, completeDaysOnly: true, dailyRows: dailySales.length, refunds: "SIGNED_NET_UNITS" },
+      salesValidation: request.nextUrl.searchParams.get("validateSales") === "true"
+        ? [...replenishmentItems].filter((item) => item.soldUnits > 0).sort((a, b) => b.soldUnits - a.soldUnits).slice(0, 20).map((item) => ({
+          productId: item.id,
+          dates: Array.from({ length: HISTORY_DAYS }, (_, index) => shiftDay(historyStart, index)),
+          units: Array.from({ length: HISTORY_DAYS }, (_, index) => dailyByProduct.get(item.id)?.get(shiftDay(historyStart, index)) ?? 0),
+        })) : undefined,
+      reviewRequiredCount: replenishmentItems.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
       excludedProductCount,
       productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
@@ -396,6 +429,8 @@ export async function GET(request: NextRequest) {
         modelVersion: forecastMeta.modelVersion ?? null,
         sourceVersion: forecastMeta.sourceVersion ?? null,
         status: forecastEnabled() ? "AVAILABLE" : "DISABLED",
+        costPolicy: forecastMeta.costPolicy ?? null,
+        costPolicySource: forecastMeta.costPolicySource ?? null,
       },
       businessMetrics: {
         inventoryValue: sumNullable("inventoryValue"),
@@ -403,6 +438,7 @@ export async function GET(request: NextRequest) {
         stockoutRevenueAtRisk: sumNullable("stockoutRevenueAtRisk"),
         productsWithExpectedStockout: expectedStockoutDays.filter((days) => days > 0).length,
         expectedStockoutDaysAfterReplenishment: expectedStockoutDays.length ? expectedStockoutDays.reduce((sum, days) => sum + days, 0) : null,
+        excludedReviewProducts: replenishmentItems.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
         dataQuality: forecastEnabled() ? "MODEL_FORECAST_ONLY_UNTIL_NATIVE_STOCKOUT_HISTORY" : "RULES_ESTIMATE",
       },
     }, { status: 200, headers: { "Cache-Control": "no-store" } });

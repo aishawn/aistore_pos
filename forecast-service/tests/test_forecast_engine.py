@@ -102,6 +102,40 @@ class ForecastBacktestTests(unittest.TestCase):
         self.assertEqual("INSUFFICIENT_HISTORY", item.selectionStatus)
         self.assertEqual({}, item.candidateScores)
 
+    def test_zero_demand_never_claims_high_confidence(self):
+        start = date(2026, 1, 1)
+        result = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7, series=[
+            Series(productId=12, dates=[start + timedelta(days=i) for i in range(56)], units=[0.0] * 56),
+        ]))
+        self.assertEqual("BLOCKED", result.items[0].selectionStatus)
+        self.assertEqual("LOW", result.items[0].confidence)
+
+    def test_valid_costs_switch_selection_metric_and_costs_respond_to_margin(self):
+        dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(56)]
+        def run(price):
+            return forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7, series=[
+                Series(productId=1, dates=dates, units=[0., 0., 0., 1., 0., 0., 12.] * 8, unitCost=10, unitPrice=price),
+            ])).items[0]
+        low, high = run(11), run(30)
+        self.assertEqual("rolling_business_cost_aud_per_day", high.selectionMetric)
+        self.assertGreater(high.candidateScores["moving_average_7_v1"], low.candidateScores["moving_average_7_v1"])
+        self.assertEqual(min(high.candidateScores, key=high.candidateScores.get), high.model)
+
+    def test_new_product_analogs_require_matching_category_brand_and_price_band(self):
+        dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(56)]
+        donors = [Series(productId=i, dates=dates, units=[float(i)] * 56,
+                         category="wine", brand="example", priceBand="mid") for i in (1, 2, 3)]
+        new = Series(productId=4, dates=dates[-7:], units=[0.] * 7, isNew=True,
+                     category="wine", brand="example", priceBand="mid")
+        request = ForecastRequest(vendorId=1, outletId=1, horizonDays=7, series=donors + [new])
+        item = forecast(request).items[-1]
+        self.assertEqual("ANALOG_COLD_START", item.selectionStatus)
+        self.assertEqual(3, item.analogCount)
+        self.assertEqual(2., item.forecast[0].p50)
+        self.assertEqual("LOW", item.confidence)
+        new.brand = "different"
+        self.assertNotEqual("ANALOG_COLD_START", forecast(request).items[-1].selectionStatus)
+
     def test_scores_only_observed_days_when_evaluation_period_is_censored(self):
         result = backtest(BacktestRequest(horizonDays=3, series=[make_series([True, False, False])]))
         item = result.items[0]

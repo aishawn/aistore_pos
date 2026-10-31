@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
 from scripts.ai_forecast_eval import (MODEL_NAMES, _business_metrics, _demand_profile, _group_labels,
-                                      apply_native_inventory_history, cold_start_similarity,
+                                      apply_inventory_history, apply_native_inventory_history, cold_start_similarity,
                                       rolling_metrics, select_model)
 
 import importlib.util
@@ -77,7 +77,7 @@ class ForecastEvaluationTests(unittest.TestCase):
                 cwd=ROOT, capture_output=True, text=True, check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertEqual("APPLIED", json.loads(report.read_text())["nativeInventoryHistory"]["status"])
+            self.assertEqual("APPLIED", json.loads(report.read_text())["inventoryHistory"]["status"])
 
     def test_all_baselines_return_metrics(self):
         payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
@@ -113,13 +113,59 @@ class ForecastEvaluationTests(unittest.TestCase):
         partial = apply_native_inventory_history(series, {"products": [{
             "productId": 9, "observations": [{"date": "2026-01-01", "isStockout": False}]
         }]})
-        self.assertEqual("NATIVE_HISTORY_INCOMPLETE", partial.stockoutDataQuality)
+        self.assertEqual("HISTORICAL_INVENTORY_INCOMPLETE", partial.stockoutDataQuality)
         self.assertEqual([False, False], partial.stockoutFlags)
+
+    def test_historical_odoo_to_date_inventory_is_applied_with_research_provenance(self):
+        series = Series(productId=21, dates=[date(2026, 10, 1), date(2026, 10, 2)],
+                        units=[2, 0], stockoutFlags=[False, False],
+                        stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
+        history = {"dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+                   "backtestReadiness": "READY_FOR_RESEARCH_BACKTEST",
+                   "nativeSnapshotAcceptanceReadiness": "INSUFFICIENT_NATIVE_DAILY_SNAPSHOTS",
+                   "products": [{"productId": 21, "observations": [
+                       {"date": "2026-10-01", "availableQty": 4, "isStockout": False},
+                       {"date": "2026-10-02", "availableQty": 0, "isStockout": True},
+                   ]}]}
+
+        applied = apply_inventory_history(series, history)
+
+        self.assertEqual([False, True], applied.stockoutFlags)
+        self.assertEqual("RECONSTRUCTED_FROM_ODOO_TO_DATE", applied.stockoutDataQuality)
+        self.assertEqual("HIGH_GT_10", _group_labels(applied)["stockoutRatio"])
+        self.assertEqual([False, True], apply_native_inventory_history(series, history).stockoutFlags)
+
+    def test_historical_inventory_partial_coverage_does_not_turn_missing_into_stockout(self):
+        series = Series(productId=22, dates=[date(2026, 10, 1), date(2026, 10, 2)],
+                        units=[1, 0], stockoutFlags=[False, False])
+        applied = apply_inventory_history(series, {"dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+            "products": [{"productId": 22, "observations": [
+                {"date": "2026-10-01", "isStockout": False}
+            ]}]})
+
+        self.assertEqual([False, False], applied.stockoutFlags)
+        self.assertEqual("HISTORICAL_INVENTORY_INCOMPLETE", applied.stockoutDataQuality)
 
     def test_stock_move_direction_is_signed_by_location_usage(self):
         self.assertEqual(-3.0, move_delta("internal", "customer", 3))
         self.assertEqual(4.0, move_delta("supplier", "internal", 4))
         self.assertEqual(0.0, move_delta("internal", "internal", 99))
+
+    def test_stock_move_reader_pages_large_history_without_dropping_rows(self):
+        class FakeOdoo:
+            def __init__(self):
+                self.calls = []
+                self.rows = [{"id": value} for value in range(5)]
+
+            def read(self, model, domain, fields, limit, offset):
+                self.calls.append((model, limit, offset))
+                return self.rows[offset:offset + limit]
+
+        client = FakeOdoo()
+        rows = move_module.read_all(client, "stock.move", [], ["id"], page_size=2)
+
+        self.assertEqual([{"id": value} for value in range(5)], rows)
+        self.assertEqual([("stock.move", 2, 0), ("stock.move", 2, 2), ("stock.move", 2, 4)], client.calls)
 
     def test_model_comparison_covers_all_horizons_and_group_dimensions(self):
         report_path = ROOT / "reports" / "test-ai-forecast-eval.json"

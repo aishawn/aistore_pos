@@ -27,8 +27,8 @@ def source_sha(snapshot: Path) -> str:
 MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
 
 
-def apply_native_inventory_history(series: Series, history: dict) -> Series:
-    """Replace inferred stockout flags only when native history covers all dates."""
+def apply_inventory_history(series: Series, history: dict) -> Series:
+    """Apply complete historical stock observations, retaining their provenance."""
     products = {str(item.get("productId")): item for item in history.get("products", [])}
     product = products.get(str(series.productId))
     observations = {str(item.get("date")): item for item in (product or {}).get("observations", [])}
@@ -36,11 +36,20 @@ def apply_native_inventory_history(series: Series, history: dict) -> Series:
     if not observations:
         return series
     if not all(value in observations for value in expected_dates):
-        return series.model_copy(update={"stockoutDataQuality": "NATIVE_HISTORY_INCOMPLETE"})
+        return series.model_copy(update={"stockoutDataQuality": "HISTORICAL_INVENTORY_INCOMPLETE"})
+    source_quality = history.get("dataQuality")
+    quality = {
+        "NATIVE_ODOO_DAILY_SNAPSHOTS": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE": "RECONSTRUCTED_FROM_ODOO_TO_DATE",
+    }.get(source_quality, "HISTORICAL_INVENTORY_UNVERIFIED")
     return series.model_copy(update={
         "stockoutFlags": [bool(observations[value].get("isStockout")) for value in expected_dates],
-        "stockoutDataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "stockoutDataQuality": quality,
     })
+
+
+# Kept for callers and tests written before historical Odoo queries were added.
+apply_native_inventory_history = apply_inventory_history
 
 
 def _points(values: list[float], start_date, horizon: int, spread: float = 0.0) -> list[ForecastPoint]:
@@ -290,7 +299,10 @@ def cold_start_similarity(target: Series, peers: list[Series], horizon: int = 7)
 
 
 def _group_labels(series: Series) -> dict[str, str]:
-    if series.stockoutDataQuality and series.stockoutDataQuality not in ("VALID", "INFERRED_FROM_STOCK_MOVES"):
+    if series.stockoutDataQuality and series.stockoutDataQuality not in (
+        "VALID", "INFERRED_FROM_STOCK_MOVES", "RECONSTRUCTED_FROM_ODOO_TO_DATE",
+        "NATIVE_ODOO_DAILY_SNAPSHOTS",
+    ):
         stockout_label = "UNKNOWN"
     else:
         stockout_label = None
@@ -424,11 +436,13 @@ def main() -> int:
         },
         "businessMetrics": business_metrics,
         "coldStartSimilarity": cold_start,
-        "nativeInventoryHistory": {
+        "inventoryHistory": {
             "status": "APPLIED" if inventory_history else "NOT_PROVIDED",
             "path": str(inventory_history_path) if inventory_history_path else None,
             "dataQuality": inventory_history.get("dataQuality") if inventory_history else None,
             "backtestReadiness": inventory_history.get("backtestReadiness") if inventory_history else None,
+            "nativeSnapshotAcceptanceReadiness": inventory_history.get("nativeSnapshotAcceptanceReadiness") if inventory_history else None,
+            "researchOnly": bool(inventory_history and inventory_history.get("dataQuality") == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"),
         },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,3 +1,4 @@
+import { replenishmentIssues } from "@/lib/replenishment-safety";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LINES = 100;
 const COVERAGE_DAYS = new Set([7, 14, 21, 28, 42]);
-const REPLENISHMENT_METHOD = "rules_v1_weighted_velocity";
+const REPLENISHMENT_METHODS = new Set(["rules_v1_weighted_velocity", "per_product_selected"]);
 
 type OdooError = { message?: string; data?: { message?: string; name?: string } };
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
   const method = body.method;
   const lines = body.lines;
   if (!Number.isSafeInteger(supplierId) || Number(supplierId) < 1) return NextResponse.json({ message: "Choose a valid supplier" }, { status: 400 });
-  if (!Number.isSafeInteger(coverageDays) || !COVERAGE_DAYS.has(Number(coverageDays)) || method !== REPLENISHMENT_METHOD) return NextResponse.json({ message: "Refresh the replenishment plan before creating this RFQ" }, { status: 400 });
+  if (!Number.isSafeInteger(coverageDays) || !COVERAGE_DAYS.has(Number(coverageDays)) || typeof method !== "string" || !REPLENISHMENT_METHODS.has(method)) return NextResponse.json({ message: "Refresh the replenishment plan before creating this RFQ" }, { status: 400 });
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > MAX_LINES) return NextResponse.json({ message: `Choose between 1 and ${MAX_LINES} products` }, { status: 400 });
 
   const lineMap = new Map<number, { quantity: number; suggestedQuantity: number; reason: string }>();
@@ -167,18 +168,21 @@ export async function POST(request: NextRequest) {
   try {
     const { companyId } = await getSessionContext(request, sessionId);
     const correlationId = request.headers.get("x-correlation-id");
+    const unitFields = await callOdoo<Record<string, unknown>>(sessionId, "product.product", "fields_get", [["uom_po_id"]], { attributes: ["type"] }, correlationId);
+    const hasPurchaseUnit = Object.hasOwn(unitFields, "uom_po_id");
     const [suppliers, products, orderLineFields] = await Promise.all([
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[
         ["id", "=", Number(supplierId)],
         ["supplier_rank", ">", 0],
         ["company_id", "=", companyId],
       ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
-      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
+      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false; qty_available?: number; virtual_available?: number; standard_price?: number; list_price?: number; uom_po_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
         ["id", "in", Array.from(lineMap.keys())],
         ["company_id", "=", companyId],
-      ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+      ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id", ...(hasPurchaseUnit ? ["uom_po_id"] : []), "qty_available", "virtual_available", "standard_price", "list_price"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }, correlationId),
     ]);
+    if (!hasPurchaseUnit) for (const product of products ?? []) product.uom_po_id = product.uom_id;
     const supplier = suppliers?.[0];
     if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Orithos account" }, { status: 404 });
     if ((products?.length ?? 0) !== lineMap.size) return NextResponse.json({ message: "One or more selected products are not available in Orithos" }, { status: 422 });
@@ -189,6 +193,7 @@ export async function POST(request: NextRequest) {
     const orderLines = Array.from(orderLineMap, ([productId, line]) => {
       const product = productById.get(productId);
       if (!product || product.purchase_ok !== true) throw new OdooRequestError("One or more selected products are not available for purchasing in Orithos.", 422);
+      if (replenishmentIssues(product).length) throw new OdooRequestError("A selected product needs stock, cost or purchase unit review. Refresh the plan and check its data before ordering.", 422);
       if (!Array.isArray(product.uom_id)) throw new OdooRequestError("A selected product has no unit of measure configured.", 422);
       return [0, 0, {
         product_id: productId,
@@ -227,8 +232,17 @@ export async function POST(request: NextRequest) {
 
     let orderName = `RFQ #${orderId}`;
     try {
-      const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } }, correlationId);
-      orderName = orders?.[0]?.name ?? orderName;
+      const orders = await callOdoo<Array<{ id: number; name: string; state: string; company_id: [number, string]; partner_id: [number, string]; order_line: number[] }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId], ["company_id", "=", companyId]]], { fields: ["id", "name", "state", "company_id", "partner_id", "order_line"], limit: 1, context: { allowed_company_ids: [companyId] } }, correlationId);
+      const order = orders?.[0];
+      if (!order || order.state !== "draft" || order.company_id[0] !== companyId || order.partner_id[0] !== Number(supplierId)) throw new Error("Draft RFQ identity could not be verified");
+      const savedLines = await callOdoo<Array<{ product_id: [number, string]; product_qty: number; [key: string]: unknown }>>(sessionId, "purchase.order.line", "read", [order.order_line], { fields: ["product_id", "product_qty", unitField], context: { allowed_company_ids: [companyId] } }, correlationId);
+      if (savedLines.length !== orderLineMap.size || new Set(savedLines.map((line) => line.product_id[0])).size !== savedLines.length || savedLines.some((line) => {
+        const expected = orderLineMap.get(line.product_id[0]);
+        const unit = line[unitField];
+        const expectedUnit = productById.get(line.product_id[0])?.uom_id;
+        return !expected || Math.abs(line.product_qty - expected.quantity) > 0.000001 || !Array.isArray(unit) || !Array.isArray(expectedUnit) || unit[0] !== expectedUnit[0];
+      })) throw new Error("Draft RFQ quantities or units could not be verified");
+      orderName = order.name;
     } catch {
       return NextResponse.json({
         id: orderId,
@@ -236,7 +250,8 @@ export async function POST(request: NextRequest) {
         supplier: supplier.name,
         url: `${odooBaseUrl()}/web#id=${orderId}&model=purchase.order&view_type=form`,
         auditSaved,
-        warning: "The draft was created and the approval audit was saved, but its reference could not be read back. Open it in Orithos; do not retry creation.",
+        readbackVerified: false,
+        warning: "The draft was created and the approval audit was saved, but its draft state, quantities or units could not be verified. Open it in Orithos; do not retry creation.",
       }, { status: 201, headers: { "Cache-Control": "no-store" } });
     }
     const baseUrl = odooBaseUrl();
@@ -246,6 +261,7 @@ export async function POST(request: NextRequest) {
       supplier: supplier.name,
       url: `${baseUrl}/web#id=${orderId}&model=purchase.order&view_type=form`,
       auditSaved,
+      readbackVerified: true,
     }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return jsonError(error);

@@ -785,6 +785,7 @@ export interface OdooDraftRfq {
   supplier: string;
   url: string;
   auditSaved: boolean;
+  readbackVerified?: boolean;
   warning?: string;
 }
 

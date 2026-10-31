@@ -3,7 +3,7 @@
 This is intentionally separate from the sales backtest snapshot.  A backtest
 may infer historical stockouts from ``stock.move``; this job records the
 native quantities Odoo exposes *at capture time* so future backtests can use a
-real inventory history.  The script only uses ``search_read`` and never calls
+real inventory history.  The script only uses ``search_read`` / ``search_count`` and never calls
 an Odoo write method.
 """
 from __future__ import annotations
@@ -36,6 +36,7 @@ def env_values() -> dict[str, str]:
 class Odoo:
     def __init__(self, base: str, database: str, username: str, password: str):
         self.base = base.rstrip("/")
+        self.context: dict[str, Any] = {}
         self.jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
         self.call("/web/session/authenticate", {
@@ -56,9 +57,28 @@ class Odoo:
         return result.get("result") or {}
 
     def read(self, model: str, domain: list, fields: list[str], limit: int = 100000) -> list[dict]:
-        return self.call(f"/web/dataset/call_kw/{model}/search_read", {
-            "model": model, "method": "search_read", "args": [domain],
-            "kwargs": {"fields": fields, "limit": limit},
+        rows: list[dict] = []
+        page_size = min(limit, 2000)
+        for offset in range(0, limit, page_size):
+            page = self.call(f"/web/dataset/call_kw/{model}/search_read", {
+                "model": model, "method": "search_read", "args": [domain],
+                "kwargs": {"fields": fields, "limit": min(page_size, limit - offset),
+                           "offset": offset, "order": "id asc", "context": self.context},
+            })
+            if not isinstance(page, list):
+                raise RuntimeError("Inventory read returned incomplete data")
+            rows.extend(page)
+            if len(page) < page_size:
+                return rows
+        count = self.count(model, domain)
+        if count != len(rows):
+            raise RuntimeError("Inventory query truncated; snapshot not saved")
+        return rows
+
+    def count(self, model: str, domain: list) -> int:
+        return self.call(f"/web/dataset/call_kw/{model}/search_count", {
+            "model": model, "method": "search_count", "args": [domain],
+            "kwargs": {"context": self.context},
         })
 
 
@@ -103,10 +123,10 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
         "isReplenishmentEligible": is_stockable and is_purchaseable,
         "warehouseId": warehouse.get("id") if warehouse else None,
         "warehouse": warehouse.get("name") if warehouse else None,
-        "availableQty": float(row.get("qty_available") or 0),
-        "virtualAvailableQty": float(row.get("virtual_available") or 0),
-        "incomingQty": float(row.get("incoming_qty") or 0),
-        "outgoingQty": float(row.get("outgoing_qty") or 0),
+        "availableQty": float(row["qty_available"]) if row.get("qty_available") is not None else None,
+        "virtualAvailableQty": float(row["virtual_available"]) if row.get("virtual_available") is not None else None,
+        "incomingQty": float(row["incoming_qty"]) if row.get("incoming_qty") is not None else None,
+        "outgoingQty": float(row["outgoing_qty"]) if row.get("outgoing_qty") is not None else None,
         "price": float(row.get("list_price") or 0),
         "cost": float(row.get("standard_price")) if row.get("standard_price") is not None else None,
         "leadTimeDays": lead_time_days,
@@ -133,18 +153,20 @@ def main() -> int:
     username = values.get("ODOO_SERVICE_USERNAME") or values.get("ODOO_USER")
     password = values.get("ODOO_SERVICE_PASSWORD") or values.get("ODOO_PASS")
     company_id = int(os.environ.get("SKR_ODOO_COMPANY_ID", "5"))
-    root = Path(os.environ.get("SKR_INVENTORY_SNAPSHOT_ROOT", ".local/ai-eval/inventory-snapshots"))
+    root = Path(os.environ.get("SKR_INVENTORY_SNAPSHOT_ROOT", ".local/ai-eval/inventory-snapshots-scoped-v2"))
     if not username or not password:
         raise RuntimeError("ODOO service credentials are required")
 
     captured_at = datetime.now(timezone.utc).replace(microsecond=0)
     odoo = Odoo(base, database, username, password)
+    odoo.context = {"allowed_company_ids": [company_id], "force_company": company_id}
     warehouses = odoo.read("stock.warehouse", [["company_id", "=", company_id]],
                            ["id", "name", "company_id"], 1000)
     # qty_available is company scoped and represents an aggregate when a
     # company has multiple warehouses. Keep that fact explicit.
     warehouse = warehouses[0] if len(warehouses) == 1 else None
-    products = odoo.read("product.product", [["active", "=", True]], [
+    product_domain = [["active", "=", True], ["company_id", "=", company_id]]
+    products = odoo.read("product.product", product_domain, [
         "id", "display_name", "product_tmpl_id", "categ_id", "qty_available",
         "virtual_available", "incoming_qty", "outgoing_qty", "list_price", "standard_price", "active",
         "type", "sale_ok", "purchase_ok",
@@ -153,7 +175,7 @@ def main() -> int:
     # represented as null and never guessed from a default.
     lead_times: dict[int, float] = {}
     try:
-        suppliers = odoo.read("product.supplierinfo", [["product_tmpl_id", "!=", False]],
+        suppliers = odoo.read("product.supplierinfo", [["product_tmpl_id", "in", [many2one_id(row.get("product_tmpl_id")) for row in products]]],
                               ["product_tmpl_id", "delay", "sequence"], 100000)
         for row in suppliers:
             template_id = many2one_id(row.get("product_tmpl_id"))
@@ -205,9 +227,28 @@ def main() -> int:
         )
         for row in products
     ]
+    expected_count = odoo.count("product.product", product_domain)
+    if len(products) != expected_count:
+        raise RuntimeError("Product catalogue changed during capture; retry without saving a partial snapshot")
+    warehouse_inventory = []
+    for item in warehouses:
+        odoo.context["warehouse_id"] = item["id"]
+        quantities = odoo.read("product.product", product_domain, ["id", "qty_available", "virtual_available", "incoming_qty", "outgoing_qty"])
+        if {row["id"] for row in quantities} != {row["id"] for row in products}:
+            raise RuntimeError("Warehouse coverage is incomplete; snapshot not saved")
+        warehouse_inventory.append({"warehouseId": item["id"], "productCount": len(quantities), "quantities": quantities})
+    odoo.context.pop("warehouse_id", None)
     snapshot = {
         "snapshotVersion": f"skr-odoo-native-inventory-{captured_at.date().isoformat()}",
         "source": "odoo-readonly-jsonrpc",
+        "scopeVersion": 2,
+        "companyScope": "EXPLICIT_COMPANY_PRODUCTS",
+        "coverage": {"expectedProducts": expected_count, "capturedProducts": len(products),
+                     "productCoverage": 1.0, "expectedWarehouses": len(warehouses),
+                     "capturedWarehouses": len(warehouse_inventory),
+                     "missingQuantityFields": sum(row.get(field) is None for row in products
+                         for field in ("qty_available", "virtual_available", "incoming_qty", "outgoing_qty"))},
+        "warehouseInventory": warehouse_inventory,
         "database": database,
         "companyId": company_id,
         "capturedAt": captured_at.isoformat(),

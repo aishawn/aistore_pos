@@ -70,6 +70,28 @@ class InventorySnapshotTests(unittest.TestCase):
         self.assertEqual(4, product["warehouseId"])
         self.assertEqual("SKR Warehouse", product["warehouse"])
 
+    def test_missing_native_quantities_remain_missing(self):
+        product = MODULE.normalise_product({"id": 10}, None)
+        self.assertIsNone(product["availableQty"])
+        self.assertIsNone(product["virtualAvailableQty"])
+
+    def test_paginated_reads_keep_explicit_company_context(self):
+        client = object.__new__(MODULE.Odoo)
+        client.context = {"allowed_company_ids": [5], "force_company": 5}
+        calls = []
+        def call(path, params):
+            calls.append(params)
+            if params["method"] == "search_count":
+                return 3
+            return [{"id": 1}, {"id": 2}, {"id": 3}]
+        client.call = call
+        self.assertEqual(3, len(client.read("product.product", [], ["id"], limit=3)))
+        self.assertEqual([5], calls[0]["kwargs"]["context"]["allowed_company_ids"])
+        self.assertEqual("search_count", calls[1]["method"])
+        client.count = lambda model, domain: 4
+        with self.assertRaisesRegex(RuntimeError, "truncated"):
+            client.read("product.product", [], ["id"], limit=3)
+
     def test_output_path_is_partitioned_by_capture_date(self):
         captured = datetime(2026, 10, 31, 8, 9, tzinfo=timezone.utc)
         path = MODULE.output_path(Path("snapshots"), captured)

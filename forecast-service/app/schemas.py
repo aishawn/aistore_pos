@@ -10,6 +10,8 @@ class Series(BaseModel):
     brand: str | None = None
     priceBand: str | None = None
     isNew: bool = False
+    unitCost: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    unitPrice: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     stockoutDataQuality: str | None = None
     selectedModel: Literal["seasonal_naive_v1", "moving_average_7_v1",
                            "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1",
@@ -27,12 +29,20 @@ class Series(BaseModel):
         return self
 
 
+class InventoryCostPolicy(BaseModel):
+    # Explicit planning assumptions, not measured merchant financing/spoilage costs.
+    annualHoldingRate: float = Field(default=0.25, ge=0, le=2)
+    annualObsolescenceRate: float = Field(default=0.10, ge=0, le=1)
+    serviceLevel: float = Field(default=0.90, gt=0, lt=1)
+
+
 class ForecastRequest(BaseModel):
     vendorId: int = Field(gt=0)
     outletId: int = Field(gt=0)
     horizonDays: int = Field(default=14, ge=1, le=90)
     sourceVersion: str = "unknown"
     forecastStartDate: date | None = None
+    costPolicy: InventoryCostPolicy = Field(default_factory=InventoryCostPolicy)
     series: list[Series] = Field(min_length=1, max_length=2000)
 
 
@@ -46,9 +56,10 @@ class ForecastPoint(BaseModel):
 class ForecastItem(BaseModel):
     productId: int
     model: str = "seasonal_naive_v1"
-    selectionStatus: Literal["EXPLICIT", "ROLLING_BACKTEST", "INSUFFICIENT_HISTORY", "BLOCKED"] = "INSUFFICIENT_HISTORY"
+    selectionStatus: Literal["EXPLICIT", "ROLLING_BACKTEST", "INSUFFICIENT_HISTORY", "BLOCKED", "ANALOG_COLD_START"] = "INSUFFICIENT_HISTORY"
     selectionMetric: str | None = None
     candidateScores: dict[str, float] = Field(default_factory=dict)
+    analogCount: int = 0
     forecast: list[ForecastPoint]
     dataQuality: Literal["VALID", "INSUFFICIENT_HISTORY", "INCOMPLETE", "CENSORED_DEMAND"]
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
@@ -60,6 +71,8 @@ class ForecastResponse(BaseModel):
     sourceVersion: str
     horizonDays: int
     items: list[ForecastItem]
+    costPolicy: InventoryCostPolicy | None = None
+    costPolicySource: str = "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED"
 
 
 class BacktestRequest(BaseModel):

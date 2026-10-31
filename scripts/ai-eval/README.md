@@ -130,6 +130,31 @@ Use `Unregister-ScheduledTask -TaskName Orithos-AI-Daily-Inventory-Snapshot`
 to remove it. In deployed environments, store the resulting snapshots on an
 access-controlled persistent volume rather than in Git.
 
+### Historical inventory for development research
+
+Do not wait for 28 future dates to begin research. Odoo can calculate historical
+`qty_available` using the `to_date` context. This read-only collector samples
+the sales snapshot's product IDs at each local business-day close:
+
+```powershell
+python scripts/ai-eval/fetch-skr-historical-inventory.py `
+  --sales-snapshot .local/ai-eval/skr-sales-snapshot.json `
+  --days 90 `
+  --output .local/ai-eval/skr-historical-inventory.json
+
+python scripts/ai_forecast_eval.py `
+  .local/ai-eval/skr-sales-snapshot.json `
+  .local/ai-eval/forecast-research-report.json `
+  .local/ai-eval/skr-historical-inventory.json
+```
+
+The result is labelled `ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE` and
+`researchOnly=true`. It can support historical rolling backtests, but it does
+not count as a set of independently captured native daily snapshots. Keep the
+daily snapshot job running as a separate calibration check; it can compare
+future stored observations against Odoo's as-of calculation and catch timezone,
+company, or movement-history gaps before production enablement.
+
 After at least two capture dates exist, build the native product history used
 by backtests:
 
