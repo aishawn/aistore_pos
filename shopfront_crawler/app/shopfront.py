@@ -74,6 +74,22 @@ query ShopfrontPurchaseOrders($after: Cursor) {
 }
 """
 
+CUSTOMERS_QUERY = """
+query ShopfrontCustomers($after: Cursor) {
+  customers(first: 100, after: $after) {
+    edges { node {
+      id clientId code name firstName lastName company businessNumber
+      birthday gender billing { email phone } delivery { email phone }
+      emails fax phone mobile allowMarketingEmails website invoiceMessage comments
+      customerGroup { id name } loyaltyEnabled loyaltyRate loyaltyPoints
+      disablePromotions priceList { id name } requireOrderReference
+      accountLimit currentOwing overrideCustomerGroup deleted createdAt updatedAt
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
 
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
@@ -538,6 +554,9 @@ UNCONSOLIDATED'''
 
     async def fetch_purchase_orders(self, access_token: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, PURCHASE_ORDERS_QUERY, "orders")
+
+    async def fetch_customers(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, CUSTOMERS_QUERY, "customers")
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, query, "products")

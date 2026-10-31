@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     # before the Shopfront application has been granted them.
     shopfront_enable_webhooks: bool = False
     shopfront_enable_supply_chain: bool = False
+    shopfront_enable_customers: bool = False
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
@@ -102,6 +103,8 @@ class Settings(BaseSettings):
                 continue
             if scope in {"see_suppliers", "see_stock_management"} and not self.shopfront_enable_supply_chain:
                 continue
+            if scope == "see_customers" and not self.shopfront_enable_customers:
+                continue
             if scope and scope not in scopes:
                 scopes.append(scope)
         self.shopfront_scopes = " ".join(scopes)
@@ -109,6 +112,9 @@ class Settings(BaseSettings):
             for scope in ("see_suppliers", "see_stock_management"):
                 if scope not in scopes:
                     scopes.append(scope)
+            self.shopfront_scopes = " ".join(scopes)
+        if self.shopfront_enable_customers and "see_customers" not in scopes:
+            scopes.append("see_customers")
             self.shopfront_scopes = " ".join(scopes)
 
         # Older Dokploy environments used a minimal query. Treat it as a

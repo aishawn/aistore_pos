@@ -18,11 +18,11 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_store, sync_supply_chain, verify_webhook, without_credentials
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -506,6 +506,7 @@ def shopfront_audit(store: str = "skr", db: Session = Depends(get_db)) -> dict:
             "inventory": db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0,
             "suppliers": db.scalar(select(func.count(ShopfrontSupplier.id)).where(ShopfrontSupplier.store_key == store)) or 0,
             "purchase_orders": db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0,
+            "customers": db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0,
             "sale_status": status_counts,
             "incomplete_sales": status_counts.get("INCOMPLETE", 0),
         },
@@ -645,6 +646,7 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     outlet_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.outlet_id))).where(InventorySnapshot.store_key == store, InventorySnapshot.outlet_id.is_not(None))) or 0
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
     sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
+    customer_count = db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0
     missing_sale_item_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
         Sale.store_key == store,
         or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
@@ -704,6 +706,7 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
             "products": {"total": len(products), "fields": fields},
             "inventory": {"records": int(inventory_count), "outlets": int(outlet_count)},
             "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
+            "customers": {"total": int(customer_count)},
         },
         "source": "shopfront_crawler",
         "synced_at": datetime.now(timezone.utc),
@@ -920,6 +923,18 @@ async def supply_chain_sync(store_key: str, db: Session = Depends(get_db)) -> di
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_supply_chain_mirror"}
 
 
+@app.post("/api/stores/{store_key}/customers/sync")
+async def customers_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
+    store = require_store(store_key, db)
+    active = active_job(db, store_key)
+    if active:
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="customers", status="queued")
+    db.add(job)
+    db.commit()
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_customers"}
+
+
 @app.get("/api/suppliers")
 def list_suppliers(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
@@ -936,6 +951,21 @@ def list_purchase_orders(store: str, page: int = Query(1, ge=1), size: int = Que
     rows = db.scalars(query.offset((page - 1) * size).limit(size)).all()
     total = db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0
     return {"data": [{"source_id": row.source_id, "supplier_source_id": row.supplier_source_id, "status": row.status, "order_date": row.order_date, "total_cost": row.total_cost, "raw_payload": row.raw_payload, "synced_at": row.synced_at} for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_purchase_orders"}
+
+
+@app.get("/api/customers")
+def list_customers(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+    require_store(store, db)
+    query = select(ShopfrontCustomer).where(ShopfrontCustomer.store_key == store).order_by(ShopfrontCustomer.source_id)
+    rows = db.scalars(query.offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0
+    return {"data": [{
+        "source_id": row.source_id, "client_id": row.client_id, "code": row.code,
+        "name": row.name, "first_name": row.first_name, "last_name": row.last_name,
+        "company": row.company, "email": row.email, "phone": row.phone, "mobile": row.mobile,
+        "customer_group": row.customer_group, "loyalty_points": row.loyalty_points,
+        "current_owing": row.current_owing, "deleted": row.deleted, "synced_at": row.synced_at,
+    } for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_customers"}
 
 
 @app.post("/api/sync/runs/{run_id}/retry")
@@ -1915,6 +1945,37 @@ async def run_supply_chain_job(job_id: int) -> None:
         db.close()
 
 
+async def run_customers_job(job_id: int) -> None:
+    db = next(get_db())
+    try:
+        now = datetime.now(timezone.utc)
+        claimed = db.execute(update(SyncJob).where(
+            SyncJob.id == job_id,
+            SyncJob.status == "queued",
+        ).values(status="running", started_at=now, heartbeat_at=now, phase="customers", attempts=SyncJob.attempts + 1))
+        db.commit()
+        if claimed.rowcount != 1:
+            return
+        job = db.get(SyncJob, job_id)
+        store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
+        if not job or not store:
+            raise RuntimeError("Store not found for customer sync")
+        job.payload = await sync_customers(db, settings, store)
+        job.status = "completed"
+        job.phase = "completed"
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception as exc:
+        job = db.get(SyncJob, job_id)
+        if job:
+            job.status = "failed"
+            job.error = str(exc)[:2000]
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+    finally:
+        db.close()
+
+
 async def process_next_job() -> None:
     """Dispatch one persisted job; handlers claim it atomically before work."""
     db = next(get_db())
@@ -1941,6 +2002,7 @@ async def process_next_job() -> None:
         "sales_repair": run_sales_repair_job,
         "daily_sync": run_daily_sync_job,
         "supply_chain": run_supply_chain_job,
+        "customers": run_customers_job,
     }
     handler = handlers.get(job_type)
     if handler is None:

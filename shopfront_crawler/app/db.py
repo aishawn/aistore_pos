@@ -169,3 +169,17 @@ def init_db() -> None:
         # Composite indexes keep large-store date and status audits fast.
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_store_created_at ON sales (store_key, created_at)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_store_status ON sales (store_key, status)"))
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS shopfront_customers ("
+            "id INTEGER PRIMARY KEY, store_key VARCHAR(64) NOT NULL, "
+            "source_id VARCHAR(128) NOT NULL, client_id VARCHAR(255), code VARCHAR(128), "
+            "name VARCHAR(255), first_name VARCHAR(128), last_name VARCHAR(128), "
+            "company VARCHAR(255), email VARCHAR(255), phone VARCHAR(128), mobile VARCHAR(128), "
+            "customer_group VARCHAR(255), loyalty_points NUMERIC(18,4), current_owing NUMERIC(18,4), "
+            "deleted BOOLEAN, raw_payload TEXT, synced_at TIMESTAMP, "
+            "CONSTRAINT uq_shopfront_customer UNIQUE (store_key, source_id))"
+        ))
+        connection.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_shopfront_customers_store "
+            "ON shopfront_customers (store_key)"
+        ))

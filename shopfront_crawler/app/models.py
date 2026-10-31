@@ -219,6 +219,29 @@ class ShopfrontPurchaseOrder(Base):
     __table_args__ = (UniqueConstraint("store_key", "source_id", name="uq_shopfront_purchase_order"),)
 
 
+class ShopfrontCustomer(Base):
+    __tablename__ = "shopfront_customers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
+    client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    mobile: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    customer_group: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    loyalty_points: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    current_owing: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    deleted: Mapped[bool | None] = mapped_column(nullable=True)
+    raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "source_id", name="uq_shopfront_customer"),)
+
+
 class InventorySnapshot(Base):
     __tablename__ = "inventory_snapshots"
     id: Mapped[int] = mapped_column(primary_key=True)
