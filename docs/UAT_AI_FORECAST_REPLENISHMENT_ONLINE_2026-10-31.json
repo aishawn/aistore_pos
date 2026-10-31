@@ -1,7 +1,7 @@
 {
   "date": "2026-10-31",
   "scope": "read-only AI forecast and replenishment regression",
-  "runtimeSha": "0c76d1e0fe360aa650c087008a7244a96ff90fa5",
+  "runtimeSha": "5c84b673a258f98eef8577b6e6d0bdbd3e4a9269",
   "hosts": {
     "demo": "https://demo.orithos.com.au",
     "skr": "https://skr.orithos.com.au"
@@ -32,7 +32,9 @@
       "replenishment": "PASS",
       "httpStatus": 200,
       "writeRequests": 0,
-      "note": "Read-only regression; product count intentionally omitted because the response is large."
+      "productCount": 1000,
+      "truncated": true,
+      "note": "Read-only regression; the endpoint intentionally caps the returned product list at 1000."
     }
   ],
   "assistantReadonlyProbe": {
