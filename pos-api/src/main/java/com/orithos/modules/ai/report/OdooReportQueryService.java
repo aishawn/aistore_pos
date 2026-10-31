@@ -182,13 +182,14 @@ public class OdooReportQueryService {
             domain.add(List.of("default_code", "ilike", query.trim()));
             domain.add(List.of("barcode", "ilike", query.trim()));
             List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
-                    List.of("id", "display_name", "list_price", "qty_available"), context, capped,
+                    List.of("id", "display_name", "barcode", "list_price", "qty_available"), context, capped,
                     "name asc, id asc");
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Map<String, Object> product : products) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("id", product.get("id"));
                 row.put("name", product.getOrDefault("display_name", ""));
+                row.put("barcode", product.get("barcode"));
                 row.put("list_price", decimal(product.get("list_price")));
                 row.put("quantity", decimal(product.get("qty_available")));
                 rows.add(row);

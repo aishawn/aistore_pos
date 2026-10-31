@@ -292,6 +292,14 @@ public class AiCommandService {
             return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.98),
                     "将修改 1 个商品的显示名称。", List.of(item), Map.of("field", "name"), List.of());
         }
+        Matcher barcode = Pattern.compile("(?i)(?:把|将|change|update|set)?\\s*(.+?)\\s*(?:的)?\\s*(?:条码|条形码|barcode|ean)\\s*(?:改成|设置为|to|as)\\s*([0-9A-Za-z-]{4,})").matcher(text);
+        if (barcode.find()) {
+            OdooProductMatch p = findOdooProduct(tenant, barcode.group(1).trim());
+            CommandItem item = new CommandItem(p.id(), p.name(), "barcode", p.barcode(),
+                    barcode.group(2).trim(), "exact product name or barcode match", "READY");
+            return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.98),
+                    "将修改 1 个商品的条码。", List.of(item), Map.of("field", "barcode"), List.of());
+        }
         Matcher customer = Pattern.compile("(?i)(?:客户|customer)\\s+(.+?)\\s+(?:的)?\\s*(电话|手机|phone|邮箱|email|姓名|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
         if (customer.find()) {
             List<Long> ids = jdbc.queryForList("SELECT id FROM customer WHERE deleted_at IS NULL AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 2", Long.class, customer.group(1).trim());
@@ -452,10 +460,12 @@ public class AiCommandService {
             try { price = new BigDecimal(rawPrice.toString()); }
             catch (NumberFormatException ignored) { }
         }
-        return new OdooProductMatch(number.longValue(), String.valueOf(row.getOrDefault("name", query)), price);
+        Object rawBarcode = row.get("barcode");
+        String barcode = rawBarcode == null || Boolean.FALSE.equals(rawBarcode) ? null : String.valueOf(rawBarcode);
+        return new OdooProductMatch(number.longValue(), String.valueOf(row.getOrDefault("name", query)), price, barcode);
     }
 
-    private record OdooProductMatch(Long id, String name, BigDecimal price) { }
+    private record OdooProductMatch(Long id, String name, BigDecimal price, String barcode) { }
 
     private boolean isConfirmation(String text) {
         String value = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
