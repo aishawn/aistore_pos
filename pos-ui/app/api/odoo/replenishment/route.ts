@@ -56,6 +56,9 @@ class ForecastServiceUnavailableError extends Error {}
 type ForecastServiceItem = {
   productId: number;
   model?: string;
+  selectionStatus?: string;
+  selectionMetric?: string | null;
+  candidateScores?: Record<string, number>;
   dataQuality?: string;
   confidence?: string;
   forecast?: Array<{ p50?: number; p80?: number; p90?: number }>;
@@ -137,7 +140,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
         ["company_id", "=", companyId],
-        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", "type", "sale_ok", "purchase_ok"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id", "type", "sale_ok", "purchase_ok", "standard_price", "list_price"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }, correlationId),
       dailySalesPromise,
     ]);
@@ -226,6 +229,26 @@ export async function GET(request: NextRequest) {
       const forecastP90 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p90) || 0), 0);
       const demandPerDay = hasUsableForecast ? forecastP50 / coverageDays : unitsPerDay;
       const suggestedQuantity = Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
+      const postReplenishmentForecast = forecastStock + suggestedQuantity;
+      let expectedStockoutDaysAfterReplenishment: number | null = null;
+      let stockoutDemandUnitsAfterReplenishment: number | null = null;
+      if (hasUsableForecast) {
+        let running = postReplenishmentForecast;
+        let stockoutDays = 0;
+        let stockoutDemand = 0;
+        for (const point of forecastPoints.slice(0, coverageDays)) {
+          const demand = Math.max(0, Number(point.p50) || 0);
+          running -= demand;
+          if (running <= 0) {
+            stockoutDays += 1;
+            stockoutDemand += Math.max(0, -running);
+          }
+        }
+        expectedStockoutDaysAfterReplenishment = stockoutDays;
+        stockoutDemandUnitsAfterReplenishment = stockoutDemand;
+      }
+      const unitCost = Number(product.standard_price);
+      const unitPrice = Number(product.list_price);
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       const daysOfStock = unitsPerDay > 0 ? forecastStock / unitsPerDay : null;
       const daysOfStockAfterReplenishment = unitsPerDay > 0
@@ -282,12 +305,27 @@ export async function GET(request: NextRequest) {
         modelVersion: hasUsableForecast ? forecastMeta.modelVersion ?? null : null,
         forecastQuality: hasUsableForecast ? forecastItem?.dataQuality ?? "UNKNOWN" : forecastEnabled() ? forecastItem?.dataQuality ?? "INSUFFICIENT_HISTORY" : "DISABLED",
         forecastConfidence: hasUsableForecast ? forecastItem?.confidence ?? "LOW" : "LOW",
+        selectionStatus: forecastItem?.selectionStatus ?? null,
+        selectionMetric: forecastItem?.selectionMetric ?? null,
+        candidateScores: forecastItem?.candidateScores ?? {},
         p50: hasUsableForecast ? forecastP50 : null,
         p80: hasUsableForecast ? forecastP80 : null,
         p90: hasUsableForecast ? forecastP90 : null,
+        expectedStockoutDaysAfterReplenishment,
+        stockoutDemandUnitsAfterReplenishment,
+        unitCost: Number.isFinite(unitCost) && unitCost >= 0 ? unitCost : null,
+        unitPrice: Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : null,
+        inventoryValue: Number.isFinite(unitCost) && unitCost >= 0 ? onHand * unitCost : null,
+        suggestedOrderValue: Number.isFinite(unitCost) && unitCost >= 0 ? suggestedQuantity * unitCost : null,
+        stockoutRevenueAtRisk: Number.isFinite(unitPrice) && unitPrice >= 0 && stockoutDemandUnitsAfterReplenishment !== null ? stockoutDemandUnitsAfterReplenishment * unitPrice : null,
         forecastSourceVersion: hasUsableForecast ? forecastMeta.sourceVersion ?? null : null,
       };
     }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
+    const sumNullable = (field: "inventoryValue" | "suggestedOrderValue" | "stockoutRevenueAtRisk") => {
+      const values = replenishmentItems.map((item) => item[field]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+    };
+    const expectedStockoutDays = replenishmentItems.map((item) => item.expectedStockoutDaysAfterReplenishment).filter((value): value is number => typeof value === "number");
 
     return NextResponse.json({
       company: companies?.[0]?.name ?? "Current company",
@@ -306,6 +344,14 @@ export async function GET(request: NextRequest) {
         modelVersion: forecastMeta.modelVersion ?? null,
         sourceVersion: forecastMeta.sourceVersion ?? null,
         status: forecastEnabled() ? "AVAILABLE" : "DISABLED",
+      },
+      businessMetrics: {
+        inventoryValue: sumNullable("inventoryValue"),
+        suggestedOrderValue: sumNullable("suggestedOrderValue"),
+        stockoutRevenueAtRisk: sumNullable("stockoutRevenueAtRisk"),
+        productsWithExpectedStockout: expectedStockoutDays.filter((days) => days > 0).length,
+        expectedStockoutDaysAfterReplenishment: expectedStockoutDays.length ? expectedStockoutDays.reduce((sum, days) => sum + days, 0) : null,
+        dataQuality: forecastEnabled() ? "MODEL_FORECAST_ONLY_UNTIL_NATIVE_STOCKOUT_HISTORY" : "RULES_ESTIMATE",
       },
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

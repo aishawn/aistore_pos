@@ -46,6 +46,9 @@ class ForecastPoint(BaseModel):
 class ForecastItem(BaseModel):
     productId: int
     model: str = "seasonal_naive_v1"
+    selectionStatus: Literal["EXPLICIT", "ROLLING_BACKTEST", "INSUFFICIENT_HISTORY", "BLOCKED"] = "INSUFFICIENT_HISTORY"
+    selectionMetric: str | None = None
+    candidateScores: dict[str, float] = Field(default_factory=dict)
     forecast: list[ForecastPoint]
     dataQuality: Literal["VALID", "INSUFFICIENT_HISTORY", "INCOMPLETE", "CENSORED_DEMAND"]
     confidence: Literal["HIGH", "MEDIUM", "LOW"]

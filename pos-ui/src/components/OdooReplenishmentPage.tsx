@@ -50,6 +50,22 @@ type ReplenishmentProduct = {
   reason?: string;
   reasonParts?: string[];
   method?: string;
+  modelVersion?: string | null;
+  forecastQuality?: string;
+  forecastConfidence?: string;
+  selectionStatus?: string | null;
+  selectionMetric?: string | null;
+  candidateScores?: Record<string, number>;
+  p50?: number | null;
+  p80?: number | null;
+  p90?: number | null;
+  expectedStockoutDaysAfterReplenishment?: number | null;
+  stockoutDemandUnitsAfterReplenishment?: number | null;
+  unitCost?: number | null;
+  unitPrice?: number | null;
+  inventoryValue?: number | null;
+  suggestedOrderValue?: number | null;
+  stockoutRevenueAtRisk?: number | null;
 };
 
 type ReplenishmentData = {
@@ -63,6 +79,21 @@ type ReplenishmentData = {
   productEligibility?: string;
   generatedAt: string;
   dataQuality?: string;
+  forecast?: {
+    enabled: boolean;
+    modelSelection: string;
+    modelVersion?: string | null;
+    sourceVersion?: string | null;
+    status: string;
+  };
+  businessMetrics?: {
+    inventoryValue: number | null;
+    suggestedOrderValue: number | null;
+    stockoutRevenueAtRisk: number | null;
+    productsWithExpectedStockout: number;
+    expectedStockoutDaysAfterReplenishment: number | null;
+    dataQuality: string;
+  };
 };
 
 type ListFilter = "suggestions" | "out_of_stock" | "all";
@@ -372,9 +403,14 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </button>
           </div>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
-            Rule-based reorder suggestions · draft RFQs only · nothing auto-orders.
+            {data?.forecast?.enabled ? "Per-product forecast with rolling model selection" : "Rule-based reorder suggestions"} · draft RFQs only · nothing auto-orders.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
+          {data?.forecast?.enabled && (
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">
+              Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked and use the rules fallback.
+            </p>
+          )}
           {showR2DisplayNote && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               Import prefixes such as R2 TEST are hidden in product names; SKUs may still start with R2- for reconciliation.
@@ -429,6 +465,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(totalSuggestedUnits)}</span> <span className="text-[var(--oh-muted)]">suggested units · {planCoverageDays}d</span></p>
         <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(outOfStockWithDemand)}</span> <span className="text-[var(--oh-muted)]">out of stock with demand</span></p>
         <p className="text-[var(--oh-muted)]">{number.format(data?.products.length ?? 0)} POS products in plan</p>
+        {data?.businessMetrics?.suggestedOrderValue !== null && data?.businessMetrics?.suggestedOrderValue !== undefined && <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">${number.format(data.businessMetrics.suggestedOrderValue)}</span> <span className="text-[var(--oh-muted)]">estimated order value</span></p>}
+        {data?.businessMetrics?.productsWithExpectedStockout !== undefined && <p><span className="font-semibold tabular-nums text-red-700">{number.format(data.businessMetrics.productsWithExpectedStockout)}</span> <span className="text-[var(--oh-muted)]">forecast stockout risks</span></p>}
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
@@ -757,7 +795,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               </button>
             </header>
             <p className="mt-3 text-sm leading-6 text-[var(--oh-text-secondary)]">
-              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × the larger of {planCoverageDays} days or supplier lead time − forecast stock), rounded up to a whole unit. “After suggested order” shows the estimated stock cover after adding that quantity. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. Missing supplier lead time falls back to the coverage target. This estimate does not account for pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
+              {data?.forecast?.enabled
+                ? "Products with enough history are assigned a model using rolling backtests; intermittent products can use Croston or TSB, while short histories remain explicitly marked as insufficient and use the transparent rules fallback. The forecast interval shown in each row is a demand range, not a guarantee. "
+                : `Forecast daily demand combines the most recent ${data?.periodDays ?? 28} days (70%) with the previous ${data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. `}
+              Suggested order = max(0, forecast demand × the larger of {planCoverageDays} days or supplier lead time − forecast stock), rounded up to a whole unit. “After suggested order” shows the estimated stock cover after adding that quantity. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. Missing supplier lead time falls back to the coverage target. This estimate does not account for pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
             </p>
             <footer className="mt-5 flex justify-end">
               <button type="button" onClick={() => setMethodOpen(false)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>

@@ -7,6 +7,8 @@ from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
 
 
 MODEL = "seasonal_naive_v1"
+MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1",
+               "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
 
 
 def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | None = None,
@@ -65,11 +67,46 @@ def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | N
     return baseline[:horizon], quality, confidence
 
 
+def _select_model(series, horizon: int = 7) -> tuple[str, str, dict[str, float]]:
+    """Select one model per product using rolling, uncensored WAPE.
+
+    The service deliberately refuses to call a short series a validated model
+    selection. The caller still receives a deterministic seasonal-naive
+    forecast, but the response labels it as insufficient history.
+    """
+    values = [max(0.0, float(value)) for value in series.units]
+    if len(values) < 28:
+        return MODEL, "INSUFFICIENT_HISTORY", {}
+    flags = series.stockoutFlags or []
+    scores: dict[str, float] = {}
+    for candidate in MODEL_NAMES:
+        errors: list[float] = []
+        actual_total = 0.0
+        for end in range(14, len(values) - horizon + 1, horizon):
+            train = values[:end]
+            train_flags = flags[:end] if flags else []
+            predicted, _, _ = _normalise(train, horizon, train_flags, candidate)
+            for offset, actual in enumerate(values[end:end + horizon]):
+                if end + offset < len(flags) and flags[end + offset]:
+                    continue
+                errors.append(abs(predicted[offset] - actual))
+                actual_total += actual
+        if errors and actual_total > 0:
+            scores[candidate] = sum(errors) / actual_total
+    if not scores:
+        return MODEL, "BLOCKED", {}
+    winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
+    return winner, "ROLLING_BACKTEST", scores
+
+
 def forecast(request: ForecastRequest) -> ForecastResponse:
     today = request.forecastStartDate or date.today()
     items: list[ForecastItem] = []
     for series in request.series:
-        model = series.selectedModel or MODEL
+        if series.selectedModel:
+            model, selection_status, candidate_scores = series.selectedModel, "EXPLICIT", {}
+        else:
+            model, selection_status, candidate_scores = _select_model(series, min(request.horizonDays, 7))
         values, quality, confidence = _normalise(series.units, request.horizonDays, series.stockoutFlags, model)
         usable_tail = [value for index, value in enumerate(series.units[-28:], start=max(0, len(series.units) - 28))
                        if not (index < len(series.stockoutFlags) and series.stockoutFlags[index])]
@@ -79,9 +116,12 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
             p80 = max(p50, p50 + 0.84 * spread)
             p90 = max(p80, p50 + 1.28 * spread)
             points.append(ForecastPoint(date=today + timedelta(days=offset), p50=p50, p80=p80, p90=p90))
-        items.append(ForecastItem(productId=series.productId, model=model, forecast=points,
+        items.append(ForecastItem(productId=series.productId, model=model,
+                                  selectionStatus=selection_status,
+                                  selectionMetric="rolling_wape" if candidate_scores else None,
+                                  candidateScores=candidate_scores, forecast=points,
                                   dataQuality=quality, confidence=confidence))
-    return ForecastResponse(model="per_product_selected", modelVersion="1", sourceVersion=request.sourceVersion,
+    return ForecastResponse(model="per_product_selected", modelVersion="2", sourceVersion=request.sourceVersion,
                             horizonDays=request.horizonDays, items=items)
 
 

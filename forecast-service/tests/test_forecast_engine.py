@@ -76,6 +76,32 @@ class ForecastBacktestTests(unittest.TestCase):
         ])
         self.assertEqual("two_stage_occurrence_v1", forecast(two_stage).items[0].model)
 
+    def test_forecast_selects_a_model_per_product_when_history_is_sufficient(self):
+        start = date(2026, 1, 1)
+        weekly = [1.0, 1.0, 1.0, 1.0, 1.0, 8.0, 10.0] * 8
+        result = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7, series=[
+            Series(productId=10,
+                   dates=[start + timedelta(days=index) for index in range(len(weekly))],
+                   units=weekly),
+        ]))
+        item = result.items[0]
+        self.assertEqual("ROLLING_BACKTEST", item.selectionStatus)
+        self.assertIn(item.model, {"seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1",
+                                    "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1"})
+        self.assertTrue(item.candidateScores)
+        self.assertEqual("rolling_wape", item.selectionMetric)
+
+    def test_forecast_labels_short_history_without_claiming_model_selection(self):
+        start = date(2026, 1, 1)
+        result = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7, series=[
+            Series(productId=11,
+                   dates=[start + timedelta(days=index) for index in range(14)],
+                   units=[1.0] * 14),
+        ]))
+        item = result.items[0]
+        self.assertEqual("INSUFFICIENT_HISTORY", item.selectionStatus)
+        self.assertEqual({}, item.candidateScores)
+
     def test_scores_only_observed_days_when_evaluation_period_is_censored(self):
         result = backtest(BacktestRequest(horizonDays=3, series=[make_series([True, False, False])]))
         item = result.items[0]
