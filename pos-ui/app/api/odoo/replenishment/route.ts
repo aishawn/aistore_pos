@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
         ["company_id", "=", companyId],
-      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+        ]], { fields: ["id", "name", "display_name", "default_code", "product_tmpl_id", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }, correlationId),
     ]);
 
@@ -95,6 +95,24 @@ export async function GET(request: NextRequest) {
     for (const row of previousSales ?? []) {
       if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) previousSold.set(row.product_id[0], Number(row.qty));
     }
+    const leadTimes = new Map<number, number>();
+    let leadTimeQuality: "AVAILABLE" | "UNKNOWN" = "AVAILABLE";
+    try {
+      const templateIds = (products ?? []).map((product) => Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0).filter((id) => id > 0);
+      if (templateIds.length) {
+        const suppliers = await rpc<Array<{ product_tmpl_id?: [number, string]; delay?: number }>>(sessionId, "product.supplierinfo", "search_read", [[
+          ["product_tmpl_id", "in", templateIds],
+        ]], { fields: ["product_tmpl_id", "delay", "sequence"], limit: MAX_PRODUCTS * 2, order: "sequence asc, delay asc" }, correlationId);
+        for (const supplier of suppliers ?? []) {
+          const templateId = Array.isArray(supplier.product_tmpl_id) ? Number(supplier.product_tmpl_id[0]) : 0;
+          const delay = Number(supplier.delay);
+          if (templateId > 0 && Number.isFinite(delay) && delay >= 0 && (!leadTimes.has(templateId) || delay < (leadTimes.get(templateId) ?? Infinity))) leadTimes.set(templateId, delay);
+        }
+      }
+    } catch {
+      leadTimeQuality = "UNKNOWN";
+    }
+    const hasLeadTime = leadTimes.size > 0;
     const replenishmentItems = (products ?? []).map((product) => {
       const id = Number(product.id);
       const recentUnits = recentSold.get(id) ?? 0;
@@ -103,6 +121,8 @@ export async function GET(request: NextRequest) {
       const onHand = Number(product.qty_available ?? 0);
       const virtualAvailable = Number(product.virtual_available);
       const forecastStock = Number.isFinite(virtualAvailable) ? virtualAvailable : onHand;
+      const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+      const leadTimeDays = templateId > 0 ? leadTimes.get(templateId) ?? null : null;
       const recentUnitsPerDay = recentUnits / PERIOD_DAYS;
       const previousUnitsPerDay = previousUnits / PERIOD_DAYS;
       const unitsPerDay = recentUnits > 0 && previousUnits > 0
@@ -114,12 +134,13 @@ export async function GET(request: NextRequest) {
         : trendPercent === null ? null
           : trendPercent > 10 ? "up"
             : trendPercent < -10 ? "down" : "steady";
-      const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - forecastStock));
+      const targetDays = Math.max(coverageDays, leadTimeDays ?? 0);
+      const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * targetDays - forecastStock));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       const daysOfStock = unitsPerDay > 0 ? forecastStock / unitsPerDay : null;
       const risk = daysOfStock === null ? "UNKNOWN"
-        : daysOfStock <= 0 ? "HIGH"
-          : daysOfStock <= coverageDays ? "MEDIUM" : "LOW";
+        : daysOfStock <= (leadTimeDays ?? coverageDays) ? "HIGH"
+          : daysOfStock <= targetDays ? "MEDIUM" : "LOW";
       const confidence = soldUnits >= 14 ? "MEDIUM" : "LOW";
       const reasonParts: string[] = [];
       if (soldUnits <= 0) {
@@ -139,6 +160,8 @@ export async function GET(request: NextRequest) {
         if (trend === "down") reasonParts.push(`Trend down ${Math.abs(Number(trendPercent?.toFixed(0) ?? 0))}% vs prior period.`);
         if (trend === "new") reasonParts.push("New demand — sold recently with no prior-period sales.");
       }
+      if (leadTimeDays === null) reasonParts.push("Data quality warning: supplier lead time is unknown; coverage target is used as a fallback.");
+      else reasonParts.push(`Supplier lead time ${leadTimeDays}d; target coverage uses ${targetDays}d.`);
       if (risk === "UNKNOWN") reasonParts.push("Risk is unknown because there is no positive demand baseline.");
       if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; treat the estimate as low confidence.");
       return {
@@ -155,9 +178,10 @@ export async function GET(request: NextRequest) {
         onHand,
         forecastStock,
         daysOfStock,
+        leadTimeDays,
         risk,
         confidence,
-        dataQuality: "NATIVE_CURRENT_STOCK_SALES_HISTORY",
+        dataQuality: leadTimeQuality === "AVAILABLE" && leadTimeDays !== null ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
         suggestedQuantity,
         reason: reasonParts.join(" "),
         reasonParts,
@@ -173,7 +197,7 @@ export async function GET(request: NextRequest) {
       products: replenishmentItems,
       truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (recentSales?.length ?? 0) >= MAX_PRODUCTS || (previousSales?.length ?? 0) >= MAX_PRODUCTS,
       generatedAt: new Date().toISOString(),
-      dataQuality: "NATIVE_CURRENT_STOCK_SALES_HISTORY",
+      dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof ReplenishmentSessionExpiredError) {

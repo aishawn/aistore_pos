@@ -41,6 +41,7 @@ type ReplenishmentProduct = {
   onHand: number;
   forecastStock: number;
   daysOfStock: number | null;
+  leadTimeDays?: number | null;
   risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   confidence?: "HIGH" | "MEDIUM" | "LOW";
   dataQuality?: string;
@@ -537,6 +538,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                           <Metric label="Forecast / day" value={number.format(product.unitsPerDay)} />
                           <Metric label="Forecast stock" value={number.format(product.forecastStock)} />
                           <Metric label="Stock cover" value={product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`} />
+                          <Metric label="Supplier lead time" value={product.leadTimeDays === null || product.leadTimeDays === undefined ? "Unknown" : `${number.format(product.leadTimeDays)} days`} />
                           <div>
                             <p className="text-xs text-[var(--oh-muted)]">Trend · {data?.periodDays}d</p>
                             <div className="mt-1">{trendLabel(product, data?.periodDays ?? 28)}</div>
@@ -681,6 +683,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                               <div><dt className="text-[var(--oh-muted)]">Forecast / day</dt><dd className="mt-0.5 tabular-nums">{number.format(product.unitsPerDay)}</dd></div>
                               <div><dt className="text-[var(--oh-muted)]">Forecast stock</dt><dd className="mt-0.5 tabular-nums">{number.format(product.forecastStock)}</dd></div>
                               <div><dt className="text-[var(--oh-muted)]">Stock cover</dt><dd className="mt-0.5 tabular-nums">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</dd></div>
+                              <div><dt className="text-[var(--oh-muted)]">Supplier lead time</dt><dd className="mt-0.5 tabular-nums">{product.leadTimeDays === null || product.leadTimeDays === undefined ? "Unknown" : `${number.format(product.leadTimeDays)} days`}</dd></div>
                               <div><dt className="text-[var(--oh-muted)]">Trend</dt><dd className="mt-0.5">{trendLabel(product, data?.periodDays ?? 28)}</dd></div>
                             </dl>
                           )}
@@ -747,7 +750,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
               </button>
             </header>
             <p className="mt-3 text-sm leading-6 text-[var(--oh-text-secondary)]">
-              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
+              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × the larger of {planCoverageDays} days or supplier lead time − forecast stock), rounded up to a whole unit. Forecast stock comes from Orithos and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. Missing supplier lead time falls back to the coverage target. This estimate does not account for pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
             </p>
             <footer className="mt-5 flex justify-end">
               <button type="button" onClick={() => setMethodOpen(false)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>
