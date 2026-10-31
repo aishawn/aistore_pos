@@ -17,6 +17,7 @@ const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 56;
 const PERIOD_DAYS = 28;
 const FORECAST_BATCH_SIZE = 500;
+const REPLENISHMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const COVERAGE_OPTIONS = new Set([7, 14, 21, 28, 42]);
 const FORECAST_MODELS = new Set([
   "seasonal_naive_v1",
@@ -27,6 +28,8 @@ const FORECAST_MODELS = new Set([
   "two_stage_occurrence_v1",
   "analog_category_brand_price_v1",
 ]);
+
+const replenishmentCache = new Map<string, { expiresAt: number; body: Record<string, unknown> }>();
 
 type RpcEnvelope<T> = { result?: T; error?: { message?: string } };
 
@@ -201,6 +204,12 @@ export async function GET(request: NextRequest) {
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Orithos companies are available to this user." }, { status: 403 });
+    const cacheKey = `${companyId}:${coverageDays}`;
+    const cacheEntry = request.nextUrl.searchParams.get("validateSales") === "true" ? null : replenishmentCache.get(cacheKey);
+    if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
+      return NextResponse.json({ ...cacheEntry.body, cache: { status: "HIT", expiresAt: new Date(cacheEntry.expiresAt).toISOString() } }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    }
+    if (cacheEntry) replenishmentCache.delete(cacheKey);
 
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
@@ -451,7 +460,7 @@ export async function GET(request: NextRequest) {
     };
     const expectedStockoutDays = replenishmentItems.map((item) => item.expectedStockoutDaysAfterReplenishment).filter((value): value is number => typeof value === "number");
 
-    return NextResponse.json({
+    const responseBody = {
       company: companies?.[0]?.name ?? "Current company",
       historyDays: HISTORY_DAYS,
       periodDays: PERIOD_DAYS,
@@ -491,7 +500,12 @@ export async function GET(request: NextRequest) {
         excludedReviewProducts: replenishmentItems.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
         dataQuality: forecastEnabled() ? "MODEL_FORECAST_ONLY_UNTIL_NATIVE_STOCKOUT_HISTORY" : "RULES_ESTIMATE",
       },
-    }, { status: 200, headers: { "Cache-Control": "no-store" } });
+      cache: { status: "MISS", expiresAt: new Date(Date.now() + REPLENISHMENT_CACHE_TTL_MS).toISOString() },
+    };
+    if (request.nextUrl.searchParams.get("validateSales") !== "true") {
+      replenishmentCache.set(cacheKey, { expiresAt: Date.now() + REPLENISHMENT_CACHE_TTL_MS, body: responseBody });
+    }
+    return NextResponse.json(responseBody, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof ReplenishmentSessionExpiredError) {
       const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
