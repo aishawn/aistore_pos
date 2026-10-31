@@ -135,6 +135,48 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual("HIGH_GT_10", _group_labels(applied)["stockoutRatio"])
         self.assertEqual([False, True], apply_native_inventory_history(series, history).stockoutFlags)
 
+    def test_suspect_historical_inventory_does_not_replace_existing_stockout_flags(self):
+        series = Series(productId=21, dates=[date(2026, 10, 1), date(2026, 10, 2)],
+                        units=[2, 0], stockoutFlags=[False, True],
+                        stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
+        history = {"dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+                   "backtestReadiness": "BLOCKED_DATA_QUALITY",
+                   "qualityWarnings": [{"code": "PERSISTENT_NONPOSITIVE_STOCK_WITH_REPEATED_SALES"}],
+                   "products": [{"productId": 21, "observations": [
+                       {"date": "2026-10-01", "isStockout": True},
+                       {"date": "2026-10-02", "isStockout": True},
+                   ]}]}
+
+        result = apply_inventory_history(series, history)
+
+        self.assertEqual([False, True], result.stockoutFlags)
+        self.assertEqual("INFERRED_FROM_STOCK_MOVES", result.stockoutDataQuality)
+
+    def test_cli_marks_suspect_inventory_history_blocked(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+            history = {"dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+                       "backtestReadiness": "BLOCKED_DATA_QUALITY",
+                       "qualityWarnings": [{"code": "PERSISTENT_NONPOSITIVE_STOCK_WITH_REPEATED_SALES"}],
+                       "products": []}
+            history_path = temp / "inventory-history.json"
+            report_path = temp / "report.json"
+            history_path.write_text(json.dumps(history), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/ai_forecast_eval.py"),
+                 str(ROOT / "forecast-service/fixtures/skr-snapshot-demo.json"),
+                 str(report_path), str(history_path)],
+                cwd=ROOT, capture_output=True, text=True, check=False,
+            )
+            report = json.loads(report_path.read_text())
+
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("BLOCKED", report["status"])
+        self.assertEqual("BLOCKED", report["qualityGate"])
+        self.assertEqual("REJECTED_QUALITY_GATE", report["inventoryHistory"]["status"])
+
     def test_historical_inventory_partial_coverage_does_not_turn_missing_into_stockout(self):
         series = Series(productId=22, dates=[date(2026, 10, 1), date(2026, 10, 2)],
                         units=[1, 0], stockoutFlags=[False, False])

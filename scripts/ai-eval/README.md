@@ -155,6 +155,13 @@ daily snapshot job running as a separate calibration check; it can compare
 future stored observations against Odoo's as-of calculation and catch timezone,
 company, or movement-history gaps before production enablement.
 
+The collector compares the reconstructed stock with the sales snapshot. If a
+product has nonpositive stock for every observed day while still selling on at
+least 14 days in a 28-day-or-longer window, it marks the history
+`BLOCKED_DATA_QUALITY`. The evaluator then refuses to apply those stockout flags
+and returns `BLOCKED`; reconcile opening balances and stock movement history
+before using this source to censor demand.
+
 After at least two capture dates exist, build the native product history used
 by backtests:
 

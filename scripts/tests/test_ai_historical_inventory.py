@@ -1,6 +1,6 @@
 import importlib.util
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +36,25 @@ class HistoricalInventoryTests(unittest.TestCase):
         snapshot = {"series": [{"productId": 9}, {"productId": 3}, {"productId": 9}, {"productId": None}]}
         self.assertEqual([3, 9], MODULE.product_ids_from_snapshot(snapshot))
         self.assertEqual([3], MODULE.product_ids_from_snapshot(snapshot, 1))
+
+    def test_repeated_sales_with_nonpositive_stock_blocks_inventory_backtest(self):
+        dates = [date(2026, 8, 1) + timedelta(days=index) for index in range(28)]
+        history = MODULE.build_history(
+            [7], dates, {day.isoformat(): {7: 0.0} for day in dates},
+            company_id=5, timezone_name="Australia/Adelaide",
+        )
+        sales = {"series": [{
+            "productId": 7,
+            "dates": [day.isoformat() for day in dates],
+            "units": [1.0 if index < 14 else 0.0 for index in range(28)],
+        }]}
+
+        validated = MODULE.validate_sales_inventory_consistency(sales, history)
+
+        self.assertEqual("SUSPECT", validated["inventoryConsistencyStatus"])
+        self.assertEqual("BLOCKED_DATA_QUALITY", validated["backtestReadiness"])
+        self.assertEqual("PERSISTENT_NONPOSITIVE_STOCK_WITH_REPEATED_SALES",
+                         validated["qualityWarnings"][0]["code"])
 
 
 if __name__ == "__main__":

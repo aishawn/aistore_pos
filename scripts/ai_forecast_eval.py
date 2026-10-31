@@ -29,6 +29,8 @@ MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothin
 
 def apply_inventory_history(series: Series, history: dict) -> Series:
     """Apply complete historical stock observations, retaining their provenance."""
+    if history.get("qualityWarnings") or str(history.get("backtestReadiness", "")).startswith("BLOCKED"):
+        return series
     products = {str(item.get("productId")): item for item in history.get("products", [])}
     product = products.get(str(series.productId))
     observations = {str(item.get("date")): item for item in (product or {}).get("observations", [])}
@@ -199,7 +201,8 @@ def rolling_metrics(series: Series, horizon: int, model: str = "seasonal_naive_v
     }
 
 
-def select_model(series: Series, horizon: int = 7, cost_model: dict | None = None) -> dict:
+def select_model(series: Series, horizon: int = 7, cost_model: dict | None = None,
+                 candidate_rows: list[dict] | None = None) -> dict:
     """Choose a model for one product from rolling, uncensored backtests.
 
     The selector is deliberately metric-driven.  A blocked or fully censored
@@ -208,7 +211,7 @@ def select_model(series: Series, horizon: int = 7, cost_model: dict | None = Non
     profile is returned as an explanation for the decision, not as a hidden
     rule that overrides measured backtest performance.
     """
-    rows = [rolling_metrics(series, horizon, model, cost_model) for model in MODEL_NAMES]
+    rows = candidate_rows or [rolling_metrics(series, horizon, model, cost_model) for model in MODEL_NAMES]
     eligible = [row for row in rows if row.get("status") != "BLOCKED" and row.get("weightedWape") is not None]
     if not eligible:
         return {
@@ -379,10 +382,19 @@ def main() -> int:
     eligible = [item for item in items if item["status"] == "PASS"]
     wapes = [item["wape"] for item in eligible if item["wape"] is not None]
     cost_model = payload.get("costModel")
-    rolling = [rolling_metrics(series, horizon, model, cost_model)
-               for model in MODEL_NAMES
-               for horizon in (7, 14, 28) for series in request.series]
-    model_selections = [select_model(series, 7, cost_model) for series in request.series]
+    rolling = []
+    rolling_by_key = {}
+    for model in MODEL_NAMES:
+        for horizon in (7, 14, 28):
+            for series in request.series:
+                row = rolling_metrics(series, horizon, model, cost_model)
+                rolling.append(row)
+                rolling_by_key[(series.productId, horizon, model)] = row
+    model_selections = [
+        select_model(series, 7, cost_model,
+                     [rolling_by_key[(series.productId, 7, model)] for model in MODEL_NAMES])
+        for series in request.series
+    ]
     cold_start = [cold_start_similarity(series, request.series, 7) for series in request.series
                   if series.isNew or len(series.units) < 14]
     selected_counts = {}
@@ -390,14 +402,14 @@ def main() -> int:
         model = selection.get("selectedModel") or "BLOCKED"
         selected_counts[model] = selected_counts.get(model, 0) + 1
     selected_rolling = [
-        rolling_metrics(series, 7, selection["selectedModel"], cost_model)
+        rolling_by_key[(series.productId, 7, selection["selectedModel"])]
         for series, selection in zip(request.series, model_selections)
         if selection.get("selectedModel")
     ]
     comparison = []
     for model in MODEL_NAMES:
         for horizon in (7, 14, 28):
-            rows = [rolling_metrics(series, horizon, model, cost_model) for series in request.series]
+            rows = [rolling_by_key[(series.productId, horizon, model)] for series in request.series]
             for labels in ("category", "stockoutRatio", "volume"):
                 groups = {}
                 for series, row in zip(request.series, rows):
@@ -405,11 +417,15 @@ def main() -> int:
                     groups.setdefault(key, []).append(row)
                 comparison.append({"model": model, "horizonDays": horizon, "groupBy": labels,
                                    "groups": {key: _aggregate_group(value) for key, value in groups.items()}})
-    execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) else "BLOCKED"
+    inventory_rejected = bool(inventory_history and (
+        inventory_history.get("qualityWarnings")
+        or str(inventory_history.get("backtestReadiness", "")).startswith("BLOCKED")
+    ))
+    execution_status = "PASS" if eligible and all(item["status"] == "PASS" for item in items) and not inventory_rejected else "BLOCKED"
     business_metrics = _business_metrics(selected_rolling, cost_model)
     report = {
         "status": execution_status,
-        "qualityGate": "PASS" if wapes and sum(wapes) / len(wapes) <= 0.30 else "FAIL",
+        "qualityGate": "BLOCKED" if inventory_rejected else "PASS" if wapes and sum(wapes) / len(wapes) <= 0.30 else "FAIL",
         "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
         "sourceSnapshot": str(snapshot.resolve().relative_to(ROOT.resolve()))
         if snapshot.resolve().is_relative_to(ROOT.resolve()) else snapshot.name,
@@ -437,12 +453,14 @@ def main() -> int:
         "businessMetrics": business_metrics,
         "coldStartSimilarity": cold_start,
         "inventoryHistory": {
-            "status": "APPLIED" if inventory_history else "NOT_PROVIDED",
+            "status": "REJECTED_QUALITY_GATE" if inventory_rejected else "APPLIED" if inventory_history else "NOT_PROVIDED",
             "path": str(inventory_history_path) if inventory_history_path else None,
             "dataQuality": inventory_history.get("dataQuality") if inventory_history else None,
             "backtestReadiness": inventory_history.get("backtestReadiness") if inventory_history else None,
             "nativeSnapshotAcceptanceReadiness": inventory_history.get("nativeSnapshotAcceptanceReadiness") if inventory_history else None,
             "researchOnly": bool(inventory_history and inventory_history.get("dataQuality") == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"),
+            "inventoryConsistencyStatus": inventory_history.get("inventoryConsistencyStatus") if inventory_history else None,
+            "qualityWarnings": inventory_history.get("qualityWarnings", []) if inventory_history else [],
         },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
