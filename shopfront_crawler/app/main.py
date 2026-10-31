@@ -58,7 +58,9 @@ async def startup() -> None:
                 job.finished_at = datetime.now(timezone.utc)
                 continue
             job.status = "queued"
-            job.error = "requeued after crawler restart"
+            # The job is healthy and resumable; keep restart history in the
+            # run records instead of exposing a stale error on live status.
+            job.error = None
             resumed_stores.add(job_key)
         # Keep only the newest queued snapshot job of each type. The durable
         # worker below will pick up the surviving queued job after startup.
@@ -129,6 +131,49 @@ def require_store(store_key: str, db: Session) -> Store:
     if store is None:
         raise HTTPException(404, f"Unknown store: {store_key}")
     return store
+
+
+def should_include_supply_chain(db: Session, store_key: str) -> bool:
+    """Decide whether a daily run should pay for the full supply-chain scan.
+
+    Sales and inventory are deliberately checked every day. Supplier and
+    purchase-order directories are much slower and are refreshed on a weekly
+    cadence unless the last run was partial or failed.
+    """
+    if not settings.shopfront_enable_supply_chain:
+        return False
+    latest = db.scalar(
+        select(SyncJob)
+        .where(
+            SyncJob.store_key == store_key,
+            SyncJob.job_type == "supply_chain",
+            SyncJob.status == "completed",
+        )
+        .order_by(desc(SyncJob.finished_at), desc(SyncJob.id))
+        .limit(1)
+    )
+    if latest is None or latest.finished_at is None:
+        return True
+    finished = latest.finished_at
+    if finished.tzinfo is None:
+        finished = finished.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - finished >= timedelta(days=max(1, settings.shopfront_supply_chain_interval_days))
+
+
+def preferred_summary_rows(rows: list[DailySalesSummary]) -> list[DailySalesSummary]:
+    """Drop a consolidated null-outlet row when outlet rows exist.
+
+    Shopfront reports can return both the store total and its outlet detail.
+    Keeping both in the API makes consumers double count the same day.
+    """
+    grouped: dict[str, list[DailySalesSummary]] = {}
+    for row in rows:
+        grouped.setdefault(row.business_date, []).append(row)
+    selected: list[DailySalesSummary] = []
+    for date_rows in grouped.values():
+        named = [row for row in date_rows if row.outlet and str(row.outlet).strip()]
+        selected.extend(named or date_rows)
+    return sorted(selected, key=lambda row: (row.business_date, row.outlet or ""))
 
 
 @app.get("/auth/shopfront/{store_key}/start")
@@ -202,7 +247,7 @@ async def trigger_sync(store_key: str, from_date: date | None = None, to_date: d
         raise HTTPException(409, f"A {active.job_type} job is already active for this store")
     end = to_date or (datetime.now(ZoneInfo(store.timezone)).date() - timedelta(days=1))
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
-    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": settings.shopfront_enable_supply_chain})
+    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": should_include_supply_chain(db, store.store_key)})
     db.add(job)
     db.commit()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
@@ -471,7 +516,7 @@ def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)
             continue
         end = datetime.now(ZoneInfo(row.timezone)).date() - timedelta(days=1)
         start = end - timedelta(days=settings.sync_lookback_days - 1)
-        job = SyncJob(store_key=key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"skill": "shopfront-sync-daily", "include_supply_chain": settings.shopfront_enable_supply_chain})
+        job = SyncJob(store_key=key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"skill": "shopfront-sync-daily", "include_supply_chain": should_include_supply_chain(db, key)})
         db.add(job)
         db.flush()
         queued.append({"store": key, "job_id": job.id, "from": start, "to": end})
@@ -481,12 +526,103 @@ def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)
 
 @app.get("/shopfront-reconcile")
 def shopfront_reconcile(store: str = "skr", reconcile_date: date | None = Query(None, alias="date"), db: Session = Depends(get_db)) -> dict:
-    require_store(store, db)
-    target = reconcile_date or (datetime.now(ZoneInfo(settings.sync_timezone)).date() - timedelta(days=1))
-    summary_count = db.scalar(select(func.coalesce(func.sum(DailySalesSummary.transaction_count), 0)).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())) or 0
-    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= datetime.combine(target, datetime.min.time()), Sale.created_at < datetime.combine(target + timedelta(days=1), datetime.min.time()))) or 0
-    missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store, or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""))) or 0
-    return {"store": store, "date": target, "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention", "summary_transaction_count": int(summary_count), "sale_count": int(sale_count), "sale_items_missing_name": int(missing_names), "source": "crawler_database"}
+    store_row = require_store(store, db)
+    local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
+    target = reconcile_date or (datetime.now(local_zone).date() - timedelta(days=1))
+    # Sale timestamps are persisted as UTC by SQLite and PostgreSQL. Convert
+    # the store's local business-day boundaries before filtering the rows.
+    utc_start = datetime.combine(target, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+    utc_end = datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+    summary_rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == target.isoformat())).all()
+    summary_count = sum(int(row.transaction_count or 0) for row in preferred_summary_rows(summary_rows))
+    sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)) or 0
+    status_rows = db.execute(
+        select(Sale.status, func.count(Sale.id))
+        .where(Sale.store_key == store, Sale.created_at >= utc_start, Sale.created_at < utc_end)
+        .group_by(Sale.status)
+    ).all()
+    sale_status_counts = {str(status or "UNKNOWN"): int(count) for status, count in status_rows}
+    missing_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
+        Sale.store_key == store,
+        Sale.created_at >= utc_start,
+        Sale.created_at < utc_end,
+        or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
+    )) or 0
+    return {
+        "store": store,
+        "date": target,
+        "status": "ok" if int(summary_count) == int(sale_count) and int(missing_names) == 0 else "attention",
+        "summary_transaction_count": int(summary_count),
+        "sale_count": int(sale_count),
+        "difference": int(sale_count) - int(summary_count),
+        "sale_status_counts": sale_status_counts,
+        "sale_items_missing_name": int(missing_names),
+        "source": "crawler_database",
+    }
+
+
+@app.post("/api/sync/cleanup-summaries")
+def cleanup_stale_summaries(store: str = "skr", dates: str | None = None, db: Session = Depends(get_db)) -> dict:
+    """Remove only verified stale consolidated summary rows.
+
+    Older UTC based runs could leave an outlet-less row on the previous local
+    business date while the complete Sale rows were stored on the next local
+    date. Require a neighbouring local-day Sale before deleting such a row so
+    uncovered historical dates remain untouched.
+    """
+    store_row = require_store(store, db)
+    local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
+    requested_dates = {value.strip() for value in (dates or "").split(",") if value.strip()}
+    summary_query = select(DailySalesSummary).where(
+        DailySalesSummary.store_key == store,
+        DailySalesSummary.outlet.is_(None),
+    )
+    if requested_dates:
+        summary_query = summary_query.where(DailySalesSummary.business_date.in_(requested_dates))
+    summaries = db.scalars(summary_query).all()
+    summary_dates = {date.fromisoformat(row.business_date) for row in summaries}
+    named_dates = {
+        str(value)
+        for value in db.scalars(select(DailySalesSummary.business_date).where(
+            DailySalesSummary.store_key == store,
+            DailySalesSummary.outlet.is_not(None),
+        )).all()
+    }
+    if summary_dates:
+        min_date = min(summary_dates) - timedelta(days=1)
+        max_date = max(summary_dates) + timedelta(days=2)
+        range_start = datetime.combine(min_date, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        range_end = datetime.combine(max_date, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        sale_timestamps = db.scalars(select(Sale.created_at).where(
+            Sale.store_key == store,
+            Sale.created_at >= range_start,
+            Sale.created_at < range_end,
+        )).all()
+    else:
+        sale_timestamps = []
+    sale_counts_by_date: dict[date, int] = {}
+    for timestamp in sale_timestamps:
+        if timestamp is None:
+            continue
+        aware = timestamp.replace(tzinfo=timezone.utc) if timestamp.tzinfo is None else timestamp
+        local_date = aware.astimezone(local_zone).date()
+        sale_counts_by_date[local_date] = sale_counts_by_date.get(local_date, 0) + 1
+    removed: list[str] = []
+    for summary in summaries:
+        target = date.fromisoformat(summary.business_date)
+        same_day_sales = sale_counts_by_date.get(target, 0)
+        named_same_day = summary.business_date in named_dates
+        if named_same_day or same_day_sales:
+            if named_same_day:
+                db.delete(summary)
+                removed.append(summary.business_date)
+            continue
+        neighbour_sales = sum(sale_counts_by_date.get(target + timedelta(days=offset), 0) for offset in (-1, 1))
+        if neighbour_sales and int(summary.transaction_count or 0) > 0:
+            db.delete(summary)
+            removed.append(summary.business_date)
+    db.commit()
+    return {"store": store, "removed_count": len(removed), "removed_dates": sorted(set(removed)), "source": "crawler_database"}
 
 
 @app.get("/api/sync/coverage")
@@ -657,12 +793,30 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         # Keep the two permission domains independent. Shopfront may grant
         # purchase-order access while withholding the supplier directory.
         try:
-            suppliers = await asyncio.wait_for(client.fetch_suppliers(token), timeout=120)
+            suppliers = await asyncio.wait_for(
+                client.fetch_suppliers(token),
+                timeout=settings.shopfront_supply_chain_timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            suppliers = []
+            errors.append({
+                "entity": "suppliers",
+                "message": f"timed out after {settings.shopfront_supply_chain_timeout_seconds}s",
+            })
         except Exception as exc:
             suppliers = []
             errors.append({"entity": "suppliers", "message": str(exc)[:500]})
         try:
-            orders = await asyncio.wait_for(client.fetch_purchase_orders(token), timeout=120)
+            orders = await asyncio.wait_for(
+                client.fetch_purchase_orders(token),
+                timeout=settings.shopfront_supply_chain_timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            orders = []
+            errors.append({
+                "entity": "purchase_orders",
+                "message": f"timed out after {settings.shopfront_supply_chain_timeout_seconds}s",
+            })
         except Exception as exc:
             orders = []
             errors.append({"entity": "purchase_orders", "message": str(exc)[:500]})
@@ -893,6 +1047,10 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                             job.cursor_date = cursor.isoformat()
                             job.heartbeat_at = datetime.now(timezone.utc)
                             job.phase = f"sync:{cursor.isoformat()}"
+                            # A restart marker is historical context only;
+                            # once this chunk commits, status should reflect
+                            # the currently healthy worker.
+                            job.error = None
                             db.commit()
     finally:
         db.close()
@@ -964,6 +1122,17 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             catalog_source_ids = sync_counts.get("catalog_source_ids") or []
             sale_product_ids = sync_counts.get("product_source_ids") or []
             product_source_ids = sorted(set(catalog_source_ids) | set(sale_product_ids))
+            source_sales = int(sync_counts.get("sales") or 0)
+            unchanged_sales = int(sync_counts.get("sales_skipped_unchanged") or 0)
+            skip_stable_history_products = bool(
+                settings.pos_skip_unchanged_history_products
+                and not full_catalog
+                and not catalog_source_ids
+                and source_sales > 0
+                and unchanged_sales == source_sales
+            )
+            if skip_stable_history_products:
+                product_source_ids = []
             push_kwargs = {"run": run, "include_catalog": full_catalog}
             if not full_catalog:
                 push_kwargs["product_source_ids"] = product_source_ids
@@ -971,9 +1140,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
-            source_sales = int(sync_counts.get("sales") or 0)
             imported_sales = int(pos_result.get("sales_imported") or 0)
-            unchanged_sales = int(sync_counts.get("sales_skipped_unchanged") or 0)
             # A compensation window normally contains already mirrored sales.
             # Those rows are intentionally skipped by the crawler and do not
             # need a second POS write; validate only rows that changed or were
@@ -990,6 +1157,7 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             if product_source_ids is not None:
                 sync_counts["product_source_id_count"] = len(product_source_ids)
                 sync_counts.pop("product_source_ids", None)
+            sync_counts["pos_products_skipped_unchanged"] = skip_stable_history_products
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
         else:
             run.counts = {"sync": sync_counts}
@@ -1641,7 +1809,7 @@ async def scheduled_sync() -> None:
                 from_date=start.isoformat(),
                 to_date=end.isoformat(),
                 cursor_date=start.isoformat(),
-                payload={"include_supply_chain": settings.shopfront_enable_supply_chain},
+                payload={"include_supply_chain": should_include_supply_chain(db, store_key)},
             ))
         db.commit()
     finally:
@@ -2079,6 +2247,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
 def daily_sales(store: str, report_date: date, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date == report_date.isoformat())).all()
+    rows = preferred_summary_rows(rows)
     return {"data": [{"business_date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count, "tax": x.tax, "discount": x.discount, "currency": x.currency, "synced_at": x.synced_at} for x in rows], "source": "shopfront_reporting", "synced_at": max((x.synced_at for x in rows), default=None)}
 
 
@@ -2086,6 +2255,7 @@ def daily_sales(store: str, report_date: date, db: Session = Depends(get_db)) ->
 def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date = Query(alias="to"), db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date >= from_date.isoformat(), DailySalesSummary.business_date <= to_date.isoformat()).order_by(DailySalesSummary.business_date)).all()
+    rows = preferred_summary_rows(rows)
     return {"data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count} for x in rows], "source": "shopfront_reporting"}
 
 

@@ -53,6 +53,18 @@ class Settings(BaseSettings):
     sync_daily_minute: int = 0
     worker_poll_seconds: int = 2
     worker_stale_after_seconds: int = 900
+    # Commit historical Sale writes in bounded batches. A value of 1 keeps
+    # the old per-sale durability behavior; larger values reduce database
+    # round trips while the persisted cursor and idempotent source IDs keep
+    # retries safe after a restart.
+    sync_sale_commit_batch_size: int = 25
+    # The full purchase-order directory can take several minutes to paginate.
+    # Keep the bound finite while avoiding false partial results on large stores.
+    shopfront_supply_chain_timeout_seconds: int = 900
+    # Supplier and purchase-order directories change less often than sales.
+    # Run the expensive full directory scan on this cadence; sales/inventory
+    # remain on the daily three-day compensation window.
+    shopfront_supply_chain_interval_days: int = 7
     history_chunk_days: int = 14
     shopfront_history_start_year: int = 2010
     pos_api_base_url: str = ""
@@ -63,6 +75,11 @@ class Settings(BaseSettings):
     # Keep the crawler-to-POS mirror enabled by default. Formal Odoo business
     # writes remain separately gated below.
     pos_import_enabled: bool = True
+    # Historical compensation can re-read unchanged sales to validate report
+    # counts. Once a catalog snapshot has been mirrored, re-sending every
+    # product referenced by those unchanged sales adds latency without
+    # changing POS state. Keep the switch configurable for recovery.
+    pos_skip_unchanged_history_products: bool = True
     odoo_api_base_url: str = ""
     odoo_api_token: str = ""
     odoo_api_database: str = ""

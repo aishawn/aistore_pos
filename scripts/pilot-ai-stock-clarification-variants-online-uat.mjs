@@ -16,9 +16,33 @@ const env = fs.existsSync(envPath)
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+const username = process.env.PILOT_USERNAME || "admin";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ||
   "docs/UAT_AI_STOCK_CLARIFICATION_VARIANTS_ONLINE_CURRENT.json");
+
+const redactError = (value) => String(value)
+  .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
+  .replace(/(?:access|refresh)_token=[^;\s]+/gi, "access_token=[redacted]")
+  .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+  .replace(/(password|api[_-]?key|token)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]");
+
+const isTransient = (error) => /timeout|TimeoutError|ECONNRESET|ECONNREFUSED|502|503|504|socket hang up/i.test(String(error));
+
+async function postAssistantWithRetry(context, url, options, attempts = 2) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await context.post(url, options);
+      if (![502, 503, 504].includes(response.status()) || attempt === attempts - 1) return response;
+    } catch (error) {
+      lastError = error;
+      if (!isTransient(error) || attempt === attempts - 1) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750 * (attempt + 1)));
+  }
+  throw lastError || new Error("assistant request failed");
+}
 
 const cases = [
   ["missing-stock-en", "Why can't you find the stock?", "product name or barcode"],
@@ -59,16 +83,18 @@ if (!password) {
   let runtime = {};
   try {
     const login = await context.post(`${base}/api/auth/login`, {
-      data: { username: "admin", password },
+      data: { username, password },
       headers: { Origin: base },
     });
     const loginBody = await login.json().catch(() => ({}));
-    if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+    if (!login.ok() || loginBody.code !== 0) {
+      throw new Error(`LOGIN_FAILED_${login.status()}_CODE_${loginBody.code ?? "missing"}_USER_${username}`);
+    }
 
     const version = await context.get(`${base}/api/public/version`);
     runtime = await version.json().catch(() => ({}));
     for (const [id, question, answerIncludes] of cases) {
-      const response = await context.post(`${base}/api/ai/assistant`, {
+      const response = await postAssistantWithRetry(context, `${base}/api/ai/assistant`, {
         data: { question },
         headers: { Origin: base },
       });
@@ -106,7 +132,7 @@ if (!password) {
       });
     }
   } catch (error) {
-    checks.push({ id: "setup", status: "BLOCKED", evidence: { error: error instanceof Error ? error.message : "request failed" } });
+    checks.push({ id: "setup", status: "BLOCKED", evidence: { error: redactError(error instanceof Error ? error.message : "request failed") } });
   } finally {
     await context.dispose();
   }

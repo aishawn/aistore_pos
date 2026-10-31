@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-10-31T05:40:52+08:00",
+  "target": "https://skr.orithos.com.au",
+  "runtimeCommit": "3e7abc9ebecf379565c70b7e380f5a2842d8242a",
+  "evaluationCodeCommit": "3622426ec1e355395ccded1d888a52afa380054d",
+  "snapshotPath": ".local/skr-forecast-snapshot-live-20261031.json",
+  "snapshotGitBlobSha": "f641b68bd5f0a85d31962b632891ad4af31c43cf",
+  "snapshot": {
+    "period": "90d",
+    "orders": 13923,
+    "paginationPages": 140,
+    "paginationHasNext": false,
+    "detailFailures": 0,
+    "productSeries": 2606,
+    "salesDailyRows": 22051,
+    "dateRange": [
+      "2026-08-02",
+      "2026-10-30"
+    ],
+    "historicalStockoutFlags": "UNAVAILABLE",
+    "historicalInventory": "UNAVAILABLE",
+    "storeOpenDayCalendar": "UNAVAILABLE",
+    "suppliersAndPurchaseTerms": "NOT_FETCHED"
+  },
+  "exploratoryRollingBacktest": {
+    "status": "BLOCKED",
+    "mode": "exploratory_zero_fill",
+    "baselineGate": "mean WAPE <= 0.30",
+    "seasonalNaive7d": {
+      "series": 487,
+      "macroWape": 1.6445,
+      "macroMae": 1.1368
+    },
+    "movingAverage7d": {
+      "series": 487,
+      "macroWape": 1.5799,
+      "macroMae": 1.0668
+    },
+    "crostonSba7d": {
+      "series": 2606,
+      "macroWape": 1.4605,
+      "macroMae": 0.3670
+    },
+    "tsb7d": {
+      "series": 2606,
+      "macroWape": 1.2984,
+      "macroMae": 0.3303
+    },
+    "allModelsAboveWapeThreshold": true,
+    "lowFrequencySeriesBlocked": 2119
+  },
+  "safety": {
+    "skrOdooBusinessWrites": 0,
+    "writeRequests": [],
+    "aiForecastEnabled": false,
+    "aiCommandExecutionEnabled": false,
+    "purchaseDraftEnabled": false,
+    "purchaseConfirmEnabled": false
+  },
+  "decision": "DO_NOT_ENABLE_PRODUCTION_FORECAST",
+  "limitations": [
+    "Zero-sales dates are inferred only for exploratory comparison; store open days are not known.",
+    "Observed sales may be censored by stockouts; historical inventory and stockout flags are absent.",
+    "Current forecast engine does not provide verified intermittent-demand performance for the 2119 low-frequency products.",
+    "This evidence validates read-only data extraction and evaluator behavior, not production forecast quality."
+  ]
+}

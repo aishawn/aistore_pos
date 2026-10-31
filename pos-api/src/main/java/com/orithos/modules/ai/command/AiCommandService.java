@@ -96,17 +96,20 @@ public class AiCommandService {
                 }
             }
         }
+        if (parsed.items() == null) parsed = new Parsed(parsed.type(), parsed.confidence(), parsed.summary(),
+                List.of(), parsed.changes(), parsed.excluded() == null ? List.of() : parsed.excluded());
+        AiCommandStatus initialStatus = parsed.items().isEmpty() ? AiCommandStatus.DRAFT : AiCommandStatus.PREVIEWED;
         UUID id = UUID.randomUUID();
         Instant expires = Instant.now().plus(10, ChronoUnit.MINUTES);
         String version = UUID.randomUUID().toString();
         String idempotency = id.toString();
         String payload = write(parsed);
         repository.insert(id, tenant.vendorId(), tenant.userId(), outlet, parsed.type.name(),
-                AiCommandStatus.PREVIEWED.name(), payload, text, request.threadId(), expires,
+                initialStatus.name(), payload, text, request.threadId(), expires,
                 version, idempotency);
-        repository.audit(id, tenant.vendorId(), tenant.userId(), outlet, "PREVIEWED",
+        repository.audit(id, tenant.vendorId(), tenant.userId(), outlet, initialStatus.name(),
                 "command parsed", null);
-        return response(id, parsed, AiCommandStatus.PREVIEWED, version, expires, List.of());
+        return response(id, parsed, initialStatus, version, expires, List.of());
     }
 
     public CommandResponse get(UUID id) {
@@ -273,7 +276,12 @@ public class AiCommandService {
                     List.of());
         }
         Matcher product = Pattern.compile("(?i)(?:把|将|rename|change|update)\\s*(.+?)\\s*(?:的)?\\s*(?:显示名称|员工显示名|名称|name)\\s*(?:改成|设置为|to)\\s*(.+)").matcher(text);
-        if (product.find()) {
+        boolean productMatched = product.find();
+        if (!productMatched) {
+            product = Pattern.compile("(?i)(?:rename|change|update)\\s+(.+?)\\s+to\\s+(.+)").matcher(text);
+            productMatched = product.find();
+        }
+        if (productMatched) {
             OdooProductMatch p = findOdooProduct(tenant, product.group(1).trim());
             CommandItem item = new CommandItem(p.id(), p.name(), "name", p.name(),
                     product.group(2).trim(), "exact product name match", "READY");
@@ -296,8 +304,26 @@ public class AiCommandService {
             return new Parsed(AiCommandType.UPDATE_CUSTOMER, BigDecimal.valueOf(.98),
                     "将修改 1 个客户资料字段。", List.of(item), Map.of("field", field), List.of());
         }
+        Parsed unresolved = unresolvedProductRequest(text);
+        if (unresolved != null) return unresolved;
         throw new BusinessException(40027,
                 "请说明明确对象和变更，例如：把 VB Cans 的显示名称改成 Victoria Bitter。");
+    }
+
+    /** Keep an unresolved product change as a non-confirmable draft when the
+     * provider is unavailable or returns a malformed command shape. */
+    private Parsed unresolvedProductRequest(String text) {
+        Matcher matcher = Pattern.compile("(?i)(?:product|商品)\\s+(.+?)(?:\\s+(?:to|改成|设置为)\\s+(.+))?$").matcher(text.trim());
+        boolean changeIntent = text.matches("(?is).*?(?:修改|编辑|更改|改成|rename|change|update|edit).*?");
+        if (!changeIntent || !matcher.find()) return null;
+        String name = matcher.group(1) == null ? "" : matcher.group(1).trim();
+        String after = matcher.group(2) == null ? null : matcher.group(2).trim();
+        if (name.isBlank()) return null;
+        CommandItem excluded = new CommandItem(null, name, "name", null, after,
+                "No unique product matched; please provide an exact product name or barcode", "EXCLUDED");
+        return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.35),
+                "未找到唯一商品，无法生成可确认的修改预览。请提供准确商品名称或条码。",
+                List.of(), Map.of("field", "name"), List.of(excluded));
     }
 
     private BigDecimal firstPrice(Long productId) {

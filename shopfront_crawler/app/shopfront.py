@@ -113,17 +113,38 @@ class ShopfrontClient:
     async def _request(self, path: str, access_token: str, **kwargs: Any) -> httpx.Response:
         headers = kwargs.pop("headers", {})
         headers.update({"Authorization": f"Bearer {access_token}", "Accept": "application/json", "Content-Type": "application/json", "User-Agent": "OrithosShopfrontCrawler/0.1"})
-        response = await self.http.post(f"{self.base_url}{path}", headers=headers, **kwargs)
-        if response.status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 60
-            await asyncio.sleep(min(wait_seconds, 120))
-            response = await self.http.post(f"{self.base_url}{path}", headers=headers, **kwargs)
+        url = f"{self.base_url}{path}"
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                response = await self.http.post(url, headers=headers, **kwargs)
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront request failed after {max_attempts} attempts: {exc}") from exc
+                await asyncio.sleep(2 ** attempt)
+                continue
+
             if response.status_code == 429:
-                raise ShopfrontError(f"Shopfront rate limit; retry after {response.headers.get('Retry-After', 'unknown')} seconds")
-        if response.status_code >= 400:
-            raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
-        return response
+                retry_after = response.headers.get("Retry-After")
+                wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 60
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront rate limit; retry after {response.headers.get('Retry-After', 'unknown')} seconds")
+                await asyncio.sleep(min(wait_seconds, 120))
+                continue
+
+            if response.status_code in {500, 502, 503, 504}:
+                if attempt == max_attempts - 1:
+                    raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
+                retry_after = response.headers.get("Retry-After")
+                wait_seconds = int(retry_after) if retry_after and retry_after.isdigit() else 2 ** attempt
+                await asyncio.sleep(min(wait_seconds, 30))
+                continue
+
+            if response.status_code >= 400:
+                raise ShopfrontError(f"Shopfront API failed ({response.status_code}): {response.text[:500]}")
+            return response
+
+        raise ShopfrontError("Shopfront request failed without a response")
 
     async def run_report(self, access_token: str, query: str) -> list[dict[str, Any]]:
         pages: list[dict[str, Any]] = []
@@ -211,20 +232,23 @@ UNCONSOLIDATED'''
         end: str,
         timezone_name: str = "Australia/Adelaide",
         progress_callback: Any | None = None,
+        outlet_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
+        outlet_clause = ", outlets: $outlets" if outlet_ids else ""
         query = """
-        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
-          sales(startDate: $startDate, endDate: $endDate, after: $after) {
+        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+          sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
             edges { node {
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+              register { id outlet { id name } }
               items { id quantity cost basePrice tax totalPrice item { id ... on Product { name barcodes { code quantity } } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }
           }
         }
-        """
+        """ % outlet_clause
         try:
             local_zone = ZoneInfo(timezone_name)
         except (KeyError, ValueError):
@@ -234,24 +258,32 @@ UNCONSOLIDATED'''
         start_value = local_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         end_value = local_end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         variables = {"startDate": start_value, "endDate": end_value}
+        if outlet_ids:
+            variables["outlets"] = outlet_ids
         try:
             return await self._fetch_connection_nodes(access_token, query, "sales", variables, progress_callback)
         except ShopfrontError:
             # Optional Product fields differ between Shopfront tenants. Keep
             # core Sale, item name, barcode, and payment sync available.
             basic_query = """
-            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
-              sales(startDate: $startDate, endDate: $endDate, after: $after) {
+            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+              sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
                 edges { node {
                   id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+                  register { id outlet { id name } }
                   items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
                   payments { id amount status subtype }
                 } }
                 pageInfo { hasNextPage endCursor }
               }
             }
-            """
+            """ % outlet_clause
             return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables, progress_callback)
+
+    async def fetch_outlets(self, access_token: str) -> list[dict[str, Any]]:
+        data = await self.graphql(access_token, "{ outlets { id name deleted } }")
+        rows = data.get("outlets", data)
+        return rows if isinstance(rows, list) else []
 
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
         try:

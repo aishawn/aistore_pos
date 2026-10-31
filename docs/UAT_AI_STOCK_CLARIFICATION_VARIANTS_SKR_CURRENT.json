@@ -1,0 +1,442 @@
+{
+  "generatedAt": "2026-10-30T18:28:16.169Z",
+  "sourceCommit": "8e00e14f93b5f303e43cb124b87195c416f517ef",
+  "target": "https://skr.orithos.com.au",
+  "runtimeIdentity": {
+    "frontendCommit": "8e00e14f93b5f303e43cb124b87195c416f517ef",
+    "backendCommit": "8e00e14f93b5f303e43cb124b87195c416f517ef",
+    "frontendBuiltAt": "2026-10-30T18:18:47.631Z",
+    "backendBuiltAt": "2026-10-30T18:18:47Z",
+    "matchesSourceCommit": true
+  },
+  "scope": "authenticated stock clarification; assistant API only; no business writes",
+  "selectedCount": 21,
+  "checks": [
+    {
+      "id": "missing-stock-en",
+      "question": "Why can't you find the stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "6489b525-cfda-4b02-b035-1c31f2c26f6a"
+      }
+    },
+    {
+      "id": "inventory-not-showing-en",
+      "question": "Why is the inventory not showing?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "6191be96-6845-4318-9ab5-0f3bfe5947af"
+      }
+    },
+    {
+      "id": "anything-in-stock-en",
+      "question": "Why can't I find anything in stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "36ac2c66-5618-4538-8a94-e27399bfd708"
+      }
+    },
+    {
+      "id": "nothing-showing-en",
+      "question": "Nothing is showing for the stock.",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "004b6a8a-74f1-4f40-9a9d-50f6458f82f8"
+      }
+    },
+    {
+      "id": "cant-find-inventory-en",
+      "question": "Can't find inventory",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "d2e765e1-e062-467b-af31-15f142fcce05"
+      }
+    },
+    {
+      "id": "inventory-isnt-showing-en",
+      "question": "Inventory isn't showing",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "f7648ca7-deaf-4151-8431-20ab15330780"
+      }
+    },
+    {
+      "id": "no-stock-showing-en",
+      "question": "No stock showing",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "3045d1b3-1b38-46af-b279-cf02251f20da"
+      }
+    },
+    {
+      "id": "no-results-stock-en",
+      "question": "Why are there no results for stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "0905d060-ca24-4e5f-a72a-34181ed3fb3e"
+      }
+    },
+    {
+      "id": "anything-not-found-en",
+      "question": "Why can't I find anything?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "6eb4dcfa-a736-42a3-a54a-4586d97e0c9c"
+      }
+    },
+    {
+      "id": "nothing-comes-up-en",
+      "question": "Nothing comes up for inventory",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "16a977c8-1b5c-4505-8a44-1427041f55d3"
+      }
+    },
+    {
+      "id": "no-results-short-en",
+      "question": "No results for stock",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "8b674233-30bd-45b4-9d58-484384e1456e"
+      }
+    },
+    {
+      "id": "blank-stock-search-en",
+      "question": "The stock search is blank",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "product name or barcode",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "Please provide the exact product name or barcode, then open Stock or Replenishment to check the current store data. AI will not invent stock quantities.",
+        "writeRequests": [],
+        "correlationId": "500dbb8a-6290-4a75-823e-7a20d193a359"
+      }
+    },
+    {
+      "id": "missing-stock-zh",
+      "question": "为什么查不到库存？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "22d31938-a13a-4011-b467-7682efd15700"
+      }
+    },
+    {
+      "id": "generic-missing-zh",
+      "question": "为什么查不到？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "fb66823f-1790-482c-8505-040ceb59da62"
+      }
+    },
+    {
+      "id": "inventory-not-displayed-zh",
+      "question": "库存为什么没有显示？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "1ed59878-56c9-4fe6-9ceb-2bb095beead0"
+      }
+    },
+    {
+      "id": "inventory-cannot-see-zh",
+      "question": "库存看不到",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "0e0f712c-f857-4920-a102-8749ea3e3235"
+      }
+    },
+    {
+      "id": "product-not-displayed-zh",
+      "question": "商品没有显示",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "AI 暂时不可用。请打开对应的商品、库存、报表或采购页面继续操作。",
+        "writeRequests": [],
+        "correlationId": "3283c404-86f9-4855-9ff5-6a5f0ef078d9"
+      }
+    },
+    {
+      "id": "no-results-zh",
+      "question": "为什么没有结果？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "e820dd05-56bc-49f3-8d44-48c1e1292fef"
+      }
+    },
+    {
+      "id": "nothing-found-zh",
+      "question": "什么都查不到",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "565b890d-bff7-457f-ac15-0730c711fde8"
+      }
+    },
+    {
+      "id": "blank-stock-search-zh",
+      "question": "库存搜索是空白",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "noRoute": true,
+        "answerIncludes": "具体商品名称或条码",
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "answer": "请提供具体商品名称或条码，再打开库存或补货页面查看当前门店数据；AI 不会编造库存数量。",
+        "writeRequests": [],
+        "correlationId": "ff93dea1-8e71-49b8-a543-bb8d68925020"
+      }
+    },
+    {
+      "id": "named-unknown-product",
+      "question": "Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "noRoute": true,
+        "readOnly": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "answer": "No matching stock found. Check the product name or catalogue spelling.",
+        "writeRequests": [],
+        "correlationId": "fb85a42a-6407-4278-a0a5-7fbc2cbd7522"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 20,
+  "blocked": 0,
+  "failed": 1,
+  "status": "FAIL"
+}

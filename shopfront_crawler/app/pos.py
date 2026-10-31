@@ -55,11 +55,23 @@ class OrithosClient:
             raise PosIntegrationError("Orithos import is disabled; set POS_IMPORT_ENABLED=true after staging validation")
         if not self.base_url or not self.token:
             raise PosIntegrationError("Orithos POS API URL/token is not configured")
-        response = await self.http.get(
-            f"{self.base_url}{path}",
-            params=params,
-            headers={"X-Shopfront-Integration-Token": self.token, "Accept": "application/json"},
-        )
+        response = None
+        for attempt in range(4):
+            try:
+                response = await self.http.get(
+                    f"{self.base_url}{path}",
+                    params=params,
+                    headers={"X-Shopfront-Integration-Token": self.token, "Accept": "application/json"},
+                )
+                if response.status_code not in {500, 502, 503, 504}:
+                    break
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                if attempt == 3:
+                    raise PosIntegrationError(f"Orithos connection failed: {exc!r}") from exc
+            if attempt < 3:
+                await asyncio.sleep(2 ** attempt)
+        if response is None:
+            raise PosIntegrationError("Orithos connection failed after retries")
         if response.status_code >= 400:
             raise PosIntegrationError(f"Orithos API failed ({response.status_code}): {response.text[:500]}")
         return response.json()

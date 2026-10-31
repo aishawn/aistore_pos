@@ -408,6 +408,7 @@ async def sync_store(
     catalog_sync_complete = False
     sale_product_ids: set[str] = set()
     sale_products: dict[str, Product] = {}
+    commit_batch_size = max(1, int(getattr(settings, "sync_sale_commit_batch_size", 25)))
     try:
         # A blocked lock or malformed database statement must fail the chunk
         # and be retried by the scheduler. Without a server-side timeout the
@@ -417,8 +418,15 @@ async def sync_store(
         token = await access_token(db, settings, store)
         rows: list[dict[str, Any]] = []
         sale_rows: list[dict[str, Any]] = []
+        outlet_ids: list[str] = []
         try:
-            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone, progress_callback)
+            outlet_rows = await client.fetch_outlets(token)
+            outlet_ids = [str(row["id"]) for row in outlet_rows if isinstance(row, dict) and row.get("id") and not row.get("deleted")]
+            counts["outlets"] = len(outlet_ids)
+        except ShopfrontError as exc:
+            counts["warnings"].append({"stage": "outlets", "message": str(exc)[:500]})
+        try:
+            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat(), store.timezone, progress_callback, outlet_ids or None)
         except ShopfrontError as exc:
             counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
         # Complete GraphQL Sale records are authoritative for summaries because
@@ -431,8 +439,51 @@ async def sync_store(
             except ShopfrontError as exc:
                 counts["warnings"].append({"stage": "sales_report", "message": str(exc)[:500]})
         sale_rows, duplicate_sales = _dedupe_sales(sale_rows)
+        for row in sale_rows:
+            register = row.get("register") if isinstance(row.get("register"), dict) else {}
+            outlet = register.get("outlet") if isinstance(register.get("outlet"), dict) else {}
+            if outlet.get("name"):
+                row["_outlet_name"] = outlet["name"]
         if duplicate_sales:
             counts["duplicate_sales_collapsed"] = duplicate_sales
+        # Do not advance a history cursor when the report and complete Sale
+        # sources disagree. Reports provide daily counts; GraphQL provides
+        # stable Sale IDs and line items. A mismatch must be retried, usually
+        # as smaller ranges, instead of becoming a silent historical gap.
+        source_warning_stages = {
+            str(w.get("stage")) for w in counts["warnings"] if isinstance(w, dict)
+        }
+        if rows and not sale_rows and "sales_detail" in source_warning_stages:
+            raise ShopfrontError(
+                "Sales report returned rows but complete Sale query returned no rows"
+            )
+        if rows and sale_rows:
+            report_counts: dict[str, int] = {}
+            sale_counts: dict[str, int] = {}
+            for report_row in rows:
+                report_date = business_date(
+                    first(report_row, "timestamp", "Timestamp", "created_at", "createdAt"),
+                    start,
+                    store.timezone,
+                )
+                report_counts[report_date] = report_counts.get(report_date, 0) + 1
+            for sale_row in sale_rows:
+                sale_date = business_date(
+                    first(sale_row, "createdAt", "created_at", "timestamp"),
+                    start,
+                    store.timezone,
+                )
+                sale_counts[sale_date] = sale_counts.get(sale_date, 0) + 1
+            mismatches = {
+                day: (report_counts.get(day, 0), sale_counts.get(day, 0))
+                for day in sorted(set(report_counts) | set(sale_counts))
+                if report_counts.get(day, 0) != sale_counts.get(day, 0)
+            }
+            if mismatches:
+                raise ShopfrontError(
+                    "Shopfront report/Sale count mismatch: "
+                    + str(mismatches)[:1500]
+                )
         # Reporting rows are the authoritative source for daily aggregates. The
         # GraphQL rows below are the authoritative source for complete sales.
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}
@@ -452,7 +503,7 @@ async def sync_store(
             # aggregate source for that range instead of dropping the day.
             for row in sale_rows:
                 timestamp = first(row, "createdAt", "created_at", "timestamp")
-                key = (business_date(timestamp, start, store.timezone), first(row, "outlet", "outletName", "outlet_name"))
+                key = (business_date(timestamp, start, store.timezone), first(row, "outlet", "outletName", "outlet_name", "_outlet_name"))
                 agg = aggregates.setdefault(key, {"revenue": Decimal(0), "cost": Decimal(0), "profit": Decimal(0), "tax": Decimal(0), "discount": Decimal(0), "count": 0, "row": row})
                 revenue = parse_decimal(first(row, "totalPrice", "total_price")) or Decimal(0)
                 cost = parse_decimal(first(row, "totalCost", "total_cost")) or Decimal(0)
@@ -476,6 +527,24 @@ async def sync_store(
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
+        # A previous report sync may have stored a consolidated or UTC-dated
+        # row that is not present in the current authoritative window. Keep
+        # those stale rows from inflating later trend and reconciliation APIs.
+        # Only clean when the source query completed without a sales warning;
+        # a failed query must never erase a valid prior summary.
+        source_warning_stages = {str(w.get("stage")) for w in counts["warnings"] if isinstance(w, dict)}
+        source_query_ok = not source_warning_stages.intersection({"sales_detail", "sales_report"})
+        if source_query_ok:
+            valid_summary_keys = set(aggregates)
+            existing_summaries = db.scalars(select(DailySalesSummary).where(
+                DailySalesSummary.store_key == store.store_key,
+                DailySalesSummary.business_date >= start.isoformat(),
+                DailySalesSummary.business_date <= end.isoformat(),
+            )).all()
+            for existing_summary in existing_summaries:
+                key = (existing_summary.business_date, existing_summary.outlet)
+                if key not in valid_summary_keys:
+                    db.delete(existing_summary)
         # Load the existing rows for this window once. Per-sale ORM lookups
         # made history retries needlessly slow and amplified SQLite lock
         # contention. The maps preserve the same idempotent upsert behavior.
@@ -549,20 +618,22 @@ async def sync_store(
                 sale_rows = []
         for sale_index, row in enumerate(sale_rows, start=1):
             # Cancellation is persisted by the API request in a separate
-            # database session. Check it before each sale so a bad or parked
-            # source record cannot keep the writer occupied indefinitely.
-            if sale_index >= 1:
+            # database session. Check it at each commit boundary so a bad or
+            # parked source record cannot keep the writer occupied indefinitely.
+            checkpoint_due = sale_index == 1 or (sale_index - 1) % commit_batch_size == 0
+            if checkpoint_due:
                 db.refresh(run)
                 if run.status == "cancelled":
                     counts["sales_fetched"] = len(sale_rows)
                     counts["sales_processed"] = sale_index - 1
                     counts["stage"] = "cancelled"
                     run.counts = counts
+                    db.rollback()
                     return run
             # Persist a heartbeat before each batch. This makes the exact
             # blocking sale visible through the status API even if the next
             # database operation never returns.
-            if sale_index == 1 or (sale_index - 1) % 10 == 0:
+            if checkpoint_due:
                 counts["sales_fetched"] = len(sale_rows)
                 counts["sales_processed"] = sale_index - 1
                 counts["stage"] = "sales"
@@ -595,7 +666,7 @@ async def sync_store(
                     counts["sales"] += 1
                     counts["sales_skipped_unchanged"] = counts.get("sales_skipped_unchanged", 0) + 1
                     counts["phase"] = "sale_skipped_unchanged"
-                    if sale_index % 1 == 0:
+                    if sale_index % commit_batch_size == 0 or sale_index == len(sale_rows):
                         counts["sales_fetched"] = len(sale_rows)
                         counts["sales_processed"] = sale_index
                         counts["stage"] = "sales"
@@ -691,7 +762,7 @@ async def sync_store(
                 # Do not hold SQLite's writer lock for the duration of a
                 # large GraphQL history window. This also makes a completed
                 # subset durable if the process is restarted mid-chunk.
-                if sale_index % 1 == 0:
+                if sale_index % commit_batch_size == 0 or sale_index == len(sale_rows):
                     counts["sales_fetched"] = len(sale_rows)
                     counts["sales_processed"] = sale_index
                     counts["stage"] = "sales"

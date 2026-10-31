@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-10-31T06:45:00+08:00",
+  "target": "https://skr.orithos.com.au",
+  "runtimeCommit": "3e7abc9ebecf379565c70b7e380f5a2842d8242a",
+  "evaluationCodeCommit": "3622426ec1e355395ccded1d888a52afa380054d",
+  "snapshotPath": ".local/skr-forecast-snapshot-live-180d-repaired-20261031.json",
+  "snapshot": {
+    "period": "180d",
+    "orders": 27105,
+    "paginationPages": 272,
+    "paginationHasNext": false,
+    "detailFailuresInitial": 492,
+    "detailFailuresAfterRepair": 0,
+    "productSeries": 2964,
+    "salesDailyRows": 43448,
+    "dateRange": [
+      "2026-05-03",
+      "2026-10-30"
+    ],
+    "historicalStockoutFlags": "UNAVAILABLE",
+    "historicalInventory": "UNAVAILABLE",
+    "storeOpenDayCalendar": "UNAVAILABLE",
+    "suppliersAndPurchaseTerms": "NOT_FETCHED"
+  },
+  "exploratoryRollingBacktest": {
+    "status": "BLOCKED",
+    "mode": "exploratory_zero_fill",
+    "baselineGate": "mean WAPE <= 0.30",
+    "seasonalNaive7d": {
+      "series": 977,
+      "macroWape": 1.5656,
+      "macroMae": 0.7272
+    },
+    "movingAverage7d": {
+      "series": 977,
+      "macroWape": 1.5160,
+      "macroMae": 0.6915
+    },
+    "crostonSba7d": {
+      "series": 2964,
+      "macroWape": 1.3337,
+      "macroMae": 0.3000
+    },
+    "tsb7d": {
+      "series": 2964,
+      "macroWape": 1.2838,
+      "macroMae": 0.2846
+    },
+    "allModelsAboveWapeThreshold": true,
+    "lowFrequencySeriesBlocked": 1987
+  },
+  "safety": {
+    "skrOdooBusinessWrites": 0,
+    "writeRequests": [],
+    "aiForecastEnabled": false,
+    "aiCommandExecutionEnabled": false,
+    "purchaseDraftEnabled": false,
+    "purchaseConfirmEnabled": false
+  },
+  "decision": "DO_NOT_ENABLE_PRODUCTION_FORECAST",
+  "limitations": [
+    "Zero-sales dates are inferred only for exploratory comparison; store open days are not known.",
+    "Observed sales may be censored by stockouts; historical inventory and stockout flags are absent.",
+    "TSB has the best exploratory WAPE but still fails the production gate.",
+    "This evidence validates read-only extraction, failure repair and evaluator behavior, not production forecast quality."
+  ]
+}

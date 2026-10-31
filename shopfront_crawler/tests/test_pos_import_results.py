@@ -311,6 +311,52 @@ async def test_sync_chunk_rejects_pos_count_below_shopfront_source(db_session, m
 
 
 @pytest.mark.asyncio
+async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={
+            "sales": 10,
+            "sales_skipped_unchanged": 10,
+            "product_source_ids": ["product-1", "product-2"],
+            "catalog_source_ids": [],
+            "catalog_full_snapshot": False,
+        },
+    )
+    db_session.add(run)
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 0, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    store = Store(store_key="skr", vendor="skr")
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        store,
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        False,
+    )
+
+    assert ok is True
+    assert captured["product_source_ids"] == []
+    assert db_session.get(SyncRun, run.id).counts["sync"]["pos_products_skipped_unchanged"] is True
+
+
+@pytest.mark.asyncio
 async def test_history_releases_writer_between_chunks_for_queued_repairs(db_session, monkeypatch):
     db_session.add(Store(store_key="skr", vendor="skr"))
     db_session.commit()
