@@ -59,6 +59,8 @@ type ReplenishmentData = {
   coverageDays: number;
   products: ReplenishmentProduct[];
   truncated: boolean;
+  excludedProductCount?: number;
+  productEligibility?: string;
   generatedAt: string;
   dataQuality?: string;
 };
@@ -396,6 +398,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Review Orithos sales history</Link></div>}
+
+      {data && (data.excludedProductCount ?? 0) > 0 && <div role="status" className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>{data.excludedProductCount} products excluded.</strong> Only stockable and purchasable Odoo products are eligible for replenishment suggestions.</p></div>}
 
       {createdRfq && (
         <div
