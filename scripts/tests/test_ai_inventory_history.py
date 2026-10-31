@@ -17,6 +17,7 @@ def snapshot(date, quantity, price, *, version=None):
         "snapshotVersion": version or f"skr-odoo-native-inventory-{date}",
         "source": "odoo-readonly-jsonrpc",
         "capturedAt": f"{date}T02:00:00+00:00",
+        "businessDate": date,
         "dataQuality": "NATIVE_ODOO_CURRENT_QUANTITIES",
         "writeRequests": [],
         "products": [{
@@ -72,6 +73,33 @@ class InventoryHistoryTests(unittest.TestCase):
         self.assertEqual(2, result["observedDays"])
         self.assertEqual(["2026-10-02"], result["missingSnapshotDates"])
         self.assertEqual("GAPS_PRESENT", result["continuityStatus"])
+
+    def test_history_uses_business_date_instead_of_utc_capture_date(self):
+        item = snapshot("2026-10-31", 4, 19.99)
+        item["capturedAt"] = "2026-10-31T16:00:00+00:00"
+        item["businessDate"] = "2026-11-01"
+
+        result = MODULE.build_history([item])
+
+        self.assertEqual(["2026-11-01"], result["snapshotDates"])
+
+    def test_load_snapshots_deduplicates_by_business_date(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = snapshot("2026-10-31", 4, 19.99)
+            first["capturedAt"] = "2026-10-31T06:00:00+00:00"
+            first["businessDate"] = "2026-10-31"
+            retry = snapshot("2026-10-31", 0, 19.99, version="next-business-day")
+            retry["capturedAt"] = "2026-10-31T16:00:00+00:00"
+            retry["businessDate"] = "2026-11-01"
+            (root / "a" / "inventory.json").parent.mkdir()
+            (root / "b" / "inventory.json").parent.mkdir()
+            (root / "a" / "inventory.json").write_text(json.dumps(first), encoding="utf-8")
+            (root / "b" / "inventory.json").write_text(json.dumps(retry), encoding="utf-8")
+
+            loaded = MODULE.load_snapshots(root)
+
+        self.assertEqual(2, len(loaded))
 
     def test_rejects_write_requests(self):
         with tempfile.TemporaryDirectory() as directory:

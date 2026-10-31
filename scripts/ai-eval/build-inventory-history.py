@@ -24,8 +24,18 @@ def _capture_datetime(snapshot: dict[str, Any], path: Path) -> datetime:
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
 
 
+def _business_date(snapshot: dict[str, Any], captured_at: datetime) -> date:
+    value = snapshot.get("businessDate")
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            pass
+    return captured_at.date()
+
+
 def load_snapshots(root: Path) -> list[dict[str, Any]]:
-    snapshots: list[tuple[datetime, Path, dict[str, Any]]] = []
+    snapshots: list[tuple[datetime, date, Path, dict[str, Any]]] = []
     for path in root.rglob("inventory.json"):
         snapshot = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(snapshot, dict):
@@ -34,16 +44,17 @@ def load_snapshots(root: Path) -> list[dict[str, Any]]:
             raise ValueError(f"snapshot source is not native Odoo: {path}")
         if snapshot.get("writeRequests", []) != []:
             raise ValueError(f"snapshot contains write requests: {path}")
-        snapshots.append((_capture_datetime(snapshot, path), path, snapshot))
+        captured_at = _capture_datetime(snapshot, path)
+        snapshots.append((captured_at, _business_date(snapshot, captured_at), path, snapshot))
     snapshots.sort(key=lambda item: item[0])
     if not snapshots:
         raise ValueError(f"no inventory.json snapshots found under {root}")
     # One observation per UTC date.  If a task was retried, keep the latest
     # capture for that date rather than double-counting a product-day.
-    by_date: dict[str, tuple[datetime, Path, dict[str, Any]]] = {}
+    by_date: dict[str, tuple[datetime, date, Path, dict[str, Any]]] = {}
     for item in snapshots:
-        by_date[item[0].date().isoformat()] = item
-    return [item[2] for item in sorted(by_date.values(), key=lambda item: item[0])]
+        by_date[item[1].isoformat()] = item
+    return [item[3] for item in sorted(by_date.values(), key=lambda item: item[0])]
 
 
 def _number(value: Any) -> float | None:
@@ -56,7 +67,10 @@ def _number(value: Any) -> float | None:
 
 
 def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
-    dates = sorted({str(snapshot.get("capturedAt", ""))[:10] for snapshot in snapshots})
+    dates = sorted({
+        _business_date(snapshot, _capture_datetime(snapshot, Path("."))).isoformat()
+        for snapshot in snapshots
+    })
     parsed_dates = [date.fromisoformat(value) for value in dates if len(value) == 10]
     missing_dates: list[str] = []
     if parsed_dates:
@@ -68,7 +82,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
             cursor += timedelta(days=1)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for snapshot in snapshots:
-        date_value = str(snapshot.get("capturedAt", ""))[:10]
+        date_value = _business_date(snapshot, _capture_datetime(snapshot, Path("."))).isoformat()
         quality = str(snapshot.get("dataQuality") or "UNKNOWN")
         for product in snapshot.get("products", []):
             product_id = product.get("productId")

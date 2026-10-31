@@ -1,10 +1,13 @@
 import importlib.util
+import io
 import json
 import os
 import tempfile
 import unittest
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-inventory-snapshot.py"
@@ -96,6 +99,40 @@ class InventorySnapshotTests(unittest.TestCase):
         captured = datetime(2026, 10, 31, 8, 9, tzinfo=timezone.utc)
         path = MODULE.output_path(Path("snapshots"), captured)
         self.assertEqual(Path("snapshots/2026-10-31/inventory.json"), path)
+
+    def test_output_path_uses_store_business_date_after_utc_day_boundary(self):
+        captured = datetime(2026, 10, 31, 16, 0, tzinfo=timezone.utc)
+        path = MODULE.output_path(Path("snapshots"), captured, "Australia/Adelaide")
+        self.assertEqual(Path("snapshots/2026-11-01/inventory.json"), path)
+
+    def test_jsonrpc_retries_transient_gateway_failure(self):
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                self.close()
+
+        class Opener:
+            def __init__(self):
+                self.calls = 0
+
+            def open(self, _request, timeout):
+                self.calls += 1
+                if self.calls == 1:
+                    raise urllib.error.HTTPError("https://odoo.invalid", 502, "Bad Gateway", {}, io.BytesIO())
+                self.timeout = timeout
+                return Response(b'{"result":{"ok":true}}')
+
+        client = object.__new__(MODULE.Odoo)
+        client.base = "https://odoo.invalid"
+        client.opener = Opener()
+
+        with patch.object(MODULE.time, "sleep"):
+            result = client.call("/rpc", {"method": "read"})
+
+        self.assertEqual({"ok": True}, result)
+        self.assertEqual(2, client.opener.calls)
 
     def test_snapshot_contract_is_explicitly_native_and_read_only(self):
         snapshot = {

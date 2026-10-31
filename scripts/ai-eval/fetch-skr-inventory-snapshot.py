@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import json
 import os
+import http.client
 import http.cookiejar
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 def env_values() -> dict[str, str]:
@@ -49,8 +53,19 @@ class Odoo:
             self.base + path, data=json.dumps(payload).encode(),
             headers={"Content-Type": "application/json", "User-Agent": "orithos-ai-inventory/1"},
         )
-        with self.opener.open(request, timeout=90) as response:
-            result = json.load(response)
+        for attempt in range(4):
+            try:
+                with self.opener.open(request, timeout=90) as response:
+                    result = json.load(response)
+                break
+            except urllib.error.HTTPError as error:
+                if error.code not in (429, 502, 503, 504) or attempt == 3:
+                    raise
+                time.sleep(0.5 * (2 ** attempt))
+            except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, json.JSONDecodeError):
+                if attempt == 3:
+                    raise
+                time.sleep(0.5 * (2 ** attempt))
         if result.get("error"):
             error = result["error"].get("data", {})
             raise RuntimeError(error.get("message", "Odoo RPC failed"))
@@ -142,8 +157,9 @@ def normalise_product(row: dict[str, Any], lead_time_days: float | None,
     }
 
 
-def output_path(root: Path, captured_at: datetime) -> Path:
-    return root / captured_at.date().isoformat() / "inventory.json"
+def output_path(root: Path, captured_at: datetime, business_timezone: str = "Australia/Adelaide") -> Path:
+    business_date = captured_at.astimezone(ZoneInfo(business_timezone)).date()
+    return root / business_date.isoformat() / "inventory.json"
 
 
 def main() -> int:
@@ -153,11 +169,13 @@ def main() -> int:
     username = values.get("ODOO_SERVICE_USERNAME") or values.get("ODOO_USER")
     password = values.get("ODOO_SERVICE_PASSWORD") or values.get("ODOO_PASS")
     company_id = int(os.environ.get("SKR_ODOO_COMPANY_ID", "5"))
+    business_timezone = values.get("SKR_BUSINESS_TIMEZONE", "Australia/Adelaide")
     root = Path(os.environ.get("SKR_INVENTORY_SNAPSHOT_ROOT", ".local/ai-eval/inventory-snapshots-scoped-v2"))
     if not username or not password:
         raise RuntimeError("ODOO service credentials are required")
 
     captured_at = datetime.now(timezone.utc).replace(microsecond=0)
+    business_date = captured_at.astimezone(ZoneInfo(business_timezone)).date().isoformat()
     odoo = Odoo(base, database, username, password)
     odoo.context = {"allowed_company_ids": [company_id], "force_company": company_id}
     warehouses = odoo.read("stock.warehouse", [["company_id", "=", company_id]],
@@ -239,7 +257,7 @@ def main() -> int:
         warehouse_inventory.append({"warehouseId": item["id"], "productCount": len(quantities), "quantities": quantities})
     odoo.context.pop("warehouse_id", None)
     snapshot = {
-        "snapshotVersion": f"skr-odoo-native-inventory-{captured_at.date().isoformat()}",
+        "snapshotVersion": f"skr-odoo-native-inventory-{business_date}",
         "source": "odoo-readonly-jsonrpc",
         "scopeVersion": 2,
         "companyScope": "EXPLICIT_COMPANY_PRODUCTS",
@@ -252,6 +270,8 @@ def main() -> int:
         "database": database,
         "companyId": company_id,
         "capturedAt": captured_at.isoformat(),
+        "businessDate": business_date,
+        "businessTimezone": business_timezone,
         "dataQuality": "NATIVE_ODOO_CURRENT_QUANTITIES",
         "promotionDataQuality": promotion_quality,
         "warehouseScope": "SINGLE_WAREHOUSE" if warehouse else "COMPANY_AGGREGATE",
@@ -263,11 +283,12 @@ def main() -> int:
         "products": snapshot_products,
         "writeRequests": [],
     }
-    destination = output_path(root, captured_at)
+    destination = output_path(root, captured_at, business_timezone)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
     print(json.dumps({"output": str(destination), "products": len(snapshot_products),
-                      "capturedAt": snapshot["capturedAt"], "dataQuality": snapshot["dataQuality"]}))
+                      "capturedAt": snapshot["capturedAt"], "businessDate": business_date,
+                      "dataQuality": snapshot["dataQuality"]}))
     return 0
 
 
