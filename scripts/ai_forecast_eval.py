@@ -1,6 +1,6 @@
 """Run a deterministic, read-only forecast evaluation against a JSON snapshot.
 
-Usage: python scripts/ai_forecast_eval.py [snapshot.json] [report.json]
+Usage: python scripts/ai_forecast_eval.py [snapshot.json] [report.json] [inventory-history.json]
 The snapshot is intentionally a file, never a live Odoo/SKR connection.
 """
 from __future__ import annotations
@@ -25,6 +25,22 @@ def source_sha(snapshot: Path) -> str:
 
 
 MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
+
+
+def apply_native_inventory_history(series: Series, history: dict) -> Series:
+    """Replace inferred stockout flags only when native history covers all dates."""
+    products = {str(item.get("productId")): item for item in history.get("products", [])}
+    product = products.get(str(series.productId))
+    observations = {str(item.get("date")): item for item in (product or {}).get("observations", [])}
+    expected_dates = [value.isoformat() for value in series.dates]
+    if not observations:
+        return series
+    if not all(value in observations for value in expected_dates):
+        return series.model_copy(update={"stockoutDataQuality": "NATIVE_HISTORY_INCOMPLETE"})
+    return series.model_copy(update={
+        "stockoutFlags": [bool(observations[value].get("isStockout")) for value in expected_dates],
+        "stockoutDataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+    })
 
 
 def _points(values: list[float], start_date, horizon: int, spread: float = 0.0) -> list[ForecastPoint]:
@@ -332,7 +348,13 @@ def main() -> int:
     snapshot = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "forecast-service" / "fixtures" / "skr-snapshot-demo.json"
     report_path = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "reports" / "ai-forecast-eval.json"
     payload = json.loads(snapshot.read_text(encoding="utf-8"))
-    request = BacktestRequest(horizonDays=payload.get("horizonDays", 7), series=[Series(**item) for item in payload["series"]])
+    raw_series = [Series(**item) for item in payload["series"]]
+    inventory_history_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    inventory_history = None
+    if inventory_history_path:
+        inventory_history = json.loads(inventory_history_path.read_text(encoding="utf-8"))
+        raw_series = [apply_native_inventory_history(series, inventory_history) for series in raw_series]
+    request = BacktestRequest(horizonDays=payload.get("horizonDays", 7), series=raw_series)
     result = backtest(request)
     items = [item.model_dump() for item in result.items]
     eligible = [item for item in items if item["status"] == "PASS"]
@@ -349,14 +371,14 @@ def main() -> int:
         model = selection.get("selectedModel") or "BLOCKED"
         selected_counts[model] = selected_counts.get(model, 0) + 1
     selected_rolling = [
-        rolling_metrics(series, 7, selection["selectedModel"])
+        rolling_metrics(series, 7, selection["selectedModel"], cost_model)
         for series, selection in zip(request.series, model_selections)
         if selection.get("selectedModel")
     ]
     comparison = []
     for model in MODEL_NAMES:
         for horizon in (7, 14, 28):
-            rows = [rolling_metrics(series, horizon, model) for series in request.series]
+            rows = [rolling_metrics(series, horizon, model, cost_model) for series in request.series]
             for labels in ("category", "stockoutRatio", "volume"):
                 groups = {}
                 for series, row in zip(request.series, rows):
@@ -390,11 +412,17 @@ def main() -> int:
         "modelSelectionSummary": {
             "horizonDays": 7,
             "method": "per_product_rolling_backtest",
-            "metric": "weightedWape_then_absolute_bias",
+            "metric": "business_cost_then_absolute_bias" if cost_model and {"stockoutCostPerUnit", "holdingCostPerUnitDay"} <= cost_model.keys() else "weightedWape_then_absolute_bias",
             "selectedModelCounts": selected_counts,
         },
         "businessMetrics": business_metrics,
         "coldStartSimilarity": cold_start,
+        "nativeInventoryHistory": {
+            "status": "APPLIED" if inventory_history else "NOT_PROVIDED",
+            "path": str(inventory_history_path) if inventory_history_path else None,
+            "dataQuality": inventory_history.get("dataQuality") if inventory_history else None,
+            "backtestReadiness": inventory_history.get("backtestReadiness") if inventory_history else None,
+        },
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

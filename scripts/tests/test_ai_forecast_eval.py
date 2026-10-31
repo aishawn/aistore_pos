@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.schemas import Series
 from scripts.ai_forecast_eval import (MODEL_NAMES, _business_metrics, _group_labels,
-                                      cold_start_similarity, rolling_metrics, select_model)
+                                      apply_native_inventory_history, cold_start_similarity,
+                                      rolling_metrics, select_model)
 
 import importlib.util
 MOVE_MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-sales-snapshot.py"
@@ -59,6 +60,25 @@ class ForecastEvaluationTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(report_exists)
 
+    def test_cli_accepts_native_inventory_history_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
+            history = {"dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS", "backtestReadiness": "READY_FOR_NATIVE_STOCKOUT_BACKTEST",
+                       "products": [{"productId": item["productId"], "observations": [
+                           {"date": day, "isStockout": False} for day in item["dates"]
+                       ]} for item in payload["series"]]}
+            history_path = temp / "inventory-history.json"
+            report = temp / "report.json"
+            history_path.write_text(json.dumps(history), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "scripts/ai_forecast_eval.py"),
+                 "forecast-service/fixtures/skr-snapshot-demo.json", str(report), str(history_path)],
+                cwd=ROOT, capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("APPLIED", json.loads(report.read_text())["nativeInventoryHistory"]["status"])
+
     def test_all_baselines_return_metrics(self):
         payload = json.loads((ROOT / "forecast-service/fixtures/skr-snapshot-demo.json").read_text())
         series = Series(**payload["series"][0])
@@ -75,6 +95,26 @@ class ForecastEvaluationTests(unittest.TestCase):
         inferred = Series(productId=10, dates=[date(2026, 1, 1)], units=[1],
                           stockoutFlags=[True], stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
         self.assertEqual("HIGH_GT_10", _group_labels(inferred)["stockoutRatio"])
+
+    def test_native_inventory_history_replaces_inferred_flags_only_when_complete(self):
+        series = Series(productId=9, dates=[date(2026, 1, 1), date(2026, 1, 2)],
+                        units=[2, 0], stockoutFlags=[False, False],
+                        stockoutDataQuality="INFERRED_FROM_STOCK_MOVES")
+        history = {"dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS", "products": [{
+            "productId": 9,
+            "observations": [
+                {"date": "2026-01-01", "isStockout": False},
+                {"date": "2026-01-02", "isStockout": True},
+            ],
+        }]}
+        applied = apply_native_inventory_history(series, history)
+        self.assertEqual([False, True], applied.stockoutFlags)
+        self.assertEqual("NATIVE_ODOO_DAILY_SNAPSHOTS", applied.stockoutDataQuality)
+        partial = apply_native_inventory_history(series, {"products": [{
+            "productId": 9, "observations": [{"date": "2026-01-01", "isStockout": False}]
+        }]})
+        self.assertEqual("NATIVE_HISTORY_INCOMPLETE", partial.stockoutDataQuality)
+        self.assertEqual([False, False], partial.stockoutFlags)
 
     def test_stock_move_direction_is_signed_by_location_usage(self):
         self.assertEqual(-3.0, move_delta("internal", "customer", 3))

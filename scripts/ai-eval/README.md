@@ -39,6 +39,17 @@ Run the local fixture evaluator:
 node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utterances.jsonl
 ```
 
+For forecast backtests, pass the generated native inventory history as the
+third argument. Complete date coverage replaces inferred `stock.move` flags;
+partial coverage is reported as incomplete and is never treated as zero
+demand:
+
+```powershell
+python scripts/ai_forecast_eval.py .local/skr-forecast-snapshot.json `
+  .local/ai-eval/forecast-report.json `
+  .local/ai-eval/inventory-history.json
+```
+
 Profile a fetched snapshot before using it for evaluation. The report keeps
 missing domains explicit: a product-only snapshot cannot certify sales,
 pricing, or replenishment quality.
