@@ -166,3 +166,6 @@ def init_db() -> None:
         connection.execute(text(
             "CREATE TABLE IF NOT EXISTS shopfront_sync_checkpoints (id INTEGER PRIMARY KEY, store_key VARCHAR(64) NOT NULL, checkpoint_key VARCHAR(64) NOT NULL, value VARCHAR(64) NOT NULL, updated_at TIMESTAMP, CONSTRAINT uq_shopfront_sync_checkpoint UNIQUE (store_key, checkpoint_key))"
         ))
+        # Composite indexes keep large-store date and status audits fast.
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_store_created_at ON sales (store_key, created_at)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_store_status ON sales (store_key, status)"))

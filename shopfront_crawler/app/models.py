@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON as JSONType, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON as JSONType, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -150,7 +150,11 @@ class Sale(Base):
     raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     items: Mapped[list["SaleItem"]] = relationship(cascade="all, delete-orphan")
-    __table_args__ = (UniqueConstraint("store_key", "shopfront_sale_id", name="uq_sale"),)
+    __table_args__ = (
+        UniqueConstraint("store_key", "shopfront_sale_id", name="uq_sale"),
+        Index("ix_sales_store_created_at", "store_key", "created_at"),
+        Index("ix_sales_store_status", "store_key", "status"),
+    )
 
 
 class SaleItem(Base):
