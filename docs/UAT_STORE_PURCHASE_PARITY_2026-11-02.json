@@ -1,0 +1,27 @@
+{
+  "scope": "Authenticated online read-only comparison; no business writes",
+  "baselineRuntime": "921699d4f7c92ac8b1ba937835e8d2d5f0665647",
+  "businessWrites": 0,
+  "pages": {
+    "hosts": ["skr.orithos.com.au", "demo.orithos.com.au"],
+    "routes": ["/purchases", "/suppliers", "/orders", "/reports/purchase"],
+    "status": "PASS",
+    "commonTableHeaders": true,
+    "rowsPerPage": 40,
+    "shopfrontPageOverride": false
+  },
+  "purchaseRecords": {
+    "skr": 2343,
+    "demo": 2343,
+    "comparedFields": ["name", "supplier name", "date_order", "state", "amount_total", "line count"],
+    "missingInDemo": 0,
+    "missingInSkr": 0,
+    "fieldMismatches": 0,
+    "baselineOrderIdentical": false,
+    "cause": "Same-day orders sorted by internal Odoo IDs differ between copied companies",
+    "fix": "Sort by date_order desc, name desc, id desc",
+    "limits": "Does not compare purchase line contents or certify source Shopfront financial accuracy. Existing zero-value draft purchases remain unchanged."
+  },
+  "localChecks": {"typecheck": "PASS", "eslint": "PASS", "diffCheck": "PASS"},
+  "deployment": "PENDING"
+}
