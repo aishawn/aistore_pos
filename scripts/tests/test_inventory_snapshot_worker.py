@@ -58,6 +58,21 @@ def test_summary_counts_null_and_nonfinite_without_erasing_negative_stock():
     assert summary["missingFields"]["availableQty"] == 1
     assert summary["missingFields"]["virtualAvailableQty"] == 0
     assert summary["missingFields"]["leadTimeDays"] == 1
+    assert summary["supplierLeadTimeCoverage"]["quality"] == "LEGACY_SNAPSHOT"
+    assert summary["supplierLeadTimeCoverage"]["productsMissingLeadTime"] == 1
+
+
+def test_summary_preserves_supplier_lead_time_provenance():
+    value = snapshot()
+    value["supplierLeadTimeCoverage"] = {
+        "quality": "ODOO_SUPPLIERINFO_READ",
+        "supplierInfoRows": 1,
+        "productsWithLeadTime": 1,
+        "productsMissingLeadTime": 0,
+    }
+    summary = worker.summarise(value, 5, "aipos_uat")
+    assert summary["supplierLeadTimeCoverage"]["quality"] == "ODOO_SUPPLIERINFO_READ"
+    assert summary["supplierLeadTimeCoverage"]["supplierInfoRows"] == 1
 
 
 def test_existing_capture_survives_worker_replacement_and_reports_real_gaps(tmp_path):
