@@ -1,5 +1,13 @@
 # SKR and Demo store UI parity
 
+## Authenticated follow-up and purchase pagination
+
+- Runtime `69793f19` verified on both hosts, frontend and backend. Deployment `C9tsZF8lJxUCWFAxqwAWM` completed successfully.
+- Authenticated read-only checks passed `/purchases`, `/suppliers`, `/orders`, and `/reports/purchase` on both stores. Each loaded 40 rows with common table headers and no SKR-specific Shopfront replacement.
+- Full purchase comparison found 2,343 native Odoo orders per store, with no missing orders or differences in order name, supplier name, date, state, amount or line count. The original `date_order desc, id desc` ordering differed because copied records have different internal IDs. Changed to `date_order desc, name desc, id desc`; the post-deployment full comparison confirms identical order sequences.
+- No business data was written. Existing zero-value draft orders were not converted into historical received orders. Source Shopfront financial accuracy and purchase-line contents were not certified by this comparison.
+- Evidence: `docs/UAT_STORE_PURCHASE_PARITY_2026-11-02.json`. Typecheck, targeted ESLint and diff checks passed. The source audit below remains a source audit rather than an authenticated check of every store route.
+
 ## Scope and changes
 
 Owner requested that both customer-trial stores use Odoo supplier management and that similar store-specific UI substitutions be checked.
