@@ -14,6 +14,7 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [showDemo, setShowDemo] = useState(false);
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
@@ -60,7 +61,9 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
     finally { lock.current = false; setBusy(false); onBusyChange(false); }
   }
 
-  const filtered = items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const isDemoCategory = (item: Category) => /^demo\b/i.test(item.name.trim());
+  const demoCount = items.filter(isDemoCategory).length;
+  const filtered = items.filter((item) => (showDemo || !isDemoCategory(item)) && item.name.toLowerCase().includes(query.trim().toLowerCase()));
   const groups = Array.from(filtered.reduce((result, item) => {
     const key = item.name.trim().toLocaleLowerCase();
     const group = result.get(key) ?? { name: item.name, items: [] as Category[] };
@@ -89,7 +92,7 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
     {!loading && !writeEnabled && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950"><p className="font-medium">Category changes are currently locked</p><p className="mt-1 text-xs leading-5">An administrator must complete the Orithos upgrade and isolated verification before you can add, edit or delete local categories.</p></div>}
     {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}<button type="button" disabled={busy} onClick={() => void load()} className="ml-3 underline">Reload categories</button></div>}
     <fieldset disabled={busy} className="min-w-0 space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row"><label className="relative min-w-0 flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" aria-hidden="true" /><span className="sr-only">Search categories</span><input aria-label="Search categories" placeholder="Search by category name…" value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] pl-9 pr-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label><button type="button" disabled={unavailable} onClick={() => { setEditing("new"); setName(""); setParentId(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} aria-hidden="true" /> New category</button></div>
+      <div className="flex flex-col gap-2 sm:flex-row"><label className="relative min-w-0 flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" aria-hidden="true" /><span className="sr-only">Search categories</span><input aria-label="Search categories" placeholder="Search by category name…" value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] pl-9 pr-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label>{demoCount > 0 && <button type="button" onClick={() => setShowDemo((visible) => !visible)} className="min-h-11 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">{showDemo ? "Hide demo data" : `Show demo data (${demoCount})`}</button>}<button type="button" disabled={unavailable} onClick={() => { setEditing("new"); setName(""); setParentId(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} aria-hidden="true" /> New category</button></div>
       {editing !== null && <form className="space-y-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4" onSubmit={(event) => { event.preventDefault(); void mutate(editing === "new" ? "POST" : "PATCH", editing === "new" ? undefined : editing); }}>
         <h3 className="font-semibold">{editing === "new" ? "New category" : "Edit category"}</h3>
 <label className="block text-sm text-[var(--oh-text)]">Name<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[var(--oh-text)]" /></label>
