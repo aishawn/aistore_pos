@@ -51,7 +51,7 @@ export function replenishmentDemandIssues(input: {
   if (input.selectionStatus === "ANALOG_COLD_START") {
     issues.push("LOW_CONFIDENCE_ANALOG");
   }
-  if (input.forecastEnabled && input.forecastUsable && input.forecastConfidence === "LOW") {
+  if (input.forecastEnabled && input.forecastConfidence === "LOW") {
     issues.push("LOW_FORECAST_CONFIDENCE");
   }
   return issues;
