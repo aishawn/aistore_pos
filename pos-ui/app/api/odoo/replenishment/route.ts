@@ -170,6 +170,11 @@ export async function GET(request: NextRequest) {
 
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
+  const requestStartedAt = Date.now();
+  const markPhase = (phase: string, detail: Record<string, unknown> = {}) => {
+    console.info("[replenishment] phase", { phase, elapsedMs: Date.now() - requestStartedAt, ...detail });
+  };
+  markPhase("entry", { coverageDays });
 
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -182,6 +187,7 @@ export async function GET(request: NextRequest) {
     if (!sessionResponse.ok) throw new ReplenishmentSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (session.error || !session.result?.uid) throw new ReplenishmentSessionExpiredError();
+    markPhase("odoo_session");
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
@@ -212,6 +218,7 @@ export async function GET(request: NextRequest) {
       ),
       rpc<Array<{ name?: string; country_id?: [number, string]; state_id?: [number, string] }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name", "country_id", "state_id"], limit: 1 }, correlationId),
     ]);
+    markPhase("catalogue", { products: products?.length ?? 0 });
     // Odoo 20 uses the base unit on purchase lines; older releases expose a separate purchase unit.
     if (!hasPurchaseUnit) for (const product of products ?? []) product.uom_po_id = product.uom_id;
     const timezone = getOdooCompanyTimezone(companies?.[0]?.country_id, companies?.[0]?.state_id);
@@ -225,6 +232,7 @@ export async function GET(request: NextRequest) {
       ...salesBaseDomain, ["product_id", "in", products.map((p) => Number(p.id))],
       ["order_id.date_order", ">=", historyFromUtc], ["order_id.date_order", "<", historyToUtc],
     ], timezone, correlationId) : [];
+    markPhase("sales", { rows: dailySales.length });
     const recentSold = new Map<number, number>();
     const previousSold = new Map<number, number>();
     for (const row of dailySales) {
@@ -256,6 +264,7 @@ export async function GET(request: NextRequest) {
       leadTimeQuality = "UNKNOWN";
     }
     const hasLeadTime = leadTimes.size > 0;
+    markPhase("suppliers", { leadTimes: leadTimes.size, quality: leadTimeQuality });
     const eligibleProducts = (products ?? []).filter((product) => {
       const productType = String(product.type ?? "");
       return ["product", "consu"].includes(productType) && product.purchase_ok === true;
@@ -317,6 +326,7 @@ export async function GET(request: NextRequest) {
           forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource, businessCostBasis: forecastResponse.businessCostBasis };
         }
       }
+      markPhase("forecast", { targets: targets.length, forecasted: forecastItems.size });
     }
     const replenishmentItems = eligibleProducts.map((product) => {
       const id = Number(product.id);
@@ -521,6 +531,7 @@ export async function GET(request: NextRequest) {
       },
       cache: { status: "MISS", expiresAt: new Date(Date.now() + REPLENISHMENT_CACHE_TTL_MS).toISOString() },
     };
+    markPhase("response", { products: replenishmentItems.length });
     if (request.nextUrl.searchParams.get("validateSales") !== "true") {
       replenishmentCache.set(cacheKey, { expiresAt: Date.now() + REPLENISHMENT_CACHE_TTL_MS, body: responseBody });
     }
