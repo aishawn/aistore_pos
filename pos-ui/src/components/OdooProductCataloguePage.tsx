@@ -30,7 +30,8 @@ import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
 import {
   friendlyProductName,
-  looksLikeImportMarker,`r`n  truncateSku,
+  looksLikeImportMarker,
+  truncateSku,
 } from "@/lib/product-display-name";
 
 const PAGE_SIZE = 40;
