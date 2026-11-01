@@ -143,7 +143,18 @@ async function loadDailySales(sessionId: string, domain: unknown[], timezone: st
   const dates = new Map(orders.map((order) => [Number(order.id), String(order.date_order)]));
   const ids = orders.map((order) => Number(order.id)); const lineDomain = domain.filter((clause): clause is [string, string, unknown] => Array.isArray(clause) && clause.length >= 3).filter(([field]) => !field.startsWith("order_id.")); const lines: Line[] = [];
   for (let offset = 0; offset < ids.length; offset += 5000) {
-    const page = await rpc<Line[]>(sessionId, "pos.order.line", "search_read", [[...lineDomain, ["order_id", "in", ids.slice(offset, offset + 5000)]]], { fields: ["id", "product_id", "order_id", "qty"], limit: 50000, order: "id asc" }, correlationId);
+    const batchDomain = [
+      ...lineDomain,
+      ["order_id", "in", ids.slice(offset, offset + 5000)],
+    ];
+    const page = await rpc<Line[]>(
+      sessionId,
+      "pos.order.line",
+      "search_read",
+      [batchDomain],
+      { fields: ["id", "product_id", "order_id", "qty"], limit: 50000, order: "id asc" },
+      correlationId,
+    );
     if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated."); lines.push(...page); if (lines.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
   }
   const daily = new Map<string, DailySalesRow>();

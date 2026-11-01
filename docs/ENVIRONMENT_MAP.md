@@ -28,7 +28,7 @@ All normal deployment work targets GitHub `main`. A successful webhook or dashbo
 
 | Service | Dokploy URL |
 |---|---|
-| POS Compose | `https://dokploy.modkie.com/dashboard/project/6v8D8TDLvzJCQRH93Dx_z/environment/tm97Mlr4oIRKCExPqVucV/services/compose/WvcUddxTnymK_K5RZPPtL` |
+| POS Compose | `https://dokploy.modkie.com/dashboard/project/6v8D8TDLvzJCQRH93Dx_z/environment/tm97Mlr4oIRKCExPqVucV/services/compose/y4IqIQ8dvwEYL06Hppkjc` |
 | Brand site application | `https://dokploy.modkie.com/dashboard/project/6v8D8TDLvzJCQRH93Dx_z/environment/tm97Mlr4oIRKCExPqVucV/services/application/vL9798BgWMVElGPZy-mpZ` |
 | Odoo Compose | `https://dokploy.modkie.com/dashboard/project/6v8D8TDLvzJCQRH93Dx_z/environment/tm97Mlr4oIRKCExPqVucV/services/compose/trQzcdFfNnKqBpYNq6Izn` |
 
