@@ -212,9 +212,9 @@ try {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("unexpected invoice OCR response"));
     }
 
-    if (invoiceCode === 42901) {
-      record("Invoice OCR invalid image guard", "BLOCKED", "Skipped because the outlet AI quota is exhausted.");
-    } else {
+    {
+      // Invalid media is rejected by local validation before provider quota
+      // reservation, so this guard remains testable even after quota exhaustion.
       const invalidInvoice = await context.request.post(`${base}/api/ai/invoice/preview`, {
         multipart: {
           file: {
