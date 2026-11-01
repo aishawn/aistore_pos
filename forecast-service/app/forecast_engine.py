@@ -13,6 +13,8 @@ MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothin
 WAPE_BASELINE_MODEL = "two_stage_occurrence_v1"
 MIN_WAPE_IMPROVEMENT = 0.10
 MAX_MODEL_SELECTION_FOLDS = 6
+INDEPENDENT_VALIDATION_FOLDS = 3
+INDEPENDENT_VALIDATION_MIN_DAYS = 180
 
 
 def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | None = None,
@@ -113,6 +115,15 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
     scores: dict[str, float] = {}
     cost_details = {}
     wape_scores = {}
+    independent_validation_days = 0
+    independent_validation_start = len(values)
+    # Long research/production histories get a final untouched validation slice.
+    # Keep the existing six-fold selection window intact; shorter histories retain
+    # the established rolling selector and are explicitly lower-confidence.
+    if (not use_cost and len(values) >= INDEPENDENT_VALIDATION_MIN_DAYS
+            and horizon * (MAX_MODEL_SELECTION_FOLDS + INDEPENDENT_VALIDATION_FOLDS) <= len(values)):
+        independent_validation_days = horizon * INDEPENDENT_VALIDATION_FOLDS
+        independent_validation_start = len(values) - independent_validation_days
     for candidate in MODEL_NAMES:
         errors: list[float] = []
         horizon_errors: list[float] = []
@@ -123,8 +134,10 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
         inventory_unit_days = 0.0
         first_origin = 14
         if len(values) > 14 + horizon * 8:
-            first_origin = max(14, len(values) - horizon * MAX_MODEL_SELECTION_FOLDS)
-        for end in range(first_origin, len(values) - horizon + 1, horizon):
+            selection_end = independent_validation_start if independent_validation_days else len(values)
+            first_origin = max(14, selection_end - horizon * MAX_MODEL_SELECTION_FOLDS)
+        selection_end = independent_validation_start if independent_validation_days else len(values)
+        for end in range(first_origin, selection_end - horizon + 1, horizon):
             train = values[:end]
             train_flags = flags[:end] if flags else []
             predicted, _, _ = _normalise(train, horizon, train_flags, candidate)
@@ -174,6 +187,40 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
         winner = _select_wape_candidate(scores)
     validation = {}
     metric = "rolling_business_cost_aud_per_day" if use_cost else "rolling_horizon_total_wape"
+    if independent_validation_days and WAPE_BASELINE_MODEL in scores:
+        validation_start = independent_validation_start
+        validation_scores: dict[str, float] = {}
+        for candidate in (winner, WAPE_BASELINE_MODEL):
+            absolute_error = 0.0
+            actual_total = 0.0
+            for end in range(validation_start, len(values), horizon):
+                predicted, _, _ = _normalise(values[:end], horizon, flags[:end], candidate)
+                predicted_total = 0.0
+                observed_total = 0.0
+                for offset, actual in enumerate(values[end:end + horizon]):
+                    index = end + offset
+                    if index < len(flags) and flags[index]:
+                        continue
+                    predicted_total += predicted[offset]
+                    observed_total += max(0.0, float(actual))
+                absolute_error += abs(predicted_total - observed_total)
+                actual_total += observed_total
+            if actual_total > 0:
+                validation_scores[candidate] = absolute_error / actual_total
+        baseline_score = validation_scores.get(WAPE_BASELINE_MODEL)
+        candidate_score = validation_scores.get(winner)
+        if baseline_score is not None and candidate_score is not None:
+            selected_before_validation = winner
+            retained = selected_before_validation != WAPE_BASELINE_MODEL and candidate_score > baseline_score * (1 - MIN_WAPE_IMPROVEMENT)
+            if retained:
+                winner = WAPE_BASELINE_MODEL
+            validation = {
+                "status": "BASELINE_RETAINED" if retained else "WAPE_VALIDATED",
+                "validationDays": float(independent_validation_days),
+                "candidate": selected_before_validation,
+                "candidateWape": candidate_score,
+                "baselineWape": baseline_score,
+            }
     if use_cost and validate_cost:
         baseline = min(wape_scores, key=lambda candidate: (wape_scores[candidate], candidate))
         winner, metric = baseline, "rolling_horizon_total_wape_cost_validation_fallback"

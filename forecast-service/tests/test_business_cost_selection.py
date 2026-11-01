@@ -42,6 +42,14 @@ def test_long_history_model_selection_uses_only_six_recent_weekly_folds():
     assert {score.evaluatedFolds for score in item.candidateBusinessCosts.values()} == {6}
 
 
+def test_very_long_history_records_an_independent_wape_validation_slice():
+    item = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7,
+        series=[series([1.0] * 180)])).items[0]
+
+    assert item.selectionValidation["validationDays"] == 21
+    assert item.selectionValidation["status"] in {"WAPE_VALIDATED", "BASELINE_RETAINED"}
+
+
 def test_wape_selection_keeps_baseline_without_a_material_validation_gain():
     assert _select_wape_candidate({"two_stage_occurrence_v1": 0.80, "seasonal_naive_v1": 0.74}) == "two_stage_occurrence_v1"
     assert _select_wape_candidate({"two_stage_occurrence_v1": 0.80, "seasonal_naive_v1": 0.72}) == "seasonal_naive_v1"
