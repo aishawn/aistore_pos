@@ -436,17 +436,31 @@ def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestRe
             results.append(InventoryBacktestItem(productId=series.productId, status="BLOCKED", origins=0,
                 evaluatedDays=0, stockoutRecall=None, projectedStockoutDays=None,
                 observedStockoutDays=None, inventoryMae=None, serviceLevel=None,
-                dataQuality="INCOMPLETE"))
+                dataQuality="INCOMPLETE", originDates=[]))
             continue
         flags = series.stockoutFlags or [False] * len(series.units)
+        # `origin` is the first hidden/evaluation day.  A requested originDate
+        # names the last visible day, so convert it to the same internal index.
+        requested_origin = None
+        if request.originDate is not None:
+            try:
+                requested_origin = series.dates.index(request.originDate) + 1
+            except ValueError:
+                requested_origin = -1
+        candidate_origins = range(request.minHistoryDays, len(series.units) - request.horizonDays + 1,
+                                  request.originStepDays)
+        if requested_origin is not None:
+            candidate_origins = [requested_origin]
         origins = 0
+        origin_dates = []
         evaluated = 0
         projected_stockouts = observed_stockouts = 0
         caught_stockouts = 0
         inventory_errors: list[float] = []
         service_hits = service_total = 0
-        for origin in range(request.minHistoryDays, len(series.units) - request.horizonDays + 1,
-                            request.originStepDays):
+        for origin in candidate_origins:
+            if origin < request.minHistoryDays or origin + request.horizonDays > len(series.units):
+                continue
             train_units = series.units[:origin]
             train_flags = flags[:origin]
             if all(train_flags[-min(14, len(train_flags)):]):
@@ -456,6 +470,7 @@ def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestRe
                 continue
             running = float(series.onHand[origin - 1])
             origins += 1
+            origin_dates.append(series.dates[origin - 1])
             for offset, demand in enumerate(predicted):
                 index = origin + offset
                 # No future onHand or receipts are read until after the
@@ -478,7 +493,8 @@ def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestRe
             results.append(InventoryBacktestItem(productId=series.productId, status="BLOCKED", origins=origins,
                 evaluatedDays=evaluated, stockoutRecall=None, projectedStockoutDays=None,
                 observedStockoutDays=None, inventoryMae=None, serviceLevel=None,
-                dataQuality="CENSORED_DEMAND" if any(flags) else "INCOMPLETE"))
+                dataQuality="CENSORED_DEMAND" if any(flags) else "INCOMPLETE",
+                originDates=origin_dates))
             continue
         # Recall is defined only for observed stockout days. A projection that
         # remains positive on a stockout day is a missed warning.
@@ -491,6 +507,9 @@ def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestRe
             projectedStockoutDays=float(projected_stockouts), observedStockoutDays=float(observed_stockouts),
             inventoryMae=sum(inventory_errors) / len(inventory_errors),
             serviceLevel=service_hits / service_total if service_total else None,
-            dataQuality="CENSORED_DEMAND" if any(flags) else "VALID"))
+            dataQuality="CENSORED_DEMAND" if any(flags) else "VALID",
+            originDates=origin_dates))
     return InventoryBacktestResponse(model="walk_forward_inventory_v1", modelVersion="1",
-                                     horizonDays=request.horizonDays, items=results)
+                                     horizonDays=request.horizonDays, items=results,
+                                     evaluationMode="HISTORICAL_WALK_FORWARD",
+                                     futureObservationsUsedAsInput=False)

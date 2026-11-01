@@ -36,6 +36,42 @@ class ForecastBacktestTests(unittest.TestCase):
         self.assertGreater(item.origins, 0)
         self.assertFalse(item.futureObservationsUsedAsInput)
         self.assertIn("evaluation-only", item.note)
+        self.assertEqual("HISTORICAL_WALK_FORWARD", result.evaluationMode)
+        self.assertFalse(result.futureObservationsUsedAsInput)
+
+    def test_inventory_backtest_can_replay_one_historical_origin(self):
+        start = date(2026, 1, 1)
+        days = 70
+        origin_date = start + timedelta(days=41)
+        result = backtest_inventory(InventoryBacktestRequest(
+            vendorId=1, outletId=1, horizonDays=7, minHistoryDays=28,
+            originDate=origin_date,
+            series=[InventoryBacktestSeries(
+                productId=1,
+                dates=[start + timedelta(days=index) for index in range(days)],
+                units=[2.0] * days,
+                onHand=[max(0.0, 100.0 - 2.0 * index) for index in range(days)],
+            )]))
+        item = result.items[0]
+        self.assertEqual("PASS", item.status)
+        self.assertEqual(1, item.origins)
+        self.assertEqual([origin_date], item.originDates)
+
+    def test_future_inventory_changes_scores_but_not_projection(self):
+        start = date(2026, 1, 1)
+        dates = [start + timedelta(days=index) for index in range(70)]
+        base = dict(productId=1, dates=dates, units=[2.0] * 70)
+        first = backtest_inventory(InventoryBacktestRequest(
+            vendorId=1, outletId=1, horizonDays=7, minHistoryDays=28,
+            originDate=start + timedelta(days=41),
+            series=[InventoryBacktestSeries(**base, onHand=[max(0.0, 100.0 - 2.0 * i) for i in range(70)])]))
+        second = backtest_inventory(InventoryBacktestRequest(
+            vendorId=1, outletId=1, horizonDays=7, minHistoryDays=28,
+            originDate=start + timedelta(days=41),
+            series=[InventoryBacktestSeries(**base, onHand=[100.0 if i > 41 else max(0.0, 100.0 - 2.0 * i) for i in range(70)])]))
+        self.assertEqual(first.items[0].projectedStockoutDays, second.items[0].projectedStockoutDays)
+        self.assertEqual(first.items[0].originDates, second.items[0].originDates)
+        self.assertNotEqual(first.items[0].inventoryMae, second.items[0].inventoryMae)
 
     def test_inventory_backtest_blocks_short_history(self):
         start = date(2026, 1, 1)

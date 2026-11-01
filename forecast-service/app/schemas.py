@@ -194,6 +194,10 @@ class InventoryBacktestRequest(BaseModel):
     horizonDays: int = Field(default=7, ge=1, le=28)
     minHistoryDays: int = Field(default=28, ge=14, le=3650)
     originStepDays: int = Field(default=7, ge=1, le=28)
+    # Development/research only: replay one historical information boundary.
+    # The origin date is the last date visible to the forecaster; observations
+    # after it are labels for scoring and are never model inputs.
+    originDate: date | None = None
     series: list[InventoryBacktestSeries] = Field(min_length=1, max_length=2000)
 
 
@@ -209,6 +213,7 @@ class InventoryBacktestItem(BaseModel):
     serviceLevel: float | None
     dataQuality: Literal["VALID", "CENSORED_DEMAND", "INCOMPLETE"]
     futureObservationsUsedAsInput: bool = False
+    originDates: list[date] = Field(default_factory=list)
     note: str = "Future inventory is evaluation-only; no future observations were used as model input."
 
 
@@ -217,3 +222,6 @@ class InventoryBacktestResponse(BaseModel):
     modelVersion: str
     horizonDays: int
     items: list[InventoryBacktestItem]
+    evaluationMode: Literal["HISTORICAL_WALK_FORWARD"] = "HISTORICAL_WALK_FORWARD"
+    futureObservationsUsedAsInput: bool = False
+    note: str = "Historical dates after each origin are holdout labels only; online forecasts do not require future inventory observations."
