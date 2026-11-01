@@ -48,11 +48,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
-    await page.getByRole("button", { name: /Open Orithos AI/ }).first().click();
-    const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
+    // The current overview uses the radial centre link and `/assistant` is a full page.
+    await page.getByRole("link", { name: /Orithos AI.*Open dashboard/i }).first().click();
+    const assistant = page.locator("main").first();
     await assistant.waitFor({ state: "visible", timeout: 10000 });
-    const composer = assistant.getByPlaceholder("Ask Orithos AI");
-    const send = assistant.getByRole("button", { name: "Send message", exact: true });
+    const composer = page.getByPlaceholder(/Ask Orithos AI/);
+    const send = page.getByRole("button", { name: "Send message", exact: true });
     await composer.fill(productCountMode ? "How many products do we have?" : "16 Oct 2026 sales");
     await send.click();
     if (productCountMode) {
