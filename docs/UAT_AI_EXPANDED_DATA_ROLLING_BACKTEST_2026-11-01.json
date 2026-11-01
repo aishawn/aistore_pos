@@ -258,6 +258,68 @@
     "Expanded evaluation is materially harder than the 20-product sample: selected horizon WAPE 61.7%; all candidates fail the exploratory 30% gate.",
     "85 products have persistent non-positive historical stock with repeated sales and are excluded from stockout-aware scoring.",
     "The research inventory is reconstructed to_date Odoo history, not durable native daily snapshots.",
-    "Use this result to improve data quality and segmentation; do not tune to this single window."
-  ]
+    "Use this result to improve data quality and segmentation; do not tune to this single window.",
+    "The 14-day check also fails the 0.30 gate (selected horizon WAPE 51.1%); the ranking is directionally stable but not production proof."
+  ],
+  "horizons14d": {
+    "qualityGate": "FAIL",
+    "models": {
+      "selected": {
+        "weightedWape": 1.2734584974532088,
+        "horizonTotalWape": 0.5107181891658548,
+        "biasUnits": -1204.25,
+        "p90Coverage": 0.8920967425431711,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "seasonal_naive_v1": {
+        "weightedWape": 1.371245527914136,
+        "horizonTotalWape": 0.7030534986271736,
+        "biasUnits": -1668.0,
+        "p90Coverage": 0.8804454474097331,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "moving_average_7_v1": {
+        "weightedWape": 1.2888046307633119,
+        "horizonTotalWape": 0.7030534986271736,
+        "biasUnits": -1668.0,
+        "p90Coverage": 0.891017464678179,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "exponential_smoothing_v1": {
+        "weightedWape": 1.2779307817632775,
+        "horizonTotalWape": 0.7052665044005632,
+        "biasUnits": -2348.6297,
+        "p90Coverage": 0.8893249607535322,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "croston_sba_v1": {
+        "weightedWape": 1.2784858335330598,
+        "horizonTotalWape": 0.5169663091744102,
+        "biasUnits": -1444.3938,
+        "p90Coverage": 0.890232535321821,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "tsb_v1": {
+        "weightedWape": 1.269809081802111,
+        "horizonTotalWape": 0.6153249640273138,
+        "biasUnits": -1656.377,
+        "p90Coverage": 0.8909684065934066,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      },
+      "two_stage_occurrence_v1": {
+        "weightedWape": 1.2737552472448064,
+        "horizonTotalWape": 0.5106785243350259,
+        "biasUnits": -1196.2177,
+        "p90Coverage": 0.8920967425431711,
+        "scoredProducts": 364,
+        "observedDays": 40768
+      }
+    }
+  }
 }
