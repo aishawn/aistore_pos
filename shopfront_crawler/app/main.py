@@ -2083,7 +2083,20 @@ async def _run_history_job(job_id: int) -> None:
         if failed:
             job.error = f"one or more date chunks failed; inspect sync run {failed}"
         job.finished_at = datetime.now(timezone.utc)
+        if job.status == "completed":
+            existing_types = {
+                row.job_type for row in db.scalars(select(SyncJob).where(
+                    SyncJob.store_key == job.store_key,
+                    SyncJob.status.in_(["queued", "running"]),
+                )).all()
+            }
+            if settings.shopfront_enable_customers and "customers" not in existing_types:
+                db.add(SyncJob(store_key=job.store_key, job_type="customers", status="queued", payload={"after_history_job": job.id}))
+            if settings.shopfront_enable_supply_chain and "supply_chain" not in existing_types:
+                db.add(SyncJob(store_key=job.store_key, job_type="supply_chain", status="queued", payload={"after_history_job": job.id}))
         db.commit()
+        if job.status == "completed":
+            wake_durable_worker()
     except Exception as exc:
         job = db.get(SyncJob, job_id)
         if job:
