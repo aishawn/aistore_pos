@@ -1,0 +1,31 @@
+{
+  "verifiedAt": "2026-11-01T13:42:09+00:00",
+  "scope": "READ_ONLY_SUPPLIER_LEAD_TIME_AND_INVENTORY_DATA_QUALITY",
+  "source": "Odoo aipos_uat company 5; local collector capture; not server worker evidence",
+  "inventory": {
+    "expectedProducts": 12992,
+    "capturedProducts": 12992,
+    "productCoverage": 1.0,
+    "expectedWarehouses": 1,
+    "capturedWarehouses": 1,
+    "missingQuantityFields": 0
+  },
+  "supplierLeadTimeCoverage": {
+    "quality": "ODOO_SUPPLIERINFO_READ",
+    "supplierInfoRows": 1,
+    "productsWithLeadTime": 1,
+    "productsMissingLeadTime": 12991
+  },
+  "historicalContradictions": {
+    "products": 85,
+    "codeCounts": {
+      "PERSISTENT_NONPOSITIVE_STOCK_WITH_REPEATED_SALES": 85
+    }
+  },
+  "safety": {
+    "writeRequests": [],
+    "businessWrites": 0
+  },
+  "fix": "Removed unsupported product.supplierinfo.sequence field from collector; snapshot now records supplier row count, usable lead-time count, missing count, and read quality.",
+  "acceptance": "PASS_FOR_DIAGNOSTIC_PROVENANCE; BLOCKED_FOR_REPLENISHMENT_COST_VALIDATION"
+}
