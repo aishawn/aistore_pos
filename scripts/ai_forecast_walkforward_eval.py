@@ -18,7 +18,10 @@ from app.schemas import ForecastRequest, Series
 from scripts.ai_forecast_eval import apply_inventory_history
 
 
-BASELINE_MODELS = ("seasonal_naive_v1", "two_stage_occurrence_v1")
+# Keep every deterministic candidate in the offline comparison. Production
+# selection remains governed by forecast_engine.py; this report is intended to
+# show whether intermittent-demand models actually beat the current baseline.
+BASELINE_MODELS = tuple(MODEL_NAMES)
 ACCEPTED_INVENTORY_QUALITY = {
     "NATIVE_ODOO_DAILY_SNAPSHOTS",
     "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
