@@ -36,4 +36,15 @@ class ForecastRiskServiceTest {
         assertEquals(0, ForecastRiskService.firstStockoutDay(
                 List.of(new ForecastDtos.Point(LocalDate.parse("2026-11-01"), 4, 5, 6)), -1));
     }
+
+    @Test
+    void lowConfidenceForecastIsNotActionable() {
+        ForecastDtos.Point point = new ForecastDtos.Point(LocalDate.parse("2026-11-01"), 4, 5, 6);
+        assertEquals(false, ForecastRiskService.isActionableForecast(
+                new ForecastDtos.Item(1, List.of(point), "VALID", "LOW")));
+        assertEquals(false, ForecastRiskService.isActionableForecast(
+                new ForecastDtos.Item(1, List.of(point), "CENSORED_DEMAND", "MEDIUM")));
+        assertEquals(true, ForecastRiskService.isActionableForecast(
+                new ForecastDtos.Item(1, List.of(point), "VALID", "MEDIUM")));
+    }
 }

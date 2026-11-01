@@ -44,6 +44,19 @@ public class ForecastRiskService {
                 row.put("confidence", item.confidence());
                 dataQuality.add(row);
             }
+            if (!isActionableForecast(item)) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("productId", item.productId());
+                row.put("onHand", current.onHand());
+                row.put("availableStock", availableStock);
+                row.put("severity", "DATA_QUALITY");
+                row.put("dataQuality", item.dataQuality());
+                row.put("reasonCode", "LOW_CONFIDENCE_FORECAST");
+                row.put("reason", "forecast is not reliable enough for an actionable stock risk");
+                row.put("confidence", item.confidence());
+                dataQuality.add(row);
+                continue;
+            }
             // A zero-demand forecast cannot establish a future stockout. Keep
             // the item out of both stockout and days-of-stock calculations.
             int day = negativeBalance || averageDemand <= 0d
@@ -123,6 +136,10 @@ public class ForecastRiskService {
 
     static boolean hasNegativeBalance(Double onHand, Double availableStock) {
         return (onHand != null && onHand < 0d) || (availableStock != null && availableStock < 0d);
+    }
+
+    static boolean isActionableForecast(ForecastDtos.Item item) {
+        return "VALID".equals(item.dataQuality()) && !"LOW".equals(item.confidence());
     }
 
     private record Inventory(Double onHand, Double projectedAvailable, Double cost, int leadTimeDays) { }
