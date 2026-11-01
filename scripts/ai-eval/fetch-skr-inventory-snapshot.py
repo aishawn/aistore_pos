@@ -15,7 +15,7 @@ import http.cookiejar
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -164,6 +164,13 @@ def output_path(root: Path, captured_at: datetime, business_timezone: str = "Aus
     return root / business_date.isoformat() / "inventory.json"
 
 
+def promotion_rule_active(rule: dict[str, Any], business_date: date) -> bool:
+    start = str(rule.get("date_start") or "")[:10]
+    end = str(rule.get("date_end") or "")[:10]
+    current = business_date.isoformat()
+    return not ((start and current < start) or (end and current > end))
+
+
 def main() -> int:
     values = env_values()
     base = values.get("ODOO_BASE_URL", "https://odoo.orithos.com.au")
@@ -221,11 +228,9 @@ def main() -> int:
             "id", "product_id", "product_tmpl_id", "date_start", "date_end",
             "compute_price", "fixed_price", "percent_price"
         ], 100000) if price_list_ids else []
-        today = captured_at.date().isoformat()
+        today = date.fromisoformat(business_date)
         for rule in rules if isinstance(rules, list) else []:
-            start = str(rule.get("date_start") or "")[:10]
-            end = str(rule.get("date_end") or "")[:10]
-            if (start and today < start) or (end and today > end):
+            if not promotion_rule_active(rule, today):
                 continue
             product_id = many2one_id(rule.get("product_id"))
             template_id = many2one_id(rule.get("product_tmpl_id"))

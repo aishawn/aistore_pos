@@ -13,7 +13,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = path.join(root, ".env");
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envPath = path.join(envDirectory, ".env");
 const env = fs.existsSync(envPath)
   ? Object.fromEntries(
       fs.readFileSync(envPath, "utf8")
@@ -27,6 +31,13 @@ const env = fs.existsSync(envPath)
   : {};
 
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const username = process.env.PILOT_USERNAME
+  ?? (isSkr ? env.ORITHOS_SKR_USER ?? env.SKR_USER ?? "shawn" : "admin");
+const password = process.env.PILOT_PASSWORD
+  ?? (isSkr
+    ? env.ORITHOS_SKR_PASS ?? env.SKR_PASS
+    : process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD);
 const checks = [];
 const record = (name, status, evidence = "") => checks.push({ name, status, evidence });
 const safeEvidence = (value) => String(value ?? "")
@@ -43,9 +54,8 @@ const priceSuggestionErrorClass = (message) => {
   return message ? "unclassified_api_error" : "empty_error_response";
 };
 
-const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
-if (!adminPassword) {
-  console.error("MISSING_ADMIN_PASSWORD");
+if (!password) {
+  console.error(isSkr ? "MISSING_SKR_PASSWORD" : "MISSING_ADMIN_PASSWORD");
   process.exit(2);
 }
 
@@ -54,14 +64,14 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: adminPassword },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) {
     record("login", "FAIL", `status=${login.status()} code=${loginBody.code}`);
   } else {
-    record("login", "PASS", "admin");
+    record("login", "PASS", username);
     const accessCookie = (await context.cookies(base)).find((c) => c.name === "orithos_access_token");
     if (accessCookie && loginBody.data?.user) {
       await context.addInitScript(({ token, user }) => {
@@ -181,6 +191,7 @@ try {
       ));
     } else if (invoiceCode === 0) record("Invoice OCR probe", "PASS", invoiceEvidence("parsed"));
     else if (invoiceCode === 50301) record("Invoice OCR probe", "BLOCKED", invoiceEvidence("vision disabled"));
+    else if (invoiceCode === 42901) record("Invoice OCR probe", "BLOCKED", invoiceEvidence("local AI quota exhausted before provider call"));
     else if (String(invoiceBody.message || "").toLowerCase().includes("model")) {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("provider model/configuration error"));
     } else if (invoiceCode === 50212) {
@@ -197,25 +208,29 @@ try {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("unexpected invoice OCR response"));
     }
 
-    const invalidInvoice = await context.request.post(`${base}/api/ai/invoice/preview`, {
-      multipart: {
-        file: {
-          name: "invalid-1x1.png",
-          mimeType: "image/png",
-          buffer: Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-            "base64",
-          ),
+    if (invoiceCode === 42901) {
+      record("Invoice OCR invalid image guard", "BLOCKED", "Skipped because the outlet AI quota is exhausted.");
+    } else {
+      const invalidInvoice = await context.request.post(`${base}/api/ai/invoice/preview`, {
+        multipart: {
+          file: {
+            name: "invalid-1x1.png",
+            mimeType: "image/png",
+            buffer: Buffer.from(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+              "base64",
+            ),
+          },
         },
-      },
-      timeout: 30000,
-    });
-    const invalidInvoiceBody = await invalidInvoice.json().catch(() => ({}));
-    record(
-      "Invoice OCR invalid image guard",
-      invalidInvoiceBody.code === 40013 && invalidInvoice.status() < 500 ? "PASS" : "FAIL",
-      invoiceEvidence(`status=${invalidInvoice.status()} code=${invalidInvoiceBody.code ?? "none"}`, invalidInvoice, invalidInvoiceBody),
-    );
+        timeout: 30000,
+      });
+      const invalidInvoiceBody = await invalidInvoice.json().catch(() => ({}));
+      record(
+        "Invoice OCR invalid image guard",
+        invalidInvoiceBody.code === 40013 && invalidInvoice.status() < 500 ? "PASS" : "FAIL",
+        invoiceEvidence(`status=${invalidInvoice.status()} code=${invalidInvoiceBody.code ?? "none"}`, invalidInvoice, invalidInvoiceBody),
+      );
+    }
 
     const page = await context.newPage();
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });
@@ -309,7 +324,8 @@ const output = {
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-  : path.join(root, "docs", "UAT_AI_FEATURES_VERIFY_2026-10-19.json");
+  : path.join(root, ".local", "ai-eval",
+    `ai-features-${isSkr ? "skr" : "demo"}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed, blocked: output.blocked }));

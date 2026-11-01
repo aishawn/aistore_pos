@@ -76,6 +76,7 @@ const snapshot = {
   source: "skr-readonly-api",
   sourceBase: base,
   generatedAt: new Date().toISOString(),
+  inventoryCurrentAsOf: new Date().toISOString(),
   outletId: null,
   currency: "AUD",
   timezone: "Australia/Adelaide",

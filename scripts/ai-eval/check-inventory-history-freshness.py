@@ -5,6 +5,7 @@ import argparse
 import json
 from datetime import date, datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def check(history: dict, now: datetime, max_age_hours: float, require_days: int) -> dict:
@@ -20,12 +21,14 @@ def check(history: dict, now: datetime, max_age_hours: float, require_days: int)
         return {"status": "INVALID", "reason": "generatedAt_invalid"}
     try:
         parsed_dates = sorted({date.fromisoformat(value) for value in dates})
+        business_timezone = str(history.get("businessTimezone") or "UTC")
+        business_zone = ZoneInfo(business_timezone)
         captured = history.get("latestCapturedAt")
         # Legacy histories lack capture time: use UTC midnight conservatively.
         captured_at = datetime.fromisoformat(captured.replace("Z", "+00:00")) if captured else datetime.combine(parsed_dates[-1], datetime.min.time(), timezone.utc)
-        if captured_at.tzinfo is None or captured_at.astimezone(timezone.utc).date() != parsed_dates[-1]:
+        if captured_at.tzinfo is None or captured_at.astimezone(business_zone).date() != parsed_dates[-1]:
             raise ValueError("capture timestamp does not match snapshot dates")
-    except (ValueError, TypeError, AttributeError):
+    except (ValueError, TypeError, AttributeError, ZoneInfoNotFoundError):
         return {"status": "INVALID", "reason": "snapshot_capture_time_invalid"}
     age_hours = (now - captured_at.astimezone(timezone.utc)).total_seconds() / 3600
     if age_hours < 0:
@@ -44,6 +47,7 @@ def check(history: dict, now: datetime, max_age_hours: float, require_days: int)
         "status": status,
         "generatedAt": generated_at.isoformat(),
         "latestCapturedAt": captured_at.isoformat(),
+        "businessTimezone": business_timezone,
         "ageHours": round(age_hours, 2),
         "latestSnapshotDate": max(str(value) for value in dates),
         "observedDays": observed_days,

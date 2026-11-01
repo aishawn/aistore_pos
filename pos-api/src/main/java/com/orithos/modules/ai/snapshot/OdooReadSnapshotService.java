@@ -197,6 +197,7 @@ public class OdooReadSnapshotService {
             // Keep a daily grain for forecasting. The aggregate SALE_LINE rows above
             // remain for the existing rule previews and backwards compatibility.
             List<Map<String, Object>> dailySales;
+            boolean dailySalesGroupingAvailable = true;
             try {
                 dailySales = readGroup(session, "pos.order.line", domain,
                         List.of("qty:sum", "price_subtotal:sum", "id:count"),
@@ -205,6 +206,7 @@ public class OdooReadSnapshotService {
                 log.warn("Odoo daily sales grouping unavailable vendorId={} outletId={} causeType={}",
                         tenant.vendorId(), outletId, unsupportedDailyGrouping.getClass().getSimpleName());
                 dailySales = List.of();
+                dailySalesGroupingAvailable = false;
             }
             int dailySalesCount = 0;
             for (Map<String, Object> sale : dailySales) {
@@ -225,11 +227,12 @@ public class OdooReadSnapshotService {
             Map<String, String> quality = new LinkedHashMap<>();
             quality.put("products", productCount == products.size() ? "VALID" : "PARTIAL");
             quality.put("sales", salesQuality);
+            quality.put("dailySales", dailySalesGroupingAvailable ? "VALID" : "INCOMPLETE");
             quality.put("suppliers", suppliers.isEmpty() ? "INCOMPLETE" : "VALID");
             quality.put("purchaseLines", "VALID");
             return new OdooReadSnapshotSyncResult("SYNCED", tenant.vendorId(), outletId, sourceVersion,
                     dataAsOf, productCount, inventoryCount, priceCount, salesCount,
-                    supplierCount, purchaseLineCount, quality);
+                    dailySalesCount, supplierCount, purchaseLineCount, quality);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

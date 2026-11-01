@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envFile = path.join(root, ".env");
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envFile = path.join(envDirectory, ".env");
 const env = fs.existsSync(envFile)
   ? Object.fromEntries(fs.readFileSync(envFile, "utf8")
     .split(/\r?\n/)
@@ -15,9 +19,14 @@ const env = fs.existsSync(envFile)
       return [line.slice(0, index).trim(), line.slice(index + 1).trim().replace(/^['"]|['"]$/g, "")];
     }))
   : {};
-const base = process.env.PILOT_BASE_URL || "https://demo.orithos.com.au";
-const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
-if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const username = process.env.PILOT_USERNAME
+  || (isSkr ? env.ORITHOS_SKR_USER || env.SKR_USER || "shawn" : "admin");
+const password = process.env.PILOT_PASSWORD || (isSkr
+  ? env.ORITHOS_SKR_PASS || env.SKR_PASS
+  : process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD);
+if (!password) throw new Error(isSkr ? "MISSING_SKR_PASSWORD" : "MISSING_ADMIN_PASSWORD");
 
 const checks = [];
 const failures = [];
@@ -57,7 +66,7 @@ function isoDate(value) {
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));

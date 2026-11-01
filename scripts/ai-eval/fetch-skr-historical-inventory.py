@@ -14,7 +14,7 @@ import json
 import os
 import time
 import urllib.request
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -51,19 +51,19 @@ class Odoo:
             self.base + path, data=body,
             headers={"Content-Type": "application/json", "User-Agent": "orithos-ai-eval/1"},
         )
-        for attempt in range(4):
+        for attempt in range(8):
             try:
                 with self.opener.open(request, timeout=90) as response:
                     result = json.load(response)
                 break
             except urllib.error.HTTPError as error:
-                if error.code not in (429, 502, 503, 504) or attempt == 3:
+                if error.code not in (429, 502, 503, 504) or attempt == 7:
                     raise
-                time.sleep(0.5 * (2 ** attempt))
+                time.sleep(min(30, 1 * (2 ** attempt)))
             except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, json.JSONDecodeError):
-                if attempt == 3:
+                if attempt == 7:
                     raise
-                time.sleep(0.5 * (2 ** attempt))
+                time.sleep(min(30, 1 * (2 ** attempt)))
         if result.get("error"):
             error = result["error"].get("data", {})
             raise RuntimeError(error.get("message", "Odoo RPC failed"))
@@ -95,7 +95,7 @@ def product_ids_from_snapshot(snapshot: dict[str, Any], max_products: int = 0) -
 
 
 def business_day_end_utc(day: date, timezone_name: str) -> str:
-    local_midnight = datetime.combine(day + timedelta(days=1), time.min, ZoneInfo(timezone_name))
+    local_midnight = datetime.combine(day + timedelta(days=1), datetime_time.min, ZoneInfo(timezone_name))
     return local_midnight.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 

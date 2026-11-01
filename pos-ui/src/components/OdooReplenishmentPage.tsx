@@ -939,7 +939,11 @@ function ReplenishmentSkeleton() {
   return (
     <section aria-busy="true" aria-label="Loading replenishment" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
-        <div className="grid gap-2"><span className="h-3 w-40 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-48 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-80 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Stock planning</p>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--oh-text)]">Replenishment</h1>
+          <p role="status" aria-live="polite" className="mt-1 text-sm text-[var(--oh-muted)]">Loading current stock and sales history…</p>
+        </div>
         <div className="h-11 w-64 animate-pulse rounded-md bg-[var(--oh-border)]" />
       </header>
       <div className="h-12 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />

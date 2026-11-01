@@ -1,5 +1,16 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-01 SKR 历史库存回测与线上回归（本地候选，未发布）
+
+- 开发预研不需要等待未来 28 天真实库存快照。180 天真实 SKR 销售按日期做 expanding-window 回测；Odoo 历史 `qty_available` 只用于识别缺货删失日期。每折预测输入被限制在训练截止日前；holdout 库存标签只用于评分掩码，不进入预测特征或模型选择。历史 `to_date` 是 Odoo 系统历史数量，不是独立实盘盘点真值，可能受补录、回溯移动和仓库范围影响。
+- 固定只读快照覆盖 2026-05-05 至 2026-10-31，共 180 天、2,000 个商品序列。1,721 个商品有可用库存标签；279 个因非正库存与重复销售冲突排除。销售快照为 26,973 单、52,101 行，`writeRequests=[]`。未来原生库存快照适合前向校准和上线验收，但不是历史回测前提。
+- 当前候选模型完整 walk-forward 的累计 horizon WAPE：7/14/28 天为 84.0%/72.7%/70.3%，均未达到探索门槛 30%；固定 `two_stage_occurrence_v1` 为 75.8%/60.9%/50.9%，三个窗口都优于当前逐商品选模结果。当前算法未通过，不应开放自动采购；先诊断模型选型、需求分层与缺货标签偏差，再用同一固定快照比较候选。
+- 线上只读 AI 功能矩阵：Demo 14/14 PASS，SKR 14/14 PASS；两站 runtime 均为 `8b9c73a23c232cda308d0d7d3c2e10639a657f24`。Demo 命令预览专项 6 PASS/1 FAIL：商品资料预览、只读预览、执行开关拒绝确认、取消都通过；补货预览返回 `DRAFT`、0 条建议。业务写入数为 0。修复仍仅在本地，未部署。
+- 本地安全开关：`AI_COMMANDS_ENABLED=true`、`AI_COMMANDS_EXECUTION_ENABLED=false`。Demo/SKR 线上真实命令执行尚未开放；SKR 仅做只读检查。
+- 后端 Java 21 `mvn -B clean verify`：495 tests，0 failures/errors。Python `scripts/tests` 57 项、`forecast-service/tests` 11 项通过；前端 Node 24 单测 46/46、TypeScript 通过。全量 ESLint 0 errors/140 warnings，本次两文件 0 errors/2 warnings。生产依赖 audit 为 0 漏洞；包含开发依赖的完整审计报告 37 项（其中 1 critical），需单独处理。Next.js 生产构建在本机 Turbopack/webpack 均卡住并已停止，不能算构建通过。
+- DashScope 本机最小文本探测遇到网络 `ECONNRESET`，没有拿到 provider 响应，不能据此判断 API key 无效。ASR 正向测试仍需在网络和服务端配额可用时完成。
+- 评测快照和报告留在忽略目录 `.local/ai-eval/`；当前所有源码仍未提交、推送或部署。自动部署前需解决预测选型质量和 Demo 补货空预览，并验证候选 SHA。
+
 ## 2026-11-01 AI replenishment full catalogue deployed; summary correction candidate
 
 - Removed the first-1,000 alphabetical catalogue cutoff. Keyset pages and before/after counts cover all active company-owned POS products (safe ceiling 25,000; fail closed above it or on incomplete reads). Supplier rows are also paginated; failed supplier reads clear partial lead-time data.

@@ -11,7 +11,11 @@ const defaultOutputPath = path.join(root, "docs", `UAT_AI_WORKFLOW_UTTERANCES_ON
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : defaultOutputPath;
-const envPath = path.join(root, ".env");
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envPath = path.join(envDirectory, ".env");
 const env = fs.existsSync(envPath)
   ? Object.fromEntries(fs.readFileSync(envPath, "utf8")
     .split(/\r?\n/)
@@ -22,9 +26,14 @@ const env = fs.existsSync(envPath)
     }))
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
-const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
-const username = process.env.PILOT_USERNAME || "admin";
-if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const password = process.env.PILOT_PASSWORD
+  || (isSkr
+    ? env.ORITHOS_SKR_PASS || env.SKR_PASS
+    : process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD);
+const username = process.env.PILOT_USERNAME
+  || (isSkr ? env.ORITHOS_SKR_USER || env.SKR_USER || "shawn" : "admin");
+if (!password) throw new Error(isSkr ? "MISSING_SKR_PASSWORD" : "MISSING_ADMIN_PASSWORD");
 
 const cases = [
   { id: "replenishment-need-buy-en", question: "What do we need to buy?", intent: "navigate", route: "/stock/replenishment" },

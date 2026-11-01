@@ -1,10 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = path.join(root, ".env");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envPath = path.join(envDirectory, ".env");
 const env = fs.existsSync(envPath)
   ? Object.fromEntries(fs.readFileSync(envPath, "utf8").split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#") && line.includes("="))
@@ -14,8 +20,13 @@ const env = fs.existsSync(envPath)
     }))
   : {};
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
-const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
-const username = process.env.PILOT_USERNAME || "admin";
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const password = process.env.PILOT_PASSWORD || (isSkr
+  ? env.ORITHOS_SKR_PASS || env.SKR_PASS
+  : process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD);
+const username = process.env.PILOT_USERNAME || (isSkr
+  ? env.ORITHOS_SKR_USER || env.SKR_USER || "shawn"
+  : "admin");
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const expected = {
@@ -56,6 +67,10 @@ try {
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
+  const versionResponse = await context.request.get(`${base}/api/public/version`, { timeout: 30000 });
+  const versionBody = await versionResponse.json().catch(() => ({}));
+  const runtimeCommit = versionBody.backend?.commit ?? null;
+
   const page = await context.newPage();
   await page.setContent(html, { waitUntil: "domcontentloaded" });
   const image = await page.locator("main").screenshot({ type: "png" });
@@ -83,7 +98,10 @@ try {
   result = {
     generatedAt: new Date().toISOString(),
     target: base,
-    runtimeVerifiedAgainst: process.env.PILOT_DEPLOYMENT_SHA || "unverified",
+    sourceCommit,
+    runtimeCommit,
+    runtimeMatchesSourceCommit: runtimeCommit === sourceCommit,
+    runtimeVerifiedAgainst: process.env.PILOT_DEPLOYMENT_SHA || runtimeCommit || "unverified",
     scope: "synthetic invoice image OCR preview only; no Odoo writes",
     fixture: "synthetic Australian tax invoice with non-real supplier and invoice identifiers",
     httpStatus: response.status(),
@@ -105,7 +123,9 @@ try {
       unitPrice: line.unitPrice ?? null,
       lineTotal: line.lineTotal ?? null,
     })),
-    status: response.ok() && body.code === 0 && Object.values(checks).every(Boolean) ? "PASS" : "FAIL",
+    status: response.ok() && body.code === 0 && Object.values(checks).every(Boolean)
+      ? "PASS"
+      : [42901, 50211, 50301].includes(body.code) ? "BLOCKED" : "FAIL",
     businessWrites: 0,
   };
 } catch (error) {

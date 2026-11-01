@@ -2,6 +2,8 @@ package com.orithos.modules.ai.invoice;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiProviderQuotaService;
+import com.orithos.modules.ai.report.TenantContextFactory;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -69,8 +73,11 @@ class AiInvoicePreviewControllerTest {
                 BigDecimal.ZERO, new BigDecimal("34.80"), new BigDecimal("382.80"), new BigDecimal("18"), null,
                 List.of(new TaxInvoiceRead.Line("Shiraz", "Example", new BigDecimal("6"), new BigDecimal("2"),
                         new BigDecimal("110"), new BigDecimal("220"))));
+        InvoiceVisionService.PreparedInvoiceImage prepared = new InvoiceVisionService.PreparedInvoiceImage(
+                "image/jpeg", new byte[]{1});
         when(provider.getIfAvailable()).thenReturn(vision);
-        when(vision.read(file)).thenReturn(extracted);
+        when(vision.prepare(file)).thenReturn(prepared);
+        when(vision.readPrepared(prepared)).thenReturn(extracted);
         AiInvoicePreviewController controller = new AiInvoicePreviewController(provider);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "admin", true, 1L, 2L), null, List.of()));
@@ -87,6 +94,27 @@ class AiInvoicePreviewControllerTest {
         assertNull(result.data().getSupplierId());
         assertNull(result.data().getToId());
         assertNull(result.data().getLines().get(0).getProductId());
-        verify(vision).read(file);
+        verify(vision).readPrepared(prepared);
+    }
+
+    @Test
+    void unusableImageIsRejectedBeforeProviderQuotaIsReserved() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<InvoiceVisionService> provider = mock(ObjectProvider.class);
+        InvoiceVisionService vision = mock(InvoiceVisionService.class);
+        AiProviderQuotaService quota = mock(AiProviderQuotaService.class);
+        TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
+        MockMultipartFile file = new MockMultipartFile("file", "invalid.png", "image/png", new byte[]{1, 2, 3});
+        when(provider.getIfAvailable()).thenReturn(vision);
+        when(vision.prepare(file)).thenThrow(new BusinessException(40013, "Invalid image"));
+        AiInvoicePreviewController controller = new AiInvoicePreviewController(provider, tenantContextFactory, quota);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthUser(7L, "admin", true, 1L, 2L), null, List.of()));
+
+        BusinessException error = assertThrows(BusinessException.class, () -> controller.preview(file));
+
+        assertEquals(40013, error.getCode());
+        verifyNoInteractions(quota, tenantContextFactory);
+        verify(vision, never()).readPrepared(any(InvoiceVisionService.PreparedInvoiceImage.class));
     }
 }

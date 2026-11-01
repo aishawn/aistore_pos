@@ -200,6 +200,7 @@ for (let index = 0; index < orders.length; index += detailConcurrency) {
 const periodDays = Math.max(1, Number.parseInt(period, 10) || 180);
 const inventoryFrom = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 const inventoryTo = new Date();
+const businessTimezone = productsSnapshot.timezone || "Australia/Adelaide";
 const inventoryMoves = [];
 const inventoryDiagnostics = [];
 let inventoryOffset = 0;
@@ -231,12 +232,30 @@ for (const row of daily.values()) {
   series.set(row.date, row);
   byProduct.set(row.productId, series);
 }
+const localDate = (value) => {
+  const fields = new Intl.DateTimeFormat("en-CA", {
+    timeZone: businessTimezone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(value);
+  const parts = Object.fromEntries(fields.map((field) => [field.type, field.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+const shiftDate = (value, days) => {
+  const shifted = new Date(`${value}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+};
+const firstDate = shiftDate(shiftDate(localDate(inventoryTo), -1), -(periodDays - 1));
+const lastDate = shiftDate(localDate(inventoryTo), -1);
+const calendarDates = [];
+for (let cursor = new Date(`${firstDate}T00:00:00Z`), end = new Date(`${lastDate}T00:00:00Z`);
+  cursor <= end; cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)) {
+  calendarDates.push(cursor.toISOString().slice(0, 10));
+}
 const series = [...byProduct.entries()].map(([productId, dates]) => {
-  const ordered = [...dates.values()].sort((a, b) => a.date.localeCompare(b.date));
   return {
     productId,
-    dates: ordered.map((row) => row.date),
-    units: ordered.map((row) => Number(row.units.toFixed(4))),
+    dates: calendarDates,
+    units: calendarDates.map((day) => Number((dates.get(day)?.units || 0).toFixed(4))),
     stockoutFlags: [],
   };
 }).filter((item) => item.dates.length > 0);
@@ -250,7 +269,7 @@ const snapshot = {
   generatedAt: new Date().toISOString(),
   period,
   currency: productsSnapshot.currency || "AUD",
-  timezone: productsSnapshot.timezone || "Australia/Adelaide",
+  timezone: businessTimezone,
   vendorId: productsSnapshot.vendorId ?? null,
   outletId: productsSnapshot.outletId ?? null,
   series,
@@ -262,6 +281,7 @@ const snapshot = {
     freeStock: product.freeStock,
     stockUpdatedAt: product.stockUpdatedAt,
   })) : [],
+  inventoryCurrentAsOf: productsSnapshot.generatedAt || null,
   dataQuality: {
     status: detailDiagnostics.some((item) => item.status < 200 || item.status >= 300)
       ? "INCOMPLETE_DETAIL_FAILURES"

@@ -132,14 +132,15 @@ access-controlled persistent volume rather than in Git.
 
 ### Historical inventory for development research
 
-Do not wait for 28 future dates to begin research. Odoo can calculate historical
-`qty_available` using the `to_date` context. This read-only collector samples
-the sales snapshot's product IDs at each local business-day close:
+Do not wait for 28 future capture dates to begin research. Odoo can calculate
+historical `qty_available` using its `to_date` context. Query that read-only
+history at each local business-day close and use it as a research label:
 
 ```powershell
 python scripts/ai-eval/fetch-skr-historical-inventory.py `
   --sales-snapshot .local/ai-eval/skr-sales-snapshot.json `
   --days 90 `
+  --company-id 5 `
   --output .local/ai-eval/skr-historical-inventory.json
 
 python scripts/ai_forecast_eval.py `
@@ -149,18 +150,56 @@ python scripts/ai_forecast_eval.py `
 ```
 
 The result is labelled `ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE` and
-`researchOnly=true`. It can support historical rolling backtests, but it does
-not count as a set of independently captured native daily snapshots. Keep the
-daily snapshot job running as a separate calibration check; it can compare
-future stored observations against Odoo's as-of calculation and catch timezone,
-company, or movement-history gaps before production enablement.
+`researchOnly=true`. It reads historical system quantities without waiting
+for future snapshots. It is not an independent physical stocktake: historic
+adjustments can be backdated, and company/warehouse scope or data corrections
+can make an individual product unreliable. The collector flags products whose
+nonpositive historical stock conflicts with repeated sales; the evaluator
+excludes those products from stockout censoring while allowing eligible sales
+series into exploratory forecast comparisons. Exit code `2` means quality
+warnings were found; inspect the generated history and its
+`researchBacktestReadiness` before using the report.
 
-The collector compares the reconstructed stock with the sales snapshot. If a
-product has nonpositive stock for every observed day while still selling on at
-least 14 days in a 28-day-or-longer window, it marks the history
-`BLOCKED_DATA_QUALITY`. The evaluator then refuses to apply those stockout flags
-and returns `BLOCKED`; reconcile opening balances and stock movement history
-before using this source to censor demand.
+Use an expanding-window walk-forward evaluation to simulate forecasts made at
+past dates. At each fold, the model sees sales and stockout labels only through
+the training cutoff; later historical sales are the holdout outcome. This does
+not require future inventory observations. Historical `to_date` inventory is
+used only to label censored-demand dates and must cover the full sales date
+range. It remains a system-history proxy, not independent physical stocktake
+truth. A horizon with no complete fold, missing inventory labels, or incomplete
+forecast output is `BLOCKED`, not a quality failure or a pass:
+
+```powershell
+python scripts/ai_forecast_walkforward_eval.py `
+  --sales-snapshot .local/ai-eval/skr-sales-snapshot.json `
+  --inventory-history .local/ai-eval/skr-historical-inventory.json `
+  --output .local/ai-eval/skr-walkforward-report.json `
+  --horizons 7 14 28
+```
+
+The evaluator reselects a model independently from each training prefix, so
+holdout outcomes cannot affect model choice. Review results by product segment
+and compare with fixed baselines; a strong aggregate score alone is not enough
+to enable purchasing decisions. Reports show both `dailyWeightedWape` and
+`horizonTotalWape`: daily error remains a diagnostic, while the exploratory
+quality gate uses each product's cumulative demand over the full 7/14/28-day
+forecast window. This better matches replenishment quantities for intermittent
+items, and zero-demand windows still contribute their over-forecast error.
+
+The current-balance-plus-done-moves reconstruction remains available as a
+fallback when historical `to_date` queries cannot be used:
+
+```powershell
+node scripts/ai-eval/fetch-skr-inventory-moves-readonly.mjs
+python scripts/ai-eval/build-reconstructed-inventory-history.py `
+  --sales-snapshot .local/ai-eval/skr-sales-snapshot.json `
+  --output .local/ai-eval/skr-reconstructed-inventory.json
+```
+
+Treat that fallback as lower-confidence research data because opening balance,
+missing/backdated moves, and warehouse scope errors accumulate when reversing
+movements. Daily native captures remain useful for forward calibration and
+production acceptance, but are not a prerequisite for historical research.
 
 After at least two capture dates exist, build the native product history used
 by backtests:
@@ -171,8 +210,10 @@ python scripts/ai-eval/build-inventory-history.py `
   --output .local/ai-eval/inventory-history.json
 ```
 
-Use `--require-days 28` in an acceptance job; it still writes the diagnostic
-history but exits with code `2` until 28 observed days exist.
+Use `--require-days 28` only for acceptance of independently captured native
+daily snapshots. It still writes the diagnostic history but exits with code `2`
+until 28 observed capture dates exist. Historical `to_date` data can support
+development backtests before that threshold.
 
 The history marks `actualStockoutDates` only when native `availableQty <= 0`,
 records `incomingQty` and supplier lead time for each product-day, and detects
@@ -180,9 +221,10 @@ list-price changes. Promotion state remains explicitly `NOT_CAPTURED` until a
 promotion or pricelist source is added; it is never inferred from a price
 change. The collector also reads active Odoo pricelist rules and records
 promotion rule transitions when product or template rules match; no matching
-rule is reported separately from an unavailable pricelist source. Until 28 daily snapshots exist, the output is marked
-`backtestReadiness=INSUFFICIENT_HISTORY` and must not replace the inferred
-stockout flags in an acceptance backtest. The history also reports
+rule is reported separately from an unavailable pricelist source. Until 28
+daily snapshots exist, native-snapshot acceptance remains
+`INSUFFICIENT_HISTORY`; this does not block research backtests based on
+historical `to_date` quantities. The history also reports
 `missingSnapshotDates` and `continuityStatus=GAPS_PRESENT` when the scheduler
 misses a day.
 

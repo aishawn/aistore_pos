@@ -47,11 +47,12 @@ public class AiInvoicePreviewController {
             throw new BusinessException(50301,
                     "Invoice preview is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
+        InvoiceVisionService.PreparedInvoiceImage prepared = vision.prepare(file);
         if (providerQuota != null) {
             providerQuota.acquire(tenantContextFactory.fromSecurity(),
-                    (int) Math.min(Integer.MAX_VALUE, Math.max(1L, file == null ? 0L : file.getSize() / 4L)));
+                    (int) Math.min(Integer.MAX_VALUE, Math.max(1L, prepared.bytes().length / 4L)));
         }
-        return ApiResult.ok(toPreview(vision.read(file)));
+        return ApiResult.ok(toPreview(vision.readPrepared(prepared)));
     }
 
     private static InvoiceScanResponse toPreview(TaxInvoiceRead read) {

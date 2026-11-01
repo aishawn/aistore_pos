@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.forecast_engine import _normalise, _order_cycle_exposure, forecast
+from app.forecast_engine import _normalise, _order_cycle_exposure, _select_wape_candidate, forecast
 from app.schemas import ForecastRequest, InventoryCostPolicy, Series
 
 
@@ -33,13 +33,18 @@ def test_cost_components_match_hand_calculated_inventory_unit_days():
     assert score.evaluatedFolds == 6 and score.evaluatedDays == 42
 
 
-def test_long_history_model_selection_uses_only_three_recent_weekly_folds():
+def test_long_history_model_selection_uses_only_six_recent_weekly_folds():
     item = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7,
         series=[series([4, 5, 6, 7, 8, 9, 10] * 18, unitCost=10, unitPrice=30)])).items[0]
 
     assert item.selectionStatus == "ROLLING_BACKTEST"
     assert item.candidateBusinessCosts
-    assert {score.evaluatedFolds for score in item.candidateBusinessCosts.values()} == {3}
+    assert {score.evaluatedFolds for score in item.candidateBusinessCosts.values()} == {6}
+
+
+def test_wape_selection_keeps_baseline_without_a_material_validation_gain():
+    assert _select_wape_candidate({"two_stage_occurrence_v1": 0.80, "seasonal_naive_v1": 0.74}) == "two_stage_occurrence_v1"
+    assert _select_wape_candidate({"two_stage_occurrence_v1": 0.80, "seasonal_naive_v1": 0.72}) == "seasonal_naive_v1"
 
 
 def test_margin_and_capital_policy_change_model_and_service_tradeoff():
@@ -66,7 +71,7 @@ def test_margin_and_capital_policy_change_model_and_service_tradeoff():
 def test_censored_cycle_is_not_claimed_as_observed_cost_evidence():
     flags = [False]*56
     flags[14] = True
-    item = forecast(ForecastRequest(vendorId=1, outletId=1,
+    item = forecast(ForecastRequest(vendorId=1, outletId=1, horizonDays=7,
         series=[series([2]*56, unitCost=10, unitPrice=20, stockoutFlags=flags)])).items[0]
     assert item.candidateBusinessCosts[item.model].evaluatedDays == 35
     assert item.confidence == "LOW"
@@ -89,7 +94,7 @@ def test_cost_candidates_are_fixed_before_validation_and_sparse_validation_falls
     assert a.selectionValidation["costCandidate"] == b.selectionValidation["costCandidate"]
     assert a.selectionValidation["baselineCandidate"] == b.selectionValidation["baselineCandidate"]
     sparse = run([1]*7+[0]*7+[1]*7)
-    assert sparse.selectionMetric == "rolling_wape_cost_validation_fallback"
+    assert sparse.selectionMetric == "rolling_horizon_total_wape_cost_validation_fallback"
     assert sparse.selectionValidation["status"] == "INSUFFICIENT_UNCENSORED_VALIDATION"
 
 

@@ -105,6 +105,13 @@ class InventorySnapshotTests(unittest.TestCase):
         path = MODULE.output_path(Path("snapshots"), captured, "Australia/Adelaide")
         self.assertEqual(Path("snapshots/2026-11-01/inventory.json"), path)
 
+    def test_promotion_rule_uses_business_date_after_utc_day_boundary(self):
+        captured = datetime(2026, 10, 31, 16, 0, tzinfo=timezone.utc)
+        business_date = captured.astimezone(MODULE.ZoneInfo("Australia/Adelaide")).date()
+
+        self.assertTrue(MODULE.promotion_rule_active({"date_start": "2026-11-01"}, business_date))
+        self.assertFalse(MODULE.promotion_rule_active({"date_end": "2026-10-31"}, business_date))
+
     def test_jsonrpc_retries_transient_gateway_failure(self):
         class Response(io.BytesIO):
             def __enter__(self):

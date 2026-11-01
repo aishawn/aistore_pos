@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = path.join(root, ".env");
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envPath = path.join(envDirectory, ".env");
 const localEnv = fs.existsSync(envPath)
   ? Object.fromEntries(fs.readFileSync(envPath, "utf8")
     .split(/\r?\n/)
@@ -17,7 +21,13 @@ const localEnv = fs.existsSync(envPath)
   : {};
 
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
-const password = process.env.INITIAL_ADMIN_PASSWORD || localEnv.INITIAL_ADMIN_PASSWORD;
+const isSkr = new URL(base).hostname === "skr.orithos.com.au";
+const username = process.env.PILOT_USERNAME
+  || (isSkr ? localEnv.ORITHOS_SKR_USER || localEnv.SKR_USER || "shawn" : "admin");
+const password = process.env.PILOT_PASSWORD
+  || (isSkr
+    ? localEnv.ORITHOS_SKR_PASS || localEnv.SKR_PASS
+    : process.env.INITIAL_ADMIN_PASSWORD || localEnv.INITIAL_ADMIN_PASSWORD);
 const fixtureDirectory = path.join(root, "scripts", "fixtures", "ai-transcription");
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -55,13 +65,22 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password },
+    data: { username, password },
     headers: { Origin: base },
     timeout: 60000,
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
-  record("admin login", "PASS", `status=${login.status()}`);
+  record("store login", "PASS", `status=${login.status()}`);
+
+  const versionResponse = await context.request.get(`${base}/api/public/version`, { timeout: 30000 });
+  const versionBody = await versionResponse.json().catch(() => ({}));
+  const backendCommit = versionBody.backend?.commit ?? null;
+  evidence.runtimeCommit = backendCommit;
+  evidence.runtimeMatchesSourceCommit = backendCommit === evidence.sourceCommit;
+  evidence.deploymentShaVerified = evidence.runtimeMatchesSourceCommit;
+  record("runtime identity", evidence.runtimeMatchesSourceCommit ? "PASS" : "BLOCKED",
+    `backendCommit=${backendCommit ?? "unavailable"} sourceCommit=${evidence.sourceCommit}`);
 
   const configResponse = await context.request.get(`${base}/api/ai/config/client`);
   const configBody = await configResponse.json().catch(() => ({}));
@@ -92,10 +111,11 @@ try {
     const body = await response.json().catch(() => ({}));
     const transcript = typeof body.data?.text === "string" ? body.data.text.trim() : "";
     const matches = body.code === 0 && testCase.expected.test(transcript);
-    const unavailable = body.code === 50301 || body.code === 50211;
+    const unavailable = body.code === 50301 || body.code === 50211 || body.code === 42901;
     record(testCase.id, matches ? "PASS" : unavailable ? "BLOCKED" : "FAIL", {
       httpStatus: response.status(),
       apiCode: body.code ?? null,
+      blockReason: body.code === 42901 ? "AI provider or gateway quota exhausted" : undefined,
       language: body.data?.lang ?? testCase.lang,
       transcriptMatchedExpectedTerm: matches,
       transcriptLength: transcript.length,

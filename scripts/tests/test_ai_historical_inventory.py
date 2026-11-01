@@ -1,7 +1,10 @@
 import importlib.util
+import io
 import unittest
+import urllib.error
 from datetime import date, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "scripts/ai-eval/fetch-skr-historical-inventory.py"
@@ -11,6 +14,48 @@ SPEC.loader.exec_module(MODULE)
 
 
 class HistoricalInventoryTests(unittest.TestCase):
+    def test_historical_inventory_fetch_retries_transient_gateway_errors(self):
+        class FlakyOpener:
+            def __init__(self):
+                self.calls = 0
+
+            def open(self, request, timeout):
+                self.calls += 1
+                if self.calls == 1:
+                    raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, io.BytesIO())
+                return io.BytesIO(b'{"result":{"ok":true}}')
+
+        client = object.__new__(MODULE.Odoo)
+        client.base = "https://odoo.example"
+        client.opener = FlakyOpener()
+
+        with patch.object(MODULE.time, "sleep") as sleep:
+            result = client.call("/health", {})
+
+        self.assertEqual({"ok": True}, result)
+        self.assertEqual(2, client.opener.calls)
+        sleep.assert_called_once_with(1)
+
+    def test_historical_inventory_fetch_caps_retry_backoff(self):
+        class UnavailableOpener:
+            def __init__(self):
+                self.calls = 0
+
+            def open(self, request, timeout):
+                self.calls += 1
+                raise urllib.error.HTTPError(request.full_url, 503, "Unavailable", {}, io.BytesIO())
+
+        client = object.__new__(MODULE.Odoo)
+        client.base = "https://odoo.example"
+        client.opener = UnavailableOpener()
+
+        with patch.object(MODULE.time, "sleep") as sleep:
+            with self.assertRaises(urllib.error.HTTPError):
+                client.call("/health", {})
+
+        self.assertEqual(8, client.opener.calls)
+        self.assertEqual([1, 2, 4, 8, 16, 30, 30], [call.args[0] for call in sleep.call_args_list])
+
     def test_local_day_end_is_converted_to_utc_across_daylight_saving(self):
         self.assertEqual("2026-10-31 13:30:00", MODULE.business_day_end_utc(date(2026, 10, 31), "Australia/Adelaide"))
         self.assertEqual("2026-10-01 14:30:00", MODULE.business_day_end_utc(date(2026, 10, 1), "Australia/Adelaide"))

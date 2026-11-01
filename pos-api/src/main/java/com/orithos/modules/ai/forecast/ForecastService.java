@@ -94,9 +94,11 @@ public class ForecastService {
         String sourceVersion = jdbc.query("""
                 SELECT source_version FROM ai_sales_daily
                 WHERE vendor_id = ? AND outlet_id = ?
+                  AND source_version IS NOT NULL AND trim(source_version) <> ''
                 ORDER BY data_as_of DESC LIMIT 1
                 """, rs -> rs.next() ? rs.getString(1) : "unknown",
                 tenant.vendorId(), tenant.requireOutletId());
+        requireVerifiedSourceVersion(sourceVersion);
         Set<Long> expectedProducts = new HashSet<>();
         series.forEach(item -> expectedProducts.add(item.productId()));
         List<ForecastDtos.Item> items = new ArrayList<>();
@@ -139,6 +141,13 @@ public class ForecastService {
         log.info("AI forecast completed vendorId={} outletId={} products={} elapsedMs={}",
                 tenant.vendorId(), tenant.requireOutletId(), items.size(), elapsedMs(startedAt));
         return response;
+    }
+
+    static void requireVerifiedSourceVersion(String sourceVersion) {
+        if (sourceVersion == null || sourceVersion.isBlank() || "unknown".equalsIgnoreCase(sourceVersion)) {
+            throw new BusinessException(40431,
+                    "Daily sales history has no verified source snapshot; run a read-only Odoo sync first.");
+        }
     }
 
     private static long elapsedMs(long startedAt) {

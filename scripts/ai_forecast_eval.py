@@ -40,6 +40,7 @@ def apply_inventory_history(series: Series, history: dict) -> Series:
     }
     if str(series.productId) in warning_product_ids:
         return series.model_copy(update={
+            "stockoutFlags": [],
             "stockoutDataQuality": "EXCLUDED_SUSPECT_HISTORICAL_INVENTORY",
         })
     observations = {str(item.get("date")): item for item in (product or {}).get("observations", [])}
@@ -52,6 +53,7 @@ def apply_inventory_history(series: Series, history: dict) -> Series:
     quality = {
         "NATIVE_ODOO_DAILY_SNAPSHOTS": "NATIVE_ODOO_DAILY_SNAPSHOTS",
         "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE": "RECONSTRUCTED_FROM_ODOO_TO_DATE",
+        "RECONSTRUCTED_FROM_CURRENT_STOCK_AND_DONE_MOVES": "RECONSTRUCTED_FROM_CURRENT_STOCK_AND_DONE_MOVES",
     }.get(source_quality, "HISTORICAL_INVENTORY_UNVERIFIED")
     return series.model_copy(update={
         "stockoutFlags": [bool(observations[value].get("isStockout")) for value in expected_dates],
@@ -313,7 +315,7 @@ def cold_start_similarity(target: Series, peers: list[Series], horizon: int = 7)
 def _group_labels(series: Series) -> dict[str, str]:
     if series.stockoutDataQuality and series.stockoutDataQuality not in (
         "VALID", "INFERRED_FROM_STOCK_MOVES", "RECONSTRUCTED_FROM_ODOO_TO_DATE",
-        "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "RECONSTRUCTED_FROM_CURRENT_STOCK_AND_DONE_MOVES", "NATIVE_ODOO_DAILY_SNAPSHOTS",
     ):
         stockout_label = "UNKNOWN"
     else:
@@ -520,12 +522,21 @@ def main() -> int:
                 else "APPLIED" if inventory_history else "NOT_PROVIDED"
             ),
             "path": str(inventory_history_path) if inventory_history_path else None,
+            "sourceSnapshotSha": source_sha(inventory_history_path) if inventory_history_path else None,
             "dataQuality": inventory_history.get("dataQuality") if inventory_history else None,
             "backtestReadiness": inventory_history.get("backtestReadiness") if inventory_history else None,
             "nativeSnapshotAcceptanceReadiness": inventory_history.get("nativeSnapshotAcceptanceReadiness") if inventory_history else None,
-            "researchOnly": bool(inventory_history and inventory_history.get("dataQuality") == "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"),
+            "researchOnly": bool(inventory_history and (
+                inventory_history.get("researchOnly") is True
+                or inventory_history.get("dataQuality") in {
+                    "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+                    "RECONSTRUCTED_FROM_CURRENT_STOCK_AND_DONE_MOVES",
+                }
+            )),
             "inventoryConsistencyStatus": inventory_history.get("inventoryConsistencyStatus") if inventory_history else None,
             "qualityWarnings": inventory_history.get("qualityWarnings", []) if inventory_history else [],
+            "baselineTimestampQuality": inventory_history.get("baselineTimestampQuality") if inventory_history else None,
+            "movementCount": inventory_history.get("movementCount") if inventory_history else None,
             "excludedProductCount": len(excluded_inventory_products),
             "researchBacktestReadiness": research_readiness,
             "evaluationDateRange": [inventory_evaluation_dates[0], inventory_evaluation_dates[-1]] if inventory_evaluation_dates else [],

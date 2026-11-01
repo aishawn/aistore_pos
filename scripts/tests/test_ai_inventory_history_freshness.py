@@ -60,6 +60,27 @@ def test_future_capture_fails_closed():
     assert MODULE.check(payload, now, 36, 0)["status"] == "INVALID"
 
 
+def test_capture_date_is_compared_in_store_business_timezone():
+    now = datetime(2026, 10, 31, 22, 6, tzinfo=timezone.utc)
+    payload = history("2026-10-31T22:00:00+00:00")
+    payload["snapshotDates"] = ["2026-11-01"]
+    payload["latestCapturedAt"] = "2026-10-31T21:05:33+00:00"
+    payload["businessTimezone"] = "Australia/Adelaide"
+
+    report = MODULE.check(payload, now, 36, 0)
+
+    assert report["status"] == "FRESH"
+    assert report["latestSnapshotDate"] == "2026-11-01"
+    assert report["businessTimezone"] == "Australia/Adelaide"
+
+
+def test_invalid_business_timezone_fails_closed():
+    now = datetime(2026, 10, 31, 6, tzinfo=timezone.utc)
+    payload = history("2026-10-31T05:00:00+00:00")
+    payload["businessTimezone"] = "Not/A_Timezone"
+    assert MODULE.check(payload, now, 36, 0)["status"] == "INVALID"
+
+
 def test_duplicate_dates_do_not_inflate_readiness():
     now = datetime(2026, 10, 31, 6, tzinfo=timezone.utc)
     payload = history(now.isoformat(), observed=28)

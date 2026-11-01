@@ -43,6 +43,7 @@ class InventoryHistoryTests(unittest.TestCase):
         result = MODULE.build_history([first, second])
         product = result["products"][0]
         self.assertEqual("NATIVE_ODOO_DAILY_SNAPSHOTS", result["dataQuality"])
+        self.assertEqual("Australia/Adelaide", result["businessTimezone"])
         self.assertEqual("INSUFFICIENT_HISTORY", result["backtestReadiness"])
         self.assertEqual(["2026-10-02"], product["actualStockoutDates"])
         self.assertEqual([{"date": "2026-10-02", "from": 19.99, "to": 21.99}], product["priceChanges"])
@@ -100,6 +101,29 @@ class InventoryHistoryTests(unittest.TestCase):
             loaded = MODULE.load_snapshots(root)
 
         self.assertEqual(2, len(loaded))
+
+    def test_legacy_snapshot_without_business_date_uses_store_timezone(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy = snapshot("2026-10-31", 4, 19.99)
+            legacy.pop("businessDate")
+            legacy.pop("businessTimezone", None)
+            legacy["capturedAt"] = "2026-10-31T15:30:23+00:00"
+            current = snapshot("2026-11-01", 0, 19.99)
+            first = root / "2026-10-31" / "inventory.json"
+            second = root / "2026-11-01" / "inventory.json"
+            first.parent.mkdir()
+            second.parent.mkdir()
+            first.write_text(json.dumps(legacy), encoding="utf-8")
+            second.write_text(json.dumps(current), encoding="utf-8")
+
+            loaded = MODULE.load_snapshots(root)
+            result = MODULE.build_history(loaded)
+
+        self.assertEqual(1, len(loaded))
+        self.assertEqual("skr-odoo-native-inventory-2026-11-01", loaded[0]["snapshotVersion"])
+        self.assertEqual(["2026-11-01"], result["snapshotDates"])
+        self.assertEqual(1, result["observedDays"])
 
     def test_rejects_write_requests(self):
         with tempfile.TemporaryDirectory() as directory:

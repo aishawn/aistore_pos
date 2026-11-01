@@ -89,7 +89,7 @@ class ForecastBacktestTests(unittest.TestCase):
         self.assertIn(item.model, {"seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1",
                                     "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1"})
         self.assertTrue(item.candidateScores)
-        self.assertEqual("rolling_wape", item.selectionMetric)
+        self.assertEqual("rolling_horizon_total_wape", item.selectionMetric)
 
     def test_forecast_labels_short_history_without_claiming_model_selection(self):
         start = date(2026, 1, 1)
@@ -117,7 +117,7 @@ class ForecastBacktestTests(unittest.TestCase):
                 Series(productId=1, dates=dates, units=[0., 0., 0., 1., 0., 0., 12.] * 8, unitCost=10, unitPrice=price),
             ])).items[0]
         low, high = run(11), run(30)
-        self.assertEqual("rolling_wape_cost_validation_fallback", high.selectionMetric)
+        self.assertEqual("rolling_horizon_total_wape_cost_validation_fallback", high.selectionMetric)
         self.assertGreater(high.candidateScores["tsb_v1"], low.candidateScores["tsb_v1"])
         self.assertEqual(high.candidateScores["moving_average_7_v1"], low.candidateScores["moving_average_7_v1"])
         self.assertEqual(0, high.candidateBusinessCosts["moving_average_7_v1"].lostMarginPerDay)

@@ -58,6 +58,15 @@ class ForecastServiceSnapshotTest {
     }
 
     @Test
+    void doesNotAcceptUnknownDailySalesSourceAsForecastInput() {
+        assertThrows(BusinessException.class,
+                () -> ForecastService.requireVerifiedSourceVersion("unknown"));
+        assertThrows(BusinessException.class,
+                () -> ForecastService.requireVerifiedSourceVersion(" "));
+        assertDoesNotThrow(() -> ForecastService.requireVerifiedSourceVersion("odoo-2026-11-01T00:00:00Z"));
+    }
+
+    @Test
     void splitsProductSeriesIntoProviderLimitBatchesWithoutDroppingProducts() {
         List<ForecastDtos.Series> series = List.of(
                 new ForecastDtos.Series(1, List.of(), List.of(), List.of()),

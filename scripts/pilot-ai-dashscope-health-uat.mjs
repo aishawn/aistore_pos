@@ -4,16 +4,21 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = path.join(root, ".env");
-const env = fs.existsSync(envPath)
-  ? Object.fromEntries(fs.readFileSync(envPath, "utf8")
+let envDirectory = root;
+while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+  envDirectory = path.dirname(envDirectory);
+}
+const envPath = path.join(envDirectory, ".env");
+const env = {
+  ...process.env,
+  ...(fs.existsSync(envPath) ? Object.fromEntries(fs.readFileSync(envPath, "utf8")
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith("#") && line.includes("="))
     .map((line) => {
       const index = line.indexOf("=");
       return [line.slice(0, index).trim(), line.slice(index + 1).trim().replace(/^['"]|['"]$/g, "")];
-    }))
-  : {};
+    })) : {}),
+};
 const apiKey = env.AI_DASHSCOPE_API_KEY;
 const baseUrl = (env.AI_DASHSCOPE_BASE_URL || "https://dashscope.aliyuncs.com").replace(/\/+$/, "");
 const model = env.AI_DASHSCOPE_MODEL || "qwen-plus";

@@ -10,7 +10,9 @@ from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
 MODEL = "seasonal_naive_v1"
 MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1",
                "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
-MAX_MODEL_SELECTION_FOLDS = 3
+WAPE_BASELINE_MODEL = "two_stage_occurrence_v1"
+MIN_WAPE_IMPROVEMENT = 0.10
+MAX_MODEL_SELECTION_FOLDS = 6
 
 
 def _normalise(values: list[float], horizon: int, stockout_flags: list[bool] | None = None,
@@ -87,8 +89,17 @@ def _order_cycle_exposure(predicted: list[float], actual: list[float]) -> tuple[
     return missed, inventory_unit_days
 
 
+def _select_wape_candidate(scores: dict[str, float]) -> str:
+    winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
+    baseline = scores.get(WAPE_BASELINE_MODEL)
+    if baseline is not None and winner != WAPE_BASELINE_MODEL:
+        if scores[winner] > baseline * (1 - MIN_WAPE_IMPROVEMENT):
+            return WAPE_BASELINE_MODEL
+    return winner
+
+
 def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = True) -> tuple[str, str, dict[str, float], str | None, dict, dict]:
-    """Select using rolling business loss when costs are valid, otherwise WAPE.
+    """Select using rolling business loss when costs are valid, otherwise horizon-total WAPE.
 
     The service deliberately refuses to call a short series a validated model
     selection. The caller still receives a deterministic seasonal-naive
@@ -104,6 +115,7 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
     wape_scores = {}
     for candidate in MODEL_NAMES:
         errors: list[float] = []
+        horizon_errors: list[float] = []
         actual_total = 0.0
         observed = 0
         folds = 0
@@ -117,6 +129,8 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
             train_flags = flags[:end] if flags else []
             predicted, _, _ = _normalise(train, horizon, train_flags, candidate)
             actual_cycle = values[end:end + horizon]
+            predicted_total = 0.0
+            observed_total = 0.0
             # Unobserved demand prevents an honest inventory trajectory.
             if use_cost and any(flags[end:end + horizon]):
                 continue
@@ -130,10 +144,14 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
                     continue
                 errors.append(abs(predicted[offset] - actual))
                 actual_total += actual
+                predicted_total += predicted[offset]
+                observed_total += actual
                 observed += 1
+            if observed:
+                horizon_errors.append(abs(predicted_total - observed_total))
 
-        if errors and actual_total > 0:
-            wape_scores[candidate] = sum(errors) / actual_total
+        if horizon_errors and errors and actual_total > 0:
+            wape_scores[candidate] = sum(horizon_errors) / actual_total
             if use_cost:
                 # Penalise missed demand beyond the requested service level.
                 shortfall = max(0.0, missed_units - (1 - policy.serviceLevel) * actual_total)
@@ -152,11 +170,13 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
     if not scores:
         return MODEL, "BLOCKED", {}, None, {}, {}
     winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
+    if not use_cost:
+        winner = _select_wape_candidate(scores)
     validation = {}
-    metric = "rolling_business_cost_aud_per_day" if use_cost else "rolling_wape"
+    metric = "rolling_business_cost_aud_per_day" if use_cost else "rolling_horizon_total_wape"
     if use_cost and validate_cost:
         baseline = min(wape_scores, key=lambda candidate: (wape_scores[candidate], candidate))
-        winner, metric = baseline, "rolling_wape_cost_validation_fallback"
+        winner, metric = baseline, "rolling_horizon_total_wape_cost_validation_fallback"
         validation = {"status": "INSUFFICIENT_UNCENSORED_VALIDATION"}
         # Fix candidate identities before three untouched non-overlapping cycles.
         validation_days = horizon * 3
@@ -204,7 +224,7 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
         if series.selectedModel:
             model, selection_status, candidate_scores, metric, cost_details, validation = series.selectedModel, "EXPLICIT", {}, None, {}, {}
         else:
-            model, selection_status, candidate_scores, metric, cost_details, validation = _select_model(series, min(request.horizonDays, 7), request.costPolicy)
+            model, selection_status, candidate_scores, metric, cost_details, validation = _select_model(series, request.horizonDays, request.costPolicy)
         values, quality, confidence = _normalise(series.units, request.horizonDays, series.stockoutFlags, model)
         if selection_status in ("BLOCKED", "INSUFFICIENT_HISTORY"):
             confidence = "LOW"

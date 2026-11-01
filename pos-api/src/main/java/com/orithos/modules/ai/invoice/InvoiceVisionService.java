@@ -134,6 +134,10 @@ public class InvoiceVisionService {
     }
 
     public TaxInvoiceRead read(MultipartFile file) {
+        return readPrepared(prepare(file));
+    }
+
+    PreparedInvoiceImage prepare(MultipartFile file) {
         if (aiGateway == null && !StringUtils.hasText(apiKey)) {
             throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
         }
@@ -159,6 +163,13 @@ public class InvoiceVisionService {
             mime = "image/jpeg";
         }
         validateImage(bytes);
+        return new PreparedInvoiceImage(mime, bytes);
+    }
+
+    TaxInvoiceRead readPrepared(PreparedInvoiceImage prepared) {
+        if (prepared == null) throw new BusinessException(40010, "Photo is required.");
+        String mime = prepared.mime();
+        byte[] bytes = prepared.bytes();
         String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
 
         boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(properties.visionModel());
@@ -219,6 +230,8 @@ public class InvoiceVisionService {
             throw new BusinessException(50213, "Invoice recognition failed. Check the AI configuration and try again.");
         }
     }
+
+    record PreparedInvoiceImage(String mime, byte[] bytes) {}
 
     /** Reject malformed or clearly unusable images before spending provider quota. */
     static void validateImage(byte[] bytes) {

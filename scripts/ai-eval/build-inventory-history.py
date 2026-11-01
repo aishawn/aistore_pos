@@ -12,29 +12,33 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 def _capture_datetime(snapshot: dict[str, Any], path: Path) -> datetime:
     value = snapshot.get("capturedAt")
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            captured_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return captured_at.replace(tzinfo=timezone.utc) if captured_at.tzinfo is None else captured_at
         except ValueError:
             pass
     return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
 
 
-def _business_date(snapshot: dict[str, Any], captured_at: datetime) -> date:
+def _business_date(snapshot: dict[str, Any], captured_at: datetime,
+                   default_timezone: str = "Australia/Adelaide") -> date:
     value = snapshot.get("businessDate")
     if isinstance(value, str):
         try:
             return date.fromisoformat(value)
         except ValueError:
             pass
-    return captured_at.date()
+    timezone_name = snapshot.get("businessTimezone") or snapshot.get("timezone") or default_timezone
+    return captured_at.astimezone(ZoneInfo(str(timezone_name))).date()
 
 
-def load_snapshots(root: Path) -> list[dict[str, Any]]:
+def load_snapshots(root: Path, default_timezone: str = "Australia/Adelaide") -> list[dict[str, Any]]:
     snapshots: list[tuple[datetime, date, Path, dict[str, Any]]] = []
     for path in root.rglob("inventory.json"):
         snapshot = json.loads(path.read_text(encoding="utf-8"))
@@ -45,11 +49,11 @@ def load_snapshots(root: Path) -> list[dict[str, Any]]:
         if snapshot.get("writeRequests", []) != []:
             raise ValueError(f"snapshot contains write requests: {path}")
         captured_at = _capture_datetime(snapshot, path)
-        snapshots.append((captured_at, _business_date(snapshot, captured_at), path, snapshot))
+        snapshots.append((captured_at, _business_date(snapshot, captured_at, default_timezone), path, snapshot))
     snapshots.sort(key=lambda item: item[0])
     if not snapshots:
         raise ValueError(f"no inventory.json snapshots found under {root}")
-    # One observation per UTC date.  If a task was retried, keep the latest
+    # One observation per store business date. If a task was retried, keep the latest
     # capture for that date rather than double-counting a product-day.
     by_date: dict[str, tuple[datetime, date, Path, dict[str, Any]]] = {}
     for item in snapshots:
@@ -66,9 +70,9 @@ def _number(value: Any) -> float | None:
         return None
 
 
-def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+def build_history(snapshots: list[dict[str, Any]], default_timezone: str = "Australia/Adelaide") -> dict[str, Any]:
     dates = sorted({
-        _business_date(snapshot, _capture_datetime(snapshot, Path("."))).isoformat()
+        _business_date(snapshot, _capture_datetime(snapshot, Path(".")), default_timezone).isoformat()
         for snapshot in snapshots
     })
     parsed_dates = [date.fromisoformat(value) for value in dates if len(value) == 10]
@@ -82,7 +86,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
             cursor += timedelta(days=1)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for snapshot in snapshots:
-        date_value = _business_date(snapshot, _capture_datetime(snapshot, Path("."))).isoformat()
+        date_value = _business_date(snapshot, _capture_datetime(snapshot, Path(".")), default_timezone).isoformat()
         quality = str(snapshot.get("dataQuality") or "UNKNOWN")
         for product in snapshot.get("products", []):
             product_id = product.get("productId")
@@ -175,6 +179,7 @@ def build_history(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         "source": "odoo-readonly-jsonrpc",
         "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "latestCapturedAt": max(datetime.fromisoformat(str(snapshot["capturedAt"]).replace("Z", "+00:00")).astimezone(timezone.utc) for snapshot in snapshots).isoformat(),
+        "businessTimezone": str(snapshots[-1].get("businessTimezone") or snapshots[-1].get("timezone") or default_timezone),
         "snapshotDates": dates,
         "snapshotCount": len(snapshots),
         "coverageDays": (max(parsed_dates) - min(parsed_dates)).days + 1 if parsed_dates else 0,
@@ -196,8 +201,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--require-days", type=int, default=0,
                         help="exit 2 when fewer than this many observed snapshot days exist")
+    parser.add_argument("--timezone", default="Australia/Adelaide",
+                        help="store timezone used for legacy snapshots without businessDate")
     args = parser.parse_args()
-    history = build_history(load_snapshots(args.input))
+    history = build_history(load_snapshots(args.input, args.timezone), args.timezone)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(history, indent=2), encoding="utf-8")
     print(json.dumps({"output": str(args.output), "snapshots": history["snapshotCount"], "products": len(history["products"]), "dataQuality": history["dataQuality"]}))

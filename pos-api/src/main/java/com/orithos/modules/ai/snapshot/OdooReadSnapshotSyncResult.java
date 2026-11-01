@@ -14,6 +14,7 @@ public record OdooReadSnapshotSyncResult(
         int inventory,
         int prices,
         int sales,
+        int dailySales,
         int suppliers,
         int purchaseLines,
         Map<String, String> dataQuality
