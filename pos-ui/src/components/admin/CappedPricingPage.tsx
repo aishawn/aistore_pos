@@ -244,8 +244,8 @@ export function CappedPricingPage() {
 <p className="mt-3 text-sm text-[var(--oh-text-secondary)]">Rules are read from Orithos. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Orithos.</p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-3 sm:px-6">
-        <div data-testid="capped-pricing-table" className="min-w-0 xl:min-w-[1050px]">
+      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-6">
+        <div data-testid="capped-pricing-table" className="mt-3 min-w-0 xl:min-w-[1050px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md bg-[var(--oh-surface-inverse)] py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[24%] shrink-0 px-3">Product</div>
             <div className="w-[18%] shrink-0 px-3">Capped Pricing</div>
