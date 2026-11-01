@@ -72,6 +72,8 @@ type DeadStockData = {
   bucketCounts: Record<string, number>;
   cashValueByBucket: Record<string, number>;
   invalidCostOrStockCount: number;
+  catalogueCoverage?: { loadedProducts: number; totalProducts: number | null; complete: boolean };
+  truncated?: boolean;
   products: Array<{ id: number; name: string; inventoryValue: number | null; onHand: number | null; invalidReason: string | null }>;
   dataQuality: string;
 };
@@ -512,6 +514,9 @@ export function OrithosReportsDashboardPage() {
               </div>
               {deadStock.invalidCostOrStockCount > 0 ? (
                 <p className="oh-type-meta mt-2 text-amber-700">{deadStock.invalidCostOrStockCount} products need manual cost or stock review before cash value is trusted.</p>
+              ) : null}
+              {deadStock.truncated || deadStock.catalogueCoverage?.complete === false ? (
+                <p className="oh-type-meta mt-1 text-amber-700">Partial catalogue loaded ({deadStock.catalogueCoverage?.loadedProducts.toLocaleString("en-AU")} of {deadStock.catalogueCoverage?.totalProducts?.toLocaleString("en-AU") ?? "unknown"}). Cash totals are a review queue, not a complete store total.</p>
               ) : null}
             </section>
           ) : null}
