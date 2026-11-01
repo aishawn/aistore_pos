@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 import { fetchTenantOdooBinding } from "@/lib/odoo-tenant-company";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { loadPurchasingLedger, mergePurchasingSources } from "@/lib/shopfront-purchasing-ledger";
 import { filterPurchasingRows, normalizePurchasingRow, type PurchasingKind, type ShopfrontPurchasingRecord } from "@/lib/shopfront-purchasing";
 
 export const runtime = "nodejs";
@@ -61,11 +63,21 @@ export async function GET(request: NextRequest) {
     if (!enabled) return json({ message: "This store has no Shopfront purchasing directory" }, 404);
     const offset = Number(params.get("offset") ?? 0);
     if (!Number.isSafeInteger(offset) || offset < 0) return json({ message: "Invalid pagination" }, 400);
-    const rows = await loadRows(kind);
+    const scope = await scopedOdoo(request);
+    const companyId = binding.odooCompanyId;
+    if (!companyId || scope.binding?.vendorId !== binding.vendorId || !scope.companyIds.includes(companyId)) return json({ message: "Could not verify purchasing company" }, 403);
+    const ledger = await loadPurchasingLedger(scope.rpc, companyId, binding.subdomain, kind);
+    let crawler: ShopfrontPurchasingRecord[];
+    try { crawler = await loadRows(kind); } catch {
+      if (!ledger.length) throw new Error("Purchasing sources unavailable");
+      crawler = [];
+    }
+    const rows = mergePurchasingSources(ledger, crawler, kind);
     const items = filterPurchasingRows(rows, (params.get("query") ?? "").slice(0, 120), params.get("status") ?? "all");
     return json({ enabled: true, source: "Shopfront", readOnly: true, sourceTotal: rows.length, total: items.length,
       statuses: [...new Set(rows.map((row) => row.status))].sort(), items: items.slice(offset, offset + 40), offset, hasNext: offset + 40 < items.length });
   } catch (error) {
-    return json({ message: error instanceof StoreAccessError ? error.message : "Could not load Shopfront purchasing data. Please retry." }, error instanceof StoreAccessError ? error.status : 502);
+    const scopedError = error instanceof StoreAccessError || error instanceof OdooScopeError;
+    return json({ message: scopedError ? error.message : "Could not load Shopfront purchasing data. Please retry." }, scopedError ? error.status : 502);
   }
 }
