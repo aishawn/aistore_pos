@@ -35,6 +35,20 @@ active_sync_tasks: dict[str, asyncio.Task] = {}
 active_job_tasks: dict[int, asyncio.Task] = {}
 
 
+def wake_durable_worker() -> None:
+    """Wake the worker immediately after an API enqueue.
+
+    The interval trigger remains the recovery path, while this avoids making
+    an operator wait for the next scheduler tick when APScheduler has just
+    resumed after a deployment or a long-running request.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(process_next_job())
+    except RuntimeError:
+        logger.warning("Could not wake durable worker: no running event loop")
+
+
 @app.on_event("startup")
 async def startup() -> None:
     init_db()
@@ -250,6 +264,7 @@ async def trigger_sync(store_key: str, from_date: date | None = None, to_date: d
     job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": should_include_supply_chain(db, store.store_key)})
     db.add(job)
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
 
 
@@ -455,6 +470,7 @@ async def discover_history(store_key: str, db: Session = Depends(get_db)) -> dic
     job = SyncJob(store_key=store.store_key, job_type="discover", status="queued")
     db.add(job)
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key}
 
 
@@ -468,6 +484,7 @@ async def start_history_sync(store_key: str, from_date: date | None = None, to_d
     job = SyncJob(store_key=store.store_key, job_type="history", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat())
     db.add(job)
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
 
 
@@ -530,6 +547,7 @@ def shopfront_sync_daily(store: str | None = None, db: Session = Depends(get_db)
         db.flush()
         queued.append({"store": key, "job_id": job.id, "from": start, "to": end})
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "jobs": queued}
 
 
@@ -920,6 +938,7 @@ async def supply_chain_sync(store_key: str, db: Session = Depends(get_db)) -> di
     job = SyncJob(store_key=store.store_key, job_type="supply_chain", status="queued")
     db.add(job)
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_supply_chain_mirror"}
 
 
@@ -932,6 +951,7 @@ async def customers_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
     job = SyncJob(store_key=store.store_key, job_type="customers", status="queued")
     db.add(job)
     db.commit()
+    wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_customers"}
 
 
