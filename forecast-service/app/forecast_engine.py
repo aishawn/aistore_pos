@@ -327,7 +327,7 @@ def forecast(request: ForecastRequest) -> ForecastResponse:
                                   candidateBusinessCosts=cost_details,
                                   selectionValidation=validation,
                                   dataQuality=quality, confidence=confidence))
-    return ForecastResponse(model="per_product_selected", modelVersion="5", sourceVersion=request.sourceVersion,
+    return ForecastResponse(model="per_product_selected", modelVersion="6", sourceVersion=request.sourceVersion,
                             horizonDays=request.horizonDays, items=items, costPolicy=request.costPolicy,
                             costPolicySource="REQUEST_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED" if "costPolicy" in request.model_fields_set else "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED")
 
