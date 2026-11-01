@@ -235,6 +235,9 @@ class AssistantFastPathRouterTest {
         for (String question : new String[]{
                 "Stock?",
                 "What's in stock?",
+                "What stock do we have?",
+                "What products are in stock?",
+                "How many items are in stock?",
                 "How's our stock looking?",
                 "库存情况怎么样？"
         }) {
@@ -242,6 +245,17 @@ class AssistantFastPathRouterTest {
             assertNotNull(match, question);
             assertEquals("navigate", match.intent(), question);
             assertEquals("/stock/list", match.route(), question);
+        }
+
+        for (String question : new String[]{
+                "What products are low in stock?",
+                "Which items are running low on stock?",
+                "哪些商品库存偏低？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("navigate", match.intent(), question);
+            assertEquals("/stock/replenishment", match.route(), question);
         }
 
         for (String question : new String[]{

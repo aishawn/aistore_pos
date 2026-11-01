@@ -88,8 +88,16 @@ public final class AssistantFastPathRouter {
     private static final Pattern CHECK_STOCK = Pattern.compile(
             "^(?:stock|inventory|check\\s*(?:stock|inventory)|stock\\s*list|show(?:\\s+me)?\\s+(?:the\\s+)?(?:stock|inventory)|"
                     + "what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|"
+                    + "what\\s+stock\\s+do\\s+we\\s+have|what\\s+products?\\s+(?:do\\s+we\\s+have|are\\s+in\\s+stock)|"
+                    + "how\\s+many\\s+(?:products?|items?)\\s+(?:do\\s+we\\s+have|are\\s+in\\s+stock)|"
+                    + "show(?:\\s+me)?\\s+(?:the\\s+)?products?\\s+in\\s+stock|"
                     + "how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|"
                     + "库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货|库存列表|查询库存|查看库存|库存查询)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOW_STOCK = Pattern.compile(
+            "^(?:(?:what|which)\\s+products?\\s+(?:are|is)\\s+(?:low|running low)\\s+(?:in stock|on stock)|"
+                    + "(?:what|which)\\s+items?\\s+(?:are|is)\\s+(?:low|running low)\\s+(?:in stock|on stock)|"
+                    + "(?:哪些|什么)商品(?:库存)?(?:偏低|快断货|需要补货)|低库存商品(?:有哪些|列表)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_CLARIFICATION = Pattern.compile(
             "^(?:why (?:can'?t|cannot) (?:you|we|i) find (?:the )?(?:stock|inventory|products?)|"
@@ -385,6 +393,16 @@ public final class AssistantFastPathRouter {
                     Map.of(),
                     "/stock/list",
                     "",
+                    "",
+                    "");
+        }
+        if (LOW_STOCK.matcher(normalized).matches()) {
+            return new Match(
+                    "navigate",
+                    "Opened replenishment review.",
+                    Map.of(),
+                    "/stock/replenishment",
+                    "replenishment",
                     "",
                     "");
         }
