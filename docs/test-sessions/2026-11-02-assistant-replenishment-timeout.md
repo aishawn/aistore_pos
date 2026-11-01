@@ -1,6 +1,7 @@
 # Assistant replenishment timeout and snapshot diagnostics
 
 - Source SHA: `860c1d2ebfc21f6f3d3a55f0ee73794c698ee3f0`.
+- Integration SHA: `ca9dfec324c6bd53d8069986c56e2f789c7ee472`, merged current main `5e9ff0c3`; post-merge typecheck and 18 relevant Node regressions PASS. Remote changes to forecast-confidence gating and Demo session opening were retained.
 - Runtime SHA: **BLOCKED / not authenticated or verified**. These results do not establish deployment or live SKR acceptance.
 - Environment: Windows, Node 24.19.0, Python local fixtures. No local production build.
 - Real Odoo business writes: **0**.
