@@ -44,6 +44,8 @@ export function OdooProductCataloguePage() {
   const { hasPermission } = useAuth();
   const [stockBusy, setStockBusy] = useState(false);
   const [categoryBusy, setCategoryBusy] = useState(false);
+  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
+  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const dialog = searchParams.get("dialog");
   const dialogBusy = stockBusy || categoryBusy;
   function setDialog(value: string | null) {
@@ -70,7 +72,6 @@ export function OdooProductCataloguePage() {
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -79,8 +80,6 @@ export function OdooProductCataloguePage() {
   const [error, setError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
-  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const [editingProduct, setEditingProduct] = useState<OdooProductRecord | null>(null);
   const [categoriesTouched, setCategoriesTouched] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -130,8 +129,6 @@ export function OdooProductCataloguePage() {
   }, [categoryLoading, importBusy, importOpen]);
   const tab = searchParams.get("tab") === "stocktake" ? "stocktake" : "catalogue";
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
-<<<<<<< HEAD
-=======
   const categoryOptions = useMemo(() => {
     const groups = new Map<string, OdooPosCategoryRecord>();
     for (const category of categories) {
@@ -149,7 +146,6 @@ export function OdooProductCataloguePage() {
     }),
     [items],
   );
->>>>>>> 4779ca15 (fix(pos): deduplicate category filters)
 
   const requestedQuery = searchParams.get("q");
   useEffect(() => {
@@ -241,7 +237,6 @@ export function OdooProductCataloguePage() {
     if (connected !== true) return;
     const revision = ++requestRevision.current;
     setLoading(true);
-    setTotalCount(null);
     setError(null);
     try {
       const page = await searchOdooRecords<OdooProductRecord>("products", {
@@ -254,7 +249,6 @@ export function OdooProductCataloguePage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.hasNext === true);
-      setTotalCount(typeof page.total === "number" ? page.total : null);
       setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
@@ -433,36 +427,28 @@ export function OdooProductCataloguePage() {
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 md:p-6">
       <header inert={stockBusy || categoryBusy} className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
-            {tab === "catalogue" && <span aria-live="polite" className="inline-flex min-h-7 items-center rounded-full border border-[var(--oh-border)] bg-white px-2.5 text-xs font-semibold tabular-nums text-[var(--oh-text-secondary)]">
-              {totalCount === null ? (loading ? "Loading count…" : "Count unavailable") : `${totalCount.toLocaleString("en-AU")} products`}
-            </span>}
-          </div>
+          <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
-<<<<<<< HEAD
-=======
           {tab === "catalogue" && showImportDisplayNote && (
             <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
               Legacy import prefixes are hidden in the list; source SKUs remain available for reconciliation.
             </p>
           )}
->>>>>>> 4779ca15 (fix(pos): deduplicate category filters)
 
         </div>
         {tab === "catalogue" && (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:flex">
+        <div className="grid grid-cols-2 items-center gap-2 sm:flex">
+          {hasPermission("stock.stocktake") && <button type="button" onClick={() => setDialog("stocktake")} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stocktake</button>}
           {hasPermission("stock.products.edit") && <button type="button" onClick={() => setDialog("categories")} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Manage Categories</button>}
-          {(hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
-          {hasPermission("stock.stocktake") && <button type="button" onClick={() => setDialog("stocktake")} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-left text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Stocktake</button>}
+          {(hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
           {hasPermission("stock.products.import_export") && <><button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button></>}
           {hasPermission("customers.pricelists") && <button type="button" onClick={() => setPriceListsOpen(true)} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><Tag size={16} /><span>Price Lists</span></button>}
           </div></details>}
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="col-start-3 row-start-1 inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 justify-self-end rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:justify-self-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -610,7 +596,7 @@ export function OdooProductCataloguePage() {
           </section>
 
           <footer className="flex shrink-0 flex-col gap-2 pr-24 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span role="status" aria-live="polite">{resultsPending ? "Loading products…" : items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}${totalCount !== null ? ` of ${totalCount.toLocaleString("en-AU")}` : ""}` : "No records"}</span>
+            <span role="status" aria-live="polite">{resultsPending ? "Loading products…" : items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => Math.max(0, value - PAGE_SIZE)); }} disabled={offset === 0 || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
               <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => value + PAGE_SIZE); }} disabled={!hasNext || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
