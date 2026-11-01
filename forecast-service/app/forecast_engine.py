@@ -117,12 +117,22 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
     wape_scores = {}
     independent_validation_days = 0
     independent_validation_start = len(values)
+    selection_folds = MAX_MODEL_SELECTION_FOLDS
     # Long research/production histories get a final untouched validation slice.
     # Keep the existing six-fold selection window intact; shorter histories retain
     # the established rolling selector and are explicitly lower-confidence.
-    if (not use_cost and len(values) >= INDEPENDENT_VALIDATION_MIN_DAYS
-            and horizon * (MAX_MODEL_SELECTION_FOLDS + INDEPENDENT_VALIDATION_FOLDS) <= len(values)):
-        independent_validation_days = horizon * INDEPENDENT_VALIDATION_FOLDS
+    if not use_cost and len(values) >= INDEPENDENT_VALIDATION_MIN_DAYS:
+        complete_cycles = len(values) // horizon
+        validation_folds = min(INDEPENDENT_VALIDATION_FOLDS,
+                               max(1, complete_cycles - MAX_MODEL_SELECTION_FOLDS))
+        selection_folds = min(MAX_MODEL_SELECTION_FOLDS,
+                              max(3, complete_cycles - validation_folds))
+        if complete_cycles >= selection_folds + validation_folds:
+            independent_validation_days = horizon * validation_folds
+        else:
+            selection_folds = MAX_MODEL_SELECTION_FOLDS
+            independent_validation_days = 0
+    if independent_validation_days:
         independent_validation_start = len(values) - independent_validation_days
     for candidate in MODEL_NAMES:
         errors: list[float] = []
@@ -135,7 +145,7 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
         first_origin = 14
         if len(values) > 14 + horizon * 8:
             selection_end = independent_validation_start if independent_validation_days else len(values)
-            first_origin = max(14, selection_end - horizon * MAX_MODEL_SELECTION_FOLDS)
+            first_origin = max(14, selection_end - horizon * selection_folds)
         selection_end = independent_validation_start if independent_validation_days else len(values)
         for end in range(first_origin, selection_end - horizon + 1, horizon):
             train = values[:end]
