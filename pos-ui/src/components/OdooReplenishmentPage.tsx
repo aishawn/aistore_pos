@@ -45,6 +45,9 @@ type ReplenishmentProduct = {
   daysOfStockAfterReplenishment?: number | null;
   leadTimeDays?: number | null;
   risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  attentionLevel?: "REVIEW" | "HIGH" | "MEDIUM" | "LOW";
+  attentionScore?: number;
+  attentionReasons?: string[];
   confidence?: "HIGH" | "MEDIUM" | "LOW";
   dataQuality?: string;
   recommendationStatus?: "REVIEW_DATA" | "NO_DEMAND" | "READY";
@@ -139,6 +142,14 @@ function ForecastSelectionExplanation({ product }: { product: ReplenishmentProdu
 
 function riskClass(risk: ReplenishmentProduct["risk"]) {
   return risk === "HIGH" ? "bg-red-50 text-red-800" : risk === "MEDIUM" ? "bg-amber-50 text-amber-800" : risk === "LOW" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700";
+}
+
+function attentionClass(level: ReplenishmentProduct["attentionLevel"]) {
+  return level === "REVIEW" ? "bg-amber-100 text-amber-900" : level === "HIGH" ? "bg-red-100 text-red-900" : level === "MEDIUM" ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700";
+}
+
+function attentionLabel(level: ReplenishmentProduct["attentionLevel"]) {
+  return level === "REVIEW" ? "Data review" : level === "HIGH" ? "Act now" : level === "MEDIUM" ? "Watch" : "Monitor";
 }
 
 type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string; adjustmentReason: string };
@@ -643,6 +654,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                          {product.attentionLevel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
                           {product.confidence && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{product.confidence.toLowerCase()} confidence</span>}
                         </div>
                       </div>
@@ -769,6 +781,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       <span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span>
                       <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
                       <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                          {product.attentionLevel && <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
                     {showMoreColumns && (

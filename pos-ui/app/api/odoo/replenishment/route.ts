@@ -8,7 +8,7 @@ import { readCompleteRows } from "@/lib/replenishment-pagination";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
-import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection } from "@/lib/replenishment-safety";
+import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention } from "@/lib/replenishment-safety";
 import { isSupportedForecastModelVersion } from "@/lib/forecast-version";
 
 export const runtime = "nodejs";
@@ -380,6 +380,13 @@ export async function GET(request: NextRequest) {
       const risk = daysOfStock === null ? "UNKNOWN"
         : daysOfStock <= (leadTimeDays ?? coverageDays) ? "HIGH"
           : daysOfStock <= targetDays ? "MEDIUM" : "LOW";
+      const attention = replenishmentAttention({
+        dataIssues,
+        risk,
+        expectedStockoutDays: expectedStockoutDaysAfterReplenishment,
+        trend,
+        soldUnits,
+      });
       const confidence = recommendationBlocked || !timezoneVerified ? "LOW" : hasUsableForecast ? String(forecastItem?.confidence ?? "LOW") : soldUnits >= 14 ? "MEDIUM" : "LOW";
       const reasonParts: string[] = [];
       if (forecastItem?.selectionStatus === "ANALOG_COLD_START") reasonParts.push(`New product estimate from ${forecastItem.analogCount ?? 0} similar products in the same category, brand (when known) and price band. Low confidence; review before ordering.`);
@@ -424,6 +431,9 @@ export async function GET(request: NextRequest) {
         daysOfStockAfterReplenishment,
         leadTimeDays,
         risk,
+        attentionLevel: attention.level,
+        attentionScore: attention.score,
+        attentionReasons: attention.reasons,
         confidence,
         recommendationStatus: dataIssues.length ? "REVIEW_DATA" : soldUnits <= 0 ? "NO_DEMAND" : "READY",
         dataIssues,
@@ -453,7 +463,7 @@ export async function GET(request: NextRequest) {
         stockoutRevenueAtRisk: Number.isFinite(unitPrice) && unitPrice >= 0 && stockoutDemandUnitsAfterReplenishment !== null ? stockoutDemandUnitsAfterReplenishment * unitPrice : null,
         forecastSourceVersion: hasUsableForecast ? forecastMeta.sourceVersion ?? null : null,
       };
-    }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
+    }).sort((a, b) => b.attentionScore - a.attentionScore || b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
     const sumNullable = (field: "inventoryValue" | "suggestedOrderValue" | "stockoutRevenueAtRisk") => {
       const values = replenishmentItems.filter((item) => item.recommendationStatus !== "REVIEW_DATA").map((item) => item[field]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
       return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
