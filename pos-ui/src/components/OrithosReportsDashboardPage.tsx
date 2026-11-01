@@ -68,6 +68,14 @@ type OverviewData = {
   };
 };
 
+type DeadStockData = {
+  bucketCounts: Record<string, number>;
+  cashValueByBucket: Record<string, number>;
+  invalidCostOrStockCount: number;
+  products: Array<{ id: number; name: string; inventoryValue: number | null; onHand: number | null; invalidReason: string | null }>;
+  dataQuality: string;
+};
+
 /** Same sliding windows as the former Reporting Dashboard (incl. 8 hours). */
 const OVERVIEW_RANGES = [
   { hours: 8, label: "8 hours" },
@@ -160,6 +168,7 @@ export function OrithosReportsDashboardPage() {
   const [sampleDataActive, setSampleDataActive] = useState(false);
   const [slowLoading, setSlowLoading] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [deadStock, setDeadStock] = useState<DeadStockData | null>(null);
   const requestRevision = useRef(0);
   const rangeHoursRef = useRef(720);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
@@ -226,6 +235,17 @@ export function OrithosReportsDashboardPage() {
           averageSaleDeltaPct: null,
         },
       });
+      // Dead-stock analysis is intentionally independent of the sales overview:
+      // a slow or incomplete analysis must not prevent the operator from seeing
+      // the primary report.
+      void fetchOdooRoute("/api/odoo/dead-stock", { credentials: "same-origin", cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) return null;
+          const payload = await response.json() as DeadStockData;
+          return payload && payload.bucketCounts && payload.cashValueByBucket ? payload : null;
+        })
+        .then((payload) => { if (revision === requestRevision.current && payload) setDeadStock(payload); })
+        .catch(() => undefined);
     } catch (cause) {
       if (revision === requestRevision.current) {
         setError(cause instanceof Error ? cause.message : "Could not load overview.");
@@ -471,6 +491,30 @@ export function OrithosReportsDashboardPage() {
               lowStockCount: data.lowStockCount,
             } : null}
           />
+
+          {deadStock ? (
+            <section aria-label="Dead stock cash occupancy" className="shrink-0 rounded-lg border border-[var(--oh-border)] bg-white p-3 shadow-[var(--oh-shadow-card)]">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Dead stock and cash tied up</h2>
+                  <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Current native stock compared with completed POS sales. Read-only analysis.</p>
+                </div>
+                <Link href="/stock/replenishment" className="oh-type-meta inline-flex min-h-9 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">Review inventory →</Link>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {[30, 60, 90].map((days) => (
+                  <div key={days} className="rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 py-2">
+                    <p className="oh-type-meta text-[var(--oh-muted)]">No sales in {days} days</p>
+                    <p className="oh-type-value mt-0.5 text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU").format(deadStock.bucketCounts[String(days)] ?? 0)} products</p>
+                    <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">{formatMoney(deadStock.cashValueByBucket[String(days)] ?? 0, data?.currency ?? "AUD")} at cost</p>
+                  </div>
+                ))}
+              </div>
+              {deadStock.invalidCostOrStockCount > 0 ? (
+                <p className="oh-type-meta mt-2 text-amber-700">{deadStock.invalidCostOrStockCount} products need manual cost or stock review before cash value is trusted.</p>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="min-h-0 shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
