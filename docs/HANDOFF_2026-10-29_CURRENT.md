@@ -10,6 +10,14 @@
 - 387 条全量 Assistant 线上目录回归本轮未完成：原脚本串行节流和上游响应耗时过长，已停止，不能记为 PASS。此前较小目录和本轮 15 条功能矩阵通过不代表 387 条全量目录通过。
 - 预测质量门槛仍未通过：SKR walk-forward WAPE 高于当前探索门槛，且库存历史为 Odoo `qty_available(to_date)` 重建标签，不是独立原生盘点。继续禁止自动采购、自动调价和其他业务写入。
 
+## 2026-11-01 全量 Assistant 回归与运行时变更
+
+- `03214731` 的 387 条 Assistant 目录已完成真实线上回归：Demo 首轮 378 PASS、9 个 15 秒超时；将这 9 条以 60 秒预算重试后 9/9 PASS，因此 Demo 总计 387/387 PASS、0 FAIL。SKR 总计 387/387 PASS、0 FAIL。两次均为 Assistant API 只读调用，`writeRequests=["none: assistant API only"]`。
+- 回归期间 Dokploy 有并行部署，SKR 首次结果的 `/api/public/version` 后端字段暂时为空；随后运行时已稳定切到 `ad959eb5`。因此 387 条结果可证明行为通过，但 SKR 结果的运行时身份需要以稳定版本探针和最新 23/23 报表回归共同解释。
+- `ad959eb5` 是并行进入 `main` 的 Odoo 只读会话恢复修复，Demo/SKR 最新只读报表均 23/23 PASS，运行时精确匹配 `ad959eb5`。
+- 最新 Demo AI 功能矩阵为 14 PASS、2 BLOCKED、0 FAIL；两个阻断均为本地 AI 配额 `42901 local AI quota exhausted before provider call`，集中在发票 OCR 探针及其后置无效图片探针。不能把配额阻断记为 OCR 通过或功能失败；待配额窗口恢复后重跑。
+- 评测脚本 `pilot-ai-workflow-utterances-online-uat.mjs` 新增 `PILOT_CONCURRENCY`（1–8，默认 1），用于控制完整目录验证速度；默认串行语义保持不变。
+
 ## 2026-11-01 SKR 历史库存回测与线上回归（本地候选，未发布）
 
 - 开发预研不需要等待未来 28 天真实库存快照。180 天真实 SKR 销售按日期做 expanding-window 回测；Odoo 历史 `qty_available` 只用于识别缺货删失日期。每折预测输入被限制在训练截止日前；holdout 库存标签只用于评分掩码，不进入预测特征或模型选择。历史 `to_date` 是 Odoo 系统历史数量，不是独立实盘盘点真值，可能受补录、回溯移动和仓库范围影响。
