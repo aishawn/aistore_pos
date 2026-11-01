@@ -30,7 +30,7 @@ import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
 import {
   friendlyProductName,
-  looksLikeImportMarker,
+  looksLikeR2ImportMarker,
   truncateSku,
 } from "@/lib/product-display-name";
 
@@ -142,7 +142,7 @@ export function OdooProductCataloguePage() {
     () => items.some((product) => {
       const displayName = typeof product.display_name === "string" ? product.display_name : product.name;
       const sku = typeof product.default_code === "string" ? product.default_code : undefined;
-      return looksLikeImportMarker(displayName) || looksLikeImportMarker(sku);
+      return looksLikeR2ImportMarker(displayName) || looksLikeR2ImportMarker(sku);
     }),
     [items],
   );
