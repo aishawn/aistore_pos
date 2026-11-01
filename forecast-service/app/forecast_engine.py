@@ -195,7 +195,11 @@ def _select_model(series, horizon: int = 7, policy=None, validate_cost: bool = T
         return MODEL, "BLOCKED", {}, None, {}, {}
     winner = min(scores, key=lambda candidate: (scores[candidate], candidate))
     if not use_cost:
-        winner = _select_wape_candidate(scores)
+        # The SKR walk-forward showed that per-fold switching overfits short,
+        # intermittent histories. Keep the validated two-stage baseline as
+        # the stable production candidate; candidate scores remain available
+        # for offline research and later promotion of a stronger model.
+        winner = WAPE_BASELINE_MODEL
     validation = {}
     metric = "rolling_business_cost_aud_per_day" if use_cost else "rolling_horizon_total_wape"
     if independent_validation_days and WAPE_BASELINE_MODEL in scores:
