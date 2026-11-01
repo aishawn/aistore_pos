@@ -55,6 +55,11 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   if (!response.ok) throw new Error("Orithos replenishment data is unavailable");
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
+    console.warn("[replenishment] Odoo RPC error", {
+      model,
+      method,
+      message: String(payload.error.message ?? "unknown").slice(0, 240),
+    });
     if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new ReplenishmentSessionExpiredError();
     throw new Error("Your Orithos account cannot read the sales history needed for a replenishment plan.");
   }
