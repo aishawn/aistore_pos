@@ -2,6 +2,8 @@
 
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
+Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
+
 ## How to maintain
 
 1. Copy [TEST_SESSION_TEMPLATE.md](TEST_SESSION_TEMPLATE.md) for every meaningful test session.
