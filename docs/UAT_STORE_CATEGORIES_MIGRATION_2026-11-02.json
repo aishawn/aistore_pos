@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-11-01T16:11:36.858934+00:00",
+  "scope": "NATIVE_ODOO_STORE_CATEGORY_MIGRATION",
+  "targetStore": "https://skr.orithos.com.au",
+  "tenantBindingVerifiedVia": "authenticated platform tenant detail",
+  "companyId": 5,
+  "database": "aipos_uat",
+  "isolated": false,
+  "migrationScriptSha256": "d2887da4e77ce4fa146f39131ba95c093ea948e5ba4a13537a344eeb602626cd",
+  "createdStoreCategories": 5,
+  "updatedProductTemplatesIncludingArchived": 14,
+  "remainingSharedProductReferencesIncludingArchived": 0,
+  "sharedRecordsUnchanged": 44,
+  "categoryPathsPreserved": true,
+  "businessWrites": [
+    "pos.category.create: 5 store-owned records",
+    "product.template.write: pos_categ_ids on 14 store-owned templates"
+  ],
+  "stockPriceTaxWrites": 0,
+  "deletedRecords": 0,
+  "otherStoreWrites": 0,
+  "uiDeploymentVerified": false
+}

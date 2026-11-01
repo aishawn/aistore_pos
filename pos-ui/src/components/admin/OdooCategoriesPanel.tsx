@@ -65,7 +65,7 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
   return <div className="space-y-4">
     <div className="flex items-start gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3.5">
       <ShieldCheck size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" aria-hidden="true" />
-      <div><p className="text-sm font-medium text-[var(--oh-text)]">Categories organise your POS catalogue</p><p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Browse each category once and see its products. Assign categories when creating or editing a product.</p></div>
+      <div><p className="text-sm font-medium text-[var(--oh-text)]">Your store categories</p><p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Categories belong to this store. Changes only affect this store’s catalogue. Assign categories when creating or editing a product.</p></div>
     </div>
     {!loading && !writeEnabled && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950"><p className="font-medium">Category changes are currently locked</p><p className="mt-1 text-xs leading-5">Category editing is unavailable for this store. You can still search categories and view their products.</p></div>}
     {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}<button type="button" disabled={busy} onClick={() => void load()} className="ml-3 underline">Reload categories</button></div>}

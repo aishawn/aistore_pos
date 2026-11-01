@@ -7,6 +7,13 @@
 - Validation: `npm run typecheck` passed; targeted ESLint passed with 0 errors / 3 existing effect warnings; `git diff --check` passed. No local application build was run.
 - Demo runtime checked before this fix: frontend/backend `3f8843d97ff52024d993293b1b0b971118e9b42e`. Latest fix deployment and live authenticated scroll verification remain unconfirmed.
 
+## 2026-11-02 店铺独立分类与 SKR 旧分类迁移
+
+- 分类管理、产品分类下拉及分类校验统一只接受 tenant binding 对应公司的 `pos.category`；公共分类不再展示或可选，伪造公共/其他店铺分类筛选返回 403。保留原写入开关、公司权限和删除保护。
+- 按用户授权，先通过已登录的平台店铺详情核对 SKR -> company 5 / `aipos_uat`，再执行分类迁移。新增 5 个店铺分类、迁移 14 个产品模板（含归档）；回读核对分类路径不变，公共分类引用为 0，44 个公共分类记录未变。只写分类及分类关联，没有库存、价格、税、删商品或跨店铺写入。共享 UAT 数据库 `isolated=false`，不代表正式生产验收。
+- `scripts/migrate_store_categories.py` 默认 dry-run，apply 校验公司 ID/精确名称和隔离数据库变量，完整 journal 在忽略目录 `.local/`，支持中断后重新规划。门店迁移流程及其他测试店铺/样例开店路径的限制见 `docs/STORE_CATEGORY_POLICY.md`。
+- 本地验证：真实 Next route + 内存 Odoo transport 15/15，通过只读角色、跨店铺隔离、公共分类拒绝、产品筛选、写入开关及归档引用删除保护；Python 迁移测试 4/4，通过路径保留、幂等恢复和无跨店铺写入。线上迁移证据 `docs/UAT_STORE_CATEGORIES_MIGRATION_2026-11-02.json`，接口测试证据 `docs/UAT_STORE_CATEGORIES_ROUTE_LOCAL_2026-11-02.json`。页面部署 SHA 尚未确认。
+
 ## 2026-11-01 Manage Categories unified presentation
 
 - Removed the Local / Shared source rows. Categories with the same normalized full ancestry appear once; identical names under different parent paths remain separate. Search displays the matching category total.
