@@ -1,0 +1,28 @@
+{
+  "scope": "Local mocked API UI only; not live SKR, deployment, or model/provider acceptance",
+  "checks": [
+    {
+      "width": 1440,
+      "partialData": "PASS",
+      "salesRetry": "PASS",
+      "noOverflow": "PASS",
+      "businessWrites": 0
+    },
+    {
+      "width": 390,
+      "partialData": "PASS",
+      "salesRetry": "PASS",
+      "noOverflow": "PASS",
+      "businessWrites": 0
+    }
+  ],
+  "errors": [],
+  "environment": {
+    "node": "24.19.0",
+    "nextDev": "16.2.1",
+    "renderer": "webpack development",
+    "dependencies": "reused installed modules; not lockfile-matched production build"
+  },
+  "deploymentVerified": false,
+  "liveSkrVerified": false
+}

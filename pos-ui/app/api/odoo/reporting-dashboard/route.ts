@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { storeWeekStart } from "@/lib/assistant-business-period";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
@@ -184,8 +185,8 @@ export async function GET(request: NextRequest) {
   const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? DEFAULT_RANGE_HOURS);
   const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : DEFAULT_RANGE_HOURS;
   const end = new Date();
-  const start = new Date(end.getTime() - rangeHours * 60 * 60 * 1000);
-  const from = start.toISOString().slice(0, 19).replace("T", " ");
+  let start = new Date(end.getTime() - rangeHours * 60 * 60 * 1000);
+  let from = start.toISOString().slice(0, 19).replace("T", " ");
   const to = end.toISOString().slice(0, 19).replace("T", " ");
 
   try {
@@ -213,6 +214,11 @@ export async function GET(request: NextRequest) {
       ["id", "=", partnerId],
     ]], { fields: ["state_id", "country_id"], limit: 1 }, correlationId) : [];
     const timezone = getOdooCompanyTimezone(partners?.[0]?.country_id, partners?.[0]?.state_id);
+    const period = request.nextUrl.searchParams.get("period");
+    if (period === "this_week") {
+      start = storeWeekStart(end, timezone);
+      from = start.toISOString().slice(0, 19).replace("T", " ");
+    }
 
     const excludeDemoSeed = Boolean(forced.binding?.sampleDataClearedAt);
     const demoUuidPrefix = `demo-seed-${companyId}-%`;
@@ -286,6 +292,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       rangeHours,
+      period: period === "this_week" ? "this_week" : "rolling",
       from,
       to,
       company: companies?.[0]?.name ?? "Current company",
