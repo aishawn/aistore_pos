@@ -334,7 +334,7 @@ function StockListPageInner() {
     setError(null);
     void searchOdooRecords<OdooProductRecord>("products", {
       query: debouncedSearch || undefined,
-      categoryId: categoryId ? Number(categoryId) : undefined,
+      categoryIds: categoryId ? categoryId.split(",").map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : undefined,
       stockOnly: inStockOnly,
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
@@ -375,10 +375,18 @@ function StockListPageInner() {
   useEffect(() => { reloadCategories(); }, [reloadCategories]);
   useEffect(() => { reload(); }, [reload]);
 
-  const categoryOptions: SelectOption[] = (categoryData ?? []).map((c) => ({
-    label: c.name,
-    value: String(c.id),
-  }));
+  const categoryOptions: SelectOption[] = (() => {
+    const groups = new Map<string, { label: string; ids: number[] }>();
+    for (const category of categoryData ?? []) {
+      const parent = category.parent_id && category.parent_id[1] ? `${category.parent_id[1]} / ` : "";
+      const label = `${parent}${category.name.trim()}`;
+      const key = label.toLocaleLowerCase();
+      const existing = groups.get(key);
+      if (existing) existing.ids.push(category.id);
+      else groups.set(key, { label, ids: [category.id] });
+    }
+    return [...groups.values()].map(({ label, ids }) => ({ label, value: ids.join(",") }));
+  })();
   const hasActiveFilters = Boolean(search.trim() || categoryId || inStockOnly);
 
   async function onExport() {

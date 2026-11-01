@@ -30,7 +30,7 @@ import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
 import {
   friendlyProductName,
-  truncateSku,
+  looksLikeImportMarker,`r`n  truncateSku,
 } from "@/lib/product-display-name";
 
 const PAGE_SIZE = 40;
@@ -129,6 +129,26 @@ export function OdooProductCataloguePage() {
   }, [categoryLoading, importBusy, importOpen]);
   const tab = searchParams.get("tab") === "stocktake" ? "stocktake" : "catalogue";
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
+<<<<<<< HEAD
+=======
+  const categoryOptions = useMemo(() => {
+    const groups = new Map<string, OdooPosCategoryRecord>();
+    for (const category of categories) {
+      const parent = category.parent_id ? `${category.parent_id[1]} / ` : "";
+      const key = `${parent}${category.name.trim()}`.toLocaleLowerCase();
+      if (!groups.has(key)) groups.set(key, category);
+    }
+    return [...groups.values()];
+  }, [categories]);
+  const showImportDisplayNote = useMemo(
+    () => items.some((product) => {
+      const displayName = typeof product.display_name === "string" ? product.display_name : product.name;
+      const sku = typeof product.default_code === "string" ? product.default_code : undefined;
+      return looksLikeImportMarker(displayName) || looksLikeImportMarker(sku);
+    }),
+    [items],
+  );
+>>>>>>> 4779ca15 (fix(pos): deduplicate category filters)
 
   const requestedQuery = searchParams.get("q");
   useEffect(() => {
@@ -409,7 +429,7 @@ export function OdooProductCataloguePage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 md:p-6">
       <header inert={stockBusy || categoryBusy} className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -421,6 +441,14 @@ export function OdooProductCataloguePage() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
+<<<<<<< HEAD
+=======
+          {tab === "catalogue" && showImportDisplayNote && (
+            <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
+              Legacy import prefixes are hidden in the list; source SKUs remain available for reconciliation.
+            </p>
+          )}
+>>>>>>> 4779ca15 (fix(pos): deduplicate category filters)
 
         </div>
         {tab === "catalogue" && (
@@ -477,7 +505,7 @@ export function OdooProductCataloguePage() {
             </label>
             <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
                 <option value="">All categories</option>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
+                {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
             </select>
           </div>
 
@@ -499,7 +527,7 @@ export function OdooProductCataloguePage() {
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-          <section aria-busy={resultsPending} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
+          <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
