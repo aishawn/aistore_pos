@@ -80,6 +80,10 @@ When resuming work, read this file, then the current handoff and the task-specif
 
 Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` row.
 
+## Git completion rule
+
+完成修复和必要验证后，默认冻结本次变更范围，提交到本地 `main` 并推送 `origin/main`，让 Dokploy 按 `main` 自动部署。只有用户明确要求本地保留、等待审查或特殊分支处理时，才不直接推送；不得把无关 dirty worktree 文件一并提交。
+
 ## Hard rules for agents
 
 1. **Odoo is SoT** for pilot sell / stock / purchase / reporting. Do not revive Classic MySQL as the live path.
