@@ -63,7 +63,7 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
     return () => controller.abort();
   }, [kind, search, status, offset, refresh]);
 
-  return <section className="flex min-h-0 flex-col gap-4 bg-[var(--oh-surface)] p-4 md:p-6">
+  return <section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-8">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h2 className="oh-type-title">{suppliers ? "Suppliers" : "Purchase orders"}{page && <span className="ml-2 text-[var(--oh-muted)]">{page.sourceTotal.toLocaleString("en-AU")}</span>}</h2>
         <p className="mt-1 text-sm text-[var(--oh-muted)]">SKR · Shopfront · Read-only</p>
