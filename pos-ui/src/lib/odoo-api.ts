@@ -432,7 +432,10 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
   const canRetryRoute = canReplay || (method === "POST" && path === "/api/odoo/session");
   let response = await fetch(input, init);
-  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute) {
+  // A complete replenishment calculation is expensive. Let its explicit Retry
+  // action control retries instead of silently running a second full scan.
+  const expensivePlan = path.split("?")[0].endsWith("/api/odoo/replenishment");
+  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
     response = await fetch(input, init);
   }
   if (response.status !== 401 || isLocalPreviewSession()) return response;
@@ -638,7 +641,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -653,6 +656,7 @@ export async function searchOdooRecords<T>(
       limit: options.limit,
       offset: options.offset,
       categoryId: options.categoryId,
+      categoryIds: options.categoryIds,
       stockOnly: options.stockOnly,
       catalogueView: options.catalogueView,
       status: options.status,

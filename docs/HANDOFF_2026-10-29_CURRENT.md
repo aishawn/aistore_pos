@@ -1,5 +1,26 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Suppliers sticky header alignment
+
+- `OdooSupplierDirectoryPage.tsx`: moved scroll-container top padding to the title header's margin, so the desktop sticky table header meets the shell navigation without a strip of scrolling rows above it. Added explicit header stacking and a bottom separator; mobile cards retain their layout.
+- Chromium layout reproduction: at scrollTop=500, the old header stopped at y=80 under a 56px navigation; removing the 24px scroll-container top padding aligned it to y=56. This is a layout fixture check, not live supplier acceptance; no business data was written.
+- Validation: `npm run typecheck` passed; targeted ESLint passed with 0 errors / 3 existing effect warnings; `git diff --check` passed. No local application build was run.
+- Demo runtime checked before this fix: frontend/backend `3f8843d97ff52024d993293b1b0b971118e9b42e`. Latest fix deployment and live authenticated scroll verification remain unconfirmed.
+
+## 2026-11-02 店铺独立分类与 SKR 旧分类迁移
+
+- 分类管理、产品分类下拉及分类校验统一只接受 tenant binding 对应公司的 `pos.category`；公共分类不再展示或可选，伪造公共/其他店铺分类筛选返回 403。保留原写入开关、公司权限和删除保护。
+- 按用户授权，先通过已登录的平台店铺详情核对 SKR -> company 5 / `aipos_uat`，再执行分类迁移。新增 5 个店铺分类、迁移 14 个产品模板（含归档）；回读核对分类路径不变，公共分类引用为 0，44 个公共分类记录未变。只写分类及分类关联，没有库存、价格、税、删商品或跨店铺写入。共享 UAT 数据库 `isolated=false`，不代表正式生产验收。
+- `scripts/migrate_store_categories.py` 默认 dry-run，apply 校验公司 ID/精确名称和隔离数据库变量，完整 journal 在忽略目录 `.local/`，支持中断后重新规划。门店迁移流程及其他测试店铺/样例开店路径的限制见 `docs/STORE_CATEGORY_POLICY.md`。
+- 本地验证：真实 Next route + 内存 Odoo transport 15/15，通过只读角色、跨店铺隔离、公共分类拒绝、产品筛选、写入开关及归档引用删除保护；Python 迁移测试 4/4，通过路径保留、幂等恢复和无跨店铺写入。线上迁移证据 `docs/UAT_STORE_CATEGORIES_MIGRATION_2026-11-02.json`，接口测试证据 `docs/UAT_STORE_CATEGORIES_ROUTE_LOCAL_2026-11-02.json`。页面部署 SHA 尚未确认。
+
+## 2026-11-01 Manage Categories unified presentation
+
+- Removed the Local / Shared source rows. Categories with the same normalized full ancestry appear once; identical names under different parent paths remain separate. Search displays the matching category total.
+- The opt-in `categories?view=unified` read endpoint counts active sellable product variants with a union of category IDs, preserving company scope and counting products assigned to both aliases once. Product catalogue dropdowns and category links query the same union.
+- No Odoo data migration or business writes. Existing category write gate, company ownership checks and server-side deletion protections remain. Groups containing multiple underlying records stay read-only to avoid partial rename/delete; singleton owned categories retain editing when enabled.
+- Local Node 24 verification: typecheck, targeted ESLint (no errors; existing effect warnings), three grouping regression tests and a mocked API check for union counts, logical child counts, company scope and duplicate edit restrictions passed. Browser fixture verification was not completed: Turbopack rejected the dependency junction and the webpack dev preview timed out while compiling the page. No local production build was run. Deployment identity and live SKR acceptance have not been established for this change.
+
 ## 2026-11-01 历史库存回放与线上复验（最新）
 
 - GitHub `main` 已更新到 `185d1887`；Demo 和 SKR 当前 frontend/backend runtime 均为该 SHA。
@@ -128,3 +149,35 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - Odoo `aipos_uat` 只读探针确认 company 2 有 14 个 POS 商品、1 条供应商记录和 1 条采购行；company 16 有 14 个 POS 商品但没有供应商/采购行；company 3、13、14 当前没有 POS 商品。现有共享 UAT 数据不足以证明 1–3 家隔离门店的补货回测。
 - 快照同步响应现在包含 `suppliers` 和 `purchaseLines` 计数，便于评测记录供应链数据覆盖率。
 - 仍未完成：Dokploy 对该精确 SHA 的远程 Java 21 门禁、匹配 runtime 部署、SKR/Demo 线上只读回归、真实 Odoo 快照写入验证、1–3 家隔离门店回测。不要把该候选描述为已部署或生产 GO。
+
+## 2026-11-02 Store operational UI parity
+
+- Owner requires both SKR and Demo trial stores to use Odoo operational pages. Removed ShopfrontPurchasingGate from Suppliers and Purchase Orders; shared Purchasing/orders/purchase-report views now use Odoo for both stores. No business data or company binding was changed. Historical Shopfront orders remain archive data, not receivable Odoo purchase orders.
+- Source searches found no other equivalent SKR-specific operational page replacement. Products, customers, Sell, stocktake and purchasing navigation use shared components; platform demo-reset remains intentionally Demo-specific. Audit details: docs/STORE_UI_PARITY_AUDIT_2026-11-02.md.
+- Initial Node 24.19.0 typecheck passed; targeted component ESLint passed with 0 errors and 4 pre-existing effect warnings. Static tenant audit: 78 controllers, 0 findings; this is not proof of live isolation.
+- Latest main integration exposed a missing closing bracket in the replenishment sales-history RPC arguments; corrected the syntax without changing query scope or business rules. Final integrated Node 24.19.0 typecheck and targeted replenishment route lint passed; git diff --check passed. No local builds were run.
+- Both runtime version endpoints returned frontend/backend 46ae01309c918d7048975c62251e6ac412c87b5a during this audit. Both /api/public/uat-context endpoints returned isolated=false. Authenticated supplier completeness, purchase records, cross-tenant isolation and trial business acceptance remain unverified; no usable login/deployment credential was available and no business writes were made. Do not claim this UI fix is deployed or that either store is cleared for formal customer production.
+
+## 2026-11-02 Sticky table header audit
+
+- Owner reported Products table rows showing above the sticky header. Audited all 15 sticky-position source matches under pos-ui/app and pos-ui/src, including table headers, stock/pricing div headers and unrelated sticky side panels.
+- Fixed the same padded-scrollport offset in Products, Customers, Customer Groups and Capped Pricing. Directory page top padding is now title margin; Capped Pricing top padding is now table-content margin. Existing horizontal/bottom spacing is preserved. Directory sticky headers now have z-10 and an opaque background with a bottom divider shadow, matching the previous Suppliers fix.
+- Suppliers already has the corrected geometry. Purchase Orders, Sales History, Replenishment and product import preview stick inside unpadded inner scroll containers; Stock List and Bulk Price Edit have no top scroll padding. No offset change was needed there. Sticky side panels/horizontal columns are not table header cases.
+- Browser layout fixture 18/18 PASS: reproduces original 16/24px directory offset at 390/1440px, confirms zero offset after the change and unchanged initial title top; also reproduces/fixes Capped Pricing's 12px gap. Evidence: docs/UAT_STICKY_HEADER_LAYOUT_2026-11-02.json. This fixture tests CSS layout, not authenticated live app/business acceptance; no business writes.
+- Node 24.19.0 typecheck passed; targeted ESLint passed with 0 errors and 14 pre-existing effect warnings; git diff --check passed. No local build was run.
+- Both hosts still returned frontend/backend 46ae01309c918d7048975c62251e6ac412c87b5a before publishing. Push main through the configured Dokploy auto-deploy route and confirm runtime SHA before calling the changes deployed. No DOKPLOY_WEBHOOK_URL or Dokploy login credentials are available in this checkout/process.
+
+## 2026-11-02 Deployment parser failure follow-up
+
+- Owner supplied a Dokploy frontend build failure at replenishment/route.ts:146 (Expected comma). The original batch search_read call lacked a closing array bracket; d55d1153 already corrected it. Latest origin/main 9d3cc10d includes that correction, so the supplied log alone cannot identify the failing checkout SHA.
+- Split the nested expression into a named batchDomain and a multiline RPC call. Query scope, order IDs, pagination and fields are unchanged. Node 24.19.0 typecheck, targeted route ESLint, existing replenishment-safety tests (5/5) and git diff --check passed. No local build or backend changes.
+- Owner confirmed the current POS Dokploy Compose ID is y4IqIQ8dvwEYL06Hppkjc; corrected ENVIRONMENT_MAP.md. Previous WvcUddxTnymK_K5RZPPtL link redirects to the dashboard home and must not be used. Deploy main through the current service and verify exact runtime identities.
+- Credentials are configured in ignored primary checkout C:/shawn/1code/1project-new/aistore_pos/v1/orithopos-master/.env (DOKPLOY_USER / DOKPLOY_PASS); the isolated worktree does not have them. Do not infer credentials are unavailable from worktree/process checks alone. Webhook remains a secret and must not be recorded here.
+- Owner authorizes SKR read-only tests and Demo read/write tests; both periodically sync real store data and all deployment/debugging/trial uses aipos_uat. This parser/deployment investigation requires no business writes.
+
+### Deployment and live verification result
+
+- Code ff59ce4859bc78ae4a615d7821852ccb3651a0e7 deployed successfully through the owner's configured main auto-deploy queue. Dokploy deployment bf4XQpCUSKpgUFUFnPYe0 status Done; frontend Compiled successfully; backend Java 21 mvn clean verify BUILD SUCCESS, 500 tests / 0 failures / 0 errors / 0 skipped. Full build log retained only in ignored primary .local/ff59ce48-pos-build.log; sanitized evidence is docs/UAT_DEPLOYMENT_PARSER_FIX_2026-11-02.json.
+- Both SKR and Demo public version endpoints confirmed frontend/backend ff59ce48. Authenticated live read-only smoke passed Products, Suppliers, /customer-groups and Purchasing on each host. Products and Suppliers each loaded 40 rows on both stores; after scrollTop=800 their sticky-header gap was 0px and scroll padding was 0px. No Shopfront replacement was shown. Business writes: 0.
+- The initial product wait incorrectly treated animated image placeholders as catalogue-loading skeletons and timed out. Corrected verification to wait for real multi-cell product rows and section aria-busy=false; both stores then passed live geometry checks. The original blocked observations and follow-up are retained in the evidence rather than reported as product failures.
+- Dokploy queued jobs can begin with an old webhook Hash/title, then update to the actual fetched main Commit when complete. Use completed deployment identity plus runtime endpoints, not initial queue title, to identify deployed code. The owner's failure log matches deployment l0thlNSbRY35GYyAWTdDu for old 47f6098e; subsequent dca50a8d, 9d3cc10d and ff59ce48 builds succeeded.

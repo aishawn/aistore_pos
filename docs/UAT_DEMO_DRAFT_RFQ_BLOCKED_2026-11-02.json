@@ -1,0 +1,20 @@
+{
+  "verifiedAt": "2026-11-01T19:23:00Z",
+  "target": "https://demo.orithos.com.au",
+  "scope": "DEMO_BROWSER_SESSION_CONTROLLED_DRAFT_RFQ",
+  "authentication": "PASS_BROWSER_BFF_SESSION",
+  "readChecks": {
+    "odooSession": "PASS",
+    "supplierList": "PASS",
+    "replenishmentPreview": "PASS"
+  },
+  "writeAttempt": {
+    "endpoint": "/api/odoo/purchase-requests",
+    "method": "POST",
+    "httpStatus": 403,
+    "code": "PURCHASE_DRAFT_DISABLED",
+    "message": "Draft RFQ creation is disabled in this environment. Review the replenishment preview and create the RFQ in Orithos manually when approved."
+  },
+  "businessWrites": 0,
+  "decision": "KEEP_READ_ONLY_PREVIEW_UNTIL_EXPLICIT_DEMO_RFQ_FLAG_IS_ENABLED"
+}

@@ -8,7 +8,7 @@ import { readCompleteRows } from "@/lib/replenishment-pagination";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
-import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "@/lib/replenishment-safety";
+import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention } from "@/lib/replenishment-safety";
 import { isSupportedForecastModelVersion } from "@/lib/forecast-version";
 
 export const runtime = "nodejs";
@@ -55,6 +55,12 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   if (!response.ok) throw new Error("Orithos replenishment data is unavailable");
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
+    console.warn("[replenishment] Odoo RPC error", {
+      model,
+      method,
+      message: String(payload.error.message ?? "unknown").slice(0, 240),
+      data: JSON.stringify((payload.error as { data?: unknown }).data ?? null).slice(0, 600),
+    });
     if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new ReplenishmentSessionExpiredError();
     throw new Error("Your Orithos account cannot read the sales history needed for a replenishment plan.");
   }
@@ -127,60 +133,40 @@ type DailySalesRow = Record<string, unknown> & {
 };
 
 async function loadDailySales(sessionId: string, domain: unknown[], timezone: string, correlationId?: string | null): Promise<DailySalesRow[]> {
-  // Odoo 20 rejects related datetime group keys such as order_id.date_order:day
-  // on pos.order.line. Read signed lines by ID, resolve order dates in
-  // read-only batches, and aggregate locally. This avoids expensive grouped
-  // offsets when a full store has tens of thousands of order lines.
-  type Group = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
-  const grouped: Group[] = [];
-  const batchSize = 5000;
-  let afterId = 0;
+  // Apply order filters before reading lines so cold requests do not scan the full line table.
+  type Order = { id?: number; date_order?: string };
+  type Line = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
+  // `order_id.` is nine characters; slicing at ten silently changed
+  // `company_id` into `ompany_id` and made Odoo reject the sales query.
+  const orderDomain = domain.filter((c): c is [string, string, unknown] => Array.isArray(c) && c.length >= 3).filter(([field]) => field.startsWith("order_id.")).map(([field, op, value]) => [field.slice(9), op, value]);
+  const orders: Order[] = []; let afterId = 0;
   while (true) {
-    const page = await rpc<Group[]>(sessionId, "pos.order.line", "search_read",
-      [[...domain, ["id", ">", afterId]]],
-      { fields: ["id", "product_id", "order_id", "qty"], limit: batchSize, order: "id asc" }, correlationId);
+    const page = await rpc<Order[]>(sessionId, "pos.order", "search_read", [[...orderDomain, ["id", ">", afterId]]], { fields: ["id", "date_order"], limit: 5000, order: "id asc" }, correlationId);
     if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated.");
-    for (const line of page) {
-      const id = Number(line.id);
-      if (!Number.isSafeInteger(id) || id <= afterId) throw new Error("Sales history pagination is incomplete; no plan was generated.");
-      afterId = id;
-    }
-    grouped.push(...page);
-    if (grouped.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
-    if (page.length < batchSize) break;
+    for (const order of page) { const id = Number(order.id); if (!Number.isSafeInteger(id) || id <= afterId || typeof order.date_order !== "string") throw new Error("Sales history pagination is incomplete; no plan was generated."); afterId = id; orders.push(order); }
+    if (orders.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
+    if (page.length < 5000) break;
   }
-  const orderIds = [...new Set((grouped ?? [])
-    .map((row) => Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0)
-    .filter((id) => id > 0))];
-  const orderDates = new Map<number, string>();
-  for (let offset = 0; offset < orderIds.length; offset += 5000) {
-    const orders = await rpc<Array<{ id?: number; date_order?: string }>>(
+  if (!orders.length) return [];
+  const dates = new Map(orders.map((order) => [Number(order.id), String(order.date_order)]));
+  const ids = orders.map((order) => Number(order.id)); const lineDomain = domain.filter((clause): clause is [string, string, unknown] => Array.isArray(clause) && clause.length >= 3).filter(([field]) => !field.startsWith("order_id.")); const lines: Line[] = [];
+  for (let offset = 0; offset < ids.length; offset += 5000) {
+    const batchDomain = [
+      ...lineDomain,
+      ["order_id", "in", ids.slice(offset, offset + 5000)],
+    ];
+    const page = await rpc<Line[]>(
       sessionId,
-      "pos.order",
-      "read",
-      [orderIds.slice(offset, offset + 5000)],
-      { fields: ["id", "date_order"], load: false },
+      "pos.order.line",
+      "search_read",
+      [batchDomain],
+      { fields: ["id", "product_id", "order_id", "qty"], limit: 50000, order: "id asc" },
       correlationId,
     );
-    for (const order of orders ?? []) {
-      const id = Number(order.id);
-      if (id > 0 && order.date_order) orderDates.set(id, String(order.date_order));
-    }
+    if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated."); lines.push(...page); if (lines.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
   }
   const daily = new Map<string, DailySalesRow>();
-  for (const row of grouped ?? []) {
-    const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
-    const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0;
-    const orderDate = orderDates.get(orderId);
-    if (!orderDate) throw new Error("An order date is missing; no plan was generated.");
-    const date = salesDate(orderDate, timezone);
-    const qty = Number(row.qty);
-    if (productId <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(qty)) continue;
-    const key = `${productId}|${date}`;
-    const current = daily.get(key);
-    if (current) current.qty = Number(current.qty ?? 0) + qty;
-    else daily.set(key, { product_id: row.product_id, qty, "order_id.date_order": date });
-  }
+  for (const row of lines) { const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0; const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0; const orderDate = dates.get(orderId); if (!orderDate) throw new Error("An order date is missing; no plan was generated."); const date = salesDate(orderDate, timezone); const qty = Number(row.qty); if (productId <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(qty)) continue; const key = `${productId}|${date}`; const current = daily.get(key); if (current) current.qty = Number(current.qty ?? 0) + qty; else daily.set(key, { product_id: row.product_id, qty, "order_id.date_order": date }); }
   return [...daily.values()];
 }
 
@@ -193,6 +179,11 @@ export async function GET(request: NextRequest) {
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
   const exceptionMode = request.nextUrl.searchParams.get("mode") === "exceptions";
+  const requestStartedAt = Date.now();
+  const markPhase = (phase: string, detail: Record<string, unknown> = {}) => {
+    console.info("[replenishment] phase", { phase, elapsedMs: Date.now() - requestStartedAt, ...detail });
+  };
+  markPhase("entry", { coverageDays });
 
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -205,6 +196,7 @@ export async function GET(request: NextRequest) {
     if (!sessionResponse.ok) throw new ReplenishmentSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (session.error || !session.result?.uid) throw new ReplenishmentSessionExpiredError();
+    markPhase("odoo_session");
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
@@ -231,9 +223,11 @@ export async function GET(request: NextRequest) {
         () => rpc<number>(sessionId, "product.product", "search_count", [productDomain], { context: companyContext }, correlationId),
         (afterId, limit) => rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[...productDomain, ["id", ">", afterId]]],
           { fields: productFields, limit, order: "id asc", context: companyContext }, correlationId),
+        25_000, 5000,
       ),
       rpc<Array<{ name?: string; country_id?: [number, string]; state_id?: [number, string] }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name", "country_id", "state_id"], limit: 1 }, correlationId),
     ]);
+    markPhase("catalogue", { products: products?.length ?? 0 });
     // Odoo 20 uses the base unit on purchase lines; older releases expose a separate purchase unit.
     if (!hasPurchaseUnit) for (const product of products ?? []) product.uom_po_id = product.uom_id;
     const timezone = getOdooCompanyTimezone(companies?.[0]?.country_id, companies?.[0]?.state_id);
@@ -247,6 +241,7 @@ export async function GET(request: NextRequest) {
       ...salesBaseDomain, ["product_id", "in", products.map((p) => Number(p.id))],
       ["order_id.date_order", ">=", historyFromUtc], ["order_id.date_order", "<", historyToUtc],
     ], timezone, correlationId) : [];
+    markPhase("sales", { rows: dailySales.length });
     const recentSold = new Map<number, number>();
     const previousSold = new Map<number, number>();
     for (const row of dailySales) {
@@ -265,6 +260,7 @@ export async function GET(request: NextRequest) {
           () => rpc<number>(sessionId, "product.supplierinfo", "search_count", [supplierDomain], { context: companyContext }, correlationId),
           (afterId, limit) => rpc<Supplier[]>(sessionId, "product.supplierinfo", "search_read", [[...supplierDomain, ["id", ">", afterId]]],
             { fields: ["id", "product_tmpl_id", "delay"], limit, order: "id asc", context: companyContext }, correlationId),
+          25_000, 5000,
         );
         for (const supplier of suppliers ?? []) {
           const templateId = Array.isArray(supplier.product_tmpl_id) ? Number(supplier.product_tmpl_id[0]) : 0;
@@ -277,6 +273,7 @@ export async function GET(request: NextRequest) {
       leadTimeQuality = "UNKNOWN";
     }
     const hasLeadTime = leadTimes.size > 0;
+    markPhase("suppliers", { leadTimes: leadTimes.size, quality: leadTimeQuality });
     const eligibleProducts = (products ?? []).filter((product) => {
       const productType = String(product.type ?? "");
       return ["product", "consu"].includes(productType) && product.purchase_ok === true;
@@ -338,6 +335,7 @@ export async function GET(request: NextRequest) {
           forecastMeta = { modelVersion: forecastResponse.modelVersion, sourceVersion: forecastResponse.sourceVersion, costPolicy: forecastResponse.costPolicy, costPolicySource: forecastResponse.costPolicySource, businessCostBasis: forecastResponse.businessCostBasis };
         }
       }
+      markPhase("forecast", { targets: targets.length, forecasted: forecastItems.size });
     }
     const replenishmentItems = eligibleProducts.map((product) => {
       const id = Number(product.id);
@@ -368,7 +366,20 @@ export async function GET(request: NextRequest) {
       const forecastP80 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p80) || 0), 0);
       const forecastP90 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p90) || 0), 0);
       const demandPerDay = hasUsableForecast ? forecastP50 / coverageDays : unitsPerDay;
-      const dataIssues = replenishmentIssues(product);
+      const dataIssues = [
+        ...replenishmentIssues(product),
+        ...replenishmentDemandIssues({
+          soldUnits,
+          forecastEnabled: forecastEnabled(),
+          forecastUsable: hasUsableForecast,
+          // A usable forecast without an explicit confidence is not validated
+          // enough for automatic purchasing. The response below already shows
+          // this case as LOW, so apply the same conservative value to the gate.
+          forecastConfidence: forecastEnabled() ? forecastItem?.confidence ?? "LOW" : null,
+          selectionStatus: forecastItem?.selectionStatus ?? null,
+          timezoneVerified,
+        }),
+      ];
       const recommendationBlocked = dataIssues.length > 0 || soldUnits <= 0;
       const suggestedQuantity = recommendationBlocked ? 0 : Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
       const postReplenishmentForecast = forecastStock + suggestedQuantity;
@@ -388,6 +399,13 @@ export async function GET(request: NextRequest) {
       const risk = daysOfStock === null ? "UNKNOWN"
         : daysOfStock <= (leadTimeDays ?? coverageDays) ? "HIGH"
           : daysOfStock <= targetDays ? "MEDIUM" : "LOW";
+      const attention = replenishmentAttention({
+        dataIssues,
+        risk,
+        expectedStockoutDays: expectedStockoutDaysAfterReplenishment,
+        trend,
+        soldUnits,
+      });
       const confidence = recommendationBlocked || !timezoneVerified ? "LOW" : hasUsableForecast ? String(forecastItem?.confidence ?? "LOW") : soldUnits >= 14 ? "MEDIUM" : "LOW";
       const reasonParts: string[] = [];
       if (forecastItem?.selectionStatus === "ANALOG_COLD_START") reasonParts.push(`New product estimate from ${forecastItem.analogCount ?? 0} similar products in the same category, brand (when known) and price band. Low confidence; review before ordering.`);
@@ -414,7 +432,7 @@ export async function GET(request: NextRequest) {
       if (leadTimeDays === null) reasonParts.push("Data quality warning: supplier lead time is unknown; coverage target is used as a fallback.");
       else reasonParts.push(`Supplier lead time ${leadTimeDays}d; target coverage uses ${targetDays}d.`);
       if (risk === "UNKNOWN") reasonParts.push("Risk is unknown because there is no positive demand baseline.");
-      if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; treat the estimate as low confidence.");
+      if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; this item is review-only until demand history improves.");
       return {
         id,
         name: String(product.display_name ?? product.name ?? "Product"),
@@ -432,6 +450,9 @@ export async function GET(request: NextRequest) {
         daysOfStockAfterReplenishment,
         leadTimeDays,
         risk,
+        attentionLevel: attention.level,
+        attentionScore: attention.score,
+        attentionReasons: attention.reasons,
         confidence,
         recommendationStatus: dataIssues.length ? "REVIEW_DATA" : soldUnits <= 0 ? "NO_DEMAND" : "READY",
         dataIssues,
@@ -445,9 +466,9 @@ export async function GET(request: NextRequest) {
         forecastConfidence: hasUsableForecast && !recommendationBlocked && timezoneVerified ? forecastItem?.confidence ?? "LOW" : "LOW",
         selectionStatus: forecastItem?.selectionStatus ?? null,
         selectionMetric: forecastItem?.selectionMetric ?? null,
-        candidateScores: forecastItem?.candidateScores ?? {},
-        candidateBusinessCosts: forecastItem?.candidateBusinessCosts ?? {},
-        selectionValidation: forecastItem?.selectionValidation ?? {},
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
         analogCount: forecastItem?.analogCount ?? 0,
         p50: hasUsableForecast ? forecastP50 : null,
         p80: hasUsableForecast ? forecastP80 : null,
@@ -461,7 +482,7 @@ export async function GET(request: NextRequest) {
         stockoutRevenueAtRisk: Number.isFinite(unitPrice) && unitPrice >= 0 && stockoutDemandUnitsAfterReplenishment !== null ? stockoutDemandUnitsAfterReplenishment * unitPrice : null,
         forecastSourceVersion: hasUsableForecast ? forecastMeta.sourceVersion ?? null : null,
       };
-    }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
+    }).sort((a, b) => b.attentionScore - a.attentionScore || b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
     const sumNullable = (field: "inventoryValue" | "suggestedOrderValue" | "stockoutRevenueAtRisk") => {
       const values = replenishmentItems.filter((item) => item.recommendationStatus !== "REVIEW_DATA").map((item) => item[field]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
       return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
@@ -533,11 +554,20 @@ export async function GET(request: NextRequest) {
       },
       cache: { status: "MISS", expiresAt: new Date(Date.now() + REPLENISHMENT_CACHE_TTL_MS).toISOString() },
     };
+    markPhase("response", { products: replenishmentItems.length });
     if (request.nextUrl.searchParams.get("validateSales") !== "true") {
       replenishmentCache.set(cacheKey, { expiresAt: Date.now() + REPLENISHMENT_CACHE_TTL_MS, body: responseBody });
     }
     return NextResponse.json(responseBody, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    // Keep the client response intentionally generic, but leave a correlation
+    // breadcrumb in the frontend container logs so upstream Odoo/forecast
+    // failures can be diagnosed without exposing credentials or RPC payloads.
+    console.error("[replenishment] request failed", {
+      correlationId: correlationId ?? null,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 240) : "unknown",
+    });
     if (error instanceof ReplenishmentSessionExpiredError) {
       const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);

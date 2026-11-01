@@ -7,6 +7,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { isPurchaseDraftEnabled } from "@/lib/purchase-draft-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
-  if (process.env.AI_PURCHASE_DRAFT_ENABLED?.trim().toLowerCase() !== "true") {
+  if (!isPurchaseDraftEnabled(request.nextUrl.hostname)) {
     return NextResponse.json({ code: "PURCHASE_DRAFT_DISABLED", message: "Draft RFQ creation is disabled in this environment. Review the replenishment preview and create the RFQ in Orithos manually when approved." }, { status: 403 });
   }
   try { await requirePermission(request, "stock.replenishment"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }

@@ -1,6 +1,6 @@
 import { scopedOdoo } from "@/lib/odoo-scope";
 import { canReadBalances, companyDomain } from "@/lib/customer-access";
-import { categoryScope, categoryDomain, categoryError } from "@/lib/odoo-categories";
+import { categoryScope, categoryDomain, categoryError, validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -249,6 +249,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });
     }
     domain.push(["pos_categ_ids", "in", [body.categoryId]]);
+  }
+  if (type === "products" && body.categoryIds !== undefined) {
+    if (!Array.isArray(body.categoryIds) || body.categoryIds.length === 0 || body.categoryIds.length > 100 || body.categoryIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+      return NextResponse.json({ message: "Product categories are invalid" }, { status: 400 });
+    }
+    domain.push(["pos_categ_ids", "in", body.categoryIds]);
+  }
+  if (type === "products" && (body.categoryId !== undefined || body.categoryIds !== undefined)) {
+    try {
+      const scope = await categoryScope(request);
+      await validateCategoryIds(scope, [...new Set([...(body.categoryIds ?? []), ...(body.categoryId === undefined ? [] : [body.categoryId])])]);
+    } catch (error) { return categoryError(error); }
   }
   if (type === "products" && body.stockOnly !== undefined) {
     if (typeof body.stockOnly !== "boolean") {

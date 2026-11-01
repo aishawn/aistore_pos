@@ -187,7 +187,11 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
     const amount = delta(line.expectedQty, line.countedQty);
     return amount !== null && Math.abs(amount) > 0.000001;
   });
-  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying && !countUnconfirmed && draftReady && !draftError && countLines.every((line) => line.eligible);
+  // A fallback warehouse is safe for read-only discovery, but is not a stable
+  // tenant inventory boundary. Never allow a stock adjustment until the store
+  // has an explicit Odoo location binding.
+  const explicitLocationBinding = locationSource !== "single-warehouse-fallback";
+  const canReview = writeEnabled && explicitLocationBinding && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying && !countUnconfirmed && draftReady && !draftError && countLines.every((line) => line.eligible);
   const totalIncrease = changedLines.reduce((sum, line) => sum + Math.max(0, Number(line.countedQty) - line.expectedQty), 0);
   const totalDecrease = changedLines.reduce((sum, line) => sum + Math.max(0, line.expectedQty - Number(line.countedQty)), 0);
 
@@ -416,7 +420,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                   })}
                 </div>
                 <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
-                  <p className="text-xs text-[var(--oh-muted)]">{!writeEnabled ? "Stock adjustments are not enabled for this store." : invalidCount ? `Enter quantities from 0 to ${MAX_COUNTED_QUANTITY.toLocaleString("en-AU")} for every product.` : changedLines.length ? `${changedLines.length} variance${changedLines.length === 1 ? "" : "s"} to apply.` : "No stock differences to apply."}</p>
+                  <p className="text-xs text-[var(--oh-muted)]">{!writeEnabled ? "Stock adjustments are not enabled for this store." : !explicitLocationBinding ? "An explicit store stock location binding is required before adjustments can be applied." : invalidCount ? `Enter quantities from 0 to ${MAX_COUNTED_QUANTITY.toLocaleString("en-AU")} for every product.` : changedLines.length ? `${changedLines.length} variance${changedLines.length === 1 ? "" : "s"} to apply.` : "No stock differences to apply."}</p>
                   <button type="button" onClick={() => { setApplyError(null); setReviewOpen(true); }} disabled={!canReview} className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50">Review and apply</button>
                 </footer>
               </>

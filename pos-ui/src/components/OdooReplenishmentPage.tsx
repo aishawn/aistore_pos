@@ -45,6 +45,9 @@ type ReplenishmentProduct = {
   daysOfStockAfterReplenishment?: number | null;
   leadTimeDays?: number | null;
   risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  attentionLevel?: "REVIEW" | "HIGH" | "MEDIUM" | "LOW";
+  attentionScore?: number;
+  attentionReasons?: string[];
   confidence?: "HIGH" | "MEDIUM" | "LOW";
   dataQuality?: string;
   recommendationStatus?: "REVIEW_DATA" | "NO_DEMAND" | "READY";
@@ -141,6 +144,14 @@ function ForecastSelectionExplanation({ product }: { product: ReplenishmentProdu
 
 function riskClass(risk: ReplenishmentProduct["risk"]) {
   return risk === "HIGH" ? "bg-red-50 text-red-800" : risk === "MEDIUM" ? "bg-amber-50 text-amber-800" : risk === "LOW" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700";
+}
+
+function attentionClass(level: ReplenishmentProduct["attentionLevel"]) {
+  return level === "REVIEW" ? "bg-amber-100 text-amber-900" : level === "HIGH" ? "bg-red-100 text-red-900" : level === "MEDIUM" ? "bg-sky-50 text-sky-800" : "bg-slate-100 text-slate-700";
+}
+
+function attentionLabel(level: ReplenishmentProduct["attentionLevel"]) {
+  return level === "REVIEW" ? "Data review" : level === "HIGH" ? "Act now" : level === "MEDIUM" ? "Watch" : "Monitor";
 }
 
 type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string; adjustmentReason: string };
@@ -470,7 +481,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           </p>
           {data?.forecast?.enabled && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
-              Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked and use the rules fallback.
+              Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked for human review and are excluded from automatic purchase quantities.
             </p>
           )}
           {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
@@ -514,6 +525,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             <p className="mt-2">Latest business date {data.inventoryHistory.latestBusinessDate ?? "unknown"}; {data.inventoryHistory.observedDays} observed daily captures from {data.inventoryHistory.firstBusinessDate ?? "unknown"} · {data.inventoryHistory.gapDays} missing dates · {data.inventoryHistory.invalidSnapshots ?? 0} invalid snapshots. Collection is building an inventory history; this does not establish forecast accuracy.</p>
             <p className="mt-1">Capture timezone: {data.inventoryHistory.businessTimezone}. Confirm it matches the store location.</p>
             <p className="mt-1">Missing product fields: {Object.entries(data.inventoryHistory.missingFields ?? {}).map(([field, count]) => `${({ availableQty: "on hand", virtualAvailableQty: "forecast stock", incomingQty: "incoming", outgoingQty: "outgoing", cost: "cost", leadTimeDays: "supplier lead time" } as Record<string, string>)[field] ?? field}: ${count}`).join(" · ")}. Missing warehouse quantity fields: {data.inventoryHistory.missingWarehouseQuantityFields ?? 0}.</p>
+            {data.inventoryHistory.supplierLeadTimeCoverage && <p className="mt-1">Supplier lead time source: {data.inventoryHistory.supplierLeadTimeCoverage.quality ?? "unknown"}; {data.inventoryHistory.supplierLeadTimeCoverage.productsWithLeadTime ?? 0} of {data.inventoryHistory.expectedProducts ?? 0} products have a lead time ({data.inventoryHistory.supplierLeadTimeCoverage.productsMissingLeadTime ?? 0} missing). Missing lead times use the coverage target and require review.</p>}
             {data.inventoryHistory.lastAttemptStatus === "FAILED" && <p className="mt-1 font-semibold">The latest capture failed. The last successful history is retained; ask an administrator to check collection.</p>}
           </details>
         </> : <p className="mt-1">A successful daily capture has not been verified for this store. Current stock readings do not replace a saved inventory history.</p>}
@@ -657,6 +669,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                          {product.attentionLevel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
                           {product.confidence && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{product.confidence.toLowerCase()} confidence</span>}
                         </div>
                       </div>
@@ -783,6 +796,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       <span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span>
                       <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
                       <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${riskClass(product.risk)}`}>{riskLabel(product.risk)}</span>
+                          {product.attentionLevel && <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${attentionClass(product.attentionLevel)}`} title={product.attentionReasons?.join(", ")}>{attentionLabel(product.attentionLevel)}</span>}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
                     {showMoreColumns && (
@@ -848,7 +862,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
         </nav>}
         {data?.catalogueCoverage?.status === "COMPLETE" && <p role="status" className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Complete catalogue: {data.catalogueCoverage.loadedProducts} POS products checked · {data.catalogueCoverage.eligibleProducts} eligible for replenishment. Search and totals include every page.</p>}
         {data?.salesHistory && !data.salesHistory.timezoneVerified && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">Store timezone uses {data.salesHistory.timezone} as a fallback. Verify the store state in Orithos; forecast confidence is reduced.</p>}
-         {(data?.reviewRequiredCount ?? 0) > 0 && <div role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"><p>{data?.reviewRequiredCount} products are excluded from purchase suggestions until stock, cost or purchase unit data is checked. These products are also excluded from order value and forecast-risk totals.</p><p className="mt-1 text-xs">Reasons: {Object.entries(data?.reviewIssueCounts ?? {}).map(([issue, count]) => `${issue.replaceAll("_", " ").toLowerCase()} ${count}`).join(" · ") || "details unavailable"}.</p></div>}
+         {(data?.reviewRequiredCount ?? 0) > 0 && <div role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"><p>{data?.reviewRequiredCount} products are excluded from purchase suggestions until stock, cost, purchase unit or demand confidence is checked. These products are also excluded from order value and forecast-risk totals.</p><p className="mt-1 text-xs">Reasons: {Object.entries(data?.reviewIssueCounts ?? {}).map(([issue, count]) => `${issue.replaceAll("_", " ").toLowerCase()} ${count}`).join(" · ") || "details unavailable"}.</p></div>}
          {!draftRfqEnabled && <div role="status" className="border-t border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950"><p className="font-semibold">Read-only preview mode</p><p className="mt-1">Draft RFQ creation is disabled in this environment. Review the quantities here; no purchase record can be created from this page.</p></div>}
         {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">This plan has incomplete catalogue coverage. Refresh before relying on store totals.</p>}
       </section>

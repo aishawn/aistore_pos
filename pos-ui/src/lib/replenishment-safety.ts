@@ -36,6 +36,31 @@ export function replenishmentIssues(product: Record<string, unknown>): string[] 
   return issues;
 }
 
+/** Low-confidence demand remains human-review-only. */
+export function replenishmentDemandIssues(input: {
+  soldUnits: number;
+  forecastEnabled?: boolean;
+  forecastUsable?: boolean;
+  forecastConfidence?: string | null;
+  selectionStatus?: string | null;
+  timezoneVerified?: boolean;
+}): string[] {
+  const issues: string[] = [];
+  if (Number.isFinite(input.soldUnits) && input.soldUnits > 0 && input.soldUnits < 14) {
+    issues.push("LOW_DEMAND_HISTORY");
+  }
+  if (input.selectionStatus === "ANALOG_COLD_START") {
+    issues.push("LOW_CONFIDENCE_ANALOG");
+  }
+  if (input.forecastEnabled && input.forecastConfidence === "LOW") {
+    issues.push("LOW_FORECAST_CONFIDENCE");
+  }
+  if (input.timezoneVerified === false) {
+    issues.push("UNVERIFIED_STORE_TIMEZONE");
+  }
+  return issues;
+}
+
 export function stockoutProjection(stock: number, demand: number[]) {
   let available = Math.max(0, stock);
   let days = 0;
@@ -48,4 +73,29 @@ export function stockoutProjection(stock: number, demand: number[]) {
     available = Math.max(0, available - units);
   }
   return { days, unmetUnits };
+}
+
+export type ReplenishmentAttention = {
+  level: "REVIEW" | "HIGH" | "MEDIUM" | "LOW";
+  score: number;
+  reasons: string[];
+};
+
+/** Prioritise the exceptions a shop owner should handle first. */
+export function replenishmentAttention(input: {
+  dataIssues?: string[];
+  risk?: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN" | null;
+  expectedStockoutDays?: number | null;
+  trend?: "up" | "down" | "steady" | "new" | null;
+  soldUnits?: number;
+}): ReplenishmentAttention {
+  const reasons = [...new Set(input.dataIssues ?? [])];
+  if (input.expectedStockoutDays !== null && input.expectedStockoutDays !== undefined && input.expectedStockoutDays > 0) reasons.push("EXPECTED_STOCKOUT");
+  if (input.risk === "HIGH") reasons.push("LOW_COVERAGE");
+  if (input.trend === "up" || input.trend === "new") reasons.push("DEMAND_TREND_UP");
+  if (input.soldUnits === 0) reasons.push("NO_DEMAND");
+  if (input.dataIssues?.length) return { level: "REVIEW", score: 100, reasons };
+  if (reasons.includes("EXPECTED_STOCKOUT") || input.risk === "HIGH") return { level: "HIGH", score: 80, reasons };
+  if (input.risk === "MEDIUM" || reasons.includes("DEMAND_TREND_UP")) return { level: "MEDIUM", score: 50, reasons };
+  return { level: "LOW", score: reasons.includes("NO_DEMAND") ? 10 : 20, reasons };
 }

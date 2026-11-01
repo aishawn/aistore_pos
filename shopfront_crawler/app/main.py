@@ -27,6 +27,11 @@ from .sync import access_token, ensure_stores, get_client, is_after, make_state,
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
 logger = logging.getLogger(__name__)
+
+
+def should_include_catalog(job_type: str | None, existing_products: int, existing_inventory: int) -> bool:
+    """Refresh stock when the catalogue exists but its inventory mirror does not."""
+    return job_type == "daily_sync" or existing_products == 0 or existing_inventory == 0
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
@@ -1056,11 +1061,16 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # durable after the first successful attempt; only a new
                 # history job with an empty catalog needs the initial snapshot.
                 include_catalog = cursor == start
+                force_full_catalog = False
                 if job_id is not None and include_catalog:
                     job = db.get(SyncJob, job_id)
                     existing_products = db.scalar(
                         select(func.count()).select_from(Product).where(Product.store_key == store_key)
                     ) or 0
+                    existing_inventory = db.scalar(
+                        select(func.count()).select_from(InventorySnapshot).where(InventorySnapshot.store_key == store_key)
+                    ) or 0
+                    force_full_catalog = existing_inventory == 0
                     # Older deployments had a complete catalog but no durable
                     # checkpoint. Seed it from the newest local product sync so
                     # the first post-upgrade daily run is incremental instead
@@ -1081,7 +1091,11 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                                 )
                                 db.add(checkpoint)
                                 db.commit()
-                    include_catalog = bool(job and job.job_type == "daily_sync") or existing_products == 0
+                    # A product catalogue can already exist while its inventory
+                    # snapshot is still empty (for example after a history
+                    # replay). Re-fetch the catalogue in that case so stock is
+                    # not reported as zero merely because products were saved.
+                    include_catalog = should_include_catalog(job.job_type if job else None, existing_products, existing_inventory)
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
                 async with sync_lock:
@@ -1167,7 +1181,10 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             end,
             include_catalog=include_catalog,
             defer_completion=True,
-            products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
+            # An empty inventory mirror requires a full catalogue query. An
+            # incremental query can contain no changed products and would
+            # leave the mirror falsely empty.
+            products_updated_after=(catalog_checkpoint.value if include_catalog and catalog_checkpoint and not force_full_catalog else None),
             progress_callback=report_progress,
         )
         if run.status == "failed":

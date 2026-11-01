@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
       fields: ["id", "name", "partner_id", "date_order", "state", "amount_total", "currency_id", "company_id", "order_line"],
       limit: limit + 1,
       offset,
-      order: "date_order desc, id desc",
+      // Copies have different internal IDs; keep same-day orders aligned across stores.
+      order: "date_order desc, name desc, id desc",
       context: { allowed_company_ids: companyIds },
     }, correlationId);
     const hasNext = (items?.length ?? 0) > limit;

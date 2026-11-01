@@ -201,9 +201,12 @@ def main() -> int:
     # Supplier lead time is optional in Odoo installations.  Missing rows are
     # represented as null and never guessed from a default.
     lead_times: dict[int, float] = {}
+    supplier_info_rows = 0
+    supplier_data_quality = "ODOO_SUPPLIERINFO_READ"
     try:
         suppliers = odoo.read("product.supplierinfo", [["product_tmpl_id", "in", [many2one_id(row.get("product_tmpl_id")) for row in products]]],
-                              ["product_tmpl_id", "delay", "sequence"], 100000)
+                              ["product_tmpl_id", "delay"], 100000)
+        supplier_info_rows = len(suppliers)
         for row in suppliers:
             template_id = many2one_id(row.get("product_tmpl_id"))
             delay = row.get("delay")
@@ -214,7 +217,7 @@ def main() -> int:
     except RuntimeError:
         # Enterprise/community variants can omit supplierinfo access.  Keep
         # the inventory capture useful and expose the missing value as null.
-        pass
+        supplier_data_quality = "ODOO_SUPPLIERINFO_UNAVAILABLE"
 
     promotion_by_product: dict[int, dict[str, Any]] = {}
     promotion_by_template: dict[int, dict[str, Any]] = {}
@@ -281,6 +284,12 @@ def main() -> int:
         "businessTimezone": business_timezone,
         "dataQuality": "NATIVE_ODOO_CURRENT_QUANTITIES",
         "promotionDataQuality": promotion_quality,
+        "supplierLeadTimeCoverage": {
+            "quality": supplier_data_quality,
+            "supplierInfoRows": supplier_info_rows,
+            "productsWithLeadTime": len(lead_times),
+            "productsMissingLeadTime": max(0, len(products) - len(lead_times)),
+        },
         "warehouseScope": "SINGLE_WAREHOUSE" if warehouse else "COMPANY_AGGREGATE",
         "warehouses": [{"id": row.get("id"), "name": row.get("name")} for row in warehouses],
         "fields": ["availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty",
