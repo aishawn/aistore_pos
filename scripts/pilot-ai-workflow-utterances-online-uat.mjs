@@ -449,6 +449,10 @@ const requestDelayMs = Number.parseInt(process.env.PILOT_REQUEST_DELAY_MS ?? "20
 if (!Number.isFinite(requestDelayMs) || requestDelayMs < 0 || requestDelayMs > 10000) {
   throw new Error("INVALID_PILOT_REQUEST_DELAY_MS");
 }
+const concurrency = Number.parseInt(process.env.PILOT_CONCURRENCY ?? "1", 10);
+if (!Number.isFinite(concurrency) || concurrency < 1 || concurrency > 8) {
+  throw new Error("INVALID_PILOT_CONCURRENCY");
+}
 
 const checks = [];
 const writeRequests = [];
@@ -574,7 +578,7 @@ try {
   const config = configBody.data ?? {};
   if (!configResponse.ok() || configBody.code !== 0) throw new Error(`AI_CONFIG_FAILED_${configResponse.status()}`);
 
-  for (const item of selectedCases) {
+  const runCase = async (item) => {
     let response;
     let body = {};
     let requestError = null;
@@ -613,7 +617,7 @@ try {
         expected: { intent: item.writeGuided ? "guided_action" : item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true },
         evidence: { attempts, errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
       });
-      continue;
+      return;
     }
     if (requestDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, requestDelayMs));
     const data = body.data ?? {};
@@ -713,7 +717,17 @@ try {
         ...(item.query ? { query } : {}),
       },
     });
-  }
+  };
+  let nextCaseIndex = 0;
+  const worker = async () => {
+    while (true) {
+      const index = nextCaseIndex;
+      nextCaseIndex += 1;
+      if (index >= selectedCases.length) return;
+      await runCase(selectedCases[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, selectedCases.length) }, () => worker()));
 
   // The API-only matrix cannot execute a UI action. Keep a conservative marker
   // so this evidence never claims that a purchase, price or receive was written.
@@ -746,6 +760,7 @@ try {
     requestTimeoutMs,
     maxAttempts,
     requestDelayMs,
+    concurrency,
     catalogAudit: { uniqueIds: new Set(cases.map((item) => item.id)).size, duplicateIds: [] },
     checks,
     writeRequests,
