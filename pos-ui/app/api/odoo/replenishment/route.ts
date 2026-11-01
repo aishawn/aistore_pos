@@ -426,9 +426,9 @@ export async function GET(request: NextRequest) {
         forecastConfidence: hasUsableForecast && !recommendationBlocked && timezoneVerified ? forecastItem?.confidence ?? "LOW" : "LOW",
         selectionStatus: forecastItem?.selectionStatus ?? null,
         selectionMetric: forecastItem?.selectionMetric ?? null,
-        candidateScores: forecastItem?.candidateScores ?? {},
-        candidateBusinessCosts: forecastItem?.candidateBusinessCosts ?? {},
-        selectionValidation: forecastItem?.selectionValidation ?? {},
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
+        // Detailed model diagnostics are kept server-side; the page only needs the recommendation fields.
         analogCount: forecastItem?.analogCount ?? 0,
         p50: hasUsableForecast ? forecastP50 : null,
         p80: hasUsableForecast ? forecastP80 : null,
