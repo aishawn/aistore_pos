@@ -23,35 +23,58 @@ public class ForecastRiskService {
         Map<Long, Inventory> inventory = inventory(tenant);
         List<Map<String, Object>> stockout = new ArrayList<>();
         List<Map<String, Object>> overstock = new ArrayList<>();
+        List<Map<String, Object>> dataQuality = new ArrayList<>();
         for (ForecastDtos.Item item : response.items()) {
             Inventory current = inventory.get(item.productId());
             if (current == null || current.onHand() == null) continue;
             double availableStock = current.projectedAvailable() == null
                     ? current.onHand() : current.projectedAvailable();
-            int day = firstStockoutDay(item.forecast(), availableStock);
+            double averageDemand = item.forecast().stream()
+                    .mapToDouble(ForecastDtos.Point::p50).average().orElse(0d);
+            boolean negativeBalance = hasNegativeBalance(current.onHand(), availableStock);
+            if (negativeBalance) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("productId", item.productId());
+                row.put("onHand", current.onHand());
+                row.put("availableStock", availableStock);
+                row.put("severity", "DATA_QUALITY");
+                row.put("dataQuality", "NEGATIVE_ON_HAND");
+                row.put("reasonCode", "NEGATIVE_ON_HAND");
+                row.put("reason", "inventory balance is negative; stockout and days-of-stock are not reliable");
+                row.put("confidence", item.confidence());
+                dataQuality.add(row);
+            }
+            // A zero-demand forecast cannot establish a future stockout. Keep
+            // the item out of both stockout and days-of-stock calculations.
+            int day = negativeBalance || averageDemand <= 0d
+                    ? 0 : firstStockoutDay(item.forecast(), availableStock);
             double cumulative = day == 0 ? 0d : item.forecast().subList(0, day).stream()
                     .mapToDouble(ForecastDtos.Point::p50).sum();
-            if (day > 0) {
+            if (day > 0 && cumulative > 0d) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("productId", item.productId()); row.put("stockoutInDays", day);
                 row.put("onHand", current.onHand()); row.put("availableStock", availableStock);
                 row.put("forecastDemand", cumulative);
+                row.put("dataQuality", item.dataQuality());
+                row.put("reasonCode", "FORECAST_DEMAND_EXCEEDS_AVAILABLE");
                 row.put("severity", day <= Math.max(1, current.leadTimeDays()) ? "CRITICAL" : "WARNING");
                 row.put("confidence", item.confidence()); row.put("reason", "forecast demand exceeds available stock");
                 stockout.add(row);
             }
-            double avg = item.forecast().stream().mapToDouble(ForecastDtos.Point::p50).average().orElse(0d);
-            if (avg > 0d && current.onHand() > avg * 30d) {
+            if (!negativeBalance && averageDemand > 0d && current.onHand() > averageDemand * 30d) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("productId", item.productId()); row.put("onHand", current.onHand());
-                row.put("estimatedDaysOfStock", Math.round(current.onHand() / avg));
+                row.put("estimatedDaysOfStock", Math.round(current.onHand() / averageDemand));
                 row.put("estimatedCashValue", current.cost() == null ? null : current.onHand() * current.cost());
+                row.put("dataQuality", item.dataQuality());
+                row.put("reasonCode", "STOCK_EXCEEDS_30_DAYS_DEMAND");
                 row.put("severity", "WATCH"); row.put("reason", "stock exceeds 30 days of forecast demand");
                 overstock.add(row);
             }
         }
         return Map.of("status", "READ_ONLY", "sourceVersion", response.sourceVersion(),
-                "model", response.model(), "stockoutAlerts", stockout, "overstockAlerts", overstock);
+                "model", response.model(), "stockoutAlerts", stockout, "overstockAlerts", overstock,
+                "dataQualityAlerts", dataQuality);
     }
 
     private Map<Long, Inventory> inventory(TenantContext tenant) {
@@ -87,12 +110,19 @@ public class ForecastRiskService {
     }
 
     static int firstStockoutDay(List<ForecastDtos.Point> forecast, double availableStock) {
+        if (availableStock < 0d || forecast.stream().mapToDouble(ForecastDtos.Point::p50).sum() <= 0d) {
+            return 0;
+        }
         double cumulative = 0d;
         for (int index = 0; index < forecast.size(); index++) {
             cumulative += forecast.get(index).p50();
             if (cumulative > availableStock) return index + 1;
         }
         return 0;
+    }
+
+    static boolean hasNegativeBalance(Double onHand, Double availableStock) {
+        return (onHand != null && onHand < 0d) || (availableStock != null && availableStock < 0d);
     }
 
     private record Inventory(Double onHand, Double projectedAvailable, Double cost, int leadTimeDays) { }
