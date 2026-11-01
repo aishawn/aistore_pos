@@ -40,6 +40,7 @@ public class OdooReadSnapshotService {
     private static final Logger log = LoggerFactory.getLogger(OdooReadSnapshotService.class);
     private static final int MAX_PRODUCTS = 2_000;
     private static final int MAX_SALES_GROUPS = 2_000;
+    private static final int MAX_DAILY_SALES_GROUPS = 100_000;
     private static final int MAX_SUPPLIER_ROWS = 5_000;
     private static final int MAX_PURCHASE_LINES = 5_000;
     private static final int DEFAULT_HISTORY_DAYS = 56;
@@ -201,17 +202,25 @@ public class OdooReadSnapshotService {
             try {
                 dailySales = readGroup(session, "pos.order.line", domain,
                         List.of("qty:sum", "price_subtotal:sum", "id:count"),
-                        List.of("product_id", "order_id.date_order:day"), context, MAX_SALES_GROUPS);
+                        List.of("product_id", "order_id.date_order:day"), context, MAX_DAILY_SALES_GROUPS);
             } catch (RuntimeException unsupportedDailyGrouping) {
                 log.warn("Odoo daily sales grouping unavailable vendorId={} outletId={} causeType={}",
                         tenant.vendorId(), outletId, unsupportedDailyGrouping.getClass().getSimpleName());
-                dailySales = List.of();
-                dailySalesGroupingAvailable = false;
+                try {
+                    dailySales = readDailySalesByOrder(session, domain, context, MAX_DAILY_SALES_GROUPS);
+                    dailySalesGroupingAvailable = !dailySales.isEmpty();
+                } catch (RuntimeException fallbackFailure) {
+                    log.warn("Odoo daily sales fallback unavailable vendorId={} outletId={} causeType={}",
+                            tenant.vendorId(), outletId, fallbackFailure.getClass().getSimpleName());
+                    dailySales = List.of();
+                    dailySalesGroupingAvailable = false;
+                }
             }
             int dailySalesCount = 0;
             for (Map<String, Object> sale : dailySales) {
                 Long productId = relationId(sale.get("product_id"));
-                String day = text(sale.get("order_id.date_order:day"), sale.get("order_id.date_order"));
+                String day = text(sale.get("order_id.date_order:day"),
+                        text(sale.get("businessDate"), sale.get("order_id.date_order")));
                 if (productId == null || productId <= 0 || day.isBlank()) continue;
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("productId", productId);
@@ -390,6 +399,60 @@ public class OdooReadSnapshotService {
         Map<String, Object> kwargs = new LinkedHashMap<>();
         kwargs.put("lazy", false); kwargs.put("limit", limit); kwargs.put("context", context);
         return convertRows(call(session, model, "read_group", List.of(domain, fields, groupBy), kwargs));
+    }
+
+    /**
+     * Some Odoo deployments reject a date granularity on a related field.
+     * Grouping by the concrete order and resolving its date is read-only and
+     * preserves a usable daily grain for forecasting.
+     */
+    private List<Map<String, Object>> readDailySalesByOrder(String session, List<Object> domain,
+                                                              Map<String, Object> context, int limit)
+            throws Exception {
+        List<Map<String, Object>> grouped = readGroup(session, "pos.order.line", domain,
+                List.of("qty:sum", "price_subtotal:sum"), List.of("product_id", "order_id"), context, limit);
+        Map<Long, String> orderDates = new LinkedHashMap<>();
+        List<Long> orderIds = new ArrayList<>();
+        for (Map<String, Object> row : grouped) {
+            Long orderId = relationId(row.get("order_id"));
+            if (orderId != null && orderId > 0 && !orderDates.containsKey(orderId)) {
+                orderIds.add(orderId);
+                orderDates.put(orderId, "");
+            }
+        }
+        if (!orderIds.isEmpty()) {
+            List<Map<String, Object>> orders = searchRead(session, "pos.order",
+                    List.of(List.of("id", "in", orderIds)),
+                    List.of("id", "date_order"), context, orderIds.size() + 1, "id asc");
+            for (Map<String, Object> order : orders) {
+                long id = longId(order.get("id"));
+                String date = text(order.get("date_order"), null);
+                if (id > 0 && !date.isBlank()) orderDates.put(id, date);
+            }
+        }
+        Map<String, Map<String, Object>> byProductDay = new LinkedHashMap<>();
+        for (Map<String, Object> row : grouped) {
+            Long productId = relationId(row.get("product_id"));
+            Long orderId = relationId(row.get("order_id"));
+            String dateTime = orderId == null ? "" : orderDates.getOrDefault(orderId, "");
+            if (productId == null || productId <= 0 || dateTime.isBlank()) continue;
+            String day = dateTime.length() >= 10 ? dateTime.substring(0, 10) : dateTime;
+            String key = productId + "|" + day;
+            Map<String, Object> payload = byProductDay.computeIfAbsent(key, ignored -> {
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("product_id", List.of(productId, ""));
+                value.put("businessDate", day);
+                value.put("qty", 0d);
+                value.put("price_subtotal", 0d);
+                value.put("id_count", 0);
+                return value;
+            });
+            payload.put("qty", decimal(payload.get("qty")) + decimal(row.get("qty")));
+            payload.put("price_subtotal", decimal(payload.get("price_subtotal"))
+                    + decimal(row.get("price_subtotal")));
+            payload.put("id_count", ((Number) payload.get("id_count")).intValue() + 1);
+        }
+        return new ArrayList<>(byProductDay.values());
     }
 
     private List<Map<String, Object>> searchRead(String session, String model, List<Object> domain,
