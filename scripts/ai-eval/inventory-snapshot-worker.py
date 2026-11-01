@@ -51,12 +51,21 @@ def summarise(snapshot: dict, company_id: int, database: str) -> dict:
                            for row in rows) for field in fields}
     missing_fields = missing(products, ("availableQty", "virtualAvailableQty", "incomingQty", "outgoingQty", "cost", "leadTimeDays"))
     warehouse_missing = sum(sum(missing(w["quantities"], ("qty_available", "virtual_available", "incoming_qty", "outgoing_qty")).values()) for w in warehouses)
+    supplier_coverage = snapshot.get("supplierLeadTimeCoverage") or {}
+    if not supplier_coverage:
+        supplier_coverage = {
+            "quality": "LEGACY_SNAPSHOT",
+            "supplierInfoRows": None,
+            "productsWithLeadTime": sum(isinstance(row.get("leadTimeDays"), (int, float)) and not isinstance(row.get("leadTimeDays"), bool) for row in products),
+            "productsMissingLeadTime": missing_fields["leadTimeDays"],
+        }
     return {"lastSuccessAt": captured.isoformat(), "latestBusinessDate": business_day.isoformat(),
             "businessTimezone": snapshot["businessTimezone"],
             "expectedProducts": coverage["expectedProducts"], "capturedProducts": len(products),
             "productCoverage": len(products) / coverage["expectedProducts"],
             "expectedWarehouses": coverage["expectedWarehouses"], "capturedWarehouses": len(warehouses),
-            "missingFields": missing_fields, "missingWarehouseQuantityFields": warehouse_missing}
+            "missingFields": missing_fields, "missingWarehouseQuantityFields": warehouse_missing,
+            "supplierLeadTimeCoverage": supplier_coverage}
 
 
 def due(now: datetime, target: dict, status: dict, startup: bool) -> bool:
