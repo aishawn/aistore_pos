@@ -17,7 +17,7 @@ This index is the cross-session view. The detailed report for each session lives
 |---|---|---|---|---|---|---|
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
-| `UI-002` |  | NOT RUN |  |  |  |  |
+| `UI-002` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
 | `POS-001` |  | NOT RUN |  |  |  |  |
 | `POS-002` |  | NOT RUN |  |  |  |  |
 | `POS-003` |  | NOT RUN |  |  |  |  |
@@ -27,7 +27,7 @@ This index is the cross-session view. The detailed report for each session lives
 | `CUS-001` |  | NOT RUN |  |  |  |  |
 | `TEN-001` |  | NOT RUN |  |  |  |  |
 | `RPT-001` |  | NOT RUN |  |  |  |  |
-| `AI-001` |  | NOT RUN |  |  |  |  |
+| `AI-001` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
 | `AI-002` |  | NOT RUN |  |  |  |  |
 | `AI-003` |  | NOT RUN |  |  |  |  |
 | `OPS-001` |  | NOT RUN |  |  |  |  |
@@ -37,6 +37,7 @@ This index is the cross-session view. The detailed report for each session lives
 
 | Session ID | Date | Scope | Result summary | Report |
 |---|---|---|---|---|
+| 2026-11-01-assistant-operations-recovery | 2026-11-01 | Local fixture subset | 24 unit tests and 1440/390px UI passed; live checks not run | [Report](test-sessions/2026-11-01-assistant-operations-recovery.md) |
 
 ## Classification rule
 
