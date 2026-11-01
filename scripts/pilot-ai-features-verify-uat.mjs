@@ -240,8 +240,23 @@ try {
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForTimeout(2500);
 
-    const odooSession = await context.request.get(`${base}/api/odoo/session`);
-    const odooSessionBody = await odooSession.json().catch(() => ({}));
+    let odooSession = await context.request.get(`${base}/api/odoo/session`);
+    let odooSessionBody = await odooSession.json().catch(() => ({}));
+    // A POS login and an Odoo RPC session are separate cookies. In UAT the
+    // test runner may have a read-only Odoo credential even when the server
+    // service-account recovery is intentionally disabled.
+    const odooUsername = process.env.PILOT_ODOO_USERNAME || env.ODOO_USER;
+    const odooPassword = process.env.PILOT_ODOO_PASSWORD || env.ODOO_PASS;
+    if (!odooSessionBody.user && odooUsername && odooPassword) {
+      const connect = await context.request.post(`${base}/api/odoo/session`, {
+        data: { username: odooUsername, password: odooPassword },
+        headers: { Origin: base },
+      });
+      if (connect.ok()) {
+        odooSession = await context.request.get(`${base}/api/odoo/session`);
+        odooSessionBody = await odooSession.json().catch(() => ({}));
+      }
+    }
     if (!odooSessionBody.user) {
       record("Odoo session for price suggestions", "BLOCKED", odooSessionBody.autoRecoverConfigured
         ? "Service-account recovery was configured but did not return a session."
@@ -284,7 +299,12 @@ try {
       await page.getByRole("heading", { name: /Price Suggestions/i, exact: true }).waitFor({ timeout: 30000 });
       record("Price suggestions page", "PASS", page.url());
     } catch {
-      record("Price suggestions page", "FAIL", page.url());
+      const pageText = await page.locator("body").innerText().catch(() => "");
+      if (/Connect Orithos|session|integrations/i.test(pageText) && !odooSessionBody.user) {
+        record("Price suggestions page", "BLOCKED", page.url());
+      } else {
+        record("Price suggestions page", "FAIL", page.url());
+      }
     }
 
     await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 90000 });
