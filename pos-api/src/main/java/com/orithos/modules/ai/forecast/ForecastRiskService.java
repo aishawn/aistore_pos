@@ -43,6 +43,7 @@ public class ForecastRiskService {
                 row.put("reason", "inventory balance is negative; stockout and days-of-stock are not reliable");
                 row.put("confidence", item.confidence());
                 dataQuality.add(row);
+                continue;
             }
             if (!isActionableForecast(item)) {
                 Map<String, Object> row = new LinkedHashMap<>();
