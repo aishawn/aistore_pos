@@ -2,6 +2,18 @@ import type { AssistantResponse, AssistantCard } from "./api";
 
 export type OperationsPreview = "replenishment" | "sales_week";
 
+/** Complete catalogue/history reads have a different latency budget from a model reply. */
+export function assistantRequestTimeoutMs(question: string): number {
+  return operationsPreviewIntent(question) === "replenishment" ? 120_000 : 45_000;
+}
+
+export function assistantTimeoutMessage(question: string): string {
+  if (operationsPreviewIntent(question) === "replenishment") {
+    return "The store's replenishment data took too long to load. No quantities were generated and no purchase order was created. Open Replenishment to review the full plan, or retry.";
+  }
+  return "The assistant timed out. Please retry, or open the relevant business page to check the data.";
+}
+
 /** Deliberately bounded: modified parameters, follow-ups and writes go to the normal workflow. */
 export function operationsPreviewIntent(question: string): OperationsPreview | null {
   const text = question.trim().toLowerCase().replace(/[?？。.!！]+$/, "").replace(/\s+/g, " ");

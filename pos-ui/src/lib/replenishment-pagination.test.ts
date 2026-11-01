@@ -18,3 +18,19 @@ test("incomplete pages, overlapping IDs, count changes and safety limits fail cl
   await assert.rejects(readCompleteRows(async () => 25001, async () => []));
   assert.deepEqual(await readCompleteRows(async () => 0, async () => []), []);
 });
+
+test("large catalogue batches reduce RPC round trips without truncating coverage", async () => {
+  const catalogue = Array.from({ length: 10_013 }, (_, index) => ({ id: index + 1 }));
+  let pages = 0;
+  const rows = await readCompleteRows(async () => catalogue.length, async (afterId, limit) => {
+    pages++;
+    assert.equal(limit, 5000);
+    return catalogue.filter((row) => row.id > afterId).slice(0, limit);
+  }, 25_000, 5000);
+  assert.deepEqual(rows, catalogue);
+  assert.equal(pages, 3);
+  for (const size of [0, -1, 5001, 1.5, NaN]) {
+    await assert.rejects(readCompleteRows(async () => 0, async () => [], 25_000, size));
+  }
+  await assert.rejects(readCompleteRows(async () => 5001, async () => [{ id: 1 }], 25_000, 5000));
+});

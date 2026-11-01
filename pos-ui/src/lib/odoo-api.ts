@@ -432,7 +432,10 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
   const canRetryRoute = canReplay || (method === "POST" && path === "/api/odoo/session");
   let response = await fetch(input, init);
-  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute) {
+  // A complete replenishment calculation is expensive. Let its explicit Retry
+  // action control retries instead of silently running a second full scan.
+  const expensivePlan = path.split("?")[0].endsWith("/api/odoo/replenishment");
+  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
     response = await fetch(input, init);
   }
   if (response.status !== 401 || isLocalPreviewSession()) return response;
