@@ -119,7 +119,10 @@ def main() -> int:
     username = values.get("ODOO_SERVICE_USERNAME") or values.get("ODOO_USER")
     password = values.get("ODOO_SERVICE_PASSWORD") or values.get("ODOO_PASS")
     company_id = int(os.environ.get("SKR_ODOO_COMPANY_ID", "5"))
-    history_days = max(28, min(180, int(os.environ.get("SKR_HISTORY_DAYS", "60"))))
+    # Research snapshots may cover a full seasonal year.  Keep a lower bound
+    # for forecast evaluation, but do not silently truncate the requested
+    # 365-day extraction to 180 days.
+    history_days = max(28, min(365, int(os.environ.get("SKR_HISTORY_DAYS", "60"))))
     timezone_name = values.get("SKR_BUSINESS_TIMEZONE", "Australia/Adelaide")
     business_tz = ZoneInfo(timezone_name)
     output = Path(os.environ.get("SKR_SALES_SNAPSHOT_OUTPUT", "data/ai-eval/skr-sales-snapshot.json"))
