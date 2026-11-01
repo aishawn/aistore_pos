@@ -5,7 +5,17 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-const worktreeDirty = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim().length > 0;
+const worktreeStatus = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" });
+const evidenceOnlyPath = (statusLine) => {
+  const filePath = statusLine.slice(3).replace(/^"|"$/g, "");
+  return filePath === ".local/ai-eval"
+    || filePath.startsWith(".local/ai-eval/")
+    || filePath.startsWith("docs/UAT_AI_");
+};
+// Verification reports are generated during the run and are not source changes.
+// Keep real source/config changes visible in the acceptance gate.
+const sourceChanges = worktreeStatus.split(/\r?\n/).filter(Boolean).filter((line) => !evidenceOnlyPath(line));
+const worktreeDirty = sourceChanges.length > 0;
 const runStamp = new Date().toISOString().replace(/[-:.]/g, "");
 const defaultOutputPath = path.join(root, "docs", `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_${runStamp}_${sourceCommit.slice(0, 8)}.json`);
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
