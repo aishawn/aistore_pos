@@ -139,7 +139,11 @@ try {
         ["Sommelier ask", "/api/ai/sommelier/ask", { productId, question: "What food pairs well?" }],
         ["Sommelier similar", "/api/ai/sommelier/similar", { productId, direction: "cheaper" }],
       ]) {
-        const res = await context.request.post(`${base}${route}`, { data: payload, headers: { Origin: base } });
+        const res = await context.request.post(`${base}${route}`, {
+          data: payload,
+          headers: { Origin: base },
+          timeout: 120000,
+        });
         const body = await res.json().catch(() => ({}));
         record(name, body.code === 0 ? "PASS" : "FAIL", body.message || JSON.stringify(body.data ?? {}).slice(0, 120));
       }
