@@ -1,5 +1,8 @@
 "use client";
 
+import { fetchOdooRoute } from "@/lib/odoo-api";
+import { operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
+
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
 import { AiCommandPreviewCard } from "@/components/ai/AiCommandPreviewCard";
@@ -351,7 +354,7 @@ function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
   }
   if (
     error instanceof ApiError &&
-    (error.code === 50301 || error.status === 503)
+    error.code === 50301
   ) {
     return mode === "voice"
       ? "AI voice transcription is not enabled for this store. Type your request instead."
@@ -360,7 +363,7 @@ function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
   if (error instanceof ApiError && error.code === 50210) {
     return mode === "voice"
       ? "No clear speech was detected. Speak for a moment, then pause briefly and try again."
-      : "The AI assistant is temporarily unavailable. Check the AI configuration and try again.";
+      : "The AI service could not complete this request. Retry, or open the sales dashboard or replenishment page to check business data.";
   }
   return mode === "voice"
     ? "Voice transcription could not reach the assistant. Check your connection or type your request instead."
@@ -986,7 +989,7 @@ export function SellAiPanel({
       }
     }
     const looksLikeCommand = /(?:把|将|改成|设置为|提高|降低|上调|下调|修改|更新|rename|change|update|raise|increase|lower|decrease|replenish|restock|补货|客户.*(?:电话|邮箱)|customer.*(?:phone|email))/i.test(text);
-    if (looksLikeCommand) {
+    if (looksLikeCommand && !operationsPreviewIntent(text)) {
       try {
         const command = await parseAiCommand(text, threadId, surfaceFromPath(pathname));
         appendCommandReply(command, text, retryExistingMessage);
@@ -1024,8 +1027,9 @@ export function SellAiPanel({
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const hardTimeout = window.setTimeout(() => controller?.abort(), 45_000);
     try {
-      const result = await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
-      setThreadId(result.threadId);
+      const result = await readOperationsPreview(text, threadId, controller?.signal, fetchOdooRoute)
+        ?? await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
+      if (result.threadId) setThreadId(result.threadId);
       const outcome = await dispatchIntent(result);
       if (outcome.kind !== "messaged") {
         const deferredHref = outcome.kind === "deferred" ? outcome.href : null;
@@ -1072,14 +1076,15 @@ export function SellAiPanel({
                 intent: result.intent || "unknown",
                 // eslint-disable-next-line react-hooks/purity
                 latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
-                status: "ok",
+                status: result.cards?.some((card) => card.status === "unavailable") ? "error" : "ok",
               },
             });
         }
       }
     } catch (e) {
       if (e instanceof ApiError && (e.code === 50301 || e.status === 503)) {
-        setAiEnabled(false);
+        // A transient 503 is not evidence that the store disabled AI.
+        if (e.code === 50301) setAiEnabled(false);
       }
       const aborted =
         (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError") ||
@@ -1404,7 +1409,7 @@ export function SellAiPanel({
   const workspaceActions = [
     { title: "Check stock levels", description: "Find low stock items and reorder suggestions", icon: BarChart3, tone: "orange", action: "Check stock" },
     { title: "Analyse sales", description: "Show me this week’s performance", icon: BarChart3, tone: "blue", action: "Today's sales" },
-    { title: "Create purchase order", description: "Generate PO for low stock items", icon: Boxes, tone: "green", action: "Create purchase order" },
+    { title: "Review purchase needs", description: "Preview suggestions before ordering", icon: Boxes, tone: "green", action: "What should I restock?" },
     { title: "Find opportunities", description: "Suggest ways to grow my store", icon: Lightbulb, tone: "amber", action: "What should I restock?" },
   ] as const;
   const sidebarWorkflows = [
@@ -1492,9 +1497,9 @@ export function SellAiPanel({
         </header>
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
           {historyOpen ? <HistoryView loading={historyLoading} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
-            <div className="mx-auto flex min-h-full w-full max-w-[1080px] translate-y-0 flex-col justify-start py-6 sm:-translate-y-11 sm:justify-center sm:py-12 lg:-translate-y-14">
-              <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[108px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:min-h-[158px] sm:p-5"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-5 sm:h-9 sm:w-9", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
+            <div className={cn("mx-auto flex min-h-full w-full max-w-[1080px] flex-col py-6", messages.length > 1 ? "justify-start" : "justify-center sm:py-12")}>
+              {messages.length <= 1 && <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
               {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} onCommandChange={updateCommandMessage} busy={busy} thinkingHint={thinkingHint} compact /></div>}
             </div>
           )}
@@ -1912,7 +1917,7 @@ function DialogueView({
           <div
             key={i}
             className={cn(
-              "max-w-[92%] text-[14px] leading-relaxed",
+              "w-full max-w-[96%] text-[14px] leading-relaxed sm:max-w-[92%]",
               msg.role === "user"
                 ? "ml-auto rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[var(--oh-text)]"
                 : hasStructuredCards
@@ -1954,22 +1959,24 @@ function DialogueView({
                   <section
                     key={`${card.type}-${cardIndex}`}
                     aria-label={title}
-                    className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-2.5"
+                    className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <strong className="text-[13px] text-[var(--oh-text)]">{title}</strong>
                       <span className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                         card.status === "unavailable"
                           ? "bg-rose-50 text-rose-700"
-                          : card.status === "empty"
+                          : (card.status === "empty" || card.status === "partial")
                             ? "bg-amber-50 text-amber-700"
                             : "bg-emerald-50 text-emerald-700",
                       )}>
                         {card.status === "unavailable"
                           ? chineseCard ? "暂不可用" : "Unavailable"
+                          : card.status === "partial"
+                            ? chineseCard ? "部分数据需复核" : "Review needed"
                           : card.status === "empty"
-                            ? chineseCard ? "暂无匹配" : "No match"
+                            ? chineseCard ? "暂无建议" : "No suggestions"
                             : chineseCard ? "可用" : "Ready"}
                       </span>
                     </div>
@@ -1992,7 +1999,7 @@ function DialogueView({
                       <button
                         type="button"
                         onClick={() => onOpenLink(cardCta.href)}
-                        className={cn(chatNavLinkClassName, "mt-1.5")}
+                        className={cn(chatNavLinkClassName, "mt-2 min-h-11 rounded-lg border border-[var(--oh-border)] px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]")}
                       >
                         {assistantCardCtaLabel(cardCta, chineseCard)}
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
@@ -2003,7 +2010,7 @@ function DialogueView({
                         type="button"
                         disabled={busy}
                         onClick={() => onRetry(msg.retryQuestion!)}
-                        className={cn(chatNavLinkClassName, "mt-1.5 disabled:cursor-not-allowed disabled:opacity-50")}
+                        className={cn(chatNavLinkClassName, "mt-2 min-h-11 px-3 disabled:cursor-not-allowed disabled:opacity-50")}
                       >
                         <RefreshCw className="h-3 w-3 shrink-0" aria-hidden />
                         {chineseCard ? "重试" : "Retry"}
@@ -2100,16 +2107,18 @@ function DialogueView({
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
                 {msg.source ? `Source: ${msg.source}` : ""}
                 {msg.source && msg.dataAsOf ? " · " : ""}
-                {msg.dataAsOf ? `Data as of ${new Date(msg.dataAsOf).toLocaleString()}` : ""}
+                {msg.dataAsOf ? `Data as of ${new Date(msg.dataAsOf).toLocaleString("en-AU", { timeZone: "UTC" })} UTC` : ""}
               </p>
             ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
+              <details className="mt-2 text-[12px] text-[var(--oh-muted)]"><summary className="min-h-8 cursor-pointer">Response details</summary>
               <span className={cn(
                 "mt-2 block text-[11px] tabular-nums",
                 msg.diagnostics.status === "ok" ? "text-[var(--oh-muted)]" : "text-rose-600",
               )}>
                 {msg.diagnostics.status === "ok" ? "AI" : "AI error"} · {msg.diagnostics.intent} · {msg.diagnostics.latencyMs}ms
               </span>
+              </details>
             ) : null}
           </div>
           );

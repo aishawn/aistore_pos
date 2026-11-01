@@ -13,6 +13,7 @@ const cardTitlesZh: Record<string, string> = {
   recommend: "商品推荐",
   pricing: "价格复核建议",
   replenishment: "补货建议",
+  sales: "本周销售",
 };
 
 const workflowLabelsZh: Record<string, string> = {
