@@ -43,6 +43,7 @@ export function replenishmentDemandIssues(input: {
   forecastUsable?: boolean;
   forecastConfidence?: string | null;
   selectionStatus?: string | null;
+  timezoneVerified?: boolean;
 }): string[] {
   const issues: string[] = [];
   if (Number.isFinite(input.soldUnits) && input.soldUnits > 0 && input.soldUnits < 14) {
@@ -53,6 +54,9 @@ export function replenishmentDemandIssues(input: {
   }
   if (input.forecastEnabled && input.forecastConfidence === "LOW") {
     issues.push("LOW_FORECAST_CONFIDENCE");
+  }
+  if (input.timezoneVerified === false) {
+    issues.push("UNVERIFIED_STORE_TIMEZONE");
   }
   return issues;
 }

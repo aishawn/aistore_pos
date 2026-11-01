@@ -347,6 +347,7 @@ export async function GET(request: NextRequest) {
           // this case as LOW, so apply the same conservative value to the gate.
           forecastConfidence: forecastEnabled() ? forecastItem?.confidence ?? "LOW" : null,
           selectionStatus: forecastItem?.selectionStatus ?? null,
+          timezoneVerified,
         }),
       ];
       const recommendationBlocked = dataIssues.length > 0 || soldUnits <= 0;
