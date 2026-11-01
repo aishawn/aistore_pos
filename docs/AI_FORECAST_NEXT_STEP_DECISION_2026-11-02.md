@@ -75,3 +75,8 @@
 - 不要把历史 Odoo `qty_available(to_date)` 研究标签当作原生盘点事实。
 - 不要自动确认或发送采购单。
 
+## 2026-11-02 follow-up: dead-stock read-only product surface
+
+Added `pos-ui/app/api/odoo/dead-stock/route.ts` as a read-only tenant-scoped endpoint. It combines current native `qty_available` and `standard_price` with POS line sales windows (30/60/90 days), returns cash-value buckets and product detail, marks invalid cost/stock rows for manual review, and explicitly returns `writeRequests: []`. It performs no Odoo write RPCs and applies same-origin, session, company, and tenant checks.
+
+The endpoint should be wired into a small reports/inventory card after the POS dependency install/typecheck succeeds. The card must show data quality and review counts, preserve the read-only boundary, and avoid automatic repricing or purchase actions. Remote deployment remains deferred until local validation is available.
