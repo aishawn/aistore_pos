@@ -301,6 +301,12 @@ function polishAssistantAnswer(text: string, intent?: string): string {
   return raw;
 }
 
+/** Keep internal record identifiers out of customer-facing assistant cards. */
+function polishAssistantCardSummary(summary: string | null | undefined): string | null {
+  if (!summary) return null;
+  return summary.replace(/\s*\[\d+\]/g, "").replace(/\s{2,}/g, " ").trim();
+}
+
 /** Map current route to a coarse surface hint for the assistant (never a tenant key). */
 function surfaceFromPath(pathname: string | null | undefined): string {
   const path = (pathname || "/").toLowerCase();
@@ -1326,11 +1332,11 @@ export function SellAiPanel({
   const workspaceUi = (
     <div className="ai-assistant-shell pointer-events-auto relative z-10 flex h-full w-full overflow-hidden bg-[var(--oh-surface)]">
       <div
-        className="ai-assistant-backdrop pointer-events-none absolute inset-0 z-0 bg-[url('/images/ai-assistant-background.webp')] bg-cover bg-[center_bottom] opacity-75"
+        className="ai-assistant-backdrop pointer-events-none absolute inset-0 z-0 bg-[url('/images/ai-assistant-background.webp')] bg-cover bg-[center_bottom] opacity-25"
         aria-hidden="true"
       />
       <div
-        className="ai-assistant-wash pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[68%] bg-gradient-to-t from-[#edf2fa]/10 via-[#edf2fa]/38 to-transparent"
+        className="ai-assistant-wash pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-white/75 via-white/55 to-[#edf2fa]/80"
         aria-hidden="true"
       />
       <aside className="relative z-10 hidden w-[256px] shrink-0 flex-col border-r border-white/70 bg-[var(--oh-surface-elevated)]/55 px-4 py-5 backdrop-blur-xl md:flex">
@@ -1851,7 +1857,14 @@ function DialogueView({
                   <section
                     key={`${card.type}-${cardIndex}`}
                     aria-label={title}
-                    className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-2.5"
+                    className={cn(
+                      "rounded-lg border bg-[var(--oh-surface)] p-3",
+                      card.status === "unavailable"
+                        ? "border-rose-200 bg-rose-50/70"
+                        : card.status === "empty"
+                          ? "border-amber-200 bg-amber-50/70"
+                          : "border-[var(--oh-border)]",
+                    )}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <strong className="text-[13px] text-[var(--oh-text)]">{title}</strong>
@@ -1870,9 +1883,9 @@ function DialogueView({
                             : chineseCard ? "可用" : "Ready"}
                       </span>
                     </div>
-                    {card.summary ? (
+                    {polishAssistantCardSummary(card.summary) ? (
                       <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--oh-text-secondary)]">
-                        {card.summary}
+                        {polishAssistantCardSummary(card.summary)}
                       </p>
                     ) : null}
                     {card.items && card.items.length > 0 ? (
@@ -1900,7 +1913,7 @@ function DialogueView({
                         type="button"
                         disabled={busy}
                         onClick={() => onRetry(msg.retryQuestion!)}
-                        className={cn(chatNavLinkClassName, "mt-1.5 disabled:cursor-not-allowed disabled:opacity-50")}
+                        className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--oh-primary)] px-2.5 py-1 text-[12px] font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-orange-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <RefreshCw className="h-3 w-3 shrink-0" aria-hidden />
                         {chineseCard ? "重试" : "Retry"}
@@ -1993,20 +2006,10 @@ function DialogueView({
                 ))}
               </div>
             ) : null}
-            {msg.role === "assistant" && (msg.source || msg.dataAsOf) ? (
+            {msg.role === "assistant" && msg.dataAsOf ? (
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
-                {msg.source ? `Source: ${msg.source}` : ""}
-                {msg.source && msg.dataAsOf ? " · " : ""}
-                {msg.dataAsOf ? `Data as of ${new Date(msg.dataAsOf).toLocaleString()}` : ""}
+                Data updated {new Date(msg.dataAsOf).toLocaleString()}
               </p>
-            ) : null}
-            {msg.role === "assistant" && msg.diagnostics ? (
-              <span className={cn(
-                "mt-2 block text-[11px] tabular-nums",
-                msg.diagnostics.status === "ok" ? "text-[var(--oh-muted)]" : "text-rose-600",
-              )}>
-                {msg.diagnostics.status === "ok" ? "AI" : "AI error"} · {msg.diagnostics.intent} · {msg.diagnostics.latencyMs}ms
-              </span>
             ) : null}
           </div>
           );
