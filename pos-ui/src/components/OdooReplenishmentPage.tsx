@@ -80,6 +80,8 @@ type ReplenishmentData = {
   periodDays: number;
   coverageDays: number;
   products: ReplenishmentProduct[];
+  exceptionMode?: boolean;
+  exceptionCount?: number;
   truncated: boolean;
   catalogueCoverage?: { status: string; loadedProducts: number; eligibleProducts: number; forecastedProducts: number };
   salesHistory?: { timezone: string; timezoneVerified: boolean };
@@ -159,6 +161,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const Container = embedded ? "section" : "main";
   const [data, setData] = useState<ReplenishmentData | null>(null);
   const [coverageDays, setCoverageDays] = useState(21);
+  const [exceptionOnly, setExceptionOnly] = useState(false);
   const [listFilter, setListFilter] = useState<ListFilter>("suggestions");
   const [query, setQuery] = useState("");
   const [showMoreColumns, setShowMoreColumns] = useState(false);
@@ -208,7 +211,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     else setLoading(true);
     setError(null);
     try {
-      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+      const mode = exceptionOnly ? "&mode=exceptions" : "";
+      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}${mode}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
       const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
@@ -242,7 +246,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       }
       window.clearTimeout(timeout);
     }
-  }, [coverageDays]);
+  }, [coverageDays, exceptionOnly]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -477,6 +481,15 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={exceptionOnly}
+            onClick={() => setExceptionOnly((value) => !value)}
+            className={`inline-flex h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] ${exceptionOnly ? "border-amber-300 bg-amber-50 text-amber-900" : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-paper)]"}`}
+          >
+            <AlertCircle size={16} aria-hidden="true" />
+            {exceptionOnly ? "Exceptions only" : "Show exceptions"}
+          </button>
           <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">
             <CalendarRange size={16} aria-hidden="true" />
             <span>Coverage</span>
@@ -489,6 +502,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       </header>
 
       {data && (loading || refreshing) && <p role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Updating replenishment…</p>}
+
+      {data?.exceptionMode && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">Showing {data.exceptionCount ?? data.products.length} exception items requiring attention. Purchase actions remain subject to manual review.</p>}
 
       {data && <section aria-label="Daily inventory history" className={`rounded-md border px-4 py-3 text-sm ${data.inventoryHistory?.status === "FRESH" ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-200 bg-amber-50 text-amber-950"}`}>
         <p className="font-semibold">Daily inventory history · {({ FRESH: "Up to date", STALE: "Capture overdue", REVIEW: "Needs review", UNAVAILABLE: "Not verified" })[data.inventoryHistory?.status ?? "UNAVAILABLE"]}</p>

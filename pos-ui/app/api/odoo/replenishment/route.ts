@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
 
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
+  const exceptionMode = request.nextUrl.searchParams.get("mode") === "exceptions";
 
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -209,7 +210,7 @@ export async function GET(request: NextRequest) {
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Orithos companies are available to this user." }, { status: 403 });
-    const cacheKey = `${companyId}:${coverageDays}`;
+    const cacheKey = `${companyId}:${coverageDays}:${exceptionMode ? "exceptions" : "all"}`;
     const cacheEntry = request.nextUrl.searchParams.get("validateSales") === "true" ? null : replenishmentCache.get(cacheKey);
     if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
       return NextResponse.json({ ...cacheEntry.body, cache: { status: "HIT", expiresAt: new Date(cacheEntry.expiresAt).toISOString() } }, { status: 200, headers: { "Cache-Control": "no-store" } });
@@ -471,12 +472,26 @@ export async function GET(request: NextRequest) {
       for (const issue of item.dataIssues) reviewIssueCounts[issue] = (reviewIssueCounts[issue] ?? 0) + 1;
     }
 
+    // Exception mode is designed for the operator's daily work queue. It
+    // keeps the full calculations and quality counts above, while returning
+    // only items that need attention or are unsafe to auto-recommend.
+    const exceptionProducts = replenishmentItems.filter((item) => (
+      item.recommendationStatus !== "READY"
+      || item.risk === "HIGH"
+      || item.risk === "MEDIUM"
+      || (typeof item.daysOfStock === "number" && item.daysOfStock < coverageDays)
+      || (typeof item.expectedStockoutDaysAfterReplenishment === "number" && item.expectedStockoutDaysAfterReplenishment > 0)
+      || item.forecastConfidence === "LOW"
+    ));
+
     const responseBody = {
       company: companies?.[0]?.name ?? "Current company",
       historyDays: HISTORY_DAYS,
       periodDays: PERIOD_DAYS,
       coverageDays,
-      products: replenishmentItems,
+      products: exceptionMode ? exceptionProducts : replenishmentItems,
+      exceptionMode,
+      exceptionCount: exceptionProducts.length,
       truncated: false,
       catalogueCoverage: { status: "COMPLETE", loadedProducts: products.length, eligibleProducts: eligibleProducts.length, excludedProducts: excludedProductCount, forecastedProducts: forecastItems.size, zeroDemandProducts: replenishmentItems.filter((item) => item.soldUnits <= 0).length },
       salesHistory: { timezone, timezoneVerified, timezoneSource: timezoneVerified ? "ODOO_COMPANY_ADDRESS" : "COMPANY_ADDRESS_FALLBACK_REVIEW_REQUIRED", startDate: historyStart, endDateExclusive: today, fromUtc: historyFromUtc, toUtc: historyToUtc, completeDaysOnly: true, dailyRows: dailySales.length, refunds: "SIGNED_NET_UNITS" },
