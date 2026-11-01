@@ -149,3 +149,11 @@ ISOLATION_ODOO_DATABASE=aipos_uat
 - Odoo `aipos_uat` 只读探针确认 company 2 有 14 个 POS 商品、1 条供应商记录和 1 条采购行；company 16 有 14 个 POS 商品但没有供应商/采购行；company 3、13、14 当前没有 POS 商品。现有共享 UAT 数据不足以证明 1–3 家隔离门店的补货回测。
 - 快照同步响应现在包含 `suppliers` 和 `purchaseLines` 计数，便于评测记录供应链数据覆盖率。
 - 仍未完成：Dokploy 对该精确 SHA 的远程 Java 21 门禁、匹配 runtime 部署、SKR/Demo 线上只读回归、真实 Odoo 快照写入验证、1–3 家隔离门店回测。不要把该候选描述为已部署或生产 GO。
+
+## 2026-11-02 Store operational UI parity
+
+- Owner requires both SKR and Demo trial stores to use Odoo operational pages. Removed ShopfrontPurchasingGate from Suppliers and Purchase Orders; shared Purchasing/orders/purchase-report views now use Odoo for both stores. No business data or company binding was changed. Historical Shopfront orders remain archive data, not receivable Odoo purchase orders.
+- Source searches found no other equivalent SKR-specific operational page replacement. Products, customers, Sell, stocktake and purchasing navigation use shared components; platform demo-reset remains intentionally Demo-specific. Audit details: docs/STORE_UI_PARITY_AUDIT_2026-11-02.md.
+- Initial Node 24.19.0 typecheck passed; targeted component ESLint passed with 0 errors and 4 pre-existing effect warnings. Static tenant audit: 78 controllers, 0 findings; this is not proof of live isolation.
+- Latest main integration exposed a missing closing bracket in the replenishment sales-history RPC arguments; corrected the syntax without changing query scope or business rules. Final integrated Node 24.19.0 typecheck and targeted replenishment route lint passed; git diff --check passed. No local builds were run.
+- Both runtime version endpoints returned frontend/backend 46ae01309c918d7048975c62251e6ac412c87b5a during this audit. Both /api/public/uat-context endpoints returned isolated=false. Authenticated supplier completeness, purchase records, cross-tenant isolation and trial business acceptance remain unverified; no usable login/deployment credential was available and no business writes were made. Do not claim this UI fix is deployed or that either store is cleared for formal customer production.

@@ -7,7 +7,6 @@ import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phon
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import { ShopfrontPurchasingGate } from "@/components/ShopfrontPurchasingDirectory";
 
 const PAGE_SIZE = 40;
 
@@ -37,7 +36,7 @@ function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean;
 }
 
 export function OdooSupplierDirectoryPage() {
-  return <ShopfrontPurchasingGate kind="suppliers"><OdooNativeSupplierDirectoryPage /></ShopfrontPurchasingGate>;
+  return <OdooNativeSupplierDirectoryPage />;
 }
 
 function OdooNativeSupplierDirectoryPage() {
