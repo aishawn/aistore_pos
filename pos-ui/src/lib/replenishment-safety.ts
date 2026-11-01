@@ -36,6 +36,27 @@ export function replenishmentIssues(product: Record<string, unknown>): string[] 
   return issues;
 }
 
+/** Low-confidence demand remains human-review-only. */
+export function replenishmentDemandIssues(input: {
+  soldUnits: number;
+  forecastEnabled?: boolean;
+  forecastUsable?: boolean;
+  forecastConfidence?: string | null;
+  selectionStatus?: string | null;
+}): string[] {
+  const issues: string[] = [];
+  if (Number.isFinite(input.soldUnits) && input.soldUnits > 0 && input.soldUnits < 14) {
+    issues.push("LOW_DEMAND_HISTORY");
+  }
+  if (input.selectionStatus === "ANALOG_COLD_START") {
+    issues.push("LOW_CONFIDENCE_ANALOG");
+  }
+  if (input.forecastEnabled && input.forecastUsable && input.forecastConfidence === "LOW") {
+    issues.push("LOW_FORECAST_CONFIDENCE");
+  }
+  return issues;
+}
+
 export function stockoutProjection(stock: number, demand: number[]) {
   let available = Math.max(0, stock);
   let days = 0;

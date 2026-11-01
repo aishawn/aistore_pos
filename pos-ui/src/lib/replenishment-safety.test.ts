@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "./replenishment-safety.ts";
+import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection } from "./replenishment-safety.ts";
 
 test("Odoo UTC orders cross into the Australian business day", () => {
   assert.equal(salesDate("2026-10-30 14:00:00", "Australia/Adelaide"), "2026-10-31");
@@ -25,4 +25,11 @@ test("negative stock, cost anomalies and purchase unit conversions block suggest
 test("stockout loss counts each missed unit once and ignores zero demand", () => {
   assert.deepEqual(stockoutProjection(0, [0, 0, 0]), { days: 0, unmetUnits: 0 });
   assert.deepEqual(stockoutProjection(2, [2, 3, 4]), { days: 2, unmetUnits: 7 });
+});
+
+test("low-confidence demand stays review-only", () => {
+  assert.deepEqual(replenishmentDemandIssues({ soldUnits: 13 }), ["LOW_DEMAND_HISTORY"]);
+  assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, selectionStatus: "ANALOG_COLD_START" }), ["LOW_CONFIDENCE_ANALOG"]);
+  assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, forecastEnabled: true, forecastUsable: true, forecastConfidence: "LOW" }), ["LOW_FORECAST_CONFIDENCE"]);
+  assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, forecastEnabled: true, forecastUsable: false, forecastConfidence: "LOW" }), []);
 });
