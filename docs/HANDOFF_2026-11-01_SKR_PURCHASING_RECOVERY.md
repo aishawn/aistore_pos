@@ -16,3 +16,10 @@ The read-only directory now reads company- and store-scoped durable source recor
 ## Limits
 
 This restores purchasing visibility; it does not establish full-store synchronization. The crawler history rebuild remains running and 12 preserved orders lack native purchase orders. Shared aipos_uat remains the deployment database; formal production readiness is unchanged.
+
+## Live recovery and R2 cleanup
+
+- Dokploy deployed ccd749a42592ff565c60aa062b391dbd664ce377; SKR frontend/backend runtime both match. Authenticated live directory API returns suppliers 109, orders 2355, no Codex matches.
+- The 12 nonmaterialized source orders lack supplier or product lines: 11 CANCELLED, 1 RECEIVED. Do not invent lines or receiving movements to close this gap.
+- Current compose was recreated under service y4IqIQ8dvwEYL06Hppkjc; the previous saved compose ID returns 404. Its Git main auto-deployment is working. This correlates with a newly populated crawler; database reset/volume migration cause has not been proven.
+- Source scan found the original R2 TEST sales panel/report card and settings sync card still in the current deployed source. Removed these temporary UI surfaces and their unused sales snapshot API, plus obsolete catalogue/replenishment notes. Durable backend archives and source data remain untouched. TypeScript and targeted ESLint pass. R2 cleanup release and browser acceptance are pending at this commit.

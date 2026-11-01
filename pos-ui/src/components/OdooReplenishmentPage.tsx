@@ -22,7 +22,6 @@ import { getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import {
   friendlyProductName,
-  looksLikeR2ImportMarker,
   truncateSku,
 } from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -242,10 +241,6 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
-  const showR2DisplayNote = useMemo(
-    () => (data?.products ?? []).some((product) => looksLikeR2ImportMarker(product.name) || looksLikeR2ImportMarker(product.sku)),
-    [data],
-  );
 
   const filteredItems = useMemo(() => {
     const base = data?.products ?? [];
@@ -465,11 +460,6 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
             </p>
           )}
           {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
-          {showR2DisplayNote && (
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">
-              Import prefixes such as R2 TEST are hidden in product names; SKUs may still start with R2- for reconciliation.
-            </p>
-          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">

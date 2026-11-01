@@ -30,7 +30,6 @@ import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
 import {
   friendlyProductName,
-  looksLikeR2ImportMarker,
   truncateSku,
 } from "@/lib/product-display-name";
 
@@ -130,14 +129,6 @@ export function OdooProductCataloguePage() {
   }, [categoryLoading, importBusy, importOpen]);
   const tab = searchParams.get("tab") === "stocktake" ? "stocktake" : "catalogue";
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
-  const showR2DisplayNote = useMemo(
-    () => items.some((product) => {
-      const displayName = typeof product.display_name === "string" ? product.display_name : product.name;
-      const sku = typeof product.default_code === "string" ? product.default_code : undefined;
-      return looksLikeR2ImportMarker(displayName) || looksLikeR2ImportMarker(sku);
-    }),
-    [items],
-  );
 
   const requestedQuery = searchParams.get("q");
   useEffect(() => {
@@ -430,11 +421,6 @@ export function OdooProductCataloguePage() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
-          {tab === "catalogue" && showR2DisplayNote && (
-            <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
-              Import prefixes such as R2 TEST are hidden in the list; SKUs may still start with R2- for reconciliation.
-            </p>
-          )}
 
         </div>
         {tab === "catalogue" && (

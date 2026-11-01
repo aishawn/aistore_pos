@@ -68,15 +68,6 @@ type OverviewData = {
   };
 };
 
-type R2Receipt = {
-  invoiceNumber: string;
-  date: string;
-  time: string;
-  total: number;
-  tax: number;
-  items: Array<{ quantity: number }>;
-};
-
 /** Same sliding windows as the former Reporting Dashboard (incl. 8 hours). */
 const OVERVIEW_RANGES = [
   { hours: 8, label: "8 hours" },
@@ -166,9 +157,6 @@ export function OrithosReportsDashboardPage() {
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
   const [rangeHours, setRangeHours] = useState<number>(720);
-  const [r2Receipts, setR2Receipts] = useState<R2Receipt[]>([]);
-  const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
-  const [r2RetryKey, setR2RetryKey] = useState(0);
   const [sampleDataActive, setSampleDataActive] = useState(false);
   const [slowLoading, setSlowLoading] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -260,22 +248,6 @@ export function OrithosReportsDashboardPage() {
     return () => window.clearTimeout(timer);
   }, [data, loading]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/r2-archive/sales", { credentials: "same-origin", cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("R2 archive unavailable");
-        return response.json() as Promise<{ items?: R2Receipt[] }>;
-      })
-      .then((payload) => {
-        if (!active) return;
-        setR2Receipts(Array.isArray(payload.items) ? payload.items : []);
-        setR2ArchiveUnavailable(false);
-      })
-      .catch(() => { if (active) setR2ArchiveUnavailable(true); });
-    return () => { active = false; };
-  }, [r2RetryKey]);
-
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
   const hasTrendData = data?.trend.some((item) => item.revenue > 0) ?? false;
@@ -301,8 +273,6 @@ export function OrithosReportsDashboardPage() {
   const periodBounds = data
     ? `${formatOdooDateTime(data.from, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatOdooDateTime(data.to, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`
     : "";
-  const r2Total = r2Receipts.reduce((sum, receipt) => sum + receipt.total, 0);
-  const r2ItemsSold = r2Receipts.reduce((sum, receipt) => sum + receipt.items.reduce((lineSum, line) => lineSum + line.quantity, 0), 0);
   const donutGradient = useMemo(() => {
     if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
     let cursor = 0;
@@ -482,22 +452,6 @@ export function OrithosReportsDashboardPage() {
             />
           </section>
 
-          <section aria-label="R2 archived sales summary" className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2.5">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Shopfront R2 archive</h2>
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">R2 · TEST · read-only</span>
-              </div>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
-                {r2ArchiveUnavailable ? "Archive temporarily unavailable." : `${r2Receipts.length} latest archived receipts · ${r2ItemsSold} items · excluded from Orithos accounting and stock.`}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {!r2ArchiveUnavailable && <p className="oh-type-label font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(r2Total, currency)}</p>}
-              {r2ArchiveUnavailable ? <button type="button" onClick={() => setR2RetryKey((value) => value + 1)} className="oh-type-meta inline-flex min-h-11 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50"><RefreshCw size={13} /> Retry archive</button> : <Link href="/history" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>}
-            </div>
-          </section>
-
           <DashboardInsightsPanel
             data={data ? {
               company: data.company,
@@ -632,7 +586,7 @@ export function OrithosReportsDashboardPage() {
                     <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Orithos sales in this period</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
-                      No completed Orithos POS orders in {rangeLabel}. R2 archive receipts are shown separately above.
+                      No completed Orithos POS orders in {rangeLabel}.
                       {data?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
@@ -744,7 +698,7 @@ export function OrithosReportsDashboardPage() {
             <span>
               Data through {data ? formatOdooDateTime(data.to, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
               {lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}.
-              {" "}Sales count excludes drafts, cancelled orders, and refunds; net sales deduct refunds. Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}). R2 archive is not included.
+              {" "}Sales count excludes drafts, cancelled orders, and refunds; net sales deduct refunds. Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}).
             </span>
           </p>
         </div>
