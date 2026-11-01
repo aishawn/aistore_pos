@@ -123,6 +123,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  if (process.env.AI_PURCHASE_DRAFT_ENABLED?.trim().toLowerCase() !== "true") {
+    return NextResponse.json({ code: "PURCHASE_DRAFT_DISABLED", message: "Draft RFQ creation is disabled in this environment. Review the replenishment preview and create the RFQ in Orithos manually when approved." }, { status: 403 });
+  }
   try { await requirePermission(request, "stock.replenishment"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });

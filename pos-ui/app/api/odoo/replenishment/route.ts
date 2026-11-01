@@ -92,6 +92,10 @@ function forecastEnabled() {
   return process.env.AI_FORECAST_ENABLED?.trim().toLowerCase() === "true";
 }
 
+function purchaseDraftEnabled() {
+  return process.env.AI_PURCHASE_DRAFT_ENABLED?.trim().toLowerCase() === "true";
+}
+
 function forecastBaseUrl() {
   return (process.env.AI_FORECAST_BASE_URL?.trim() || "http://forecast-service:8000").replace(/\/+$/, "");
 }
@@ -498,6 +502,10 @@ export async function GET(request: NextRequest) {
         costPolicy: forecastMeta.costPolicy ?? null,
         costPolicySource: forecastMeta.costPolicySource ?? null,
         businessCostBasis: forecastMeta.businessCostBasis ?? null,
+      },
+      purchaseWorkflow: {
+        draftEnabled: purchaseDraftEnabled(),
+        mode: purchaseDraftEnabled() ? "DRAFT_RFQ" : "READ_ONLY_PREVIEW",
       },
       businessMetrics: {
         inventoryValue: sumNullable("inventoryValue"),
