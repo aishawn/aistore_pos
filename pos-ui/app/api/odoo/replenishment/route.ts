@@ -127,60 +127,27 @@ type DailySalesRow = Record<string, unknown> & {
 };
 
 async function loadDailySales(sessionId: string, domain: unknown[], timezone: string, correlationId?: string | null): Promise<DailySalesRow[]> {
-  // Odoo 20 rejects related datetime group keys such as order_id.date_order:day
-  // on pos.order.line. Read signed lines by ID, resolve order dates in
-  // read-only batches, and aggregate locally. This avoids expensive grouped
-  // offsets when a full store has tens of thousands of order lines.
-  type Group = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
-  const grouped: Group[] = [];
-  const batchSize = 5000;
-  let afterId = 0;
+  // Apply order filters before reading lines so cold requests do not scan the full line table.
+  type Order = { id?: number; date_order?: string };
+  type Line = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
+  const orderDomain = domain.filter((c): c is [string, string, unknown] => Array.isArray(c) && c.length >= 3).filter(([field]) => field.startsWith("order_id.")).map(([field, op, value]) => [field.slice(10), op, value]);
+  const orders: Order[] = []; let afterId = 0;
   while (true) {
-    const page = await rpc<Group[]>(sessionId, "pos.order.line", "search_read",
-      [[...domain, ["id", ">", afterId]]],
-      { fields: ["id", "product_id", "order_id", "qty"], limit: batchSize, order: "id asc" }, correlationId);
+    const page = await rpc<Order[]>(sessionId, "pos.order", "search_read", [[...orderDomain, ["id", ">", afterId]]], { fields: ["id", "date_order"], limit: 5000, order: "id asc" }, correlationId);
     if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated.");
-    for (const line of page) {
-      const id = Number(line.id);
-      if (!Number.isSafeInteger(id) || id <= afterId) throw new Error("Sales history pagination is incomplete; no plan was generated.");
-      afterId = id;
-    }
-    grouped.push(...page);
-    if (grouped.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
-    if (page.length < batchSize) break;
+    for (const order of page) { const id = Number(order.id); if (!Number.isSafeInteger(id) || id <= afterId || typeof order.date_order !== "string") throw new Error("Sales history pagination is incomplete; no plan was generated."); afterId = id; orders.push(order); }
+    if (orders.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
+    if (page.length < 5000) break;
   }
-  const orderIds = [...new Set((grouped ?? [])
-    .map((row) => Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0)
-    .filter((id) => id > 0))];
-  const orderDates = new Map<number, string>();
-  for (let offset = 0; offset < orderIds.length; offset += 5000) {
-    const orders = await rpc<Array<{ id?: number; date_order?: string }>>(
-      sessionId,
-      "pos.order",
-      "read",
-      [orderIds.slice(offset, offset + 5000)],
-      { fields: ["id", "date_order"], load: false },
-      correlationId,
-    );
-    for (const order of orders ?? []) {
-      const id = Number(order.id);
-      if (id > 0 && order.date_order) orderDates.set(id, String(order.date_order));
-    }
+  if (!orders.length) return [];
+  const dates = new Map(orders.map((order) => [Number(order.id), String(order.date_order)]));
+  const ids = orders.map((order) => Number(order.id)); const lines: Line[] = [];
+  for (let offset = 0; offset < ids.length; offset += 5000) {
+    const page = await rpc<Line[]>(sessionId, "pos.order.line", "search_read", [["order_id", "in", ids.slice(offset, offset + 5000)]], { fields: ["id", "product_id", "order_id", "qty"], limit: 50000, order: "id asc" }, correlationId);
+    if (!Array.isArray(page)) throw new Error("Sales history is incomplete; no plan was generated."); lines.push(...page); if (lines.length > 200000) throw new Error("Sales history exceeds the safe query limit; no plan was generated.");
   }
   const daily = new Map<string, DailySalesRow>();
-  for (const row of grouped ?? []) {
-    const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
-    const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0;
-    const orderDate = orderDates.get(orderId);
-    if (!orderDate) throw new Error("An order date is missing; no plan was generated.");
-    const date = salesDate(orderDate, timezone);
-    const qty = Number(row.qty);
-    if (productId <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(qty)) continue;
-    const key = `${productId}|${date}`;
-    const current = daily.get(key);
-    if (current) current.qty = Number(current.qty ?? 0) + qty;
-    else daily.set(key, { product_id: row.product_id, qty, "order_id.date_order": date });
-  }
+  for (const row of lines) { const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0; const orderId = Array.isArray(row.order_id) ? Number(row.order_id[0]) : 0; const orderDate = dates.get(orderId); if (!orderDate) throw new Error("An order date is missing; no plan was generated."); const date = salesDate(orderDate, timezone); const qty = Number(row.qty); if (productId <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(qty)) continue; const key = `${productId}|${date}`; const current = daily.get(key); if (current) current.qty = Number(current.qty ?? 0) + qty; else daily.set(key, { product_id: row.product_id, qty, "order_id.date_order": date }); }
   return [...daily.values()];
 }
 
