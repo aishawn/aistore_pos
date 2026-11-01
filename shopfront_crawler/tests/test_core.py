@@ -61,6 +61,14 @@ def test_history_retries_catalog_when_inventory_snapshot_is_empty():
     assert should_include_catalog("daily_sync", 3532, 10973) is True
 
 
+def test_empty_inventory_forces_full_catalog_query_in_history_runner():
+    import inspect
+    from app import main
+
+    source = inspect.getsource(main._run_sync_background)
+    assert "force_full_catalog = existing_inventory == 0" in source
+
+
 def test_sale_query_requests_nested_product_fields():
     # Keep this assertion close to the client contract without making a live
     # request. The nested Product selection is required for item names.

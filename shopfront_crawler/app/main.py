@@ -1061,6 +1061,7 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # durable after the first successful attempt; only a new
                 # history job with an empty catalog needs the initial snapshot.
                 include_catalog = cursor == start
+                force_full_catalog = False
                 if job_id is not None and include_catalog:
                     job = db.get(SyncJob, job_id)
                     existing_products = db.scalar(
@@ -1069,6 +1070,7 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                     existing_inventory = db.scalar(
                         select(func.count()).select_from(InventorySnapshot).where(InventorySnapshot.store_key == store_key)
                     ) or 0
+                    force_full_catalog = existing_inventory == 0
                     # Older deployments had a complete catalog but no durable
                     # checkpoint. Seed it from the newest local product sync so
                     # the first post-upgrade daily run is incremental instead
@@ -1179,7 +1181,10 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             end,
             include_catalog=include_catalog,
             defer_completion=True,
-            products_updated_after=catalog_checkpoint.value if include_catalog and catalog_checkpoint else None,
+            # An empty inventory mirror requires a full catalogue query. An
+            # incremental query can contain no changed products and would
+            # leave the mirror falsely empty.
+            products_updated_after=(catalog_checkpoint.value if include_catalog and catalog_checkpoint and not force_full_catalog else None),
             progress_callback=report_progress,
         )
         if run.status == "failed":
