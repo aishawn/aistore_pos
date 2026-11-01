@@ -1,0 +1,263 @@
+{
+  "verifiedAt": "2026-11-01T13:03:06Z",
+  "scope": "SKR_READ_ONLY_EXPANDED_HISTORICAL_ROLLING_BACKTEST",
+  "sales": {
+    "orders": 26973,
+    "orderLines": 52101,
+    "historyDays": 180,
+    "seriesInSnapshot": 2000,
+    "evaluatedSeries": 500
+  },
+  "inventory": {
+    "productsRequested": 500,
+    "dates": 180,
+    "dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
+    "labelledProducts": 415,
+    "excludedSuspectProducts": 85,
+    "writeRequests": []
+  },
+  "qualityGate": "FAIL",
+  "models": {
+    "selected": {
+      "weightedWape": 1.2580797623293452,
+      "horizonTotalWape": 0.617087318239335,
+      "biasUnits": -1728.8986,
+      "p90Coverage": 0.8889555822328932,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "seasonal_naive_v1": {
+      "weightedWape": 1.375581976990265,
+      "horizonTotalWape": 0.7478548616722459,
+      "biasUnits": -714.0,
+      "p90Coverage": 0.8785668113399205,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "moving_average_7_v1": {
+      "weightedWape": 1.288633103016189,
+      "horizonTotalWape": 0.7478548616722459,
+      "biasUnits": -714.0,
+      "p90Coverage": 0.8908255609936282,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "exponential_smoothing_v1": {
+      "weightedWape": 1.2755473836078275,
+      "horizonTotalWape": 0.7602633875149588,
+      "biasUnits": -1944.982,
+      "p90Coverage": 0.8876627574106566,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "croston_sba_v1": {
+      "weightedWape": 1.2641566613757267,
+      "horizonTotalWape": 0.6236878927196622,
+      "biasUnits": -1994.4231,
+      "p90Coverage": 0.887501154307877,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "tsb_v1": {
+      "weightedWape": 1.263255628774681,
+      "horizonTotalWape": 0.6837392440966081,
+      "biasUnits": -1328.2932,
+      "p90Coverage": 0.8900637177948102,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    },
+    "two_stage_occurrence_v1": {
+      "weightedWape": 1.2606045813170932,
+      "horizonTotalWape": 0.6179312850792503,
+      "biasUnits": -1652.2978,
+      "p90Coverage": 0.8889555822328932,
+      "scoredProducts": 364,
+      "observedDays": 43316
+    }
+  },
+  "segments": {
+    "REGULAR": {
+      "selected": {
+        "weightedWape": 0.9941100687251236,
+        "horizonTotalWape": 0.4693223932946729,
+        "biasUnits": 83.582,
+        "scoredProducts": 62
+      },
+      "seasonal_naive_v1": {
+        "weightedWape": 1.1524084778420038,
+        "horizonTotalWape": 0.5595375722543353,
+        "biasUnits": 18.0,
+        "scoredProducts": 62
+      },
+      "moving_average_7_v1": {
+        "weightedWape": 1.023259014588496,
+        "horizonTotalWape": 0.5595375722543353,
+        "biasUnits": 18.0,
+        "scoredProducts": 62
+      },
+      "exponential_smoothing_v1": {
+        "weightedWape": 1.0183470586656103,
+        "horizonTotalWape": 0.5590321179987731,
+        "biasUnits": -375.832,
+        "scoredProducts": 62
+      },
+      "croston_sba_v1": {
+        "weightedWape": 0.9866596757023169,
+        "horizonTotalWape": 0.46869494565199693,
+        "biasUnits": -334.2451,
+        "scoredProducts": 62
+      },
+      "tsb_v1": {
+        "weightedWape": 0.9959623820459594,
+        "horizonTotalWape": 0.5070137425306851,
+        "biasUnits": -105.9823,
+        "scoredProducts": 62
+      },
+      "two_stage_occurrence_v1": {
+        "weightedWape": 0.9941100687251236,
+        "horizonTotalWape": 0.4693223932946729,
+        "biasUnits": 83.582,
+        "scoredProducts": 62
+      }
+    },
+    "INTERMITTENT": {
+      "selected": {
+        "weightedWape": 1.4200951512139028,
+        "horizonTotalWape": 0.6649322663420926,
+        "biasUnits": -1016.645,
+        "scoredProducts": 229
+      },
+      "seasonal_naive_v1": {
+        "weightedWape": 1.5166953014118174,
+        "horizonTotalWape": 0.8322999925300665,
+        "biasUnits": -150.0,
+        "scoredProducts": 229
+      },
+      "moving_average_7_v1": {
+        "weightedWape": 1.4478011717124077,
+        "horizonTotalWape": 0.8322999925300665,
+        "biasUnits": -150.0,
+        "scoredProducts": 229
+      },
+      "exponential_smoothing_v1": {
+        "weightedWape": 1.4285095263951046,
+        "horizonTotalWape": 0.8499967644628623,
+        "biasUnits": -949.8352,
+        "scoredProducts": 229
+      },
+      "croston_sba_v1": {
+        "weightedWape": 1.4178062766708546,
+        "horizonTotalWape": 0.6699660771466912,
+        "biasUnits": -1174.4395,
+        "scoredProducts": 229
+      },
+      "tsb_v1": {
+        "weightedWape": 1.422870950980502,
+        "horizonTotalWape": 0.7545425778428451,
+        "biasUnits": -586.5846,
+        "scoredProducts": 229
+      },
+      "two_stage_occurrence_v1": {
+        "weightedWape": 1.4208197204218231,
+        "horizonTotalWape": 0.6652479022747535,
+        "biasUnits": -1004.8412,
+        "scoredProducts": 229
+      }
+    },
+    "SPARSE": {
+      "selected": {
+        "weightedWape": 1.5250268993166667,
+        "horizonTotalWape": 1.0194805604595303,
+        "biasUnits": -753.8356,
+        "scoredProducts": 162
+      },
+      "seasonal_naive_v1": {
+        "weightedWape": 1.5788990825688074,
+        "horizonTotalWape": 1.1211009174311926,
+        "biasUnits": -540.0,
+        "scoredProducts": 162
+      },
+      "moving_average_7_v1": {
+        "weightedWape": 1.5803407601573238,
+        "horizonTotalWape": 1.1211009174311926,
+        "biasUnits": -540.0,
+        "scoredProducts": 162
+      },
+      "exponential_smoothing_v1": {
+        "weightedWape": 1.5661933274236308,
+        "horizonTotalWape": 1.1627638107498288,
+        "biasUnits": -577.3148,
+        "scoredProducts": 162
+      },
+      "croston_sba_v1": {
+        "weightedWape": 1.6470034004177392,
+        "horizonTotalWape": 1.070245519844405,
+        "biasUnits": -443.7385,
+        "scoredProducts": 162
+      },
+      "tsb_v1": {
+        "weightedWape": 1.560865866886175,
+        "horizonTotalWape": 1.0843280173285321,
+        "biasUnits": -593.7263,
+        "scoredProducts": 162
+      },
+      "two_stage_occurrence_v1": {
+        "weightedWape": 1.5506772262370327,
+        "horizonTotalWape": 1.0276036962265112,
+        "biasUnits": -689.0386,
+        "scoredProducts": 162
+      }
+    },
+    "NO_DEMAND_TRAIN": {
+      "selected": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "seasonal_naive_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "moving_average_7_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "exponential_smoothing_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "croston_sba_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "tsb_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      },
+      "two_stage_occurrence_v1": {
+        "weightedWape": 1.0,
+        "horizonTotalWape": 1.0,
+        "biasUnits": -42.0,
+        "scoredProducts": 17
+      }
+    }
+  },
+  "decision": "DO_NOT_SWITCH_GLOBAL_MODEL",
+  "reasons": [
+    "Expanded evaluation is materially harder than the 20-product sample: selected horizon WAPE 61.7%; all candidates fail the exploratory 30% gate.",
+    "85 products have persistent non-positive historical stock with repeated sales and are excluded from stockout-aware scoring.",
+    "The research inventory is reconstructed to_date Odoo history, not durable native daily snapshots.",
+    "Use this result to improve data quality and segmentation; do not tune to this single window."
+  ]
+}
