@@ -7,7 +7,7 @@ export type CategoryScope = Awaited<ReturnType<typeof scopedOdoo>>;
 export type OdooCategory = { id: number; name: string; parent_id: [number, string] | false; company_id: [number, string] | false };
 
 export function categoryDomain(companyIds: number[]): unknown[] {
-  return ["|", ["company_id", "=", false], ["company_id", "in", companyIds]];
+  return [["company_id", "in", companyIds]];
 }
 
 export async function categoryScope(request: NextRequest, write = false) {
@@ -25,7 +25,7 @@ export async function validateCategoryIds(scope: CategoryScope, ids: number[]) {
   const fields = await scope.rpc<Record<string, unknown>>("pos.category", "fields_get", [["company_id"]], { attributes: ["type"] });
   if (!fields.company_id) throw new OdooScopeError("Upgrade the Odoo retail module before assigning categories.", 503);
   const records = await scope.rpc<Array<{ id: number }>>("pos.category", "search_read", [[...categoryDomain(scope.companyIds), ["id", "in", ids]]], { fields: ["id"], limit: ids.length });
-  if (new Set(records.map((record) => record.id)).size !== new Set(ids).size) throw new OdooScopeError("A selected category is unavailable in this store.", 403);
+  if (new Set(records.map((record) => record.id)).size !== new Set(ids).size) throw new OdooScopeError("Choose categories owned by this store.", 403);
 }
 
 export async function ownedCategory(scope: CategoryScope, id: number) {
