@@ -59,6 +59,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
       model,
       method,
       message: String(payload.error.message ?? "unknown").slice(0, 240),
+      data: JSON.stringify((payload.error as { data?: unknown }).data ?? null).slice(0, 600),
     });
     if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new ReplenishmentSessionExpiredError();
     throw new Error("Your Orithos account cannot read the sales history needed for a replenishment plan.");
