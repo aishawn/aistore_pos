@@ -404,8 +404,11 @@ async function recoverOdooSession() {
       .then(async (response) => {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           if (response.ok) {
-            const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null } | null;
-            if (payload?.user) return true;
+            const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null; autoRecoverConfigured?: boolean } | null;
+            // The service-account recovery endpoint can establish the HttpOnly
+            // Odoo cookie while returning no UI user for this tenant. The
+            // cookie is enough to safely replay a read-only request.
+            if (payload?.user || payload?.autoRecoverConfigured) return true;
           }
           if (attempt === 0) {
             response = await fetch("/api/odoo/session", {
