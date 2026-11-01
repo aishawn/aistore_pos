@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
     const sessions = sessionIds.length
       ? (await rpc<OdooSession[]>(sessionId, "pos.session", "search_read", [[
           ["id", "in", sessionIds],
-          ["state", "=", "opened"],
+          ["state", "in", ["opened", "opening_control"]],
         ]], {
           fields: ["id", "name", "state", "config_id", "user_id", "start_at", "cash_register_balance_start", "cash_register_balance_end"],
           limit: 100,

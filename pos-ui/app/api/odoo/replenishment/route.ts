@@ -375,7 +375,10 @@ export async function GET(request: NextRequest) {
           soldUnits,
           forecastEnabled: forecastEnabled(),
           forecastUsable: hasUsableForecast,
-          forecastConfidence: forecastItem?.confidence ?? null,
+          // A usable forecast without an explicit confidence is not validated
+          // enough for automatic purchasing. The response below already shows
+          // this case as LOW, so apply the same conservative value to the gate.
+          forecastConfidence: hasUsableForecast ? forecastItem?.confidence ?? "LOW" : null,
           selectionStatus: forecastItem?.selectionStatus ?? null,
         }),
       ];
