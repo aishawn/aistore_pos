@@ -6,7 +6,7 @@ import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Boxes, Eraser, ExternalLink, History, Lightbulb, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
+import { BarChart3, Boxes, Eraser, ExternalLink, History, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
@@ -1313,18 +1313,14 @@ export function SellAiPanel({
   );
 
   const workspaceActions = [
-    { title: "Check stock levels", description: "Find low stock items and reorder suggestions", icon: BarChart3, tone: "orange", action: "Check stock" },
+    { title: "Review stock", description: "Find low stock items and reorder suggestions", icon: PackageSearch, tone: "orange", action: "Check stock" },
     { title: "Analyse sales", description: "Show me this week’s performance", icon: BarChart3, tone: "blue", action: "Today's sales" },
     { title: "Create purchase order", description: "Generate PO for low stock items", icon: Boxes, tone: "green", action: "Create purchase order" },
-    { title: "Find opportunities", description: "Suggest ways to grow my store", icon: Lightbulb, tone: "amber", action: "What should I restock?" },
   ] as const;
   const sidebarWorkflows = [
     { label: "Low stock analysis", icon: PackageSearch },
-    { label: "Create purchase order", icon: ShoppingCart },
     { label: "Sales performance", icon: BarChart3 },
-    { label: "Top selling products", icon: Boxes },
     { label: "Customer insights", icon: Store },
-    { label: "Stock recommendations", icon: PackageSearch },
     { label: "Price optimisation", icon: BarChart3 },
     { label: "Find a wine", icon: Sparkles },
   ] as const;
@@ -1404,8 +1400,8 @@ export function SellAiPanel({
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
           {historyOpen ? <HistoryView loading={historyLoading} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className="mx-auto flex min-h-full w-full max-w-[1080px] -translate-y-7 flex-col justify-center py-8 sm:-translate-y-11 sm:py-12 lg:-translate-y-14">
-              <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-2 text-[18px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:text-[22px]">How can I help with your store today?</p></div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[158px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
+              <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">What do you want to improve today?</h1><p className="mt-2 text-[18px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:text-[22px]">Stock, sales and purchasing decisions for this store.</p></div>
+              <div className="mx-auto grid w-full max-w-[920px] gap-3 sm:grid-cols-3">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[148px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
               {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} busy={busy} thinkingHint={thinkingHint} compact /></div>}
             </div>
           )}
