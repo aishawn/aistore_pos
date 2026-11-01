@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { groupCategories } from "@/lib/category-groups";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
@@ -44,8 +45,6 @@ export function OdooProductCataloguePage() {
   const { hasPermission } = useAuth();
   const [stockBusy, setStockBusy] = useState(false);
   const [categoryBusy, setCategoryBusy] = useState(false);
-  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
-  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const dialog = searchParams.get("dialog");
   const dialogBusy = stockBusy || categoryBusy;
   function setDialog(value: string | null) {
@@ -80,6 +79,8 @@ export function OdooProductCataloguePage() {
   const [error, setError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
+  const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);
   const [editingProduct, setEditingProduct] = useState<OdooProductRecord | null>(null);
   const [categoriesTouched, setCategoriesTouched] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -129,15 +130,9 @@ export function OdooProductCataloguePage() {
   }, [categoryLoading, importBusy, importOpen]);
   const tab = searchParams.get("tab") === "stocktake" ? "stocktake" : "catalogue";
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
-  const categoryOptions = useMemo(() => {
-    const groups = new Map<string, OdooPosCategoryRecord>();
-    for (const category of categories) {
-      const parent = category.parent_id ? `${category.parent_id[1]} / ` : "";
-      const key = `${parent}${category.name.trim()}`.toLocaleLowerCase();
-      if (!groups.has(key)) groups.set(key, category);
-    }
-    return [...groups.values()];
-  }, [categories]);
+  const categoryGroups = useMemo(() => groupCategories(categories), [categories]);
+  const categoryOptions = useMemo(() => categoryGroups.map((group) => group[0]), [categoryGroups]);
+
   const showImportDisplayNote = useMemo(
     () => items.some((product) => {
       const displayName = typeof product.display_name === "string" ? product.display_name : product.name;
@@ -243,7 +238,7 @@ export function OdooProductCataloguePage() {
         query: debouncedQuery,
         limit: PAGE_SIZE,
         offset,
-        categoryId: categoryId ?? undefined,
+        categoryIds: categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined,
         catalogueView,
       });
       if (revision !== requestRevision.current) return;
@@ -255,7 +250,7 @@ export function OdooProductCataloguePage() {
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
-  }, [categoryId, catalogueView, connected, debouncedQuery, offset]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, offset]);
 
   useEffect(() => { void loadProducts(); }, [loadProducts, refreshKey]);
 
@@ -490,7 +485,7 @@ export function OdooProductCataloguePage() {
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             </label>
-            <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
+            <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.[0].id ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
                 <option value="">All categories</option>
                 {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
             </select>

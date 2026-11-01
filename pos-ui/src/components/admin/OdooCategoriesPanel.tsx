@@ -6,7 +6,7 @@ import { ExternalLink, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
-type Category = { id: number; name: string; parent_id: [number, string] | false; productCount: number; childCount: number; editable: boolean };
+type Category = { id: number; name: string; parent_id: [number, string] | false; productCount: number; childCount: number; ids: number[]; editable: boolean };
 
 export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: () => void; onBusyChange: (busy: boolean) => void }) {
   const [items, setItems] = useState<Category[]>([]);
@@ -28,7 +28,7 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
       const result: Category[] = [];
       let offset = 0;
       for (;;) {
-        const response = await fetchOdooRoute(`/api/odoo/categories?offset=${offset}`, { cache: "no-store" });
+        const response = await fetchOdooRoute(`/api/odoo/categories?view=unified&offset=${offset}`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || "Could not load categories.");
         if (request !== revision.current) return;
@@ -61,20 +61,13 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
   }
 
   const filtered = items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
-  const groups = Array.from(filtered.reduce((result, item) => {
-    const key = item.name.trim().toLocaleLowerCase();
-    const group = result.get(key) ?? { name: item.name, items: [] as Category[] };
-    group.items.push(item);
-    result.set(key, group);
-    return result;
-  }, new Map<string, { name: string; items: Category[] }>()).values());
   const unavailable = !writeEnabled || loading || !!error && !items.length;
   return <div className="space-y-4">
     <div className="flex items-start gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3.5">
       <ShieldCheck size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" aria-hidden="true" />
-      <div><p className="text-sm font-medium text-[var(--oh-text)]">Categories organise your POS catalogue</p><p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Shared categories are managed centrally and are read-only. Assign a category when creating or editing a product.</p></div>
+      <div><p className="text-sm font-medium text-[var(--oh-text)]">Categories organise your POS catalogue</p><p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Browse each category once and see its products. Assign categories when creating or editing a product.</p></div>
     </div>
-    {!loading && !writeEnabled && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950"><p className="font-medium">Category changes are currently locked</p><p className="mt-1 text-xs leading-5">An administrator must complete the Orithos upgrade and isolated verification before you can add, edit or delete local categories.</p></div>}
+    {!loading && !writeEnabled && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-950"><p className="font-medium">Category changes are currently locked</p><p className="mt-1 text-xs leading-5">Category editing is unavailable for this store. You can still search categories and view their products.</p></div>}
     {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}<button type="button" disabled={busy} onClick={() => void load()} className="ml-3 underline">Reload categories</button></div>}
     <fieldset disabled={busy} className="min-w-0 space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row"><label className="relative min-w-0 flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" aria-hidden="true" /><span className="sr-only">Search categories</span><input aria-label="Search categories" placeholder="Search by category name…" value={query} onChange={(event) => setQuery(event.target.value)} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] pl-9 pr-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label><button type="button" disabled={unavailable} onClick={() => { setEditing("new"); setName(""); setParentId(""); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} aria-hidden="true" /> New category</button></div>
@@ -84,7 +77,25 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
 <label className="block text-sm text-[var(--oh-text)]">Parent category<select value={parentId} onChange={(event) => setParentId(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[var(--oh-text)]"><option value="">No parent</option>{items.filter((item) => item.editable && item.id !== editing).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <div className="flex gap-2"><button type="submit" disabled={!name.trim()} className="min-h-11 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-50">Save category</button><button type="button" onClick={() => setEditing(null)} className="min-h-11 rounded-lg border px-4 text-sm">Cancel</button></div>
       </form>}
-      {loading ? <p role="status" className="rounded-xl border border-dashed border-[var(--oh-border)] p-8 text-center text-sm text-[var(--oh-muted)]">Loading categories…</p> : <div className="space-y-3">{groups.map((group) => <section key={group.name.toLocaleLowerCase()} className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]"><header className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{group.name}</h3><p className="mt-0.5 text-xs text-[var(--oh-muted)]">{group.items.length > 1 ? `${group.items.length} sources` : "1 source"}</p></div>{group.items.length > 1 && <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--oh-muted)]">Grouped by name</span>}</header><ul className="divide-y divide-[var(--oh-border)]">{group.items.map((item) => <li key={item.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.editable ? "bg-[var(--oh-primary)]/10 text-[var(--oh-primary)]" : "bg-slate-100 text-slate-600"}`}>{item.editable ? "Local" : "Shared"}</span>{!item.editable && <span className="text-[11px] font-medium text-slate-500">Read-only</span>}</div><p className="mt-1 text-sm text-[var(--oh-text-secondary)]">{item.parent_id ? `Parent: ${item.parent_id[1]} · ` : ""}<span className="font-medium text-[var(--oh-text)]">{item.productCount}</span> {item.productCount === 1 ? "product" : "products"}{item.childCount ? ` · ${item.childCount} ${item.childCount === 1 ? "child" : "children"}` : ""}</p></div><div className="flex flex-wrap items-center gap-2 sm:justify-end">{item.productCount > 0 && <Link href={`/products?categoryId=${item.id}`} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"><ExternalLink size={14} aria-hidden="true" /> View products</Link>}{item.editable && writeEnabled && <><button type="button" onClick={() => { setEditing(item.id); setName(item.name); setParentId(item.parent_id ? String(item.parent_id[0]) : ""); }} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"><Pencil size={14} aria-hidden="true" /> Edit</button><button type="button" disabled={item.productCount > 0 || item.childCount > 0} title={item.productCount || item.childCount ? "Remove product and child category references first" : "Delete category"} aria-label={item.productCount || item.childCount ? `${item.name} cannot be deleted until its products and child categories are moved` : `Delete ${item.name}`} onClick={() => setDeleting(item)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-red-200 px-3 text-sm text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 size={14} aria-hidden="true" /> Delete</button></>}{item.editable && writeEnabled && (item.productCount > 0 || item.childCount > 0) && <span className="w-full text-right text-xs text-[var(--oh-muted)]">Move products and child categories before deleting</span>}</div></li>)}</ul></section>)}{!groups.length && <div className="rounded-xl border border-dashed border-[var(--oh-border)] p-8 text-center text-sm text-[var(--oh-muted)]">No matching categories.</div>}</div>}
+      <p role="status" aria-live="polite" className="text-xs text-[var(--oh-muted)]">{loading ? "Loading categories…" : `${filtered.length.toLocaleString("en-AU")} ${filtered.length === 1 ? "category" : "categories"}`}</p>
+      {loading ? <p role="status" className="rounded-xl border border-dashed border-[var(--oh-border)] p-8 text-center text-sm text-[var(--oh-muted)]">Loading categories…</p> : <ul className="divide-y overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
+        {filtered.map((item) => <li key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{item.name}</h3>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">{item.parent_id && <span>{item.parent_id[1]} · </span>}<span className="font-medium tabular-nums text-[var(--oh-text)]">{item.productCount.toLocaleString("en-AU")}</span> {item.productCount === 1 ? "product" : "products"}{item.childCount > 0 && ` · ${item.childCount} subcategories`}</p>
+            {writeEnabled && !item.editable && <p className="mt-1 text-xs text-[var(--oh-muted)]">View only</p>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/products?categoryId=${item.id}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"><ExternalLink size={14} aria-hidden="true" /> View products</Link>
+            {writeEnabled && item.editable && <>
+              <button type="button" onClick={() => { setEditing(item.id); setName(item.name); setParentId(item.parent_id ? String(item.parent_id[0]) : ""); }} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm"><Pencil size={14} aria-hidden="true" /> Edit</button>
+              <button type="button" disabled={item.productCount > 0 || item.childCount > 0} title="Categories must be empty before deletion" onClick={() => setDeleting(item)} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-40"><Trash2 size={14} aria-hidden="true" /> Delete</button>
+            </>}
+          </div>
+        </li>)}
+        {!filtered.length && <li className="p-8 text-center text-sm text-[var(--oh-muted)]">{query ? "No matching categories. Try another name." : "No categories yet."}</li>}
+      </ul>}
+
     </fieldset>
     <ConfirmDialog open={deleting !== null} title="Delete category?" message={`Delete ${deleting?.name || "this category"}? Products will not be deleted.`} busy={busy} error={error} onConfirm={() => { if (deleting) void mutate("DELETE", deleting.id); }} onCancel={() => { if (!lock.current) setDeleting(null); }} />
   </div>;

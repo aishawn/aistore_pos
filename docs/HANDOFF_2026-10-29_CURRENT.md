@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-01 Manage Categories unified presentation
+
+- Removed the Local / Shared source rows. Categories with the same normalized full ancestry appear once; identical names under different parent paths remain separate. Search displays the matching category total.
+- The opt-in `categories?view=unified` read endpoint counts active sellable product variants with a union of category IDs, preserving company scope and counting products assigned to both aliases once. Product catalogue dropdowns and category links query the same union.
+- No Odoo data migration or business writes. Existing category write gate, company ownership checks and server-side deletion protections remain. Groups containing multiple underlying records stay read-only to avoid partial rename/delete; singleton owned categories retain editing when enabled.
+- Local Node 24 verification: typecheck, targeted ESLint (no errors; existing effect warnings), three grouping regression tests and a mocked API check for union counts, logical child counts, company scope and duplicate edit restrictions passed. Browser fixture verification was not completed: Turbopack rejected the dependency junction and the webpack dev preview timed out while compiling the page. No local production build was run. Deployment identity and live SKR acceptance have not been established for this change.
+
 ## 2026-11-01 历史库存回放与线上复验（最新）
 
 - GitHub `main` 已更新到 `185d1887`；Demo 和 SKR 当前 frontend/backend runtime 均为该 SHA。
