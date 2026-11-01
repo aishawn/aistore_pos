@@ -136,7 +136,9 @@ async function loadDailySales(sessionId: string, domain: unknown[], timezone: st
   // Apply order filters before reading lines so cold requests do not scan the full line table.
   type Order = { id?: number; date_order?: string };
   type Line = { id?: number; product_id?: [number, string] | false; order_id?: [number, string] | false; qty?: number };
-  const orderDomain = domain.filter((c): c is [string, string, unknown] => Array.isArray(c) && c.length >= 3).filter(([field]) => field.startsWith("order_id.")).map(([field, op, value]) => [field.slice(10), op, value]);
+  // `order_id.` is nine characters; slicing at ten silently changed
+  // `company_id` into `ompany_id` and made Odoo reject the sales query.
+  const orderDomain = domain.filter((c): c is [string, string, unknown] => Array.isArray(c) && c.length >= 3).filter(([field]) => field.startsWith("order_id.")).map(([field, op, value]) => [field.slice(9), op, value]);
   const orders: Order[] = []; let afterId = 0;
   while (true) {
     const page = await rpc<Order[]>(sessionId, "pos.order", "search_read", [[...orderDomain, ["id", ">", afterId]]], { fields: ["id", "date_order"], limit: 5000, order: "id asc" }, correlationId);
