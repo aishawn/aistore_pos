@@ -419,8 +419,8 @@ export function OdooProductCataloguePage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 md:p-6">
-      <header inert={stockBusy || categoryBusy} className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+      <header inert={stockBusy || categoryBusy} className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
@@ -511,7 +511,7 @@ export function OdooProductCataloguePage() {
 
           <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
-              <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+              <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Product</th>
                   <th scope="col" className="px-4 py-3">Category</th>
