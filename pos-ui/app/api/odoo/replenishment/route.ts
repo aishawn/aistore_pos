@@ -526,6 +526,14 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json(responseBody, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    // Keep the client response intentionally generic, but leave a correlation
+    // breadcrumb in the frontend container logs so upstream Odoo/forecast
+    // failures can be diagnosed without exposing credentials or RPC payloads.
+    console.error("[replenishment] request failed", {
+      correlationId: correlationId ?? null,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 240) : "unknown",
+    });
     if (error instanceof ReplenishmentSessionExpiredError) {
       const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
