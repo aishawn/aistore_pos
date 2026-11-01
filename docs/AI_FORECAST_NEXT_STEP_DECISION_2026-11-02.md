@@ -82,3 +82,5 @@ Added `pos-ui/app/api/odoo/dead-stock/route.ts` as a read-only tenant-scoped end
 The latest freshness record now confirms the background inventory worker has reached `observedDays=2`, `gapDays=0`/`CONTIGUOUS`, and `lastAttemptStatus=SUCCESS`; backtest readiness correctly remains `INSUFFICIENT_HISTORY`. This is the expected verified wait, so the worker should continue running while the product and model validation proceed.
 
 The endpoint should be wired into a small reports/inventory card after the POS dependency install/typecheck succeeds. The card must show data quality and review counts, preserve the read-only boundary, and avoid automatic repricing or purchase actions. Remote deployment remains deferred until local validation is available.
+
+The replenishment endpoint now also supports `mode=exceptions`, and the replenishment page exposes an “Exceptions only” work-queue toggle. It returns items with review data, medium/high risk, insufficient coverage, projected stockout, or low forecast confidence while retaining aggregate quality metrics. This is a daily decision queue; it does not approve, confirm, or send purchases.
