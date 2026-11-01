@@ -28,6 +28,10 @@ const FORECAST_MODELS = new Set([
   "two_stage_occurrence_v1",
   "analog_category_brand_price_v1",
 ]);
+// Keep the contract explicit while allowing the currently deployed service
+// version. An unknown version must still fail closed because its item schema
+// may not be compatible with this route.
+const SUPPORTED_FORECAST_MODEL_VERSIONS = new Set(["5", "6"]);
 
 const replenishmentCache = new Map<string, { expiresAt: number; body: Record<string, unknown> }>();
 
@@ -315,7 +319,9 @@ export async function GET(request: NextRequest) {
         const batches = [targets.slice(offset, offset + FORECAST_BATCH_SIZE), targets.slice(offset + FORECAST_BATCH_SIZE, offset + FORECAST_BATCH_SIZE * 2)].filter((batch) => batch.length);
         const responses = await Promise.all(batches.map((batch) => callForecastService({ vendorId: companyId, outletId: companyId, horizonDays: Math.max(coverageDays, 7), forecastStartDate: shiftDay(today, -1), sourceVersion: "odoo_pos_order_line_local_complete_days_v2", series: batch, referenceSeries })));
         for (const [index, forecastResponse] of responses.entries()) {
-          if (forecastResponse.modelVersion !== "5") throw new ForecastServiceUnavailableError("Forecast service needs catalogue batch support");
+          if (!forecastResponse.modelVersion || !SUPPORTED_FORECAST_MODEL_VERSIONS.has(forecastResponse.modelVersion)) {
+            throw new ForecastServiceUnavailableError("Forecast service needs a supported catalogue batch version");
+          }
           const batch = batches[index];
           const expectedIds = new Set(batch.map((item) => item.productId));
           const receivedIds = new Set<number>();
