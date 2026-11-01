@@ -32,4 +32,5 @@ test("low-confidence demand stays review-only", () => {
   assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, selectionStatus: "ANALOG_COLD_START" }), ["LOW_CONFIDENCE_ANALOG"]);
   assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, forecastEnabled: true, forecastUsable: true, forecastConfidence: "LOW" }), ["LOW_FORECAST_CONFIDENCE"]);
   assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, forecastEnabled: true, forecastUsable: false, forecastConfidence: "LOW" }), ["LOW_FORECAST_CONFIDENCE"]);
+  assert.deepEqual(replenishmentDemandIssues({ soldUnits: 20, timezoneVerified: false }), ["UNVERIFIED_STORE_TIMEZONE"]);
 });
