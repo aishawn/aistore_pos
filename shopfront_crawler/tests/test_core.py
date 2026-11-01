@@ -53,6 +53,14 @@ def test_count_validation_is_present_before_history_cursor_advances():
     assert "complete Sale query returned no rows" in source
 
 
+def test_history_retries_catalog_when_inventory_snapshot_is_empty():
+    from app.main import should_include_catalog
+
+    assert should_include_catalog("history", 3532, 0) is True
+    assert should_include_catalog("history", 3532, 10973) is False
+    assert should_include_catalog("daily_sync", 3532, 10973) is True
+
+
 def test_sale_query_requests_nested_product_fields():
     # Keep this assertion close to the client contract without making a live
     # request. The nested Product selection is required for item names.
