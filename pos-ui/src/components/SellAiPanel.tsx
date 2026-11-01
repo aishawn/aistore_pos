@@ -1,7 +1,7 @@
 "use client";
 
 import { fetchOdooRoute } from "@/lib/odoo-api";
-import { operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
+import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
@@ -1020,12 +1020,14 @@ export function SellAiPanel({
     const hintTimers: number[] = [
       window.setTimeout(() => setThinkingHint("Still working on your question…"), 3000),
       window.setTimeout(
-        () => setThinkingHint("This is taking longer than usual — hang tight…"),
+        () => setThinkingHint(operationsPreviewIntent(text) === "replenishment"
+          ? "Reading the full store catalogue and sales history. This can take up to two minutes…"
+          : "This is taking longer than usual — hang tight…"),
         8000,
       ),
     ];
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const hardTimeout = window.setTimeout(() => controller?.abort(), 45_000);
+    const hardTimeout = window.setTimeout(() => controller?.abort(), assistantRequestTimeoutMs(text));
     try {
       const result = await readOperationsPreview(text, threadId, controller?.signal, fetchOdooRoute)
         ?? await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
@@ -1093,9 +1095,11 @@ export function SellAiPanel({
           role: "assistant",
           question: text,
           text: aborted
-            ? "The assistant timed out. Try a shorter question, or use Today's sales / Check stock shortcuts."
+            ? assistantTimeoutMessage(text)
             : aiFailureMessage(e, "chat"),
           retryQuestion: e instanceof ApiError && (e.code === 50301 || e.status === 503) ? null : text,
+          links: operationsPreviewIntent(text) === "replenishment"
+            ? [{ href: "/purchases?tab=replenishment", label: "Open replenishment" }] : null,
           diagnostics: {
             intent: "unavailable",
             // eslint-disable-next-line react-hooks/purity

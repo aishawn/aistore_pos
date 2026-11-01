@@ -230,6 +230,7 @@ export async function GET(request: NextRequest) {
         () => rpc<number>(sessionId, "product.product", "search_count", [productDomain], { context: companyContext }, correlationId),
         (afterId, limit) => rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[...productDomain, ["id", ">", afterId]]],
           { fields: productFields, limit, order: "id asc", context: companyContext }, correlationId),
+        25_000, 5000,
       ),
       rpc<Array<{ name?: string; country_id?: [number, string]; state_id?: [number, string] }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name", "country_id", "state_id"], limit: 1 }, correlationId),
     ]);
@@ -264,6 +265,7 @@ export async function GET(request: NextRequest) {
           () => rpc<number>(sessionId, "product.supplierinfo", "search_count", [supplierDomain], { context: companyContext }, correlationId),
           (afterId, limit) => rpc<Supplier[]>(sessionId, "product.supplierinfo", "search_read", [[...supplierDomain, ["id", ">", afterId]]],
             { fields: ["id", "product_tmpl_id", "delay"], limit, order: "id asc", context: companyContext }, correlationId),
+          25_000, 5000,
         );
         for (const supplier of suppliers ?? []) {
           const templateId = Array.isArray(supplier.product_tmpl_id) ? Number(supplier.product_tmpl_id[0]) : 0;

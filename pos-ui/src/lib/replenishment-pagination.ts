@@ -4,7 +4,11 @@ export async function readCompleteRows<T extends { id?: unknown }>(
   count: () => Promise<number | undefined>,
   page: (afterId: number, limit: number) => Promise<T[] | undefined>,
   maxRows = 25_000,
+  pageSize = 1000,
 ): Promise<T[]> {
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 5000) {
+    throw new Error("Invalid catalogue page size");
+  }
   const expected = await count();
   if (!Number.isSafeInteger(expected) || expected! < 0 || expected! > maxRows) {
     throw new Error("Catalogue coverage could not be verified; no plan was generated.");
@@ -12,7 +16,7 @@ export async function readCompleteRows<T extends { id?: unknown }>(
   const rows: T[] = [];
   let afterId = 0;
   while (true) {
-    const batch = await page(afterId, 1000);
+    const batch = await page(afterId, pageSize);
     if (!Array.isArray(batch)) throw new Error("Catalogue read is incomplete; no plan was generated.");
     for (const row of batch) {
       const id = Number(row.id);
@@ -21,7 +25,7 @@ export async function readCompleteRows<T extends { id?: unknown }>(
       rows.push(row);
     }
     if (rows.length > maxRows) throw new Error("Catalogue exceeds the safe query limit; no plan was generated.");
-    if (batch.length < 1000) break;
+    if (batch.length < pageSize) break;
   }
   if (rows.length !== expected || await count() !== expected) {
     throw new Error("Catalogue changed during the read; retry to generate a complete plan.");

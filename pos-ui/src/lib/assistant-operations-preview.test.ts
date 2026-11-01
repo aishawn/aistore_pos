@@ -1,9 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { operationsPreviewIntent, readOperationsPreview } from "./assistant-operations-preview.ts";
+import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "./assistant-operations-preview.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 const question = "Analyse low stock items and suggest what to reorder";
+test("complete replenishment reads have a bounded independent budget and actionable timeout", () => {
+  assert.equal(assistantRequestTimeoutMs(question), 120_000);
+  assert.equal(assistantRequestTimeoutMs("低库存补货建议"), 120_000);
+  assert.equal(assistantRequestTimeoutMs("Show me this week's sales performance"), 45_000);
+  assert.equal(assistantRequestTimeoutMs("Order 30 cases"), 45_000);
+  assert.match(assistantTimeoutMessage(question), /No quantities were generated/);
+  assert.match(assistantTimeoutMessage(question), /Open Replenishment/);
+  assert.doesNotMatch(assistantTimeoutMessage(question), /shorter question|Today's sales/);
+});
 function mockFetch(payload: unknown, status = 200): typeof fetch {
   return async (_url, init) => {
     assert.equal(init?.method, "GET");
