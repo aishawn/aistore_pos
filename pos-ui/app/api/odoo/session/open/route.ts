@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     const currentSessionId = Array.isArray(config?.current_session_id) ? config.current_session_id[0] : null;
     const openSessions = currentSessionId
       ? await rpc<Array<{ id: number }>>(sessionId, "pos.session", "search_read", [[
-          ["id", "=", currentSessionId], ["state", "=", "opened"],
+          ["id", "=", currentSessionId], ["state", "in", ["opened", "opening_control"]],
         ]], companyContext, request)
       : [];
     const decision = resolveRegisterOpenDecision(
@@ -117,7 +117,21 @@ export async function POST(request: NextRequest) {
       forced.companyIds,
     );
     if (decision === "denied") throw new OpenSessionError("This register is not available to your Orithos user.", 403);
-    if (decision === "already-open") return NextResponse.json({ opened: false, alreadyOpen: true, configId }, { status: 200 });
+    if (decision === "already-open") {
+      const existing = openSessions?.[0];
+      if (existing) {
+        const existingState = await rpc<Array<{ id: number; state: string; cash_register_balance_start?: number }>>(sessionId, "pos.session", "search_read", [[
+          ["id", "=", existing.id],
+        ]], companyContext, request);
+        if (existingState?.[0]?.state === "opening_control") {
+          const openingCash = body.openingCash ?? existingState[0].cash_register_balance_start ?? 0;
+          const openingNotes = typeof body.openingNotes === "string" ? body.openingNotes.trim().slice(0, 200) : "";
+          await rpc(sessionId, "pos.session", "set_opening_control", [[existing.id], openingCash, openingNotes], companyContext, request);
+          return NextResponse.json({ opened: true, configId, sessionId: existing.id, openingCash }, { status: 200 });
+        }
+      }
+      return NextResponse.json({ opened: false, alreadyOpen: true, configId }, { status: 200 });
+    }
 
     await rpc(sessionId, "pos.config", "open_ui", [[configId]], companyContext, request);
 
