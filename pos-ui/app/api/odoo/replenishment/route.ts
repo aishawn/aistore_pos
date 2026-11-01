@@ -8,7 +8,7 @@ import { readCompleteRows } from "@/lib/replenishment-pagination";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
-import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, stockoutProjection } from "@/lib/replenishment-safety";
+import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection } from "@/lib/replenishment-safety";
 import { isSupportedForecastModelVersion } from "@/lib/forecast-version";
 
 export const runtime = "nodejs";
@@ -367,7 +367,16 @@ export async function GET(request: NextRequest) {
       const forecastP80 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p80) || 0), 0);
       const forecastP90 = forecastPoints.slice(0, coverageDays).reduce((sum, point) => sum + Math.max(0, Number(point.p90) || 0), 0);
       const demandPerDay = hasUsableForecast ? forecastP50 / coverageDays : unitsPerDay;
-      const dataIssues = replenishmentIssues(product);
+      const dataIssues = [
+        ...replenishmentIssues(product),
+        ...replenishmentDemandIssues({
+          soldUnits,
+          forecastEnabled: forecastEnabled(),
+          forecastUsable: hasUsableForecast,
+          forecastConfidence: forecastItem?.confidence ?? null,
+          selectionStatus: forecastItem?.selectionStatus ?? null,
+        }),
+      ];
       const recommendationBlocked = dataIssues.length > 0 || soldUnits <= 0;
       const suggestedQuantity = recommendationBlocked ? 0 : Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
       const postReplenishmentForecast = forecastStock + suggestedQuantity;
@@ -413,7 +422,7 @@ export async function GET(request: NextRequest) {
       if (leadTimeDays === null) reasonParts.push("Data quality warning: supplier lead time is unknown; coverage target is used as a fallback.");
       else reasonParts.push(`Supplier lead time ${leadTimeDays}d; target coverage uses ${targetDays}d.`);
       if (risk === "UNKNOWN") reasonParts.push("Risk is unknown because there is no positive demand baseline.");
-      if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; treat the estimate as low confidence.");
+      if (soldUnits < 14) reasonParts.push("Data quality warning: fewer than 14 units sold in the lookback window; this item is review-only until demand history improves.");
       return {
         id,
         name: String(product.display_name ?? product.name ?? "Product"),
