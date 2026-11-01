@@ -1,5 +1,15 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-01 历史库存回放与线上复验（最新）
+
+- GitHub `main` 已更新到 `185d1887`；Demo 和 SKR 当前 frontend/backend runtime 均为该 SHA。
+- 新增 `InventoryBacktestRequest.originDate`，可把某个历史日期作为信息边界：截点后的库存只作 holdout 标签，不进入预测输入。响应明确返回 `evaluationMode=HISTORICAL_WALK_FORWARD` 和 `futureObservationsUsedAsInput=false`。
+- SKR 固定快照覆盖 2026-05-05 至 2026-10-31，共 180 个日期。新增 `scripts/ai_inventory_historical_replay.py`，在 2026-08-31 截点、200 个库存质量合格商品上，7/14/28 天回放均 200/200 PASS，平均库存 MAE 分别 1.1064、2.0164、3.8364；`writeRequests=[]`。
+- Demo/SKR 最新只读回归：AI 功能矩阵各 15/15 PASS；报表各 23/23 PASS；命令 parse/preview/cancel/执行关闭守卫各 7/7 PASS。`AI_COMMANDS_EXECUTION_ENABLED=false` 保持关闭，未产生业务写入。
+- 最新预测接口：Demo 1,837 个商品、SKR 2,479 个商品均 HTTP 200，`modelVersion=6`。风险接口没有把负库存或低置信度数据输出为正常缺货告警，问题数据进入 `dataQualityAlerts`。
+- 387 条全量 Assistant 线上目录回归本轮未完成：原脚本串行节流和上游响应耗时过长，已停止，不能记为 PASS。此前较小目录和本轮 15 条功能矩阵通过不代表 387 条全量目录通过。
+- 预测质量门槛仍未通过：SKR walk-forward WAPE 高于当前探索门槛，且库存历史为 Odoo `qty_available(to_date)` 重建标签，不是独立原生盘点。继续禁止自动采购、自动调价和其他业务写入。
+
 ## 2026-11-01 SKR 历史库存回测与线上回归（本地候选，未发布）
 
 - 开发预研不需要等待未来 28 天真实库存快照。180 天真实 SKR 销售按日期做 expanding-window 回测；Odoo 历史 `qty_available` 只用于识别缺货删失日期。每折预测输入被限制在训练截止日前；holdout 库存标签只用于评分掩码，不进入预测特征或模型选择。历史 `to_date` 是 Odoo 系统历史数量，不是独立实盘盘点真值，可能受补录、回溯移动和仓库范围影响。
