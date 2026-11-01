@@ -144,7 +144,7 @@ export function OdooCustomerGroupsPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6 max-xl:overflow-x-hidden max-xl:overflow-y-auto">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Groups</h1>
@@ -170,7 +170,7 @@ export function OdooCustomerGroupsPage() {
           {resultsBusy && groups.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer groups…"} Existing rows are temporarily read-only.</p>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900"><span>{error}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={14} /> Retry</button></div>}
 
-          <section aria-busy={resultsBusy} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white max-xl:flex-none max-xl:overflow-visible">
+          <section aria-busy={resultsBusy} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white">
             {loading && groups.length === 0 ? <p role="status" className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Loading customer groups…</p>
               : groups.length === 0 ? <div role="status" className="flex min-h-56 flex-col items-center justify-center px-5 py-10 text-center"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery ? "No customer groups match this search" : "No Orithos customer groups yet"}</p><p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{debouncedQuery ? "Try another group name." : isAdmin ? "Add a group to organise customers in Orithos." : "A store admin can add customer groups for this Orithos company."}</p></div>
                 : <>
