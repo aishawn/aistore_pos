@@ -198,11 +198,13 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   const load = useCallback(async (refresh = false) => {
     const revision = ++requestRevision.current;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 45_000);
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store" });
+      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
       const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
@@ -225,13 +227,16 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) {
-        setError(cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
+      setError(cause instanceof DOMException && cause.name === "AbortError"
+        ? "The replenishment plan is taking too long to calculate. Retry in a moment."
+        : cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
       }
     } finally {
       if (revision === requestRevision.current) {
         setLoading(false);
         setRefreshing(false);
       }
+      window.clearTimeout(timeout);
     }
   }, [coverageDays]);
 
