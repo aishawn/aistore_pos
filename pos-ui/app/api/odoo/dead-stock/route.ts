@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     for (const days of WINDOWS) {
       const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[ ["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", dateString(days)], ["order_id.state", "in", ["paid", "done", "invoiced"]] ], ["qty:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => []);
       const map = new Map<number, number>();
-      for (const row of rows) {
+      for (const row of rows ?? []) {
         const product = row.product_id;
         const id = Array.isArray(product) ? Number(product[0]) : 0;
         if (id > 0) map.set(id, Number(row.qty ?? 0));
