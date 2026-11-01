@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const companyId = forced.companyIds[0];
     if (!companyId) return errorResponse("No Orithos companies are available to this user.", 403, correlationId);
 
-    const productsPromise = rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [["sale_ok", "=", true], ["active", "=", true]], { fields: ["id", "display_name", "default_code", "qty_available", "standard_price", "categ_id"], limit: 5000, order: "display_name asc", context: { allowed_company_ids: [companyId] } }, correlationId);
+    const productsPromise = rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[["sale_ok", "=", true], ["active", "=", true]]], { fields: ["id", "display_name", "default_code", "qty_available", "standard_price", "categ_id"], limit: 5000, order: "display_name asc", context: { allowed_company_ids: [companyId] } }, correlationId);
     // The three windows are independent. Running them concurrently keeps this
     // read-only report within the request budget on larger catalogues.
     const salesPromises = WINDOWS.map((days) => rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[ ["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", dateString(days)], ["order_id.state", "in", ["paid", "done", "invoiced"]] ], ["qty:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => []));
