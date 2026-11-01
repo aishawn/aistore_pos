@@ -157,6 +157,64 @@ class InventoryResponse(BaseModel):
     decisions: list[InventoryDecision] = []
 
 
+class InventorySimulationItem(BaseModel):
+    """Known-as-of-today inputs for a forward inventory simulation.
+
+    No observations after the last date are accepted. Future stock is produced
+    by the forecast and inventory balance model, never supplied by the caller.
+    """
+    productId: int = Field(gt=0)
+    dates: list[date]
+    units: list[Annotated[float, Field(ge=0, allow_inf_nan=False)]]
+    onHand: float = Field(ge=0)
+    onOrder: float = Field(default=0, ge=0)
+    leadTimeDays: int = Field(default=0, ge=0, le=90)
+    safetyStockDays: int = Field(default=3, ge=0, le=90)
+    stockoutFlags: list[bool] = []
+    selectedModel: Literal["seasonal_naive_v1", "moving_average_7_v1",
+                           "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1",
+                           "two_stage_occurrence_v1"] | None = None
+
+    @model_validator(mode="after")
+    def validate_alignment(self):
+        if len(self.dates) != len(self.units) or not self.dates:
+            raise ValueError("dates and units must be non-empty and aligned")
+        if any(current != previous + timedelta(days=1) for previous, current in zip(self.dates, self.dates[1:])):
+            raise ValueError("dates must be unique consecutive daily observations")
+        if self.stockoutFlags and len(self.stockoutFlags) != len(self.units):
+            raise ValueError("stockoutFlags and units must have the same length")
+        return self
+
+
+class InventorySimulationRequest(BaseModel):
+    vendorId: int = Field(gt=0)
+    outletId: int = Field(gt=0)
+    horizonDays: int = Field(default=14, ge=1, le=90)
+    sourceVersion: str = "unknown"
+    items: list[InventorySimulationItem] = Field(min_length=1, max_length=2000)
+
+
+class InventorySimulationItemResult(BaseModel):
+    productId: int
+    forecast: list[ForecastPoint]
+    projection: list[InventoryPoint]
+    decision: InventoryDecision
+    dataQuality: str
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]
+
+
+class InventorySimulationResponse(BaseModel):
+    status: Literal["READ_ONLY_FORWARD_SIMULATION"] = "READ_ONLY_FORWARD_SIMULATION"
+    model: str
+    modelVersion: str
+    sourceVersion: str
+    asOfDate: date
+    horizonDays: int
+    futureObservationsUsedAsInput: bool = False
+    note: str = "Future inventory is simulated from as-of inputs; no future inventory observations were required."
+    items: list[InventorySimulationItemResult]
+
+
 class InventoryBacktestSeries(BaseModel):
     """Historical observations used for walk-forward evaluation.
 

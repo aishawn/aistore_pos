@@ -4,9 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 
-from .forecast_engine import backtest, backtest_inventory, forecast, project_inventory
+from .forecast_engine import backtest, backtest_inventory, forecast, project_inventory, simulate_inventory
 from .schemas import (BacktestRequest, BacktestResponse, ForecastRequest, ForecastResponse,
                        InventoryRequest, InventoryResponse, InventoryBacktestRequest, InventoryBacktestResponse)
+from .schemas import InventorySimulationRequest, InventorySimulationResponse
 
 app = FastAPI(title="Orithos Forecast Service", version="1.0.0")
 log = logging.getLogger(__name__)
@@ -62,3 +63,9 @@ def inventory_forecast(request: InventoryRequest) -> InventoryResponse:
 @app.post("/v1/backtest/inventory", response_model=InventoryBacktestResponse)
 def run_inventory_backtest(request: InventoryBacktestRequest) -> InventoryBacktestResponse:
     return backtest_inventory(request)
+
+
+@app.post("/v1/forecast/inventory/simulate", response_model=InventorySimulationResponse)
+def run_inventory_simulation(request: InventorySimulationRequest) -> InventorySimulationResponse:
+    """Project future stock from known-as-of inputs; no future observations required."""
+    return simulate_inventory(request)

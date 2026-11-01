@@ -4,9 +4,10 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.forecast_engine import backtest, backtest_inventory, forecast, project_inventory
+from app.forecast_engine import backtest, backtest_inventory, forecast, project_inventory, simulate_inventory
 from app.schemas import (BacktestRequest, ForecastPoint, ForecastRequest,
                          InventoryBacktestRequest, InventoryBacktestSeries, InventoryItem, InventoryRequest, Series)
+from app.schemas import InventorySimulationItem, InventorySimulationRequest
 
 
 def make_series(evaluation_flags: list[bool]) -> Series:
@@ -20,6 +21,25 @@ def make_series(evaluation_flags: list[bool]) -> Series:
 
 
 class ForecastBacktestTests(unittest.TestCase):
+    def test_forward_inventory_simulation_does_not_require_future_observations(self):
+        start = date(2026, 10, 1)
+        result = simulate_inventory(InventorySimulationRequest(
+            vendorId=1, outletId=1, horizonDays=7, sourceVersion="skr-dev-snapshot",
+            items=[InventorySimulationItem(
+                productId=9,
+                dates=[start + timedelta(days=index) for index in range(28)],
+                units=[2.0] * 28,
+                onHand=20,
+                leadTimeDays=3,
+                safetyStockDays=2,
+            )],
+        ))
+        self.assertEqual("READ_ONLY_FORWARD_SIMULATION", result.status)
+        self.assertFalse(result.futureObservationsUsedAsInput)
+        self.assertEqual(start + timedelta(days=27), result.asOfDate)
+        self.assertEqual(7, len(result.items[0].projection))
+        self.assertIn("no future inventory observations", result.note)
+
     def test_inventory_backtest_uses_future_on_hand_only_for_scoring(self):
         start = date(2026, 1, 1)
         days = 42

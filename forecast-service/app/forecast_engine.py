@@ -4,8 +4,11 @@ from math import ceil
 
 from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
                        ForecastItem, ForecastPoint, ForecastRequest, ForecastResponse,
-                       InventoryDecision, InventoryPoint, InventoryRequest, InventoryResponse)
-from .schemas import InventoryBacktestItem, InventoryBacktestRequest, InventoryBacktestResponse
+                       InventoryDecision, InventoryPoint, InventoryRequest, InventoryResponse,
+                       InventoryItem, Series)
+from .schemas import (InventoryBacktestItem, InventoryBacktestRequest, InventoryBacktestResponse,
+                       InventorySimulationRequest, InventorySimulationResponse,
+                       InventorySimulationItemResult)
 
 
 MODEL = "seasonal_naive_v1"
@@ -513,3 +516,63 @@ def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestRe
                                      horizonDays=request.horizonDays, items=results,
                                      evaluationMode="HISTORICAL_WALK_FORWARD",
                                      futureObservationsUsedAsInput=False)
+
+
+def simulate_inventory(request: InventorySimulationRequest) -> InventorySimulationResponse:
+    """Run an online-shaped inventory simulation from an as-of boundary.
+
+    This is deliberately separate from historical scoring. The caller supplies
+    only observations available at ``asOfDate``; future on-hand and receipt
+    observations are impossible to pass to this function. The resulting stock
+    path is a planning projection and must not be presented as an observation.
+    """
+    series = [
+        Series(
+            productId=item.productId,
+            dates=item.dates,
+            units=item.units,
+            stockoutFlags=item.stockoutFlags,
+            selectedModel=item.selectedModel,
+        )
+        for item in request.items
+    ]
+    forecast_response = forecast(ForecastRequest(
+        vendorId=request.vendorId,
+        outletId=request.outletId,
+        horizonDays=request.horizonDays,
+        sourceVersion=request.sourceVersion,
+        series=series,
+    ))
+    by_id = {item.productId: item for item in request.items}
+    results = []
+    for forecast_item in forecast_response.items:
+        source = by_id[forecast_item.productId]
+        projected = project_inventory(InventoryRequest(
+            vendorId=request.vendorId,
+            outletId=request.outletId,
+            items=[InventoryItem(
+                productId=source.productId,
+                onHand=source.onHand,
+                onOrder=source.onOrder,
+                forecast=forecast_item.forecast,
+                leadTimeDays=source.leadTimeDays,
+                safetyStockDays=source.safetyStockDays,
+                dataQuality=forecast_item.dataQuality,
+            )],
+        ))
+        results.append(InventorySimulationItemResult(
+            productId=source.productId,
+            forecast=forecast_item.forecast,
+            projection=projected.items,
+            decision=projected.decisions[0],
+            dataQuality=forecast_item.dataQuality,
+            confidence=forecast_item.confidence,
+        ))
+    return InventorySimulationResponse(
+        model="forecast_plus_inventory_balance_v1",
+        modelVersion=forecast_response.modelVersion,
+        sourceVersion=request.sourceVersion,
+        asOfDate=max(item.dates[-1] for item in request.items),
+        horizonDays=request.horizonDays,
+        items=results,
+    )
