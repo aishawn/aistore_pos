@@ -55,6 +55,20 @@ def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Seri
     observed = 0
     predicted_total = 0.0
     actual_total = 0.0
+    # MASE uses only the training prefix at this forecast origin.  A missing
+    # or constant prefix has no meaningful scale, so that product window is
+    # excluded from the aggregate MASE denominator rather than treated as a
+    # zero-error series.
+    training_values = [
+        max(0.0, float(value))
+        for index, value in enumerate(actual_series.units[:origin])
+        if index >= len(actual_series.stockoutFlags) or not actual_series.stockoutFlags[index]
+    ]
+    mase_scale = (
+        sum(abs(right - left) for left, right in zip(training_values, training_values[1:]))
+        / (len(training_values) - 1)
+        if len(training_values) > 1 else None
+    )
     for offset, point in enumerate(points):
         index = origin + offset
         if index >= len(actual_series.units):
@@ -68,6 +82,9 @@ def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Seri
         metrics["actualUnits"] += actual
         metrics["absoluteError"] += abs(error)
         metrics["signedError"] += error
+        if mase_scale is not None and mase_scale > 0:
+            metrics["maseNumerator"] += abs(error)
+            metrics["maseDenominator"] += mase_scale
         metrics["p80CoveredDays"] += int(actual <= point.p80)
         metrics["p90CoveredDays"] += int(actual <= point.p90)
         predicted_total += float(point.p50)
@@ -97,6 +114,8 @@ def _metric_summary(metrics: dict, scored_product_ids: set[int]) -> dict:
         "evaluatedProductWindows": metrics["horizonWindows"],
         "zeroDemandProductWindows": metrics["zeroDemandHorizonWindows"],
         "maePerObservedDay": metrics["absoluteError"] / days if days else None,
+        "mase": (metrics["maseNumerator"] / metrics["maseDenominator"]
+                 if metrics["maseDenominator"] > 0 else None),
         "biasUnits": round(metrics["signedError"], 4),
         "p80Coverage": metrics["p80CoveredDays"] / days if days else None,
         "p90Coverage": metrics["p90CoveredDays"] / days if days else None,

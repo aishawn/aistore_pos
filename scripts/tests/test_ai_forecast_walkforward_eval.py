@@ -139,6 +139,19 @@ class WalkForwardForecastTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "expected 7"):
                 evaluate(sales, inventory, [7])
 
+    def test_mase_uses_only_training_prefix(self):
+        dates = [date(2026, 1, 1) + timedelta(days=index) for index in range(35)]
+        actual = Series(productId=7, dates=dates, units=([1.0, 2.0] * 14) + [3.0] * 7,
+                        stockoutFlags=[False] * 35)
+        predicted = SimpleNamespace(forecast=[
+            SimpleNamespace(p50=2.0, p80=2.0, p90=2.0) for _ in range(7)
+        ])
+        metrics = Counter()
+        scored = set()
+        _score_fold(metrics, scored, actual, predicted, 28, 7)
+        summary = _metric_summary(metrics, scored)
+        self.assertEqual(1.0, summary["mase"])
+
     def test_horizon_total_metric_allows_daily_error_cancellation_and_counts_zero_demand(self):
         start = date(2026, 1, 1)
         dates = [start + timedelta(days=index) for index in range(7)]
@@ -163,6 +176,9 @@ class WalkForwardForecastTests(unittest.TestCase):
         self.assertEqual(1, summary["zeroDemandProductWindows"])
         self.assertEqual(4.5, summary["weightedWape"])
         self.assertEqual(3.5, summary["horizonTotalWape"])
+        # This synthetic fold starts at origin 0, so no training-prefix scale
+        # exists; the evaluator must report MASE as unavailable.
+        self.assertIsNone(summary["mase"])
 
 
 if __name__ == "__main__":
