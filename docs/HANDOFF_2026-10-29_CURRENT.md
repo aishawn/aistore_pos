@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Suppliers sticky header alignment
+
+- `OdooSupplierDirectoryPage.tsx`: moved scroll-container top padding to the title header's margin, so the desktop sticky table header meets the shell navigation without a strip of scrolling rows above it. Added explicit header stacking and a bottom separator; mobile cards retain their layout.
+- Chromium layout reproduction: at scrollTop=500, the old header stopped at y=80 under a 56px navigation; removing the 24px scroll-container top padding aligned it to y=56. This is a layout fixture check, not live supplier acceptance; no business data was written.
+- Validation: `npm run typecheck` passed; targeted ESLint passed with 0 errors / 3 existing effect warnings; `git diff --check` passed. No local application build was run.
+- Demo runtime checked before this fix: frontend/backend `3f8843d97ff52024d993293b1b0b971118e9b42e`. Latest fix deployment and live authenticated scroll verification remain unconfirmed.
+
 ## 2026-11-01 Manage Categories unified presentation
 
 - Removed the Local / Shared source rows. Categories with the same normalized full ancestry appear once; identical names under different parent paths remain separate. Search displays the matching category total.
