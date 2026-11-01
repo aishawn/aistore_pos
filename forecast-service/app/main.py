@@ -4,9 +4,9 @@ from fastapi import FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 
-from .forecast_engine import backtest, forecast, project_inventory
+from .forecast_engine import backtest, backtest_inventory, forecast, project_inventory
 from .schemas import (BacktestRequest, BacktestResponse, ForecastRequest, ForecastResponse,
-                       InventoryRequest, InventoryResponse)
+                       InventoryRequest, InventoryResponse, InventoryBacktestRequest, InventoryBacktestResponse)
 
 app = FastAPI(title="Orithos Forecast Service", version="1.0.0")
 log = logging.getLogger(__name__)
@@ -57,3 +57,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
 @app.post("/v1/forecast/inventory", response_model=InventoryResponse)
 def inventory_forecast(request: InventoryRequest) -> InventoryResponse:
     return project_inventory(request)
+
+
+@app.post("/v1/backtest/inventory", response_model=InventoryBacktestResponse)
+def run_inventory_backtest(request: InventoryBacktestRequest) -> InventoryBacktestResponse:
+    return backtest_inventory(request)

@@ -5,6 +5,7 @@ from math import ceil
 from .schemas import (BacktestItem, BacktestRequest, BacktestResponse,
                        ForecastItem, ForecastPoint, ForecastRequest, ForecastResponse,
                        InventoryDecision, InventoryPoint, InventoryRequest, InventoryResponse)
+from .schemas import InventoryBacktestItem, InventoryBacktestRequest, InventoryBacktestResponse
 
 
 MODEL = "seasonal_naive_v1"
@@ -414,3 +415,78 @@ def project_inventory(request: InventoryRequest) -> InventoryResponse:
             points.append(InventoryPoint(productId=item.productId, date=point.date,
                                          projectedOnHand=round(running, 4), stockout=running <= 0))
     return InventoryResponse(status="READ_ONLY", items=points, decisions=decisions)
+
+
+def backtest_inventory(request: InventoryBacktestRequest) -> InventoryBacktestResponse:
+    """Evaluate inventory projection without future-state leakage.
+
+    At each origin, only observations up to that date are passed to the
+    forecaster. The observed future on-hand values are read after simulation
+    solely to score the projection. Actual future receipts are intentionally
+    not added to the simulated balance because they would not be known at the
+    origin; this makes the result conservative and reproducible.
+    """
+    results: list[InventoryBacktestItem] = []
+    for series in request.series:
+        if len(series.units) < request.minHistoryDays + request.horizonDays:
+            results.append(InventoryBacktestItem(productId=series.productId, status="BLOCKED", origins=0,
+                evaluatedDays=0, stockoutRecall=None, projectedStockoutDays=None,
+                observedStockoutDays=None, inventoryMae=None, serviceLevel=None,
+                dataQuality="INCOMPLETE"))
+            continue
+        flags = series.stockoutFlags or [False] * len(series.units)
+        origins = 0
+        evaluated = 0
+        projected_stockouts = observed_stockouts = 0
+        caught_stockouts = 0
+        inventory_errors: list[float] = []
+        service_hits = service_total = 0
+        for origin in range(request.minHistoryDays, len(series.units) - request.horizonDays + 1,
+                            request.originStepDays):
+            train_units = series.units[:origin]
+            train_flags = flags[:origin]
+            if all(train_flags[-min(14, len(train_flags)):]):
+                continue
+            predicted, quality, _ = _normalise(train_units, request.horizonDays, train_flags)
+            if quality == "INCOMPLETE":
+                continue
+            running = float(series.onHand[origin - 1])
+            origins += 1
+            for offset, demand in enumerate(predicted):
+                index = origin + offset
+                # No future onHand or receipts are read until after the
+                # simulated value has been produced.
+                running = max(0.0, running - max(0.0, demand))
+                actual_on_hand = float(series.onHand[index])
+                inventory_errors.append(abs(running - actual_on_hand))
+                projected_zero = running <= 0.0
+                actual_zero = actual_on_hand <= 0.0 or flags[index]
+                projected_stockouts += int(projected_zero)
+                observed_stockouts += int(actual_zero)
+                caught_stockouts += int(actual_zero and projected_zero)
+                # Service level is evaluated on days that were actually
+                # serviceable; a projected zero on such a day is a miss.
+                if not actual_zero:
+                    service_total += 1
+                    service_hits += int(not projected_zero)
+                evaluated += 1
+        if not origins or not evaluated:
+            results.append(InventoryBacktestItem(productId=series.productId, status="BLOCKED", origins=origins,
+                evaluatedDays=evaluated, stockoutRecall=None, projectedStockoutDays=None,
+                observedStockoutDays=None, inventoryMae=None, serviceLevel=None,
+                dataQuality="CENSORED_DEMAND" if any(flags) else "INCOMPLETE"))
+            continue
+        # Recall is defined only for observed stockout days. A projection that
+        # remains positive on a stockout day is a missed warning.
+        recall = caught_stockouts / observed_stockouts if observed_stockouts else None
+        # Use the aggregate conservative proxy: projected stockout overlap is
+        # not reconstructed from future inventory, so report service and counts
+        # rather than implying causal precision.
+        results.append(InventoryBacktestItem(productId=series.productId, status="PASS", origins=origins,
+            evaluatedDays=evaluated, stockoutRecall=recall,
+            projectedStockoutDays=float(projected_stockouts), observedStockoutDays=float(observed_stockouts),
+            inventoryMae=sum(inventory_errors) / len(inventory_errors),
+            serviceLevel=service_hits / service_total if service_total else None,
+            dataQuality="CENSORED_DEMAND" if any(flags) else "VALID"))
+    return InventoryBacktestResponse(model="walk_forward_inventory_v1", modelVersion="1",
+                                     horizonDays=request.horizonDays, items=results)

@@ -155,3 +155,65 @@ class InventoryResponse(BaseModel):
     status: Literal["READ_ONLY"]
     items: list[InventoryPoint]
     decisions: list[InventoryDecision] = []
+
+
+class InventoryBacktestSeries(BaseModel):
+    """Historical observations used for walk-forward evaluation.
+
+    onHand is observed inventory at the start of each date. Values after a
+    forecast origin are evaluation-only and must never be sent to the model.
+    receipts are historical receipts for diagnostics; they are not injected
+    into the simulated future unless explicitly known at the origin.
+    """
+    productId: int = Field(gt=0)
+    dates: list[date]
+    units: list[Annotated[float, Field(ge=0, allow_inf_nan=False)]]
+    onHand: list[Annotated[float, Field(ge=0, allow_inf_nan=False)]]
+    receipts: list[Annotated[float, Field(ge=0, allow_inf_nan=False)]] = []
+    stockoutFlags: list[bool] = []
+    leadTimeDays: int = Field(default=0, ge=0, le=90)
+    safetyStockDays: int = Field(default=3, ge=0, le=90)
+
+    @model_validator(mode="after")
+    def validate_alignment(self):
+        length = len(self.dates)
+        if length != len(self.units) or length != len(self.onHand):
+            raise ValueError("dates, units and onHand must have the same length")
+        if any(current != previous + timedelta(days=1) for previous, current in zip(self.dates, self.dates[1:])):
+            raise ValueError("dates must be unique consecutive daily observations")
+        if self.receipts and len(self.receipts) != length:
+            raise ValueError("receipts and dates must have the same length")
+        if self.stockoutFlags and len(self.stockoutFlags) != length:
+            raise ValueError("stockoutFlags and dates must have the same length")
+        return self
+
+
+class InventoryBacktestRequest(BaseModel):
+    vendorId: int = Field(gt=0)
+    outletId: int = Field(gt=0)
+    horizonDays: int = Field(default=7, ge=1, le=28)
+    minHistoryDays: int = Field(default=28, ge=14, le=3650)
+    originStepDays: int = Field(default=7, ge=1, le=28)
+    series: list[InventoryBacktestSeries] = Field(min_length=1, max_length=2000)
+
+
+class InventoryBacktestItem(BaseModel):
+    productId: int
+    status: Literal["PASS", "BLOCKED"]
+    origins: int
+    evaluatedDays: int
+    stockoutRecall: float | None
+    projectedStockoutDays: float | None
+    observedStockoutDays: float | None
+    inventoryMae: float | None
+    serviceLevel: float | None
+    dataQuality: Literal["VALID", "CENSORED_DEMAND", "INCOMPLETE"]
+    futureObservationsUsedAsInput: bool = False
+    note: str = "Future inventory is evaluation-only; no future observations were used as model input."
+
+
+class InventoryBacktestResponse(BaseModel):
+    model: str
+    modelVersion: str
+    horizonDays: int
+    items: list[InventoryBacktestItem]

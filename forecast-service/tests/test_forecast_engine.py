@@ -4,9 +4,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.forecast_engine import backtest, forecast, project_inventory
+from app.forecast_engine import backtest, backtest_inventory, forecast, project_inventory
 from app.schemas import (BacktestRequest, ForecastPoint, ForecastRequest,
-                         InventoryItem, InventoryRequest, Series)
+                         InventoryBacktestRequest, InventoryBacktestSeries, InventoryItem, InventoryRequest, Series)
 
 
 def make_series(evaluation_flags: list[bool]) -> Series:
@@ -20,6 +20,30 @@ def make_series(evaluation_flags: list[bool]) -> Series:
 
 
 class ForecastBacktestTests(unittest.TestCase):
+    def test_inventory_backtest_uses_future_on_hand_only_for_scoring(self):
+        start = date(2026, 1, 1)
+        days = 42
+        result = backtest_inventory(InventoryBacktestRequest(vendorId=1, outletId=1, horizonDays=7,
+            minHistoryDays=28, series=[InventoryBacktestSeries(
+                productId=1,
+                dates=[start + timedelta(days=index) for index in range(days)],
+                units=[2.0] * days,
+                onHand=[max(0.0, 60.0 - 2.0 * index) for index in range(days)],
+                receipts=[0.0] * days,
+            )]))
+        item = result.items[0]
+        self.assertEqual("PASS", item.status)
+        self.assertGreater(item.origins, 0)
+        self.assertFalse(item.futureObservationsUsedAsInput)
+        self.assertIn("evaluation-only", item.note)
+
+    def test_inventory_backtest_blocks_short_history(self):
+        start = date(2026, 1, 1)
+        result = backtest_inventory(InventoryBacktestRequest(vendorId=1, outletId=1, horizonDays=7,
+            minHistoryDays=28, series=[InventoryBacktestSeries(
+                productId=1, dates=[start + timedelta(days=index) for index in range(30)],
+                units=[1.0] * 30, onHand=[10.0] * 30)]))
+        self.assertEqual("BLOCKED", result.items[0].status)
     def test_inventory_projection_returns_read_only_replenishment_decision(self):
         start = date(2026, 1, 1)
         forecast_points = [ForecastPoint(date=start + timedelta(days=index), p50=2, p80=3, p90=4)
