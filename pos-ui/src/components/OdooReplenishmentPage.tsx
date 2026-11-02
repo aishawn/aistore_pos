@@ -117,7 +117,7 @@ type ReplenishmentData = {
   };
 };
 
-type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "review" | "slow_stock" | "all";
+type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "review" | "missing_data" | "slow_stock" | "all";
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -287,6 +287,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
+  const missingDataCount = (data?.products ?? []).filter((product) =>
+    !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
+    || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays > 0),
+  ).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
 
   const filteredItems = useMemo(() => {
@@ -296,6 +300,10 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       : listFilter === "urgent"
         ? base.filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0))
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
+      : listFilter === "missing_data" ? base.filter((product) =>
+        !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
+        || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays > 0),
+      )
       : listFilter === "out_of_stock"
         ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)
         : listFilter === "slow_stock"
@@ -602,7 +610,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-[var(--oh-text)]">
-                {listFilter === "all" ? "All POS products" : listFilter === "urgent" ? "Urgent stock risks" : listFilter === "out_of_stock" ? "Out of stock with demand" : "Replenishment suggestions"}
+                {listFilter === "all" ? "All POS products" : listFilter === "urgent" ? "Urgent stock risks" : listFilter === "out_of_stock" ? "Out of stock with demand" : listFilter === "missing_data" ? "Missing cost or lead time" : "Replenishment suggestions"}
               </h2>
               <p className="mt-1 text-xs text-[var(--oh-muted)]">
                 {filteredItems.length} matching · {selectedSuggested.length} selected for RFQ
@@ -647,6 +655,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <option value="urgent">Urgent risks ({number.format(urgentRiskCount)})</option>
                 <option value="out_of_stock">Out of stock with demand</option>
                 <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
+                <option value="missing_data">Missing cost or lead time ({number.format(missingDataCount)})</option>
                 <option value="slow_stock">Slow or overstocked</option>
                 <option value="all">All products</option>
               </select>
@@ -674,6 +683,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                       ? "No urgent stock risks were found."
                     : listFilter === "out_of_stock"
                       ? "No out-of-stock products with recent demand."
+                    : listFilter === "missing_data"
+                      ? "No products are missing a positive cost and lead time."
                       : listFilter === "slow_stock"
                         ? "No products match the slow or overstocked rule."
                       : "No POS products were returned by Orithos."
@@ -807,6 +818,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                             ? "No urgent stock risks were found."
                           : listFilter === "out_of_stock"
                             ? "No out-of-stock products with recent demand."
+                          : listFilter === "missing_data"
+                            ? "No products are missing a positive cost and lead time."
                             : "No POS products were returned by Orithos."
                       : "No POS products were returned by Orithos."}
                   </td>
