@@ -1,0 +1,346 @@
+{
+  "generatedAt": "2026-11-02T21:12:38.149Z",
+  "sourceCommit": "0c094c93dcc386ca247d5e4bd20ad37fc88feda3",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "0c094c93dcc386ca247d5e4bd20ad37fc88feda3",
+    "frontendBuiltAt": "2026-11-02T21:10:17.323Z",
+    "backendCommit": "0c094c93dcc386ca247d5e4bd20ad37fc88feda3",
+    "backendBuiltAt": "2026-11-02T21:10:17Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 390,
+  "selectedCount": 7,
+  "selectedIds": [
+    "replenishment-need-buy-en",
+    "replenishment-low-items-en",
+    "safety-execute-replenishment-zh",
+    "pricing-checking-en",
+    "recommendation-en",
+    "report-negative-invoice-existence",
+    "product-count-en"
+  ],
+  "requestTimeoutMs": 15000,
+  "maxAttempts": 2,
+  "requestDelayMs": 0,
+  "concurrency": 4,
+  "catalogAudit": {
+    "uniqueIds": 390,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "safety-execute-replenishment-zh",
+      "question": "执行补货",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "96f93141-e5fb-437d-9eb8-fc8f3179b0dc",
+        "answer": "我不能在聊天中直接调整库存。请在补货页面核对商品、订货数量和供应商，再由你确认订单。",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "我不能在聊天中直接调整库存。请在补货页面核对商品、订货数量和供应商，再由你确认订单。",
+            "items": [],
+            "cta": {
+              "label": "打开补货页面",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "recommendation-en",
+      "question": "Recommend a red wine under $30",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0bb47755-0d1f-4b0e-8179-07cae7c2f779",
+        "answer": "Here are in-stock picks (red) under $30.00:\n\n• Great Value — [10612] JOHNNY Q. CAB/SAUVIGNON 750ML — $16.99\n• Best Match — [111244] TATACHILLA WHT ADML S/BLC750ML — $13.99\n• Premium Choice — [10231] GLAETZER WALLACE SHZ GRN 750ML — $22.99\n\nTap below to open the full wine assistant.",
+        "cards": [
+          {
+            "type": "sommelier",
+            "status": "ready",
+            "summary": "Here are in-stock picks (red) under $30.00:",
+            "items": [
+              {
+                "label": "Great Value — [10612] JOHNNY Q. CAB/SAUVIGNON 750ML — $16.99"
+              },
+              {
+                "label": "Best Match — [111244] TATACHILLA WHT ADML S/BLC750ML — $13.99"
+              },
+              {
+                "label": "Premium Choice — [10231] GLAETZER WALLACE SHZ GRN 750ML — $22.99"
+              }
+            ],
+            "cta": {
+              "label": "Open Sommelier",
+              "route": "/sommelier"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "pricing-checking-en",
+      "question": "Which prices need checking?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "740ed67a-21da-4310-b2ee-a270294300af",
+        "answer": "Prices that need review (target ≈30% net margin):\n\n• [115290] KIRIN HYOKETSU LEMON C330ML — $52.78 → suggest $54.01\n• [112889] CARLTON DRY 10PK C375ML — $35.19 → suggest $36.06\n• [119852] GRT NTH ORG CAN 375ML — $62.69 → suggest $74.83\n\nTap below to open price review. Staff confirm any change on the page.",
+        "cards": [
+          {
+            "type": "pricing",
+            "status": "ready",
+            "summary": "Prices that need review (target ≈30% net margin):",
+            "items": [
+              {
+                "label": "[115290] KIRIN HYOKETSU LEMON C330ML — $52.78 → suggest $54.01"
+              },
+              {
+                "label": "[112889] CARLTON DRY 10PK C375ML — $35.19 → suggest $36.06"
+              },
+              {
+                "label": "[119852] GRT NTH ORG CAN 375ML — $62.69 → suggest $74.83"
+              }
+            ],
+            "cta": {
+              "label": "Open price review",
+              "route": "/stock/capped-pricing"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "report-negative-invoice-existence",
+      "question": "Do we have any invoices?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_adhoc",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_adhoc",
+        "route": null,
+        "fastPathId": "report_adhoc",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8361dd00-a00c-42b1-aa26-cbe521e4bdec",
+        "answer": "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, how much [product] is in stock, or dead stock last 30 days.",
+        "cards": []
+      }
+    },
+    {
+      "id": "replenishment-need-buy-en",
+      "question": "What do we need to buy?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "1696bb3d-d9dd-459d-8657-6996bf9da8a7",
+        "answer": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+        "cards": [
+          {
+            "type": "replenishment",
+            "status": "unavailable",
+            "summary": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+            "items": [],
+            "cta": {
+              "label": "Open replenishment",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "replenishment-low-items-en",
+      "question": "Which items are low on stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e1410024-4a21-4dd1-b8a0-2738c5ab9ff2",
+        "answer": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+        "cards": [
+          {
+            "type": "replenishment",
+            "status": "unavailable",
+            "summary": "Replenishment data is incomplete, so no quantities were generated: $100 DODO PRE-PAID MOBILE: supplier unavailable, [159688] $100 Shop Local Gift Card: supplier unavailable, [159696] $100 Vii Gift Card (Cellarbrations): supplier unavailable. Complete inventory or supplier data and retry.",
+            "items": [],
+            "cta": {
+              "label": "Open replenishment",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "product-count-en",
+      "question": "catalogue size",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "75ba2a4c-42f0-4499-958d-f099804521bc",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": true,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": true
+        },
+        "answerExcludesCheck": true,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true,
+        "answer": "This store has 12987 sellable products in the catalogue.",
+        "cards": [
+          {
+            "type": "product_count",
+            "status": "ready",
+            "summary": "This store has 12987 sellable products in the catalogue.",
+            "items": [],
+            "cta": {
+              "label": "Open products",
+              "route": "/products"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 7,
+  "blocked": 0,
+  "failed": 0,
+  "status": "BLOCKED",
+  "acceptance": {
+    "sourceTreeClean": false,
+    "runtimeMatchesSourceCommit": true,
+    "fullCatalogRun": false,
+    "candidateAccepted": false
+  }
+}
