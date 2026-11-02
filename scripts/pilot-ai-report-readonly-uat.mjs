@@ -5,11 +5,14 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-let envDirectory = root;
-while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
-  envDirectory = path.dirname(envDirectory);
+let envFile = process.env.PILOT_ENV_FILE || path.join(root, ".env");
+if (!process.env.PILOT_ENV_FILE) {
+  let envDirectory = root;
+  while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+    envDirectory = path.dirname(envDirectory);
+  }
+  envFile = path.join(envDirectory, ".env");
 }
-const envFile = path.join(envDirectory, ".env");
 const env = fs.existsSync(envFile)
   ? Object.fromEntries(fs.readFileSync(envFile, "utf8")
     .split(/\r?\n/)
