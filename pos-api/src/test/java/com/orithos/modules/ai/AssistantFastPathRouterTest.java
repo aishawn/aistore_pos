@@ -32,6 +32,10 @@ class AssistantFastPathRouterTest {
         assertEquals("report_dead_stock", chineseList.intent());
         assertEquals("90", chineseList.slots().get("days"));
 
+        AssistantFastPathRouter.Match chinesePrefix = AssistantFastPathRouter.maybeMatch("哪些商品连续30天没有销售？");
+        assertEquals("report_dead_stock", chinesePrefix.intent());
+        assertEquals("30", chinesePrefix.slots().get("days"));
+
         AssistantFastPathRouter.Match defaultRange = AssistantFastPathRouter.maybeMatch("slow moving stock");
         assertEquals("report_dead_stock", defaultRange.intent());
         assertEquals("30", defaultRange.slots().get("days"));
@@ -43,6 +47,8 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock_value", match.intent());
         assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("which inventory items tie up the most cash").intent());
+        assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("How much cash is tied up in current stock?").intent());
     }
 
     @Test
