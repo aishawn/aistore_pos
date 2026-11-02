@@ -54,6 +54,7 @@ public final class AssistantFastPathRouter {
             "^(?:(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock)\\s+(?:for\\s+)?(?:last|past|previous)\\s+(\\d+)\\s+days?|"
                     + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(?:last\\s+)?(\\d+)\\s+days?|"
                     + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(\\d+)\\s+days?|"
+                    + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+|had\\s+)?no\\s+sales\\s+in\\s+the\\s+last\\s+(\\d+)\\s+days?|"
                     + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)的?(?:商品|产品)?(?:有哪些|有哪一些|列表)?|"
                     + "(?:哪些|什么)(?:商品|产品)(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:有哪些|有哪一些|列表)?|"
                     + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:商品|产品)(?:有哪些|有哪一些|列表)?)[?.!。！？]*$",
@@ -66,6 +67,7 @@ public final class AssistantFastPathRouter {
     private static final Pattern STOCK_VALUE = Pattern.compile(
             "^(?:(?:which\\s+)?(?:inventory|stock)(?:\\s+items?)?\\s+(?:tie|ties)\\s+up\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
                     + "(?:which\\s+)?(?:inventory|stock)\\s+(?:items?\\s+)?(?:use|hold)\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
+                    + "(?:what|which)\\s+(?:inventory|stock)(?:\\s+items?)?\\s+(?:occupy|occupies|hold|holds|use|uses)\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
                     + "(?:which\\s+)?products?\\s+(?:have\\s+)?the\\s+(?:highest|most)\\s+(?:inventory\\s+)?value|"
                     + "how\\s+much\\s+(?:cash|money|capital)\\s+is\\s+tied\\s+up\\s+in\\s+(?:current\\s+)?(?:inventory|stock)|"
                     + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
@@ -313,7 +315,7 @@ public final class AssistantFastPathRouter {
             String days = firstNonNull(
                     deadStockRange.group(1), deadStockRange.group(2),
                     deadStockRange.group(3), deadStockRange.group(4),
-                    deadStockRange.group(5));
+                deadStockRange.group(5), deadStockRange.group(6));
             return new Match(
                     "report_dead_stock",
                     "Dead stock report",

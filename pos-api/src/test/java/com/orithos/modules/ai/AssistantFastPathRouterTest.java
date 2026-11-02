@@ -36,6 +36,11 @@ class AssistantFastPathRouterTest {
         assertEquals("report_dead_stock", chinesePrefix.intent());
         assertEquals("30", chinesePrefix.slots().get("days"));
 
+        AssistantFastPathRouter.Match naturalLast = AssistantFastPathRouter.maybeMatch(
+                "Which products had no sales in the last 90 days?");
+        assertEquals("report_dead_stock", naturalLast.intent());
+        assertEquals("90", naturalLast.slots().get("days"));
+
         AssistantFastPathRouter.Match defaultRange = AssistantFastPathRouter.maybeMatch("slow moving stock");
         assertEquals("report_dead_stock", defaultRange.intent());
         assertEquals("30", defaultRange.slots().get("days"));
@@ -51,6 +56,8 @@ class AssistantFastPathRouterTest {
                 AssistantFastPathRouter.maybeMatch("How much cash is tied up in current stock?").intent());
         assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("Which inventory ties up the most cash?").intent());
+        assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("Which inventory occupies the most cash?").intent());
         assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("Which products have the highest inventory value?").intent());
         assertEquals("report_stock_value",
