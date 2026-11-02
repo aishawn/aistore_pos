@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-11-02T01:34:45.613791+00:00",
+  "runtimeCommitDuringTest": "63dd6462485b423213f63c82d931bcdaad10c29c",
+  "stores": [
+    {
+      "store": "demo.orithos.com.au",
+      "status": 200,
+      "exceptionMode": true,
+      "exceptionCount": 12987,
+      "products": 12987,
+      "writeRequests": [],
+      "catalogueCoverage": {
+        "status": "COMPLETE",
+        "loadedProducts": 12987,
+        "eligibleProducts": 12987,
+        "excludedProducts": 0,
+        "forecastedProducts": 12987,
+        "zeroDemandProducts": 10673
+      },
+      "reviewRequiredCount": 12987,
+      "salesHistory": {
+        "timezoneVerified": false
+      },
+      "forecast": {
+        "enabled": true,
+        "modelSelection": "per_product_selected"
+      }
+    },
+    {
+      "store": "skr.orithos.com.au",
+      "status": 200,
+      "exceptionMode": true,
+      "exceptionCount": 12999,
+      "products": 12999,
+      "writeRequests": [],
+      "catalogueCoverage": {
+        "status": "COMPLETE",
+        "loadedProducts": 12999,
+        "eligibleProducts": 12999,
+        "excludedProducts": 0,
+        "forecastedProducts": 12999,
+        "zeroDemandProducts": 10685
+      },
+      "reviewRequiredCount": 12999,
+      "salesHistory": {
+        "timezoneVerified": false
+      },
+      "forecast": {
+        "enabled": true,
+        "modelSelection": "per_product_selected"
+      }
+    }
+  ],
+  "safetyConclusion": "No purchase write request was emitted; all items require review because supplier/lead-time or other planning gates are incomplete."
+}
