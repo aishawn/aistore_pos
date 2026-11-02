@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-let envPath = path.join(root, ".env");
+let envPath = process.env.PILOT_ENV_FILE ?? path.join(root, ".env");
 if (!fs.existsSync(envPath)) {
   envPath = path.resolve(root, "..", "..", "orithopos-master", ".env");
 }
