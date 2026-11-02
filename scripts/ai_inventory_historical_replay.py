@@ -35,6 +35,20 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def explicit_stockout_flags(observations: list[dict], product_id: str) -> list[bool]:
+    """Return only explicitly supplied labels; missing labels must block evaluation."""
+    missing = [
+        index for index, row in enumerate(observations)
+        if not isinstance(row.get("isStockout"), bool)
+    ]
+    if missing:
+        raise ValueError(
+            f"explicit stockout labels are required for product {product_id}; "
+            f"missing or invalid observations: {len(missing)}"
+        )
+    return [row["isStockout"] for row in observations]
+
+
 def load_series(sales_path: Path, inventory_path: Path, limit: int) -> list[InventoryBacktestSeries]:
     sales = json.loads(sales_path.read_text(encoding="utf-8"))
     inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
@@ -65,7 +79,7 @@ def load_series(sales_path: Path, inventory_path: Path, limit: int) -> list[Inve
                 dates=[date.fromisoformat(value) for value in sales_row["dates"]],
                 units=sales_row["units"],
                 onHand=quantities,
-                stockoutFlags=[bool(row.get("isStockout")) for row in observations],
+                stockoutFlags=explicit_stockout_flags(observations, product_id),
             ))
         except (KeyError, TypeError, ValueError):
             continue
