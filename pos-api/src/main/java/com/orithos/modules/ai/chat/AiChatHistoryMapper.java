@@ -3,6 +3,8 @@ package com.orithos.modules.ai.chat;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -20,6 +22,15 @@ public interface AiChatHistoryMapper {
             ORDER BY updated_at DESC
             LIMIT #{limit}
             """)
+    @Results(id = "aiChatThreadMapping", value = {
+            @Result(property = "id", column = "id", javaType = Long.class),
+            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
+            @Result(property = "userId", column = "userId", javaType = Long.class),
+            @Result(property = "sessionKey", column = "sessionKey"),
+            @Result(property = "title", column = "title"),
+            @Result(property = "createdAt", column = "createdAt"),
+            @Result(property = "updatedAt", column = "updatedAt")
+    })
     List<AiChatThread> listThreads(@Param("vendorId") long vendorId,
                                    @Param("userId") long userId,
                                    @Param("limit") int limit);
@@ -31,6 +42,15 @@ public interface AiChatHistoryMapper {
             WHERE id = #{id} AND vendor_id = #{vendorId} AND user_id = #{userId}
             LIMIT 1
             """)
+    @Results(id = "aiChatThreadOwnedMapping", value = {
+            @Result(property = "id", column = "id", javaType = Long.class),
+            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
+            @Result(property = "userId", column = "userId", javaType = Long.class),
+            @Result(property = "sessionKey", column = "sessionKey"),
+            @Result(property = "title", column = "title"),
+            @Result(property = "createdAt", column = "createdAt"),
+            @Result(property = "updatedAt", column = "updatedAt")
+    })
     AiChatThread findOwned(@Param("id") long id,
                            @Param("vendorId") long vendorId,
                            @Param("userId") long userId);
@@ -42,6 +62,15 @@ public interface AiChatHistoryMapper {
             WHERE session_key = #{sessionKey}
             LIMIT 1
             """)
+    @Results(id = "aiChatThreadSessionMapping", value = {
+            @Result(property = "id", column = "id", javaType = Long.class),
+            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
+            @Result(property = "userId", column = "userId", javaType = Long.class),
+            @Result(property = "sessionKey", column = "sessionKey"),
+            @Result(property = "title", column = "title"),
+            @Result(property = "createdAt", column = "createdAt"),
+            @Result(property = "updatedAt", column = "updatedAt")
+    })
     AiChatThread findBySessionKey(@Param("sessionKey") String sessionKey);
 
     @Insert("""
