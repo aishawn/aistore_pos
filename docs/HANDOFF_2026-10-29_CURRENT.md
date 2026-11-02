@@ -2,6 +2,7 @@
 
 ## 2026-11-02 Products / Purchases / Sell menu organization
 
+- Follow-up: moved Help to the end of the Sales dropdown and removed its standalone toolbar icon. It invokes the existing register help dialog; help content and checkout behavior remain unchanged.
 - Follow-up: fixed the Sales dropdown being clipped by toolbar horizontal overflow; the header now stacks above sale panels and the register selector shrinks on narrow screens. Removed Stock's duplicate Suppliers sidebar entry; Purchases retains its supplier tab. Reproduced the original failure on 390/1440 with actual hit testing; 44 UI fixture checks now pass, including unobscured menu items, the single Suppliers entry, dialogs and cart preservation. No live business writes or deployment claim from fixtures.
 - Implemented the requested Products More entries (Catalogue, Inventory, Stocktake), purchasing tab order (Orders, Invoices, Suppliers, Replenishment; More → Stock Transfers), and Sell upper-right Sales dropdown with five dialog entries. Existing business write flows are reused.
 - Added scoped, read-only Odoo catalogue/inventory/sales-line/payment queries with search and pagination. Catalogue is product-level; Inventory is internal-location record-level. These views do not read crawler/staging tables or establish migration-count parity.

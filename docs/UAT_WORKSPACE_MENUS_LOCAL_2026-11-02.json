@@ -101,6 +101,11 @@
     },
     {
       "width": 390,
+      "name": "Help opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
       "name": "Refunds applies refunded status",
       "status": "PASS"
     },
@@ -207,6 +212,11 @@
     {
       "width": 1440,
       "name": "Current session opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Help opens without page overflow",
       "status": "PASS"
     },
     {

@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 
 type Config = OdooPosBootstrap["configs"][number];
 
-export function SalesMenu({ config }: { config?: Config | null }) {
+export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: () => void }) {
   const { hasPermission } = useAuth();
   const allowed = ["sell.checkout", "sell.refund", "reports.dashboard"].some(hasPermission);
   const { openSalesHistory } = useSalesHistoryUiOptional();
@@ -27,7 +27,7 @@ export function SalesMenu({ config }: { config?: Config | null }) {
     return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeEscape); };
   }, []);
   if (!allowed) return null;
-  const items = [["history", "Sales history"], ["lines", "Sales lines"], ["payments", "Payments"], ["refunds", "Refunds"], ["session", "Current session"]] as const;
+  const items = [["history", "Sales history"], ["lines", "Sales lines"], ["payments", "Payments"], ["refunds", "Refunds"], ["session", "Current session"], ["help", "Help"]] as const;
   return <>
     <details ref={menu} className="relative shrink-0">
       <summary aria-label="Sales menu" className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-full px-2 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] [&::-webkit-details-marker]:hidden">Sales <ChevronDown size={14} /></summary>
@@ -35,6 +35,7 @@ export function SalesMenu({ config }: { config?: Config | null }) {
         {items.map(([key, label]) => <button key={key} type="button" onClick={() => {
           menu.current?.removeAttribute("open"); menu.current?.querySelector("summary")?.focus();
           if (key === "history" || key === "refunds") openSalesHistory(key === "refunds" ? "refunded" : "all");
+          else if (key === "help") onHelp();
           else setView(key);
         }} className="block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}</button>)}
       </div>
