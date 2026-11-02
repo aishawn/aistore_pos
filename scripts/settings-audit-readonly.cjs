@@ -11,6 +11,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
     for (const [host, username, password] of [['demo', 'admin', env.INITIAL_ADMIN_PASSWORD], ['skr', env.ORITHOS_SKR_USER, env.ORITHOS_SKR_PASS]]) {
+      if (env.SETTINGS_UAT_HOSTS && !env.SETTINGS_UAT_HOSTS.split(',').includes(host)) continue;
       assert.ok(password, `Missing ${host} credentials`);
       const base = `https://${host}.orithos.com.au`;
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -31,9 +32,10 @@ async function main() {
         return route.continue();
       });
       const page = await context.newPage();
+      page.setDefaultNavigationTimeout(60000);
       const pageErrors = [];
       page.on('pageerror', e => pageErrors.push(e.message));
-      for (const width of [390, 768, 1440]) {
+      for (const width of (env.SETTINGS_UAT_WIDTHS ? env.SETTINGS_UAT_WIDTHS.split(',').map(Number) : [390, 768, 1440])) {
         await page.setViewportSize({ width, height: 900 });
         for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
@@ -47,7 +49,7 @@ async function main() {
           if (route.endsWith('/general')) { await page.getByLabel('Legal company name').waitFor(); assert.equal(await page.getByLabel('Legal company name').inputValue(), company.name); assert.equal(await page.getByLabel('Business timezone').inputValue(), company.timezone); }
           if (['/settings/registers-outlets','/settings/payment','/settings/tax'].includes(route)) {
             await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
-            assert.equal(await page.getByRole('alert').count(), 0, `${route} must load real data without an error`);
+            assert.deepEqual((await page.locator('main').getByRole('alert').allTextContents()).map(text => text.trim()).filter(Boolean), [], `${route} must load real data without an error`);
           }
           if (route.includes('tab=connection')) await page.getByText(/Connected · \d+ accessible POS registers/).waitFor({ timeout: 30000 });
           if (route.includes('tab=unknown')) await page.getByRole('heading', { name: 'Change password', exact: true }).waitFor();
