@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,6 +48,7 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
         assertTrue(text.contains("\n• Shiraz — 建议订购 12（约剩 5.0 天）"));
+        assertTrue(text.contains("数据来源：Odoo 原生库存与 POS 销售；检查日期："));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
     }
 
@@ -123,5 +125,20 @@ class ReplenishmentChatBriefTest {
         assertTrue(plan.top().isEmpty());
         assertTrue("DATA_INCOMPLETE".equals(plan.dataQualityStatus()));
         assertTrue(plan.dataGaps().stream().anyMatch(gap -> gap.contains("inventory unavailable")));
+    }
+
+    @Test
+    void incompleteBriefShowsDataDateAndManualReviewBoundary() {
+        OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 0, List.of(), "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"),
+                Instant.parse("2026-11-03T04:00:00Z")));
+
+        String text = new ReplenishmentChatBrief(client).brief("What do we need to buy?", tenant);
+
+        assertTrue(text.contains("Data checked: 2026-11-03 UTC"));
+        assertTrue(text.contains("Manual review is required"));
+        assertTrue(text.contains("no quantities were generated"));
     }
 }

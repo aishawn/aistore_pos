@@ -5,6 +5,10 @@ import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+
 /**
  * Builds a short in-chat restock summary so navigate intents return catalogue-aware
  * text plus a CTA instead of a bare page jump.
@@ -12,6 +16,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class ReplenishmentChatBrief {
+
+    private static final DateTimeFormatter DATA_DATE = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
 
     private final OdooReplenishmentClient client;
 
@@ -33,9 +39,11 @@ public class ReplenishmentChatBrief {
                     && (plan.top() == null || plan.top().isEmpty())) {
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
                 return chinese
-                        ? "补货建议数据不完整，暂不生成数量：" + gaps + "。请补齐库存或供应商资料后重试。"
+                        ? "补货建议数据不完整，暂不生成数量：" + gaps + "。数据检查日期："
+                                + dataDate(plan.dataAsOf()) + " UTC。已转人工审核；请补齐库存或供应商资料后重试。"
                         : "Replenishment data is incomplete, so no quantities were generated: "
-                                + gaps + ". Complete inventory or supplier data and retry.";
+                                + gaps + ". Data checked: " + dataDate(plan.dataAsOf())
+                                + " UTC. Manual review is required; complete inventory or supplier data and retry.";
             }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
                 return chinese
@@ -43,14 +51,19 @@ public class ReplenishmentChatBrief {
                         : "No restock quantities are suggested right now — forecast stock covers the target window. "
                                 + "Tap below to open replenishment.";
             }
+            String sourceNote = chinese
+                    ? "数据来源：Odoo 原生库存与 POS 销售；检查日期：" + dataDate(plan.dataAsOf()) + " UTC。"
+                    : "Source: native Odoo inventory and POS sales; checked " + dataDate(plan.dataAsOf()) + " UTC.";
             StringBuilder sb = new StringBuilder();
             if (chinese) {
                 sb.append("建议补货（覆盖 ").append(plan.coverageDays()).append(" 天）：")
-                        .append(plan.itemsNeedingOrder()).append(" 个商品需要补货。\n");
+                        .append(plan.itemsNeedingOrder()).append(" 个商品需要补货。\n")
+                        .append(sourceNote).append("\n");
             } else {
                 sb.append("Top restock suggestions (").append(plan.coverageDays()).append("d cover): ")
                         .append(plan.itemsNeedingOrder()).append(" item")
-                        .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.\n");
+                        .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.\n")
+                        .append(sourceNote).append("\n");
             }
             for (ReplenishmentSuggestion item : plan.top()) {
                 sb.append("\n• ").append(AssistantDisplayText.productName(item.name()))
@@ -93,5 +106,9 @@ public class ReplenishmentChatBrief {
             return String.format(java.util.Locale.ROOT, "%.1f", days);
         }
         return String.valueOf(Math.round(days));
+    }
+
+    private static String dataDate(Instant value) {
+        return DATA_DATE.format(value == null ? Instant.EPOCH : value);
     }
 }
