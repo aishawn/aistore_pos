@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { readCompleteRows } from "@/lib/replenishment-pagination";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,13 +63,17 @@ export async function GET(request: NextRequest) {
 
     const productDomain = [["sale_ok", "=", true], ["active", "=", true]];
     const productFields = ["id", "display_name", "default_code", "qty_available", "standard_price", "categ_id"];
-    const productCountPromise = rpc<number>(sessionId, "product.product", "search_count", [productDomain], { context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId).catch(() => null);
-    const productsPromise = rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [productDomain], { fields: productFields, limit: 5000, order: "id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId)
-      .catch(() => rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [productDomain], { fields: productFields, limit: 1000, order: "id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId));
+    const companyContext = { allowed_company_ids: [companyId], force_company: companyId };
+    const productsPromise = readCompleteRows<Record<string, unknown>>(
+      () => rpc<number>(sessionId, "product.product", "search_count", [productDomain], { context: companyContext }, correlationId),
+      (afterId, limit) => rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[...productDomain, ["id", ">", afterId]]], { fields: productFields, limit, order: "id asc", context: companyContext }, correlationId),
+      25_000,
+      1_000,
+    );
     // The three windows are independent. Running them concurrently keeps this
     // read-only report within the request budget on larger catalogues.
     const salesPromises = WINDOWS.map((days) => rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [[ ["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", dateString(days)], ["order_id.state", "in", ["paid", "done", "invoiced"]] ], ["qty:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => []));
-    const [products, windowRows, totalProductCount] = await Promise.all([productsPromise, Promise.all(salesPromises), productCountPromise]);
+    const [products, windowRows] = await Promise.all([productsPromise, Promise.all(salesPromises)]);
     const salesByWindow = new Map<number, Map<number, number>>();
     WINDOWS.forEach((days, index) => {
       const rows = windowRows[index];
@@ -91,8 +96,7 @@ export async function GET(request: NextRequest) {
     const bucketCounts = Object.fromEntries(WINDOWS.map((days) => [days, items.filter((item) => item.sales[String(days)] === 0).length]));
     const cashValueByBucket = Object.fromEntries(WINDOWS.map((days) => [days, items.filter((item) => item.sales[String(days)] === 0).reduce((sum, item) => sum + (item.inventoryValue ?? 0), 0)]));
     const loadedProductCount = items.length;
-    const completeCatalogue = typeof totalProductCount === "number" && totalProductCount > 0 && loadedProductCount >= totalProductCount;
-    return NextResponse.json({ companyId, bucketCounts, cashValueByBucket, invalidCostOrStockCount: items.filter((item) => item.invalidReason).length, products: items.filter((item) => WINDOWS.some((days) => item.sales[String(days)] === 0)).sort((a, b) => (b.inventoryValue ?? -1) - (a.inventoryValue ?? -1)), catalogueCoverage: { loadedProducts: loadedProductCount, totalProducts: totalProductCount, complete: completeCatalogue }, productCount: loadedProductCount, truncated: !completeCatalogue, dataQuality: "CURRENT_NATIVE_STOCK_POS_SALES_READ_ONLY", writeRequests: [] }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ companyId, bucketCounts, cashValueByBucket, invalidCostOrStockCount: items.filter((item) => item.invalidReason).length, products: items.filter((item) => WINDOWS.some((days) => item.sales[String(days)] === 0)).sort((a, b) => (b.inventoryValue ?? -1) - (a.inventoryValue ?? -1)), catalogueCoverage: { loadedProducts: loadedProductCount, totalProducts: loadedProductCount, complete: true }, productCount: loadedProductCount, truncated: false, dataQuality: "CURRENT_NATIVE_STOCK_POS_SALES_READ_ONLY", writeRequests: [] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SessionExpired) { const response = errorResponse("Orithos session expired", 401, correlationId); response.cookies.delete(SESSION_COOKIE); return response; }
     const message = error instanceof Error ? error.message : "Orithos is unavailable";
