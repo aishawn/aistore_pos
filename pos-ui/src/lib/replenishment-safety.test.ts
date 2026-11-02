@@ -18,6 +18,8 @@ test("negative stock, cost anomalies and purchase unit conversions block suggest
   const valid = { qty_available: 10, virtual_available: 10, standard_price: 2, list_price: 4, uom_id: [1, "Units"], uom_po_id: [1, "Units"] };
   assert.deepEqual(replenishmentIssues(valid), []);
   assert.deepEqual(replenishmentIssues({ ...valid, qty_available: -23022 }), ["NEGATIVE_STOCK"]);
+  assert.deepEqual(replenishmentIssues({ ...valid, virtual_available: -3 }), ["NEGATIVE_VIRTUAL_STOCK"]);
+  assert.deepEqual(replenishmentIssues({ ...valid, qty_available: -2, virtual_available: -3 }), ["NEGATIVE_STOCK", "NEGATIVE_VIRTUAL_STOCK"]);
   assert.deepEqual(replenishmentIssues({ ...valid, standard_price: 5 }), ["REVIEW_COST_PRICE"]);
   assert.deepEqual(replenishmentIssues({ ...valid, uom_po_id: [2, "Case"] }), ["REVIEW_PURCHASE_UNIT"]);
 });

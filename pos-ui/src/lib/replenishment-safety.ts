@@ -28,7 +28,10 @@ export function replenishmentIssues(product: Record<string, unknown>): string[] 
   const cost = Number(product.standard_price);
   const price = Number(product.list_price);
   if (product.qty_available == null || product.virtual_available == null || !Number.isFinite(onHand) || !Number.isFinite(available)) issues.push("INVALID_STOCK");
-  else if (onHand < 0 || available < 0) issues.push("NEGATIVE_STOCK");
+  else {
+    if (onHand < 0) issues.push("NEGATIVE_STOCK");
+    if (available < 0) issues.push("NEGATIVE_VIRTUAL_STOCK");
+  }
   if (!Number.isFinite(cost) || cost <= 0 || !Number.isFinite(price) || price <= 0 || cost > price) issues.push("REVIEW_COST_PRICE");
   const unit = product.uom_id;
   const purchaseUnit = product.uom_po_id;
