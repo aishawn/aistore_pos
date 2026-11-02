@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-11-02T21:33:20.788Z",
-  "sourceCommit": "378755dd3278770b446d39781ab591c4bb42969d",
+  "generatedAt": "2026-11-02T21:37:09.466Z",
+  "sourceCommit": "da071db0f7b02d7600c6f976db2ecbb235b7d868",
   "deployment": "runtime-identity-unverified",
   "target": "https://demo.orithos.com.au",
-  "scope": "Authenticated Demo read-only purchase list; GET-only browser observation; no purchase/receipt writes",
+  "username": "admin",
+  "scope": "Authenticated read-only purchase list; GET-only browser observation; no purchase/receipt writes",
   "status": "PASS",
   "checks": [
     {
