@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 
 export default function SaleKeysPage() {
   return (
@@ -15,7 +15,7 @@ export default function SaleKeysPage() {
         </p>
       </section>
 
-      <dl className="mt-4 divide-y divide-[var(--oh-border)] rounded-lg border border-[var(--oh-border)] bg-white px-4">
+      <dl className="mt-4 divide-y divide-[var(--oh-border)] rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4">
         <div className="grid gap-1 py-3 sm:grid-cols-[220px_1fr] sm:gap-4">
           <dt className="text-sm font-medium text-[var(--oh-text)]">Pilot sell screen</dt>
           <dd className="text-sm text-[var(--oh-muted)]">

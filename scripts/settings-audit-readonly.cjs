@@ -33,7 +33,7 @@ async function main() {
       page.on('pageerror', e => pageErrors.push(e.message));
       for (const width of [390, 768, 1440]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/receipts'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {
+        for (const [label, route] of [['Company','/settings/company/general'],['Company','/settings/company/date-time'],['Staff & access','/settings/staff'],['Store','/settings/registers-outlets'],['Store','/settings/payment'],['Store','/settings/tax'],['Store','/settings/hardware'],['Store','/settings/receipts'],['Store','/settings/keys'],['Store','/settings/rules'],['Store','/settings/loyalty'],['Store','/settings/surcharging'],['Store','/settings/push'],['Data','/settings/data'],['Account','/settings/account?tab=connection'],['Account','/settings/account?tab=unknown']]) {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
           const nav = page.getByRole('navigation', { name: 'Settings sections', exact: true });
           await nav.waitFor();
@@ -46,11 +46,16 @@ async function main() {
             await page.evaluate(t => { document.documentElement.classList.toggle('dark', t === 'dark'); document.documentElement.setAttribute('data-theme', t); }, theme);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${host} ${width} ${route} overflow`);
           }
+          if (['/settings/company/general','/settings/hardware','/settings/account?tab=connection'].includes(route)) {
+            fs.mkdirSync(path.dirname(output), { recursive: true });
+            await page.screenshot({ path: path.join(path.dirname(output), `settings-audit-${host}-${width}-${route.split('/').at(-1).replace(/[^a-z0-9]/gi, '-')}-dark.png`) });
+          }
           checks.push({ host, width, route, themes: ['light','dark'], check: 'Unified navigation and no document overflow', result: 'PASS' });
         }
       }
       await page.goto(base + '/settings/staff');
       const add = page.getByRole('button', { name: 'Add staff', exact: true });
+      if (host === 'demo') await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Add staff' && !button.disabled));
       if (await add.isEnabled()) {
         await add.click();
         const dialog = page.getByRole('dialog');
