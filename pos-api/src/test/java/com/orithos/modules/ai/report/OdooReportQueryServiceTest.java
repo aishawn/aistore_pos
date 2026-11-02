@@ -641,7 +641,7 @@ class OdooReportQueryServiceTest {
                 row.put("id", index + 1);
                 row.put("display_name", "Product " + (index + 1));
                 row.put("standard_price", index + 1);
-                row.put("free_qty", 1.0);
+                row.put("free_qty", 0.25);
                 row.put("qty_available", 1.0);
                 rows.add(row);
             }

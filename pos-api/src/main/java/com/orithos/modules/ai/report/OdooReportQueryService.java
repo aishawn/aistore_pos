@@ -624,8 +624,7 @@ public class OdooReportQueryService {
         BigDecimal totalInventoryValue = BigDecimal.ZERO;
         int valuedProductCount = 0;
         for (Map<String, Object> product : products) {
-            BigDecimal quantity = decimal(product.containsKey("free_qty")
-                    ? product.get("free_qty") : product.get("qty_available"));
+            BigDecimal quantity = decimal(product.get("qty_available"));
             BigDecimal unitCost = decimal(product.get("standard_price"));
             if (quantity.signum() <= 0 || unitCost.signum() <= 0) continue;
             BigDecimal inventoryValue = quantity.multiply(unitCost);
