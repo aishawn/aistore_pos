@@ -3,7 +3,35 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readInventorySnapshotStatus } from "./inventory-snapshot-status.ts";
+import { isTrustedSnapshotTimezone, readInventorySnapshotStatus } from "./inventory-snapshot-status.ts";
+
+test("snapshot timezone requires a fresh, complete, continuous, valid scoped capture", () => {
+  const trusted = {
+    status: "FRESH" as const,
+    businessTimezone: "Australia/Adelaide",
+    expectedProducts: 10,
+    capturedProducts: 10,
+    productCoverage: 1,
+    expectedWarehouses: 1,
+    capturedWarehouses: 1,
+    observedDays: 2,
+    gapDays: 0,
+    invalidSnapshots: 0,
+    firstBusinessDate: "2026-10-31",
+    latestBusinessDate: "2026-11-01",
+  };
+  assert.equal(isTrustedSnapshotTimezone(trusted), true);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, status: "REVIEW" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, capturedProducts: 9 }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, capturedWarehouses: 0 }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, observedDays: 1 }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, observedDays: 3 }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, gapDays: 1 }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, latestBusinessDate: "2026-11-02" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, latestBusinessDate: "2026-02-30" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, businessTimezone: "not/a-timezone" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, businessTimezone: undefined }), false);
+});
 
 test("inventory status rejects cross-company data and exposes stale, failed and incomplete captures", async () => {
   const root = await mkdtemp(join(tmpdir(), "inventory-status-"));

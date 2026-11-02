@@ -27,6 +27,30 @@ export type InventorySnapshotStatus = {
   };
 };
 
+export function isTrustedSnapshotTimezone(status: InventorySnapshotStatus): boolean {
+  if (status.status !== "FRESH" || typeof status.businessTimezone !== "string") return false;
+  if (!Number.isSafeInteger(status.expectedProducts) || Number(status.expectedProducts) <= 0
+    || status.capturedProducts !== status.expectedProducts || status.productCoverage !== 1) return false;
+  if (!Number.isSafeInteger(status.expectedWarehouses) || Number(status.expectedWarehouses) <= 0
+    || status.capturedWarehouses !== status.expectedWarehouses) return false;
+  if (!Number.isSafeInteger(status.observedDays) || Number(status.observedDays) < 2
+    || status.gapDays !== 0 || status.invalidSnapshots !== 0) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(status.firstBusinessDate ?? "")
+    || !/^\d{4}-\d{2}-\d{2}$/.test(status.latestBusinessDate ?? "")) return false;
+  const firstDay = Date.parse(`${status.firstBusinessDate}T00:00:00Z`);
+  const latestDay = Date.parse(`${status.latestBusinessDate}T00:00:00Z`);
+  if (!Number.isFinite(firstDay) || !Number.isFinite(latestDay)
+    || new Date(firstDay).toISOString().slice(0, 10) !== status.firstBusinessDate
+    || new Date(latestDay).toISOString().slice(0, 10) !== status.latestBusinessDate
+    || latestDay - firstDay !== (Number(status.observedDays) - 1) * 86400000) return false;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: status.businessTimezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function readInventorySnapshotStatus(companyId: number): Promise<InventorySnapshotStatus> {
   const root = process.env.INVENTORY_SNAPSHOT_ROOT;
   if (!root || !Number.isSafeInteger(companyId) || companyId <= 0) return { status: "UNAVAILABLE" };

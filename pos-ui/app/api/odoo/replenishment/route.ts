@@ -3,7 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
-import { readInventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
+import { isTrustedSnapshotTimezone, readInventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
 import { readCompleteRows } from "@/lib/replenishment-pagination";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 
@@ -231,8 +231,12 @@ export async function GET(request: NextRequest) {
     markPhase("catalogue", { products: products?.length ?? 0 });
     // Odoo 20 uses the base unit on purchase lines; older releases expose a separate purchase unit.
     if (!hasPurchaseUnit) for (const product of products ?? []) product.uom_po_id = product.uom_id;
-    const timezone = getOdooCompanyTimezone(companies?.[0]?.country_id, companies?.[0]?.state_id);
-    const timezoneVerified = Boolean(companies?.[0]?.country_id && companies?.[0]?.state_id);
+    const companyTimezone = getOdooCompanyTimezone(companies?.[0]?.country_id, companies?.[0]?.state_id);
+    const companyTimezoneVerified = Boolean(companies?.[0]?.country_id && companies?.[0]?.state_id);
+    const inventoryHistory = await readInventorySnapshotStatus(companyId);
+    const snapshotTimezoneVerified = !companyTimezoneVerified && isTrustedSnapshotTimezone(inventoryHistory);
+    const timezone = companyTimezoneVerified ? companyTimezone : snapshotTimezoneVerified ? String(inventoryHistory.businessTimezone) : companyTimezone;
+    const timezoneVerified = companyTimezoneVerified || snapshotTimezoneVerified;
     const today = salesDate(new Date().toISOString(), timezone);
     const historyStart = shiftDay(today, -HISTORY_DAYS);
     const recentStart = shiftDay(today, -PERIOD_DAYS);
@@ -543,7 +547,7 @@ export async function GET(request: NextRequest) {
       excludedProductCount,
       productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
-      inventoryHistory: await readInventorySnapshotStatus(companyId),
+      inventoryHistory,
       dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime
         ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME"
         : leadTimeQuality === "PARTIAL"
