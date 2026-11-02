@@ -117,7 +117,7 @@ type ReplenishmentData = {
   };
 };
 
-type ListFilter = "suggestions" | "out_of_stock" | "review" | "slow_stock" | "all";
+type ListFilter = "suggestions" | "urgent" | "out_of_stock" | "review" | "slow_stock" | "all";
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -286,12 +286,15 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const suggestedItems = useMemo(() => data?.products.filter((product) => product.suggestedQuantity > 0) ?? [], [data]);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
+  const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
 
   const filteredItems = useMemo(() => {
     const base = data?.products ?? [];
     const byFilter = listFilter === "suggestions"
       ? base.filter((product) => product.suggestedQuantity > 0)
+      : listFilter === "urgent"
+        ? base.filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0))
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
       : listFilter === "out_of_stock"
         ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)
@@ -599,7 +602,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-[var(--oh-text)]">
-                {listFilter === "all" ? "All POS products" : listFilter === "out_of_stock" ? "Out of stock with demand" : "Replenishment suggestions"}
+                {listFilter === "all" ? "All POS products" : listFilter === "urgent" ? "Urgent stock risks" : listFilter === "out_of_stock" ? "Out of stock with demand" : "Replenishment suggestions"}
               </h2>
               <p className="mt-1 text-xs text-[var(--oh-muted)]">
                 {filteredItems.length} matching · {selectedSuggested.length} selected for RFQ
@@ -641,6 +644,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
               >
                 <option value="suggestions">Suggestions only</option>
+                <option value="urgent">Urgent risks ({number.format(urgentRiskCount)})</option>
                 <option value="out_of_stock">Out of stock with demand</option>
                 <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
                 <option value="slow_stock">Slow or overstocked</option>
@@ -666,6 +670,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                   ? "No products match this search."
                   : listFilter === "suggestions"
                     ? "No products need replenishment for this coverage target."
+                    : listFilter === "urgent"
+                      ? "No urgent stock risks were found."
                     : listFilter === "out_of_stock"
                       ? "No out-of-stock products with recent demand."
                       : listFilter === "slow_stock"
@@ -797,6 +803,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                         ? "No products match this search."
                         : listFilter === "suggestions"
                           ? "No products need replenishment for this coverage target."
+                          : listFilter === "urgent"
+                            ? "No urgent stock risks were found."
                           : listFilter === "out_of_stock"
                             ? "No out-of-stock products with recent demand."
                             : "No POS products were returned by Orithos."

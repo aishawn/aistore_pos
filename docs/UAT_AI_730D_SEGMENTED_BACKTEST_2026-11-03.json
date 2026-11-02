@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-11-03",
+  "source": "odoo-readonly-pos-order-lines",
+  "companyId": 5,
+  "dateRange": ["2024-11-03", "2026-11-02"],
+  "historyDays": 730,
+  "productCount": 500,
+  "ordersInRange": 116655,
+  "orderLinesRead": 169674,
+  "writeRequests": [],
+  "evaluation": "sales_only_expanding_window_segmented_walk_forward",
+  "minimumTrainDays": 180,
+  "validationFraction": 0.7,
+  "horizons": [7, 14, 28],
+  "stableRelativeChampions": ["INTERMITTENT:tsb_v1", "WEEKLY_PATTERN_PROXY:tsb_v1"],
+  "absoluteWapeGate": "FAILED_FOR_ALL_SEGMENTS",
+  "stockoutLabelsAvailable": false,
+  "nativeInventoryAvailable": false,
+  "supplierLeadTimeAvailable": false,
+  "automatablePurchaseRecommendation": false,
+  "decision": "retain_manual_review_and_current_per_product_selection"
+}
