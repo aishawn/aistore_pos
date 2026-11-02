@@ -1,12 +1,20 @@
 {
-  "generatedAt": "2026-11-02T06:47:47.082Z",
-  "runtimeCommit": "5d1dd324dfb2c2584ee5246e6f276f853989fde9",
+  "generatedAt": "2026-11-02T07:08:24.492Z",
+  "runtimeCommit": "c705ab3031f5679ee3ed1466fb957b22ba34e670",
   "scope": "authenticated replenishment exception read; no business writes",
   "stores": {
     "demo.orithos.com.au": {
       "result": "PASS",
       "httpStatus": 200,
       "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      "supplierLeadTime": {
+        "quality": "UNKNOWN",
+        "eligibleProducts": 12987,
+        "productsWithLeadTime": 0,
+        "productsMissingLeadTime": 12987,
+        "coverage": 0,
+        "manualReviewRequired": true
+      },
       "reviewRequiredCount": 12987,
       "exceptionCount": 12987,
       "writeRequests": []
@@ -15,6 +23,14 @@
       "result": "PASS",
       "httpStatus": 200,
       "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      "supplierLeadTime": {
+        "quality": "UNKNOWN",
+        "eligibleProducts": 12999,
+        "productsWithLeadTime": 0,
+        "productsMissingLeadTime": 12999,
+        "coverage": 0,
+        "manualReviewRequired": true
+      },
       "reviewRequiredCount": 12999,
       "exceptionCount": 12999,
       "writeRequests": []

@@ -34,10 +34,19 @@ async function readJson(response) {
 
 const evidence = {
   generatedAt: new Date().toISOString(),
-  runtimeCommit: "5d1dd324dfb2c2584ee5246e6f276f853989fde9",
+  runtimeCommit: null,
   scope: "authenticated replenishment exception read; no business writes",
   stores: {},
 };
+
+try {
+  const version = await fetch("https://demo.orithos.com.au/api/public/version").then((response) => response.json());
+  evidence.runtimeCommit = version.frontend?.commit === version.backend?.commit
+    ? version.frontend.commit
+    : { frontend: version.frontend?.commit ?? null, backend: version.backend?.commit ?? null };
+} catch {
+  evidence.runtimeCommit = "UNAVAILABLE";
+}
 
 for (const target of targets) {
   const base = `https://${target.host}`;
