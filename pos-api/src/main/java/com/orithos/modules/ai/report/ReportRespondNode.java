@@ -59,7 +59,7 @@ public class ReportRespondNode implements NodeAction {
         return switch (intent == null ? "" : intent) {
             case "report_aov" -> formatAov(rows.get(0), from, to);
             case "report_stock" -> formatStock(rows, slots.get("query"));
-            case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), chinese);
+            case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
             case "report_stock_value" -> formatStockValue(rows, chinese);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
@@ -117,14 +117,16 @@ public class ReportRespondNode implements NodeAction {
         return sb.toString();
     }
 
-    private String formatDead(List<Map<String, Object>> rows, String days, boolean chinese) {
+    private String formatDead(List<Map<String, Object>> rows, String days, String from, String to, boolean chinese) {
         String prefix = rows.size() == 50 ? "Top 50 " : rows.size() + " ";
         if (chinese) {
             String count = rows.size() == 50 ? "前 50 个" : rows.size() + " 个";
-            return "最近" + days + "天有" + count + "滞销商品（当前库存大于 0，销量为 0）。";
+            return "最近" + days + "天有" + count + "滞销商品（当前库存大于 0，销量为 0）。"
+                    + "数据来源：Odoo 原生库存数量和 POS 销售；销售区间：" + rangeText(from, to) + "。";
         }
         return prefix + "dead-stock item(s) in the last " + days
-                + " days (on hand > 0, qty sold = 0).";
+                + " days (on hand > 0, qty sold = 0)."
+                + " Source: native Odoo stock quantities and POS sales; sales period: " + rangeText(from, to) + ".";
     }
 
     private String formatStockValue(List<Map<String, Object>> rows, boolean chinese) {
@@ -150,13 +152,15 @@ public class ReportRespondNode implements NodeAction {
                 sb.append("。全店有记录成本的现有库存估值 AUD ").append(money(storeTotal))
                         .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
                         .append(excludedCount).append(" 个商品因库存或成本条件未计入。前 ")
-                        .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal)).append("。");
+                        .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal))
+                        .append("。数据来源：Odoo 原生现有库存数量和标准成本当前快照。");
             } else {
                 sb.append(". Storewide on-hand inventory value for products with recorded positive costs: AUD ")
                         .append(money(storeTotal)).append(" across ").append(valuedCount)
                         .append(" products; ").append(excludedCount)
                         .append(" products were excluded because stock or cost was not positive. Top ")
-                        .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal)).append(".");
+                        .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal))
+                        .append(" Source: native Odoo on-hand quantities and standard product costs; current snapshot.");
             }
             return sb.toString();
         }
