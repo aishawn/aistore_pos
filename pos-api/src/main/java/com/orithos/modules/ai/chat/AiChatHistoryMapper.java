@@ -15,61 +15,64 @@ import java.util.List;
 public interface AiChatHistoryMapper {
 
     @Select("""
-            SELECT id, vendor_id AS vendorId, user_id AS userId, session_key AS sessionKey,
-                   title, created_at AS createdAt, updated_at AS updatedAt
+            SELECT id AS thread_id, vendor_id AS thread_vendor_id, user_id AS thread_user_id,
+                   session_key AS thread_session_key, title AS thread_title,
+                   created_at AS thread_created_at, updated_at AS thread_updated_at
             FROM ai_chat_thread
             WHERE vendor_id = #{vendorId} AND user_id = #{userId}
             ORDER BY updated_at DESC
             LIMIT #{limit}
             """)
     @Results(id = "aiChatThreadMapping", value = {
-            @Result(property = "id", column = "id", javaType = Long.class),
-            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
-            @Result(property = "userId", column = "userId", javaType = Long.class),
-            @Result(property = "sessionKey", column = "sessionKey"),
-            @Result(property = "title", column = "title"),
-            @Result(property = "createdAt", column = "createdAt"),
-            @Result(property = "updatedAt", column = "updatedAt")
+            @Result(property = "id", column = "thread_id", javaType = Long.class),
+            @Result(property = "vendorId", column = "thread_vendor_id", javaType = Long.class),
+            @Result(property = "userId", column = "thread_user_id", javaType = Long.class),
+            @Result(property = "sessionKey", column = "thread_session_key"),
+            @Result(property = "title", column = "thread_title"),
+            @Result(property = "createdAt", column = "thread_created_at"),
+            @Result(property = "updatedAt", column = "thread_updated_at")
     })
     List<AiChatThread> listThreads(@Param("vendorId") long vendorId,
                                    @Param("userId") long userId,
                                    @Param("limit") int limit);
 
     @Select("""
-            SELECT id, vendor_id AS vendorId, user_id AS userId, session_key AS sessionKey,
-                   title, created_at AS createdAt, updated_at AS updatedAt
+            SELECT id AS thread_id, vendor_id AS thread_vendor_id, user_id AS thread_user_id,
+                   session_key AS thread_session_key, title AS thread_title,
+                   created_at AS thread_created_at, updated_at AS thread_updated_at
             FROM ai_chat_thread
             WHERE id = #{id} AND vendor_id = #{vendorId} AND user_id = #{userId}
             LIMIT 1
             """)
     @Results(id = "aiChatThreadOwnedMapping", value = {
-            @Result(property = "id", column = "id", javaType = Long.class),
-            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
-            @Result(property = "userId", column = "userId", javaType = Long.class),
-            @Result(property = "sessionKey", column = "sessionKey"),
-            @Result(property = "title", column = "title"),
-            @Result(property = "createdAt", column = "createdAt"),
-            @Result(property = "updatedAt", column = "updatedAt")
+            @Result(property = "id", column = "thread_id", javaType = Long.class),
+            @Result(property = "vendorId", column = "thread_vendor_id", javaType = Long.class),
+            @Result(property = "userId", column = "thread_user_id", javaType = Long.class),
+            @Result(property = "sessionKey", column = "thread_session_key"),
+            @Result(property = "title", column = "thread_title"),
+            @Result(property = "createdAt", column = "thread_created_at"),
+            @Result(property = "updatedAt", column = "thread_updated_at")
     })
     AiChatThread findOwned(@Param("id") long id,
                            @Param("vendorId") long vendorId,
                            @Param("userId") long userId);
 
     @Select("""
-            SELECT id, vendor_id AS vendorId, user_id AS userId, session_key AS sessionKey,
-                   title, created_at AS createdAt, updated_at AS updatedAt
+            SELECT id AS thread_id, vendor_id AS thread_vendor_id, user_id AS thread_user_id,
+                   session_key AS thread_session_key, title AS thread_title,
+                   created_at AS thread_created_at, updated_at AS thread_updated_at
             FROM ai_chat_thread
             WHERE session_key = #{sessionKey}
             LIMIT 1
             """)
     @Results(id = "aiChatThreadSessionMapping", value = {
-            @Result(property = "id", column = "id", javaType = Long.class),
-            @Result(property = "vendorId", column = "vendorId", javaType = Long.class),
-            @Result(property = "userId", column = "userId", javaType = Long.class),
-            @Result(property = "sessionKey", column = "sessionKey"),
-            @Result(property = "title", column = "title"),
-            @Result(property = "createdAt", column = "createdAt"),
-            @Result(property = "updatedAt", column = "updatedAt")
+            @Result(property = "id", column = "thread_id", javaType = Long.class),
+            @Result(property = "vendorId", column = "thread_vendor_id", javaType = Long.class),
+            @Result(property = "userId", column = "thread_user_id", javaType = Long.class),
+            @Result(property = "sessionKey", column = "thread_session_key"),
+            @Result(property = "title", column = "thread_title"),
+            @Result(property = "createdAt", column = "thread_created_at"),
+            @Result(property = "updatedAt", column = "thread_updated_at")
     })
     AiChatThread findBySessionKey(@Param("sessionKey") String sessionKey);
 
