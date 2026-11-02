@@ -1,9 +1,10 @@
 "use client";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
-import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
+import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { getOdooSession, searchOdooRecords, type OdooTaxRecord } from "@/lib/odoo-api";
 

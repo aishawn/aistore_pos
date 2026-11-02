@@ -21,6 +21,7 @@ Updated: 2026-11-02 (Asia/Shanghai)
 - Final POS coverage confirmed products `11,024`, inventory `10,846`, sales `155,502`, sale items `304,737`, suppliers `109`, customers `20`, and purchase orders `2,355` for `skr`.
 - Final crawler audit reported products `11,024`, inventory `10,846`, sales `155,496`, sale items `304,690`, suppliers `109`, customers `20`, and purchase orders `2,355`.
 - POS also reports 187,392 payments; crawler audit does not expose a payment total, so payment counts were not compared independently.
+- A read-only crawler sales pagination sample counted approximately 186,653 source payment entries, but high-volume pagination produced one transient transport EOF and the endpoint does not expose a stable total field. Treat the 739-entry difference from POS as an unresolved payment reconciliation item, not as a proven missing sync. No payment rows were deleted or overwritten outside the normal external-ID upsert.
 - Product ID reconciliation returned 11,024 IDs on each side, with zero crawler-missing and zero POS-only product IDs.
 
 ## Code and verification
@@ -49,4 +50,5 @@ POS-only sale IDs:
 - Continue observing the scheduled crawler jobs for stalled phase/count changes.
 - The `2026-11-02` sync refreshed the current Adelaide business date; the scheduled daily job will revisit it in its normal rolling window.
 - Do not remove POS-only historical sales without business review.
+- Reconcile payment IDs by external sale and payment key before changing the 739-entry difference; do not infer missing payments from aggregate counts alone.
 - Keep Shopfront customer data in staging until a separately approved business import workflow exists.

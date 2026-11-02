@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { SettingsTopTabs } from "@/components/admin/SettingsTopTabs";
+import { SettingsPage, SettingsSubTabs } from "@/components/admin/SettingsPage";
 
 export default function AccountSecurityPage() {
   const params = useSearchParams();
@@ -55,16 +54,7 @@ export default function AccountSecurityPage() {
     ["connection", "Connection status"],
   ] as const;
   return (
-    <main className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-7">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-primary)]">Your account</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Profile &amp; security</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage sign-in security, developer access, and live service connections.</p>
-      </header>
-      <SettingsTopTabs activeHref="/settings/account" />
-      <nav className="flex gap-1 overflow-x-auto border-b border-[var(--oh-border)]" aria-label="Account sections">
-        {tabs.map(([key, label]) => <Link key={key} href={`/settings/account?tab=${key}`} className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium ${tab === key ? "border-[var(--oh-primary)] text-[var(--oh-primary)]" : "border-transparent text-[var(--oh-muted)]"}`}>{label}</Link>)}
-      </nav>
+    <SettingsPage title="Account" subtitle="Manage your profile, security and service access." activeHref="/settings/account" subTabs={<SettingsSubTabs label="Account sections" tabs={tabs.map(([key, label]) => ({ label, href: `/settings/account?tab=${key}`, active: tab === key }))} />}>
 
       {tab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Store API access is being provisioned. When enabled, administrators will be able to create scoped keys for product, customer, supplier, and AI workflows. Keys are shown once and can be revoked immediately.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">No API keys have been created.</div></section>}
       {tab === "connection" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Connection status</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Live Odoo and AI capability checks are shown here. If a connection needs attention, contact your store administrator.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">Business data service</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Checked when live data is requested.</p></div><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">AI services</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Available according to your role and tenant.</p></div></div></section>}
@@ -114,13 +104,13 @@ export default function AccountSecurityPage() {
           {notice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">{notice}</p>}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-xl text-xs leading-5 text-[var(--oh-muted)]">Forgot your current password? Use Forgot password on the sign-in page, or ask an administrator for a reset link.</p>
-        <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
+        <button type="submit" disabled={busy} className="inline-flex h-11 w-full shrink-0 whitespace-nowrap items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
               {busy && <LoaderCircle size={16} className="animate-spin" />}{busy ? "Updating…" : "Update password"}
             </button>
           </div>
         </form>
       </section>
       </>}
-    </main>
+    </SettingsPage>
   );
 }
