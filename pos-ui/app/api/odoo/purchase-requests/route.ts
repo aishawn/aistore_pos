@@ -15,7 +15,18 @@ export const dynamic = "force-dynamic";
 const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LINES = 100;
 const COVERAGE_DAYS = new Set([7, 14, 21, 28, 42]);
-const REPLENISHMENT_METHODS = new Set(["rules_v1_weighted_velocity", "per_product_selected"]);
+// Keep this allow-list aligned with the model identifiers emitted by the
+// replenishment selector. The RFQ route records the selected model for audit;
+// it must accept a reviewed champion without allowing arbitrary client input.
+const REPLENISHMENT_METHODS = new Set([
+  "rules_v1_weighted_velocity",
+  "per_product_selected",
+  "two_stage_occurrence_v1",
+  "croston_sba_v1",
+  "tsb_v1",
+  "moving_average_7_v1",
+  "seasonal_naive_v1",
+]);
 
 type OdooError = { message?: string; data?: { message?: string; name?: string } };
 
