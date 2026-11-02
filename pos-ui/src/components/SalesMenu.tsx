@@ -29,7 +29,7 @@ export function SalesMenu({ config }: { config?: Config | null }) {
   if (!allowed) return null;
   const items = [["history", "Sales history"], ["lines", "Sales lines"], ["payments", "Payments"], ["refunds", "Refunds"], ["session", "Current session"]] as const;
   return <>
-    <details ref={menu} className="relative">
+    <details ref={menu} className="relative shrink-0">
       <summary aria-label="Sales menu" className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-full px-2 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] [&::-webkit-details-marker]:hidden">Sales <ChevronDown size={14} /></summary>
       <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-[var(--oh-border)] bg-white p-1 shadow-lg">
         {items.map(([key, label]) => <button key={key} type="button" onClick={() => {

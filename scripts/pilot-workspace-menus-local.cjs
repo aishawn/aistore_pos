@@ -76,6 +76,7 @@ const config = { id: 1, name: 'Fixture Register', company: [41, 'Fixture'], time
     await page.getByRole('link', { name: 'Suppliers', exact: true }).last().click();
     await page.getByRole('heading', { name: 'Suppliers', exact: true }).waitFor();
     check('Suppliers renders in workspace', await page.getByRole('heading', { name: 'Purchasing', exact: true }).isVisible());
+    check('Only Purchases has a Suppliers navigation entry', await page.getByRole('link', { name: 'Suppliers', exact: true }).count() === 1);
     await page.getByRole('link', { name: 'Invoices', exact: true }).click();
     await page.getByRole('link', { name: 'Scan invoice', exact: true }).first().waitFor();
     await page.getByRole('link', { name: 'Replenishment', exact: true }).click();
@@ -90,6 +91,12 @@ const config = { id: 1, name: 'Fixture Register', company: [41, 'Fixture'], time
     await page.getByLabel('Sales menu', { exact: true }).click();
     const sales = page.locator('details').filter({ has: page.getByLabel('Sales menu', { exact: true }) });
     check('Sales menu order', JSON.stringify(await sales.getByRole('button').allTextContents()) === JSON.stringify(['Sales history', 'Sales lines', 'Payments', 'Refunds', 'Current session']));
+    check('All Sales menu items are unobscured and within viewport', await sales.getByRole('button').evaluateAll(buttons => buttons.every(button => {
+     const rect = button.getBoundingClientRect();
+     const target = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+     return rect.x >= 0 && rect.right <= innerWidth && rect.y >= 0 && rect.bottom <= innerHeight && button.contains(target);
+    })));
+    await page.screenshot({ path: path.join(shots, `sales-dropdown-${width}.png`) });
     const cartBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('orithos-odoo-active-cart-v1:1:1') || '{}').lines);
     check('Nonempty cart restored', cartBefore?.[0]?.quantity === 2);
     for (const name of ['Sales history', 'Sales lines', 'Payments', 'Refunds', 'Current session']) {

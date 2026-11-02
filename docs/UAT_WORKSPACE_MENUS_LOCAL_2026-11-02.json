@@ -46,6 +46,11 @@
     },
     {
       "width": 390,
+      "name": "Only Purchases has a Suppliers navigation entry",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
       "name": "Stock Transfers in More",
       "status": "PASS"
     },
@@ -57,6 +62,11 @@
     {
       "width": 390,
       "name": "Sales menu order",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "All Sales menu items are unobscured and within viewport",
       "status": "PASS"
     },
     {
@@ -146,6 +156,11 @@
     },
     {
       "width": 1440,
+      "name": "Only Purchases has a Suppliers navigation entry",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
       "name": "Stock Transfers in More",
       "status": "PASS"
     },
@@ -157,6 +172,11 @@
     {
       "width": 1440,
       "name": "Sales menu order",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "All Sales menu items are unobscured and within viewport",
       "status": "PASS"
     },
     {
