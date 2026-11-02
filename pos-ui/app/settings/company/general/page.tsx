@@ -25,9 +25,10 @@ export default function GeneralCompanySettingsPage() {
     setLoading(true); setError(null);
     try {
       const data = await api.get<Company>("/api/odoo/company");
+      if (!data?.id) throw new Error("Company details could not be read. Please retry.");
       const next = { name: data.name || "", vat: asText(data.vat), street: asText(data.street), city: asText(data.city), zip: asText(data.zip), phone: asText(data.phone), email: asText(data.email) };
-      setCompany(data); setForm(next); setSaved(next);
-    } catch (cause) { setCompany(null); setError(cause instanceof ApiError ? cause.message : "Could not load company details."); }
+      setCompany(data); setForm(next); setSaved(next); return true;
+    } catch (cause) { setError(cause instanceof Error && cause.message ? cause.message : "Could not load company details."); }
     finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
@@ -41,7 +42,7 @@ export default function GeneralCompanySettingsPage() {
   async function save(event: React.FormEvent) {
     event.preventDefault(); if (!dirty) return;
     setBusy(true); setError(null); setNotice(null);
-    try { await api.patch("/api/odoo/company", { ...form, currency: "AUD" }); await load(); setNotice("Company details saved."); }
+    try { await api.patch("/api/odoo/company", { ...form, currency: "AUD" }); if (await load()) setNotice("Company details saved."); }
     catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not save company details. Your changes are still here."); }
     finally { setBusy(false); }
   }
@@ -56,7 +57,7 @@ export default function GeneralCompanySettingsPage() {
         <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="font-semibold text-[var(--oh-text)]">Contact details</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Shown to customers where supported by receipt and invoice templates.</p><div className="mt-5 grid gap-5 sm:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)] sm:col-span-2">Street address<input value={form.street} onChange={(e) => update("street", e.target.value)} maxLength={160} className={inputClass} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">City<input value={form.city} onChange={(e) => update("city", e.target.value)} maxLength={80} className={inputClass} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Postcode<input value={form.zip} onChange={(e) => update("zip", e.target.value)} maxLength={16} inputMode="numeric" className={inputClass} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Phone<input type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} maxLength={40} className={inputClass} /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Email<input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} maxLength={160} className={inputClass} /></label></div></section>
         <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="font-semibold text-[var(--oh-text)]">Regional settings</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Timezone affects new sales, reports, receipts and AI date explanations. Existing timestamps are preserved.</p><div className="mt-5 max-w-md"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Business timezone<span className="font-normal text-[var(--oh-muted)]">Managed by tenant configuration until timezone storage is enabled for this store.</span><input value="Australia/Adelaide" readOnly className={`${inputClass} text-[var(--oh-muted)]`} /></label></div></section>
         <div className="sticky bottom-0 z-10 flex justify-end border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/95 py-4 backdrop-blur"><button type="submit" disabled={busy || !dirty} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Save size={16} />{busy ? "Saving…" : "Save changes"}</button></div>
-      </form> : <div className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-8 text-sm text-[var(--oh-muted)]">No company is linked to this store.</div>}
+      </form> : <div className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-8 text-sm text-[var(--oh-muted)]">Company details are unavailable. Retry to load the store profile.</div>}
     </div>
   </CompanySettingsScaffold>;
 }

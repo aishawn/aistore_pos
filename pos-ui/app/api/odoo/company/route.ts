@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
-import { requirePermission } from "@/lib/store-access";
+import { StoreAccessError, requirePermission } from "@/lib/store-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 type Company = { id: number; name?: string; partner_id?: [number, string] | false; currency_id?: [number, string] | false; street?: string | false; city?: string | false; zip?: string | false; phone?: string | false; email?: string | false; vat?: string | false; tz?: string };
 
 function errorResponse(error: unknown) {
-  const status = error instanceof OdooScopeError ? error.status : 502;
+  const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
   const code = error instanceof OdooScopeError ? error.code : "COMPANY_SETTINGS_UNAVAILABLE";
   const message = status === 401
     ? "Your Odoo session has expired. Sign in again and retry."
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const rows = await scope.rpc<Company[]>("res.company", "search_read", [[["id", "in", scope.companyIds]]], { fields: ["id", "name", "partner_id", "currency_id", "street", "city", "zip", "phone", "email", "vat"], limit: 1 });
     const company = rows[0];
     if (!company) return NextResponse.json({ message: "No company is linked to this store." }, { status: 404 });
-    return NextResponse.json(company, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ code: 0, message: "ok", data: company }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return errorResponse(error); }
 }
 
@@ -50,6 +50,6 @@ export async function PATCH(request: NextRequest) {
     if (!name) return NextResponse.json({ message: "Company name is required." }, { status: 400 });
     if (body.currency && body.currency !== "AUD") return NextResponse.json({ message: "AUD is the only supported store currency." }, { status: 422 });
     await scope.rpc<boolean>("res.company", "write", [scope.companyIds, { name, vat: vat || false, street: street || false, city: city || false, zip: zip || false, phone: phone || false, email: email || false }]);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ code: 0, message: "ok", data: { ok: true } });
   } catch (error) { return errorResponse(error); }
 }
