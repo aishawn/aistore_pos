@@ -1,5 +1,11 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Assistant history links and sidebar simplification
+
+- Removed the dedicated assistant workspace's Store context control and redundant AI Assistant navigation item. History expands in the desktop sidebar without replacing the dialogue; Suggested workflows is collapsed by default. Mobile retains the accessible history control.
+- Saved conversations now open at `/assistant?chat=<id-or-session-key>`; direct links, reload, browser back/forward and New chat restore the corresponding state. First persisted assistant replies assign their session-key URL. Continuations use the loaded session key. Numeric and legacy session-key history IDs are supported and URL-encoded. Failed detail loads show an explicit error and clear stale dialogue; stale detail responses are ignored.
+- No backend changes or live business writes. Existing store/user-scoped history APIs remain in use. Node 24 typecheck, targeted ESLint (zero errors; existing unused-disable warnings) and Chromium fixtures at 390/768/1024/1440 pass. Evidence: `docs/UAT_AI_ASSISTANT_HISTORY_LOCAL_2026-11-02.json`; reproduction: `scripts/pilot-assistant-history-local.cjs`. These are intercepted fixtures, not live SKR history/storage acceptance. Deployment/runtime identity remains unconfirmed.
+
 ## 2026-11-02 AI Health navigation simplification
 
 - Renamed Setup's AI Query Health entry and the metrics page heading to AI Health. The existing `/reports/ai/metrics` URL, admin-only permission checks and metrics data remain unchanged.

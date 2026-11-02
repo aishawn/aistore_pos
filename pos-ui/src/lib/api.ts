@@ -907,7 +907,7 @@ export function askAssistant(
 }
 
 export interface AiChatThreadSummary {
-  id: number;
+  id: number | string;
   sessionKey: string;
   title: string;
   updatedAt: string | null;
@@ -942,8 +942,8 @@ export function fetchAiChatThreads(): Promise<AiChatThreadSummary[]> {
   return api.get<AiChatThreadSummary[]>("/api/ai/threads");
 }
 
-export function fetchAiChatThread(id: number): Promise<AiChatThreadDetail> {
-  return api.get<AiChatThreadDetail>(`/api/ai/threads/${id}`);
+export function fetchAiChatThread(id: number | string): Promise<AiChatThreadDetail> {
+  return api.get<AiChatThreadDetail>(`/api/ai/threads/${encodeURIComponent(String(id))}`);
 }
 
 export interface PlatformAiUsageStoreRow {

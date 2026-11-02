@@ -10,7 +10,7 @@ import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Boxes, Eraser, ExternalLink, History, Lightbulb, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
+import { BarChart3, Boxes, ChevronDown, Eraser, ExternalLink, History, Lightbulb, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
@@ -447,8 +447,8 @@ export function SellAiPanel({
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
-  const [storeContextOpen, setStoreContextOpen] = useState(false);
-  const [storeHost, setStoreHost] = useState<string | null>(null);
+  const [workflowsOpen, setWorkflowsOpen] = useState(false);
+  const threadLoadRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
@@ -660,7 +660,6 @@ export function SellAiPanel({
         // The route-specific position still applies for this mount.
       }
     }
-    setStoreHost(window.location.hostname || null);
   }, [pathname]);
 
   useEffect(() => {
@@ -862,8 +861,20 @@ export function SellAiPanel({
     router.push("/");
   }
 
+  function updateChatUrl(id: number | string | null, replace = false) {
+    if (!workspace || !pagePresentation) return;
+    const url = id == null ? "/assistant" : `/assistant?chat=${encodeURIComponent(String(id))}`;
+    if (window.location.pathname + window.location.search !== url) {
+      window.history[replace ? "replaceState" : "pushState"](null, "", url);
+    }
+  }
+
   function clearChat() {
     if (busy || busyRef.current) return;
+    threadLoadRef.current += 1;
+    setHistoryLoading(false);
+    setHistoryError(null);
+    updateChatUrl(null);
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
     setInput("");
@@ -888,13 +899,13 @@ export function SellAiPanel({
     }
   }
 
-  async function loadHistoryThread(id: number) {
-    if (busy || busyRef.current || historyRequestRef.current) return;
-    historyRequestRef.current = true;
+  async function loadHistoryThread(id: number | string, syncUrl = true) {
+    const request = ++threadLoadRef.current;
     setHistoryLoading(true);
     setHistoryError(null);
     try {
       const detail = await fetchAiChatThread(id);
+      if (request !== threadLoadRef.current) return;
       let previousQuestion: string | undefined;
       const restored: ChatMessage[] = detail.messages
         .filter((m) => m.role === "user" || m.role === "assistant")
@@ -926,15 +937,43 @@ export function SellAiPanel({
           : [{ role: "assistant", text: greetingText(aiEnabled) }],
       );
       setThreadId(detail.sessionKey);
+      setInput("");
+      if (syncUrl) updateChatUrl(id);
       setQuickActionsOpen(false);
       setHistoryOpen(false);
     } catch (e) {
-      setHistoryError(aiFailureMessage(e, "chat"));
+      if (request === threadLoadRef.current) {
+        setHistoryError(aiFailureMessage(e, "chat"));
+        setMessages([]);
+        setThreadId(null);
+      }
     } finally {
-      historyRequestRef.current = false;
-      setHistoryLoading(false);
+      if (request === threadLoadRef.current) setHistoryLoading(false);
     }
   }
+
+  const restoreUrlChat = useEffectEvent(() => {
+    const id = new URLSearchParams(window.location.search).get("chat");
+    if (id && /^[a-zA-Z0-9_-]{1,200}$/.test(id)) {
+      void loadHistoryThread(id, false);
+    } else if (id) {
+      setHistoryError("Invalid chat link. Start a new chat or select one from History.");
+      setMessages([]);
+      setThreadId(null);
+    } else {
+      clearChat();
+    }
+  });
+  useEffect(() => {
+    if (!workspace || !pagePresentation || !clientConfigReady) return;
+    if (new URLSearchParams(window.location.search).has("chat")) restoreUrlChat();
+    const onPopState = () => restoreUrlChat();
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      threadLoadRef.current += 1;
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [workspace, pagePresentation, clientConfigReady]);
 
   function lockAndClearInput() {
     setInput("");
@@ -1031,7 +1070,12 @@ export function SellAiPanel({
     try {
       const result = await readOperationsPreview(text, threadId, controller?.signal, fetchOdooRoute)
         ?? await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
-      if (result.threadId) setThreadId(result.threadId);
+      if (result.threadId) {
+        setThreadId(result.threadId);
+        if (!new URLSearchParams(window.location.search).has("chat")) {
+          updateChatUrl(result.threadId, true);
+        }
+      }
       const outcome = await dispatchIntent(result);
       if (outcome.kind !== "messaged") {
         const deferredHref = outcome.kind === "deferred" ? outcome.href : null;
@@ -1403,7 +1447,7 @@ export function SellAiPanel({
   useEffect(() => { submitPendingQuestion(); }, [pagePresentation, clientConfigReady]);
 
   const composer = (
-    <AssistantComposer value={input} onChange={setInput} inputRef={inputRef} disabled={busy || chatOff || !expanded} voiceAvailable={transcriptionAvailable} placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"} onSend={async question => {
+    <AssistantComposer value={input} onChange={setInput} inputRef={inputRef} disabled={busy || historyLoading || (workspace && !!historyError) || chatOff || !expanded} voiceAvailable={transcriptionAvailable} placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"} onSend={async question => {
       if (busyRef.current || chatOff) return;
       setQuickActionsOpen(false);
       await runIntent(question);
@@ -1437,7 +1481,7 @@ export function SellAiPanel({
         className="ai-assistant-wash pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[68%] bg-gradient-to-t from-[#edf2fa]/10 via-[#edf2fa]/38 to-transparent"
         aria-hidden="true"
       />
-      <aside className="relative z-10 hidden w-[256px] shrink-0 flex-col border-r border-white/70 bg-[var(--oh-surface-elevated)]/55 px-4 py-5 backdrop-blur-xl md:flex">
+      <aside className="relative z-10 hidden w-[256px] shrink-0 flex-col overflow-y-auto border-r border-white/70 bg-[var(--oh-surface-elevated)]/55 px-4 py-5 backdrop-blur-xl md:flex">
         <div className="flex items-center gap-2.5 px-3 pb-7">
           <Link href="/dashboard" aria-label="Open Dashboard" title="Dashboard" className="inline-flex min-h-11 items-center rounded-lg transition hover:bg-[var(--oh-surface-elevated)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2">
             <OrithosLogo />
@@ -1447,19 +1491,17 @@ export function SellAiPanel({
           <Link href="/" className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
             <ShoppingCart size={17} /> Sell
           </Link>
-          <button type="button" onClick={() => setHistoryOpen(false)} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]", !historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)]")} aria-current={!historyOpen ? "page" : undefined}>
-            <Sparkles size={17} /> AI Assistant
-          </button>
           <button type="button" onClick={clearChat} disabled={busy || historyLoading} className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]">
             <MessageCircle size={17} /> New chat
           </button>
-          <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-current={historyOpen ? "page" : undefined} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 transition focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50", historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]")}>
-            <History size={17} /> History
+          <button type="button" onClick={() => historyOpen ? setHistoryOpen(false) : void openHistory()} disabled={busy || historyLoading} aria-expanded={historyOpen} aria-controls="assistant-sidebar-history" className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] disabled:opacity-50">
+            <History size={17} /> History <ChevronDown size={15} className={cn("ml-auto transition-transform", historyOpen && "rotate-180")} />
           </button>
+          {historyOpen && !compactViewport && <div id="assistant-sidebar-history" className="max-h-[40vh] overflow-y-auto"><HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /></div>}
         </nav>
         <div className="mt-7 overflow-y-auto text-[13px] text-[var(--oh-muted)]">
-          <p className="px-3 pb-2 font-medium">Suggested workflows</p>
-          <div className="space-y-0.5">
+          <button type="button" onClick={() => setWorkflowsOpen((open) => !open)} aria-expanded={workflowsOpen} aria-controls="assistant-workflows" className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 font-medium hover:bg-[var(--oh-surface-elevated)]">Suggested workflows <ChevronDown size={15} className={cn("transition-transform", workflowsOpen && "rotate-180")} /></button>
+          <div id="assistant-workflows" hidden={!workflowsOpen} className="space-y-0.5">
             {sidebarWorkflows.map((item) => {
               const Icon = item.icon;
               return <button key={item.label} type="button" onClick={() => navigateSidebarItem(item.label)} disabled={busy} className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-50"><Icon size={15} />{item.label}</button>;
@@ -1472,35 +1514,13 @@ export function SellAiPanel({
         <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between px-5 sm:px-8 lg:px-10">
           <div className="flex items-center gap-2 md:hidden"><Link href="/dashboard" aria-label="Open Dashboard" title="Dashboard" className="inline-flex min-h-11 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"><OrithosLogo /></Link></div>
           <div className="relative ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setStoreContextOpen((open) => !open)}
-              aria-expanded={storeContextOpen}
-              aria-controls="assistant-store-context"
-              className="hidden min-h-11 items-center gap-2 rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 px-3.5 py-2 text-[12px] font-medium text-[var(--oh-muted)] shadow-sm backdrop-blur transition hover:bg-[var(--oh-surface-elevated)]/80 hover:text-[var(--oh-text)] sm:flex"
-            >
-              <Store size={15} /> Store context
-            </button>
-            {storeContextOpen ? (
-              <div
-                id="assistant-store-context"
-                role="status"
-                className="absolute right-11 top-11 z-30 w-64 rounded-2xl border border-white/90 bg-[var(--oh-surface-elevated)]/95 p-3 text-left shadow-[0_12px_32px_rgba(65,87,126,.18)] backdrop-blur-xl"
-              >
-                <p className="text-[12px] font-semibold text-[var(--oh-text)]">Current store context</p>
-                <p className="mt-1 break-all text-[12px] leading-5 text-[var(--oh-muted)]">
-                  {storeHost ?? "Store host will appear after sign-in."}
-                </p>
-                <p className="mt-2 text-[11px] leading-4 text-[var(--oh-muted)]">
-                  Assistant answers use the active store and outlet session.
-                </p>
-              </div>
-            ) : null}
             <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-label="Chat history" title="Chat history" className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)]/70"><MoreHorizontal size={18} /></button>
           </div>
         </header>
+        {historyError && <p role="alert" className="relative z-10 px-4 py-2 text-sm text-rose-700">{historyError}</p>}
+        {historyLoading && <p role="status" className="relative z-10 px-4 py-2 text-sm">Loading chat…</p>}
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
-          {historyOpen ? <HistoryView loading={historyLoading} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
+          {historyOpen && compactViewport ? <HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className={cn("mx-auto flex min-h-full w-full max-w-[1080px] flex-col py-6", messages.length > 1 ? "justify-start" : "justify-center sm:py-12")}>
               {messages.length <= 1 && <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
@@ -1634,7 +1654,7 @@ export function SellAiPanel({
             >
               {historyOpen ? (
                 <HistoryView
-                  loading={historyLoading}
+                  loading={historyLoading || busy}
                   error={historyError}
                   threads={historyThreads}
                   onBack={() => setHistoryOpen(false)}
@@ -1763,7 +1783,7 @@ function HistoryView({
   error: string | null;
   threads: AiChatThreadSummary[];
   onBack: () => void;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | string) => void;
   onRefresh: () => void;
 }) {
   const [query, setQuery] = useState("");
