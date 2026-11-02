@@ -8,6 +8,9 @@ Updated: 2026-11-02 (Asia/Shanghai)
 - No sync job was active before customer sync was queued.
 - Customer sync job `23` completed successfully.
 - Crawler currently stores 20 Shopfront customers.
+- Earlier customer permission failures (jobs `16` and `20`) were resolved after OAuth reauthorization; job `23` completed with 20 customers staged.
+- Supply-chain job `22` completed with 109 suppliers and 2,355 purchase orders staged. Earlier permission failures in job `19` were superseded by this successful run.
+- Daily sync job `24` refreshed Adelaide business date `2026-11-02`: 94 sales processed and 94 upserted to POS staging; POS import status was `completed`.
 
 ## POS staging
 
@@ -15,8 +18,10 @@ Updated: 2026-11-02 (Asia/Shanghai)
 - Customer staging is keyed by `(store_key, source_id)` and stores the external ID, selected lookup fields, and source payload.
 - The endpoint writes only `shopfront_customer`; it does not write the POS customer business table or Odoo.
 - Customer job payload reported `pos_staged.customers=20`.
-- POS coverage confirmed customers `20`, suppliers `109`, and purchase orders `2,355` for `skr`.
-- Crawler audit reported products `11,024`, sales `155,402`, sale items `304,494`, inventory `10,846`, and customers `20`.
+- Final POS coverage confirmed products `11,024`, inventory `10,846`, sales `155,502`, sale items `304,737`, suppliers `109`, customers `20`, and purchase orders `2,355` for `skr`.
+- Final crawler audit reported products `11,024`, inventory `10,846`, sales `155,496`, sale items `304,690`, suppliers `109`, customers `20`, and purchase orders `2,355`.
+- POS also reports 187,392 payments; crawler audit does not expose a payment total, so payment counts were not compared independently.
+- Product ID reconciliation returned 11,024 IDs on each side, with zero crawler-missing and zero POS-only product IDs.
 
 ## Code and verification
 
@@ -28,7 +33,7 @@ Updated: 2026-11-02 (Asia/Shanghai)
 
 ## Historical sales reconciliation
 
-The earlier full-history comparison found crawler sales `155,402` and POS sales `155,408`. There were zero crawler-only IDs and six POS-only IDs. Shared sale item counts matched; the 47 item-count difference came from the six extra POS records. Those records were not deleted.
+The earlier full-history comparison found zero crawler-only IDs and six POS-only IDs. After job `24` added 94 same-day sales to both sides, crawler sales were `155,496` and POS sales `155,502`. Shared sale item counts matched; the current 47-line difference comes from the six extra POS records. Those records were not deleted.
 
 POS-only sale IDs:
 
@@ -42,5 +47,6 @@ POS-only sale IDs:
 ## Next actions
 
 - Continue observing the scheduled crawler jobs for stalled phase/count changes.
+- The `2026-11-02` sync refreshed the current Adelaide business date; the scheduled daily job will revisit it in its normal rolling window.
 - Do not remove POS-only historical sales without business review.
 - Keep Shopfront customer data in staging until a separately approved business import workflow exists.
