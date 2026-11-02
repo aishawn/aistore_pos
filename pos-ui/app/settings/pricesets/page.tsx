@@ -1,8 +1,5 @@
-import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
-
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+import { redirect } from "next/navigation";
 
 export default function PriceSetsPage() {
-  return <OdooPricelistsPage />;
+  redirect("/pricelists");
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, LayoutDashboard, ShieldAlert, ShieldCheck } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 
 const ruleStatuses = [
   {
@@ -37,7 +37,7 @@ export default function PageRulesPage() {
         role="status"
         className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50/70 p-4 sm:p-5"
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-sky-700 ring-1 ring-sky-200">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface-elevated)] text-sky-700 ring-1 ring-sky-200">
           <ShieldAlert size={18} aria-hidden="true" />
         </span>
         <div>
@@ -55,7 +55,7 @@ export default function PageRulesPage() {
         </div>
         <ul className="grid gap-3 sm:grid-cols-2">
           {ruleStatuses.map(({ title, description, icon: Icon, action }) => (
-            <li key={title} className="flex min-w-0 flex-col rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+            <li key={title} className="flex min-w-0 flex-col rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
               <div className="flex items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
                   <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
