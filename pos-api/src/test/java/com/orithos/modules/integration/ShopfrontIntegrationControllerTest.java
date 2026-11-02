@@ -111,6 +111,27 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).update(contains("INSERT INTO shopfront_purchase_order"), any(Object[].class));
     }
 
+    @Test
+    void upsertsCustomerShadowByExternalIdWithoutBusinessCustomerWrites() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "persistShadow", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        persistShadow.setAccessible(true);
+        persistShadow.invoke(controller, "customers", "skr", Map.of("outlet_id", "48"),
+                new ObjectMapper().readTree("[{\"source_id\":\"customer-1\",\"client_id\":\"client-1\",\"name\":\"Test\",\"email\":\"test@example.com\",\"raw_payload\":{\"id\":\"customer-1\"}}]"), false);
+
+        verify(jdbc).update(contains("ON CONFLICT (store_key,source_id) DO UPDATE"), any(Object[].class));
+    }
+
     @ParameterizedTest
     @MethodSource("mappingFlags")
     void mappingFlagAcceptsOnlyKnownEnabledValues(Object flag, boolean expected) throws Exception {

@@ -128,6 +128,13 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "suppliers", body);
     }
 
+    @PostMapping("/customers:upsert")
+    @Transactional
+    public ApiResult<Map<String, Object>> customers(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
+                                                     @RequestBody JsonNode body) {
+        return stage(supplied, "customers", body);
+    }
+
     @PostMapping("/purchase-orders:upsert")
     @Transactional
     public ApiResult<Map<String, Object>> purchaseOrders(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
@@ -149,6 +156,7 @@ public class ShopfrontIntegrationController {
         result.put("sale_items", count("shopfront_sale_item", storeKey));
         result.put("payments", count("shopfront_sale_payment", storeKey));
         result.put("suppliers", count("shopfront_supplier", storeKey));
+        result.put("customers", count("shopfront_customer", storeKey));
         result.put("purchase_orders", count("shopfront_purchase_order", storeKey));
         return ApiResult.ok(result);
     }
@@ -171,11 +179,12 @@ public class ShopfrontIntegrationController {
             case "sale_items" -> "shopfront_sale_item";
             case "payments" -> "shopfront_sale_payment";
             case "suppliers" -> "shopfront_supplier";
+            case "customers" -> "shopfront_customer";
             case "purchase_orders" -> "shopfront_purchase_order";
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
         };
         String orderBy = switch (type) {
-            case "products", "suppliers", "purchase_orders" -> "source_id ASC";
+            case "products", "suppliers", "customers", "purchase_orders" -> "source_id ASC";
             case "inventory" -> "source_product_id ASC, outlet_id ASC";
             case "sales" -> "external_id ASC";
             case "sale_items" -> "external_sale_id ASC, line_key ASC";
@@ -344,6 +353,7 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_sale_item (store_key VARCHAR(64) NOT NULL, external_sale_id " + key + " NOT NULL, line_key VARCHAR(64) NOT NULL, source_product_id " + key + ", product_name VARCHAR(255), quantity DECIMAL(18,4), unit_price DECIMAL(18,4), line_total DECIMAL(18,4), cost DECIMAL(18,4), tax DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, external_sale_id, line_key))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_sale_payment (store_key VARCHAR(64) NOT NULL, external_sale_id " + key + " NOT NULL, payment_key VARCHAR(64) NOT NULL, amount DECIMAL(18,4), status VARCHAR(64), subtype VARCHAR(128), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, external_sale_id, payment_key))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, name VARCHAR(255), business_number VARCHAR(128), status VARCHAR(64), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_customer (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, client_id VARCHAR(255), code VARCHAR(128), name VARCHAR(255), email VARCHAR(255), phone VARCHAR(128), mobile VARCHAR(128), deleted BOOLEAN, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, supplier_source_id " + key + ", status VARCHAR(64), order_date VARCHAR(64), total_cost DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
     }
@@ -611,6 +621,19 @@ public class ShopfrontIntegrationController {
                         ? "INSERT INTO shopfront_supplier (store_key,source_id,name,business_number,status,raw_payload) VALUES (?,?,?,?,?,?) ON CONFLICT (store_key,source_id) DO UPDATE SET name=EXCLUDED.name,business_number=EXCLUDED.business_number,status=EXCLUDED.status,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                         : "INSERT INTO shopfront_supplier (store_key,source_id,name,business_number,status,raw_payload) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),business_number=VALUES(business_number),status=VALUES(status),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
                 jdbc.update(sql, store, source, text(item, "name"), text(item, "business_number"), text(item, "status"), objectMapper.writeValueAsString(item.path("raw_payload").isMissingNode() ? item : item.path("raw_payload")));
+            }
+        } else if ("customers".equals(type)) {
+            for (JsonNode item : items) {
+                String source = text(item, "source_id");
+                if (source == null || source.isBlank()) continue;
+                String sql = postgres
+                        ? "INSERT INTO shopfront_customer (store_key,source_id,client_id,code,name,email,phone,mobile,deleted,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,source_id) DO UPDATE SET client_id=EXCLUDED.client_id,code=EXCLUDED.code,name=EXCLUDED.name,email=EXCLUDED.email,phone=EXCLUDED.phone,mobile=EXCLUDED.mobile,deleted=EXCLUDED.deleted,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
+                        : "INSERT INTO shopfront_customer (store_key,source_id,client_id,code,name,email,phone,mobile,deleted,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE client_id=VALUES(client_id),code=VALUES(code),name=VALUES(name),email=VALUES(email),phone=VALUES(phone),mobile=VALUES(mobile),deleted=VALUES(deleted),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
+                jdbc.update(sql, store, source, text(item, "client_id"), text(item, "code"),
+                        text(item, "name"), text(item, "email"), text(item, "phone"), text(item, "mobile"),
+                        item.hasNonNull("deleted") ? item.get("deleted").asBoolean() : null,
+                        objectMapper.writeValueAsString(item.path("raw_payload").isMissingNode()
+                                ? item : item.path("raw_payload")));
             }
         } else if ("purchase_orders".equals(type)) {
             for (JsonNode item : items) {
