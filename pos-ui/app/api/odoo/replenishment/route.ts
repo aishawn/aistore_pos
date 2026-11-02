@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
       target.set(row.product_id[0], (target.get(row.product_id[0]) ?? 0) + Number(row.qty));
     }
     const leadTimes = new Map<number, number>();
-    let leadTimeQuality: "AVAILABLE" | "UNKNOWN" = "AVAILABLE";
+    let leadTimeQuality: "AVAILABLE" | "PARTIAL" | "UNKNOWN" = "AVAILABLE";
     try {
       const templateIds = (products ?? []).map((product) => Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0).filter((id) => id > 0);
       if (templateIds.length) {
@@ -273,11 +273,25 @@ export async function GET(request: NextRequest) {
       leadTimes.clear();
       leadTimeQuality = "UNKNOWN";
     }
-    const hasLeadTime = leadTimes.size > 0;
-    markPhase("suppliers", { leadTimes: leadTimes.size, quality: leadTimeQuality });
     const eligibleProducts = (products ?? []).filter((product) => {
       const productType = String(product.type ?? "");
       return ["product", "consu"].includes(productType) && product.purchase_ok === true;
+    });
+    const productsWithLeadTime = eligibleProducts.filter((product) => {
+      const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+      return templateId > 0 && leadTimes.has(templateId);
+    }).length;
+    const leadTimeCoverage = eligibleProducts.length > 0 ? productsWithLeadTime / eligibleProducts.length : 0;
+    if (leadTimeQuality !== "UNKNOWN") {
+      leadTimeQuality = leadTimeCoverage >= 0.8 ? "AVAILABLE" : leadTimeCoverage > 0 ? "PARTIAL" : "UNKNOWN";
+    }
+    const hasLeadTime = productsWithLeadTime > 0;
+    markPhase("suppliers", {
+      leadTimes: leadTimes.size,
+      quality: leadTimeQuality,
+      eligibleProducts: eligibleProducts.length,
+      productsWithLeadTime,
+      coverage: leadTimeCoverage,
     });
     const excludedProductCount = (products ?? []).length - eligibleProducts.length;
     const dailyByProduct = new Map<number, Map<string, number>>();
@@ -380,6 +394,7 @@ export async function GET(request: NextRequest) {
           selectionStatus: forecastItem?.selectionStatus ?? null,
           timezoneVerified,
         }),
+        ...(leadTimeDays === null ? ["MISSING_LEAD_TIME"] : []),
       ];
       const recommendationBlocked = dataIssues.length > 0 || soldUnits <= 0;
       const suggestedQuantity = recommendationBlocked ? 0 : Math.max(0, Math.ceil(demandPerDay * targetDays - forecastStock));
@@ -529,7 +544,19 @@ export async function GET(request: NextRequest) {
       productEligibility: "STOCKABLE_AND_PURCHASABLE",
       generatedAt: new Date().toISOString(),
       inventoryHistory: await readInventorySnapshotStatus(companyId),
-      dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME" : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      dataQuality: leadTimeQuality === "AVAILABLE" && hasLeadTime
+        ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME"
+        : leadTimeQuality === "PARTIAL"
+          ? "NATIVE_STOCK_SALES_SUPPLIER_LEAD_TIME_PARTIAL"
+          : "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      supplierLeadTime: {
+        quality: leadTimeQuality,
+        eligibleProducts: eligibleProducts.length,
+        productsWithLeadTime,
+        productsMissingLeadTime: Math.max(0, eligibleProducts.length - productsWithLeadTime),
+        coverage: leadTimeCoverage,
+        manualReviewRequired: leadTimeQuality !== "AVAILABLE",
+      },
       forecast: {
         enabled: forecastEnabled(),
         modelSelection: forecastEnabled() ? "per_product_selected" : "rules_v1_weighted_velocity",
