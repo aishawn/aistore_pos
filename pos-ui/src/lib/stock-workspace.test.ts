@@ -25,7 +25,7 @@ test("Stock exposes its current workspaces and Purchasing is visible with any on
   const admin = getSidebarNavigation({ isAdmin: true });
   const group = admin.find((entry) => entry.label === "Stock");
   assert.ok(group && "items" in group);
-  assert.deepEqual(group.items.map((item) => item.label), ["Products", "Purchasing", "Suppliers"]);
+  assert.deepEqual(group.items.map((item) => item.label), ["Products", "Purchasing"]);
   for (const permission of ["stock.purchases", "stock.replenishment", "stock.invoices"]) {
     const navigation = getSidebarNavigation({ hasPermission: (key) => key === permission });
     const stock = navigation.find((entry) => entry.label === "Stock");
