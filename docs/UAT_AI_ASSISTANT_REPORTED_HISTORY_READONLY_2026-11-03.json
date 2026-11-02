@@ -1,0 +1,10 @@
+{
+  "host": "https://demo.orithos.com.au",
+  "scope": "Authenticated read of reported history detail only; no assistant request or business writes",
+  "httpStatus": 200,
+  "code": 0,
+  "matchingSession": true,
+  "messageCount": 0,
+  "userMessageCount": 0,
+  "assistantMessageCount": 0
+}

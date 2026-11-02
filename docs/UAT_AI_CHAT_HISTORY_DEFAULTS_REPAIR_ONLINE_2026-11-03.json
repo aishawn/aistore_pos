@@ -1,0 +1,49 @@
+{
+  "host": "https://demo.orithos.com.au",
+  "scope": "Three read-only assistant probes (greeting, navigation, sales report); AI history/usage metadata only, no business writes",
+  "runtime": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "0d3d0bc327c910bd7a6380fc9da706c9cf1f8fe7",
+      "builtAt": "2026-11-02T15:47:51.134Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "0d3d0bc327c910bd7a6380fc9da706c9cf1f8fe7",
+      "builtAt": "2026-11-02T15:47:51Z"
+    }
+  },
+  "reportedOldConversation": {
+    "idPresent": true,
+    "messageCount": 0
+  },
+  "earlierGreetingProbe": {
+    "httpStatus": 200,
+    "code": 50210,
+    "historyVerification": "not reached; provider/graph failure outside this repair"
+  },
+  "businessWrites": [],
+  "databaseRepair": {
+    "committed": true,
+    "backupSchema": "ai_history_repair_20261103",
+    "threadsPreserved": 59001,
+    "messagesPreserved": 118110,
+    "orphanMessagesPreserved": 44434,
+    "defaultsAndRollbackProbe": "PASS",
+    "standaloneProbe": "Compiled standalone JDBC maintenance helper only; executed in deployed backend container; no application build or backend source changes"
+  },
+  "historyRoundTrip": "PASS for deterministic sales report; fallback probes still fail",
+  "salesReadOnlyProbe": {
+    "httpStatus": 200,
+    "code": 0,
+    "messageCount": 2,
+    "numericIdPresent": true,
+    "sessionMatches": true,
+    "timestampPresent": true
+  },
+  "earlierFallbackProbe": {
+    "questionType": "navigation",
+    "httpStatus": 200,
+    "code": 50210
+  }
+}

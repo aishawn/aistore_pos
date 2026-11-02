@@ -931,11 +931,15 @@ export function SellAiPanel({
           previousQuestion = m.role === "user" ? m.text || "" : undefined;
           return message;
         });
-      setMessages(
-        restored.length
-          ? restored
-          : [{ role: "assistant", text: greetingText(aiEnabled) }],
-      );
+      if (!restored.length) {
+        setMessages([]);
+        setThreadId(null);
+        setHistoryError("This saved conversation has no recoverable messages. Start a new chat or open another conversation.");
+        if (syncUrl) updateChatUrl(id);
+        setHistoryOpen(false);
+        return;
+      }
+      setMessages(restored);
       setThreadId(detail.sessionKey);
       setInput("");
       if (syncUrl) updateChatUrl(id);
@@ -954,7 +958,8 @@ export function SellAiPanel({
 
   const restoreUrlChat = useEffectEvent(() => {
     const id = new URLSearchParams(window.location.search).get("chat");
-    if (id && /^[a-zA-Z0-9_-]{1,200}$/.test(id)) {
+    // Session keys include the backend tenant:user:UUID prefix.
+    if (id && /^[a-zA-Z0-9_:-]{1,200}$/.test(id)) {
       void loadHistoryThread(id, false);
     } else if (id) {
       setHistoryError("Invalid chat link. Start a new chat or select one from History.");
@@ -1494,10 +1499,9 @@ export function SellAiPanel({
           <button type="button" onClick={clearChat} disabled={busy || historyLoading} className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]">
             <MessageCircle size={17} /> New chat
           </button>
-          <button type="button" onClick={() => historyOpen ? setHistoryOpen(false) : void openHistory()} disabled={busy || historyLoading} aria-expanded={historyOpen} aria-controls="assistant-sidebar-history" className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] disabled:opacity-50">
-            <History size={17} /> History <ChevronDown size={15} className={cn("ml-auto transition-transform", historyOpen && "rotate-180")} />
+          <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-current={historyOpen ? "page" : undefined} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 transition focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50", historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)]")}>
+            <History size={17} /> History
           </button>
-          {historyOpen && !compactViewport && <div id="assistant-sidebar-history" className="max-h-[40vh] overflow-y-auto"><HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /></div>}
         </nav>
         <div className="mt-7 overflow-y-auto text-[13px] text-[var(--oh-muted)]">
           <button type="button" onClick={() => setWorkflowsOpen((open) => !open)} aria-expanded={workflowsOpen} aria-controls="assistant-workflows" className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 font-medium hover:bg-[var(--oh-surface-elevated)]">Suggested workflows <ChevronDown size={15} className={cn("transition-transform", workflowsOpen && "rotate-180")} /></button>
@@ -1520,7 +1524,7 @@ export function SellAiPanel({
         {historyError && <p role="alert" className="relative z-10 px-4 py-2 text-sm text-rose-700">{historyError}</p>}
         {historyLoading && <p role="status" className="relative z-10 px-4 py-2 text-sm">Loading chat…</p>}
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
-          {historyOpen && compactViewport ? <HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
+          {historyOpen ? <HistoryView loading={historyLoading || busy} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className={cn("mx-auto flex min-h-full w-full max-w-[1080px] flex-col py-6", messages.length > 1 ? "justify-start" : "justify-center sm:py-12")}>
               {messages.length <= 1 && <div className="mb-5 text-center sm:mb-10"><div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur sm:mb-5 sm:h-20 sm:w-20"><Sparkles size={32} strokeWidth={1.7} /></div><h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-1.5 text-[16px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:mt-2 sm:text-[22px]">How can I help with your store today?</p></div>}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} disabled={busy} className="group min-h-[80px] disabled:cursor-wait disabled:opacity-60 rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-3 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)] sm:p-4"><span className={cn("mb-2 flex h-8 w-8 items-center justify-center rounded-xl sm:mb-2 sm:h-9 sm:w-9", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]")}><Icon size={19} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
