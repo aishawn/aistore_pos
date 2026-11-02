@@ -68,6 +68,7 @@ public final class AssistantFastPathRouter {
                     + "(?:which\\s+)?products?\\s+(?:have\\s+)?the\\s+most\\s+(?:inventory\\s+)?value|"
                     + "how\\s+much\\s+(?:cash|money|capital)\\s+is\\s+tied\\s+up\\s+in\\s+(?:current\\s+)?(?:inventory|stock)|"
                     + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
+                    + "(?:当前|现在)(?:库存|存货)(?:占用|占了|压了)(?:多少|多少钱)(?:现金|资金|钱)?|"
                     + "库存(?:现金|资金)占用(?:最多|最高|排名)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(

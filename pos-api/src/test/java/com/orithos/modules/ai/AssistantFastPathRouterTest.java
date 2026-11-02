@@ -49,6 +49,8 @@ class AssistantFastPathRouterTest {
                 AssistantFastPathRouter.maybeMatch("which inventory items tie up the most cash").intent());
         assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("How much cash is tied up in current stock?").intent());
+        assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("当前库存占了多少钱").intent());
     }
 
     @Test
