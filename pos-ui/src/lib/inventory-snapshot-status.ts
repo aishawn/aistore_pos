@@ -28,11 +28,16 @@ export type InventorySnapshotStatus = {
 };
 
 export function isTrustedSnapshotTimezone(status: InventorySnapshotStatus): boolean {
-  if (status.status !== "FRESH" || typeof status.businessTimezone !== "string") return false;
+  if (!['FRESH', 'REVIEW'].includes(status.status) || status.lastAttemptStatus !== "SUCCESS" || typeof status.businessTimezone !== "string") return false;
+  if (status.lastSuccessAt) {
+    const age = Date.now() - Date.parse(status.lastSuccessAt);
+    if (!Number.isFinite(age) || age < 0 || age > 36 * 3600_000) return false;
+  }
   if (!Number.isSafeInteger(status.expectedProducts) || Number(status.expectedProducts) <= 0
     || status.capturedProducts !== status.expectedProducts || status.productCoverage !== 1) return false;
   if (!Number.isSafeInteger(status.expectedWarehouses) || Number(status.expectedWarehouses) <= 0
     || status.capturedWarehouses !== status.expectedWarehouses) return false;
+  if (Object.entries(status.missingFields ?? {}).some(([field, count]) => field !== "leadTimeDays" && Number(count) > 0)) return false;
   if (!Number.isSafeInteger(status.observedDays) || Number(status.observedDays) < 2
     || status.gapDays !== 0 || status.invalidSnapshots !== 0) return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(status.firstBusinessDate ?? "")

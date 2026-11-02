@@ -8,6 +8,8 @@ import { isTrustedSnapshotTimezone, readInventorySnapshotStatus } from "./invent
 test("snapshot timezone requires a fresh, complete, continuous, valid scoped capture", () => {
   const trusted = {
     status: "FRESH" as const,
+    lastAttemptStatus: "SUCCESS",
+    lastSuccessAt: new Date().toISOString(),
     businessTimezone: "Australia/Adelaide",
     expectedProducts: 10,
     capturedProducts: 10,
@@ -21,7 +23,10 @@ test("snapshot timezone requires a fresh, complete, continuous, valid scoped cap
     latestBusinessDate: "2026-11-01",
   };
   assert.equal(isTrustedSnapshotTimezone(trusted), true);
-  assert.equal(isTrustedSnapshotTimezone({ ...trusted, status: "REVIEW" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, status: "REVIEW", missingFields: { leadTimeDays: 10 } }), true);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, status: "REVIEW", missingFields: { cost: 1 } }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, lastAttemptStatus: "FAILED" }), false);
+  assert.equal(isTrustedSnapshotTimezone({ ...trusted, lastSuccessAt: new Date(Date.now() - 37 * 3600_000).toISOString() }), false);
   assert.equal(isTrustedSnapshotTimezone({ ...trusted, capturedProducts: 9 }), false);
   assert.equal(isTrustedSnapshotTimezone({ ...trusted, capturedWarehouses: 0 }), false);
   assert.equal(isTrustedSnapshotTimezone({ ...trusted, observedDays: 1 }), false);
