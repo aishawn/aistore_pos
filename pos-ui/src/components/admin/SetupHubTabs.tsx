@@ -9,6 +9,7 @@ import {
   STORE_SETTINGS_TABS,
   type SetupHubTab,
 } from "@/lib/setup-hub-nav";
+import { SettingsTopTabs } from "@/components/admin/SettingsTopTabs";
 
 function HubTabs({
   tabs,
@@ -60,7 +61,7 @@ function HubTabs({
 }
 
 export function StoreSettingsTabs({ activeHref }: { activeHref: string }) {
-  return <HubTabs tabs={STORE_SETTINGS_TABS} activeHref={activeHref} label="Store settings" />;
+  return <div className="grid gap-3"><SettingsTopTabs activeHref={activeHref} /><HubTabs tabs={STORE_SETTINGS_TABS} activeHref={activeHref} label="Store settings" /></div>;
 }
 
 export function DevicesSettingsTabs({ activeHref }: { activeHref: string }) {

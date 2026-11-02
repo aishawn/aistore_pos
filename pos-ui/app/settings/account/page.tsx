@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { SettingsTopTabs } from "@/components/admin/SettingsTopTabs";
 
 export default function AccountSecurityPage() {
   const params = useSearchParams();
@@ -60,6 +61,7 @@ export default function AccountSecurityPage() {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Profile &amp; security</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage sign-in security, developer access, and live service connections.</p>
       </header>
+      <SettingsTopTabs activeHref="/settings/account" />
       <nav className="flex gap-1 overflow-x-auto border-b border-[var(--oh-border)]" aria-label="Account sections">
         {tabs.map(([key, label]) => <Link key={key} href={`/settings/account?tab=${key}`} className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium ${tab === key ? "border-[var(--oh-primary)] text-[var(--oh-primary)]" : "border-transparent text-[var(--oh-muted)]"}`}>{label}</Link>)}
       </nav>

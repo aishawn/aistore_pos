@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Download, FileUp, LoaderCircle, Trash2 } from "lucide-react";
 import { SettingsScaffold } from "@/components/admin/SettingsScaffold";
+import { COMPANY_SETTINGS_TABS, settingsTabActive } from "@/lib/company-settings-nav";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fetchOdooRoute } from "@/lib/odoo-api";
@@ -118,7 +119,7 @@ export default function SettingsDataPage() {
   }
 
   return (
-    <SettingsScaffold title="Data" showSubSectionTitle={false} showSearch={false} showSave={false}>
+    <SettingsScaffold title="Data" showSubSectionTitle={false} showSearch={false} showSave={false} tabs={COMPANY_SETTINGS_TABS.map((tab) => ({ ...tab, active: settingsTabActive(tab.label, tab.href, "/settings/data") }))}>
       <div className="grid max-w-3xl gap-6">
         {error && (
           <div role="alert" className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
