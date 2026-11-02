@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
   try {
     await requirePermission(request, "settings.view");
     const scope = await scopedOdoo(request);
-    const rows = await scope.rpc<Company[]>("res.company", "search_read", [[["id", "in", scope.companyIds]]], { fields: ["id", "name", "partner_id", "currency_id", "street", "city", "zip", "phone", "email", "vat", "tz"], limit: 1 });
+    // Odoo stores timezone on users, not res.company. Keep it out of this
+    // company RPC until a tenant-level settings field is available.
+    const rows = await scope.rpc<Company[]>("res.company", "search_read", [[["id", "in", scope.companyIds]]], { fields: ["id", "name", "partner_id", "currency_id", "street", "city", "zip", "phone", "email", "vat"], limit: 1 });
     const company = rows[0];
     if (!company) return NextResponse.json({ message: "No company is linked to this store." }, { status: 404 });
     return NextResponse.json(company, { headers: { "Cache-Control": "no-store" } });
@@ -40,15 +42,14 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json() as Record<string, unknown>;
     const name = typeof body.name === "string" ? body.name.trim().slice(0, 160) : "";
     const vat = typeof body.vat === "string" ? body.vat.trim().slice(0, 32) : "";
-    const tz = typeof body.tz === "string" ? body.tz.trim().slice(0, 64) : "";
     const street = typeof body.street === "string" ? body.street.trim().slice(0, 160) : "";
     const city = typeof body.city === "string" ? body.city.trim().slice(0, 80) : "";
     const zip = typeof body.zip === "string" ? body.zip.trim().slice(0, 16) : "";
     const phone = typeof body.phone === "string" ? body.phone.trim().slice(0, 40) : "";
     const email = typeof body.email === "string" ? body.email.trim().slice(0, 160) : "";
-    if (!name || !tz) return NextResponse.json({ message: "Company name and timezone are required." }, { status: 400 });
+    if (!name) return NextResponse.json({ message: "Company name is required." }, { status: 400 });
     if (body.currency && body.currency !== "AUD") return NextResponse.json({ message: "AUD is the only supported store currency." }, { status: 422 });
-    await scope.rpc<boolean>("res.company", "write", [scope.companyIds, { name, vat: vat || false, tz, street: street || false, city: city || false, zip: zip || false, phone: phone || false, email: email || false }]);
+    await scope.rpc<boolean>("res.company", "write", [scope.companyIds, { name, vat: vat || false, street: street || false, city: city || false, zip: zip || false, phone: phone || false, email: email || false }]);
     return NextResponse.json({ ok: true });
   } catch (error) { return errorResponse(error); }
 }
