@@ -25,7 +25,9 @@ async function main() {
       const blockedWrites = [];
       await context.route('**/api/**', async route => {
         const req = route.request();
-        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method()) && !new URL(req.url()).pathname.startsWith('/api/auth/')) { blockedWrites.push(new URL(req.url()).pathname); return route.abort(); }
+        const pathname = new URL(req.url()).pathname;
+        const readOnlySearch = req.method() === 'POST' && pathname === '/api/odoo/records';
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method()) && !pathname.startsWith('/api/auth/') && !readOnlySearch) { blockedWrites.push(new URL(req.url()).pathname); return route.abort(); }
         return route.continue();
       });
       const page = await context.newPage();
@@ -37,9 +39,16 @@ async function main() {
           await page.goto(base + route, { waitUntil: 'domcontentloaded' });
           const nav = page.getByRole('navigation', { name: 'Settings sections', exact: true });
           await nav.waitFor();
-          if (width < 640) assert.equal(await nav.getByRole('combobox').inputValue(), label === 'Company' ? '/settings/company/general' : label === 'Staff & access' ? '/settings/staff' : label === 'Store' ? '/settings/registers-outlets' : label === 'Data' ? '/settings/data' : '/settings/account');
-          else assert.equal(await nav.locator('[aria-current="page"]').innerText(), label);
+          if (await nav.getByRole('combobox').isVisible()) assert.equal(await nav.getByRole('combobox').inputValue(), label === 'Company' ? '/settings/company/general' : label === 'Staff & access' ? '/settings/staff' : label === 'Store' ? '/settings/registers-outlets' : label === 'Data' ? '/settings/data' : '/settings/account');
+          else {
+            assert.equal(await nav.locator('[aria-current="page"]').innerText(), label);
+            assert.equal(await nav.getByRole('link').evaluateAll(links => links.filter(link => link.getClientRects().length).some(link => { const range = document.createRange(); range.selectNodeContents(link); const text = range.getBoundingClientRect(); const box = link.getBoundingClientRect(); return text.left < box.left || text.right > box.right; })), false, 'Tab text must fit its control');
+          }
           if (route.endsWith('/general')) { await page.getByLabel('Legal company name').waitFor(); assert.equal(await page.getByLabel('Legal company name').inputValue(), company.name); assert.equal(await page.getByLabel('Business timezone').inputValue(), company.timezone); }
+          if (['/settings/registers-outlets','/settings/payment','/settings/tax'].includes(route)) {
+            await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
+            assert.equal(await page.getByRole('alert').count(), 0, `${route} must load real data without an error`);
+          }
           if (route.includes('tab=connection')) await page.getByText(/Connected · \d+ accessible POS registers/).waitFor({ timeout: 30000 });
           if (route.includes('tab=unknown')) await page.getByRole('heading', { name: 'Change password', exact: true }).waitFor();
           for (const theme of ['light', 'dark']) {
