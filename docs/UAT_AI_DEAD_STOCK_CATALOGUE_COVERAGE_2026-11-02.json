@@ -1,0 +1,25 @@
+{
+  "suite": "AI_DEAD_STOCK_COMPLETE_CATALOGUE_ONLINE",
+  "runtimeCommit": "fb047e3cff95e31b1424a5495473f63c2bac4441",
+  "checks": [
+    {
+      "store": "demo",
+      "httpStatus": 200,
+      "loadedProducts": 12989,
+      "totalProducts": 12989,
+      "complete": true,
+      "truncated": false,
+      "writeRequests": []
+    },
+    {
+      "store": "skr",
+      "httpStatus": 200,
+      "loadedProducts": 12994,
+      "totalProducts": 12994,
+      "complete": true,
+      "truncated": false,
+      "writeRequests": []
+    }
+  ],
+  "safety": "Authenticated read-only verification; no Odoo business writes."
+}
