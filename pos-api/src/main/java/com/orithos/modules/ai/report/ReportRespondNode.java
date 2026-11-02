@@ -11,10 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Builds the report answer / snapshot title. Always English so saved reports
- * stay consistent regardless of the user's question language.
- */
+/** Builds report answers while preserving the language of the user's question. */
 @Component
 public class ReportRespondNode implements NodeAction {
 
@@ -27,26 +24,28 @@ public class ReportRespondNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
+        String question = ReportGraphState.string(state, "question");
+        boolean chinese = question != null && question.matches("(?s).*[\\u3400-\\u9fff].*");
         String error = ReportGraphState.string(state, "sql_error");
         if (error != null && !error.isBlank()) {
             auditService.record(state);
-            return Map.of("answer", messageForError(error, intent));
+            return Map.of("answer", messageForError(error, intent, chinese));
         }
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) state.value("report_rows").orElse(List.of());
         Map<String, String> slots = ReportGraphState.slots(state);
         String from = slots.getOrDefault("from", "");
         String to = slots.getOrDefault("to", "");
-        Map<String, Object> result = Map.of("answer", format(intent, rows, from, to, slots));
+        Map<String, Object> result = Map.of("answer", format(intent, rows, from, to, slots, chinese));
         auditService.record(state);
         return result;
     }
 
     private String format(String intent, List<Map<String, Object>> rows, String from, String to,
-                          Map<String, String> slots) {
+                          Map<String, String> slots, boolean chinese) {
         if (rows == null || rows.isEmpty()) {
             return switch (intent == null ? "" : intent) {
-                case "report_stock" -> "No matching stock found. Check the product name or catalogue spelling.";
+                case "report_stock" -> chinese ? "没有找到匹配库存，请检查商品名称或目录拼写。" : "No matching stock found. Check the product name or catalogue spelling.";
                 case "report_dead_stock" -> "No dead-stock items found for the selected period."
                         + " Try asking for dead stock last 60 days if you want a wider window.";
                 case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
@@ -60,8 +59,8 @@ public class ReportRespondNode implements NodeAction {
         return switch (intent == null ? "" : intent) {
             case "report_aov" -> formatAov(rows.get(0), from, to);
             case "report_stock" -> formatStock(rows, slots.get("query"));
-            case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"));
-            case "report_stock_value" -> formatStockValue(rows);
+            case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), chinese);
+            case "report_stock_value" -> formatStockValue(rows, chinese);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
@@ -118,15 +117,19 @@ public class ReportRespondNode implements NodeAction {
         return sb.toString();
     }
 
-    private String formatDead(List<Map<String, Object>> rows, String days) {
+    private String formatDead(List<Map<String, Object>> rows, String days, boolean chinese) {
         String prefix = rows.size() == 50 ? "Top 50 " : rows.size() + " ";
+        if (chinese) {
+            String count = rows.size() == 50 ? "前 50 个" : rows.size() + " 个";
+            return "最近" + days + "天有" + count + "滞销商品（当前库存大于 0，销量为 0）。";
+        }
         return prefix + "dead-stock item(s) in the last " + days
                 + " days (on hand > 0, qty sold = 0).";
     }
 
-    private String formatStockValue(List<Map<String, Object>> rows) {
+    private String formatStockValue(List<Map<String, Object>> rows, boolean chinese) {
         BigDecimal total = BigDecimal.ZERO;
-        StringBuilder sb = new StringBuilder("Top inventory cash usage: ");
+        StringBuilder sb = new StringBuilder(chinese ? "库存资金占用最高的商品：" : "Top inventory cash usage: ");
         int n = Math.min(rows.size(), 8);
         for (int i = 0; i < n; i++) {
             Map<String, Object> row = rows.get(i);
@@ -135,8 +138,13 @@ public class ReportRespondNode implements NodeAction {
             if (i > 0) sb.append("; ");
             sb.append(row.getOrDefault("name", "")).append(" AUD ").append(money(value));
         }
-        sb.append(". Top ").append(n).append(" total AUD ").append(money(total))
-                .append("; products without a recorded cost are excluded.");
+        if (chinese) {
+            sb.append("；前 ").append(n).append(" 个合计 AUD ").append(money(total))
+                    .append("；没有成本记录的商品已排除。");
+        } else {
+            sb.append(". Top ").append(n).append(" total AUD ").append(money(total))
+                    .append("; products without a recorded cost are excluded.");
+        }
         return sb.toString();
     }
 
@@ -152,7 +160,7 @@ public class ReportRespondNode implements NodeAction {
         return range + ": " + rows.size() + " row(s).";
     }
 
-    private String messageForError(String error, String intent) {
+    private String messageForError(String error, String intent, boolean chinese) {
         if (error.startsWith("GUARD:") || error.startsWith("NL2SQL_")
                 || "SQL_GUARD_REJECTED".equals(error)) {
             return "That question cannot be queried (security check failed).";
