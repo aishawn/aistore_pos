@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-11-02T12:57:00.537Z",
-  "sourceCommit": "7ab91e47ac4cd87706ab128aeb0f1a4b806ea170",
+  "generatedAt": "2026-11-02T13:11:32.339Z",
+  "sourceCommit": "d729bc3bfe7885c2b507572507f7c518b8453999",
   "worktreeDirty": true,
-  "deployment": "unverified-after-deploy",
+  "deployment": "da34cc7a7fc26ff15808fdf0be548fdafaaf6ae8",
   "target": "https://demo.orithos.com.au",
   "runtimeIdentity": {
     "httpStatus": 200,
-    "frontendCommit": "ec1f9d30989088206a22bf276e30f7e0967b389c",
-    "frontendBuiltAt": "2026-11-02T12:45:24.424Z",
-    "backendCommit": "ec1f9d30989088206a22bf276e30f7e0967b389c",
-    "backendBuiltAt": "2026-11-02T12:45:24Z",
+    "frontendCommit": "da34cc7a7fc26ff15808fdf0be548fdafaaf6ae8",
+    "frontendBuiltAt": "2026-11-02T13:07:59.489Z",
+    "backendCommit": "da34cc7a7fc26ff15808fdf0be548fdafaaf6ae8",
+    "backendBuiltAt": "2026-11-02T13:07:59Z",
     "matchesSourceCommit": false
   },
   "config": {
@@ -57,7 +57,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "3c7b4773-c1c4-4780-9b08-1ac7c2622b8e",
+        "correlationId": "14f272dd-29bc-4010-8d63-fe63fdca9fae",
         "answer": "Top 50 dead-stock item(s) in the last 30 days (on hand > 0, qty sold = 0).",
         "cards": []
       }
@@ -65,7 +65,7 @@
     {
       "id": "report-dead-stock-zh",
       "question": "连续30天没有销售的商品有哪些？",
-      "status": "FAIL",
+      "status": "PASS",
       "expected": {
         "intent": "report_dead_stock",
         "route": null,
@@ -84,9 +84,9 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "f45638d1-bfb7-4c42-905d-5fafab0ecb6e",
-        "answerLanguageCheck": false,
-        "answer": "Top 50 dead-stock item(s) in the last 30 days (on hand > 0, qty sold = 0).",
+        "correlationId": "e6c0cc22-61e1-4bd0-83a0-95b7e4bd6c11",
+        "answerLanguageCheck": true,
+        "answer": "最近30天有前 50 个滞销商品（当前库存大于 0，销量为 0）。",
         "cards": []
       }
     },
@@ -111,7 +111,7 @@
         "llmFallback": false,
         "writeRequests": [],
         "writeRequestsCheck": true,
-        "correlationId": "f0805dd2-bdf2-4d7e-be82-d80eafc0046b",
+        "correlationId": "af88cdc1-a42c-474a-a743-efb866f95721",
         "answer": "Top inventory cash usage: [141756] WILD TURKEY&CLA 101 375ML AUD 27712.26; [2348] CARLTON DRY CAN 375ML AUD 23339.83; [2969] VB CAN 375ML AUD 22726.15; [4633] MARTELL COG CORDON BLEU  700ML AUD 17446.08; [119852] GRT NTH ORG  CAN 375ML AUD 16143.18; [159060] ASAHI SUPER DRY 5% 10PK CANS 330ML AUD 12053.60; [160519] Modelo Esp Mexican Lager 4.5%  355ml AUD 11495.40; [160491] -196 LEMON P/F 6% 330ML AUD 11396.04. Top 8 total AUD 142312.54; products without a recorded cost are excluded.",
         "cards": []
       }
@@ -120,10 +120,10 @@
   "writeRequests": [
     "none: assistant API only"
   ],
-  "passed": 2,
+  "passed": 3,
   "blocked": 0,
-  "failed": 1,
-  "status": "FAIL",
+  "failed": 0,
+  "status": "BLOCKED",
   "acceptance": {
     "sourceTreeClean": false,
     "runtimeMatchesSourceCommit": false,
