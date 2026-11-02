@@ -106,4 +106,16 @@ public interface AiChatHistoryMapper {
             LIMIT #{limit}
             """)
     List<AiChatMessage> listMessages(@Param("threadId") long threadId, @Param("limit") int limit);
+
+    @Select("""
+            SELECT m.id, m.thread_id AS threadId, m.role, m.text_content AS textContent,
+                   m.intent, m.report_id AS reportId, m.slots_json AS slotsJson, m.created_at AS createdAt
+            FROM ai_chat_message m
+            JOIN ai_chat_thread t ON t.id = m.thread_id
+            WHERE t.session_key = #{sessionKey}
+            ORDER BY m.id ASC
+            LIMIT #{limit}
+            """)
+    List<AiChatMessage> listMessagesBySessionKey(@Param("sessionKey") String sessionKey,
+                                                 @Param("limit") int limit);
 }

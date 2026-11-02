@@ -130,7 +130,7 @@ public class AiAssistantController {
     }
 
     @GetMapping("/threads/{id}")
-    public ApiResult<Map<String, Object>> getThread(@PathVariable long id) {
+    public ApiResult<Map<String, Object>> getThread(@PathVariable String id) {
         TenantContext tenant = tenantContextFactory.fromSecurity();
         return ApiResult.ok(chatHistoryService.getThread(tenant, id));
     }

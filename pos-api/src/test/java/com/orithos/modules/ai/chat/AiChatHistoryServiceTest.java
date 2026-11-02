@@ -139,6 +139,29 @@ class AiChatHistoryServiceTest {
     }
 
     @Test
+    void opensLegacyThreadBySessionKeyWhenNumericIdCannotBeMapped() {
+        AiChatHistoryMapper mapper = mock(AiChatHistoryMapper.class);
+        ObjectProvider<AiConversationMemory> memory = mock(ObjectProvider.class);
+        when(memory.getIfAvailable()).thenReturn(null);
+        AiReportSnapshotService snapshots = mock(AiReportSnapshotService.class);
+        TenantContext tenant = tenant();
+        AiChatThread legacyThread = thread(0L, "legacy-session-key");
+        legacyThread.setId(null);
+        AiChatMessage user = message(1L, "user", "Check today's sales", null, null);
+        when(mapper.findBySessionKey("legacy-session-key")).thenReturn(legacyThread);
+        when(mapper.listMessagesBySessionKey("legacy-session-key", 200)).thenReturn(List.of(user));
+
+        Map<String, Object> detail = service(mapper, memory, snapshots)
+                .getThread(tenant, "legacy-session-key");
+
+        assertEquals("legacy-session-key", detail.get("sessionKey"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> messages = (List<Map<String, Object>>) detail.get("messages");
+        assertEquals("Check today's sales", messages.getFirst().get("text"));
+        verify(mapper).listMessagesBySessionKey("legacy-session-key", 200);
+    }
+
+    @Test
     void persistsSlotsWithAssistantHistoryForLaterRecovery() {
         AiChatHistoryMapper mapper = mock(AiChatHistoryMapper.class);
         ObjectProvider<AiConversationMemory> memory = mock(ObjectProvider.class);

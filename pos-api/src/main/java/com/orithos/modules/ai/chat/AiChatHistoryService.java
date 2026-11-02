@@ -105,7 +105,9 @@ public class AiChatHistoryService {
         List<Map<String, Object>> out = new ArrayList<>();
         for (AiChatThread t : threads) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", t.getId());
+            // Older deployments may deserialize the numeric identity as null;
+            // sessionKey is still unique and is accepted by the detail route.
+            row.put("id", t.getId() != null ? t.getId() : t.getSessionKey());
             row.put("sessionKey", t.getSessionKey());
             row.put("title", t.getTitle() == null || t.getTitle().isBlank() ? "Chat" : t.getTitle());
             row.put("updatedAt", t.getUpdatedAt());
@@ -115,12 +117,23 @@ public class AiChatHistoryService {
         return out;
     }
 
-    public Map<String, Object> getThread(TenantContext tenant, long id) {
-        AiChatThread thread = mapper.findOwned(id, tenant.vendorId(), tenant.userId());
+    public Map<String, Object> getThread(TenantContext tenant, String identifier) {
+        AiChatThread thread;
+        Long numericId = null;
+        try {
+            numericId = Long.valueOf(identifier);
+        } catch (NumberFormatException ignored) {
+            // Session-key identifiers are used for compatibility with older rows.
+        }
+        thread = numericId != null
+                ? mapper.findOwned(numericId, tenant.vendorId(), tenant.userId())
+                : mapper.findBySessionKey(identifier);
         if (thread == null) {
             throw new BusinessException(40410, "Chat thread not found");
         }
-        List<AiChatMessage> messages = mapper.listMessages(thread.getId(), MAX_MESSAGES);
+        List<AiChatMessage> messages = thread.getId() != null
+                ? mapper.listMessages(thread.getId(), MAX_MESSAGES)
+                : mapper.listMessagesBySessionKey(thread.getSessionKey(), MAX_MESSAGES);
         List<Map<String, Object>> msgOut = new ArrayList<>();
         String pendingQuestion = null;
         for (AiChatMessage m : messages) {
@@ -160,6 +173,10 @@ public class AiChatHistoryService {
         body.put("updatedAt", thread.getUpdatedAt());
         body.put("messages", msgOut);
         return body;
+    }
+
+    public Map<String, Object> getThread(TenantContext tenant, long id) {
+        return getThread(tenant, Long.toString(id));
     }
 
     /**
