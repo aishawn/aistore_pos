@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     try {
       const me = await requirePermission(request, "customers.view", "customers.edit", "sell.checkout", "sell.refund");
       const scope = await scopedOdoo(request);
-      const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
+      const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds, true)];
       for (const [key, field] of [["groupId", "category_id"], ["pricelistId", "property_product_pricelist"]] as const) {
         const value = body[key];
         if (value !== undefined) {

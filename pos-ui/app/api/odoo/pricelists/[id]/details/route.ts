@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       order: "min_quantity desc, id asc", limit: 21, offset: ruleOffset,
     });
     const customersAvailable = me.isAdmin === true || me.roleCode === "ADMIN" || me.permissions?.includes("customers.view") === true;
-    const customers = customersAvailable ? await scope.rpc<unknown[]>("res.partner", "search_read", [[["property_product_pricelist", "=", id], ["customer_rank", ">", 0], ...companyDomain(scope.companyIds)]], { fields: ["id", "name"], order: "name asc, id asc", limit: 21, offset: customerOffset }) : [];
+    const customers = customersAvailable ? await scope.rpc<unknown[]>("res.partner", "search_read", [[["property_product_pricelist", "=", id], ["customer_rank", ">", 0], ...companyDomain(scope.companyIds, true)]], { fields: ["id", "name"], order: "name asc, id asc", limit: 21, offset: customerOffset }) : [];
     return NextResponse.json({ rules: rules.slice(0, 20), rulesHasNext: rules.length > 20, customers: customers.slice(0, 20), customersHasNext: customers.length > 20, customersAvailable }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : "Price list details are unavailable" }, { status: error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502 });

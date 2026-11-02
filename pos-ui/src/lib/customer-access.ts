@@ -15,7 +15,7 @@ export async function customerWriteScope(request: NextRequest, values: Record<st
   const scope = await scopedOdoo(request);
   if (id) {
     const records = await scope.rpc<Array<{ id: number }>>("res.partner", "search_read", [[
-      ["id", "=", id], ["customer_rank", ">", 0], ...companyDomain(scope.companyIds),
+      ["id", "=", id], ["customer_rank", ">", 0], ...companyDomain(scope.companyIds, true),
     ]], { fields: ["id"], limit: 1 });
     if (!records.length) throw new OdooScopeError("Customer was not found in this store.", 404);
   }

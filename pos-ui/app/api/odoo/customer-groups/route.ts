@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (categoryIds.length) {
       for (const categoryId of categoryIds) {
         const count = await scope.rpc<number>("res.partner", "search_count", [[
-          ["customer_rank", ">", 0], ["category_id", "in", [categoryId]], ...companyDomain(scope.companyIds),
+          ["customer_rank", ">", 0], ["category_id", "in", [categoryId]], ...companyDomain(scope.companyIds, true),
         ]]);
         counts.set(categoryId, count);
       }
