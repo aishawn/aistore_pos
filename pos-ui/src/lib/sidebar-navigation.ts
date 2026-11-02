@@ -109,22 +109,12 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "settings",
     permission: "settings.view",
     items: [
-      { label: "Data", href: "/settings/data", permission: "settings.data" },
-      // Users / Outlets / Registers tabs live inside this hub — keep the row active there.
       {
-        label: "Company Settings",
+        label: "Settings",
         href: "/settings/company/general",
-        matchHrefs: ["/settings/company", "/settings/outlets", "/settings/registers", "/settings/users"],
+        matchHrefs: ["/settings/company", "/settings/staff", "/settings/users", "/settings/roles", "/settings/outlets", "/settings/registers", "/settings/registers-outlets", "/settings/payment", "/settings/tax", "/settings/data", "/settings/account"],
         permission: "settings.view",
       },
-      { label: "Staff & access", href: "/settings/staff", matchHrefs: ["/settings/users", "/settings/roles"], permission: "settings.view" },
-      {
-        label: "Store",
-        href: "/settings/store",
-        matchHrefs: ["/settings/registers-outlets", "/settings/payment", "/settings/tax"],
-        permission: "settings.store",
-      },
-      { label: "Account", href: "/settings/account" },
       // Ops health for store admins — not a cashier / Q&A quality surface.
       {
         label: "AI Query Health",
