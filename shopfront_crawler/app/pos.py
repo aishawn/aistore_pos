@@ -88,6 +88,9 @@ class OrithosClient:
     async def upsert_suppliers(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/suppliers:upsert", payload)
 
+    async def upsert_customers(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._post("/api/integrations/shopfront/customers:upsert", payload)
+
     async def upsert_purchase_orders(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/purchase-orders:upsert", payload)
 

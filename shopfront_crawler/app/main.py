@@ -2019,6 +2019,36 @@ async def run_customers_job(job_id: int) -> None:
         if not job or not store:
             raise RuntimeError("Store not found for customer sync")
         job.payload = await sync_customers(db, settings, store)
+        if settings.pos_import_enabled:
+            pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
+            try:
+                customer_rows = db.scalars(
+                    select(ShopfrontCustomer)
+                    .where(ShopfrontCustomer.store_key == store.store_key)
+                    .order_by(ShopfrontCustomer.source_id)
+                ).all()
+                for offset in range(0, len(customer_rows), 250):
+                    batch = customer_rows[offset:offset + 250]
+                    response = await pos_client.upsert_customers(jsonable_encoder({
+                        "store_key": store.store_key,
+                        "items": [{
+                            "source_id": item.source_id,
+                            "client_id": item.client_id,
+                            "code": item.code,
+                            "name": item.name,
+                            "email": item.email,
+                            "phone": item.phone,
+                            "mobile": item.mobile,
+                            "deleted": item.deleted,
+                            "raw_payload": item.raw_payload,
+                        } for item in batch],
+                    }))
+                    staged = response.get("data", response)
+                    if staged.get("status") != "STAGED":
+                        raise PosIntegrationError(f"Customer mirror batch was not staged: {staged.get('status', 'unknown')}")
+                job.payload["pos_staged"] = {"customers": len(customer_rows)}
+            finally:
+                await pos_client.close()
         job.status = "completed"
         job.phase = "completed"
         job.finished_at = datetime.now(timezone.utc)
