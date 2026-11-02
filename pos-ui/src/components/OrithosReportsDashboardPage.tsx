@@ -381,6 +381,8 @@ export function OrithosReportsDashboardPage() {
               <div role="group" aria-label="Orithos sales reporting range" className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
                 {OVERVIEW_RANGES.map((range) => (
                   <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
+                    aria-label={range.hours <= 24 ? `${range.label} rolling window` : `${range.label} store-time window`}
+                    title={range.hours <= 24 ? `${range.label} rolling window; Today's sales uses the store business date` : `${range.label} in the store timezone`}
                     onClick={() => { rangeHoursRef.current = range.hours; setRangeHours(range.hours); void load(true, range.hours); }}
                     className={cn("oh-type-meta min-h-9 rounded-md px-2.5 font-medium transition-colors sm:px-3", rangeHours === range.hours ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
                     {range.label}
