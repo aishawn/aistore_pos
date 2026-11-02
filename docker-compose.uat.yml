@@ -30,7 +30,9 @@ services:
       ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       ODOO_STOCKTAKE_WRITE_ENABLED: ${ODOO_STOCKTAKE_WRITE_ENABLED:-false}
-      AI_PURCHASE_DRAFT_ENABLED: ${AI_PURCHASE_DRAFT_ENABLED:-false}
+      # Enable the controlled Demo-only draft workflow in UAT. The API still
+      # requires the explicit host allow-list and never confirms or sends POs.
+      AI_PURCHASE_DRAFT_ENABLED: ${AI_PURCHASE_DRAFT_ENABLED:-true}
       AI_PURCHASE_DRAFT_ALLOWED_HOSTS: ${AI_PURCHASE_DRAFT_ALLOWED_HOSTS:-demo.orithos.com.au}
   r2-sync:
     profiles: ["archive-disabled-for-uat"]
