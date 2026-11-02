@@ -135,7 +135,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
-  if (!isPurchaseDraftEnabled(request.nextUrl.hostname)) {
+  // Behind Dokploy/Traefik, nextUrl may reflect the internal upstream host.
+  // Evaluate the externally routed host first so the Demo-only allow-list is
+  // enforced against the tenant the user actually reached.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim();
+  const requestHost = forwardedHost || request.headers.get("host") || request.nextUrl.hostname;
+  if (!isPurchaseDraftEnabled(requestHost)) {
     return NextResponse.json({ code: "PURCHASE_DRAFT_DISABLED", message: "Draft RFQ creation is disabled in this environment. Review the replenishment preview and create the RFQ in Orithos manually when approved." }, { status: 403 });
   }
   try { await requirePermission(request, "stock.replenishment"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
