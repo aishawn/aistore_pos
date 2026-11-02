@@ -36,7 +36,7 @@ const companyBehaviors = [
     status: "Assigned by role",
     detail: "There is no global default that grants reporting access to every outlet. Manage each staff account and its role directly.",
     icon: UsersRound,
-    action: { label: "Manage users and roles", href: "/settings/users" },
+    action: { label: "Manage users and roles", href: "/settings/staff" },
   },
   {
     title: "Debug logging level",

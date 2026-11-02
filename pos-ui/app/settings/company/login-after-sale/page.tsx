@@ -24,7 +24,7 @@ const signInStatuses = [
     title: "Automatic logout",
     detail: "The displayed logout intervals were examples. No post-sale or idle timeout is configured by this page.",
     icon: Clock3,
-    link: { label: "Manage staff accounts", href: "/settings/users" },
+    link: { label: "Manage staff accounts", href: "/settings/staff" },
   },
 ];
 

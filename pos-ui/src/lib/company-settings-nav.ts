@@ -8,15 +8,7 @@ export interface SettingsNavItem {
 /** Company-scoped sub-sections (Company tab). */
 export const COMPANY_SETTINGS_NAV: SettingsNavItem[] = [
   { label: "General", href: "/settings/company/general" },
-  { label: "General Display", href: "/settings/company/general-display" },
-  { label: "Login After Sale", href: "/settings/company/login-after-sale" },
-  { label: "Sell Screen / Register", href: "/settings/company/sell-screen" },
-  { label: "Outlets", href: "/settings/company/outlets" },
-  { label: "Date & Time", href: "/settings/company/date-time" },
-  { label: "Currency", href: "/settings/company/currency" },
-  { label: "Search", href: "/settings/company/search" },
-  { label: "Integrations", href: "/settings/company/integrations" },
-  { label: "Miscellaneous", href: "/settings/company/miscellaneous" },
+  { label: "Locations & currency", href: "/settings/company/date-time" },
 ];
 
 /** Outlet-scoped sub-sections (Outlets tab). */
@@ -37,23 +29,27 @@ export const REGISTER_SETTINGS_NAV: SettingsNavItem[] = [
 
 export const COMPANY_SETTINGS_TABS = [
   { label: "Company", href: "/settings/company/general" },
-  { label: "Outlets", href: "/settings/outlets/integrations" },
-  { label: "Registers", href: "/settings/registers/general" },
-  { label: "Users", href: "/settings/users" },
+  { label: "Staff & access", href: "/settings/staff" },
+  { label: "Store", href: "/settings/registers-outlets" },
+  { label: "Data", href: "/settings/data" },
+  { label: "Account", href: "/settings/account" },
 ] as const;
 
 export function settingsTabActive(label: string, href: string, activeHref: string) {
   if (label === "Company") {
     return activeHref.startsWith("/settings/company");
   }
-  if (label === "Outlets") {
-    return activeHref.startsWith("/settings/outlets");
+  if (label === "Staff & access") {
+    return activeHref.startsWith("/settings/staff") || activeHref.startsWith("/settings/users") || activeHref.startsWith("/settings/roles");
   }
-  if (label === "Registers") {
-    return activeHref.startsWith("/settings/registers");
+  if (label === "Store") {
+    return activeHref.startsWith("/settings/registers") || activeHref.startsWith("/settings/payment") || activeHref.startsWith("/settings/tax") || activeHref.startsWith("/settings/outlets");
   }
-  if (label === "Users") {
-    return activeHref.startsWith("/settings/users");
+  if (label === "Data") {
+    return activeHref.startsWith("/settings/data");
+  }
+  if (label === "Account") {
+    return activeHref.startsWith("/settings/account");
   }
   return activeHref === href || activeHref.startsWith(`${href}/`);
 }

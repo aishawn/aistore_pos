@@ -109,7 +109,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "settings",
     permission: "settings.view",
     items: [
-      { label: "Integrations", href: "/settings/integrations", permission: "settings.integrations" },
       { label: "Data", href: "/settings/data", permission: "settings.data" },
       // Users / Outlets / Registers tabs live inside this hub — keep the row active there.
       {
@@ -118,17 +117,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
         matchHrefs: ["/settings/company", "/settings/outlets", "/settings/registers", "/settings/users"],
         permission: "settings.view",
       },
-      { label: "Permissions", href: "/settings/roles", permission: "settings.permissions" },
+      { label: "Staff & access", href: "/settings/staff", matchHrefs: ["/settings/users", "/settings/roles"], permission: "settings.view" },
       {
         label: "Store",
         href: "/settings/store",
         matchHrefs: ["/settings/registers-outlets", "/settings/payment", "/settings/tax"],
-        permission: "settings.store",
-      },
-      {
-        label: "Devices",
-        href: "/settings/devices",
-        matchHrefs: ["/settings/receipts", "/settings/hardware"],
         permission: "settings.store",
       },
       { label: "Account", href: "/settings/account" },
