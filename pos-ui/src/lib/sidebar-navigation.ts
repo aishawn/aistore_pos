@@ -116,7 +116,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       },
       // Ops health for store admins — not a cashier / Q&A quality surface.
       {
-        label: "AI Query Health",
+        label: "AI Health",
         href: "/reports/ai/metrics",
         adminOnly: true,
         hint: "Admin-only volume, latency, and guard rates",

@@ -76,6 +76,9 @@ export function ReportsNavigation() {
     return () => window.cancelAnimationFrame(frame);
   }, [active.href, hash]);
 
+  // This admin health page belongs to Setup, rather than business reports.
+  if (pathname === "/reports/ai/metrics") return null;
+
   return (
     <div className="shrink-0 border-b border-[var(--oh-border)] bg-white">
       <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5 [scrollbar-width:thin]">

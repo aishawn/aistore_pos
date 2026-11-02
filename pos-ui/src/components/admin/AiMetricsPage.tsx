@@ -52,7 +52,7 @@ export function AiMetricsPage() {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
         <div className="max-w-md rounded-lg border border-[var(--brand-warning)] bg-[var(--brand-warning-tint)] px-4 py-3 text-sm text-[var(--brand-warning)]">
-          Only store administrators can view AI query health (volume, latency, and guard rates). This is an ops dashboard — not a Q&amp;A quality review.
+          Only store administrators can view AI health (volume, latency, and guard rates). This is an ops dashboard — not a Q&amp;A quality review.
         </div>
       </main>
     );
@@ -63,7 +63,7 @@ export function AiMetricsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Setup · Store admin</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI Query Health</h1>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI Health</h1>
           <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">
             Ops view for this store: request volume, AI guard pass/reject rate, latency, and estimated tokens.
             Not a Q&amp;A quality scorecard — questions, answers, and generated SQL are never shown.

@@ -1,5 +1,10 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 AI Health navigation simplification
+
+- Renamed Setup's AI Query Health entry and the metrics page heading to AI Health. The existing `/reports/ai/metrics` URL, admin-only permission checks and metrics data remain unchanged.
+- Hid the unrelated business-report tab strip on this Setup health page only; retained time-window selection and Refresh. Other report pages keep their existing navigation. Updated the existing online UAT heading locator; no metrics API/backend changes or live business writes.
+
 ## 2026-11-02 Products / Purchases / Sell menu organization
 
 - Follow-up: moved Help to the end of the Sales dropdown and removed its standalone toolbar icon. It invokes the existing register help dialog; help content and checkout behavior remain unchanged.
