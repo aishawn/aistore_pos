@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-02T08:12:51.951Z",
-  "runtimeCommit": "666b93af91ee6d0a796e5d3a3c8694b162d58be5",
+  "generatedAt": "2026-11-02T08:50:43.071Z",
+  "runtimeCommit": "773d572263293fdd2530bf6fce68547f82abc495",
   "scope": "authenticated replenishment exception read; no business writes",
   "stores": {
     "demo.orithos.com.au": {
