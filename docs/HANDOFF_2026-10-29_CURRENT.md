@@ -1,5 +1,20 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Inventory snapshot target correction
+
+- Corrected a Dokploy target parsing false alarm: target values are single-quoted JSON. The configured Demo company was stale ID 127/UTC; live tenant binding confirms Demo is Odoo company 137 and SKR is company 5. Updated only `INVENTORY_SNAPSHOT_TARGETS` to company 5 and 137, both `Australia/Adelaide`; retained all other environment entries.
+- Normal Dokploy deployment `7cwasuIouJGbG-K9kv-lp` completed at 2026-11-02 02:28:41 UTC on runtime SHA `cfe60ae0ba0d1d91874c56ee67b5a562c193498f`, without Fresh Volumes. Worker logs reported company 137 `SUCCESS`, with zero error lines.
+- Post-deploy read-only replenishment checks passed on Demo and SKR (HTTP 200, full catalogue, seven-day request, no non-GET Odoo calls or business writes). Demo now has a real native snapshot for 2026-11-02 with 100% coverage across 12,987 products and two warehouses. This is day 1 only; the next natural Adelaide business day is still required for continuity. SKR retains two observed days and zero gaps.
+- Both inventory histories remain `REVIEW` due to missing supplier lead times. Odoo read-only audit found no confirmed/done POs in either company and no purchase-linked completed receipts (SKR has 398 completed incoming receipts but no PO links; Demo has none). Do not derive realized supplier lead time or promote purchase recommendations from these records. Evidence: `docs/UAT_AI_INVENTORY_SNAPSHOT_TARGET_REPAIR_2026-11-02.json`.
+
+## 2026-11-02 Segmented 365-day forecast walk-forward
+
+- Added `scripts/ai_forecast_segmented_eval.py`. It uses the existing forecast engine, builds segments only from each origin's training prefix, selects a per-segment candidate on earlier validation folds, and scores later holdout folds for 7/14/28-day horizons. It reports WAPE, MASE, bias ratio, P80/P90 coverage, prediction coverage, low-confidence rate, and quantile safety violations.
+- On the 500-product, 365-day SKR sales snapshot (2025-10-31 to 2026-10-30), intermittent demand selected `moving_average_7_v1` and improved relative WAPE by 5.2%, 5.9%, and 7.1% against `two_stage_occurrence_v1` for 7/14/28 days. Absolute WAPE remains 148%-151%, so this relative improvement does not make forecasts purchase-ready. Sparse long-tail TSB does not improve the baseline. Stable-high has only four products; first-sale recency is a proxy and has too little holdout coverage.
+- Prediction coverage was 100% for scored holdout windows and numerical quantile safety violations were zero. P80/P90 coverage was materially below nominal levels. This is sales-only research: no stockout labels/native historical inventory, costs, lead times, fill rate, expiry exposure, or realized purchasing costs. Quality remains FAIL/RESEARCH ONLY; no model switch or purchase automation. `writeRequests=[]`.
+- The reported low-confidence rate is the forecast service's existing confidence label (in this explicit-model experiment, mainly history length/censoring); it is not a calibrated probability of forecast accuracy. Quantile coverage is the stronger uncertainty evidence and is below target.
+- Reproduction: `python scripts/ai_forecast_segmented_eval.py --snapshot data/ai-eval/odoo-sales-snapshot-365d.json --output data/ai-eval/segmented-walk-forward-365d-500.json`; aggregate evidence: `docs/UAT_AI_FORECAST_SEGMENTED_WALK_FORWARD_2026-11-02.json`.
+
 ## 2026-11-02 Suppliers sticky header alignment
 
 - `OdooSupplierDirectoryPage.tsx`: moved scroll-container top padding to the title header's margin, so the desktop sticky table header meets the shell navigation without a strip of scrolling rows above it. Added explicit header stacking and a bottom separator; mobile cards retain their layout.

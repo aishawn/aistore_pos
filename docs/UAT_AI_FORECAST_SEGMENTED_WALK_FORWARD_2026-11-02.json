@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-11-02T02:38:38Z",
+  "scope": "offline sales-only segmented walk-forward research; no online or business writes",
+  "sourceSnapshot": "data/ai-eval/odoo-sales-snapshot-365d.json",
+  "sourceSnapshotSha256": "35b27413db20decfa88e59c5fbe0546f826f132869e36d4a9adc96b9e0bba61d",
+  "sourceCoverage": {
+    "companyId": 5,
+    "dateRange": ["2025-10-31", "2026-10-30"],
+    "historyDays": 365,
+    "products": 500,
+    "orders": 58150,
+    "orderLines": 64750,
+    "productsWithCost": 497,
+    "productsWithPrice": 500
+  },
+  "evaluation": {
+    "mode": "expanding_window_segmented_walk_forward",
+    "modelSelection": "minimum validation weighted WAPE within training-prefix demand segment; later folds held out",
+    "segmentMinimumProducts": 20,
+    "holdoutFoldFraction": 0.3,
+    "confidenceMetricDefinition": "Forecast service confidence label. In this explicit-candidate experiment it mainly reflects history length/censoring, not calibrated probability of forecast accuracy.",
+    "horizons": [
+      {
+        "days": 7,
+        "folds": 35,
+        "validationFolds": 24,
+        "holdoutFolds": 11,
+        "segments": {
+          "INTERMITTENT": {
+            "validationProducts": 355,
+            "holdoutWindows": 3498,
+            "champion": "moving_average_7_v1",
+            "holdoutWape": 1.47935,
+            "mase": 0.87654,
+            "baselineWape": 1.55977,
+            "relativeImprovement": 0.05156,
+            "biasRatio": 0.00464,
+            "p80Coverage": 0.83897,
+            "p90Coverage": 0.87732,
+            "predictionCoverage": 1,
+            "lowConfidenceRate": 0,
+            "safetyViolations": 0
+          },
+          "REGULAR": {
+            "validationProducts": 78,
+            "holdoutWindows": 512,
+            "champion": "moving_average_7_v1",
+            "holdoutWape": 1.05398,
+            "mase": 0.79229,
+            "baselineWape": 1.10440,
+            "relativeImprovement": 0.04566,
+            "biasRatio": 0.01609,
+            "p80Coverage": 0.80692,
+            "p90Coverage": 0.87444,
+            "predictionCoverage": 1,
+            "lowConfidenceRate": 0,
+            "safetyViolations": 0
+          },
+          "SPARSE_LONG_TAIL": {
+            "validationProducts": 158,
+            "holdoutWindows": 1059,
+            "champion": "tsb_v1",
+            "holdoutWape": 1.75074,
+            "mase": 1.13124,
+            "baselineWape": 1.70811,
+            "relativeImprovement": -0.02496,
+            "biasRatio": 0.01327,
+            "p80Coverage": 0.91272,
+            "p90Coverage": 0.92162,
+            "predictionCoverage": 1,
+            "lowConfidenceRate": 0,
+            "safetyViolations": 0
+          },
+          "WEEKLY_PATTERN_PROXY": {
+            "validationProducts": 66,
+            "holdoutWindows": 387,
+            "champion": "croston_sba_v1",
+            "holdoutWape": 1.09304,
+            "mase": 0.80895,
+            "baselineWape": 1.11090,
+            "relativeImprovement": 0.01607,
+            "biasRatio": 0.01721,
+            "p80Coverage": 0.83758,
+            "p90Coverage": 0.89295,
+            "predictionCoverage": 1,
+            "lowConfidenceRate": 0,
+            "safetyViolations": 0
+          },
+          "STABLE_HIGH": { "validationProducts": 4, "holdoutWindows": 44, "status": "INSUFFICIENT_SEGMENT_SIZE" },
+          "RECENT_FIRST_SALE_PROXY": { "validationProducts": 17, "holdoutWindows": 0, "status": "INSUFFICIENT_HOLDOUT" }
+        }
+      },
+      {
+        "days": 14,
+        "folds": 17,
+        "validationFolds": 11,
+        "holdoutFolds": 6,
+        "segments": {
+          "INTERMITTENT": { "validationProducts": 348, "holdoutWindows": 1887, "champion": "moving_average_7_v1", "holdoutWape": 1.48814, "mase": 0.86124, "baselineWape": 1.58221, "relativeImprovement": 0.05946, "biasRatio": -0.00016, "p80Coverage": 0.83928, "p90Coverage": 0.87830, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "REGULAR": { "validationProducts": 75, "holdoutWindows": 277, "champion": "moving_average_7_v1", "holdoutWape": 1.06252, "mase": 0.80009, "baselineWape": 1.09754, "relativeImprovement": 0.03191, "biasRatio": 0, "p80Coverage": 0.80480, "p90Coverage": 0.86849, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "SPARSE_LONG_TAIL": { "validationProducts": 151, "holdoutWindows": 595, "champion": "tsb_v1", "holdoutWape": 1.68566, "mase": 1.12442, "baselineWape": 1.68044, "relativeImprovement": -0.00311, "biasRatio": -0.04907, "p80Coverage": 0.90492, "p90Coverage": 0.91621, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "WEEKLY_PATTERN_PROXY": { "validationProducts": 66, "holdoutWindows": 216, "champion": "croston_sba_v1", "holdoutWape": 1.11497, "mase": 0.79054, "baselineWape": 1.13482, "relativeImprovement": 0.01749, "biasRatio": 0.05888, "p80Coverage": 0.84358, "p90Coverage": 0.88955, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "STABLE_HIGH": { "validationProducts": 4, "holdoutWindows": 24, "status": "INSUFFICIENT_SEGMENT_SIZE" },
+          "RECENT_FIRST_SALE_PROXY": { "validationProducts": 17, "holdoutWindows": 1, "status": "INSUFFICIENT_HOLDOUT" }
+        }
+      },
+      {
+        "days": 28,
+        "folds": 8,
+        "validationFolds": 5,
+        "holdoutFolds": 3,
+        "segments": {
+          "INTERMITTENT": { "validationProducts": 336, "holdoutWindows": 939, "champion": "moving_average_7_v1", "holdoutWape": 1.51098, "mase": 0.83862, "baselineWape": 1.62682, "relativeImprovement": 0.07120, "biasRatio": 0.02206, "p80Coverage": 0.84341, "p90Coverage": 0.87996, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "REGULAR": { "validationProducts": 69, "holdoutWindows": 135, "champion": "croston_sba_v1", "holdoutWape": 1.10460, "mase": 0.80721, "baselineWape": 1.11372, "relativeImprovement": 0.00819, "biasRatio": 0.08748, "p80Coverage": 0.83228, "p90Coverage": 0.88915, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "SPARSE_LONG_TAIL": { "validationProducts": 149, "holdoutWindows": 299, "champion": "tsb_v1", "holdoutWape": 1.80594, "mase": 1.03478, "baselineWape": 1.81082, "relativeImprovement": 0.00269, "biasRatio": 0.06564, "p80Coverage": 0.90982, "p90Coverage": 0.91925, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "WEEKLY_PATTERN_PROXY": { "validationProducts": 63, "holdoutWindows": 113, "champion": "croston_sba_v1", "holdoutWape": 1.18535, "mase": 0.76661, "baselineWape": 1.21073, "relativeImprovement": 0.02096, "biasRatio": 0.16427, "p80Coverage": 0.84292, "p90Coverage": 0.89033, "predictionCoverage": 1, "lowConfidenceRate": 0, "safetyViolations": 0 },
+          "STABLE_HIGH": { "validationProducts": 4, "holdoutWindows": 12, "status": "INSUFFICIENT_SEGMENT_SIZE" },
+          "RECENT_FIRST_SALE_PROXY": { "validationProducts": 17, "holdoutWindows": 2, "status": "INSUFFICIENT_HOLDOUT" }
+        }
+      }
+    ]
+  },
+  "qualityConclusion": {
+    "allHorizonAccuracyGatesPass": false,
+    "intermittentRelativeImprovementPassesExploratory5PercentGate": [true, true, true],
+    "intermittentAbsoluteWapeAcceptable": false,
+    "keyFinding": "Intermittent demand improves over two_stage_occurrence_v1 by 5.2%-7.1%, but absolute WAPE remains 148%-151%. Sparse long-tail does not improve. Stable-high and recent-first-sale groups lack sufficient samples/holdout.",
+    "modelSwitchAllowed": false,
+    "purchaseAutomationAllowed": false
+  },
+  "limitations": [
+    "No historical stockout labels or native historical inventory are present; sales may be censored and lost demand cannot be measured.",
+    "New-item segment is only a first-sale recency proxy because product creation dates are absent.",
+    "Weekly-pattern segment is not proof of annual seasonality.",
+    "P80/P90 empirical coverage is below nominal coverage for most scored segments.",
+    "Business costs, fill rate, stockout rate, expiry risk, supplier lead time, and realized purchase savings are unavailable.",
+    "All 500 rows come from one store and the top-selling product selection, so results are not full-catalogue generalization evidence."
+  ],
+  "writeRequests": []
+}

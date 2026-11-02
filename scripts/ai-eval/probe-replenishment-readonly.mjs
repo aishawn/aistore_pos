@@ -116,6 +116,7 @@ try {
       forecastedProductCount: selectedForecastCount,
       modelCounts: forecastModels,
       forecastQualityCounts: forecastQuality,
+      inventoryHistory: body.inventoryHistory ?? null,
       reviewRequiredCount: body.reviewRequiredCount ?? null,
       sampleForecastProducts: products.filter((item) => item.p50 !== null && item.p50 !== undefined).slice(0, 5).map((item) => ({
         productId: item.id,

@@ -28,6 +28,10 @@ class AssistantFastPathRouterTest {
         assertEquals("report_dead_stock", chinese.intent());
         assertEquals("90", chinese.slots().get("days"));
 
+        AssistantFastPathRouter.Match chineseList = AssistantFastPathRouter.maybeMatch("连续90天没有销售的商品有哪些？");
+        assertEquals("report_dead_stock", chineseList.intent());
+        assertEquals("90", chineseList.slots().get("days"));
+
         AssistantFastPathRouter.Match defaultRange = AssistantFastPathRouter.maybeMatch("slow moving stock");
         assertEquals("report_dead_stock", defaultRange.intent());
         assertEquals("30", defaultRange.slots().get("days"));
