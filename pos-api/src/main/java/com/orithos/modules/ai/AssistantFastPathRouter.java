@@ -50,6 +50,17 @@ public final class AssistantFastPathRouter {
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:(?:last|past|previous)\\s+\\d+\\s+days?|this\\s+week)|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量)|这周(?:卖了多少件?|销量(?:是多少)?)|本周(?:卖了多少件?|销量(?:是多少)?))$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern DEAD_STOCK_RANGE = Pattern.compile(
+            "^(?:(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock)\\s+(?:for\\s+)?(?:last|past|previous)\\s+(\\d+)\\s+days?|"
+                    + "(?:which\\s+)?products?\\s+(?:have\\s+had\\s+)?no\\s+sales\\s+(?:for\\s+)?(?:last\\s+)?(\\d+)\\s+days?|"
+                    + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)的?(?:商品|产品)?|"
+                    + "(?:连续|近|最近|过去)\\s*(\\d+)\\s*天(?:没有销售|无销售|没销售|未销售)(?:的)?(?:商品|产品))$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern DEAD_STOCK_DEFAULT = Pattern.compile(
+            "^(?:dead\\s+stock|dead\\s+inventory|slow\\s+moving\\s+stock|"
+                    + "which\\s+products?\\s+have\\s+had\\s+no\\s+sales|"
+                    + "哪些商品连续没有销售|哪些商品没有销售|滞销商品|死库存|哪些是滞销品)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
             Pattern.CASE_INSENSITIVE);
@@ -275,6 +286,30 @@ public final class AssistantFastPathRouter {
                     "report_qty",
                     "Quantity report",
                     Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        var deadStockRange = DEAD_STOCK_RANGE.matcher(normalized);
+        if (deadStockRange.matches()) {
+            String days = firstNonNull(
+                    deadStockRange.group(1), deadStockRange.group(2),
+                    deadStockRange.group(3), deadStockRange.group(4));
+            return new Match(
+                    "report_dead_stock",
+                    "Dead stock report",
+                    Map.of("days", days),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (DEAD_STOCK_DEFAULT.matcher(normalized).matches()) {
+            return new Match(
+                    "report_dead_stock",
+                    "Dead stock report",
+                    Map.of("days", "30"),
                     "",
                     "",
                     "",

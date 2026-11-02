@@ -19,6 +19,21 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesDeadStockQuestionsWithAnExplicitOrDefaultLookback() {
+        AssistantFastPathRouter.Match range = AssistantFastPathRouter.maybeMatch("dead stock last 60 days");
+        assertEquals("report_dead_stock", range.intent());
+        assertEquals("60", range.slots().get("days"));
+
+        AssistantFastPathRouter.Match chinese = AssistantFastPathRouter.maybeMatch("连续90天没有销售的商品");
+        assertEquals("report_dead_stock", chinese.intent());
+        assertEquals("90", chinese.slots().get("days"));
+
+        AssistantFastPathRouter.Match defaultRange = AssistantFastPathRouter.maybeMatch("slow moving stock");
+        assertEquals("report_dead_stock", defaultRange.intent());
+        assertEquals("30", defaultRange.slots().get("days"));
+    }
+
+    @Test
     void routesCategoryQuantityQuestionsWithTheirCategorySlot() {
         assertEquals("red wine",
                 AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").slots().get("category"));
