@@ -117,6 +117,10 @@ public class OdooReplenishmentClient {
                             List.of("company_id", "=", companyId)),
                     List.of("id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id", "seller_ids"),
                     context, MAX_PRODUCTS, "name asc, id asc");
+            List<Map<String, Object>> supplierInfos = searchRead(sessionId, "product.supplierinfo",
+                    List.of(List.of("company_id", "in", List.of(false, companyId))),
+                    List.of("product_id", "delay"), context, MAX_PRODUCTS * 2, "id asc");
+            Map<Long, Double> leadTimes = leadTimeMap(supplierInfos);
 
             Map<Long, Double> recentSold = soldMap(recentSales);
             Map<Long, Double> previousSold = soldMap(previousSales);
@@ -137,6 +141,10 @@ public class OdooReplenishmentClient {
                 }
                 if (!hasRelation(product.get("seller_ids"))) {
                     dataGaps.add(productLabel(product) + ": supplier unavailable");
+                    continue;
+                }
+                if (!leadTimes.containsKey(id)) {
+                    dataGaps.add(productLabel(product) + ": supplier lead time unavailable");
                     continue;
                 }
                 double onHand = onHandValue == null ? virtualValue : onHandValue;
@@ -228,6 +236,21 @@ public class OdooReplenishmentClient {
 
     private static List<String> cappedGaps(List<String> gaps) {
         return gaps == null ? List.of() : gaps.stream().distinct().limit(20).toList();
+    }
+
+    static Map<Long, Double> leadTimeMap(List<Map<String, Object>> rows) {
+        Map<Long, Double> result = new HashMap<>();
+        if (rows == null) {
+            return result;
+        }
+        for (Map<String, Object> row : rows) {
+            Long productId = relationId(row.get("product_id"));
+            Double delay = optionalDecimal(row.get("delay"));
+            if (productId != null && productId > 0 && delay != null && delay >= 0) {
+                result.merge(productId, delay, Math::min);
+            }
+        }
+        return result;
     }
 
     private static String productLabel(Map<String, Object> product) {

@@ -128,6 +128,20 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
+    void leadTimeMapAcceptsOnlyNonNegativeProductDelays() {
+        List<Map<String, Object>> rows = List.of(
+                Map.of("product_id", List.of(10, "Lager"), "delay", 7),
+                Map.of("product_id", List.of(10, "Lager"), "delay", 5),
+                Map.of("product_id", List.of(11, "Shiraz"), "delay", -1),
+                Map.of("product_id", List.of(12, "VB"), "delay", ""));
+
+        Map<Long, Double> result = OdooReplenishmentClient.leadTimeMap(rows);
+
+        assertTrue(result.size() == 1);
+        assertTrue(result.get(10L) == 5d);
+    }
+
+    @Test
     void incompleteBriefShowsDataDateAndManualReviewBoundary() {
         OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
