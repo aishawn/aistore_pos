@@ -1,0 +1,257 @@
+{
+  "generatedAt": "2026-11-02T01:25:10.014330+00:00",
+  "source": {
+    "snapshot": "data/ai-eval/odoo-sales-snapshot-365d.json",
+    "snapshotSha256": "35b27413db20decfa88e59c5fbe0546f826f132869e36d4a9adc96b9e0bba61d",
+    "forecastReport": "docs/UAT_AI_FORECAST_ODOO_365D_500.json",
+    "forecastReportSha256": "d7c3c64016153338e6ba1fd1b61998823d58a538fb31ed2d9c6c343dae589198"
+  },
+  "dataCoverage": {
+    "snapshotVersion": "odoo-readonly-sales-365d-2026-10-30",
+    "companyId": 5,
+    "startDate": "2025-10-31",
+    "endDate": "2026-10-30",
+    "historyDays": 365,
+    "productsReturned": 500,
+    "ordersInRange": 58150,
+    "orderLinesRead": 64750,
+    "writeRequests": []
+  },
+  "qualityChecks": {
+    "continuousDailyDates": true,
+    "productsWithCost": 497,
+    "productsWithPrice": 500,
+    "productsWithDemand": 500
+  },
+  "backtest": {
+    "status": "PASS",
+    "qualityGate": "FAIL",
+    "qualityGateRule": "mean WAPE <= 0.30; review censored-demand series separately",
+    "seriesCount": 500,
+    "horizonDays": 7,
+    "meanWape": 1.8007522924225974,
+    "selectedModelCounts": {
+      "seasonal_naive_v1": 48,
+      "exponential_smoothing_v1": 141,
+      "croston_sba_v1": 103,
+      "tsb_v1": 88,
+      "moving_average_7_v1": 74,
+      "two_stage_occurrence_v1": 46
+    },
+    "inventoryHistory": {
+      "status": "NOT_PROVIDED",
+      "path": null,
+      "sourceSnapshotSha": null,
+      "dataQuality": null,
+      "backtestReadiness": null,
+      "nativeSnapshotAcceptanceReadiness": null,
+      "researchOnly": false,
+      "inventoryConsistencyStatus": null,
+      "qualityWarnings": [],
+      "baselineTimestampQuality": null,
+      "movementCount": null,
+      "excludedProductCount": 0,
+      "researchBacktestReadiness": null,
+      "evaluationDateRange": [],
+      "salesObservationsBeforeAlignment": 182500,
+      "salesObservationsAfterAlignment": 182500
+    },
+    "businessMetrics": {
+      "status": "COST_CONFIG_REQUIRED",
+      "stockoutLoss": null,
+      "holdingCost": null,
+      "expiryRisk": null,
+      "stockoutUnitProxy": 108294.99920023147,
+      "overstockUnitProxy": 93487.38218050377,
+      "censoredDemandRate": 0.0,
+      "serviceLevel": 0.328528030752533,
+      "serviceLevelDefinition": "1 - under-forecast units / observed units; native inventory is required for fill-rate accuracy",
+      "expectedStockoutDaysAfterReplenishment": null,
+      "stockoutDaysDataQuality": "REQUIRES_NATIVE_INVENTORY_HISTORY",
+      "costModelSource": null
+    }
+  },
+  "sevenDayVolumeSegments": [
+    {
+      "model": "seasonal_naive_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.099813432835821,
+      "meanWape": 1.297528343419035,
+      "meanBias": 0.2571428571428572,
+      "p80Coverage": 0.7714285714285714,
+      "p90Coverage": 0.7942857142857143
+    },
+    {
+      "model": "seasonal_naive_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.2870713417706512,
+      "meanWape": 1.8042402109005227,
+      "meanBias": -0.007638483965014582,
+      "p80Coverage": 0.8041982507288629,
+      "p90Coverage": 0.8598250728862974
+    },
+    {
+      "model": "seasonal_naive_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.520611301025538,
+      "meanWape": 1.648965584650502,
+      "meanBias": -0.000634920634920635,
+      "p80Coverage": 0.8416190476190476,
+      "p90Coverage": 0.8704952380952381
+    },
+    {
+      "model": "moving_average_7_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.121002132196162,
+      "meanWape": 1.320012010266686,
+      "meanBias": 0.25714285714285695,
+      "p80Coverage": 0.7714285714285714,
+      "p90Coverage": 0.8971428571428571
+    },
+    {
+      "model": "moving_average_7_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.17868469300047,
+      "meanWape": 1.6453882401240176,
+      "meanBias": -0.007638483965014565,
+      "p80Coverage": 0.8237900874635568,
+      "p90Coverage": 0.8779591836734695
+    },
+    {
+      "model": "moving_average_7_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.4456701106610619,
+      "meanWape": 1.5625362391182822,
+      "meanBias": -0.0006349206349206411,
+      "p80Coverage": 0.8514730158730159,
+      "p90Coverage": 0.8879619047619047
+    },
+    {
+      "model": "exponential_smoothing_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.1558044007948354,
+      "meanWape": 1.4060487741636254,
+      "meanBias": 0.5668697461339026,
+      "p80Coverage": 0.7342857142857143,
+      "p90Coverage": 0.8971428571428571
+    },
+    {
+      "model": "exponential_smoothing_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.157255811821718,
+      "meanWape": 1.5431551331288127,
+      "meanBias": -0.2714150805549276,
+      "p80Coverage": 0.8222157434402333,
+      "p90Coverage": 0.8752769679300291
+    },
+    {
+      "model": "exponential_smoothing_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.4226289105958754,
+      "meanWape": 1.5526214350944259,
+      "meanBias": -0.019533036553474454,
+      "p80Coverage": 0.851295238095238,
+      "p90Coverage": 0.8880063492063492
+    },
+    {
+      "model": "croston_sba_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.119900297328833,
+      "meanWape": 1.3200761702420047,
+      "meanBias": 0.37525855485230475,
+      "p80Coverage": 0.7914285714285714,
+      "p90Coverage": 0.9257142857142857
+    },
+    {
+      "model": "croston_sba_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.1868470233176598,
+      "meanWape": 1.7780763440356238,
+      "meanBias": 0.17482333613252762,
+      "p80Coverage": 0.8414577259475219,
+      "p90Coverage": 0.8861224489795919
+    },
+    {
+      "model": "croston_sba_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.5440866154076414,
+      "meanWape": 1.595258606028437,
+      "meanBias": 0.045894073468471526,
+      "p80Coverage": 0.8485460317460317,
+      "p90Coverage": 0.8900063492063491
+    },
+    {
+      "model": "tsb_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.128029517982546,
+      "meanWape": 1.3369439142483102,
+      "meanBias": 0.28946608615834896,
+      "p80Coverage": 0.7628571428571428,
+      "p90Coverage": 0.917142857142857
+    },
+    {
+      "model": "tsb_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.142047472694416,
+      "meanWape": 1.549814882541854,
+      "meanBias": -0.15094122240032368,
+      "p80Coverage": 0.8279883381924198,
+      "p90Coverage": 0.8783673469387755
+    },
+    {
+      "model": "tsb_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.4249696239710496,
+      "meanWape": 1.5477083410242314,
+      "meanBias": -0.010007066839339048,
+      "p80Coverage": 0.8524063492063492,
+      "p90Coverage": 0.8897142857142857
+    },
+    {
+      "model": "two_stage_occurrence_v1",
+      "segment": "HIGH_GT_10",
+      "seriesCount": 1,
+      "weightedWape": 1.128420453092713,
+      "meanWape": 1.3393142091346062,
+      "meanBias": 0.9545367041990223,
+      "p80Coverage": 0.8,
+      "p90Coverage": 0.9257142857142857
+    },
+    {
+      "model": "two_stage_occurrence_v1",
+      "segment": "MEDIUM_2_10",
+      "seriesCount": 49,
+      "weightedWape": 1.1986562666141358,
+      "meanWape": 1.809922618929731,
+      "meanBias": 0.3135965606061736,
+      "p80Coverage": 0.8464139941690962,
+      "p90Coverage": 0.8899708454810495
+    },
+    {
+      "model": "two_stage_occurrence_v1",
+      "segment": "LOW_LE_2",
+      "seriesCount": 450,
+      "weightedWape": 1.5112506090724644,
+      "meanWape": 1.5841868813743383,
+      "meanBias": 0.031515001041341036,
+      "p80Coverage": 0.8507174603174602,
+      "p90Coverage": 0.8916126984126984
+    }
+  ],
+  "writeRequests": []
+}
