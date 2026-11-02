@@ -1,5 +1,5 @@
 import { CreditCard, Info, Monitor, Printer, ScanBarcode, Wallet, type LucideIcon } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { HardwareBarcodeTest } from "@/components/admin/HardwareBarcodeTest";
 
@@ -85,7 +85,7 @@ export default function HardwarePage() {
 
         <ul className="grid gap-3 sm:grid-cols-2">
           {devices.map(({ name, detail, status, icon: Icon, statusTone }) => (
-            <li key={name} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] transition-shadow hover:shadow-sm sm:p-5">
+            <li key={name} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] transition-shadow hover:shadow-sm sm:p-5">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
                 <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
               </span>

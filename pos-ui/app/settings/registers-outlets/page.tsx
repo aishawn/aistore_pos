@@ -32,6 +32,8 @@ export default function RegistersOutletsPage() {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError(null);
     void (async () => {
       try {
         const session = await getOdooSession();

@@ -1,19 +1,5 @@
-import { OdooPosConnectionCard } from "@/components/OdooPosConnectionCard";
-import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaffold";
+import { redirect } from "next/navigation";
 
-const HREF = "/settings/company/integrations";
-
-export default function IntegrationsCompanySettingsPage() {
-  return (
-    <CompanySettingsScaffold
-      subSectionTitle="Integrations"
-      activeHref={HREF}
-      showSearch={false}
-      showSave={false}
-    >
-      <div className="mx-auto w-full max-w-5xl">
-        <OdooPosConnectionCard />
-      </div>
-    </CompanySettingsScaffold>
-  );
+export default function LegacySettingsPage() {
+  redirect("/settings/account?tab=connection");
 }

@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { StoreConnectionStatus } from "@/components/admin/StoreConnectionStatus";
 import { SettingsPage, SettingsSubTabs } from "@/components/admin/SettingsPage";
 
 export default function AccountSecurityPage() {
   const params = useSearchParams();
-  const tab = params.get("tab") || "security";
+  const requestedTab = params.get("tab");
+  const tab = requestedTab === "developer" || requestedTab === "connection" ? requestedTab : "security";
   const { user, changePassword } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -56,8 +58,8 @@ export default function AccountSecurityPage() {
   return (
     <SettingsPage title="Account" subtitle="Manage your profile, security and service access." activeHref="/settings/account" subTabs={<SettingsSubTabs label="Account sections" tabs={tabs.map(([key, label]) => ({ label, href: `/settings/account?tab=${key}`, active: tab === key }))} />}>
 
-      {tab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Store API access is being provisioned. When enabled, administrators will be able to create scoped keys for product, customer, supplier, and AI workflows. Keys are shown once and can be revoked immediately.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">No API keys have been created.</div></section>}
-      {tab === "connection" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Connection status</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Live Odoo and AI capability checks are shown here. If a connection needs attention, contact your store administrator.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">Business data service</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Checked when live data is requested.</p></div><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">AI services</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Available according to your role and tenant.</p></div></div></section>}
+      {tab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">External API key management is not available in this release. Contact your store administrator about supported data import and export options.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">API key creation is unavailable.</div></section>}
+      {tab === "connection" && <StoreConnectionStatus />}
 
       {tab !== "security" ? null : <>
 

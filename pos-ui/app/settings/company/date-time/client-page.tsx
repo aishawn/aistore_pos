@@ -1,59 +1,19 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, CalendarDays, Clock3, Globe2, ShieldAlert } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaffold";
-import { getOdooPosBootstrap } from "@/lib/odoo-api";
 
-const HREF = "/settings/company/date-time";
-
-function timeBehaviors(timezone: string) {
-  return [
-    { title: "Store business timezone", value: timezone, description: "Sales, receipts and operational dates use the active Orithos POS register timezone.", icon: Globe2 },
-    { title: "Date and time display", value: "Australian locale", description: "Receipts and reporting use the en-AU locale with the active Orithos store timezone. This page does not override each screen’s display format.", icon: Clock3 },
-    { title: "Start of the week", value: "Not configurable here", description: "The previous Monday selection was an example, not a saved company preference. Weekly reports use their defined date ranges.", icon: CalendarDays },
-  ];
-}
-
+type Region = { timezone?: string; currency_id?: [number, string] | false; country_id?: [number, string] | false; state_id?: [number, string] | false };
 export default function DateTimeSettingsClient() {
-  const [timezone, setTimezone] = useState("Orithos POS configuration");
-
-  useEffect(() => {
-    let active = true;
-    void getOdooPosBootstrap()
-      .then((bootstrap) => {
-        if (!active) return;
-        const config = bootstrap.configs.find((item) => item.session) ?? bootstrap.configs[0];
-        if (config?.timezone) setTimezone(config.timezone);
-      })
-      .catch(() => {
-        // Keep the honest source label when Orithos is disconnected.
-      });
-    return () => { active = false; };
-  }, []);
-
-  return (
-    <CompanySettingsScaffold subSectionTitle="Date & Time" activeHref={HREF} showSearch={false} showSave={false}>
-      <div className="mx-auto w-full max-w-5xl">
-        <section role="status" className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50/70 p-4 sm:p-5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-sky-700 ring-1 ring-sky-200"><ShieldAlert size={18} aria-hidden="true" /></span>
-          <div><h2 className="text-sm font-semibold text-sky-950">Date and time preferences are not edited here</h2><p className="mt-1 text-sm leading-5 text-sky-900/80">The previous selectors were static examples. Store dates use the timezone and locale shown below.</p></div>
-        </section>
-
-        <section aria-labelledby="time-behavior-heading" className="mt-6">
-          <div className="mb-3"><h2 id="time-behavior-heading" className="text-sm font-semibold text-[var(--oh-text)]">Current date and time behaviour</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Operational timekeeping is consistent across sales and reporting</p></div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {timeBehaviors(timezone).map(({ title, value, description, icon: Icon }) => (
-              <li key={title} className="flex min-w-0 items-start gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]"><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></span>
-                <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h3><span className="inline-flex shrink-0 items-center rounded-full bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200">{value}</span></div><p className="mt-2 text-sm leading-5 text-[var(--oh-muted)]">{description}</p></div>
-              </li>
-            ))}
-          </ul>
-          <Link href="/overview" className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">View Overview periods <ArrowRight size={15} aria-hidden="true" /></Link>
-        </section>
-      </div>
-    </CompanySettingsScaffold>
-  );
+ const [data, setData] = useState<Region | null>(null);
+ const [error, setError] = useState<string | null>(null);
+ const [loading, setLoading] = useState(true);
+ const load = useCallback(async () => {
+  setLoading(true); setError(null);
+  try { const result = await api.get<Region>("/api/odoo/company"); if (!result) throw new Error("Invalid response"); setData(result); }
+  catch { setError("Could not load regional settings. Retry to read the current store configuration."); }
+  finally { setLoading(false); }
+ }, []);
+ useEffect(() => { void load(); }, [load]);
+ return <CompanySettingsScaffold subSectionTitle="Regional settings" activeHref="/settings/company/date-time" showSearch={false} showSave={false}><section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Locations &amp; currency</h2><button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-lg border border-[var(--oh-border)] px-4 text-sm font-medium disabled:opacity-50">{loading ? "Loading…" : "Refresh"}</button></div>{error && <p role="alert" className="mt-4 text-sm text-[var(--brand-danger)]">{error}</p>}{loading ? <p role="status" className="mt-4 text-sm text-[var(--oh-muted)]">Loading regional settings…</p> : data && <dl className="mt-5 grid gap-5 sm:grid-cols-2">{[["Country", data.country_id ? data.country_id[1] : "Not configured"], ["State", data.state_id ? data.state_id[1] : "Not configured"], ["Business timezone", data.timezone || "Not available"], ["Base currency", data.currency_id ? data.currency_id[1] : "Not configured"]].map(([label, value]) => <div key={label}><dt className="text-sm text-[var(--oh-muted)]">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>)}</dl>}<p className="mt-5 text-sm leading-6 text-[var(--oh-muted)]">Read-only company region. The business timezone follows the company address, using the same rules as sales and reports. Ask your administrator to change regional configuration.</p></section></CompanySettingsScaffold>;
 }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function RegisterCustomerDisplayRedirect() {
-  redirect("/settings/customerdisplay");
+export default function LegacySettingsPage() {
+  redirect("/settings/registers-outlets");
 }

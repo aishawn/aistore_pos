@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { Mail, Printer, ReceiptText, Sparkles, TriangleAlert } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 
 const receiptCapabilities = [
@@ -15,7 +15,7 @@ const receiptCapabilities = [
   },
   {
     title: "Email receipts",
-    detail: "Email delivery is unavailable because SMTP is not configured.",
+    detail: "Email delivery has not been checked on this page. Receipt email preferences cannot be configured here.",
     status: "Unavailable",
     icon: Mail,
     tone: "slate",
@@ -30,7 +30,7 @@ const receiptCapabilities = [
   {
     title: "Tax breakdown",
     detail: "Checkout calculates GST from Orithos. The printed receipt breakdown has not been verified.",
-    status: "Checkout ready",
+    status: "Print not verified",
     icon: Sparkles,
     tone: "green",
   },
@@ -57,9 +57,9 @@ export default function ReceiptsPage() {
           <TriangleAlert size={18} aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-amber-950">Receipt delivery is not connected</h2>
+          <h2 className="text-sm font-semibold text-amber-950">Receipt delivery needs verification</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">
-            Earlier values on this page were examples. Orithos does not currently save receipt preferences or apply them to Orithos, a printer, or email delivery.
+            Receipt preferences cannot be saved here. Printer setup is local to the terminal; test printing and email delivery before relying on them.
           </p>
         </div>
       </section>
@@ -75,7 +75,7 @@ export default function ReceiptsPage() {
 
         <ul className="grid gap-3 sm:grid-cols-2">
           {receiptCapabilities.map(({ title, detail, status, icon: Icon, tone }) => (
-            <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] transition-shadow hover:shadow-sm sm:p-5">
+            <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] transition-shadow hover:shadow-sm sm:p-5">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
                 <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
               </span>

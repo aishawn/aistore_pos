@@ -1,5 +1,14 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Settings consistency audit
+
+- Company and regional pages now read actual company currency and the shared location-derived business timezone. Regional failures are visible and retryable. Company save actions no longer cover form fields; failed-save retry asks before discarding a draft. PATCH rejects cross-origin requests and ambiguous multi-company edits, validates email, and preserves omitted optional fields.
+- Staff permission previews use the selected role's actual permission endpoint instead of the complete permission catalogue. Switching roles clears stale results; loading/failure states, complete section grouping, permission-gated requests and dialog keyboard focus are explicit. This remains role-template assignment, not individual permission overrides or an invitation system.
+- Account connection status checks live session and accessible registers; unknown account tabs fall back to Security. Developer API key creation is explicitly unavailable in this release. AI provider connectivity is not claimed by the connection panel.
+- Retired Company/Outlet/Register explanation pages redirect to their current destinations. Hardware/Receipts use the same Settings shell and subtab component, with Store terminal-help links; customer-display legacy links lead to hardware capabilities. Static SMTP/connected claims were removed.
+- Local typecheck, targeted ESLint and diff whitespace checks pass. No local application build, backend changes or live business writes. `scripts/settings-audit-readonly.cjs` covers real-service navigation, Company fields, connection state, role previews and legacy redirects at 390/768/1440, plus a separately labelled regional-error UI injection. Deployment and live results will be recorded separately after push.
+
+
 ## 2026-11-02 Inventory snapshot target correction
 
 - Corrected a Dokploy target parsing false alarm: target values are single-quoted JSON. The configured Demo company was stale ID 127/UTC; live tenant binding confirms Demo is Odoo company 137 and SKR is company 5. Updated only `INVENTORY_SNAPSHOT_TARGETS` to company 5 and 137, both `Australia/Adelaide`; retained all other environment entries.
