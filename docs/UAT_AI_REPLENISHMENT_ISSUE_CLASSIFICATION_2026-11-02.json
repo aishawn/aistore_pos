@@ -1,0 +1,89 @@
+{
+  "verifiedDate": "2026-11-02",
+  "scope": "Authenticated read-only replenishment exception query; no Odoo business writes",
+  "changeCommit": "b8d6edb04b60cef029e475acb15ffbb7eabda17a",
+  "currentMainRuntime": "90cf891d04c2f0bc7a163da25234397f678b256f",
+  "classification": {
+    "NEGATIVE_STOCK": "qty_available is negative",
+    "NEGATIVE_VIRTUAL_STOCK": "virtual_available is negative",
+    "purchaseSafety": "Either issue keeps the product in review and blocks a purchase suggestion"
+  },
+  "stores": {
+    "demo.orithos.com.au": {
+      "runtimeDuringRead": "b8d6edb04b60cef029e475acb15ffbb7eabda17a",
+      "httpStatus": 200,
+      "exceptionCount": 12987,
+      "returnedProducts": 12987,
+      "reviewRequiredCount": 12987,
+      "issueCounts": {
+        "NEGATIVE_STOCK": 8360,
+        "NEGATIVE_VIRTUAL_STOCK": 8360,
+        "REVIEW_COST_PRICE": 9043,
+        "UNVERIFIED_STORE_TIMEZONE": 12987,
+        "MISSING_LEAD_TIME": 12987,
+        "LOW_CONFIDENCE_ANALOG": 7750,
+        "LOW_FORECAST_CONFIDENCE": 11050,
+        "LOW_DEMAND_HISTORY": 1791
+      },
+      "inventoryHistory": {
+        "observedDays": 1,
+        "gapDays": 0,
+        "lastAttemptStatus": "SUCCESS",
+        "latestBusinessDate": "2026-11-02",
+        "expectedProducts": 12987,
+        "capturedProducts": 12987,
+        "expectedWarehouses": 2,
+        "capturedWarehouses": 2,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12987
+        }
+      }
+    },
+    "skr.orithos.com.au": {
+      "runtimeDuringRead": "90cf891d04c2f0bc7a163da25234397f678b256f",
+      "httpStatus": 200,
+      "exceptionCount": 12999,
+      "returnedProducts": 12999,
+      "reviewRequiredCount": 12999,
+      "issueCounts": {
+        "NEGATIVE_STOCK": 8289,
+        "NEGATIVE_VIRTUAL_STOCK": 8289,
+        "REVIEW_COST_PRICE": 11607,
+        "UNVERIFIED_STORE_TIMEZONE": 12999,
+        "MISSING_LEAD_TIME": 12999,
+        "LOW_CONFIDENCE_ANALOG": 8003,
+        "LOW_FORECAST_CONFIDENCE": 11060,
+        "LOW_DEMAND_HISTORY": 1813
+      },
+      "inventoryHistory": {
+        "observedDays": 2,
+        "gapDays": 0,
+        "lastAttemptStatus": "SUCCESS",
+        "latestBusinessDate": "2026-11-02",
+        "expectedProducts": 12992,
+        "capturedProducts": 12992,
+        "expectedWarehouses": 1,
+        "capturedWarehouses": 1,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12991
+        }
+      }
+    }
+  },
+  "writeRequests": [],
+  "limitations": [
+    "Demo has only one live native business-day snapshot; its second-day gate is not met.",
+    "Both stores currently require review for every replenishment product because lead time is unknown and store timezone verification is incomplete.",
+    "The issue counts describe overlapping reasons; they must not be added to infer a unique product count."
+  ]
+}
