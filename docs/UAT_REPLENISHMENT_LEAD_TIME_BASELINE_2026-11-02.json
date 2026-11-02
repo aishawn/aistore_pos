@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-02T07:14:37.841Z",
-  "runtimeCommit": "9da10aab064ad16d675b68332345bff1108be3ac",
+  "generatedAt": "2026-11-02T07:35:43.841Z",
+  "runtimeCommit": "dfef7be908d6f70ee6526c8caa9dc9ba82be7722",
   "scope": "authenticated replenishment exception read; no business writes",
   "stores": {
     "demo.orithos.com.au": {
@@ -14,6 +14,38 @@
         "productsMissingLeadTime": 12987,
         "coverage": 0,
         "manualReviewRequired": true
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-02T02:28:40+00:00",
+        "latestBusinessDate": "2026-11-02",
+        "firstBusinessDate": "2026-11-02",
+        "lastAttemptAt": "2026-11-02T02:28:39.977878+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 12987,
+        "capturedProducts": 12987,
+        "productCoverage": 1,
+        "expectedWarehouses": 2,
+        "capturedWarehouses": 2,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12987
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 1,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_UNAVAILABLE",
+          "supplierInfoRows": 0,
+          "productsWithLeadTime": 0,
+          "productsMissingLeadTime": 12987
+        },
+        "status": "REVIEW"
       },
       "reviewRequiredCount": 12987,
       "exceptionCount": 12987,
@@ -30,6 +62,38 @@
         "productsMissingLeadTime": 12999,
         "coverage": 0,
         "manualReviewRequired": true
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-01T14:26:31+00:00",
+        "latestBusinessDate": "2026-11-02",
+        "firstBusinessDate": "2026-11-01",
+        "lastAttemptAt": "2026-11-01T14:26:31.459540+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 12992,
+        "capturedProducts": 12992,
+        "productCoverage": 1,
+        "expectedWarehouses": 1,
+        "capturedWarehouses": 1,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12991
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 2,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_READ",
+          "supplierInfoRows": 1,
+          "productsWithLeadTime": 1,
+          "productsMissingLeadTime": 12991
+        },
+        "status": "REVIEW"
       },
       "reviewRequiredCount": 12999,
       "exceptionCount": 12999,

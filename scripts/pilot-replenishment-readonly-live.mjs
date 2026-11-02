@@ -73,6 +73,7 @@ for (const target of targets) {
     httpStatus: response.status,
     dataQuality: body.dataQuality,
     supplierLeadTime: body.supplierLeadTime,
+    inventoryHistory: body.inventoryHistory,
     reviewRequiredCount: body.reviewRequiredCount,
     exceptionCount: body.exceptionCount,
     writeRequests: body.writeRequests || [],
