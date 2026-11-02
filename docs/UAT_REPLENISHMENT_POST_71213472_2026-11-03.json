@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-11-02T20:26:20.375Z",
+  "generatedAt": "2026-11-02T20:59:11.905Z",
   "scope": "authenticated replenishment exception read; no business writes",
   "stores": {
     "demo.orithos.com.au": {
       "result": "PASS",
       "httpStatus": 200,
-      "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b",
+      "runtimeCommit": "b0282a9cfa1dfda67e380473ef7cae8ea4b56ea3",
       "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
       "supplierLeadTime": {
         "quality": "UNKNOWN",
@@ -51,14 +51,14 @@
       "exceptionCount": 12987,
       "cache": {
         "status": "MISS",
-        "expiresAt": "2026-11-02T20:56:50.165Z"
+        "expiresAt": "2026-11-02T21:29:42.268Z"
       },
       "writeRequests": []
     },
     "skr.orithos.com.au": {
       "result": "PASS",
       "httpStatus": 200,
-      "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b",
+      "runtimeCommit": "b0282a9cfa1dfda67e380473ef7cae8ea4b56ea3",
       "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
       "supplierLeadTime": {
         "quality": "UNKNOWN",
@@ -104,10 +104,10 @@
       "exceptionCount": 12999,
       "cache": {
         "status": "MISS",
-        "expiresAt": "2026-11-02T20:57:22.520Z"
+        "expiresAt": "2026-11-02T21:30:23.880Z"
       },
       "writeRequests": []
     }
   },
-  "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b"
+  "runtimeCommit": "b0282a9cfa1dfda67e380473ef7cae8ea4b56ea3"
 }
