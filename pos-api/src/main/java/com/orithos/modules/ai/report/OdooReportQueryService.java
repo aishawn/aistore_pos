@@ -47,6 +47,7 @@ public class OdooReportQueryService {
     private static final int RECOMMENDATION_PAGE_SIZE = 1000;
     private static final int MAX_RECOMMENDATION_PRODUCTS = 10000;
     private static final int MAX_STOCK_VALUE_PRODUCTS = 25000;
+    private static final int MAX_DEAD_STOCK_PRODUCTS = 25000;
     private static final long TIMEZONE_CACHE_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final ObjectMapper objectMapper;
@@ -573,15 +574,15 @@ public class OdooReportQueryService {
     private List<Map<String, Object>> deadStock(String session, long companyId, Vendor vendor,
                                                  ReportPeriodResolver.Window window,
                                                  Map<String, Object> context) throws Exception {
-        List<Map<String, Object>> products = searchRead(session, "product.product", stockProductDomain(companyId),
-                List.of("id", "display_name", "free_qty", "qty_available"), context, MAX_GROUPS + 1,
-                "display_name asc");
-        if (products.size() > MAX_GROUPS) return null;
+        List<Map<String, Object>> products = searchReadPages(session, "product.product", stockProductDomain(companyId),
+                List.of("id", "display_name", "free_qty", "qty_available"), context,
+                MAX_DEAD_STOCK_PRODUCTS, "id asc");
+        if (products.size() > MAX_DEAD_STOCK_PRODUCTS) return null;
 
         List<Map<String, Object>> sold = readGroup(session, "pos.order.line",
                 lineDomain(companyId, vendor, window, null, timezone(context)), List.of("qty:sum"),
-                List.of("product_id"), context, MAX_GROUPS + 1);
-        if (sold.size() > MAX_GROUPS) return null;
+                List.of("product_id"), context, MAX_DEAD_STOCK_PRODUCTS + 1);
+        if (sold.size() > MAX_DEAD_STOCK_PRODUCTS) return null;
         Map<Long, BigDecimal> soldByProduct = new LinkedHashMap<>();
         for (Map<String, Object> row : sold) {
             Object product = row.get("product_id");
