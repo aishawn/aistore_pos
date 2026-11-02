@@ -1,0 +1,315 @@
+{
+  "date": "2026-11-02",
+  "type": "online read-only browser verification",
+  "sourceChange": "e7612608f3ac6239705f002abb7bf0218fef70dd",
+  "dokployBuild": {
+    "deploymentId": "hIa9V8Wao7gtgPruT1L7I",
+    "status": "done",
+    "descriptionSha": "e7612608f3ac6239705f002abb7bf0218fef70dd"
+  },
+  "runtimeSha": "unverified; other main deployments occurred during the browser checks",
+  "businessWrites": false,
+  "checks": [
+    {
+      "host": "demo",
+      "companyHttp": 200,
+      "envelope": true,
+      "hasCompanyId": true
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/company/general",
+      "tabCount": 5,
+      "current": "Company",
+      "navX": 281,
+      "navWidth": 1134,
+      "companyField": true,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/staff",
+      "tabCount": 5,
+      "current": "Staff & access",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/registers-outlets",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/payment",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/tax",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/data",
+      "tabCount": 5,
+      "current": "Data",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 1440,
+      "route": "/settings/account",
+      "tabCount": 5,
+      "current": "Account",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/company/general",
+      "tabCount": 5,
+      "current": "Company",
+      "navX": 17,
+      "navWidth": 356,
+      "companyField": true,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/staff",
+      "tabCount": 5,
+      "current": "Staff & access",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/registers-outlets",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/payment",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/tax",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/data",
+      "tabCount": 5,
+      "current": "Data",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "demo",
+      "width": 390,
+      "route": "/settings/account",
+      "tabCount": 5,
+      "current": "Account",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "companyHttp": 200,
+      "envelope": true,
+      "hasCompanyId": true
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/company/general",
+      "tabCount": 5,
+      "current": "Company",
+      "navX": 281,
+      "navWidth": 1134,
+      "companyField": true,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/staff",
+      "tabCount": 5,
+      "current": "Staff & access",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/registers-outlets",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/payment",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/tax",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/data",
+      "tabCount": 5,
+      "current": "Data",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 1440,
+      "route": "/settings/account",
+      "tabCount": 5,
+      "current": "Account",
+      "navX": 281,
+      "navWidth": 1134,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/company/general",
+      "tabCount": 5,
+      "current": "Company",
+      "navX": 17,
+      "navWidth": 356,
+      "companyField": true,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/staff",
+      "tabCount": 5,
+      "current": "Staff & access",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/registers-outlets",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/payment",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/tax",
+      "tabCount": 5,
+      "current": "Store",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/data",
+      "tabCount": 5,
+      "current": "Data",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    },
+    {
+      "host": "skr",
+      "width": 390,
+      "route": "/settings/account",
+      "tabCount": 5,
+      "current": "Account",
+      "navX": 17,
+      "navWidth": 356,
+      "overflow": false
+    }
+  ],
+  "limitations": [
+    "Company edit/save was not exercised in this read-only session.",
+    "Local typecheck blocked by pre-existing SellAiPanel.tsx TS2367.",
+    "Mobile section dropdown is a subsequent improvement and requires a separate deployment check."
+  ]
+}
