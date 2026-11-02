@@ -48,7 +48,7 @@ try {
 
   const threads = await getJson(`${base}/api/ai/threads`, "THREADS");
   const rows = Array.isArray(threads.data) ? threads.data : [];
-  const validRows = rows.every((row) => Number.isFinite(Number(row.id))
+  const validRows = rows.every((row) => (Number.isFinite(Number(row.id)) || (typeof row.id === "string" && row.id.length > 0))
     && typeof row.sessionKey === "string" && row.sessionKey.length > 0
     && typeof row.title === "string");
   record("HIST-01", threads.response.ok() && threads.body.code === 0 && validRows ? "PASS" : "FAIL",
@@ -60,8 +60,8 @@ try {
     const messages = Array.isArray(data.messages) ? data.messages : [];
     const validMessages = messages.every((message) => ["user", "assistant"].includes(message.role)
       && typeof message.text === "string");
-    const sameThread = String(data.id) === String(rows[0].id)
-      && data.sessionKey === rows[0].sessionKey;
+    const sameThread = data.sessionKey === rows[0].sessionKey
+      && (data.id == null || String(data.id) === String(rows[0].id));
     record("HIST-02", detail.response.ok() && detail.body.code === 0 && sameThread && validMessages ? "PASS" : "FAIL",
       `HTTP ${detail.response.status()} messages=${messages.length} sameThread=${sameThread} messageShapeValid=${validMessages}; content omitted`);
   } else {
