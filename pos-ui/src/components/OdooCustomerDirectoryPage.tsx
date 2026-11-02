@@ -63,11 +63,6 @@ export function OdooCustomerDirectoryPage() {
   const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
   useDialogFocus(Boolean(detail), () => setDetail(null));
   useEffect(() => { if (searchParams.get("manage") === "groups" && canGroups) setGroupsOpen(true); }, [searchParams, canGroups]);
-  useEffect(() => {
-    const id = Number(searchParams.get("edit"));
-    const customer = items.find((item) => item.id === id);
-    if (customer && canEdit) openEdit(customer);
-  }, [searchParams, items, canEdit]);
   useEffect(() => { const id = Number(searchParams.get("pricelistId")); if (Number.isSafeInteger(id) && id > 0) setPriceFilter([id]); }, [searchParams]);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
@@ -98,6 +93,12 @@ export function OdooCustomerDirectoryPage() {
   const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
   const [archivingCustomerId, setArchivingCustomerId] = useState<number | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  useEffect(() => {
+    const id = Number(searchParams.get("edit"));
+    const customer = items.find((item) => item.id === id);
+    if (customer && canEdit) openEdit(customer);
+  }, [searchParams, items, canEdit]);
+
   const requestRevision = useRef(0);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const queryPending = query.trim() !== debouncedQuery;
