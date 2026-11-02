@@ -122,6 +122,9 @@ public final class AssistantFastPathRouter {
                     + "(?:which|what)\\s+products?\\s+(?:may|might|could)\\s+(?:stock\\s*out|run\\s*out)\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
                     + "(?:which|what)\\s+(?:products?|items?)\\s+(?:are\\s+)?(?:at\\s+)?risk\\s+of\\s+(?:stocking\\s+out|running\\s+out)\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
                     + "(?:which|what)\\s+(?:products?|items?)\\s+(?:may|might|could)\\s+be\\s+out\\s+of\\s+stock\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
+                    + "(?:stockout|stock\\s*out)\\s+(?:risk|risks?)\\s+(?:(?:in|within|over)\\s+(?:the\\s+)?(?:next\\s+)?|next\\s+)\\d+\\s+days?|"
+                    + "(?:未来|接下来|下)\\s*\\d+\\s*天(?:可能|或许|预计)?(?:断货|缺货|没货)|"
+                    + "(?:哪些|什么)(?:商品|产品)(?:在|于)?未来\\s*\\d+\\s*天(?:可能|或许|预计)?(?:断货|缺货|没货)|"
                     + "(?:哪些|什么)商品(?:库存)?(?:偏低|快断货|需要补货)|低库存商品(?:有哪些|列表)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_CLARIFICATION = Pattern.compile(

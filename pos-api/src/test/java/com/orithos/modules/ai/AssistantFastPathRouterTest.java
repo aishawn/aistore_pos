@@ -291,6 +291,8 @@ class AssistantFastPathRouterTest {
                 "Which items are running low on stock?",
                 "Which products may stock out in the next 7 days?",
                 "Which items are at risk of running out within 14 days?",
+                "Stockout risk next 7 days",
+                "哪些商品未来7天可能断货？",
                 "哪些商品库存偏低？"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
