@@ -1099,7 +1099,16 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 # Serialize each durable chunk, then release the writer so a
                 # queued catalog/sales repair can run before the next range.
                 async with sync_lock:
-                    completed = await _sync_history_chunk(db, store_key, store, cursor, chunk_end, job_id, include_catalog)
+                    completed = await _sync_history_chunk(
+                        db,
+                        store_key,
+                        store,
+                        cursor,
+                        chunk_end,
+                        job_id,
+                        include_catalog,
+                        force_full_catalog,
+                    )
                     # Never advance a durable history cursor past a chunk that
                     # failed after all split retries. Advancing here would
                     # make a job look complete while leaving an unrecoverable
@@ -1131,7 +1140,16 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
         db.close()
 
 
-async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: date, end: date, job_id: int | None, include_catalog: bool) -> bool:
+async def _sync_history_chunk(
+    db: Session,
+    store_key: str,
+    store: Store,
+    start: date,
+    end: date,
+    job_id: int | None,
+    include_catalog: bool,
+    force_full_catalog: bool = False,
+) -> bool:
     try:
         async def keepalive() -> None:
             while True:
@@ -1263,8 +1281,8 @@ async def _sync_history_chunk(db: Session, store_key: str, store: Store, start: 
             return False
         midpoint = start + timedelta(days=(end - start).days // 2)
         logger.warning("Splitting failed Shopfront range: store=%s from=%s to=%s", store_key, start, end)
-        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog)
-        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False)
+        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog, force_full_catalog)
+        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False, False)
         return left and right
 
 

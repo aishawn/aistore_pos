@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { KeyRound, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export default function AccountSecurityPage() {
+  const params = useSearchParams();
+  const tab = params.get("tab") || "security";
   const { user, changePassword } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -44,13 +48,26 @@ export default function AccountSecurityPage() {
     }
   }
 
+  const tabs = [
+    ["security", "Security"],
+    ["developer", "Developer & API"],
+    ["connection", "Connection status"],
+  ] as const;
   return (
     <main className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-7">
       <header>
         <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-primary)]">Your account</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Profile &amp; security</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage your Orithos sign-in and password. Orithos uses a separate staff account connected under Integrations.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">Manage sign-in security, developer access, and live service connections.</p>
       </header>
+      <nav className="flex gap-1 overflow-x-auto border-b border-[var(--oh-border)]" aria-label="Account sections">
+        {tabs.map(([key, label]) => <Link key={key} href={`/settings/account?tab=${key}`} className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium ${tab === key ? "border-[var(--oh-primary)] text-[var(--oh-primary)]" : "border-transparent text-[var(--oh-muted)]"}`}>{label}</Link>)}
+      </nav>
+
+      {tab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Store API access is being provisioned. When enabled, administrators will be able to create scoped keys for product, customer, supplier, and AI workflows. Keys are shown once and can be revoked immediately.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">No API keys have been created.</div></section>}
+      {tab === "connection" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Connection status</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Live Odoo and AI capability checks are shown here. If a connection needs attention, contact your store administrator.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">Business data service</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Checked when live data is requested.</p></div><div className="rounded-md border border-[var(--oh-border)] p-4"><p className="text-sm font-semibold text-[var(--oh-text)]">AI services</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Available according to your role and tenant.</p></div></div></section>}
+
+      {tab !== "security" ? null : <>
 
       {user?.pendingPasswordReset && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Your administrator asked you to change your password before continuing.</div>}
 
@@ -101,6 +118,7 @@ export default function AccountSecurityPage() {
           </div>
         </form>
       </section>
+      </>}
     </main>
   );
 }

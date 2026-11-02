@@ -2,7 +2,7 @@ import { SettingsScaffold } from "@/components/admin/SettingsScaffold";
 import { UsersIcon } from "@/components/icons";
 import { COMPANY_SETTINGS_TABS, settingsTabActive } from "@/lib/company-settings-nav";
 
-const HREF = "/settings/users";
+const HREF = "/settings/staff";
 
 /** User-scoped settings page shell — Users tab in General Settings. */
 export function UserSettingsScaffold({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,7 @@ export function UserSettingsScaffold({ children }: { children: React.ReactNode }
   return (
     <SettingsScaffold
       title="General Settings"
-      sectionTitle="Users"
+      sectionTitle="Staff & access"
       sectionIcon={<UsersIcon size={24} strokeWidth={1.75} />}
       showSubSectionTitle={false}
       showSearch={false}
