@@ -1,0 +1,211 @@
+{
+  "environment": "intercepted local UI fixtures",
+  "base": "http://localhost:3068",
+  "businessWrites": 0,
+  "attemptedWrites": [],
+  "checks": [
+    {
+      "width": 390,
+      "name": "Products More starts Catalogue Inventory Stocktake",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Catalogue modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Inventory modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Inventory pagination",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Error and retry are visible",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Stocktake modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Purchases tab order",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Suppliers renders in workspace",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Stock Transfers in More",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Purchases More menu fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Sales menu order",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Nonempty cart restored",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Sales history opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Sales lines opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Payments opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Refunds opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Current session opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Refunds applies refunded status",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Modals preserve nonempty cart storage",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "No uncaught browser errors",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Products More starts Catalogue Inventory Stocktake",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Catalogue modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Inventory modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Inventory pagination",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Error and retry are visible",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Stocktake modal fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Purchases tab order",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suppliers renders in workspace",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Stock Transfers in More",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Purchases More menu fits viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Sales menu order",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Nonempty cart restored",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Sales history opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Sales lines opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Payments opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Refunds opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Current session opens without page overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Refunds applies refunded status",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Modals preserve nonempty cart storage",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "No uncaught browser errors",
+      "status": "PASS"
+    }
+  ],
+  "limitations": [
+    "Fixture UI evidence only; no live Odoo business acceptance or deployment claim."
+  ]
+}

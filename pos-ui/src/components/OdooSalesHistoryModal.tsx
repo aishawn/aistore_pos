@@ -2,14 +2,17 @@
 
 import { OdooSalesHistoryPage } from "@/components/OdooSalesHistoryPage";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import type { OdooSalesStatusFilter } from "@/lib/odoo-api";
 
 /** Overlay host for Sales History from POS toolbar / user menu. */
 export function OdooSalesHistoryModal({
   open,
   onClose,
+  initialStatus = "all",
 }: {
   open: boolean;
   onClose: () => void;
+  initialStatus?: OdooSalesStatusFilter;
 }) {
   useDialogFocus(open, onClose);
 
@@ -29,7 +32,7 @@ export function OdooSalesHistoryModal({
         aria-label="Sales History"
         className="flex h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl"
       >
-        <OdooSalesHistoryPage variant="panel" onRequestClose={onClose} />
+        <OdooSalesHistoryPage key={initialStatus} variant="panel" initialStatus={initialStatus} onRequestClose={onClose} />
       </section>
     </div>
   );

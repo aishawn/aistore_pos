@@ -2,9 +2,10 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { OdooSalesHistoryModal } from "@/components/OdooSalesHistoryModal";
+import type { OdooSalesStatusFilter } from "@/lib/odoo-api";
 
 type SalesHistoryUiContextValue = {
-  openSalesHistory: () => void;
+  openSalesHistory: (status?: OdooSalesStatusFilter) => void;
   closeSalesHistory: () => void;
 };
 
@@ -13,8 +14,9 @@ const SalesHistoryUiContext = createContext<SalesHistoryUiContextValue | null>(n
 /** App-wide Sales History modal host (POS toolbar + user menu). */
 export function SalesHistoryUiProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<OdooSalesStatusFilter>("all");
 
-  const openSalesHistory = useCallback(() => setOpen(true), []);
+  const openSalesHistory = useCallback((status: OdooSalesStatusFilter = "all") => { setStatus(status); setOpen(true); }, []);
   const closeSalesHistory = useCallback(() => setOpen(false), []);
 
   const value = useMemo(
@@ -25,7 +27,7 @@ export function SalesHistoryUiProvider({ children }: { children: React.ReactNode
   return (
     <SalesHistoryUiContext.Provider value={value}>
       {children}
-      <OdooSalesHistoryModal open={open} onClose={closeSalesHistory} />
+      <OdooSalesHistoryModal open={open} initialStatus={status} onClose={closeSalesHistory} />
     </SalesHistoryUiContext.Provider>
   );
 }

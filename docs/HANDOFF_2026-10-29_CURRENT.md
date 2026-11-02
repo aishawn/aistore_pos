@@ -1,5 +1,11 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-02 Products / Purchases / Sell menu organization
+
+- Implemented the requested Products More entries (Catalogue, Inventory, Stocktake), purchasing tab order (Orders, Invoices, Suppliers, Replenishment; More → Stock Transfers), and Sell upper-right Sales dropdown with five dialog entries. Existing business write flows are reused.
+- Added scoped, read-only Odoo catalogue/inventory/sales-line/payment queries with search and pagination. Catalogue is product-level; Inventory is internal-location record-level. These views do not read crawler/staging tables or establish migration-count parity.
+- Local Node 24 typecheck/targeted lint, 14 route fixtures and 40 Chromium UI fixture checks pass; mobile/desktop dialogs retain nonempty cart state. Purchases More is aligned within narrow screens. No backend changes, local application build or live business writes. Live deployment/import completeness remain unverified. Design and evidence links: [WORKSPACE_MENUS_2026-11-02.md](WORKSPACE_MENUS_2026-11-02.md).
+
 ## 2026-11-02 Settings consistency audit
 
 - Company and regional pages now read actual company currency and the shared location-derived business timezone. Regional failures are visible and retryable. Company save actions no longer cover form fields; failed-save retry asks before discarding a draft. PATCH rejects cross-origin requests and ambiguous multi-company edits, validates email, and preserves omitted optional fields.

@@ -71,9 +71,11 @@ function stateClass(state: string) {
 export function OdooSalesHistoryPage({
   variant = "page",
   onRequestClose,
+  initialStatus = "all",
 }: {
   variant?: "page" | "panel";
   onRequestClose?: () => void;
+  initialStatus?: OdooSalesStatusFilter;
 } = {}) {
   const { hasPermission } = useAuth();
   const mayRefund = hasPermission("sell.refund");
@@ -86,7 +88,7 @@ export function OdooSalesHistoryPage({
   const [items, setItems] = useState<OdooSaleRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [status, setStatus] = useState<OdooSalesStatusFilter>("all");
+  const [status, setStatus] = useState<OdooSalesStatusFilter>(initialStatus);
   const [period, setPeriod] = useState<OdooSalesPeriodFilter>("all");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);

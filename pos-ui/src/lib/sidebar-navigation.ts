@@ -72,7 +72,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "inventory",
     items: [
       { label: "Products", href: "/products", permission: "stock.products.view" },
-      { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
+      { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices", "stock.suppliers"] },
       { label: "Suppliers", href: "/suppliers", permission: "stock.suppliers" },
     ],
   },

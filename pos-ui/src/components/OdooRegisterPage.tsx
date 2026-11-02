@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, CircleAlert, CircleHelp, DoorClosed, History, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
+import { Check, CircleAlert, CircleHelp, DoorClosed, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
+import { SalesMenu } from "@/components/SalesMenu";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
@@ -1251,9 +1252,7 @@ export function OdooRegisterPage() {
             <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             </button>
-            <button type="button" onClick={() => openSalesHistory()} title="Sales History" aria-label="Sales History" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
-              <History size={17} />
-            </button>
+            <SalesMenu config={selectedConfig} />
             <button type="button" onClick={() => setHelpOpen(true)} title="POS help and recovery" aria-label="POS help and recovery" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
               <CircleHelp size={17} />
             </button>

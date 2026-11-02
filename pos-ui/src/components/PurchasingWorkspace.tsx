@@ -7,11 +7,13 @@ import { useAuth } from "@/lib/auth";
 import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
 import { OdooReplenishmentPage } from "@/components/OdooReplenishmentPage";
 import { InvoiceScansListPage } from "@/components/admin/InvoiceScansListPage";
+import { OdooSupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
 
 const views = [
   { key: "orders", label: "Orders", permission: "stock.purchases" },
+  { key: "invoices", label: "Invoices", permission: "stock.invoices" },
+  { key: "suppliers", label: "Suppliers", permission: "stock.suppliers" },
   { key: "replenishment", label: "Replenishment", permission: "stock.replenishment" },
-  { key: "invoices", label: "Supplier Invoices", permission: "stock.invoices" },
 ] as const;
 
 export function PurchasingWorkspace() {
@@ -33,7 +35,7 @@ export function PurchasingWorkspace() {
       <header className="shrink-0 space-y-3 border-b border-[var(--oh-border)] bg-white p-4 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h1 className="oh-type-title text-[var(--oh-text)]">Purchasing</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Plan replenishment, manage orders and receive stock.</p></div>
-          {hasPermission("stock.purchases") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 min-w-48 rounded-lg border bg-white p-2 shadow-lg"><Link className="block rounded px-3 py-2 text-sm" href="/purchases?tab=transfers">Stock Transfers</Link></div></details>}
+          {hasPermission("stock.purchases") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">More</summary><div className="absolute left-0 z-20 mt-2 min-w-48 sm:left-auto sm:right-0 rounded-lg border bg-white p-2 shadow-lg"><Link className="block rounded px-3 py-2 text-sm" href="/purchases?tab=transfers">Stock Transfers</Link></div></details>}
         </div>
         <nav aria-label="Purchasing views" className="flex flex-wrap gap-2">
           {available.map((view) => <Link key={view.key} href={view.key === "orders" ? "/purchases" : `/purchases?tab=${view.key}`} aria-current={active === view.key ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${active === view.key ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]"}`}>{view.label}</Link>)}
@@ -43,6 +45,7 @@ export function PurchasingWorkspace() {
         {permitted && (active === "orders" || transfers) && <OdooPurchaseOrdersPage embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
+        {permitted && active === "suppliers" && <OdooSupplierDirectoryPage />}
       </div>
     </div>
   );
