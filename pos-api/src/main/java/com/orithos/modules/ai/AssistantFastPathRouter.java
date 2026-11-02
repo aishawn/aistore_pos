@@ -64,8 +64,9 @@ public final class AssistantFastPathRouter {
                     + "哪些商品连续没有销售|哪些商品没有销售|滞销商品|死库存|哪些是滞销品)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_VALUE = Pattern.compile(
-            "^(?:(?:which\\s+)?(?:inventory|stock)\\s+(?:items?\\s+)?(?:tie\\s+up|use|hold)\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
-                    + "(?:which\\s+)?products?\\s+(?:have\\s+)?the\\s+most\\s+(?:inventory\\s+)?value|"
+            "^(?:(?:which\\s+)?(?:inventory|stock)(?:\\s+items?)?\\s+(?:tie|ties)\\s+up\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
+                    + "(?:which\\s+)?(?:inventory|stock)\\s+(?:items?\\s+)?(?:use|hold)\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
+                    + "(?:which\\s+)?products?\\s+(?:have\\s+)?the\\s+(?:highest|most)\\s+(?:inventory\\s+)?value|"
                     + "how\\s+much\\s+(?:cash|money|capital)\\s+is\\s+tied\\s+up\\s+in\\s+(?:current\\s+)?(?:inventory|stock)|"
                     + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
                     + "(?:当前|现在)(?:库存|存货)(?:占用|占了|压了)(?:多少|多少钱)(?:现金|资金|钱)?|"
@@ -118,6 +119,9 @@ public final class AssistantFastPathRouter {
     private static final Pattern LOW_STOCK = Pattern.compile(
             "^(?:(?:what|which)\\s+products?\\s+(?:are|is)\\s+(?:low|running low)\\s+(?:in stock|on stock)|"
                     + "(?:what|which)\\s+items?\\s+(?:are|is)\\s+(?:low|running low)\\s+(?:in stock|on stock)|"
+                    + "(?:which|what)\\s+products?\\s+(?:may|might|could)\\s+(?:stock\\s*out|run\\s*out)\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
+                    + "(?:which|what)\\s+(?:products?|items?)\\s+(?:are\\s+)?(?:at\\s+)?risk\\s+of\\s+(?:stocking\\s+out|running\\s+out)\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
+                    + "(?:which|what)\\s+(?:products?|items?)\\s+(?:may|might|could)\\s+be\\s+out\\s+of\\s+stock\\s+(?:in|within)\\s+(?:the\\s+)?(?:next\\s+)?\\d+\\s+days?|"
                     + "(?:哪些|什么)商品(?:库存)?(?:偏低|快断货|需要补货)|低库存商品(?:有哪些|列表)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_CLARIFICATION = Pattern.compile(

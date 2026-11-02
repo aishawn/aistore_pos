@@ -50,6 +50,10 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("How much cash is tied up in current stock?").intent());
         assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("Which inventory ties up the most cash?").intent());
+        assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("Which products have the highest inventory value?").intent());
+        assertEquals("report_stock_value",
                 AssistantFastPathRouter.maybeMatch("当前库存占了多少钱").intent());
     }
 
@@ -285,6 +289,8 @@ class AssistantFastPathRouterTest {
         for (String question : new String[]{
                 "What products are low in stock?",
                 "Which items are running low on stock?",
+                "Which products may stock out in the next 7 days?",
+                "Which items are at risk of running out within 14 days?",
                 "哪些商品库存偏低？"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
