@@ -27,6 +27,7 @@ import {
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import type { InventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
+import { forecastReadiness } from "@/lib/forecast-readiness";
 
 type ReplenishmentProduct = {
   id: number;
@@ -287,15 +288,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = (data?.products ?? []).filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const urgentRiskCount = (data?.products ?? []).filter((product) => product.risk === "HIGH" || (product.onHand <= 0 && product.soldUnits > 0)).length;
-  const forecastReadiness = useMemo(() => {
-    const products = data?.products ?? [];
-    return products.reduce((summary, product) => {
-      if (product.forecastQuality === "VALID") summary.valid += 1;
-      else if (product.forecastQuality === "INSUFFICIENT_HISTORY") summary.insufficientHistory += 1;
-      if (product.confidence === "LOW" || product.forecastConfidence === "LOW") summary.lowConfidence += 1;
-      return summary;
-    }, { valid: 0, insufficientHistory: 0, lowConfidence: 0 });
-  }, [data?.products]);
+  const forecastReadinessSummary = useMemo(() => forecastReadiness(data?.products ?? []), [data?.products]);
   const missingDataCount = (data?.products ?? []).filter((product) =>
     !(typeof product.unitCost === "number" && Number.isFinite(product.unitCost) && product.unitCost > 0)
     || !(typeof product.leadTimeDays === "number" && Number.isFinite(product.leadTimeDays) && product.leadTimeDays > 0),
@@ -530,7 +523,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           )}
           {data?.forecast?.enabled && data.products.length > 0 && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
-              History readiness: {number.format(forecastReadiness.valid)} valid · {number.format(forecastReadiness.insufficientHistory)} need more history · {number.format(forecastReadiness.lowConfidence)} low confidence. These counts are informational; review gates remain active.
+              History readiness: {number.format(forecastReadinessSummary.valid)} valid · {number.format(forecastReadinessSummary.insufficientHistory)} need more history · {number.format(forecastReadinessSummary.lowConfidence)} low confidence. These counts are informational; review gates remain active.
             </p>
           )}
           {data?.forecast?.costPolicy && <p className="mt-1 text-xs text-[var(--oh-muted)]">Planning assumptions to review: holding {number.format(data.forecast.costPolicy.annualHoldingRate * 100)}% / year · slow-stock risk {number.format(data.forecast.costPolicy.annualObsolescenceRate * 100)}% / year · target service {number.format(data.forecast.costPolicy.serviceLevel * 100)}%.</p>}
