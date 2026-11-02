@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-11-02T20:26:20.375Z",
+  "scope": "authenticated replenishment exception read; no business writes",
+  "stores": {
+    "demo.orithos.com.au": {
+      "result": "PASS",
+      "httpStatus": 200,
+      "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b",
+      "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      "supplierLeadTime": {
+        "quality": "UNKNOWN",
+        "eligibleProducts": 12987,
+        "productsWithLeadTime": 0,
+        "productsMissingLeadTime": 12987,
+        "coverage": 0,
+        "manualReviewRequired": true
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-02T15:30:53+00:00",
+        "latestBusinessDate": "2026-11-03",
+        "firstBusinessDate": "2026-11-02",
+        "lastAttemptAt": "2026-11-02T15:30:53.775610+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 12987,
+        "capturedProducts": 12987,
+        "productCoverage": 1,
+        "expectedWarehouses": 2,
+        "capturedWarehouses": 2,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12987
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 2,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_UNAVAILABLE",
+          "supplierInfoRows": 0,
+          "productsWithLeadTime": 0,
+          "productsMissingLeadTime": 12987
+        },
+        "status": "REVIEW"
+      },
+      "reviewRequiredCount": 12987,
+      "exceptionCount": 12987,
+      "cache": {
+        "status": "MISS",
+        "expiresAt": "2026-11-02T20:56:50.165Z"
+      },
+      "writeRequests": []
+    },
+    "skr.orithos.com.au": {
+      "result": "PASS",
+      "httpStatus": 200,
+      "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b",
+      "dataQuality": "NATIVE_STOCK_SALES_LEAD_TIME_UNKNOWN",
+      "supplierLeadTime": {
+        "quality": "UNKNOWN",
+        "eligibleProducts": 12999,
+        "productsWithLeadTime": 0,
+        "productsMissingLeadTime": 12999,
+        "coverage": 0,
+        "manualReviewRequired": true
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-02T15:30:35+00:00",
+        "latestBusinessDate": "2026-11-03",
+        "firstBusinessDate": "2026-11-01",
+        "lastAttemptAt": "2026-11-02T15:30:34.834426+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 12999,
+        "capturedProducts": 12999,
+        "productCoverage": 1,
+        "expectedWarehouses": 1,
+        "capturedWarehouses": 1,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12999
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 3,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_UNAVAILABLE",
+          "supplierInfoRows": 0,
+          "productsWithLeadTime": 0,
+          "productsMissingLeadTime": 12999
+        },
+        "status": "REVIEW"
+      },
+      "reviewRequiredCount": 12999,
+      "exceptionCount": 12999,
+      "cache": {
+        "status": "MISS",
+        "expiresAt": "2026-11-02T20:57:22.520Z"
+      },
+      "writeRequests": []
+    }
+  },
+  "runtimeCommit": "712134726fbe1d56ad004daf71fe208b07e5435b"
+}
