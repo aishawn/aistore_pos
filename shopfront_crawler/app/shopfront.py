@@ -256,7 +256,7 @@ UNCONSOLIDATED'''
         query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
           sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
             edges { node {
-              id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+              id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt customer { id clientId name }
               register { id outlet { id name } }
               items { id quantity cost basePrice tax totalPrice item { id ... on Product { name barcodes { code quantity } } } }
               payments { id amount status subtype }
@@ -285,7 +285,7 @@ UNCONSOLIDATED'''
             query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
               sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
                 edges { node {
-                  id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+                  id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt customer { id clientId name }
                   register { id outlet { id name } }
                   items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
                   payments { id amount status subtype }

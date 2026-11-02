@@ -9,7 +9,7 @@ import { CustomerLookup } from "@/components/CustomerLookup";
 import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
 import { OdooRecordLink } from "@/components/OdooRecordLink";
 import { useSearchParams } from "next/navigation";
-import { Archive, AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { Archive, AlertCircle, Check, ChevronLeft, ChevronRight, Ellipsis, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import {
   createOdooCustomer,
   archiveOdooCustomer,
@@ -27,7 +27,7 @@ import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
-const money = (amount?: number | null) => `$${Number(amount ?? 0).toFixed(2)}`;
+const money = (amount?: number | null) => typeof amount === "number" && Number.isFinite(amount) ? `$${amount.toFixed(2)}` : "—";
 
 function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClear: () => void }) {
   return (
@@ -63,6 +63,11 @@ export function OdooCustomerDirectoryPage() {
   const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
   useDialogFocus(Boolean(detail), () => setDetail(null));
   useEffect(() => { if (searchParams.get("manage") === "groups" && canGroups) setGroupsOpen(true); }, [searchParams, canGroups]);
+  useEffect(() => {
+    const id = Number(searchParams.get("edit"));
+    const customer = items.find((item) => item.id === id);
+    if (customer && canEdit) openEdit(customer);
+  }, [searchParams, items, canEdit]);
   useEffect(() => { const id = Number(searchParams.get("pricelistId")); if (Number.isSafeInteger(id) && id > 0) setPriceFilter([id]); }, [searchParams]);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
@@ -72,6 +77,7 @@ export function OdooCustomerDirectoryPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -176,6 +182,7 @@ export function OdooCustomerDirectoryPage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.hasNext ?? (page.items.length > PAGE_SIZE));
+      setTotal(typeof page.total === "number" ? page.total : null);
       setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos customers.");
@@ -217,6 +224,7 @@ export function OdooCustomerDirectoryPage() {
         name,
         phone: String(form.get("phone") ?? "").trim(),
         email: String(form.get("email") ?? "").trim(),
+        comment: String(form.get("comment") ?? "").trim(),
         ref: String(form.get("ref") ?? "").trim(),
         street: String(form.get("street") ?? "").trim(),
         city: String(form.get("city") ?? "").trim(),
@@ -269,7 +277,7 @@ export function OdooCustomerDirectoryPage() {
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            Orithos customer directory with price lists, groups and receivable balances.
+            Orithos customer directory{total !== null ? ` · ${total} matching customers` : ""} with price lists, groups and receivable balances.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
         </div>
@@ -331,7 +339,7 @@ export function OdooCustomerDirectoryPage() {
                 ) : items.map((customer) => (
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3">
-                      <button type="button" onClick={() => setDetail(customer)} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</button>
+                      <Link href={`/customers/${customer.id}/view`} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</Link>
                       <span className="ml-6 block text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</span>
                     </td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{customer.phone ? <a className="inline-flex items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`tel:${encodeURIComponent(customer.phone)}`}><Phone size={14} />{customer.phone}</a> : "—"}</td>
@@ -339,7 +347,7 @@ export function OdooCustomerDirectoryPage() {
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer.category_id)}</td>
                     {canBalance && <td className="px-4 py-3 text-right font-medium text-[var(--oh-text)]">{money(customer.credit)}</td>}
-                    <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} aria-label={`Archive ${customer.name}`} title="Archive customer" className="inline-flex min-h-11 w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50">{archivingCustomerId === customer.id ? <LoaderCircle size={15} className="animate-spin" /> : <Archive size={15} />}</button></div></td>
+                    <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><Link href={`/customers/${customer.id}/view`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)]">View</Link>{canEdit && <details className="relative"><summary className="inline-flex min-h-11 list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium"><Ellipsis size={16} /> More</summary><div className="absolute right-0 z-20 mt-1 grid min-w-32 rounded-lg border bg-white p-1 text-left shadow-lg"><button type="button" onClick={() => openEdit(customer)} className="min-h-10 px-3 text-left text-sm hover:bg-[var(--oh-surface)]">Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} className="min-h-10 px-3 text-left text-sm text-rose-800 hover:bg-rose-50">Archive</button></div></details>}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -353,7 +361,7 @@ export function OdooCustomerDirectoryPage() {
                 <article key={customer.id} className="px-4 py-3.5">
                   <header className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <button type="button" onClick={() => setDetail(customer)} className="min-h-11 break-words text-left text-sm font-semibold text-[var(--oh-primary)]">{customer.name}</button>
+                      <Link href={`/customers/${customer.id}/view`} className="flex min-h-11 items-center break-words text-left text-sm font-semibold text-[var(--oh-primary)]">{customer.name}</Link>
                       <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</p>
                     </div>
                     {canBalance && <p className="shrink-0 text-sm font-semibold text-[var(--oh-text)]">{money(customer.credit)}</p>}
@@ -401,6 +409,9 @@ export function OdooCustomerDirectoryPage() {
                 <input name="email" type="email" autoComplete="email" defaultValue={editingCustomer?.email || ""} maxLength={254} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
             </div>
+            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Notes
+              <textarea name="comment" defaultValue={editingCustomer?.comment || ""} maxLength={4000} rows={3} className="min-h-20 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+            </label>
             <details open={Boolean(editingCustomer)} className="grid gap-4"><summary className="min-h-11 cursor-pointer text-sm font-semibold">Advanced information</summary>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Customer reference

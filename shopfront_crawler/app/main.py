@@ -2049,6 +2049,25 @@ async def run_customers_job(job_id: int) -> None:
                 job.payload["pos_staged"] = {"customers": len(customer_rows)}
             finally:
                 await pos_client.close()
+        # Odoo is the customer business source of truth. Staging success is
+        # recorded separately so an Odoo outage remains retryable without
+        # losing the source snapshot.
+        if settings.odoo_import_enabled:
+            odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, True, settings.odoo_business_write_enabled)
+            try:
+                rows = db.scalars(select(ShopfrontCustomer).where(ShopfrontCustomer.store_key == store.store_key).order_by(ShopfrontCustomer.source_id)).all()
+                for offset in range(0, len(rows), 100):
+                    batch = rows[offset:offset + 100]
+                    response = await odoo_client.sync("customers", store.store_key, [{"source_id": item.source_id, "client_id": item.client_id, "code": item.code, "name": item.name, "email": item.email, "phone": item.phone, "mobile": item.mobile, "deleted": item.deleted, "raw_payload": item.raw_payload} for item in batch])
+                    result = response.get("result", response)
+                    if result.get("ok") is not True:
+                        raise OdooIntegrationError("Customer Odoo batch was not confirmed")
+                job.payload["odoo"] = {"customers": len(rows), "targets": [5, 137], "status": "completed"}
+            except Exception as exc:
+                job.payload["odoo"] = {"customers": len(rows) if 'rows' in locals() else 0, "status": "failed", "error": str(exc)[:200]}
+                raise
+            finally:
+                await odoo_client.close()
         job.status = "completed"
         job.phase = "completed"
         job.finished_at = datetime.now(timezone.utc)

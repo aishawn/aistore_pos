@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     // `credit` is a non-stored monetary field in Orithos 19 — usable in domain on some
     // builds, but never as SQL ORDER BY. Keep a stable stored-field order for every page.
-    const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds, true)];
+    const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
     if (owingOnly) domain.push(["credit", ">", 0]);
     if (query) {
       domain.push("|", "|", "|",

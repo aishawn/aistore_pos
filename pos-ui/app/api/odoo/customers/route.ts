@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 function parseCustomerValues(body: Record<string, unknown>, { requireName }: { requireName: boolean }) {
   const allowed = new Set([
-    "name", "phone", "email", "ref", "street", "city", "vat", "company_type",
+    "name", "phone", "email", "comment", "ref", "street", "city", "vat", "company_type",
     "property_product_pricelist", "category_id",
   ]);
   if (Object.keys(body).some((key) => !allowed.has(key))) {
@@ -66,7 +66,9 @@ function parseCustomerValues(body: Record<string, unknown>, { requireName }: { r
     categoryIds = body.category_id as number[];
   }
 
+  if ("comment" in body && (typeof body.comment !== "string" || body.comment.length > 4000)) return { error: NextResponse.json({ message: "Notes must be text of 4,000 characters or fewer" }, { status: 400 }) };
   const values: Record<string, string | false | number | unknown[]> = {};
+  if (typeof body.comment === "string") values.comment = body.comment.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   if (name !== undefined) values.name = name;
   if (phone !== undefined) values.phone = phone || false;
   if (email !== undefined) values.email = email || false;

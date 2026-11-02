@@ -76,6 +76,7 @@ export interface OdooPosCategoryRecord {
 }
 
 export interface OdooCustomerRecord {
+  comment?: string | false;
   id: number;
   name: string;
   phone: string | false;
@@ -149,6 +150,7 @@ export interface OdooGiftCardRecord {
 }
 
 export type OdooCustomerWriteValues = {
+  comment?: string;
   name?: string;
   phone?: string;
   email?: string;

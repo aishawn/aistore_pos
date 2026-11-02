@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     try {
       const me = await requirePermission(request, "customers.view", "customers.edit", "sell.checkout", "sell.refund");
       const scope = await scopedOdoo(request);
-      const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds, true)];
+      const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
       for (const [key, field] of [["groupId", "category_id"], ["pricelistId", "property_product_pricelist"]] as const) {
         const value = body[key];
         if (value !== undefined) {
@@ -216,7 +216,8 @@ export async function POST(request: NextRequest) {
       const fields: string[] = [...RECORD_TYPES.customers.fields].filter((field) => !["credit", "total_invoiced"].includes(field));
       if (canReadBalances(me)) fields.push("credit", "total_invoiced");
       const rows = await scope.rpc<unknown[]>("res.partner", "search_read", [domain], { fields, limit: limit + 1, offset, order: "name asc, id asc" });
-      return NextResponse.json({ items: rows.slice(0, limit), hasNext: rows.length > limit, limit, offset }, { headers: { "Cache-Control": "no-store" } });
+      const total = await scope.rpc<number>("res.partner", "search_count", [domain]);
+      return NextResponse.json({ items: rows.slice(0, limit), hasNext: rows.length > limit, limit, offset, total }, { headers: { "Cache-Control": "no-store" } });
     } catch (error) {
       return NextResponse.json({ message: error instanceof Error ? error.message : "Customers are unavailable" }, { status: error && typeof error === "object" && "status" in error ? Number(error.status) : 502 });
     }
