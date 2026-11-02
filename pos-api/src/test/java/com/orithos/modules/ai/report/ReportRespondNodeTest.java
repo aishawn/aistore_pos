@@ -92,6 +92,19 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void deadStockAndCashValueAnswersFollowChineseQuestionLanguage() {
+        OverAllState deadStock = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)));
+        when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        when(deadStock.value("question", String.class)).thenReturn(Optional.of("连续30天没有销售的商品有哪些？"));
+        org.junit.jupiter.api.Assertions.assertTrue(((String) node.apply(deadStock).get("answer")).contains("滞销商品"));
+
+        OverAllState stockValue = state("", List.of(Map.of("name", "Wine", "inventory_value", 12.5)));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("哪些库存占用了最多现金？"));
+        org.junit.jupiter.api.Assertions.assertTrue(((String) node.apply(stockValue).get("answer")).contains("库存资金占用"));
+    }
+
+    @Test
     void unlinkedStoreAndMissingPermissionHaveDistinctGuidance() {
         assertError("ODOO_REPORT_STORE_UNLINKED",
                 "This store is not linked to an Odoo company for live reporting. Contact your administrator.");
