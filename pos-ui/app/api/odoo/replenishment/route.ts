@@ -18,7 +18,7 @@ const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 56;
 const PERIOD_DAYS = 28;
 const FORECAST_BATCH_SIZE = 500;
-const REPLENISHMENT_CACHE_TTL_MS = 5 * 60 * 1000;
+const REPLENISHMENT_CACHE_TTL_MS = 30 * 60 * 1000;
 const COVERAGE_OPTIONS = new Set([7, 14, 21, 28, 42]);
 const FORECAST_MODELS = new Set([
   "seasonal_naive_v1",
@@ -203,7 +203,8 @@ export async function GET(request: NextRequest) {
     const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Orithos companies are available to this user." }, { status: 403 });
     const cacheKey = `${companyId}:${coverageDays}:${exceptionMode ? "exceptions" : "all"}`;
-    const cacheEntry = request.nextUrl.searchParams.get("validateSales") === "true" ? null : replenishmentCache.get(cacheKey);
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
+    const cacheEntry = (forceRefresh || request.nextUrl.searchParams.get("validateSales") === "true") ? null : replenishmentCache.get(cacheKey);
     if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
       return NextResponse.json({ ...cacheEntry.body, cache: { status: "HIT", expiresAt: new Date(cacheEntry.expiresAt).toISOString() } }, { status: 200, headers: { "Cache-Control": "no-store" } });
     }

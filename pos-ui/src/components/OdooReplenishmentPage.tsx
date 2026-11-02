@@ -123,6 +123,8 @@ const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
 const MAX_RFQ_QUANTITY = 100_000;
+const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v2:";
+const REPLENISHMENT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function riskLabel(risk: ReplenishmentProduct["risk"]) {
   const labels = { LOW: "Low risk", MEDIUM: "Review", HIGH: "High risk", UNKNOWN: "Unknown risk" };
@@ -210,9 +212,27 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   useDialogFocus(methodOpen, () => setMethodOpen(false), "method-help", methodCloseRef, helpButtonRef);
 
+  const cacheKey = `${REPLENISHMENT_CACHE_PREFIX}${coverageDays}:${exceptionOnly ? "exceptions" : "all"}`;
+
   useEffect(() => {
     setAuditEntries(readReplenishmentAudit());
   }, []);
+
+  // Hydrate the last successful plan immediately. Odoo can then refresh in the
+  // background without ever replacing a usable screen with an error state.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const cached = JSON.parse(raw) as { savedAt?: number; data?: ReplenishmentData };
+      if (!cached.data || !Array.isArray(cached.data.products)) return;
+      if (Date.now() - Number(cached.savedAt ?? 0) > REPLENISHMENT_CACHE_MAX_AGE_MS) return;
+      setData(cached.data);
+      setSelectedIds(new Set(cached.data.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
+      setLastLoadedAt(Number(cached.savedAt) || Date.now());
+      setLoading(false);
+    } catch { /* Ignore malformed browser cache and fetch a fresh plan. */ }
+  }, [cacheKey]);
 
   const load = useCallback(async (refresh = false) => {
     const revision = ++requestRevision.current;
@@ -223,7 +243,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     setError(null);
     try {
       const mode = exceptionOnly ? "&mode=exceptions" : "";
-      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}${mode}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+      const force = refresh ? "&refresh=true" : "";
+      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}${mode}${force}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
       const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
@@ -234,6 +255,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Orithos returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
+      try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
       setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
       try {
         const bootstrap = await getOdooPosBootstrap();
@@ -257,7 +279,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       }
       window.clearTimeout(timeout);
     }
-  }, [coverageDays, exceptionOnly]);
+  }, [cacheKey, coverageDays, exceptionOnly]);
 
   useEffect(() => { void load(); }, [load]);
 
