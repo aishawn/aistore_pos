@@ -21,11 +21,14 @@ const defaultOutputPath = path.join(root, "docs", `UAT_AI_WORKFLOW_UTTERANCES_ON
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : defaultOutputPath;
-let envDirectory = root;
-while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
-  envDirectory = path.dirname(envDirectory);
+let envPath = process.env.PILOT_ENV_FILE || path.join(root, ".env");
+if (!process.env.PILOT_ENV_FILE) {
+  let envDirectory = root;
+  while (!fs.existsSync(path.join(envDirectory, ".env")) && path.dirname(envDirectory) !== envDirectory) {
+    envDirectory = path.dirname(envDirectory);
+  }
+  envPath = path.join(envDirectory, ".env");
 }
-const envPath = path.join(envDirectory, ".env");
 const env = fs.existsSync(envPath)
   ? Object.fromEntries(fs.readFileSync(envPath, "utf8")
     .split(/\r?\n/)
