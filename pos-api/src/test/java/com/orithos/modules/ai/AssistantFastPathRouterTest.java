@@ -34,6 +34,14 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesInventoryCashValueQuestionsToAReadOnlyReport() {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch("哪些库存占用了最多现金？");
+        assertEquals("report_stock_value", match.intent());
+        assertEquals("report_stock_value",
+                AssistantFastPathRouter.maybeMatch("which inventory items tie up the most cash").intent());
+    }
+
+    @Test
     void routesCategoryQuantityQuestionsWithTheirCategorySlot() {
         assertEquals("red wine",
                 AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").slots().get("category"));

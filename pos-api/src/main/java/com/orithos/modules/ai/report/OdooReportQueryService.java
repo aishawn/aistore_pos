@@ -46,6 +46,7 @@ public class OdooReportQueryService {
     private static final int MAX_LIST_ROWS = 50;
     private static final int RECOMMENDATION_PAGE_SIZE = 1000;
     private static final int MAX_RECOMMENDATION_PRODUCTS = 10000;
+    private static final int MAX_STOCK_VALUE_PRODUCTS = 25000;
     private static final long TIMEZONE_CACHE_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final ObjectMapper objectMapper;
@@ -103,6 +104,7 @@ public class OdooReportQueryService {
                 case "report_aov" -> averageTicket(sessionId, companyId, vendor, window, context);
                 case "report_stock" -> stock(sessionId, companyId, slots, context);
                 case "report_dead_stock" -> deadStock(sessionId, companyId, vendor, window, context);
+                case "report_stock_value" -> stockValue(sessionId, companyId, context);
                 default -> null;
             };
             return rows == null ? Result.fail("ODOO_REPORT_TOO_LARGE") : Result.ok(rows);
@@ -600,6 +602,35 @@ public class OdooReportQueryService {
         }
         rows.sort((a, b) -> decimal(b.get("on_hand")).compareTo(decimal(a.get("on_hand"))));
         return rows.size() > MAX_LIST_ROWS ? null : rows;
+    }
+
+    private List<Map<String, Object>> stockValue(String session, long companyId,
+                                                  Map<String, Object> context) throws Exception {
+        List<Map<String, Object>> products;
+        try {
+            products = searchReadPages(session, "product.product", stockProductDomain(companyId),
+                    List.of("id", "display_name", "standard_price", "free_qty", "qty_available"),
+                    context, MAX_STOCK_VALUE_PRODUCTS, "id asc");
+        } catch (Exception primaryFailure) {
+            products = searchReadPages(session, "product.product", stockProductDomain(companyId),
+                    List.of("id", "display_name", "standard_price", "qty_available"),
+                    context, MAX_STOCK_VALUE_PRODUCTS, "id asc");
+        }
+        if (products.size() > MAX_STOCK_VALUE_PRODUCTS) return null;
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map<String, Object> product : products) {
+            BigDecimal quantity = decimal(product.containsKey("free_qty")
+                    ? product.get("free_qty") : product.get("qty_available"));
+            BigDecimal unitCost = decimal(product.get("standard_price"));
+            if (quantity.signum() <= 0 || unitCost.signum() <= 0) continue;
+            rows.add(Map.of("id", product.get("id"),
+                    "name", product.getOrDefault("display_name", ""),
+                    "on_hand", quantity, "unit_cost", unitCost,
+                    "inventory_value", quantity.multiply(unitCost)));
+        }
+        rows.sort((left, right) -> decimal(right.get("inventory_value"))
+                .compareTo(decimal(left.get("inventory_value"))));
+        return rows.size() > MAX_LIST_ROWS ? new ArrayList<>(rows.subList(0, MAX_LIST_ROWS)) : rows;
     }
 
     private List<Object> orderDomain(long companyId, Vendor vendor,

@@ -61,6 +61,12 @@ public final class AssistantFastPathRouter {
                     + "which\\s+products?\\s+have\\s+had\\s+no\\s+sales|"
                     + "哪些商品连续没有销售|哪些商品没有销售|滞销商品|死库存|哪些是滞销品)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern STOCK_VALUE = Pattern.compile(
+            "^(?:(?:which\\s+)?(?:inventory|stock)\\s+(?:items?\\s+)?(?:tie\\s+up|use|hold)\\s+(?:the\\s+)?most\\s+(?:cash|money|capital)|"
+                    + "(?:which\\s+)?products?\\s+(?:have\\s+)?the\\s+most\\s+(?:inventory\\s+)?value|"
+                    + "(?:哪些|什么)(?:库存|商品|产品)(?:占用|占用了|占着|压着)(?:最多|最高)(?:现金|资金|钱)|"
+                    + "库存(?:现金|资金)占用(?:最多|最高|排名)?)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
             Pattern.CASE_INSENSITIVE);
@@ -310,6 +316,16 @@ public final class AssistantFastPathRouter {
                     "report_dead_stock",
                     "Dead stock report",
                     Map.of("days", "30"),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (STOCK_VALUE.matcher(normalized).matches()) {
+            return new Match(
+                    "report_stock_value",
+                    "Inventory cash value report",
+                    Map.of(),
                     "",
                     "",
                     "",

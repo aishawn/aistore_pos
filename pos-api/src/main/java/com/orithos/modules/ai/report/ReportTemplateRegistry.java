@@ -13,7 +13,7 @@ import java.util.Set;
 public class ReportTemplateRegistry {
 
     public static final Set<String> TEMPLATE_INTENTS = Set.of(
-            "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock"
+            "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock", "report_stock_value"
     );
 
     /** Classifier often stuffs the metric word into category ("销量"), which matches no product. */
@@ -90,6 +90,7 @@ public class ReportTemplateRegistry {
                     ORDER BY i.quantity DESC
                     LIMIT 50
                     """, List.of(outletId, fromDay, toDay, outletId, outletId));
+            case "report_stock_value" -> BoundSql.fail("COST_DATA_UNAVAILABLE");
             default -> BoundSql.fail("UNKNOWN_TEMPLATE");
         };
     }

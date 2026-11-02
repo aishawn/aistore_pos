@@ -49,6 +49,7 @@ public class ReportRespondNode implements NodeAction {
                 case "report_stock" -> "No matching stock found. Check the product name or catalogue spelling.";
                 case "report_dead_stock" -> "No dead-stock items found for the selected period."
                         + " Try asking for dead stock last 60 days if you want a wider window.";
+                case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
                 default -> "No completed sales found for " + rangeText(from, to)
                         + ". Try a wider range — for example ask: sales last 7 days"
                         + (from != null && !from.isBlank() && from.equals(to)
@@ -60,6 +61,7 @@ public class ReportRespondNode implements NodeAction {
             case "report_aov" -> formatAov(rows.get(0), from, to);
             case "report_stock" -> formatStock(rows, slots.get("query"));
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"));
+            case "report_stock_value" -> formatStockValue(rows);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
@@ -120,6 +122,22 @@ public class ReportRespondNode implements NodeAction {
         return rows.size() + " dead-stock item(s) in the last " + days + " days (on hand > 0, qty sold = 0).";
     }
 
+    private String formatStockValue(List<Map<String, Object>> rows) {
+        BigDecimal total = BigDecimal.ZERO;
+        StringBuilder sb = new StringBuilder("Top inventory cash usage: ");
+        int n = Math.min(rows.size(), 8);
+        for (int i = 0; i < n; i++) {
+            Map<String, Object> row = rows.get(i);
+            BigDecimal value = ReportQueryService.toDecimal(row.get("inventory_value"));
+            total = total.add(value);
+            if (i > 0) sb.append("; ");
+            sb.append(row.getOrDefault("name", "")).append(" AUD ").append(money(value));
+        }
+        sb.append(". Top ").append(n).append(" total AUD ").append(money(total))
+                .append("; products without a recorded cost are excluded.");
+        return sb.toString();
+    }
+
     private String formatAdhoc(List<Map<String, Object>> rows, String from, String to) {
         String range = rangeText(from, to);
         Map<String, Object> first = rows.get(0);
@@ -151,6 +169,8 @@ public class ReportRespondNode implements NodeAction {
             case "ODOO_REPORT_UNSUPPORTED" ->
                     "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
                             + "how much [product] is in stock, or dead stock last 30 days.";
+            case "COST_DATA_UNAVAILABLE" ->
+                    "Inventory cash value is unavailable because this reporting source does not contain trusted product cost data.";
             case "ODOO_REPORT_UNAVAILABLE" -> isStockIntent(intent)
                     ? "I could not read live stock data right now. Open the stock list to check manually, or try again shortly."
                     : "Live Odoo reporting is temporarily unavailable. Please try again.";
@@ -163,7 +183,7 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private static boolean isStockIntent(String intent) {
-        return "report_stock".equals(intent);
+        return "report_stock".equals(intent) || "report_stock_value".equals(intent);
     }
 
     private static String rangeText(String from, String to) {
