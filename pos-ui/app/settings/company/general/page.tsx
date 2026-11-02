@@ -48,7 +48,7 @@ export default function GeneralCompanySettingsPage() {
   }
   const inputClass = "h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-base outline-none transition focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20";
   return <CompanySettingsScaffold subSectionTitle="Company details" activeHref={HREF} showSearch={false} showSave={false}>
-    <div className="w-full max-w-5xl">
+    <div className="w-full">
       <div className="mb-5 flex items-start justify-between gap-4"><p className="text-sm leading-6 text-[var(--oh-muted)]">Keep legal, contact and regional details accurate for receipts, reports and AI explanations.</p>{dirty && <span className="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Unsaved changes</span>}</div>
       {error && <div role="alert" className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span className="flex-1">{error}</span><button type="button" onClick={() => void load()} disabled={loading} className="min-h-10 shrink-0 rounded-md px-2 font-semibold underline disabled:opacity-50">Retry</button></div>}
       {notice && <p role="status" className="mb-5 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 size={17} />{notice}</p>}
