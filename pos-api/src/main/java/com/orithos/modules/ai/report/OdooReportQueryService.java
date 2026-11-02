@@ -621,19 +621,33 @@ public class OdooReportQueryService {
         }
         if (products.size() > MAX_STOCK_VALUE_PRODUCTS) return null;
         List<Map<String, Object>> rows = new ArrayList<>();
+        BigDecimal totalInventoryValue = BigDecimal.ZERO;
+        int valuedProductCount = 0;
         for (Map<String, Object> product : products) {
             BigDecimal quantity = decimal(product.containsKey("free_qty")
                     ? product.get("free_qty") : product.get("qty_available"));
             BigDecimal unitCost = decimal(product.get("standard_price"));
             if (quantity.signum() <= 0 || unitCost.signum() <= 0) continue;
-            rows.add(Map.of("id", product.get("id"),
+            BigDecimal inventoryValue = quantity.multiply(unitCost);
+            totalInventoryValue = totalInventoryValue.add(inventoryValue);
+            valuedProductCount++;
+            rows.add(new LinkedHashMap<>(Map.of("id", product.get("id"),
                     "name", product.getOrDefault("display_name", ""),
                     "on_hand", quantity, "unit_cost", unitCost,
-                    "inventory_value", quantity.multiply(unitCost)));
+                    "inventory_value", inventoryValue)));
         }
         rows.sort((left, right) -> decimal(right.get("inventory_value"))
                 .compareTo(decimal(left.get("inventory_value"))));
-        return rows.size() > MAX_LIST_ROWS ? new ArrayList<>(rows.subList(0, MAX_LIST_ROWS)) : rows;
+        List<Map<String, Object>> result = rows.size() > MAX_LIST_ROWS
+                ? new ArrayList<>(rows.subList(0, MAX_LIST_ROWS)) : rows;
+        Map<String, Object> summary = Map.of(
+                "store_inventory_value_total", totalInventoryValue,
+                "valued_product_count", valuedProductCount,
+                "excluded_product_count", products.size() - valuedProductCount,
+                "scanned_product_count", products.size());
+        if (result.isEmpty()) return List.of(summary);
+        result.forEach(row -> row.putAll(summary));
+        return result;
     }
 
     private List<Object> orderDomain(long companyId, Vendor vendor,

@@ -453,6 +453,28 @@ class OdooReportQueryServiceTest {
     }
 
     @Test
+    void stockValueAggregatesAllPagedProductsBeforeReturningTopRows() throws Exception {
+        List<JsonNode> requests = startStockValueServer(1005);
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+
+        OdooReportQueryService.Result result = service.query(tenant, "report_stock_value", Map.of(),
+                new ReportPeriodResolver.Window(day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1));
+
+        assertNull(result.error());
+        assertEquals(50, result.rows().size());
+        assertEquals(0, new BigDecimal("505515.0").compareTo(
+                (BigDecimal) result.rows().get(0).get("store_inventory_value_total")));
+        assertEquals(1005, result.rows().get(0).get("valued_product_count"));
+        assertEquals(0, result.rows().get(0).get("excluded_product_count"));
+        assertTrue(requests.stream().anyMatch(request -> request.path("params").path("kwargs").path("offset").asInt() == 0));
+        assertTrue(requests.stream().anyMatch(request -> request.path("params").path("kwargs").path("offset").asInt() == 1000));
+    }
+
+    @Test
     void stockQueryReturnsAnEmptyResultWhenNoProductMatches() throws Exception {
         startStockServer("[]");
         VendorMapper vendors = mock(VendorMapper.class);
@@ -595,6 +617,38 @@ class OdooReportQueryServiceTest {
                     ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson.substring(1)
                     : "{\"jsonrpc\":\"2.0\",\"result\":" + rpcResponseJson + "}";
             respond(exchange, response);
+        });
+        server.start();
+        return requests;
+    }
+
+    private List<JsonNode> startStockValueServer(int productCount) throws Exception {
+        List<JsonNode> requests = new CopyOnWriteArrayList<>();
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            exchange.getResponseHeaders().add("Set-Cookie", "session_id=test-session; Path=/; HttpOnly");
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":{\"uid\":5}}");
+        });
+        server.createContext("/web/dataset/call_kw", exchange -> {
+            JsonNode request = MAPPER.readTree(exchange.getRequestBody());
+            requests.add(request);
+            int offset = request.path("params").path("kwargs").path("offset").asInt();
+            int limit = request.path("params").path("kwargs").path("limit").asInt();
+            com.fasterxml.jackson.databind.node.ArrayNode rows = MAPPER.createArrayNode();
+            for (int index = offset; index < Math.min(offset + limit, productCount); index++) {
+                com.fasterxml.jackson.databind.node.ObjectNode row = MAPPER.createObjectNode();
+                row.put("id", index + 1);
+                row.put("display_name", "Product " + (index + 1));
+                row.put("standard_price", index + 1);
+                row.put("free_qty", 1.0);
+                row.put("qty_available", 1.0);
+                rows.add(row);
+            }
+            com.fasterxml.jackson.databind.node.ObjectNode response = MAPPER.createObjectNode();
+            response.put("jsonrpc", "2.0");
+            response.set("result", rows);
+            respond(exchange, MAPPER.writeValueAsString(response));
         });
         server.start();
         return requests;

@@ -128,22 +128,44 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String formatStockValue(List<Map<String, Object>> rows, boolean chinese) {
-        BigDecimal total = BigDecimal.ZERO;
+        Map<String, Object> summary = rows.get(0);
+        boolean hasStoreTotal = summary.containsKey("store_inventory_value_total");
+        BigDecimal storeTotal = ReportQueryService.toDecimal(summary.get("store_inventory_value_total"));
+        BigDecimal topTotal = BigDecimal.ZERO;
         StringBuilder sb = new StringBuilder(chinese ? "库存资金占用最高的商品：" : "Top inventory cash usage: ");
         int n = Math.min(rows.size(), 8);
+        int displayed = 0;
         for (int i = 0; i < n; i++) {
             Map<String, Object> row = rows.get(i);
+            if (!row.containsKey("inventory_value")) continue;
             BigDecimal value = ReportQueryService.toDecimal(row.get("inventory_value"));
-            total = total.add(value);
-            if (i > 0) sb.append("; ");
+            topTotal = topTotal.add(value);
+            if (displayed++ > 0) sb.append("; ");
             sb.append(row.getOrDefault("name", "")).append(" AUD ").append(money(value));
         }
+        if (hasStoreTotal) {
+            int valuedCount = ReportQueryService.toDecimal(summary.get("valued_product_count")).intValue();
+            int excludedCount = ReportQueryService.toDecimal(summary.get("excluded_product_count")).intValue();
+            if (chinese) {
+                sb.append("。全店有记录成本的现有库存估值 AUD ").append(money(storeTotal))
+                        .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
+                        .append(excludedCount).append(" 个商品因库存或成本条件未计入。前 ")
+                        .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal)).append("。");
+            } else {
+                sb.append(". Storewide on-hand inventory value for products with recorded positive costs: AUD ")
+                        .append(money(storeTotal)).append(" across ").append(valuedCount)
+                        .append(" products; ").append(excludedCount)
+                        .append(" products were excluded because stock or cost was not positive. Top ")
+                        .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal)).append(".");
+            }
+            return sb.toString();
+        }
         if (chinese) {
-            sb.append("；前 ").append(n).append(" 个合计 AUD ").append(money(total))
-                    .append("；没有成本记录的商品已排除。");
+            sb.append("；以上仅为返回商品小计 AUD ").append(money(topTotal))
+                    .append("，缺少完整范围汇总，不能视为全店总额。");
         } else {
-            sb.append(". Top ").append(n).append(" total AUD ").append(money(total))
-                    .append("; products without a recorded cost are excluded.");
+            sb.append(". Returned items subtotal AUD ").append(money(topTotal))
+                    .append("; a complete storewide total is unavailable.");
         }
         return sb.toString();
     }

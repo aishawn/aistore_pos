@@ -3,6 +3,7 @@ package com.orithos.modules.ai.report;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -102,6 +103,40 @@ class ReportRespondNodeTest {
         when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
         when(stockValue.value("question", String.class)).thenReturn(Optional.of("哪些库存占用了最多现金？"));
         org.junit.jupiter.api.Assertions.assertTrue(((String) node.apply(stockValue).get("answer")).contains("库存资金占用"));
+    }
+
+    @Test
+    void stockValueAnswerSeparatesStorewideTotalFromTopEightSubtotal() {
+        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 1; i <= 10; i++) {
+            BigDecimal value = BigDecimal.valueOf(i * 10L);
+            total = total.add(value);
+            rows.add(new java.util.HashMap<>(Map.of("name", "Product " + i, "inventory_value", value,
+                    "store_inventory_value_total", BigDecimal.valueOf(550),
+                    "valued_product_count", 10, "excluded_product_count", 2)));
+        }
+        OverAllState stockValue = state("", rows);
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("当前库存占了多少钱？"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("全店有记录成本的现有库存估值 AUD 550.00"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("前 8 个商品小计 AUD 360.00"));
+        org.junit.jupiter.api.Assertions.assertFalse(answer.contains("前 8 个合计 AUD 550.00"));
+    }
+
+    @Test
+    void stockValueWithoutSummaryDoesNotClaimReturnedRowsAreStorewideTotal() {
+        OverAllState stockValue = state("", List.of(
+                Map.of("name", "Wine", "inventory_value", BigDecimal.valueOf(12.5))));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("当前库存占了多少钱？"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("不能视为全店总额"));
     }
 
     @Test
