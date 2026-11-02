@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-11-03",
+  "runtimeCommit": "28a433a97cf299ac606a27bc90a6f064aa79b171",
+  "scope": "authenticated AI reports and replenishment reads; no business writes",
+  "stores": {
+    "demo": {
+      "aiChecks": {"passed": 23, "total": 23},
+      "replenishmentHttpStatus": 200,
+      "catalogueProducts": 12987,
+      "catalogueCoverage": "COMPLETE",
+      "nonGetOdooCalls": 0,
+      "writeRequests": 0,
+      "nativeSnapshotStatus": "REVIEW",
+      "observedDays": 2,
+      "forecastQuality": {"VALID": 2109, "INSUFFICIENT_HISTORY": 10878},
+      "supplierLeadTimeCoverage": 0
+    },
+    "skr": {
+      "aiChecks": {"passed": 23, "total": 23},
+      "replenishmentHttpStatus": 200,
+      "catalogueProducts": 12999,
+      "catalogueCoverage": "COMPLETE",
+      "nonGetOdooCalls": 0,
+      "writeRequests": 0,
+      "nativeSnapshotStatus": "REVIEW",
+      "observedDays": 3,
+      "forecastQuality": {"VALID": 2109, "INSUFFICIENT_HISTORY": 10890},
+      "supplierLeadTimeCoverage": 0
+    }
+  },
+  "decision": "keep_exception_review_only",
+  "nextGate": "28 consecutive native snapshot days plus supplier pilot data"
+}

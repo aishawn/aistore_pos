@@ -145,10 +145,11 @@ try {
   `timezone=${timezone}; expected=${today}; actual=${todayReport.slots?.from ?? "missing"}`);
   const emptySalesCopy = /no data found|no completed sales found/i.test(todayReport.answer);
   const widerRangeGuidance = /sales last 7 days/i.test(todayReport.answer);
-  check("empty today agrees with 24-hour overview", dashboard24h.transactions === 0
-    ? emptySalesCopy && widerRangeGuidance
-    : !emptySalesCopy,
-  `overview24hTransactions=${dashboard24h.transactions}; assistant=${todayReport.answer}`);
+  // The 24-hour dashboard is a rolling window and can include the prior
+  // business day when the store is checked shortly after midnight. Validate
+  // the assistant's empty-state wording and recovery guidance separately.
+  check("empty today gives guided range", emptySalesCopy && widerRangeGuidance,
+  `overview24hTransactions=${dashboard24h.transactions}; rollingWindowNotCompared=true; assistant=${todayReport.answer}`);
 
   const last7 = await ask("sales last 7 days");
   const last7Rows = Array.isArray(last7.table?.rows) ? last7.table.rows : [];
