@@ -1791,7 +1791,10 @@ async def push_pos_snapshot(
                 db.commit()
             odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
         if odoo_enabled and include_catalog and inventory_items:
-            inventory_responses = await sync_odoo_batches("inventory", inventory_items, snapshot_complete=True)
+            # Odoo treats snapshot_complete as the entire inventory set. Each
+            # chunk is only a partial set, so marking chunks complete deletes
+            # the rows written by earlier chunks.
+            inventory_responses = await sync_odoo_batches("inventory", inventory_items)
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0
