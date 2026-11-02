@@ -117,7 +117,7 @@ type ReplenishmentData = {
   };
 };
 
-type ListFilter = "suggestions" | "out_of_stock" | "review" | "all";
+type ListFilter = "suggestions" | "out_of_stock" | "review" | "slow_stock" | "all";
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -295,6 +295,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       : listFilter === "review" ? base.filter((product) => product.recommendationStatus === "REVIEW_DATA")
       : listFilter === "out_of_stock"
         ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)
+        : listFilter === "slow_stock"
+          ? base.filter((product) => product.onHand > 0 && (product.soldUnits <= 0 || (typeof product.daysOfStock === "number" && product.daysOfStock >= coverageDays * 2)))
         : base;
     const normalized = query.trim().toLowerCase();
     if (!normalized) return byFilter;
@@ -641,6 +643,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                 <option value="suggestions">Suggestions only</option>
                 <option value="out_of_stock">Out of stock with demand</option>
                 <option value="review">Review data ({data?.reviewRequiredCount ?? 0})</option>
+                <option value="slow_stock">Slow or overstocked</option>
                 <option value="all">All products</option>
               </select>
             </label>
@@ -665,6 +668,8 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
                     ? "No products need replenishment for this coverage target."
                     : listFilter === "out_of_stock"
                       ? "No out-of-stock products with recent demand."
+                      : listFilter === "slow_stock"
+                        ? "No products match the slow or overstocked rule."
                       : "No POS products were returned by Orithos."
                 : "No POS products were returned by Orithos."}
             </p>

@@ -34,7 +34,6 @@ async function readJson(response) {
 
 const evidence = {
   generatedAt: new Date().toISOString(),
-  runtimeCommit: null,
   scope: "authenticated replenishment exception read; no business writes",
   stores: {},
 };
@@ -50,6 +49,8 @@ try {
 
 for (const target of targets) {
   const base = `https://${target.host}`;
+  const versionResponse = await fetch(`${base}/api/public/version`, { headers: { Accept: "application/json" } });
+  const version = await readJson(versionResponse);
   let response = await fetch(`${base}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: base },
@@ -71,7 +72,9 @@ for (const target of targets) {
   evidence.stores[target.host] = {
     result: response.ok ? "PASS" : "FAIL",
     httpStatus: response.status,
+    runtimeCommit: version.frontend?.commit ?? version.backend?.commit ?? null,
     dataQuality: body.dataQuality,
+      inventoryHistory: body.inventoryHistory,
     supplierLeadTime: body.supplierLeadTime,
     inventoryHistory: body.inventoryHistory,
     reviewRequiredCount: body.reviewRequiredCount,

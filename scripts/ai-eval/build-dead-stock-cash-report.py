@@ -30,9 +30,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sales-snapshot", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--company-id", type=int, default=5)
+    parser.add_argument("--company-id", type=int)
     args = parser.parse_args()
     sales = json.loads(args.sales_snapshot.read_text(encoding="utf-8"))
+    snapshot_company_id = sales.get("companyId")
+    if not isinstance(snapshot_company_id, int) or snapshot_company_id <= 0:
+        raise ValueError("sales snapshot must contain a valid companyId")
+    if args.company_id is not None and args.company_id != snapshot_company_id:
+        raise ValueError(f"company ID {args.company_id} does not match sales snapshot companyId {snapshot_company_id}")
+    company_id = snapshot_company_id
     series = {str(row["productId"]): row for row in sales.get("series", [])}
     product_ids = sorted(int(product_id) for product_id in series)
     Odoo, env_values = load_odoo_client()
@@ -43,19 +49,20 @@ def main() -> int:
         raise RuntimeError("Odoo read-only credentials are required")
     odoo = Odoo(values.get("ODOO_BASE_URL", "https://odoo.orithos.com.au"),
                 values.get("ODOO_DATABASE", "aipos_uat"), username, password)
-    odoo.context = {"allowed_company_ids": [args.company_id],
-                    "company_id": args.company_id, "active_test": False}
+    odoo.context = {"allowed_company_ids": [company_id],
+                    "company_id": company_id, "active_test": False}
     metadata = []
     for offset in range(0, len(product_ids), 500):
         metadata.extend(read_model(odoo, "product.product", [
             ["id", "in", product_ids[offset:offset + 500]],
-            ["company_id", "in", [False, args.company_id]],
+            ["company_id", "in", [False, company_id]],
         ], ["id", "display_name", "categ_id", "qty_available", "virtual_available",
             "standard_price", "list_price"], limit=500))
     metadata_by_id = {str(row["id"]): row for row in metadata}
     end_date = max((max(row.get("dates", [])) for row in series.values() if row.get("dates")),
                    default=date.today().isoformat())
     rows = []
+    action_counts = Counter()
     for product_id, item in series.items():
         dates = item.get("dates", [])
         units = [max(0.0, float(value or 0)) for value in item.get("units", [])]
@@ -74,6 +81,19 @@ def main() -> int:
             bucket = "NO_SALE_30D"
         else:
             bucket = "ACTIVE_OR_RECENT"
+        if not valid_cash_basis:
+            action = "DATA_REPAIR_REQUIRED"
+            action_reason = "cost_or_stock_missing_or_invalid"
+        elif bucket == "NO_SALE_90D":
+            action = "STOP_REPLENISHMENT_AND_CLEARANCE_REVIEW"
+            action_reason = "no_sale_for_at_least_90_days"
+        elif bucket in {"NO_SALE_60D", "NO_SALE_30D"}:
+            action = "PROMOTION_OR_BUNDLE_REVIEW"
+            action_reason = "no_sale_for_at_least_30_days"
+        else:
+            action = "MONITOR"
+            action_reason = "recent_sales_observed"
+        action_counts[action] += 1
         rows.append({
             "productId": int(product_id),
             "displayName": product.get("display_name"),
@@ -85,17 +105,21 @@ def main() -> int:
             "cashValue": cash_value,
             "dataQuality": "VALID_COST_AND_NONNEGATIVE_STOCK" if valid_cash_basis
                 else "COST_OR_STOCK_INVALID",
+            "recommendedAction": action,
+            "actionReason": action_reason,
             "totalUnitsInSnapshot": round(sum(units), 4),
         })
     valid_rows = [row for row in rows if row["cashValue"] is not None]
     report = {
         "status": "PASS",
         "mode": "READ_ONLY_DEAD_STOCK_CASH_ANALYSIS",
+        "companyId": company_id,
         "salesDateRange": [min((min(row.get("dates", [])) for row in series.values() if row.get("dates")),
                                 default=None), end_date],
         "productCount": len(rows),
         "metadataFoundCount": len(metadata_by_id),
         "bucketCounts": dict(Counter(row["bucket"] for row in rows)),
+        "recommendedActionCounts": dict(action_counts),
         "invalidCostOrStockCount": len(rows) - len(valid_rows),
         "validCashValueTotal": round(sum(row["cashValue"] for row in valid_rows), 2),
         "cashValueByBucket": {
