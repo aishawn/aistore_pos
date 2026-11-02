@@ -119,7 +119,9 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String formatDead(List<Map<String, Object>> rows, String days) {
-        return rows.size() + " dead-stock item(s) in the last " + days + " days (on hand > 0, qty sold = 0).";
+        String prefix = rows.size() == 50 ? "Top 50 " : rows.size() + " ";
+        return prefix + "dead-stock item(s) in the last " + days
+                + " days (on hand > 0, qty sold = 0).";
     }
 
     private String formatStockValue(List<Map<String, Object>> rows) {

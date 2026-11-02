@@ -602,7 +602,9 @@ public class OdooReportQueryService {
             }
         }
         rows.sort((a, b) -> decimal(b.get("on_hand")).compareTo(decimal(a.get("on_hand"))));
-        return rows.size() > MAX_LIST_ROWS ? null : rows;
+        return rows.size() > MAX_LIST_ROWS
+                ? new ArrayList<>(rows.subList(0, MAX_LIST_ROWS))
+                : rows;
     }
 
     private List<Map<String, Object>> stockValue(String session, long companyId,
