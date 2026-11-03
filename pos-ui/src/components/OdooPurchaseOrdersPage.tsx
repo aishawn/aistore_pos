@@ -4,7 +4,7 @@ import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
+import { ArrowUpRight, Check, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
 import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, OdooApiError, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -119,6 +119,9 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const [state, setState] = useState("all");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLElement>(null);
+  const scrollRoot = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +142,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
+  const loadedFilters = useRef("");
   const detailRevision = useRef(0);
 
   useEffect(() => {
@@ -149,30 +153,45 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (append = false) => {
+    if (!append && offset !== 0) setOffset(0);
     const revision = ++requestRevision.current;
-    setLoading(true);
+    if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
       const [page, bootstrap] = await Promise.all([
-        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset }),
+        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset: append ? offset : 0 }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
       const activeConfig = bootstrap?.configs.find((config) => config.session) ?? bootstrap?.configs[0];
       if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
       setConnected(true);
-      setItems(page.items);
+      setItems((previous) => append ? [...previous, ...page.items.filter((row) => !previous.some((item) => item.id === row.id))] : page.items);
       setHasNext(page.hasNext);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos purchase orders.");
     } finally {
-      if (revision === requestRevision.current) setLoading(false);
+      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
     }
   }, [debouncedQuery, offset, state]);
 
-  useEffect(() => { void loadOrders(); }, [loadOrders, refreshKey]);
+  useEffect(() => {
+    const filters = JSON.stringify([debouncedQuery, state, refreshKey]);
+    const append = offset > 0 && loadedFilters.current === filters;
+    loadedFilters.current = filters;
+    if (!append && offset !== 0) setOffset(0);
+    void loadOrders(append);
+  }, [loadOrders, refreshKey, offset, debouncedQuery, state]);
+  useEffect(() => {
+    const node = sentinel.current; const root = scrollRoot.current;
+    if (!node || !root) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) setOffset(items.length);
+    }, { root, rootMargin: "480px 0px" });
+    observer.observe(node); return () => observer.disconnect();
+  }, [hasNext, loading, loadingMore, error, items.length]);
 
   async function openDetail(purchaseId: number, receiveMessage: string | null = null) {
     const revision = ++detailRevision.current;
@@ -357,7 +376,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
         {embedded && <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchase orders" title="Refresh purchase orders" className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span>Refresh</span></button>}
       </div>
 
-      <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+      <section ref={scrollRoot} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <table aria-label="Orithos purchase orders" className="hidden w-full min-w-[900px] border-collapse text-left text-sm xl:table">
           <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Reference</th><th scope="col" className="px-4 py-3">Supplier</th><th scope="col" className="px-4 py-3">Order date</th><th scope="col" className="px-4 py-3 text-right">Lines</th><th scope="col" className="px-4 py-3 text-right">Total</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3 text-right">Actions</th></tr></thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
@@ -406,9 +425,12 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
             </article>
           ))}
         </div>
+      {items.length > 0 && <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">{loadingMore ? "Loading more purchase orders…" : hasNext ? `Loaded ${items.length} purchase orders` : `${items.length} purchase orders loaded`}
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
+          </footer>}
       </section>
 
-      {items.length > 0 && <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between"><span>Showing {offset + 1}–{offset + items.length}</span><nav aria-label="Purchase orders pagination" className="flex w-full items-center gap-2 sm:w-auto"><button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button><button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button></nav></footer>}
+
 
       {(detail || detailLoading || detailError) && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirming) closeDetail(); }}>
         <section role={detailError ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby="purchase-detail-title" className="my-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">

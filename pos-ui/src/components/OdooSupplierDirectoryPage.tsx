@@ -4,7 +4,7 @@ import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
+import { AlertCircle, Check, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -50,6 +50,9 @@ function OdooNativeSupplierDirectoryPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const scrollRoot = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -65,6 +68,7 @@ function OdooNativeSupplierDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ name: "", phone: "", email: "", vat: "", ref: "" });
   const requestRevision = useRef(0);
+  const loadedFilters = useRef("");
   const supplierNameInputRef = useRef<HTMLInputElement>(null);
   useDialogFocus(createOpen, () => {
     if (!creating) setCreateOpen(false);
@@ -107,25 +111,40 @@ function OdooNativeSupplierDirectoryPage() {
     return () => { cancelled = true; };
   }, [connected]);
 
-  const loadSuppliers = useCallback(async () => {
+  const loadSuppliers = useCallback(async (append = false) => {
     if (connected !== true) return;
+    if (!append && offset !== 0) setOffset(0);
     const revision = ++requestRevision.current;
-    setLoading(true);
+    if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset });
+      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset: append ? offset : 0 });
       if (revision !== requestRevision.current) return;
-      setItems(page.items.slice(0, PAGE_SIZE));
+      setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers.");
     } finally {
-      if (revision === requestRevision.current) setLoading(false);
+      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
     }
   }, [connected, debouncedQuery, offset]);
 
-  useEffect(() => { void loadSuppliers(); }, [loadSuppliers, refreshKey]);
+  useEffect(() => {
+    const filters = JSON.stringify([connected, debouncedQuery, refreshKey]);
+    const append = offset > 0 && loadedFilters.current === filters;
+    loadedFilters.current = filters;
+    if (!append && offset !== 0) setOffset(0);
+    void loadSuppliers(append);
+  }, [loadSuppliers, refreshKey, offset, connected, debouncedQuery]);
+  useEffect(() => {
+    const node = sentinel.current; const root = scrollRoot.current;
+    if (!node || !root) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) setOffset(items.length);
+    }, { root, rootMargin: "480px 0px" });
+    observer.observe(node); return () => observer.disconnect();
+  }, [hasNext, loading, loadingMore, error, items.length]);
 
   async function createSupplier(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -165,7 +184,7 @@ function OdooNativeSupplierDirectoryPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header className="mt-4 flex flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>
@@ -256,12 +275,10 @@ function OdooNativeSupplierDirectoryPage() {
             </div>
           </section>
 
-          {items.length > 0 && <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span>Page {Math.floor(offset / PAGE_SIZE) + 1} · Showing {offset + 1}–{offset + items.length}</span>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
-            </div>
+          {items.length > 0 && <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
+            {loadingMore ? "Loading more suppliers…" : hasNext ? `Loaded ${items.length} suppliers` : `${items.length} suppliers loaded`}
+
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
           </footer>}
         </>
       )}

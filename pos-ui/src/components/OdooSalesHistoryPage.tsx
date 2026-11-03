@@ -3,7 +3,7 @@
 import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, ChevronRight, Download, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
+import { AlertCircle, Download, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSaleDetail,
@@ -92,6 +92,9 @@ export function OdooSalesHistoryPage({
   const [period, setPeriod] = useState<OdooSalesPeriodFilter>("all");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLElement>(null);
+  const scrollRoot = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,20 +113,22 @@ export function OdooSalesHistoryPage({
   const [refundPaymentMethodId, setRefundPaymentMethodId] = useState<number | null>(null);
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const requestRevision = useRef(0);
+  const loadedFilters = useRef("");
   const detailRevision = useRef(0);
 
-  const loadSales = useCallback(async () => {
+  const loadSales = useCallback(async (append = false) => {
+    if (!append && offset !== 0) setOffset(0);
     const revision = ++requestRevision.current;
-    setLoading(true);
+    if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
       const [page, pos] = await Promise.all([
-        searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, status, period, limit: PAGE_SIZE + 1, offset }),
+        searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, status, period, limit: PAGE_SIZE + 1, offset: append ? offset : 0 }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
       setConnected(true);
-      setItems(page.items.slice(0, PAGE_SIZE));
+      setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
       if (pos) {
@@ -133,11 +138,25 @@ export function OdooSalesHistoryPage({
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos sales.");
     } finally {
-      if (revision === requestRevision.current) setLoading(false);
+      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
     }
   }, [debouncedQuery, offset, period, status]);
 
-  useEffect(() => { void loadSales(); }, [loadSales]);
+  useEffect(() => {
+    const filters = JSON.stringify([debouncedQuery, period, status]);
+    const append = offset > 0 && loadedFilters.current === filters;
+    loadedFilters.current = filters;
+    if (!append && offset !== 0) setOffset(0);
+    void loadSales(append);
+  }, [loadSales, offset, debouncedQuery, period, status]);
+  useEffect(() => {
+    const node = sentinel.current; const root = scrollRoot.current;
+    if (!node || !root) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) setOffset(items.length);
+    }, { root, rootMargin: "480px 0px" });
+    observer.observe(node); return () => observer.disconnect();
+  }, [hasNext, loading, loadingMore, error, items.length]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -411,7 +430,7 @@ export function OdooSalesHistoryPage({
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadSales(); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
 
-          <section className="min-h-0 flex-1 overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section ref={scrollRoot} className="min-h-0 flex-1 overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
@@ -485,15 +504,14 @@ export function OdooSalesHistoryPage({
                 </button>
               ))}
             </div>
+          {items.length > 0 && <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
+            {loadingMore ? "Loading more sales…" : hasNext ? `Loaded ${items.length} sales` : `${items.length} sales loaded`}
+
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
+          </footer>}
           </section>
 
-          {items.length > 0 && <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-[var(--oh-muted)]">
-            <span>Showing {offset + 1}–{offset + items.length}</span>
-            <nav aria-label="Sales history pagination" className="flex items-center gap-2">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={16} /></button>
-            </nav>
-          </footer>}
+
         </>
       )}
 

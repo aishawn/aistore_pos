@@ -10,7 +10,7 @@ import { CustomerLookup } from "@/components/CustomerLookup";
 import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
 import { OdooRecordLink } from "@/components/OdooRecordLink";
 import { useSearchParams } from "next/navigation";
-import { Archive, AlertCircle, Check, ChevronLeft, ChevronRight, Ellipsis, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { Archive, AlertCircle, Check, Ellipsis, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import {
   createOdooCustomer,
   archiveOdooCustomer,
@@ -73,6 +73,9 @@ export function OdooCustomerDirectoryPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const scrollRoot = useRef<HTMLElement>(null);
   const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
@@ -101,6 +104,7 @@ export function OdooCustomerDirectoryPage() {
   }, [searchParams, items, canEdit]);
 
   const requestRevision = useRef(0);
+  const loadedFilters = useRef("");
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const queryPending = query.trim() !== debouncedQuery;
   const resultsBusy = loading || queryPending;
@@ -174,26 +178,43 @@ export function OdooCustomerDirectoryPage() {
 
   useEffect(() => { void loadLookups(); }, [loadLookups, refreshKey]);
 
-  const loadCustomers = useCallback(async () => {
+  const loadCustomers = useCallback(async (append = false) => {
     if (connected !== true) return;
+    if (!append && offset !== 0) setOffset(0);
     const revision = ++requestRevision.current;
-    setLoading(true);
+    if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset, groupId: groupFilter[0], pricelistId: priceFilter[0] });
+      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset: append ? offset : 0, groupId: groupFilter[0], pricelistId: priceFilter[0] });
       if (revision !== requestRevision.current) return;
-      setItems(page.items.slice(0, PAGE_SIZE));
+      setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
       setHasNext(page.hasNext ?? (page.items.length > PAGE_SIZE));
       setTotal(typeof page.total === "number" ? page.total : null);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos customers.");
     } finally {
-      if (revision === requestRevision.current) setLoading(false);
+      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
     }
   }, [connected, debouncedQuery, offset, groupFilter, priceFilter]);
 
-  useEffect(() => { void loadCustomers(); }, [loadCustomers, refreshKey]);
+  useEffect(() => {
+    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, priceFilter, refreshKey]);
+    const append = offset > 0 && loadedFilters.current === filters;
+    loadedFilters.current = filters;
+    if (!append && offset !== 0) setOffset(0);
+    void loadCustomers(append);
+  }, [loadCustomers, refreshKey, offset, connected, debouncedQuery, groupFilter, priceFilter]);
+  useEffect(() => {
+    const node = sentinel.current; const root = scrollRoot.current;
+    if (!node || !root) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) {
+        setOffset(items.length);
+      }
+    }, { root, rootMargin: "480px 0px" });
+    observer.observe(node); return () => observer.disconnect();
+  }, [hasNext, loading, loadingMore, error, items.length]);
 
   function openCreate() {
     setEditingCustomer(null);
@@ -274,7 +295,7 @@ export function OdooCustomerDirectoryPage() {
   };
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
@@ -383,12 +404,10 @@ export function OdooCustomerDirectoryPage() {
             </div>
           </section>
 
-          <footer className="flex shrink-0 flex-col gap-2 pr-32 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span>{items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || resultsBusy} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || resultsBusy} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
-            </div>
+          <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
+            {loadingMore ? "Loading more customers…" : hasNext ? `Loaded ${items.length} of ${total ?? "more"} customers` : `${items.length} customers loaded`}
+
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
           </footer>
         </>
       )}

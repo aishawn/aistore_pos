@@ -81,7 +81,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const snapshotId = useRef<string | undefined>(undefined);
   const nextOffset = useRef(0);
   const requestBusy = useRef(false);
-  const scrollRoot = useRef<HTMLElement>(null);
+  const scrollRoot = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const loadedQuery = useRef("");
   const [hasNext, setHasNext] = useState(false);
@@ -297,7 +297,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, sortBy, sortDirection, refreshKey]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, inventoryReport, sortBy, sortDirection, refreshKey]);
 
   useEffect(() => {
     const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
@@ -495,7 +495,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }
 
   return (
-    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)]">
+      <div ref={scrollRoot} data-testid="product-results-scroll" className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto overscroll-y-contain px-4 pb-4 md:px-6">
       <header inert={stockBusy || categoryBusy} className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">{inventoryReport ? "Inventory report" : "Products"}</h1>
@@ -593,7 +594,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && Boolean(snapshotId.current) && items.length > 0)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
 
-          <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
+          <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
@@ -676,10 +677,16 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
           <div ref={sentinel} className="flex min-h-12 shrink-0 items-center justify-center gap-2 text-sm text-[var(--oh-muted)]" role="status" aria-live="polite">
             {loadingMore ? <><LoaderCircle aria-hidden="true" size={16} className="animate-spin" /> Loading more products…</> : !resultsPending && !error && !hasNext ? "All results loaded" : null}
-            {hasNext && !resultsPending && !loadingMore && !error && <button type="button" onClick={() => void loadProducts(true)} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Load more</button>}
           </div>
-          <footer className="sticky bottom-0 z-20 flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label="Totals for all matching products">
+
+        </>
+      )}
+
+      </div>
+      {connected === true && tab !== "stocktake" && (
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label="Totals for all matching products">
             <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading inventory…" : totals ? `Loaded ${items.length} / ${totals.totalItems} products` : "Totals unavailable"}</span>
+            {hasNext && !resultsPending && !error && <button type="button" onClick={() => void loadProducts(true)} disabled={loadingMore} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
             {totals && !resultsPending && <>
               <span>Products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
               <span>On hand <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
@@ -688,7 +695,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
           </footer>
-        </>
       )}
 
       {viewingProduct && <CatalogueProductDetails product={viewingProduct} categories={categoryNames} onClose={() => setViewingProduct(null)} onEdit={() => { setEditingProduct(viewingProduct); setViewingProduct(null); setCategoriesTouched(false); setEditError(null); }} />}
