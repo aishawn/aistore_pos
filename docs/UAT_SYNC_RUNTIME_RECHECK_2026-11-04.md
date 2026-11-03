@@ -23,7 +23,7 @@
 
 ## 候选构建证据
 
-候选 SHA `9b46f9f8` 在本地 Temurin Java 21 执行 `mvn -B clean verify` 成功：511 个测试通过、0 failures、0 errors，生成 `pos-api-0.1.0.jar`。该结果不替代 GitHub Actions 的远端构建；候选分支已推送到 `codex/assistant-provenance-ui`，尚未合并 `main` 或部署。
+候选原始 SHA `9b46f9f8` 在本地 Temurin Java 21 执行 `mvn -B clean verify` 成功；随后合并包含同步重放和库存锁修复的 `origin/main`，当前候选合并 SHA 为 `9fc7446b`。合并后再次执行 `mvn -B clean verify`，结果为 511 个测试通过、0 failures、0 errors，生成 `pos-api-0.1.0.jar`；在 `shopfront_crawler` 包根目录执行 `python -m pytest -q tests`，结果为 56 passed。上述本地结果不替代 GitHub Actions 的远端构建；候选分支已推送到 `codex/assistant-provenance-ui`，尚未合并 `main` 或部署。
 
 ## 约束
 
