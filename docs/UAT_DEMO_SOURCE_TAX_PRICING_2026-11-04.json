@@ -1,0 +1,79 @@
+{
+  "database": "aipos_uat",
+  "companyId": 137,
+  "from": "2026-10-19 13:30:00",
+  "to": "2026-10-20 13:30:00",
+  "startedAt": "2026-11-03T15:55:06.156279+00:00",
+  "committedBusinessWrites": 0,
+  "batchRehearsalComplete": true,
+  "cloneResetAuditMissing": true,
+  "pricingProposalVersion": "source-tax-repair-v2",
+  "scriptSha256": "857f93e83a5bc8eda7a669fc731a69641dfd8a3c017881261281b8c97b6b4b3b",
+  "productPricePrecision": 2,
+  "importerFileSha256": "e87a80074799406d0557cc7db4370cc9ee3e55e99be472b0b9abc5436693b810",
+  "sourceCreatedAtFieldType": "char",
+  "sourceReadScope": "Three padded calendar dates for legacy text timestamps; exact raw timestamp checked per native order",
+  "sourceRows": 501,
+  "orderCount": 162,
+  "lineCount": 303,
+  "sourceBytesSha256": "8c50303f9db2d55a477d958fb8cc946fea58ab5de275e1939e0a40502b85092c",
+  "productTaxAssignmentsUnchanged": true,
+  "beforeImageSha256": "2cf3a80e098bbeba280dab16ffe0ba707f4cfc2e72edda35d6c6355b1464a48b",
+  "rollbackVerifiedInNewTransaction": true,
+  "summary": {
+    "orders": 162,
+    "rehearsed": 64,
+    "review": 98,
+    "rehearsedLines": 81,
+    "normalizedPriceLinesRolledBack": 28,
+    "changedLinesRolledBack": 81,
+    "blockers": {
+      "HISTORICAL_ZERO_TAX_CLASSIFICATION_REQUIRED": 21,
+      "LINE_MATCH_AMBIGUOUS_OR_MISSING": 40,
+      "SOURCE_LINE_ORDER_DIFFERENCE": 21,
+      "PAID_UNIT_PRICE_PRECISION_SOURCE_MISMATCH": 15,
+      "COMPLETED_SOURCE_REQUIRED": 1
+    }
+  },
+  "finishedAt": "2026-11-03T15:56:01.226935+00:00",
+  "rawSha256": "6002326f2db7075cac90825c21e69de66a989ad78a3405593add6b3210343831",
+  "normalizedSamples": [
+    {
+      "lineId": 15633177,
+      "sourceLineId": "11f1cc0b5f3c9e6491970affd20b09b9",
+      "sourceBasePrice": 11.98,
+      "sourceGross": 11.98,
+      "sourceTax": 1.09,
+      "quantity": 2.0,
+      "beforePrice": 11.98,
+      "beforeDiscount": 0.0,
+      "savedPrice": 5.99,
+      "savedDiscount": 0.0
+    },
+    {
+      "lineId": 15633181,
+      "sourceLineId": "11f1cc1004426fca9b3e06ffe197d1df",
+      "sourceBasePrice": 6,
+      "sourceGross": 6,
+      "sourceTax": 0.55,
+      "quantity": 2.0,
+      "beforePrice": 6.0,
+      "beforeDiscount": 0.0,
+      "savedPrice": 3.0,
+      "savedDiscount": 0.0
+    }
+  ],
+  "sourceSha": null,
+  "runtimeSha": null,
+  "environment": "aipos_uat demo company 137, transaction writes rolled back",
+  "plannerFileSha256": "49e3a06b378ead32ef0042632302e604dd8627405845469b4dda758d80d71da7",
+  "limitations": [
+    "162-order single-day demo rehearsal only; 98 orders still require review, not full-history execution acceptance.",
+    "Private Python probe exercises the v2 pricing formula and real Odoo tax engine; it does not execute a TypeScript plan end to end.",
+    "Existing reset56 clone audit unavailable; deterministic UUID mapping and strict line bijection only support this rollback rehearsal.",
+    "Price precision 2 observed in this database at this time; never infer another database or historical setting.",
+    "Zero source tax is not independently classified; shared product taxes unchanged.",
+    "All original lines/orders including write_date restored in a new transaction; database sequences can still allocate IDs.",
+    "Source/runtime Odoo commit unknown; importer and private probe byte hashes recorded."
+  ]
+}

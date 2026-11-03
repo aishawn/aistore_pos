@@ -721,6 +721,35 @@
         "docs/test-sessions/2026-11-03-margin-release.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-DEMO-TAX-PRICING-V4",
+      "status": "INFO",
+      "evidenceType": "online-write",
+      "recordedAt": "2026-11-04",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": "probe-sha256:857f93e83a5bc8eda7a669fc731a69641dfd8a3c017881261281b8c97b6b4b3b",
+      "snapshotVersion": "6002326f2db7075cac90825c21e69de66a989ad78a3405593add6b3210343831",
+      "scope": "aipos_uat demo137 Oct20 Adelaide whole day; transaction rollback; committed business writes0",
+      "sample": "162 orders /303 lines;64 orders81lines rehearse;28price normalizations",
+      "result": "98 review; product price precision2; all162orders303lines rollback verified in new transaction",
+      "limitations": [
+        "162-order single-day demo rehearsal only; 98 orders still require review, not full-history execution acceptance.",
+        "Private Python probe exercises the v2 pricing formula and real Odoo tax engine; it does not execute a TypeScript plan end to end.",
+        "Existing reset56 clone audit unavailable; deterministic UUID mapping and strict line bijection only support this rollback rehearsal.",
+        "Price precision 2 observed in this database at this time; never infer another database or historical setting.",
+        "Zero source tax is not independently classified; shared product taxes unchanged.",
+        "All original lines/orders including write_date restored in a new transaction; database sequences can still allocate IDs.",
+        "Source/runtime Odoo commit unknown; importer and private probe byte hashes recorded."
+      ],
+      "artifacts": [
+        "docs/UAT_DEMO_SOURCE_TAX_PRICING_2026-11-04.json",
+        "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

@@ -10,7 +10,7 @@ function fixture(): AuditSnapshot {
   return { companyId: 5, store: "skr", timezone: "Australia/Adelaide", from: "2026-11-01 00:00:00", to: "2026-11-03 00:00:00", capturedAt: "2026-11-03T01:00:00Z",
     products: [{ id: 1, shopfront_source_ref: "skr:water" }], receipts: [],
     orders: [{ id: 10, uuid: sourceOrderUuid("skr", "sale"), company_id: [5, "SKR"], state: "paid", date_order: "2026-11-02 00:00:00", amount_total: 11, amount_tax: 0, write_date: "2026-11-02 01:00:00" }],
-    lines: [{ id: 20, order_id: [10, "sale"], product_id: [1, "water"], qty: 2, price_subtotal: 11, price_subtotal_incl: 11, total_cost: 99, is_total_cost_computed: true, write_date: "2026-11-02 01:00:00" }],
+    lines: [{ id: 20, order_id: [10, "sale"], product_id: [1, "water"], qty: 2, price_unit: 5.5, discount: 0, tax_ids: [], price_subtotal: 11, price_subtotal_incl: 11, total_cost: 99, is_total_cost_computed: true, write_date: "2026-11-02 01:00:00" }],
     sourceSales: [{ id: 30, external_id: "sale", created_at: "2026-11-02 00:00:00", total_price: 11, total_tax: 1, raw_payload: { raw_payload: { id: "sale", status: "COMPLETED", createdAt: "2026-11-02T00:00:00Z", totalPrice: 11, totalTax: 1, items: [original] } } }],
     coverage: { allProducts: true, sourceRowsComplete: true, totalOrders: 1, totalLines: 1, selectedLines: 1 } };
 }
@@ -21,7 +21,43 @@ test("tax correction is independent of missing purchase costs and never changes 
   assert.equal(r.changesCosts, false); assert.equal(r.accountingCostsVerified, false); assert.equal(r.executable, false);
   assert.equal(JSON.stringify(s), before);
   s.lines[0].price_subtotal = 10; s.orders[0].amount_tax = 1;
+  assert.equal(sourceTaxRepairPlan(s, "missing-line-tax").summary.needsChange, 1);
+  s.lines[0].tax_ids = [1];
   assert.equal(sourceTaxRepairPlan(s, "new-hash").summary.needsChange, 0);
+});
+
+test("a line total imported as unit price is proposed as paid unit, even when stored subtotals already agree", () => {
+  const s = fixture(); s.lines[0].price_unit = 11; s.lines[0].price_subtotal = 10; s.lines[0].tax_ids = [1]; s.orders[0].amount_tax = 1;
+  const before = JSON.stringify(s), p = sourceTaxRepairPlan(s, "hash"), line = p.orders[0].lines[0];
+  assert.equal(p.version, "source-tax-repair-v2");
+  assert.equal(p.summary.needsChange, 1); assert.equal(line.proposed.price_unit, 5.5);
+  assert.equal(line.proposed.discount, 0); assert.equal(line.expected.priceUnit, 11);
+  assert.equal(line.pricingBasis, "source_paid_unit_normalization");
+  assert.equal(line.taxConfigurationReviewRequired, true); assert.equal(p.executable, false);
+  assert.equal(JSON.stringify(s), before);
+});
+
+test("matching discounted pricing is preserved; refunds retain signed quantity and positive paid unit", () => {
+  const s = fixture(); s.lines[0].price_unit = 11; s.lines[0].discount = 50;
+  let line = sourceTaxRepairPlan(s, "hash").orders[0].lines[0];
+  assert.equal(line.proposed.price_unit, 11); assert.equal(line.proposed.discount, 50);
+  assert.equal(line.pricingBasis, "preserved_target_inputs");
+  const raw = (s.sourceSales![0].raw_payload as {raw_payload: {items: Record<string, unknown>[]; totalPrice: number; totalTax: number}}).raw_payload;
+  Object.assign(raw.items[0], {quantity: -2, totalPrice: -11, tax: -1}); raw.totalPrice = -11; raw.totalTax = -1;
+  s.sourceSales![0].total_price = -11; s.sourceSales![0].total_tax = -1; s.orders[0].amount_total = -11;
+  Object.assign(s.lines[0], {qty: -2, price_unit: 11, discount: 0, price_subtotal: -11, price_subtotal_incl: -11});
+  line = sourceTaxRepairPlan(s, "refund").orders[0].lines[0];
+  assert.equal(line.proposed.price_unit, 5.5); assert.equal(line.proposed.price_subtotal, -10);
+  assert.equal(line.expected.quantity, -2);
+});
+
+test("legacy snapshots missing actual tax inputs cannot produce supported price repairs", () => {
+  for (const key of ["price_unit", "discount", "tax_ids"] as const) {
+    const s = fixture(); delete s.lines[0][key];
+    const p = sourceTaxRepairPlan(s, "legacy");
+    assert.equal(p.summary.supported, 0); assert.ok(p.orders[0].blockers.includes("TARGET_TAX_INPUTS_MISSING_OR_INVALID"));
+    assert.deepEqual(p.orders[0].lines, []);
+  }
 });
 test("source one-cent line/order difference is blocked without a manufactured rounding adjustment", () => {
   const s = fixture(); s.sourceSales![0].total_tax = 1.01;

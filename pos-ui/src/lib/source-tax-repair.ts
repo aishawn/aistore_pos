@@ -54,14 +54,25 @@ export function sourceTaxRepairPlan(snapshot: AuditSnapshot, sourceHash: string)
       if (!original || used.has(id)) blockers.push("LINE_MATCH_AMBIGUOUS_OR_MISSING");
       used.add(id);
       if (!line.write_date || amount(line.price_subtotal) === null || amount(line.price_subtotal_incl) === null) blockers.push("TARGET_PRECONDITIONS_MISSING");
+      const price = amount(line.price_unit), discount = amount(line.discount), quantity = amount(line.qty);
+      if (price === null || discount === null || discount < 0 || discount > 100 || !Array.isArray(line.tax_ids)
+        || line.tax_ids.some(id => !Number.isSafeInteger(id) || id <= 0) || new Set(line.tax_ids).size !== line.tax_ids.length) blockers.push("TARGET_TAX_INPUTS_MISSING_OR_INVALID");
       const gross = amount(original?.totalPrice), tax = amount(original?.tax);
       const net = gross !== null && tax !== null ? decimal(micro(gross) - micro(tax)) : null;
+      const pricingAgrees = price !== null && discount !== null && quantity !== null && same(price * quantity * (1 - discount / 100), gross);
+      // The source paid line amount supports an effective unit price, not an
+      // invented historical list price or discount. Preserve matching inputs.
+      const paidUnit = gross !== null && quantity !== null && quantity !== 0 ? Number((gross / quantity).toFixed(6)) : null;
+      if (paidUnit === null || !Number.isFinite(paidUnit)) blockers.push("SOURCE_PAID_UNIT_PRICE_INVALID");
       return { id: line.id, sourceLineId: id || null, productId: relationId(line.product_id),
         expected: { writeDate: line.write_date ?? null, quantity: line.qty, net: line.price_subtotal, gross: line.price_subtotal_incl,
           priceUnit: line.price_unit ?? null, discount: line.discount ?? null, taxIds: line.tax_ids ?? null,
           sourceLineRef: line.shopfront_source_line_ref ?? false, totalCost: line.total_cost ?? null, costComputed: line.is_total_cost_computed ?? null },
-        proposed: { price_subtotal: net, price_subtotal_incl: gross },
-        needsChange: !same(net, line.price_subtotal) };
+        sourcePricing: { basePrice: amount(original?.basePrice), quantity, paidGross: gross, tax },
+        pricingBasis: pricingAgrees ? "preserved_target_inputs" : "source_paid_unit_normalization",
+        taxConfigurationReviewRequired: true,
+        proposed: { price_subtotal: net, price_subtotal_incl: gross, price_unit: pricingAgrees ? price : paidUnit, discount: pricingAgrees ? discount : 0 },
+        needsChange: !same(net, line.price_subtotal) || !pricingAgrees || (tax !== null && tax !== 0 && Array.isArray(line.tax_ids) && !line.tax_ids.length) };
     });
     if (used.size !== rawLines.length) blockers.push("ORDER_LINES_NOT_BIJECTIVE");
     const reasons = [...new Set(blockers)];
@@ -75,10 +86,10 @@ export function sourceTaxRepairPlan(snapshot: AuditSnapshot, sourceHash: string)
   });
   const coverageComplete = snapshot.coverage?.allProducts === true && snapshot.coverage.sourceRowsComplete === true
     && snapshot.coverage.totalLines === snapshot.lines.length && snapshot.coverage.totalOrders === snapshot.orders.length;
-  return { version: "source-tax-repair-v1", sourceHash,
+  return { version: "source-tax-repair-v2", sourceHash,
     scope: { companyId: snapshot.companyId, store: snapshot.store, from: snapshot.from, to: snapshot.to },
     dryRun: true, executable: false, businessWrites: 0, changesCosts: false, accountingCostsVerified: false,
-    coverageComplete, executionBlockers: ["LIVE_SOURCE_AND_TARGET_REVALIDATION_REQUIRED", "ODOO_TAX_RECOMPUTATION_NOT_VERIFIED", "POSTED_ACCOUNTING_IMPACT_NOT_CHECKED", ...(!coverageComplete ? ["FULL_SCOPE_REQUIRED"] : [])],
+    coverageComplete, executionBlockers: ["LIVE_SOURCE_AND_TARGET_REVALIDATION_REQUIRED", "ODOO_TAX_RECOMPUTATION_NOT_VERIFIED", "HISTORICAL_TAX_DEFINITION_REQUIRED", "ODOO_PRICE_PRECISION_NOT_VERIFIED", "POSTED_ACCOUNTING_IMPACT_NOT_CHECKED", ...(!coverageComplete ? ["FULL_SCOPE_REQUIRED"] : [])],
     summary: { orders: orders.length, supported: orders.filter(o => !o.blockers.length).length,
       review: orders.filter(o => o.blockers.length).length, needsChange: orders.filter(o => o.needsChange).length,
       supportedLines: orders.reduce((n, o) => n + o.lines.length, 0) }, orders };

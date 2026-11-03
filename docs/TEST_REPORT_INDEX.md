@@ -67,6 +67,8 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | 2026-11-03-margin-release | 2026-11-03 | SKR source report / demo diagnosis / local session retry | bc7 source retryPASS/first-click401; b8de first-click auto-recoveryPASS; local2PASS | [Report](test-sessions/2026-11-03-margin-release.md) |
 
+| 2026-11-04-source-tax-pricing | 2026-11-04 | Local planner v2 / demo rollback / readonly history captures | 33 units PASS;64 demo orders rehearsed,98 review; full captures running | [Report](test-sessions/2026-11-04-source-tax-pricing.md) |
+
 ## Classification rule
 
 The index is a navigation and summary layer, not a replacement for evidence. A fixture `PASS` must not overwrite an online `BLOCKED` or `FAIL`; the environment belongs in the row and the detailed report.
