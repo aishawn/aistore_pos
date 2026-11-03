@@ -40,8 +40,8 @@ function summaryRpc({net=100,failStock=false,failLines=false,mixed=false,withLin
  if(method==='search_count')return 1;
  throw Error(data);
 }) as ReportRpc;}
-test('tax mismatch blocks margin, preserves actual sales, and flags raw negative inventory',async()=>{
- const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,-5);assert.equal(r.inventoryStatus,'negative_stock');
+test('tax mismatch blocks margin, preserves actual sales, and excludes negative inventory',async()=>{
+ const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,0);assert.equal(r.inventoryStatus,'negative_stock');
 });
 test('inventory total sums signed internal stock and preserves fractional units', async () => {
  const base = summaryRpc();
@@ -55,10 +55,10 @@ test('inventory total sums signed internal stock and preserves fractional units'
   if (JSON.stringify(kwargs).includes('product_id')) return [{product_id: [5, 'Negative stock'], quantity: -12.5}];
   // Model filtering so a positive-only query fails this regression.
   const included = quantityFilter?.[1] === '>' ? quantities.filter(q => q > 0) : quantities;
-  return [{product_uom_id: [1, 'Units'], quantity: included.reduce((sum, q) => sum + q, 0)}];
+  return included.map((quantity, index) => ({ product_id: [index + 1, `Product ${index + 1}`], product_uom_id: [1, 'Units'], quantity }));
  }) as ReportRpc;
  const result = await calculateReport(rpc, options);
- assert.equal(result.inventoryUnits, -4.25);
+ assert.equal(result.inventoryUnits, 8.25);
  assert.equal(result.inventoryAvailable, true);
  assert.equal(result.inventoryStatus, 'negative_stock');
 });

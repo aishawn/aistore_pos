@@ -25,7 +25,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const [salesRows, lines, stockRows, negativeRows] = await Promise.all([
     rpc<Array<{ amount_total: number; amount_tax: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => null),
     rpc<Array<CostSale & { order_id: [number, string] }>>(sessionId, "pos.order.line", "search_read", [lineDomain], { fields: ["order_id", "product_id", "product_uom_id", "price_subtotal", "qty"], order: "id asc", limit: 10001 }, correlationId).catch(() => null),
-    rpc<Array<{ quantity: number; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
+    rpc<Array<{ quantity: number; product_id: [number, string] | false; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_id", "product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
     rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
   ]);
   const numeric = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -56,8 +56,9 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   }
   const stockAvailable = Array.isArray(stockRows) && stockRows.every(row => numeric(row.quantity) && row.product_uom_id !== false);
   const mixedUnits = stockAvailable && new Set(stockRows.map(row => row.product_uom_id && row.product_uom_id[0])).size > 1;
-  // Net on-hand includes negative quants; positive-only stock is not a total.
-  const inventoryUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : null;
+  // Negative quants are shortage adjustments, not sellable units. Aggregate by
+  // product/UOM and count only each product's available positive balance.
+  const inventoryUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + Math.max(row.quantity, 0), 0) : null;
   return {
     inventoryUnits, inventoryAvailable: stockAvailable && !mixedUnits,
     inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
