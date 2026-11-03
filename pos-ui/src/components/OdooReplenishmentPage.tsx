@@ -25,6 +25,7 @@ import {
   truncateSku,
 } from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useAuth } from "@/lib/auth";
 import type { InventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 import { forecastReadiness } from "@/lib/forecast-readiness";
@@ -94,6 +95,7 @@ type ReplenishmentData = {
   excludedProductCount?: number;
   productEligibility?: string;
   generatedAt: string;
+  cache?: { status?: "HIT" | "MISS"; expiresAt?: string };
   inventoryHistory?: InventorySnapshotStatus;
   dataQuality?: string;
   forecast?: {
@@ -125,7 +127,7 @@ const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
 const MAX_RFQ_QUANTITY = 100_000;
 const REPLENISHMENT_CACHE_PREFIX = "orithos-replenishment-cache-v2:";
-const REPLENISHMENT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const REPLENISHMENT_CACHE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
 function riskLabel(risk: ReplenishmentProduct["risk"]) {
   const labels = { LOW: "Low risk", MEDIUM: "Review", HIGH: "High risk", UNKNOWN: "Unknown risk" };
@@ -173,6 +175,7 @@ function trendLabel(product: ReplenishmentProduct, periodDays: number) {
 
 export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean }) {
   const Container = embedded ? "section" : "main";
+  const { user, ready: authReady } = useAuth();
   const [data, setData] = useState<ReplenishmentData | null>(null);
   const [coverageDays, setCoverageDays] = useState(21);
   const [exceptionOnly, setExceptionOnly] = useState(false);
@@ -183,7 +186,6 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ key: "", page: 1 });
   const [refreshing, setRefreshing] = useState(false);
-  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
@@ -200,6 +202,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
+  const autoRefreshGeneration = useRef<string | null>(null);
   const rfqSupplierRevision = useRef(0);
   const rfqInFlight = useRef(false);
   const rfqRequestId = useRef("");
@@ -213,7 +216,18 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
 
   useDialogFocus(methodOpen, () => setMethodOpen(false), "method-help", methodCloseRef, helpButtonRef);
 
-  const cacheKey = `${REPLENISHMENT_CACHE_PREFIX}${coverageDays}:${exceptionOnly ? "exceptions" : "all"}`;
+  const browserIdentity = user ? [user.id, user.vendorId ?? "", user.outletId ?? "", user.roleCode ?? "", user.isAdmin ? "admin" : "staff", [...(user.permissions ?? [])].sort().join(",")].join(":") : "anonymous";
+  const cacheKey = `${REPLENISHMENT_CACHE_PREFIX}${typeof window === "undefined" ? "server" : window.location.host}:${browserIdentity}:${coverageDays}:${exceptionOnly ? "exceptions" : "all"}`;
+  const previousBrowserIdentity = useRef(browserIdentity);
+
+  useEffect(() => {
+    if (previousBrowserIdentity.current === browserIdentity) return;
+    previousBrowserIdentity.current = browserIdentity;
+    autoRefreshGeneration.current = null;
+    setData(null);
+    setSelectedIds(new Set());
+    setLoading(true);
+  }, [browserIdentity]);
 
   useEffect(() => {
     setAuditEntries(readReplenishmentAudit());
@@ -222,18 +236,19 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
   // Hydrate the last successful plan immediately. Odoo can then refresh in the
   // background without ever replacing a usable screen with an error state.
   useEffect(() => {
+    if (!authReady || !user) return;
     try {
       const raw = window.localStorage.getItem(cacheKey);
       if (!raw) return;
       const cached = JSON.parse(raw) as { savedAt?: number; data?: ReplenishmentData };
       if (!cached.data || !Array.isArray(cached.data.products)) return;
-      if (Date.now() - Number(cached.savedAt ?? 0) > REPLENISHMENT_CACHE_MAX_AGE_MS) return;
+      const generatedAt = Date.parse(cached.data.generatedAt);
+      if (!Number.isFinite(generatedAt) || Date.now() - generatedAt > REPLENISHMENT_CACHE_MAX_AGE_MS) return;
       setData(cached.data);
       setSelectedIds(new Set(cached.data.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
-      setLastLoadedAt(Number(cached.savedAt) || Date.now());
       setLoading(false);
     } catch { /* Ignore malformed browser cache and fetch a fresh plan. */ }
-  }, [cacheKey]);
+  }, [authReady, cacheKey, user]);
 
   const load = useCallback(async (refresh = false) => {
     const revision = ++requestRevision.current;
@@ -256,7 +271,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Orithos returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
-      try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
+      try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.parse(payload.generatedAt), data: payload })); } catch { /* Storage is optional. */ }
       setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
       try {
         const bootstrap = await getOdooPosBootstrap();
@@ -266,7 +281,6 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       } catch {
         // The replenishment response remains useful when register metadata is unavailable.
       }
-      setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) {
       setError(cause instanceof DOMException && cause.name === "AbortError"
@@ -282,7 +296,24 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     }
   }, [cacheKey, coverageDays, exceptionOnly]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!authReady) return;
+    if (!user) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    void load();
+  }, [authReady, load, user]);
+
+  useEffect(() => {
+    if (!data || loading || refreshing || error || data.cache?.status !== "HIT") return;
+    const generatedAt = Date.parse(data.generatedAt);
+    if (!Number.isFinite(generatedAt) || Date.now() - generatedAt < 20 * 60 * 60 * 1000) return;
+    if (autoRefreshGeneration.current === data.generatedAt) return;
+    autoRefreshGeneration.current = data.generatedAt;
+    void load(true);
+  }, [data, error, load, loading, refreshing]);
 
   const suggestedItems = useMemo(() => data?.products.filter((product) => product.suggestedQuantity > 0) ?? [], [data]);
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
@@ -514,7 +545,7 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           </div>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
             {data?.forecast?.enabled ? "Per-product forecast with rolling model selection" : "Rule-based reorder suggestions"} · {draftRfqEnabled ? "draft RFQs enabled" : "read-only preview"} · nothing auto-orders.
-            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
+            {data?.generatedAt && <span className="ml-2">Generated {formatOdooDateTime(data.generatedAt, storeTimezone)}.</span>}
           </p>
           {data?.forecast?.enabled && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">

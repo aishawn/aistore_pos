@@ -286,7 +286,7 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
       writeEnabled: false,
     };
-    });
+    }, { persistentTtlMs: 36 * 60 * 60 * 1000, identityScope: session.result.uid });
     return noStoreJson(body, 200, correlationId);
   } catch (error) {
     if (error instanceof PriceSuggestionSessionExpiredError) {
