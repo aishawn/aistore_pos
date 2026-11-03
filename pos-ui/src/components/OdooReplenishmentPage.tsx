@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
-import { getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import {
   friendlyProductName,
@@ -271,16 +270,9 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Orithos returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
+      if (payload.salesHistory?.timezone) setStoreTimezone(payload.salesHistory.timezone);
       try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.parse(payload.generatedAt), data: payload })); } catch { /* Storage is optional. */ }
       setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
-      try {
-        const bootstrap = await getOdooPosBootstrap();
-        if (revision !== requestRevision.current) return;
-        const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
-        if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
-      } catch {
-        // The replenishment response remains useful when register metadata is unavailable.
-      }
     } catch (cause) {
       if (revision === requestRevision.current) {
       setError(cause instanceof DOMException && cause.name === "AbortError"

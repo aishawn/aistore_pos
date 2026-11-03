@@ -118,7 +118,7 @@ async def startup() -> None:
         db.close()
     scheduler.add_job(
         scheduled_sync,
-        CronTrigger(hour=settings.sync_daily_hour, minute=settings.sync_daily_minute, timezone=settings.sync_timezone),
+        CronTrigger(hour=settings.daily_sync_hours(), minute=settings.sync_daily_minute, timezone=settings.sync_timezone),
         id="shopfront-sync",
         replace_existing=True,
     )
@@ -761,15 +761,42 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
 async def pos_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     """Read POS staging counts through the server-side integration secret."""
     require_store(store, db)
-    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    clients = {
+        "primary": OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled),
+    }
+    if settings.pos_api_mirror_base_url or settings.pos_api_mirror_token:
+        mirror_token = settings.pos_api_mirror_token or settings.pos_api_token
+        if not settings.pos_api_mirror_base_url or not mirror_token:
+            await clients["primary"].close()
+            raise HTTPException(503, "Both POS mirror URL and token must be configured")
+        clients["mirror"] = OrithosClient(
+            settings.pos_api_mirror_base_url,
+            mirror_token,
+            settings.pos_import_enabled,
+        )
     try:
-        snapshot = await client.snapshot(store)
-        matching = await client.match_status(store)
-        return {"data": {"store": store, "snapshot": snapshot.get("data", snapshot), "matching": matching.get("data", matching)}, "source": "orithos_shopfront_staging"}
+        target_data = {}
+        for target_name, client in clients.items():
+            snapshot = await client.snapshot(store)
+            matching = await client.match_status(store)
+            target_data[target_name] = {
+                "snapshot": snapshot.get("data", snapshot),
+                "matching": matching.get("data", matching),
+            }
+        return {
+            "data": {
+                "store": store,
+                "snapshot": target_data["primary"]["snapshot"],
+                "matching": target_data["primary"]["matching"],
+                "targets": target_data,
+            },
+            "source": "orithos_shopfront_staging",
+        }
     except PosIntegrationError as exc:
         raise HTTPException(502, str(exc)) from exc
     finally:
-        await client.close()
+        for client in clients.values():
+            await client.close()
 
 
 @app.get("/api/pos/products/reconcile")
@@ -1411,7 +1438,19 @@ async def push_pos_snapshot(
         sales_offset = 0
     else:
         total_sales = (db.scalar(select(func.count()).select_from(sales_query.subquery())) or 0) if include_sales else 0
-    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    clients = {
+        "primary": OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled),
+    }
+    if settings.pos_api_mirror_base_url or settings.pos_api_mirror_token:
+        mirror_token = settings.pos_api_mirror_token or settings.pos_api_token
+        if not settings.pos_api_mirror_base_url or not mirror_token:
+            await clients["primary"].close()
+            raise RuntimeError("POS_API_MIRROR_BASE_URL and a POS integration token are required")
+        clients["mirror"] = OrithosClient(
+            settings.pos_api_mirror_base_url,
+            mirror_token,
+            settings.pos_import_enabled,
+        )
     fallback_token = settings.shopfront_integration_token or settings.pos_api_token
     odoo_enabled = bool(
         settings.odoo_import_enabled
@@ -1850,17 +1889,18 @@ async def push_pos_snapshot(
                 await write_chunk(values[offset:offset + 200])
             return responses
 
-        product_result = None
-        inventory_result = None
+        product_result = {}
+        inventory_result = {}
         catalog_error: Exception | None = None
         try:
-            product_responses = []
-            for offset in range(0, len(product_items), 250):
-                product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
-            if product_responses:
-                product_result = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
-            if include_catalog or include_inventory_snapshot:
-                inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
+            for target_name, client in clients.items():
+                product_responses = []
+                for offset in range(0, len(product_items), 250):
+                    product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
+                if product_responses:
+                    product_result[target_name] = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
+                if include_catalog or include_inventory_snapshot:
+                    inventory_result[target_name] = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
         except Exception as exc:
             catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
@@ -1909,6 +1949,7 @@ async def push_pos_snapshot(
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0
+        target_sale_batches = {target_name: 0 for target_name in clients}
         offset = max(0, int(sales_offset or 0))
         while include_sales and offset < total_sales:
             sales = db.scalars(sales_query.offset(offset).limit(250)).all()
@@ -1916,11 +1957,13 @@ async def push_pos_snapshot(
                 break
             items = [sale_payload(sale) for sale in sales]
             try:
-                await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                for target_name, client in clients.items():
+                    await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                    target_sale_batches[target_name] += 1
                 sale_batches += 1
             except Exception as exc:
-                result["mirror_errors"].append(f"sales batch {offset}: {exc!r}")
-                logger.warning("POS sales mirror failed; continuing with Odoo: offset=%s error=%r", offset, exc)
+                result["mirror_errors"].append(f"sales batch {offset}, target {target_name}: {exc!r}")
+                logger.warning("POS sales mirror failed: offset=%s target=%s error=%r", offset, target_name, exc)
             if odoo_enabled:
                 # Odoo accepts a complete list of orders in one JSON-RPC
                 # transaction. A 200-sale batch halves request overhead for
@@ -1951,6 +1994,7 @@ async def push_pos_snapshot(
                     "pos_sales": offset,
                     "sale_total": total_sales,
                     "sale_batches": sale_batches,
+                    "target_sale_batches": dict(target_sale_batches),
                     "odoo_sale_batches": odoo_batches,
                     "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
                 }
@@ -1966,6 +2010,8 @@ async def push_pos_snapshot(
             "error": "; ".join(result["mirror_errors"]) if result["mirror_errors"] else None,
             "product_response": product_result,
             "inventory_response": inventory_result,
+            "targets": list(clients),
+            "target_sale_batches": target_sale_batches,
             "odoo_business_write": bool(odoo_enabled and settings.odoo_business_write_enabled),
             "odoo_product_response": odoo_product_result,
             "odoo_inventory_response": odoo_inventory_result,
@@ -1974,7 +2020,8 @@ async def push_pos_snapshot(
         result["error"] = str(exc)[:500]
         logger.exception("Shopfront snapshot push failed: store=%s", store_key)
     finally:
-        await client.close()
+        for client in clients.values():
+            await client.close()
         await odoo_client.close()
     return result
 

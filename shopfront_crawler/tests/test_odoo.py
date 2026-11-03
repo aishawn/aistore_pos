@@ -55,7 +55,7 @@ def test_inventory_snapshot_flags_are_only_sent_for_complete_snapshot(snapshot_c
     asyncio.run(run())
 
 
-def test_inventory_snapshot_finalizer_sends_all_source_ids():
+def test_inventory_snapshot_finalizer_sends_full_source_id_set_without_replacing_mirror():
     async def run():
         captured = {}
 
@@ -78,5 +78,7 @@ def test_inventory_snapshot_finalizer_sends_all_source_ids():
 
         assert captured["snapshot_finalize"] is True
         assert captured["snapshot_source_ids"] == ["product-1", "product-2"]
+        assert "snapshot_complete" not in captured
+        assert captured["items"] == []
 
     asyncio.run(run())

@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     sync_timezone: str = "Australia/Adelaide"
     sync_interval_minutes: int = 30
     sync_lookback_days: int = 3
+    sync_daily_hours: str = "2,10,18"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
     worker_poll_seconds: int = 2
@@ -77,6 +78,8 @@ class Settings(BaseSettings):
     shopfront_history_start_year: int = 2010
     pos_api_base_url: str = ""
     pos_api_token: str = ""
+    pos_api_mirror_base_url: str = "https://skr.orithos.com.au"
+    pos_api_mirror_token: str = ""
     shopfront_integration_token: str = ""
     pos_company_id: str = ""
     pos_outlet_id: str = ""
@@ -153,6 +156,15 @@ class Settings(BaseSettings):
             key, _, vendor = item.partition(":")
             result[key.strip()] = {"store_key": key.strip(), "vendor": (vendor or key).strip(), "timezone": self.sync_timezone}
         return result
+
+    def daily_sync_hours(self) -> list[int]:
+        try:
+            hours = sorted({int(item.strip()) for item in self.sync_daily_hours.split(",") if item.strip()})
+        except ValueError as exc:
+            raise ValueError("SYNC_DAILY_HOURS must be comma-separated hours from 0 to 23") from exc
+        if not hours or any(hour < 0 or hour > 23 for hour in hours):
+            raise ValueError("SYNC_DAILY_HOURS must contain one or more hours from 0 to 23")
+        return hours
 
 
 @lru_cache
