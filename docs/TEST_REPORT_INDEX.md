@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 179 page templates catalogued, 272 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Remote acceptance pending; legacy 410 routes, alerts 500 and AI failures remain explicitly open.
+Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 180 page templates catalogued (179 baseline + new cost reconciliation), 274 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Runtime 51e27c74: remote build and specified live/fixture UI acceptance PASS, including 18 records-dialog viewport checks; legacy 410 routes, alerts 500, AI failures and incomplete report data checks remain explicitly open.
 
 Latest Sales History space optimization: [2026-11-03 table/toolbar](test-sessions/2026-11-03-sales-history-space.md): targeted syntax/ESLint (zero errors), remote build and live browser layout/refresh/pagination PASS; deployed runtime `f2091f31`. Read-only checks, zero business writes.
 

@@ -9847,7 +9847,440 @@
   ],
   "dynamicExistingRecordCoverage": [
     "/customers/[id]/view",
-    "/invoices/[id]",
-    "/reports/ai/[id]"
-  ]
+    "/platform/stores/[id]"
+  ],
+  "aiChecks": {
+    "assistant": {
+      "http": 200,
+      "code": 42220,
+      "result": "FAIL: parser schema mismatch"
+    },
+    "grocery": {
+      "http": 200,
+      "code": 50312,
+      "result": "BLOCKED: recommendation service unavailable"
+    },
+    "businessWrites": 0
+  },
+  "finalSourceCommit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+  "remoteDeployment": {
+    "status": "done",
+    "finishedAt": "2026-11-03T11:29:29.150Z",
+    "version": {
+      "frontend": {
+        "service": "orithos-frontend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23.307Z"
+      },
+      "backend": {
+        "service": "orithos-backend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23Z"
+      }
+    }
+  },
+  "postDeployment": {
+    "status": "PASS for specified UI checks only",
+    "businessWrites": 0,
+    "recordLayoutCases": [
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 1408,
+        "height": 1000,
+        "top": 20,
+        "bottom": 980,
+        "tableHeight": 699,
+        "paginationBottom": 960,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1440,
+        "dialogWidth": 1408
+      },
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 992,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 549.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1024,
+        "dialogWidth": 992
+      },
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 736,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 549.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 768,
+        "dialogWidth": 736
+      },
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 591,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 390,
+        "dialogWidth": 390
+      },
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 320,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 571,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 320,
+        "dialogWidth": 320
+      },
+      {
+        "kind": "live records layout",
+        "type": "catalogue",
+        "width": 812,
+        "height": 390,
+        "top": 16,
+        "bottom": 374,
+        "tableHeight": 97,
+        "paginationBottom": 354,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 844,
+        "dialogWidth": 812
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 1408,
+        "height": 1000,
+        "top": 20,
+        "bottom": 980,
+        "tableHeight": 699,
+        "paginationBottom": 960,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1440,
+        "dialogWidth": 1408
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 992,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 549.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1024,
+        "dialogWidth": 992
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 736,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 549.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 768,
+        "dialogWidth": 736
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 591,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 390,
+        "dialogWidth": 390
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 320,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 571,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 320,
+        "dialogWidth": 320
+      },
+      {
+        "kind": "live records layout",
+        "type": "inventory",
+        "width": 812,
+        "height": 390,
+        "top": 16,
+        "bottom": 374,
+        "tableHeight": 97,
+        "paginationBottom": 354,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 844,
+        "dialogWidth": 812
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 1408,
+        "height": 1000,
+        "top": 20,
+        "bottom": 980,
+        "tableHeight": 731,
+        "paginationBottom": 960,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1440,
+        "dialogWidth": 1408
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 992,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 581.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 1024,
+        "dialogWidth": 992
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 736,
+        "height": 844,
+        "top": 16.875,
+        "bottom": 827.109375,
+        "tableHeight": 581.234375,
+        "paginationBottom": 807.109375,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 768,
+        "dialogWidth": 736
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 571,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 390,
+        "dialogWidth": 390
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 320,
+        "height": 844,
+        "top": 0,
+        "bottom": 844,
+        "tableHeight": 571,
+        "paginationBottom": 828,
+        "bottomGap": 16,
+        "overflow": false,
+        "viewportWidth": 320,
+        "dialogWidth": 320
+      },
+      {
+        "kind": "live records layout",
+        "type": "payments",
+        "width": 812,
+        "height": 390,
+        "top": 16,
+        "bottom": 374,
+        "tableHeight": 129,
+        "paginationBottom": 354,
+        "bottomGap": 20,
+        "overflow": false,
+        "viewportWidth": 844,
+        "dialogWidth": 812
+      }
+    ],
+    "recordInteractionCases": [
+      {
+        "kind": "live records search/empty/clear/refresh",
+        "type": "catalogue",
+        "status": "PASS"
+      },
+      {
+        "kind": "live records search/empty/clear/refresh",
+        "type": "inventory",
+        "status": "PASS"
+      },
+      {
+        "kind": "live records search/empty/clear/refresh",
+        "type": "payments",
+        "status": "PASS"
+      }
+    ],
+    "recoveryChecks": [
+      {
+        "kind": "fixture only: recommendation loading/duplicate prevention/error/retry/empty",
+        "status": "PASS",
+        "providerAcceptance": false
+      },
+      {
+        "kind": "fixture only: report HTML 502 friendly error",
+        "status": "PASS"
+      },
+      {
+        "kind": "fixture only: platform session 502 recovery to real store list",
+        "status": "PASS"
+      },
+      {
+        "kind": "live app account hydration",
+        "status": "PASS"
+      }
+    ],
+    "pageErrors": [],
+    "historyRegression": {
+      "status": "PASS",
+      "defaultDaily": true,
+      "toolbarAligned": true,
+      "reopensDaily": true,
+      "mobileNoPageOverflow": true
+    },
+    "harnessNote": "Initial post-deploy script stopped after 21 successful record cases because its role=alert locator also matched the hidden Next route announcer. Scoped locator recovery-only rerun passed. No product change was needed."
+  },
+  "supplementalVisits": [
+    {
+      "host": "skr.orithos.com.au",
+      "route": "/products/cost-reconciliation",
+      "http": 200,
+      "pendingApi": 0,
+      "pageErrors": [],
+      "apiFailures": [
+        {
+          "path": "/api/odoo/gift-cards",
+          "status": 401
+        }
+      ],
+      "layouts": [
+        {
+          "width": 1440,
+          "documentWidth": 1440,
+          "blank": false,
+          "unavailable": false,
+          "overflow": [],
+          "loading": false,
+          "tables": []
+        },
+        {
+          "width": 390,
+          "documentWidth": 390,
+          "blank": false,
+          "unavailable": false,
+          "overflow": [],
+          "loading": false,
+          "tables": []
+        }
+      ]
+    },
+    {
+      "host": "app.orithos.com.au",
+      "route": "/platform/stores/149",
+      "http": 200,
+      "pendingApi": 0,
+      "pageErrors": [],
+      "apiFailures": [],
+      "layouts": [
+        {
+          "width": 1440,
+          "documentWidth": 1440,
+          "blank": false,
+          "unavailable": false,
+          "overflow": [],
+          "loading": false,
+          "tables": []
+        },
+        {
+          "width": 390,
+          "documentWidth": 390,
+          "blank": false,
+          "unavailable": false,
+          "overflow": [],
+          "loading": false,
+          "tables": []
+        }
+      ]
+    }
+  ],
+  "postDeploymentVersions": {
+    "https://skr.orithos.com.au": {
+      "frontend": {
+        "service": "orithos-frontend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23.307Z"
+      },
+      "backend": {
+        "service": "orithos-backend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23Z"
+      }
+    },
+    "https://demo.orithos.com.au": {
+      "frontend": {
+        "service": "orithos-frontend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23.307Z"
+      },
+      "backend": {
+        "service": "orithos-backend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23Z"
+      }
+    },
+    "https://app.orithos.com.au": {
+      "frontend": {
+        "service": "orithos-frontend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23.307Z"
+      },
+      "backend": {
+        "service": "orithos-backend",
+        "commit": "51e27c74e28da08ffa47d17f7845ad69d827b8db",
+        "builtAt": "2026-11-03T11:27:23Z"
+      }
+    }
+  }
 }
