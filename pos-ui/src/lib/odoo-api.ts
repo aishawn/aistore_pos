@@ -17,20 +17,31 @@ export type OdooRecordType =
 export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelled" | "draft";
 export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d" | "90d" | "180d";
 
+export interface OdooDailySaleRecord {
+  date: string;
+  salesTransactions: number;
+  refundTransactions: number;
+  salesAmount: number;
+  refundAmount: number;
+  netSales: number;
+  tax: number;
+}
+
+export interface OdooDailySalesPage {
+  items: OdooDailySaleRecord[];
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+  timezone: string;
+  currency: string;
+}
+
 export interface OdooPage<T> {
   items: T[];
   limit: number;
   offset: number;
   /** True when the server found at least one record after this page. */
   hasNext?: boolean;
-  /** Exact number of records matching the current filters, when available. */
-  total?: number;
-  snapshotId?: string;
-  totalItems?: number;
-  totalQty?: number | null;
-  totalStockValue?: number | null;
-  missingCostItems?: number;
-  mixedUnits?: boolean;
 }
 
 export interface OdooProductRecord {
@@ -82,7 +93,6 @@ export interface OdooPosCategoryRecord {
 }
 
 export interface OdooCustomerRecord {
-  comment?: string | false;
   id: number;
   name: string;
   phone: string | false;
@@ -156,7 +166,6 @@ export interface OdooGiftCardRecord {
 }
 
 export type OdooCustomerWriteValues = {
-  comment?: string;
   name?: string;
   phone?: string;
   email?: string;
@@ -330,8 +339,9 @@ export interface OdooCheckoutRequest {
   paymentMethodId: number;
   orderUuid: string;
   customerId?: number | null;
-  externalPaymentConfirmed?: boolean;
   tendered: number;
+  /** Confirms an external card/EFTPOS result before the order is posted. */
+  externalPaymentConfirmed?: boolean;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
   lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; discountPercent?: number; refundedOrderLineId?: number }[];
@@ -412,11 +422,8 @@ async function recoverOdooSession() {
       .then(async (response) => {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           if (response.ok) {
-            const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null; autoRecoverConfigured?: boolean } | null;
-            // The service-account recovery endpoint can establish the HttpOnly
-            // Odoo cookie while returning no UI user for this tenant. The
-            // cookie is enough to safely replay a read-only request.
-            if (payload?.user || payload?.autoRecoverConfigured) return true;
+            const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null } | null;
+            if (payload?.user) return true;
           }
           if (attempt === 0) {
             response = await fetch("/api/odoo/session", {
@@ -440,10 +447,7 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
   const canRetryRoute = canReplay || (method === "POST" && path === "/api/odoo/session");
   let response = await fetch(input, init);
-  // A complete replenishment calculation is expensive. Let its explicit Retry
-  // action control retries instead of silently running a second full scan.
-  const expensivePlan = path.split("?")[0].endsWith("/api/odoo/replenishment");
-  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
+  if ([404, 502, 503, 504].includes(response.status) && canRetryRoute) {
     response = await fetch(input, init);
   }
   if (response.status !== 401 || isLocalPreviewSession()) return response;
@@ -649,7 +653,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -669,10 +673,6 @@ export async function searchOdooRecords<T>(
       catalogueView: options.catalogueView,
       status: options.status,
       period: options.period,
-      inventoryReport: options.inventoryReport,
-      sortBy: options.sortBy,
-      sortDirection: options.sortDirection,
-      snapshotId: options.snapshotId,
     }),
   }, true);
   const payload = (await response.json().catch(() => null)) as
@@ -687,6 +687,28 @@ export async function searchOdooRecords<T>(
     throw new OdooApiError("Odoo returned an invalid records response", 502);
   }
   return payload as OdooPage<T>;
+}
+
+export async function searchOdooDailySales(options: {
+  status?: OdooSalesStatusFilter;
+  period?: OdooSalesPeriodFilter;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<OdooDailySalesPage> {
+  const response = await fetchOdooApi("/api/odoo/sales-daily", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(options),
+  }, true);
+  const payload = await response.json().catch(() => null) as (OdooDailySalesPage & { message?: string }) | null;
+  if (!response.ok || !payload || !Array.isArray(payload.items) || typeof payload.timezone !== "string") {
+    throw new OdooApiError(payload?.message || `Daily sales request failed (${response.status})`, response.status || 502);
+  }
+  return payload;
 }
 
 /** Download the current store product catalogue from the Odoo source of truth. */
@@ -806,12 +828,10 @@ export interface OdooDraftRfq {
   supplier: string;
   url: string;
   auditSaved: boolean;
-  readbackVerified?: boolean;
   warning?: string;
 }
 
 export async function createOdooDraftRfq(input: {
-  requestId: string;
   supplierId: number;
   coverageDays: number;
   method: string;
@@ -819,10 +839,10 @@ export async function createOdooDraftRfq(input: {
 }): Promise<OdooDraftRfq> {
   const response = await fetchOdooApi("/api/odoo/purchase-requests", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": input.requestId },
+    headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     cache: "no-store",
-    body: JSON.stringify({ supplierId: input.supplierId, coverageDays: input.coverageDays, method: input.method, lines: input.lines }),
+    body: JSON.stringify(input),
   });
   const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {
