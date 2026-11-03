@@ -26,6 +26,17 @@ DEFAULT_INVENTORY_QUERY = """{ products(first: 100) { edges { node {
     reorderLevel reorderAmount reorderLimit maxQuantity onOrder }
 } } } }"""
 
+REQUIRED_SHOPFRONT_SCOPES = (
+    "run_sales_reports", "run_inventory_reports", "run_purchase_reports",
+    "run_advanced_reports", "run_misc_reports", "run_actions_reports",
+    "view_reporting_dashboard", "see_products", "see_history", "see_customers",
+    "see_customer_groups", "see_balances", "see_pricelists", "see_classifications",
+    "see_suppliers", "see_stock_management", "see_stocktake", "see_promotions",
+    "see_shelf_tickets", "see_product_backorders", "see_cost", "view_product",
+    "view_revision_history", "manage_takings_see_totals", "view_register_closures",
+    "see_recent_register_closures", "see_security_events", "see_trashed_items",
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -33,17 +44,13 @@ class Settings(BaseSettings):
     shopfront_client_id: str = ""
     shopfront_client_secret: str = ""
     shopfront_redirect_uri: str = "http://localhost:8000/oauth/shopfront/callback"
-    # Keep the initial consent request to permissions required for reporting,
-    # product and inventory reads. Webhook permissions can be added later.
-    shopfront_scopes: str = "run_sales_reports see_products see_history"
-    # Advanced reports are not required for the crawler and may not be
-    # enabled on every Shopfront application. Opt in only when needed.
-    shopfront_enable_advanced_reports: bool = False
+    shopfront_scopes: str = " ".join(REQUIRED_SHOPFRONT_SCOPES)
+    shopfront_enable_advanced_reports: bool = True
     # Webhook permissions are optional and can make the consent request fail
     # before the Shopfront application has been granted them.
     shopfront_enable_webhooks: bool = False
-    shopfront_enable_supply_chain: bool = False
-    shopfront_enable_customers: bool = False
+    shopfront_enable_supply_chain: bool = True
+    shopfront_enable_customers: bool = True
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
@@ -94,16 +101,11 @@ class Settings(BaseSettings):
         """Accept the old documented scope name while using Shopfront's current name."""
         aliases = {"see_sales": "see_history"}
         optional_webhook_scopes = {"see_webhooks", "create_webhooks", "edit_webhooks", "delete_webhooks"}
+        configured_scopes = self.shopfront_scopes.replace(",", " ").split()
         scopes: list[str] = []
-        for raw_scope in self.shopfront_scopes.replace(",", " ").split():
+        for raw_scope in (*REQUIRED_SHOPFRONT_SCOPES, *configured_scopes):
             scope = aliases.get(raw_scope.strip(), raw_scope.strip())
-            if scope == "run_advanced_reports" and not self.shopfront_enable_advanced_reports:
-                continue
             if scope in optional_webhook_scopes and not self.shopfront_enable_webhooks:
-                continue
-            if scope in {"see_suppliers", "see_stock_management"} and not self.shopfront_enable_supply_chain:
-                continue
-            if scope == "see_customers" and not self.shopfront_enable_customers:
                 continue
             if scope and scope not in scopes:
                 scopes.append(scope)

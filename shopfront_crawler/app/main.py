@@ -16,7 +16,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from .config import get_settings
+from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
@@ -231,7 +231,21 @@ async def auth_callback(code: str | None = None, state: str | None = None, error
 @app.get("/api/stores")
 def stores(db: Session = Depends(get_db)) -> list[dict]:
     tokens = {t.store_key: t for t in db.scalars(select(ShopfrontToken)).all()}
-    return [{"store_key": s.store_key, "vendor": s.vendor, "timezone": s.timezone, "active": s.active, "token_status": tokens.get(s.store_key).status if tokens.get(s.store_key) else "not_authorized"} for s in db.scalars(select(Store).order_by(Store.store_key)).all()]
+    result = []
+    for store in db.scalars(select(Store).order_by(Store.store_key)).all():
+        token = tokens.get(store.store_key)
+        granted = set((token.scopes or "").replace(",", " ").split()) if token else set()
+        result.append({
+            "store_key": store.store_key,
+            "vendor": store.vendor,
+            "timezone": store.timezone,
+            "active": store.active,
+            "token_status": token.status if token else "not_authorized",
+            "requested_scopes": settings.shopfront_scopes.split(),
+            "granted_scopes": sorted(granted),
+            "missing_scopes": sorted(set(REQUIRED_SHOPFRONT_SCOPES) - granted),
+        })
+    return result
 
 
 @app.get("/api/pos/mappings")
