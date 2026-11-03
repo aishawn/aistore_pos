@@ -81,7 +81,7 @@ function report(period, empty = false) {
       await page.screenshot({ path: path.join(shots, `reports-${width}.png`), fullPage: true });
       empty = false;
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.getByRole('region', { name: 'Last month Orithos summary' }).waitFor();
+      await page.getByRole('region', { name: 'Last month Orithos summary' }).waitFor({ timeout: 60000 }).catch(async error => { console.log(JSON.stringify({ url: page.url(), requests, body: (await page.locator('body').innerText()).slice(-6000), errors })); throw error; });
       check('reload preserves the selected calendar period', await page.getByRole('button', { name: 'Last month', exact: true }).getAttribute('aria-pressed') === 'true');
       await page.goto(base + '/dashboard/workspace', { waitUntil: 'domcontentloaded', timeout: 90000 });
       await page.waitForFunction(() => document.body.innerText.includes('TODAY'), null, { timeout: 90000 });
