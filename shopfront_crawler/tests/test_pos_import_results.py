@@ -340,7 +340,7 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
     db_session.add(run)
     job = SyncJob(
         store_key="skr",
-        job_type="daily_sync",
+        job_type="history",
         status="running",
         from_date="2026-10-26",
         to_date="2026-10-26",
@@ -374,9 +374,59 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
 
     assert ok is True
     assert captured["product_source_ids"] == []
+    assert captured["replay_sales_window"] is False
     assert captured["job"].id == job.id
     assert db_session.get(SyncJob, job.id).phase == "pos_import"
     assert db_session.get(SyncRun, run.id).counts["sync"]["pos_products_skipped_unchanged"] is True
+
+
+@pytest.mark.asyncio
+async def test_daily_sync_replays_unchanged_sales_and_requires_mirror_ack(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-11-03",
+        to_date="2026-11-03",
+        status="completed",
+        counts={"sales": 10, "sales_skipped_unchanged": 10},
+    )
+    job = SyncJob(
+        store_key="skr",
+        job_type="daily_sync",
+        status="running",
+        from_date="2026-11-03",
+        to_date="2026-11-03",
+        cursor_date="2026-11-03",
+    )
+    db_session.add_all([run, job])
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 9, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 11, 3),
+        date(2026, 11, 3),
+        job.id,
+        False,
+    )
+
+    assert ok is False
+    assert captured["run"] is run
+    assert captured["replay_sales_window"] is True
+    failed = db_session.get(SyncRun, run.id)
+    assert failed.status == "failed"
+    assert "required=10, source=10, imported=9" in (failed.error or "")
 
 
 @pytest.mark.asyncio

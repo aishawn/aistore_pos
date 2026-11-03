@@ -1333,13 +1333,15 @@ async def _sync_history_chunk(
             )
             if skip_stable_history_products:
                 product_source_ids = []
+            sync_job = db.get(SyncJob, job_id) if job_id is not None else None
+            replay_daily_sales = bool(sync_job and sync_job.job_type == "daily_sync")
             push_kwargs = {
                 "run": run,
+                "replay_sales_window": replay_daily_sales,
                 "include_catalog": full_catalog,
                 "include_inventory_snapshot": refresh_inventory,
                 "inventory_snapshot_source_ids": sync_counts.get("inventory_source_product_ids") or [],
             }
-            sync_job = db.get(SyncJob, job_id) if job_id is not None else None
             if sync_job is not None and sync_job.status == "running":
                 sync_job.phase = "pos_import"
                 sync_job.heartbeat_at = datetime.now(timezone.utc)
@@ -1355,11 +1357,9 @@ async def _sync_history_chunk(
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
             imported_sales = int(pos_result.get("sales_imported") or 0)
-            # A compensation window normally contains already mirrored sales.
-            # Those rows are intentionally skipped by the crawler and do not
-            # need a second POS write; validate only rows that changed or were
-            # newly created during this run.
-            required_sales = max(0, source_sales - unchanged_sales)
+            # Daily runs replay the whole bounded source window so a prior
+            # partial mirror write cannot be mistaken for a complete import.
+            required_sales = source_sales if replay_daily_sales else max(0, source_sales - unchanged_sales)
             if imported_sales < required_sales:
                 raise RuntimeError(
                     "POS sales import is smaller than Shopfront source: "
@@ -1419,6 +1419,7 @@ async def push_pos_snapshot(
     include_inventory_snapshot: bool = False,
     inventory_snapshot_source_ids: list[str] | None = None,
     include_sales: bool = True,
+    replay_sales_window: bool = False,
     sales_offset: int = 0,
     job: SyncJob | None = None,
 ) -> dict:
@@ -1441,7 +1442,7 @@ async def push_pos_snapshot(
         local_zone = timezone.utc
     repair_job = bool(job is not None and job.job_type == "sales_repair")
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id.desc() if repair_job else Sale.id)
-    if run is not None and start is not None and end is not None:
+    if run is not None and start is not None and end is not None and not replay_sales_window:
         # A history sync has just upserted the exact source rows that belong
         # to this run. Use its durable sync timestamp so sales with a missing
         # or malformed source timestamp are still imported. Full snapshots
@@ -1450,7 +1451,10 @@ async def push_pos_snapshot(
     elif start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
-        sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
+        window_filter = ((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        if run is not None and replay_sales_window:
+            window_filter = or_(Sale.synced_at >= run.started_at, window_filter)
+        sales_query = sales_query.where(window_filter)
     if repair_job:
         # POS repair is a compensation pass for the newest changes. A fixed
         # keyset window avoids counting and scanning the entire ledger.
