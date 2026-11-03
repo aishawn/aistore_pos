@@ -16,7 +16,7 @@ export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: 
   const allowed = ["sell.checkout", "sell.refund", "reports.dashboard"].some(hasPermission);
   const { openSalesHistory } = useSalesHistoryUiOptional();
   const menu = useRef<HTMLDetailsElement>(null);
-  const [view, setView] = useState<"lines" | "payments" | "session" | null>(null);
+  const [view, setView] = useState<"payments" | "session" | null>(null);
   useEffect(() => {
     const closeOutside = (event: PointerEvent) => { if (!menu.current?.contains(event.target as Node)) menu.current?.removeAttribute("open"); };
     const closeEscape = (event: KeyboardEvent) => {
@@ -27,7 +27,7 @@ export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: 
     return () => { document.removeEventListener("pointerdown", closeOutside); document.removeEventListener("keydown", closeEscape); };
   }, []);
   if (!allowed) return null;
-  const items = [["history", "Sales history"], ["lines", "Sales lines"], ["payments", "Payments"], ["refunds", "Refunds"], ["session", "Current session"], ["help", "Help"]] as const;
+  const items = [["history", "Sales history"], ["payments", "Payments"], ["refunds", "Refunds"], ["session", "Current session"], ["help", "Help"]] as const;
   return <>
     <details ref={menu} className="relative shrink-0">
       <summary aria-label="Sales menu" className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-full px-2 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] [&::-webkit-details-marker]:hidden">Sales <ChevronDown size={14} /></summary>
@@ -40,7 +40,7 @@ export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: 
         }} className="block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}</button>)}
       </div>
     </details>
-    {view && <StockWorkspaceDialog title={view === "lines" ? "Sales lines" : view === "payments" ? "Payments" : "Current session"} busy={false} onClose={() => { setView(null); menu.current?.querySelector("summary")?.focus(); }}>
+    {view && <StockWorkspaceDialog title={view === "payments" ? "Payments" : "Current session"} busy={false} onClose={() => { setView(null); menu.current?.querySelector("summary")?.focus(); }}>
       {view === "session" ? <CurrentSession config={config} /> : <WorkspaceRecordsPanel type={view} />}
     </StockWorkspaceDialog>}
   </>;

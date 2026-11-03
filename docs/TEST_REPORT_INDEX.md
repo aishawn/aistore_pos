@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Sales History repair: [2026-11-03 daily sales](test-sessions/2026-11-03-sales-history-daily-fix.md): 5 regression cases and targeted ESLint PASS; real SKR/Odoo read-only aggregation reconciled over 1,006 dates. Full typecheck BLOCKED by dependency/disk limits; repaired runtime acceptance pending.
+
 Latest inventory report verification: [2026-11-03 inventory report](test-sessions/2026-11-03-inventory-report.md): local unit 7/7, API fixture 8/8, browser fixture 37/37 PASS. Real Odoo/runtime acceptance remains NOT RUN.
 
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.

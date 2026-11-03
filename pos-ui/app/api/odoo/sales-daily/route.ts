@@ -3,7 +3,9 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
-import { mergeDailySalesGroups } from "@/lib/sales-daily";
+import { odooCompanyContext } from "@/lib/odoo-tenant-company";
+import { requirePermission } from "@/lib/store-access";
+import { parseDailySalesGroup, mergeDailySalesGroups } from "@/lib/sales-daily";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,18 +43,22 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result as T;
 }
 
-function dateParts(value: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
-  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
-}
-
 function zonedMidnightUtc(date: string, timezone: string) {
   const [year, month, day] = date.split("-").map(Number);
   const candidate = new Date(Date.UTC(year, month - 1, day));
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(candidate);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   const localAsUtc = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
-  return new Date(candidate.getTime() - (localAsUtc - candidate.getTime()));
+  let midnight = new Date(candidate.getTime() - (localAsUtc - candidate.getTime()));
+  // Re-evaluate at local midnight because UTC midnight may follow a DST change.
+  for (let i = 0; i < 3; i++) {
+    const formatted = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(midnight);
+    const local = Object.fromEntries(formatted.map((part) => [part.type, part.value]));
+    const delta = Date.UTC(Number(local.year), Number(local.month) - 1, Number(local.day), Number(local.hour), Number(local.minute), Number(local.second)) - candidate.getTime();
+    if (!delta) break;
+    midnight = new Date(midnight.getTime() - delta);
+  }
+  return midnight;
 }
 
 function odooDate(value: Date) {
@@ -66,7 +72,7 @@ function nextDate(date: string) {
 }
 
 function validDate(value: unknown): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 }
 
 function statusDomain(status: Status) {
@@ -83,6 +89,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return errorResponse("Orithos session expired", 401);
 
   try {
+    await requirePermission(request, "sell.checkout", "sell.refund", "reports.dashboard");
     const body = await request.json() as { status?: Status; period?: string; fromDate?: string; toDate?: string; limit?: number; offset?: number };
     const status = body.status ?? "all";
     if (!["all", "completed", "refunded", "cancelled", "draft"].includes(status)) return errorResponse("Sales status filter is invalid", 400);
@@ -115,7 +122,7 @@ export async function POST(request: NextRequest) {
     const timezone = getOdooCompanyTimezone(partner[0]?.country_id, partner[0]?.state_id);
 
     const domain: unknown[] = [["company_id", "=", companyId], ...statusDomain(status)];
-    if (forced.binding?.sampleDataClearedAt) domain.push(["!", ["uuid", "=like", `demo-seed-${companyId}-%`]]);
+    if (forced.binding?.sampleDataClearedAt) domain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]);
     if (body.fromDate || body.toDate) {
       if (body.fromDate) domain.push(["date_order", ">=", odooDate(zonedMidnightUtc(body.fromDate, timezone))]);
       if (body.toDate) domain.push(["date_order", "<", odooDate(zonedMidnightUtc(nextDate(body.toDate), timezone))]);
@@ -124,18 +131,17 @@ export async function POST(request: NextRequest) {
     }
 
     type Group = Record<string, unknown>;
-    const rows = await rpc<Group[]>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], ["date_order:day"]], { lazy: false, context: { tz: timezone } });
-    const grouped = rows.map((row) => {
-      const date = String(row["date_order:day"] ?? "").slice(0, 10);
-      const amount = Number(row.amount_total ?? 0);
-      const tax = Number(row.amount_tax ?? 0);
-      return { date, transactions: Number(row.__count ?? 0), amount, tax };
-    }).filter((row) => /^\d{4}-\d{2}-\d{2}$/u.test(row.date));
-    const allItems = mergeDailySalesGroups(grouped);
+    // Aggregate each sign separately: netting first loses refund counts and gross sales.
+    const kwargs = { lazy: false, context: { ...odooCompanyContext([companyId]), tz: timezone } };
+    const [sales, refunds] = await Promise.all([
+      rpc<Group[]>(sessionId, "pos.order", "read_group", [[...domain, ["amount_total", ">=", 0]], ["amount_total:sum", "amount_tax:sum"], ["date_order:day"]], kwargs),
+      rpc<Group[]>(sessionId, "pos.order", "read_group", [[...domain, ["amount_total", "<", 0]], ["amount_total:sum", "amount_tax:sum"], ["date_order:day"]], kwargs),
+    ]);
+    const allItems = mergeDailySalesGroups([...sales, ...refunds].map((row) => parseDailySalesGroup(row, timezone)));
     const items = allItems.slice(offset, offset + limit);
     return NextResponse.json({ items, hasNext: offset + limit < allItems.length, limit, offset, timezone, currency: Array.isArray(company[0]?.currency_id) ? company[0].currency_id[1] : "AUD" }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Orithos daily sales are unavailable";
-    return errorResponse(message, message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502);
+    return errorResponse("Could not load daily sales. Please refresh and try again.", error && typeof error === "object" && "status" in error ? Number(error.status) : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502);
   }
 }
