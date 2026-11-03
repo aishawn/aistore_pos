@@ -1,0 +1,160 @@
+{
+  "target": "http://localhost:3072",
+  "fixtureOnly": true,
+  "status": "PASS",
+  "checks": [
+    {
+      "width": 390,
+      "name": "default Yesterday, only three calendar options",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "last_week: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "last_month: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Last month shows inclusive natural month dates",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Refresh retains Last month",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "late Last week response cannot replace Yesterday",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "failed refresh retries current period",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "empty states have no retired range shortcuts",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "range controls fit viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "default Yesterday, only three calendar options",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "last_week: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "last_month: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "Last month shows inclusive natural month dates",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "Refresh retains Last month",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "late Last week response cannot replace Yesterday",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "failed refresh retries current period",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "empty states have no retired range shortcuts",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "range controls fit viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "default Yesterday, only three calendar options",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "last_week: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "last_month: correct request and comparison copy",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Last month shows inclusive natural month dates",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Refresh retains Last month",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "late Last week response cannot replace Yesterday",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "failed refresh retries current period",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "empty states have no retired range shortcuts",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "range controls fit viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "no horizontal overflow",
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "businessWrites": 0,
+  "liveOdooVerified": false
+}
