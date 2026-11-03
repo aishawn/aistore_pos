@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-03 Products ordinary-pagination follow-up
+
+- Fixed an append guard that incorrectly required an inventory snapshot on ordinary Products requests. These responses contain no snapshotId, so both scrolling and Load more returned without fetching offset 40. Retry now resumes the failed ordinary batch.
+- Corrected the earlier fixture, which incorrectly attached inventory snapshot fields to ordinary product responses. New targeted browser evidence: `UAT_PRODUCTS_APPEND_LOCAL_2026-11-03.json`, 54/54 at 390/1024/1440px, errors 0, real writes 0; TypeScript and targeted ESLint PASS. See `PRODUCTS_APPEND_FIX_2026-11-03.md`.
+- SKR runtime before fix: `7b610666`; supplied local demo credentials do not authenticate SKR, so authenticated live scroll verification is unavailable. No local production build or Maven; deployment verification remains separate.
+
+
 ## 2026-11-03 Product footer and continuous list loading repair
 
 - Products / Inventory report: totals occupy a separate opaque footer flush with the page bottom; the scroll region ends above it. Load more is always available while more rows remain; no artificial table spacer or text behind the footer.
@@ -7,11 +14,6 @@
 - Scope and test limits: `LIST_FOOTER_FIX_2026-11-03.md`; local intercepted browser evidence: `UAT_LIST_FOOTER_LOCAL_2026-11-03.json`. No Odoo business writes, no local production build or Maven. Source push and deployed runtime verification remain separate; no production-readiness change.
 
 
-## 2026-11-03 Store pulse 视觉精简
-
-- 按 owner 截图优化右侧 Store pulse，抽出 OverviewStorePulse：标题/更新时间与 44px 刷新按钮合并为紧凑页头，三行指标采用统一左右对齐与轻分隔线，橙色推广横幅改为简洁 View reports 链接。仍仅显示昨日销售、毛利率和库存总数。
-- 异常库存和未核实毛利采用带图标的 Needs review 标记和简短原因；异常库存原值保留在链接 title，明细链接不变。正常值与零值仍正常显示。仅调整 UI，不修改业务数据、报表 API 或计算口径。
-- 本地 Edge/Chromium 组件预览通过 320/390/768/1024/1440 宽度无溢出、键盘焦点、明细链接及触控尺寸检查，并覆盖正常值、无销售、不可用、STALE、刷新禁用、报表入口权限和深色模式。预览从实际组件 TSX/共享 CSS 渲染，使用模拟数据及 Link/金额格式依赖替身；typecheck、两个改动组件的定向 ESLint、PostCSS 解析及 diff whitespace 检查通过。未构建本地应用，不代表完整页面或线上验收，部署另行确认。
 
 ## 2026-11-03 Dashboard 指标精简
 

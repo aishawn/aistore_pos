@@ -8,4 +8,4 @@ The existing footer fixture now respects the two response contracts. scripts/pil
 
 SKR public frontend identity before this fix: 7b6106669c4c0e0f7daaafbaa6ada05f1388fd0b. Available local credentials do not authenticate the SKR tenant (browser shows Invalid username or password), so authenticated live scroll verification is unavailable. No business writes. No local production build or Maven.
 
-Local result: 54/54 PASS, browser errors 0, business writes 0. TypeScript and targeted ESLint results recorded separately.
+Local result: 54/54 PASS, browser errors 0, business writes 0. TypeScript and targeted ESLint PASS.
