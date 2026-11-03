@@ -1,0 +1,297 @@
+{
+  "generatedAt": "2026-11-03T20:59:49.290Z",
+  "scope": "read-only replenishment API verification; no business writes",
+  "status": "PASS",
+  "results": [
+    {
+      "store": "demo",
+      "loginStatus": 200,
+      "runtime": {
+        "frontendCommit": "767c018809306d8cd7bec3327a09bce535a0ebb1",
+        "frontendBuiltAt": "2026-11-03T19:37:30.753Z",
+        "backendCommit": "767c018809306d8cd7bec3327a09bce535a0ebb1",
+        "backendBuiltAt": "2026-11-03T19:37:30Z"
+      },
+      "odooSessionStatus": 200,
+      "status": 200,
+      "elapsedMs": 49813,
+      "requestedCoverageDays": 21,
+      "responseCode": null,
+      "responseMessage": null,
+      "coverageDays": 21,
+      "forecast": {
+        "enabled": true,
+        "modelSelection": "per_product_selected",
+        "modelVersion": "6",
+        "sourceVersion": "odoo_pos_order_line_local_complete_days_v2",
+        "status": "AVAILABLE",
+        "costPolicy": {
+          "annualHoldingRate": 0.25,
+          "annualObsolescenceRate": 0.1,
+          "serviceLevel": 0.9
+        },
+        "costPolicySource": "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED",
+        "businessCostBasis": "SIMULATED_ORDER_CYCLE_ZERO_OPENING_STOCK_IMMEDIATE_DELIVERY_NOT_REALIZED_SAVINGS"
+      },
+      "catalogueCoverage": {
+        "status": "COMPLETE",
+        "loadedProducts": 12987,
+        "eligibleProducts": 12987,
+        "excludedProducts": 0,
+        "forecastedProducts": 12987,
+        "zeroDemandProducts": 10693
+      },
+      "productCount": 12987,
+      "forecastedProductCount": 9688,
+      "modelCounts": {
+        "exponential_smoothing_v1": 140,
+        "tsb_v1": 156,
+        "croston_sba_v1": 409,
+        "two_stage_occurrence_v1": 980,
+        "moving_average_7_v1": 186,
+        "analog_category_brand_price_v1": 7760,
+        "seasonal_naive_v1": 57,
+        "rules_v1_weighted_velocity": 3299
+      },
+      "forecastQualityCounts": {
+        "VALID": 2096,
+        "INSUFFICIENT_HISTORY": 10891
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-03T15:30:41+00:00",
+        "latestBusinessDate": "2026-11-04",
+        "firstBusinessDate": "2026-11-02",
+        "lastAttemptAt": "2026-11-03T15:30:41.617573+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 12987,
+        "capturedProducts": 12987,
+        "productCoverage": 1,
+        "expectedWarehouses": 2,
+        "capturedWarehouses": 2,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 12987
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 3,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_UNAVAILABLE",
+          "supplierInfoRows": 0,
+          "productsWithLeadTime": 0,
+          "productsMissingLeadTime": 12987
+        },
+        "status": "REVIEW"
+      },
+      "reviewRequiredCount": 12987,
+      "sampleForecastProducts": [
+        {
+          "productId": 682025,
+          "method": "exponential_smoothing_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 15.655950991796686,
+          "p80": 284.8149261347407,
+          "p90": 425.80296073342595
+        },
+        {
+          "productId": 674789,
+          "method": "tsb_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 73.32831482212356,
+          "p80": 362.8892270668532,
+          "p90": 514.563990623616
+        },
+        {
+          "productId": 670299,
+          "method": "croston_sba_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 224.43749999999997,
+          "p80": 461.91658286836514,
+          "p90": 586.3103881803662
+        },
+        {
+          "productId": 675321,
+          "method": "exponential_smoothing_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 76.42929584016044,
+          "p80": 275.69661277899024,
+          "p90": 380.07473117551984
+        },
+        {
+          "productId": 672015,
+          "method": "tsb_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 106.1903597632868,
+          "p80": 216.52492732939461,
+          "p90": 274.3192246259272
+        }
+      ],
+      "nonGetOdooCalls": [],
+      "writeRequests": [],
+      "pass": true
+    },
+    {
+      "store": "skr",
+      "loginStatus": 200,
+      "runtime": {
+        "frontendCommit": "767c018809306d8cd7bec3327a09bce535a0ebb1",
+        "frontendBuiltAt": "2026-11-03T19:37:30.753Z",
+        "backendCommit": "767c018809306d8cd7bec3327a09bce535a0ebb1",
+        "backendBuiltAt": "2026-11-03T19:37:30Z"
+      },
+      "odooSessionStatus": 200,
+      "status": 200,
+      "elapsedMs": 9130,
+      "requestedCoverageDays": 21,
+      "responseCode": null,
+      "responseMessage": null,
+      "coverageDays": 21,
+      "forecast": {
+        "enabled": true,
+        "modelSelection": "per_product_selected",
+        "modelVersion": "6",
+        "sourceVersion": "odoo_pos_order_line_local_complete_days_v2",
+        "status": "AVAILABLE",
+        "costPolicy": {
+          "annualHoldingRate": 0.25,
+          "annualObsolescenceRate": 0.1,
+          "serviceLevel": 0.9
+        },
+        "costPolicySource": "DEFAULT_PLANNING_ASSUMPTIONS_REVIEW_REQUIRED",
+        "businessCostBasis": "SIMULATED_ORDER_CYCLE_ZERO_OPENING_STOCK_IMMEDIATE_DELIVERY_NOT_REALIZED_SAVINGS"
+      },
+      "catalogueCoverage": {
+        "status": "COMPLETE",
+        "loadedProducts": 2263,
+        "eligibleProducts": 2263,
+        "excludedProducts": 0,
+        "forecastedProducts": 2263,
+        "zeroDemandProducts": 1560
+      },
+      "productCount": 2263,
+      "forecastedProductCount": 628,
+      "modelCounts": {
+        "two_stage_occurrence_v1": 628,
+        "rules_v1_weighted_velocity": 1635
+      },
+      "forecastQualityCounts": {
+        "VALID": 701,
+        "INSUFFICIENT_HISTORY": 1562
+      },
+      "inventoryHistory": {
+        "lastSuccessAt": "2026-11-03T15:30:13+00:00",
+        "latestBusinessDate": "2026-11-04",
+        "firstBusinessDate": "2026-11-01",
+        "lastAttemptAt": "2026-11-03T15:30:11.746126+00:00",
+        "lastAttemptStatus": "SUCCESS",
+        "businessTimezone": "Australia/Adelaide",
+        "expectedProducts": 13035,
+        "capturedProducts": 13035,
+        "productCoverage": 1,
+        "expectedWarehouses": 1,
+        "capturedWarehouses": 1,
+        "missingFields": {
+          "availableQty": 0,
+          "virtualAvailableQty": 0,
+          "incomingQty": 0,
+          "outgoingQty": 0,
+          "cost": 0,
+          "leadTimeDays": 13035
+        },
+        "missingWarehouseQuantityFields": 0,
+        "observedDays": 4,
+        "gapDays": 0,
+        "invalidSnapshots": 0,
+        "supplierLeadTimeCoverage": {
+          "quality": "ODOO_SUPPLIERINFO_UNAVAILABLE",
+          "supplierInfoRows": 0,
+          "productsWithLeadTime": 0,
+          "productsMissingLeadTime": 13035
+        },
+        "status": "REVIEW"
+      },
+      "reviewRequiredCount": 2263,
+      "sampleForecastProducts": [
+        {
+          "productId": 601,
+          "method": "two_stage_occurrence_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 107.625,
+          "p80": 263.31022473247106,
+          "p90": 344.85962816376536
+        },
+        {
+          "productId": 697,
+          "method": "two_stage_occurrence_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 76.12500000000001,
+          "p80": 125.50671321450892,
+          "p90": 151.3733248982993
+        },
+        {
+          "productId": 824,
+          "method": "two_stage_occurrence_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 57.000000000000014,
+          "p80": 133.88065296288784,
+          "p90": 174.15147118154354
+        },
+        {
+          "productId": 692,
+          "method": "two_stage_occurrence_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 50.25000000000002,
+          "p80": 110.13646257711343,
+          "p90": 141.505562022268
+        },
+        {
+          "productId": 3808,
+          "method": "two_stage_occurrence_v1",
+          "modelVersion": "6",
+          "selectionStatus": "ROLLING_BACKTEST",
+          "forecastQuality": "VALID",
+          "confidence": "LOW",
+          "p50": 48.74999999999997,
+          "p80": 168.51629742961907,
+          "p90": 231.25102465465778
+        }
+      ],
+      "nonGetOdooCalls": [],
+      "writeRequests": [],
+      "pass": true
+    }
+  ]
+}
