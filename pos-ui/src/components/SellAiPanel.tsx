@@ -175,6 +175,7 @@ interface ChatMessage {
   retryQuestion?: string | null;
   source?: string | null;
   dataSource?: string | null;
+  storeScope?: string | null;
   dataAsOf?: string | null;
   requestedDateRange?: string | null;
   suggestedFollowUps?: string[] | null;
@@ -1120,7 +1121,8 @@ export function SellAiPanel({
               cards: result.cards ?? null,
               retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
               source: result.source ?? null,
-              dataSource: assistantDataSource(result.intent),
+              dataSource: result.dataSource ?? assistantDataSource(result.intent),
+              storeScope: result.storeScope ?? null,
               dataAsOf: assistantDataAsOf(result.dataAsOf),
               requestedDateRange: requestedSalesDateRange(result.intent, result.slots),
               suggestedFollowUps: result.suggestedFollowUps ?? null,
@@ -2149,6 +2151,9 @@ function DialogueView({
                   : ""}
                 {msg.requestedDateRange
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "查询范围" : "Requested"}: ${msg.requestedDateRange}`
+                  : ""}
+                {msg.storeScope
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "门店范围" : "Store scope"}: ${msg.storeScope}`
                   : ""}
                 {msg.diagnostics?.intent === "report_sales" ? (
                   <>

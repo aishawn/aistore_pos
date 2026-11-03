@@ -823,6 +823,8 @@ export interface AssistantResponse {
   clarificationRequired?: boolean;
   clarifyingQuestion?: string | null;
   dataAsOf?: string | null;
+  dataSource?: string | null;
+  storeScope?: string | null;
   suggestedFollowUps?: string[] | null;
   requiresConfirmation?: boolean;
   actionPreview?: Record<string, unknown> | null;
@@ -932,6 +934,8 @@ export interface AiChatThreadDetail {
     createdAt: string | null;
     source?: string | null;
     dataAsOf?: string | null;
+    dataSource?: string | null;
+    storeScope?: string | null;
     suggestedFollowUps?: string[] | null;
     clarificationRequired?: boolean;
     clarifyingQuestion?: string | null;
