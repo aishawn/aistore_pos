@@ -2,7 +2,7 @@
 
 ## 2026-11-03 Continuous list audit follow-up
 
-- Delivery blocker: two normal pushes failed connecting to github.com:443. Scoped changes are committed on local main, not pushed/deployed. Resume with normal `git push origin main` after network recovery, then verify runtime SHA.
+- Delivery follow-up: the owner-requested normal push retry succeeded (`40906c80..75c02843`, main -> main). The scoped repair is now on GitHub. The earlier github.com:443 connection blocker is resolved; deployment and runtime SHA still require separate confirmation.
 
 - Fixed consumed-row pagination, synchronous append locking, stale-query protection and same-batch retries across Customers, Suppliers, Purchase orders, Base Prices, Stock List and Price Suggestions. Refresh resets accumulated results; append failures preserve rows and pause automatic retries. Purchase Transfers and shared Products/Inventory Stocktake return paths reattach scroll observers.
 - Local intercepted Edge browser regression: **140/140 PASS** at 390/1440px, browser errors 0, real business writes 0. TypeScript PASS; targeted ESLint exits 0 with 27 warnings; script syntax and scoped diff checks PASS. See `CONTINUOUS_LIST_AUDIT_2026-11-03.md` and `UAT_CONTINUOUS_LISTS_LOCAL_2026-11-03.json`. Products Stocktake observer change is source-inspected; preceding product append evidence remains separate.

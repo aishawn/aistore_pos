@@ -23,3 +23,5 @@ Local result: **140/140 PASS**, browser errors 0, real business writes 0. TypeSc
 After merging origin/main, the shared dirty worktree fails TypeScript because its preserved, uncommitted WorkspaceRecordsPanel predates the remote fillHeight interface. The actual committed candidate `d3269afe97fa3000bc97a59a94fe07f1cf4f095c` passed `tsc --noEmit` from a separate git-archive source directory with the same installed dependencies. Unrelated worktree edits were preserved and excluded from these commits.
 
 Delivery status: push to origin/main attempted twice and failed to connect to github.com:443 (about 21 seconds each). Local main contains the scoped repair and integration; it is not pushed. SKR still reports frontend/backend `40906c80d78ace6d83f874605bff0486a1cd9911`. Retry normal git push when connectivity returns; no force push.
+
+Delivery follow-up: on the owner-requested retry, normal git push succeeded (`40906c80..75c02843`, main -> main). GitHub now contains the repair. Deployment/runtime acceptance remains separate and is not confirmed by the push.
