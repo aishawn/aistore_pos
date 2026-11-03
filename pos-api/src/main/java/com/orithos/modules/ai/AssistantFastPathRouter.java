@@ -29,6 +29,12 @@ public final class AssistantFastPathRouter {
     private static final Pattern SALES_RANGE = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern LAST_WEEK_SALES = Pattern.compile(
+            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:the\\s+)?(?:last|previous)\\s+week|"
+                    + "how much did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
+                    + "what did we (?:make|take|sell)\\s+(?:in\\s+)?(?:the\\s+)?last\\s+week|"
+                    + "what were (?:our )?(?:sales|takings|revenue|turnover)\\s+(?:for\\s+(?:the\\s+)?last|last)\\s+week)[?.!]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern DATE_TOKEN = Pattern.compile(
             "(?:\\b\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}\\b|\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b|"
                     + "\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,./-]+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|"
@@ -283,6 +289,16 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "Sales report",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (LAST_WEEK_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Last week's sales",
                     Map.of(),
                     "",
                     "",

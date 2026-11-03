@@ -8,8 +8,11 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from datetime import datetime
+from math import isfinite
 from pathlib import Path
 from statistics import pstdev
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "forecast-service"))
@@ -25,6 +28,36 @@ def source_sha(snapshot: Path) -> str:
 
 
 MODEL_NAMES = ("seasonal_naive_v1", "moving_average_7_v1", "exponential_smoothing_v1", "croston_sba_v1", "tsb_v1", "two_stage_occurrence_v1")
+
+
+def require_native_inventory_event_times(history: dict) -> None:
+    if history.get("source") != "odoo-readonly-jsonrpc" \
+            or history.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS":
+        raise ValueError("stockout evaluation requires native Odoo daily inventory snapshots")
+    timezone_name = history.get("businessTimezone")
+    if not isinstance(timezone_name, str) or not timezone_name:
+        raise ValueError("native inventory history requires a store business timezone")
+    timezone = ZoneInfo(timezone_name)
+    for product in history.get("products", []):
+        for observation in product.get("observations", []):
+            if observation.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS":
+                raise ValueError("every stockout observation must come from a native Odoo snapshot")
+            captured_at = observation.get("capturedAt")
+            try:
+                event_time = datetime.fromisoformat(str(captured_at).replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("every native inventory observation requires a valid capturedAt") from exc
+            if event_time.tzinfo is None or event_time.utcoffset() is None:
+                raise ValueError("every native inventory capturedAt must include a timezone offset")
+            business_date = observation.get("date")
+            if event_time.astimezone(timezone).date().isoformat() != business_date:
+                raise ValueError("native inventory capturedAt does not match its store business date")
+            quantity = observation.get("availableQty")
+            is_stockout = observation.get("isStockout")
+            if isinstance(quantity, bool) or not isinstance(quantity, (int, float)) \
+                    or not isfinite(float(quantity)) \
+                    or not isinstance(is_stockout, bool) or is_stockout != (quantity <= 0):
+                raise ValueError("stockout labels must match the observed native availableQty")
 
 
 def apply_inventory_history(series: Series, history: dict) -> Series:

@@ -13,6 +13,10 @@ class AssistantFastPathRouterTest {
     void routesCommonReadOnlyReportRangesWithoutTheClassifier() {
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales last 7 days").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales for last 7 days").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How much did we take last week?").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("How much did we take in the last week?").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales for the last week").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales last week").intent());
         assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("昨天销售额").intent());
         assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("units sold past 30 days").intent());
         assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("最近7天销量").intent());

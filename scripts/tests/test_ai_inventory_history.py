@@ -74,6 +74,7 @@ class InventoryHistoryTests(unittest.TestCase):
         self.assertEqual(2, result["observedDays"])
         self.assertEqual(["2026-10-02"], result["missingSnapshotDates"])
         self.assertEqual("GAPS_PRESENT", result["continuityStatus"])
+        self.assertEqual("2026-10-01T02:00:00+00:00", result["products"][0]["observations"][0]["capturedAt"])
 
     def test_history_uses_business_date_instead_of_utc_capture_date(self):
         item = snapshot("2026-10-31", 4, 19.99)
@@ -134,6 +135,32 @@ class InventoryHistoryTests(unittest.TestCase):
             path = root / "inventory.json"
             path.write_text(json.dumps(item), encoding="utf-8")
             with self.assertRaises(ValueError):
+                MODULE.load_snapshots(root)
+
+    def test_rejects_missing_or_timezone_naive_capture_time(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            missing = snapshot("2026-10-01", 4, 19.99)
+            missing.pop("capturedAt")
+            (root / "missing").mkdir()
+            (root / "missing" / "inventory.json").write_text(json.dumps(missing), encoding="utf-8")
+            naive = snapshot("2026-10-02", 4, 19.99)
+            naive["capturedAt"] = "2026-10-02T02:00:00"
+            (root / "naive").mkdir()
+            (root / "naive" / "inventory.json").write_text(json.dumps(naive), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "timezone-aware capturedAt"):
+                MODULE.load_snapshots(root)
+
+    def test_rejects_reconstructed_quantity_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            item = snapshot("2026-10-01", 4, 19.99)
+            item["dataQuality"] = "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"
+            path = root / "inventory.json"
+            path.write_text(json.dumps(item), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "not native current observations"):
                 MODULE.load_snapshots(root)
 
     def test_require_days_gate_is_nonzero_when_history_is_short(self):

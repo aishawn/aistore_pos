@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "forecast-service"))
 
 from app.forecast_engine import backtest_inventory  # noqa: E402
 from app.schemas import InventoryBacktestRequest, InventoryBacktestSeries  # noqa: E402
+from scripts.ai_forecast_eval import require_native_inventory_event_times  # noqa: E402
 
 
 def sha256(path: Path) -> str:
@@ -54,6 +55,7 @@ def load_series(sales_path: Path, inventory_path: Path, limit: int) -> list[Inve
     inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
     if sales.get("writeRequests", []) or inventory.get("writeRequests", []):
         raise ValueError("input snapshots contain write requests")
+    require_native_inventory_event_times(inventory)
 
     warnings = {
         str(row.get("productId"))
@@ -120,6 +122,8 @@ def main() -> int:
         "futureObservationsUsedAsInput": result.futureObservationsUsedAsInput,
         "originDate": args.origin_date.isoformat(),
         "horizonDays": args.horizon,
+        "inventoryDataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "inventoryEventTimeValidation": "capturedAt_matches_businessDate",
         "eligibleProducts": len(series),
         "passedProducts": passed,
         "blockedProducts": blocked,

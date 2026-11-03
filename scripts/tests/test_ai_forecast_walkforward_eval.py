@@ -2,7 +2,7 @@ import unittest
 from collections import Counter
 from types import SimpleNamespace
 from unittest.mock import patch
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import sys
 
@@ -15,6 +15,7 @@ from app.schemas import Series
 from scripts.ai_forecast_walkforward_eval import (
     _demand_segment, _metric_summary, _score_fold, evaluate, walk_forward_origins,
 )
+from scripts.ai_forecast_eval import require_native_inventory_event_times
 
 
 def snapshots(future_demand: float):
@@ -30,13 +31,17 @@ def snapshots(future_demand: float):
         } for product_id in (7, 8)],
     }
     inventory = {
+        "source": "odoo-readonly-jsonrpc",
         "dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
+        "businessTimezone": "Australia/Adelaide",
         "writeRequests": [],
         "qualityWarnings": [],
         "products": [{
             "productId": product_id,
             "observations": [{
                 "date": day.isoformat(),
+                "capturedAt": datetime.combine(day, datetime.min.time().replace(hour=12)).isoformat() + "+10:30",
+                "dataQuality": "NATIVE_ODOO_DAILY_SNAPSHOTS",
                 "availableQty": 0 if product_id == 7 and index == 28 else 5,
                 "isStockout": product_id == 7 and index == 28,
             } for index, day in enumerate(dates)],
@@ -46,6 +51,22 @@ def snapshots(future_demand: float):
 
 
 class WalkForwardForecastTests(unittest.TestCase):
+    def test_native_inventory_event_time_and_stockout_labels_are_required(self):
+        _, inventory = snapshots(1.0)
+        require_native_inventory_event_times(inventory)
+
+        reconstructed = {**inventory, "dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"}
+        with self.assertRaisesRegex(ValueError, "native Odoo daily inventory snapshots"):
+            evaluate(snapshots(1.0)[0], reconstructed, [7])
+
+        missing_time = {**inventory, "products": [{
+            **inventory["products"][0],
+            "observations": [{**row, "capturedAt": None}
+                             for row in inventory["products"][0]["observations"]],
+        }]}
+        with self.assertRaisesRegex(ValueError, "valid capturedAt"):
+            require_native_inventory_event_times(missing_time)
+
     def test_folds_are_chronological_and_non_overlapping(self):
         self.assertEqual([28, 35, 42, 49], walk_forward_origins(56, 7, 28))
         origins = walk_forward_origins(56, 7, 28)
@@ -85,7 +106,8 @@ class WalkForwardForecastTests(unittest.TestCase):
             "products": [{
                 **product,
                 "observations": [
-                    {**observation, "isStockout": not observation["isStockout"]}
+                    {**observation, "availableQty": 0 if not observation["isStockout"] else 5,
+                     "isStockout": not observation["isStockout"]}
                     if observation["date"] >= "2026-01-29" else observation
                     for observation in product["observations"]
                 ],

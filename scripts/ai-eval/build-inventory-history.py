@@ -20,10 +20,11 @@ def _capture_datetime(snapshot: dict[str, Any], path: Path) -> datetime:
     if isinstance(value, str):
         try:
             captured_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return captured_at.replace(tzinfo=timezone.utc) if captured_at.tzinfo is None else captured_at
+            if captured_at.tzinfo is not None and captured_at.utcoffset() is not None:
+                return captured_at
         except ValueError:
             pass
-    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+    raise ValueError(f"snapshot requires a timezone-aware capturedAt event timestamp: {path}")
 
 
 def _business_date(snapshot: dict[str, Any], captured_at: datetime,
@@ -46,6 +47,8 @@ def load_snapshots(root: Path, default_timezone: str = "Australia/Adelaide") -> 
             raise ValueError(f"snapshot must be an object: {path}")
         if snapshot.get("source") != "odoo-readonly-jsonrpc":
             raise ValueError(f"snapshot source is not native Odoo: {path}")
+        if snapshot.get("dataQuality") != "NATIVE_ODOO_CURRENT_QUANTITIES":
+            raise ValueError(f"snapshot quantities are not native current observations: {path}")
         if snapshot.get("writeRequests", []) != []:
             raise ValueError(f"snapshot contains write requests: {path}")
         captured_at = _capture_datetime(snapshot, path)
@@ -95,6 +98,7 @@ def build_history(snapshots: list[dict[str, Any]], default_timezone: str = "Aust
             key = str(product_id)
             observation = {
                 "date": date_value,
+                "capturedAt": _capture_datetime(snapshot, Path(".")).isoformat(),
                 "snapshotVersion": snapshot.get("snapshotVersion"),
                 "dataQuality": quality,
                 "warehouseId": product.get("warehouseId"),

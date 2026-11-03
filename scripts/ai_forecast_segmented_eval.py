@@ -109,6 +109,66 @@ def summarize(metrics: dict | None, expected_product_windows: int | None = None)
     }
 
 
+def fold_stability(rows: list[dict], baseline_rows: list[dict] | None = None) -> dict:
+    scored = [row for row in rows if row.get("weightedWape") is not None]
+    values = sorted(float(row["weightedWape"]) for row in scored)
+    if not values:
+        return {"foldCount": len(rows), "scoredFoldCount": 0}
+
+    def percentile(fraction: float) -> float:
+        return percentile_of(values, fraction)
+
+    result = {
+        "foldCount": len(rows),
+        "scoredFoldCount": len(scored),
+        "wapeMean": mean(values),
+        "wapeMedian": percentile(0.50),
+        "wapeP25": percentile(0.25),
+        "wapeP75": percentile(0.75),
+        "wapeMin": values[0],
+        "wapeMax": values[-1],
+        "wapeStdDev": pstdev(values),
+        "wapeCoefficientOfVariation": pstdev(values) / mean(values) if mean(values) else None,
+        "biasSignConsistency": max(
+            sum(float(row.get("biasRatio") or 0) > 0 for row in scored),
+            sum(float(row.get("biasRatio") or 0) < 0 for row in scored),
+        ) / len(scored),
+    }
+    if baseline_rows is not None:
+        baseline_by_origin = {
+            row["evaluationStart"]: row for row in baseline_rows
+            if row.get("weightedWape") is not None
+        }
+        paired = [
+            row for row in scored
+            if row["evaluationStart"] in baseline_by_origin
+        ]
+        improvements = [
+            1 - float(row["weightedWape"])
+            / float(baseline_by_origin[row["evaluationStart"]]["weightedWape"])
+            for row in paired
+            if float(baseline_by_origin[row["evaluationStart"]]["weightedWape"]) > 0
+        ]
+        result["pairedBaselineFolds"] = len(improvements)
+        result["beatBaselineFoldCount"] = sum(value > 0 for value in improvements)
+        result["beatBaselineFoldRate"] = (
+            result["beatBaselineFoldCount"] / len(improvements) if improvements else None
+        )
+        result["medianRelativeImprovementVsBaseline"] = (
+            percentile_of(improvements, 0.50) if improvements else None
+        )
+    return result
+
+
+def percentile_of(values: list[float], fraction: float) -> float:
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * fraction
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
 def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
              validation_fraction: float, minimum_segment_products: int) -> dict:
     if snapshot.get("writeRequests", []) != []:
@@ -131,11 +191,13 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
             raise ValueError(f"not enough walk-forward folds for {horizon}-day horizon")
         split_index = max(1, min(len(origins) - 1, int(len(origins) * validation_fraction)))
         metrics: dict[tuple[str, str, str], dict] = {}
+        fold_rows: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
         segment_validation_products: dict[str, set[int]] = defaultdict(set)
         segment_counts: dict[str, int] = defaultdict(int)
 
         for fold_index, origin in enumerate(origins):
             split = "validation" if fold_index < split_index else "holdout"
+            fold_metrics: dict[tuple[str, str, str], dict] = {}
             segments = {
                 item.productId: demand_segment(item.units, dates, origin)
                 for item in series
@@ -144,6 +206,8 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
                 segment_counts[f"{split}:{segment}"] += 1
                 for model in MODEL_NAMES:
                     metrics.setdefault((split, segment, model), new_metrics())["expectedProductWindows"] += 1
+                    fold_bucket = fold_metrics.setdefault((split, segment, model), new_metrics())
+                    fold_bucket["expectedProductWindows"] += 1
                 if split == "validation":
                     segment_validation_products[segment].add(product_id)
 
@@ -170,9 +234,19 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
                         continue
                     key = (split, segments[item.productId], model)
                     bucket = metrics.setdefault(key, new_metrics())
+                    fold_bucket = fold_metrics[key]
                     add_window(bucket, item.productId, item.units[:origin],
                                item.units[origin:origin + horizon], prediction.forecast,
                                prediction.confidence)
+                    add_window(fold_bucket, item.productId, item.units[:origin],
+                               item.units[origin:origin + horizon], prediction.forecast,
+                               prediction.confidence)
+
+            for key, bucket in fold_metrics.items():
+                row = summarize(bucket, bucket["expectedProductWindows"])
+                row["foldIndex"] = fold_index
+                row["evaluationStart"] = dates[origin].isoformat()
+                fold_rows[key].append(row)
 
         validation_segments = sorted({segment for split, segment, _ in metrics if split == "validation"})
         champions = {}
@@ -214,20 +288,41 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
 
         segment_reports = {}
         for segment in sorted({segment for _, segment, _ in metrics}):
+            baseline_validation_rows = fold_rows.get(
+                ("validation", segment, WAPE_BASELINE_MODEL), []
+            )
+            baseline_holdout_rows = fold_rows.get(
+                ("holdout", segment, WAPE_BASELINE_MODEL), []
+            )
+            validation_models = {}
+            holdout_models = {}
+            for model in MODEL_NAMES:
+                validation_summary = summarize(
+                    metrics.get(("validation", segment, model)),
+                    segment_counts.get(f"validation:{segment}", 0),
+                )
+                holdout_summary = summarize(
+                    metrics.get(("holdout", segment, model)),
+                    segment_counts.get(f"holdout:{segment}", 0),
+                )
+                if validation_summary is not None:
+                    validation_summary["foldStability"] = fold_stability(
+                        fold_rows.get(("validation", segment, model), []),
+                        baseline_validation_rows,
+                    )
+                if holdout_summary is not None:
+                    holdout_summary["foldStability"] = fold_stability(
+                        fold_rows.get(("holdout", segment, model), []),
+                        baseline_holdout_rows,
+                    )
+                validation_models[model] = validation_summary
+                holdout_models[model] = holdout_summary
             segment_reports[segment] = {
                 "validationProducts": len(segment_validation_products[segment]),
                 "validationProductWindows": segment_counts.get(f"validation:{segment}", 0),
                 "holdoutProductWindows": segment_counts.get(f"holdout:{segment}", 0),
-                "validationModels": {
-                    model: summarize(metrics.get(("validation", segment, model)),
-                                     segment_counts.get(f"validation:{segment}", 0))
-                    for model in MODEL_NAMES
-                },
-                "holdoutModels": {
-                    model: summarize(metrics.get(("holdout", segment, model)),
-                                     segment_counts.get(f"holdout:{segment}", 0))
-                    for model in MODEL_NAMES
-                },
+                "validationModels": validation_models,
+                "holdoutModels": holdout_models,
                 "selectedChampion": champions.get(segment),
                 "championHoldout": holdout.get(segment),
             }

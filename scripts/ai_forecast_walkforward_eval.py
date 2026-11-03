@@ -15,18 +15,14 @@ sys.path.insert(0, str(ROOT / "forecast-service"))
 
 from app.forecast_engine import MODEL_NAMES, forecast as run_forecast
 from app.schemas import ForecastRequest, Series
-from scripts.ai_forecast_eval import apply_inventory_history
+from scripts.ai_forecast_eval import apply_inventory_history, require_native_inventory_event_times
 
 
 # Keep every deterministic candidate in the offline comparison. Production
 # selection remains governed by forecast_engine.py; this report is intended to
 # show whether intermittent-demand models actually beat the current baseline.
 BASELINE_MODELS = tuple(MODEL_NAMES)
-ACCEPTED_INVENTORY_QUALITY = {
-    "NATIVE_ODOO_DAILY_SNAPSHOTS",
-    "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE",
-    "RECONSTRUCTED_FROM_CURRENT_STOCK_AND_DONE_MOVES",
-}
+ACCEPTED_INVENTORY_QUALITY = {"NATIVE_ODOO_DAILY_SNAPSHOTS"}
 
 
 def walk_forward_origins(observation_count: int, horizon: int,
@@ -142,8 +138,7 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
              minimum_train_days: int = 28) -> dict:
     if sales.get("writeRequests", []) != [] or inventory.get("writeRequests", []) != []:
         raise ValueError("evaluation snapshots must have empty writeRequests")
-    if inventory.get("dataQuality") not in ACCEPTED_INVENTORY_QUALITY:
-        raise ValueError("inventory history is not an accepted research source")
+    require_native_inventory_event_times(inventory)
     if any(item.get("productId") is None for item in inventory.get("qualityWarnings", [])):
         raise ValueError("global inventory quality warning blocks stockout-aware evaluation")
 
