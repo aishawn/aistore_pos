@@ -40,6 +40,14 @@ def test_sales_trend_missing_dates_are_unclassified():
     ) == ["2024-01-02"]
 
 
+def test_saved_reports_query_uses_only_schema_stable_fields():
+    from app.shopfront import SAVED_REPORTS_QUERY
+
+    assert "... on FavouriteReport" not in SAVED_REPORTS_QUERY
+    assert "... on SpecialFavouriteReport" not in SAVED_REPORTS_QUERY
+    assert "id name layers" in SAVED_REPORTS_QUERY
+
+
 def test_duplicate_sale_edges_are_collapsed_and_merged():
     rows, duplicates = _dedupe_sales([
         {"id": "sale-1", "items": [{"id": "line-1"}], "payments": []},
