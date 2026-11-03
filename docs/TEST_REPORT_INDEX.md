@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest Sales History layout: [2026-11-03 modal/toolbar](test-sessions/2026-11-03-sales-history-layout.md): targeted TSX syntax and ESLint PASS; remote build and live layout checks pending.
+Latest Sales History layout: [2026-11-03 modal/toolbar](test-sessions/2026-11-03-sales-history-layout.md): targeted TSX syntax, ESLint, remote build and live desktop/mobile browser checks PASS; deployed runtime `8cbd0d49`. Local full typecheck BLOCKED by incomplete dependencies. Real business writes: 0.
 
 Latest Sales History repair: [2026-11-03 daily sales](test-sessions/2026-11-03-sales-history-daily-fix.md): 5 regression cases and targeted ESLint PASS; real SKR/Odoo read-only aggregation reconciled over 1,006 dates. Fix/runtime `7f8ded6a`: Dokploy build and SKR live API/browser acceptance PASS, including date filtering and unified Sell history. Local full typecheck BLOCKED by dependency/disk limits.
 

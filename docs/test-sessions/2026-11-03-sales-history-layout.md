@@ -7,3 +7,7 @@ Only three UI components change. No API or business data changes. No local appli
 - PASS: TSX syntax diagnostics for all 3 changed components.
 - PASS: targeted ESLint against changed contents using the existing primary workspace config/dependencies (no diagnostics).
 - BLOCKED: full local typecheck/configured lint in temporary worktree because prior disk exhaustion left its Next.js install incomplete. No full local success claimed; remote build remains the release gate.
+- PASS: Dokploy build/deployment of `8cbd0d49ec81b86835c9a6326b59a9519c6f58c2`; SKR frontend and backend runtime confirmed this SHA.
+- PASS: live authenticated browser verification at 1440x1000 measured the modal at 1408x960; Daily summary is the default and resets on reopening.
+- PASS: view switch shares the period/filter toolbar in both views, in the Sell modal and `/history`; daily and sales-line data load successfully.
+- PASS: 390x844 mobile viewport has no page horizontal overflow. Real business writes: 0.
