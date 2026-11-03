@@ -54,6 +54,7 @@ const check = (width, name, ok) => { assert.ok(ok, `${width}: ${name}`); checks.
           if (body.catalogueView === 'negative-stock') rows = rows.filter(p => p.qty_available < 0);
           if (body.catalogueView === 'out-of-stock') rows = rows.filter(p => p.qty_available === 0);
           rows.sort((a, b) => (body.sortBy === 'qty_available' ? a.qty_available - b.qty_available : a.name.localeCompare(b.name)) * (body.sortDirection === 'desc' ? -1 : 1) || a.id - b.id);
+          if (!body.inventoryReport) return json({items:rows.slice(body.offset || 0,(body.offset || 0)+body.limit),limit:body.limit,offset:body.offset || 0,hasNext:(body.offset || 0)+body.limit<rows.length,total:rows.length});
           const snapshotId = body.snapshotId || `fixture-${snapshots.size + 1}`;
           if (body.snapshotId) assert.ok(snapshots.has(body.snapshotId)); else snapshots.set(snapshotId, rows);
           return json({ items: rows.slice(body.offset || 0, (body.offset || 0) + body.limit), limit: body.limit, offset: body.offset || 0, hasNext: (body.offset || 0) + body.limit < rows.length, snapshotId, total: rows.length, totalItems: rows.length, totalQty: rows.reduce((sum, p) => sum + p.qty_available, 0), totalStockValue: noCost ? null : rows.reduce((sum, p) => sum + p.qty_available * 2, 0), missingCostItems: noCost ? rows.length : 0, mixedUnits: false });
