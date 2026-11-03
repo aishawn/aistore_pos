@@ -27,6 +27,8 @@
 
 前端 `pos-ui` 合并后验证：`npm run test:unit` 为 153 passed、0 failed；`npm run typecheck` 正常结束。GitHub Actions API 在当前环境对该仓库返回 404，因此暂不能把本地结果写成远端 CI 通过。
 
+趋势接口口径已在候选中补强：`/api/reports/sales-trend` 现在返回请求范围、实际返回日期、`missing_dates`，并明确 `missing_date_status=UNCLASSIFIED_NO_SUMMARY_ROW`；缺摘要不会被解释为闭店或零销售。crawler 测试复跑结果为 57 passed。
+
 ## 约束
 
 本复核所有线上请求均为 GET；没有创建、确认、收货或修改采购单，也没有重启或取消线上同步任务。

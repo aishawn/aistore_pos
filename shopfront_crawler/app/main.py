@@ -196,6 +196,19 @@ def preferred_summary_rows(rows: list[DailySalesSummary]) -> list[DailySalesSumm
     return sorted(selected, key=lambda row: (row.business_date, row.outlet or ""))
 
 
+def sales_trend_missing_dates(from_date: date, to_date: date, rows: list[DailySalesSummary]) -> list[str]:
+    """Return requested dates without summaries without inferring a calendar state."""
+    present = {row.business_date for row in rows if row.business_date}
+    missing: list[str] = []
+    current = from_date
+    while current <= to_date:
+        value = current.isoformat()
+        if value not in present:
+            missing.append(value)
+        current += timedelta(days=1)
+    return missing
+
+
 @app.get("/auth/shopfront/{store_key}/start")
 def start_auth(store_key: str, db: Session = Depends(get_db)) -> RedirectResponse:
     store = require_store(store_key, db)
@@ -2745,7 +2758,18 @@ def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date
     require_store(store, db)
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date >= from_date.isoformat(), DailySalesSummary.business_date <= to_date.isoformat()).order_by(DailySalesSummary.business_date)).all()
     rows = preferred_summary_rows(rows)
-    return {"data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count} for x in rows], "source": "shopfront_reporting"}
+    return {
+        "data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count} for x in rows],
+        "source": "shopfront_reporting",
+        "coverage": {
+            "requested_from": from_date.isoformat(),
+            "requested_to": to_date.isoformat(),
+            "returned_dates": sorted({x.business_date for x in rows}),
+            "missing_dates": sales_trend_missing_dates(from_date, to_date, rows),
+            "missing_date_status": "UNCLASSIFIED_NO_SUMMARY_ROW",
+            "missing_date_policy": "missing does not mean closed or zero sales",
+        },
+    }
 
 
 @app.get("/api/sales")

@@ -1,4 +1,5 @@
 from app.shopfront import ShopfrontClient
+from app.main import sales_trend_missing_dates
 from app.sync import _dedupe_sales, parse_decimal, verify_webhook
 
 
@@ -24,6 +25,19 @@ def test_webhook_signature_verification():
     signature = hmac.new(b"key", timestamp.encode() + body, hashlib.sha256).hexdigest()
     assert verify_webhook(body, signature, timestamp, "key")
     assert not verify_webhook(body, "bad", timestamp, "key")
+
+
+def test_sales_trend_missing_dates_are_unclassified():
+    from datetime import date
+
+    class Row:
+        def __init__(self, business_date):
+            self.business_date = business_date
+
+    assert sales_trend_missing_dates(
+        date(2024, 1, 1), date(2024, 1, 3),
+        [Row("2024-01-01"), Row("2024-01-03")],
+    ) == ["2024-01-02"]
 
 
 def test_duplicate_sale_edges_are_collapsed_and_merged():
