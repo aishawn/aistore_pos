@@ -1,0 +1,280 @@
+{
+  "target": "https://demo.orithos.com.au",
+  "database": "aipos_uat",
+  "runtimeIdentity": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "92ee91b2b1437f856855e929feb3d649800d5210",
+      "builtAt": "2026-11-03T07:03:35.076Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "92ee91b2b1437f856855e929feb3d649800d5210",
+      "builtAt": "2026-11-03T07:03:34Z"
+    }
+  },
+  "at": "2026-11-03T07:10:41.942Z",
+  "readOnly": true,
+  "results": [
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 1222,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "queryThrough": "2026-11-02 13:30:00",
+      "metrics": {
+        "rpcCalls": 16,
+        "durationMs": 412
+      },
+      "serverTiming": "auth;dur=166.6, cache;dur=3.1, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 795,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:23.395Z",
+      "queryThrough": "2026-11-01 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 581
+      },
+      "serverTiming": "auth;dur=104.0, cache;dur=4.0, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 991,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "queryThrough": "2026-10-31 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 1571
+      },
+      "serverTiming": "auth;dur=93.9, cache;dur=3.8, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 2314,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:15.154Z",
+      "queryThrough": "2026-11-03 07:09:15",
+      "metrics": {
+        "rpcCalls": 8,
+        "durationMs": 174
+      },
+      "serverTiming": "auth;dur=113.4, cache;dur=1.4, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 419,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "queryThrough": "2026-11-02 13:30:00",
+      "metrics": {
+        "rpcCalls": 16,
+        "durationMs": 412
+      },
+      "serverTiming": "auth;dur=107.3, cache;dur=3.1, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 654,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:23.395Z",
+      "queryThrough": "2026-11-01 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 581
+      },
+      "serverTiming": "auth;dur=91.3, cache;dur=4.1, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 382,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "queryThrough": "2026-10-31 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 1571
+      },
+      "serverTiming": "auth;dur=82.1, cache;dur=2.0, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 397,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:15.154Z",
+      "queryThrough": "2026-11-03 07:09:15",
+      "metrics": {
+        "rpcCalls": 8,
+        "durationMs": 174
+      },
+      "serverTiming": "auth;dur=83.9, cache;dur=2.0, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 1323,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "queryThrough": "2026-11-02 13:30:00",
+      "metrics": {
+        "rpcCalls": 16,
+        "durationMs": 412
+      },
+      "serverTiming": "auth;dur=104.8, cache;dur=2.0, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 865,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:23.395Z",
+      "queryThrough": "2026-11-01 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 581
+      },
+      "serverTiming": "auth;dur=74.8, cache;dur=4.7, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 353,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "queryThrough": "2026-10-31 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 1571
+      },
+      "serverTiming": "auth;dur=78.2, cache;dur=2.5, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 1697,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:15.154Z",
+      "queryThrough": "2026-11-03 07:09:15",
+      "metrics": {
+        "rpcCalls": 8,
+        "durationMs": 174
+      },
+      "serverTiming": "auth;dur=76.6, cache;dur=0.9, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 366,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "queryThrough": "2026-11-02 13:30:00",
+      "metrics": {
+        "rpcCalls": 16,
+        "durationMs": 412
+      },
+      "serverTiming": "auth;dur=73.1, cache;dur=2.4, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 1406,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:23.395Z",
+      "queryThrough": "2026-11-01 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 581
+      },
+      "serverTiming": "auth;dur=75.3, cache;dur=2.5, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 321,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "queryThrough": "2026-10-31 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 1571
+      },
+      "serverTiming": "auth;dur=80.1, cache;dur=2.3, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 668,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:15.154Z",
+      "queryThrough": "2026-11-03 07:09:15",
+      "metrics": {
+        "rpcCalls": 8,
+        "durationMs": 174
+      },
+      "serverTiming": "auth;dur=79.3, cache;dur=1.5, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 346,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "queryThrough": "2026-11-02 13:30:00",
+      "metrics": {
+        "rpcCalls": 16,
+        "durationMs": 412
+      },
+      "serverTiming": "auth;dur=83.0, cache;dur=3.2, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 403,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:23.395Z",
+      "queryThrough": "2026-11-01 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 581
+      },
+      "serverTiming": "auth;dur=84.5, cache;dur=4.5, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 375,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "queryThrough": "2026-10-31 13:30:00",
+      "metrics": {
+        "rpcCalls": 17,
+        "durationMs": 1571
+      },
+      "serverTiming": "auth;dur=78.3, cache;dur=2.4, odoo;desc=\"0 aggregate calls\""
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 349,
+      "cacheStatus": "HIT",
+      "generatedAt": "2026-11-03T07:09:15.154Z",
+      "queryThrough": "2026-11-03 07:09:15",
+      "metrics": {
+        "rpcCalls": 8,
+        "durationMs": 174
+      },
+      "serverTiming": "auth;dur=92.9, cache;dur=2.0, odoo;desc=\"0 aggregate calls\""
+    }
+  ]
+}
