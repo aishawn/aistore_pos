@@ -40,8 +40,8 @@ export function SalesMenu({ config, onHelp }: { config?: Config | null; onHelp: 
         }} className="block min-h-11 w-full rounded-lg px-3 text-left text-sm hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}</button>)}
       </div>
     </details>
-    {view && <StockWorkspaceDialog title={view === "payments" ? "Payments" : "Current session"} busy={false} onClose={() => { setView(null); menu.current?.querySelector("summary")?.focus(); }}>
-      {view === "session" ? <CurrentSession config={config} /> : <WorkspaceRecordsPanel type={view} />}
+    {view && <StockWorkspaceDialog title={view === "payments" ? "Payments" : "Current session"} variant={view === "payments" ? "records" : "default"} busy={false} onClose={() => { setView(null); menu.current?.querySelector("summary")?.focus(); }}>
+      {view === "session" ? <CurrentSession config={config} /> : <WorkspaceRecordsPanel type={view} fillHeight />}
     </StockWorkspaceDialog>}
   </>;
 }

@@ -1,4 +1,4 @@
-import { fetchOdooRoute } from "./odoo-api";
+import { fetchOdooRoute, OdooApiError } from "./odoo-api";
 
 /** Polling is visible-page-only, abortable, bounded, and never repeats a force-refresh request. */
 export async function fetchPreparedReport(path: string, options: { refresh?: boolean; signal?: AbortSignal; correlationId?: string } = {}) {
@@ -10,6 +10,9 @@ export async function fetchPreparedReport(path: string, options: { refresh?: boo
     options.signal?.throwIfAborted();
     response = await fetchOdooRoute(url.pathname + url.search, { credentials: "same-origin", cache: "no-store", signal: options.signal,
       headers: options.correlationId ? { "X-Correlation-ID": options.correlationId } : undefined });
+    if (!response.headers.get("content-type")?.includes("json")) {
+      throw new OdooApiError("The report service is temporarily unavailable. Please retry shortly.", response.status);
+    }
     if (response.status !== 202) return response;
     const status = await response.json() as { taskId?: string };
     if (!status.taskId || Date.now() >= deadline) throw new Error("Your report is still being prepared. Please retry shortly.");

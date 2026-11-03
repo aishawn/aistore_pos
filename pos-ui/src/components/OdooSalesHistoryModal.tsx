@@ -30,7 +30,7 @@ export function OdooSalesHistoryModal({
         role="dialog"
         aria-modal="true"
         aria-label="Sales History"
-        className="flex h-[96dvh] w-full max-w-[1600px] flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl"
+        className="flex h-[96dvh] max-h-[calc(100dvh-1rem)] w-full max-w-[1600px] flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
       >
         <OdooSalesHistoryPage key={initialStatus} variant="panel" initialStatus={initialStatus} onRequestClose={onClose} />
       </section>
