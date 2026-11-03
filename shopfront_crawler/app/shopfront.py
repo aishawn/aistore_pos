@@ -354,19 +354,21 @@ UNCONSOLIDATED'''
     ) -> list[dict[str, Any]]:
         """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
         outlet_clause = ", outlets: $outlets" if outlet_ids else ""
+        outlet_variable = ", $outlets: [ID]" if outlet_ids else ""
         query = """
-        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor%s) {
           sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
             edges { node {
-              id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt customer { id clientId name }
+              id clientId status invoiceId totalCost totalDiscount totalTax totalPrice totalRounding createdAt updatedAt customer { id clientId name }
+              linkedSale { id }
               register { id outlet { id name } }
-              items { id quantity cost basePrice tax totalPrice item { id ... on Product { name barcodes { code quantity } } } }
+              items { id quantity caseQuantity cost basePrice tax totalPrice metaData item { id ... on Product { name barcodes { code quantity } } } }
               payments { id amount status subtype }
             } }
             pageInfo { hasNextPage endCursor }
           }
         }
-        """ % outlet_clause
+        """ % (outlet_variable, outlet_clause)
         try:
             local_zone = ZoneInfo(timezone_name)
         except (KeyError, ValueError):
@@ -384,7 +386,7 @@ UNCONSOLIDATED'''
             # Optional Product fields differ between Shopfront tenants. Keep
             # core Sale, item name, barcode, and payment sync available.
             basic_query = """
-            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor, $outlets: [ID]) {
+            query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor%s) {
               sales(startDate: $startDate, endDate: $endDate, after: $after%s) {
                 edges { node {
                   id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt customer { id clientId name }
@@ -395,7 +397,7 @@ UNCONSOLIDATED'''
                 pageInfo { hasNextPage endCursor }
               }
             }
-            """ % outlet_clause
+            """ % (outlet_variable, outlet_clause)
             return await self._fetch_connection_nodes(access_token, basic_query, "sales", variables, progress_callback)
 
     async def fetch_outlets(self, access_token: str) -> list[dict[str, Any]]:

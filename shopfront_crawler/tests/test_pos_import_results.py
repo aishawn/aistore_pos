@@ -367,7 +367,7 @@ async def test_history_releases_writer_between_chunks_for_queued_repairs(db_sess
     finish_first_chunk = asyncio.Event()
     events = []
 
-    async def fake_sync_history_chunk(_db, _store_key, _store, start, _end, _job_id, _include_catalog):
+    async def fake_sync_history_chunk(_db, _store_key, _store, start, _end, _job_id, _include_catalog, _force_full_catalog):
         events.append(("chunk-start", start))
         if start == date(2026, 10, 26):
             first_chunk_started.set()
@@ -401,16 +401,17 @@ async def test_history_releases_writer_between_chunks_for_queued_repairs(db_sess
 
 
 @pytest.mark.asyncio
-async def test_resumed_history_skips_catalog_when_products_are_already_durable(db_session, monkeypatch):
+async def test_resumed_history_skips_catalog_when_products_and_inventory_are_durable(db_session, monkeypatch):
     db_session.add_all([
         Store(store_key="skr", vendor="skr"),
         Product(store_key="skr", shopfront_product_id="existing", name="Existing product"),
+        InventorySnapshot(store_key="skr", shopfront_product_id="existing", quantity=Decimal("5")),
     ])
     db_session.commit()
     monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
     calls = []
 
-    async def fake_sync_history_chunk(_db, _store_key, _store, _start, _end, _job_id, include_catalog):
+    async def fake_sync_history_chunk(_db, _store_key, _store, _start, _end, _job_id, include_catalog, _force_full_catalog):
         calls.append(include_catalog)
         return True
 
@@ -436,7 +437,7 @@ async def test_history_does_not_advance_cursor_after_failed_chunk(db_session, mo
     monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
     calls = []
 
-    async def failed_chunk(_db, _store_key, _store, start, end, _job_id, _include_catalog):
+    async def failed_chunk(_db, _store_key, _store, start, end, _job_id, _include_catalog, _force_full_catalog):
         calls.append((start, end))
         return False
 

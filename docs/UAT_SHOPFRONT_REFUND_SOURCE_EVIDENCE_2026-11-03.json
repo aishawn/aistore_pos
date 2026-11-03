@@ -1,0 +1,70 @@
+{
+  "directSourceDay": {
+    "sourceBusinessWrites": 0,
+    "tokenRefreshWrites": 0,
+    "day": "2026-11-02",
+    "timezone": "Australia/Adelaide",
+    "startedAt": "2026-11-03T14:06:24.457166+00:00",
+    "querySha256": "69ed76ab5c7c28eac974ec3d357b7293edce8edd6fda9e65025fb77b9c2f830b",
+    "complete": true,
+    "orders": 134,
+    "completedOrders": 133,
+    "refundOrders": 1,
+    "linkedOrders": 3,
+    "gross": "3577.72",
+    "tax": "307.46",
+    "cost": "2440.08",
+    "net": "3270.26",
+    "profit": "830.18",
+    "marginPercent": "25.38574914532789441818081743",
+    "sourceSha256": "3a0ac99a82727f2357267ad1494cbb6feff7ed8fe200c693bc3316202a332670",
+    "evidenceFieldsComplete": true,
+    "finishedAt": "2026-11-03T14:06:27.929846+00:00"
+  },
+  "refundAnalysis": {
+    "checkedAt": "2026-11-03T14:08:04.728290+00:00",
+    "businessWrites": 0,
+    "executable": false,
+    "scope": "388 mirrored refund-order candidates independently read from Shopfront; not independent whole-source completeness",
+    "sourceSha256": "828ac3a8db94127bbd673cbfcb61f94559e1692652faa5dd2bf482381d47a770",
+    "orders": 388,
+    "refundLines": 592,
+    "ordersWithLinkedSale": 234,
+    "linesWithParentAndUniqueCandidate": 420,
+    "candidateLinesWithConsistentQuantityAndCost": 412,
+    "allRequireOriginalLineConfirmation": true,
+    "blockers": {
+      "NO_LINKED_SOURCE_SALE": 163,
+      "LINKED_SALE_NOT_COMPLETED": 11,
+      "ORIGINAL_LINE_MISSING_OR_AMBIGUOUS": 9,
+      "SOURCE_REFUND_COST_DIFFERS_FROM_ORIGINAL": 6
+    }
+  },
+  "status": "SOURCE_DAY_MATCHED_REFUND_LINK_CAPTURE_IMPLEMENTED_FULL_REPAIR_PENDING",
+  "database": "aipos_uat",
+  "runtimeObserved": "1e02bba257615b79a1c9db9cf82f95e14720d9f3",
+  "candidateSourceCommit": null,
+  "localTests": {
+    "command": "python -m pytest tests/test_financial_mapping.py tests/test_core.py -q --disable-warnings",
+    "passed": 19
+  },
+  "implemented": [
+    "Capture linkedSale.id, totalRounding, caseQuantity and line metaData in the primary sales query",
+    "Enrich source evidence even when updatedAt is unchanged, in both window and row skip paths",
+    "Declare the outlets variable only when used"
+  ],
+  "limitations": [
+    "Runtime observed before candidate deployment; direct API evidence validates the exact candidate query hash",
+    "388 candidates came from mirrored negative normalized lines; 592 lines agree with prior original-source scan but do not prove independent whole-Shopfront completeness",
+    "412 candidate lines still require original-line confirmation; no financial links or costs written",
+    "Source sale costs and refund costs remain independently unverified; six refund costs differ from original proportional cost",
+    "Purchase enteredAs controls display only, not stored cost tax treatment",
+    "Deprecated purchase schema inspection and attachment content verification were not complete at this evidence snapshot"
+  ],
+  "fullCrawlerRegression": {
+    "command": "python -m pytest tests -q --disable-warnings",
+    "passed": 45,
+    "warnings": 25,
+    "scope": "Local fixtures only; updated three stale history mock signatures and seeded inventory for durable-catalog test"
+  }
+}

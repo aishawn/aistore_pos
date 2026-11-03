@@ -8,3 +8,7 @@
 - 新鲜 SKR 税快照：162 笔，97 支持建议、81 有差异、65 待查；只读且完整覆盖，不授权执行。
 
 原始汇总：[UAT](../../../UAT_SOURCE_TAX_MAPPING_2026-11-03.json)。[测试 session](../../../test-sessions/2026-11-03-source-margin-tax-mapping.md)与[测试索引](../../../TEST_REPORT_INDEX.md)保存范围。未核实采购成本、退款关联、全量财务修复与剩余库存不在 PASS 声明内。
+
+新增来源复核：直接 Shopfront 全天 134 笔/完成 133 笔，毛利 830.18，与报表相同；388 笔候选退款复取 592 行。19 项 crawler 测试覆盖无 outlet 查询、来源补证不被两层 unchanged 路径跳过、重复补证不增行与签名成本。候选查询哈希和结果见[来源证据](../../../UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json)，不是原生账已修复。快照候选清单依赖镜像发现，未证明独立全源完整性。
+
+Crawler 全目录回归最终单轮 45/45 通过（25 warnings），包含已有历史任务 mock/库存 fixture 修正；详见[本次 session](../../../test-sessions/2026-11-03-source-refund-evidence.md)。

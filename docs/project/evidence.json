@@ -535,6 +535,32 @@
         "docs/UAT_SOURCE_TAX_MAPPING_2026-11-03.json"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-SOURCE-REFUND",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": "1e02bba257615b79a1c9db9cf82f95e14720d9f3",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "query-sha256:69ed76ab5c7c28eac974ec3d357b7293edce8edd6fda9e65025fb77b9c2f830b",
+      "scope": "Direct Shopfront source queries; no financial writes or token refresh; candidate crawler not deployed at test time",
+      "sample": "134 direct day orders; 388 mirrored refund-order candidates / 592 refund lines",
+      "result": "133 completed day orders match source report: profit AUD 830.18; 412 refund-line candidates consistent, all require original-line confirmation",
+      "limitations": [
+        "Candidate source commit not generated at test time; query hash identifies the actual request",
+        "Refund candidate index from mirror, not independent whole-source completeness",
+        "Source costs independently unverified; six refund costs differ from proportional original cost",
+        "No full tax/cost/stock repair or financial write acceptance"
+      ],
+      "artifacts": [
+        "docs/UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-source-refund-evidence.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

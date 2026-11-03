@@ -25,6 +25,8 @@
 | E-COST-CONFLICT | online-readonly / INFO | 成本覆盖审计：公司 5/137；正成本覆盖和金额有记录，但门店标签与其他资料冲突 | [材料](../../docs/UAT_AI_COST_COVERAGE_READONLY_2026-11-03.md) |
 | E-COMMANDS | historical-design / INFO | 命令实现说明；草稿/权限/过期/确认设计；执行关闭 | [材料](../../docs/AI_COMMANDS_IMPLEMENTATION.md) |
 
+| E-SOURCE-REFUND | online-readonly / INFO | Shopfront 单日来源毛利相符；388 笔退款候选重读，原行关联仍待确认 | [材料](../../docs/UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json) |
+
 ## 证据冲突与缺口
 
 - E-WF 的 runtime 与 source 匹配，但原始 deployment 标签仍未验证；SKR 还标记工作树脏。保留这些差异，不把匹配 SHA 等同于候选全量验收。

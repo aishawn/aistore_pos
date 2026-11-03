@@ -147,6 +147,19 @@ def _sale_is_complete_and_unchanged(
     """
     incoming_updated = parse_datetime(first(row, "updatedAt", "updated_at"))
     payload = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+    # A richer query can reveal historical refund/pack evidence without the
+    # source changing updatedAt. Do not skip that evidence enrichment.
+    for key in ("linkedSale", "totalRounding"):
+        if key in row and (key not in payload or row[key] != payload[key]):
+            return False
+    stored_items = {str(item.get("id")): item for item in payload.get("items") or [] if isinstance(item, dict) and item.get("id")}
+    for item in row.get("items") or []:
+        if not isinstance(item, dict):
+            continue
+        stored_item = stored_items.get(str(item.get("id")), {})
+        for key in ("caseQuantity", "metaData"):
+            if key in item and (key not in stored_item or item[key] != stored_item[key]):
+                return False
     # Some Shopfront report variants omit updatedAt. In that case compare the
     # immutable business fields and structured children against the stored
     # payload. This keeps retries fast while still detecting edits.
@@ -758,9 +771,7 @@ async def sync_store(
                 incoming_updated = parse_datetime(first(row, "updatedAt", "updated_at"))
                 if sale is None or incoming_updated is None or sale.updated_at is None:
                     break
-                incoming_cmp = incoming_updated.replace(tzinfo=timezone.utc) if incoming_updated.tzinfo is None else incoming_updated.astimezone(timezone.utc)
-                stored_cmp = sale.updated_at.replace(tzinfo=timezone.utc) if sale.updated_at.tzinfo is None else sale.updated_at.astimezone(timezone.utc)
-                if incoming_cmp != stored_cmp or first(row, "Status", "status") != sale.status:
+                if not _sale_is_complete_and_unchanged(sale, row, existing_line_counts.get(sale.id, 0)):
                     break
                 unchanged_sales += 1
             if unchanged_sales == len(sale_rows):
