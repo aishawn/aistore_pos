@@ -17,3 +17,5 @@
 发现行 tax_ids 为空且商品 GST 为税外价；新建事务内含税税配置复现来源金额，回滚后原值核验通过。只关闭该样本的根因验证，不关闭全历史税额修复。完整状态见[专题](../../../SHOPFRONT_MARGIN_RECONCILIATION_2026-11-03.md)。
 
 采购来源只读抽样：首批 50 笔、2794 行，48 笔发票号、45 笔收货日期；数量/箱规/baseCost 无空值，lineCount 均吻合。本批无附件；hasNextPage=true，不能推广至全源，计价与税额仍未认证。[证据](../../../UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json)。
+
+采购证据字段补抓已实现；20 项 supply-chain/core 测试通过（4 warnings）。已启动全分页来源审计，最终结果待证据文件；本地提交尚未推送，GitHub 443 持续超时。

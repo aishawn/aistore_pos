@@ -20,3 +20,5 @@
 扩大回归：`python -m pytest tests -q --disable-warnings` 最终单轮 45 passed、25 warnings。初轮暴露三个已有历史测试模拟签名落后，以及“已落盘目录”样本缺库存；更新这些 fixture 后整轮通过。此结果仅属本地测试，不改变线上财务修复状态。
 
 采购来源只读抽样：首批 50 笔、2794 行，48 笔发票号、45 笔收货日期；数量/箱规/baseCost 无空值，lineCount 均吻合。本批无附件；hasNextPage=true，不能推广至全源，计价与税额仍未认证。[证据](../UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json)。
+
+采购常规同步补抓 enteredAs 与附件 id/name/mimeType，复用 raw_payload 保存，不抓附件 URL。相应 supply-chain/core 测试 20 passed、4 warnings；单页真实来源证据证明字段可读，候选尚未部署。全分页来源审计另行保存，不能将其与单页样本拼接为一次全量成功。

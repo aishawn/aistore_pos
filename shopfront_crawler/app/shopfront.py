@@ -64,6 +64,7 @@ PURCHASE_ORDERS_QUERY = """
 query ShopfrontPurchaseOrders($after: Cursor) {
   orders(type: ORDER, first: 100, after: $after) {
     edges { node { id type status completed undergoingReview orderDate dueDate
+      enteredAs attachments { id name mimeType }
       invoiceNumber reference notes internalNotes includeFreight totalCost
       lineCount expectedTotal feePercentage createdAt sentAt receivedAt
       products { caseQuantity orderedQuantity receivedQuantity baseCost orderedCost
