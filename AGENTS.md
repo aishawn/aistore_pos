@@ -1,5 +1,13 @@
 # AGENTS.md — Orithos POS
 
+## Project fact library maintenance
+
+- Start with [docs/project/README.md](docs/project/README.md) for feature design, progress, effectiveness, tests, issues and reporting. Follow [the maintenance contract](docs/project/maintenance.md).
+- For behavior/interface changes, update the feature design and progress. After meaningful tests, update validation, the existing TEST_REPORT_INDEX and a dated test session; keep original evidence immutable.
+- Record source/runtime SHA, environment, samples, write scope and limitations. Model/prompt/config/snapshot versions may be unknown; say so rather than copying defaults. Separate implementation, fixture checks, deployment and online acceptance.
+- Close issues with a linked fix and applicable regression evidence. Never merge retries into a fictitious full-run PASS or label inventory cash occupancy as realized savings.
+- Run `python scripts/check-project-docs.py` for fact-library edits. Reports are dated derivatives of evidence, not a second editable source of truth. This rule does not authorize provider spending or business writes.
+
 Shared project brief for **Cursor** and **Codex** (and any other coding agent). Read this first; follow links for depth. Do **not** put passwords, API keys, or tokens in this file.
 
 **Working-state note (2026-10-29):** the pilot remains **NO-GO for formal production**. The deployed behavior SHA is `9cebe3ae8211000dedd7cfe10bfccaf6f6963589`; `main` may advance with documentation-only commits while Dokploy catches up. All deployment/debugging/trial traffic currently targets shared `aipos_uat`, so `isolated=false` is expected and must not be described as customer production isolation. Treat `docs/HANDOFF_2026-10-29_CURRENT.md`, `docs/UAT_CUSTOMER_TRIAL_RELEASE_STATUS_CURRENT.json`, `docs/CAPABILITY_STATUS.md`, and `docs/PILOT_RELEASE_READINESS.md` as the status sources of truth; this file contains durable rules, not a replacement for UAT evidence.
