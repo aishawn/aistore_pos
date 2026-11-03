@@ -67,7 +67,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | 2026-11-03-margin-release | 2026-11-03 | SKR source report / demo diagnosis / local session retry | bc7 source retryPASS/first-click401; b8de first-click auto-recoveryPASS; local2PASS | [Report](test-sessions/2026-11-03-margin-release.md) |
 
-| 2026-11-04-source-tax-pricing | 2026-11-04 | Local planner v2 / demo rollback / readonly history captures | 33 units/51 crawler PASS;64 demo rehearsed98review;155142-order native capture done;source API partial | [Report](test-sessions/2026-11-04-source-tax-pricing.md) |
+| 2026-11-04-source-tax-pricing | 2026-11-04 | Local planner v2 / demo rollback / readonly history captures | 33 units/51 crawler PASS;64 demo rehearsed98review;155142-order native capture done;crawler restored/source read resumed;6 verifier units PASS/source API partial | [Report](test-sessions/2026-11-04-source-tax-pricing.md) |
 
 ## Classification rule
 

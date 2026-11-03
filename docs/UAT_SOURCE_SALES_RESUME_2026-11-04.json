@@ -1,0 +1,80 @@
+{
+  "recordedAt": "2026-11-04",
+  "sourceSha": "ac961d18465973b2b9fea243b2684329a9c23ef9",
+  "runtimeSha": null,
+  "deployment": {
+    "id": "GuqeIZbb3Dk2Tc0jCGo2N",
+    "status": "done",
+    "scope": "crawler startup fix; not full POS release acceptance"
+  },
+  "crawler": {
+    "checkedAt": "2026-11-03T16:37:47.561164+00:00",
+    "container": "6b5acc4f1e46",
+    "health": {
+      "status": "ok",
+      "service": "shopfront-crawler"
+    },
+    "dailyHours": [
+      2,
+      10,
+      18
+    ],
+    "hashes": {
+      "main.py": "61a1ef2e566106e27a84d9c8e327e3d5bdce3367c63f65a30b70886737876dfe",
+      "config.py": "46f7d945c9d717e2d6ece625f6cae4a269be88295a7dc470cbe6d9a860dd0e71"
+    },
+    "businessWrites": 0
+  },
+  "sourceCapture": {
+    "pid": 38,
+    "startedAt": "2026-11-03T16:03:35.046626+00:00",
+    "resumedAt": "2026-11-03T16:38:58.692618+00:00",
+    "resumedFromPages": 198,
+    "originalScriptSha256": "9fa3936d486ffe0a99dd23a1f17a288f9a42872e8f9a41a6fe6c5156a3174085",
+    "scope": {
+      "store": "skr",
+      "fromDay": "2024-01-24",
+      "toDayExclusive": "2026-11-03",
+      "timezone": "Australia/Adelaide",
+      "fromUtc": "2024-01-23T13:30:00+00:00",
+      "toUtcExclusive": "2026-11-02T13:30:00+00:00"
+    },
+    "sourceBusinessWrites": 0,
+    "tokenRefreshWrites": 0,
+    "accountingVerified": false,
+    "querySha256": "028224609bbfe626c912bfdc20f8da44a168480f511d607eab8e23c1edb3a79e",
+    "scriptSha256": "43706c341c40f01d38b7adbc03a78f60efe12954872b7159f20f3becff372bdc",
+    "complete": false,
+    "atomicSnapshot": false,
+    "tokenExpiry": "2026-11-17 06:06:11.462011",
+    "updatedAt": "2026-11-03T16:41:14.005894+00:00",
+    "pages": 218,
+    "orders": 4960,
+    "completedOrders": 4934,
+    "completedLines": 9697,
+    "hasNextPage": true,
+    "processLive": true,
+    "savedPages": 218,
+    "result": null
+  },
+  "verifier": {
+    "path": "scripts/verify-shopfront-sales-evidence.py",
+    "sha256": "25e06becf583a1ca345596c5b197c3252939785a45fb426aa9083cd9f5b5b474",
+    "localTests": {
+      "passed": 6,
+      "failed": 0
+    },
+    "liveFullCaptureVerification": "NOT RUN",
+    "preparedRemote": true
+  },
+  "sourceBusinessWrites": 0,
+  "committedFinancialWrites": 0,
+  "accountingVerified": false,
+  "limitations": [
+    "Runtime identity established by crawler main.py/config.py hashes; no POS frontend/backend runtime SHA asserted.",
+    "Source API extraction is partial and still live; do not infer full coverage or compare partial totals as full history.",
+    "No original sales deleted, no historical import replay, no source token refresh or financial repair executed.",
+    "Six offline verifier tests and independent Node fixture hash do not certify the unfinished live capture.",
+    "All source historical costs remain independently unverified; native tax repair candidates remain nonexecutable."
+  ]
+}

@@ -779,6 +779,33 @@
         "docs/test-sessions/2026-11-04-source-tax-pricing.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-SOURCE-SALES-RESUME",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-04",
+      "sourceSha": "ac961d18465973b2b9fea243b2684329a9c23ef9",
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": "crawler-main-sha256:61a1ef2e566106e27a84d9c8e327e3d5bdce3367c63f65a30b70886737876dfe",
+      "snapshotVersion": null,
+      "scope": "SKR direct-source capture restart boundary, no source/financial writes; crawler health only",
+      "sample": "198 persisted pages replayed;218 pages4960 orders observed, PID38 live;6 local offline verifier tests",
+      "result": "Crawler startup restored with matching main/config hashes; source capture resumed, not complete",
+      "limitations": [
+        "Runtime identity established by crawler main.py/config.py hashes; no POS frontend/backend runtime SHA asserted.",
+        "Source API extraction is partial and still live; do not infer full coverage or compare partial totals as full history.",
+        "No original sales deleted, no historical import replay, no source token refresh or financial repair executed.",
+        "Six offline verifier tests and independent Node fixture hash do not certify the unfinished live capture.",
+        "All source historical costs remain independently unverified; native tax repair candidates remain nonexecutable."
+      ],
+      "artifacts": [
+        "docs/UAT_SOURCE_SALES_RESUME_2026-11-04.json",
+        "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }
