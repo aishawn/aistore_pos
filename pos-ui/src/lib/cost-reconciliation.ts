@@ -2,6 +2,7 @@
 export type AuditRecord = Record<string, unknown> & { id: number };
 export type AuditRpc = <T>(model: string, method: string, args: unknown[], kwargs?: Record<string, unknown>) => Promise<T>;
 export type AuditSnapshot = {
+  purpose?: "source_tax_only";
   companyId: number; store: string; timezone: string; from: string; to: string; capturedAt: string;
   products: AuditRecord[]; lines: AuditRecord[]; orders: AuditRecord[]; receipts: AuditRecord[];
   sourceSales?: AuditRecord[];
@@ -80,6 +81,7 @@ function receiptIndex(snapshot: AuditSnapshot): Map<string, Receipt[]> {
 }
 
 export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceHash: string): CostAudit {
+  if (snapshot.purpose === "source_tax_only") throw Error("Tax-only snapshots do not collect purchase cost evidence");
   const receipts = receiptIndex(snapshot), orders = new Map(snapshot.orders.map(row => [row.id, row]));
   const products = new Map(snapshot.products.map(row => [row.id, row]));
   const groups = new Map<number, AuditProduct>();

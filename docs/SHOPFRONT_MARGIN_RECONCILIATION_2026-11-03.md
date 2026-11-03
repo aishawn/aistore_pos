@@ -59,3 +59,13 @@
 全库恢复于 2026-11-03 13:01:28 UTC 成功完成：备份 SHA256 `47cc4fefa2127dc57f0c6757aac261de8d4e0f5eeb24b07907259637ce4ac917`，独立逻辑数据库 `margin_recovery_20261103`；应用进程与环境均明确只选择 `aipos_uat`。`pg_restore --single-transaction --exit-on-error --no-owner --no-acl` 全量成功，未验证约束数 0。恢复行数：pos_order 620,336、pos_order_line 1,214,738、stock_quant 69,726、stock_move 304,110、product_product 91,190、shopfront_sync_sale 2,172,012（包含备份中所有公司/来源，不是单 SKR 统计）。
 
 恢复库禁用 20 个 cron，验证结束后设置 ALLOW_CONNECTIONS false，未启动 Odoo 应用，未修改源库业务数据。它与源库在同一 PostgreSQL 集群，不代表跨服务器灾备；未恢复 filestore，不能称为完整应用恢复。服务端结果与恢复日志位于 `/var/lib/odoo/margin-recovery-20261103/`；汇总证据见 [UAT_SHOPFRONT_SOURCE_MARGIN_2026-11-03.json](UAT_SHOPFRONT_SOURCE_MARGIN_2026-11-03.json)。
+
+## 税额定向修复清单（尚未执行）
+
+新增 `scripts/cost-reconciliation.mjs --tax-only true`：只采集税额所需证据，单独标记快照用途，禁止把未采集采购记录解释为成本缺证。原始来源行必须有唯一 ID；商品、数量、含税额和明细对应关系必须唯一；订单与明细原始税额/含税额必须严格相等。即使差 0.01 也进入待查，不能自动分摊。输出包含原值、建议值、写入时间与快照哈希，始终 `executable:false`，不写成本、库存或销售账。
+
+既有 12 个原生快照离线分析：155,142 笔订单中，106,397 笔通过逐单税额证据规则，其中 94,990 笔有税额或未税金额差异；48,745 笔待查。主要阻断项（可重叠）：行关联不唯一/缺失 33,299、来源订单与明细合计不同 21,634、明细不能一一对应 5,983、完成状态/来源身份不符 843。部分旧快照没有完整来源覆盖标记，执行前必须重新采集，不能把这些数视为已获准写回数量。
+
+Odoo 已有订单刷新仅更新名称，因此全量重复同步不会修复旧税额。修复还必须验证 `tax_ids`、单价、折扣与 Odoo 重算后结果，并检查订单/会话过账影响；不能仅覆盖存储的 subtotal 和税额，否则后续重算可能还原错误。
+
+demo 公司 137 的新快照覆盖 2026-10-20 当地一天，162 笔订单全部被普通 SKR 身份规则阻断。已确认其为源公司 5 的 sandbox；克隆代码把商品前缀改为 `demo:`，订单 UUID 改为 `md5('demo-reset-{job_id}:' + source_uuid)`。只读 RPC 未读到对应 reset 作业记录，尚不能完成可信映射验收。不得放宽匹配条件或按金额/时间猜原单。税额相关 22 项单元测试、类型检查与定向 ESLint 通过；没有执行 demo 或 SKR 财务写回。

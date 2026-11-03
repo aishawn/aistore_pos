@@ -44,7 +44,7 @@ async function readAll(rpc: AuditRpc, model: string, domain: unknown[], fields: 
   return rows;
 }
 
-export type AuditOptions = { companyId: number; store: string; fromDay?: string; toDay?: string; limit?: 20 | 0; now?: Date; timezone?: string };
+export type AuditOptions = { companyId: number; store: string; fromDay?: string; toDay?: string; limit?: 20 | 0; now?: Date; timezone?: string; taxOnly?: boolean };
 async function auditPeriod(rpc: AuditRpc, options: AuditOptions) {
   const { companyId, store } = options;
   if (!Number.isSafeInteger(companyId) || companyId <= 0 || !/^[a-z0-9-]+$/.test(store)) throw new Error("Invalid audit scope");
@@ -82,7 +82,7 @@ export async function loadCostSnapshot(rpc: AuditRpc, options: AuditOptions): Pr
   const [orders, lines, receipts, sourceSales] = await Promise.all([
     readAll(rpc, "pos.order", orderDomain, ["company_id", "name", "uuid", "date_order", "amount_tax", "amount_total", "state", "write_date"]),
     readAll(rpc, "pos.order.line", lineDomain, ["product_id", "order_id", "qty", "price_subtotal", "price_subtotal_incl", "total_cost", "is_total_cost_computed", "write_date", ...identityFields]),
-    readAll(rpc, "shopfront.sync.purchase.order", [["company_id", "=", companyId], ["store_key", "=", store], ["source_status", "=", "RECEIVED"]], ["company_id", "store_key", "source_id", "source_status", "order_date", "raw_payload", "write_date"], 20_000),
+    options.taxOnly ? Promise.resolve([] as AuditRecord[]) : readAll(rpc, "shopfront.sync.purchase.order", [["company_id", "=", companyId], ["store_key", "=", store], ["source_status", "=", "RECEIVED"]], ["company_id", "store_key", "source_id", "source_status", "order_date", "raw_payload", "write_date"], 20_000),
     readAll(rpc, "shopfront.sync.sale", [["store_key", "=", store], ["created_at", ">=", shiftDay(fromDay, -1)], ["created_at", "<", shiftDay(toDay, 1)]], ["external_id", "created_at", "total_price", "total_tax", "total_cost", "raw_payload", "write_date"]),
   ]);
   const totals = new Map<number, { net: number; gross: number }>();
@@ -109,6 +109,7 @@ export async function loadCostSnapshot(rpc: AuditRpc, options: AuditOptions): Pr
   // A non-transactional RPC snapshot must fail closed if any evidence was edited while collecting it.
   if ([...orders, ...lines, ...receipts, ...products, ...sourceSales].some(row => typeof row.write_date === "string" && row.write_date >= cutoff)) throw new Error("Source updated during collection. Generate again.");
   for (const [model, domain] of [["pos.order", orderDomain], ["pos.order.line", lineDomain], ["shopfront.sync.purchase.order", [["company_id", "=", companyId], ["store_key", "=", store], ["source_status", "=", "RECEIVED"]]], ["product.product", [["id", "in", ids]]], ["shopfront.sync.sale", [["store_key", "=", store], ["created_at", ">=", shiftDay(fromDay, -1)], ["created_at", "<", shiftDay(toDay, 1)]]]] as [string, unknown[]][]) {
+    if (options.taxOnly && model === "shopfront.sync.purchase.order") continue;
     const changed = await rpc<number>(model, "search_count", [[...domain, ["write_date", ">=", cutoff]]], { active_test: false });
     if (changed) throw new Error("Source changed during collection. Generate again.");
   }
@@ -142,7 +143,7 @@ export async function loadCostSnapshot(rpc: AuditRpc, options: AuditOptions): Pr
       line.source_evidence = { verified: true, saleId: source.external_id, lineId: object(matches[0].raw_payload).id, lineCost: matches[0].cost, tax: matches[0].tax };
     }
   }
-  return { companyId, store, timezone, from, to, capturedAt, products, lines: lines.filter(l => selected.has(relationId(l.product_id))),
+  return { ...(options.taxOnly ? { purpose: "source_tax_only" as const } : {}), companyId, store, timezone, from, to, capturedAt, products, lines: lines.filter(l => selected.has(relationId(l.product_id))),
     coverage: { allProducts: options.limit === 0, totalOrders: orders.length, totalLines: lines.length, selectedLines: lines.filter(l => selected.has(relationId(l.product_id))).length,
       sourceCompletedOrders: sourceCompleted.length, sourceMissingNativeOrders: sourceCompleted.filter(row => !orderUuids.has(sourceOrderUuid(store, String(row.external_id)))).length,
       importedMissingSourceOrders: importedOrders.filter(order => !sourceByUuid.has(String(order.uuid))).length, sourceRowsComplete: true },

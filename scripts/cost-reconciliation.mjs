@@ -6,14 +6,17 @@ import { loadCostSnapshot, loadSourceMarginSnapshot } from "../pos-ui/src/lib/co
 import { reconcileCosts, costAuditCsv } from "../pos-ui/src/lib/cost-reconciliation.ts";
 import { costRepairManifest } from "../pos-ui/src/lib/cost-repair-manifest.ts";
 import { shopfrontSourceMargin } from "../pos-ui/src/lib/shopfront-source-margin.ts";
+import { sourceTaxRepairPlan } from "../pos-ui/src/lib/source-tax-repair.ts";
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
   if (!process.argv[i]?.startsWith("--") || !process.argv[i + 1]) throw Error("Use --env PATH --company ID --store KEY --out DIRECTORY [--from YYYY-MM-DD --to YYYY-MM-DD --timezone IANA --limit 20|0]");
   args.set(process.argv[i].slice(2), process.argv[i + 1]);
 }
-if ([...args.keys()].some(k => !["env", "company", "store", "out", "from", "to", "timezone", "limit", "snapshot", "source-only"].includes(k))) throw Error("Unsupported argument");
+if ([...args.keys()].some(k => !["env", "company", "store", "out", "from", "to", "timezone", "limit", "snapshot", "source-only", "tax-only"].includes(k))) throw Error("Unsupported argument");
 if (args.has("source-only") && args.get("source-only") !== "true") throw Error("Use --source-only true");
+if (args.has("tax-only") && args.get("tax-only") !== "true") throw Error("Use --tax-only true");
+if (args.has("tax-only") && args.has("source-only")) throw Error("Choose tax-only or source-only");
 const out = path.resolve(args.get("out") || ".local/cost-reconciliation");
 await fs.mkdir(out, { recursive: true });
 let snapshot;
@@ -56,9 +59,17 @@ else {
     const { active_test: activeTest, ...methodKwargs } = kwargs;
     return call("/web/dataset/call_kw", { model, method, args: rpcArgs, kwargs: { ...methodKwargs, context: { allowed_company_ids: [companyId], force_company: companyId, active_test: activeTest !== false } } });
   };
-  snapshot = await (args.get("source-only") === "true" ? loadSourceMarginSnapshot : loadCostSnapshot)(rpc, { companyId, store, fromDay: args.get("from"), toDay: args.get("to"), timezone: args.get("timezone"), limit: args.get("limit") === "0" ? 0 : 20 });
+  snapshot = await (args.get("source-only") === "true" ? loadSourceMarginSnapshot : loadCostSnapshot)(rpc, { companyId, store, fromDay: args.get("from"), toDay: args.get("to"), timezone: args.get("timezone"), limit: args.get("limit") === "0" ? 0 : 20, taxOnly: args.get("tax-only") === "true" });
 }
 const bytes = JSON.stringify(snapshot), sourceHash = createHash("sha256").update(bytes).digest("hex");
+if (args.get("tax-only") === "true") {
+  const batchId = randomUUID(), prefix = path.join(out, batchId), plan = sourceTaxRepairPlan(snapshot, sourceHash);
+  await fs.writeFile(`${prefix}.snapshot.json`, bytes, { flag: "wx" });
+  await fs.writeFile(`${prefix}.source-tax-plan.json`, JSON.stringify(plan, null, 2), { flag: "wx" });
+  console.log(JSON.stringify({ batchId, sourceHash, ...plan.summary, coverageComplete: plan.coverageComplete,
+    files: [".snapshot.json", ".source-tax-plan.json"].map(s => prefix + s), businessWrites: 0 }));
+  process.exit(0);
+}
 const audit = reconcileCosts(snapshot, randomUUID(), sourceHash), prefix = path.join(out, audit.batchId);
 audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
 await fs.writeFile(`${prefix}.snapshot.json`, bytes, { flag: "wx" });
@@ -66,4 +77,5 @@ await fs.writeFile(`${prefix}.json`, JSON.stringify(audit, null, 2), { flag: "wx
 await fs.writeFile(`${prefix}.csv`, costAuditCsv(audit), { flag: "wx" });
 const repair = costRepairManifest(snapshot, audit);
 await fs.writeFile(`${prefix}.repair-manifest.json`, JSON.stringify(repair, null, 2), { flag: "wx" });
-console.log(JSON.stringify({ batchId: audit.batchId, sourceHash, store: audit.store, companyId: audit.companyId, timezone: audit.timezone, from: audit.from, to: audit.to, ...audit.summary, files: [".json", ".csv", ".snapshot.json", ".repair-manifest.json"].map(s => prefix + s), businessWrites: 0 }, null, 2));
+await fs.writeFile(`${prefix}.source-tax-plan.json`, JSON.stringify(sourceTaxRepairPlan(snapshot, sourceHash), null, 2), { flag: "wx" });
+console.log(JSON.stringify({ batchId: audit.batchId, sourceHash, store: audit.store, companyId: audit.companyId, timezone: audit.timezone, from: audit.from, to: audit.to, ...audit.summary, files: [".json", ".csv", ".snapshot.json", ".repair-manifest.json", ".source-tax-plan.json"].map(s => prefix + s), businessWrites: 0 }, null, 2));
