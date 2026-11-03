@@ -118,7 +118,7 @@ async def startup() -> None:
         db.close()
     scheduler.add_job(
         scheduled_sync,
-        CronTrigger(hour=settings.daily_sync_hours(), minute=settings.sync_daily_minute, timezone=settings.sync_timezone),
+        CronTrigger(hour=",".join(str(hour) for hour in settings.daily_sync_hours()), minute=settings.sync_daily_minute, timezone=settings.sync_timezone),
         id="shopfront-sync",
         replace_existing=True,
     )

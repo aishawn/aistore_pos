@@ -750,6 +750,35 @@
         "docs/test-sessions/2026-11-04-source-tax-pricing.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-TAX-HISTORY-V2",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-04",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": "source-tax-repair-v2",
+      "snapshotVersion": "097d5a09894b697135c170b425a8b5f52cb9e00b3ed29835a688b478474b59d7",
+      "scope": "SKR company5, full native historical scan; readonly writes0; independent source read not complete",
+      "sample": "155142 orders303839 lines,12windows,48count/version and4global checks",
+      "result": "97158 candidate changes,48740 review;294 source completed missing native;not executable",
+      "limitations": [
+        "Complete native scan and current count/version checks, not independent full source API coverage or atomic database snapshot.",
+        "Supported means source amounts/identities support a candidate; tax definitions, precision, actual engine and posting impact still required.",
+        "Blocker counts overlap; invalid paid-unit derivation often follows ambiguous source-line identity, not proof of missing source prices.",
+        "61924 price normalizations and140427 missing tax links cover supported lines only; do not extrapolate to review lines.",
+        "294 source completed orders lack native matches; 843 native orders do not meet completed source identity requirements and must not be deleted automatically.",
+        "Raw snapshots and per-order plans retained privately; no financial, cost or inventory execution.",
+        "Planner d8b5424b known; collector/revalidator changes uncommitted at capture time, exact script hashes recorded."
+      ],
+      "artifacts": [
+        "docs/UAT_SOURCE_TAX_HISTORY_V2_2026-11-04.json",
+        "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

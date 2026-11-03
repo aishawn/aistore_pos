@@ -53,3 +53,5 @@ E-MARGIN-RELEASE：bc7f4a2d部署核验与报表明确重试后通过，首击40
 E-MARGIN-SESSION-RECOVERY：b8de6af4真实首击会话恢复PASS，133单毛利830.18，业务写入0；只关闭此缺陷。见[证据](../UAT_MARGIN_SESSION_RECOVERY_2026-11-03.json)。
 
 E-DEMO-TAX-PRICING-V4：162单整日64单81行复算，28行有效单价修正，98待查；新事务完整回滚。未认证税定义/成本，未执行SKR写回。[证据](../UAT_DEMO_SOURCE_TAX_PRICING_2026-11-04.json)。
+
+E-TAX-HISTORY-V2：完整原生155142单303839行新快照及48+4计数/版本检查通过；97158建议、48740review，不是已执行。独立源API全读仍未完成。[证据](../UAT_SOURCE_TAX_HISTORY_V2_2026-11-04.json)。

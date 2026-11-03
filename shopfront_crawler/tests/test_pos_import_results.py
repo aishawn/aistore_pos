@@ -82,8 +82,11 @@ def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_ses
 
 
 @pytest.mark.asyncio
-async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, monkeypatch):
+@pytest.mark.parametrize("mirror_enabled", [False, True])
+async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, monkeypatch, mirror_enabled):
     seed_snapshot(db_session)
+    monkeypatch.setattr(main.settings, "pos_api_mirror_base_url", "https://mirror.example" if mirror_enabled else "")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_token", "fixture-token" if mirror_enabled else "")
 
     class FakePosClient:
         instances = []
@@ -118,9 +121,13 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
     assert result["sales"] == 1
     assert result["error"] is None
     assert result["sale_batches"] == 1
-    assert result["product_response"] == {"data": {"upserted": 1}}
-    assert result["inventory_response"] == {"data": {"replaced": 1}}
+    targets = ["primary", "mirror"] if mirror_enabled else ["primary"]
+    assert result["product_response"] == {target: {"data": {"upserted": 1}} for target in targets}
+    assert result["inventory_response"] == {target: {"data": {"replaced": 1}} for target in targets}
+    assert result["target_sale_batches"] == {target: 1 for target in targets}
     assert result["mirror_errors"] == []
+    assert len(FakePosClient.instances) == len(targets)
+    assert all(client.closed and len(client.sales_payloads) == 1 for client in FakePosClient.instances)
     client = FakePosClient.instances[0]
     assert client.closed is True
     assert len(client.sales_payloads) == 1
@@ -129,8 +136,11 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
 
 
 @pytest.mark.asyncio
-async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, monkeypatch):
+@pytest.mark.parametrize("mirror_enabled", [False, True])
+async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, monkeypatch, mirror_enabled):
     seed_snapshot(db_session)
+    monkeypatch.setattr(main.settings, "pos_api_mirror_base_url", "https://mirror.example" if mirror_enabled else "")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_token", "fixture-token" if mirror_enabled else "")
 
     class FakePosClient:
         instances = []
@@ -155,6 +165,8 @@ async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, m
     assert result["error"] == "POS temporarily unavailable"
     assert result["mirror_errors"]
     assert FakePosClient.instances[0].closed is True
+    assert len(FakePosClient.instances) == (2 if mirror_enabled else 1)
+    assert all(client.closed for client in FakePosClient.instances)
 
 
 def test_merge_sale_detail_preserves_existing_fields_when_detail_is_partial():
