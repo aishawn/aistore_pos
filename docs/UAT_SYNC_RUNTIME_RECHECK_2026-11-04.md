@@ -37,6 +37,8 @@
 
 候选还增强了 `/shopfront-audit` 的 freshness 输出：`latest_inventory_timestamp`、`latest_product_sync`、`latest_completed_catalog_job`。旧 `catalog_checkpoint` 保留兼容，但库存门禁应优先使用这些实际同步时间。crawler 测试仍为 58 passed，改动尚未部署。
 
+候选 HEAD `f932d6ed` 重新执行 Temurin Java 21 `mvn -B clean verify`：511 tests passed、0 failures、0 errors，构建成功。远端 GitHub Actions 结果在当前环境仍不可读取，故这仍是本地证据，不是远端 CI 通过证明。
+
 ## 约束
 
 本复核所有线上请求均为 GET；没有创建、确认、收货或修改采购单，也没有重启或取消线上同步任务。
