@@ -511,6 +511,30 @@
       ],
       "jsonChecks": {},
       "releaseAccepted": false
+    },
+    {
+      "id": "E-SOURCE-TAX",
+      "status": "PASS",
+      "evidenceType": "online-demo-rollback-subset",
+      "recordedAt": "2026-11-03",
+      "sourceSha": "d85bc0af",
+      "runtimeSha": "b7249014d7231fa32b7d370ec629e164f281128e",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "source-tax-repair-v1",
+      "scope": "Source report readonly and one demo order rollback; not full historical repair",
+      "sample": "133 completed source orders; one two-line demo tax simulation",
+      "result": "Source profit 830.18; margin 25.385749%; demo tax engine and rollback pass",
+      "limitations": [
+        "Odoo source SHA unrecorded; runtimeSha is POS only",
+        "Source costs independently unverified; full tax/refund/inventory repair pending",
+        "New input capture locally verified; not yet deployed"
+      ],
+      "artifacts": [
+        "docs/UAT_SOURCE_TAX_MAPPING_2026-11-03.json"
+      ],
+      "releaseAccepted": false
     }
   ]
 }
