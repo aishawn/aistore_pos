@@ -48,7 +48,7 @@ export function targetId(target: ReportTarget) { return digest([target.database,
 export function snapshotKey(scope: ReportScope, period: SnapshotPeriod, now = new Date()) {
   const bounds = period === "dead_stock" ? null : getReportPeriodBounds(period, now, scope.timezone);
   return digest([scope, period, bounds?.start.toISOString() ?? salesDate(now.toISOString(), scope.timezone),
-    period === "today" ? "to-now" : bounds?.end.toISOString() ?? "daily", "report-schema-1"]);
+    period === "today" ? "to-now" : bounds?.end.toISOString() ?? "daily", "report-schema-2-purchase-cost"]);
 }
 
 const localRevisions = new Map<string, string>();
@@ -75,6 +75,12 @@ export async function snapshotRevision(target: ReportTarget) {
   const client = await reportRedis();
   try { return client ? await client.get(REPORT_PREFIX + "revision:" + targetId(target)) ?? "0" : localRevisions.get(targetId(target)) ?? "0"; }
   catch { return localRevisions.get(targetId(target)) ?? "0"; }
+}
+
+export function reportScheduleDue(period: SnapshotPeriod, timezone: string, startup = false, now = new Date()) {
+  if (startup || period === "today") return true;
+  const local = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+  return local >= (period === "dead_stock" ? "02:30" : "00:10");
 }
 
 export function snapshotFresh(snapshot: ReportSnapshot, revision: string, now = new Date()) {

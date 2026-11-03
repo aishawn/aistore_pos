@@ -7,7 +7,7 @@ import { companyReportRpc, readReportCompany, reportEnvelope } from "../src/lib/
 import { getOdooAllowedCompanyIds, resolveOdooAllowedCompanyIds } from "../src/lib/odoo-companies.ts";
 import {
   REPORT_PREFIX, SNAPSHOT_TTL, enqueueReport, readSnapshot, reportRedis, reportTargets, snapshotFresh,
-  snapshotKey, snapshotRevision, targetId, type ReportJob, type ReportScope, type ReportSnapshot, type ReportTarget, type SnapshotPeriod,
+  snapshotKey, snapshotRevision, reportScheduleDue, targetId, type ReportJob, type ReportScope, type ReportSnapshot, type ReportTarget, type SnapshotPeriod,
 } from "../src/lib/report-snapshots.ts";
 
 const targets = reportTargets();
@@ -29,7 +29,7 @@ async function serviceSession() {
   return session;
 }
 
-async function schedule(target: ReportTarget) {
+async function schedule(target: ReportTarget, startup: boolean) {
   const client = await reportRedis();
   if (!client) return;
   const auth = await serviceSession();
@@ -44,6 +44,7 @@ async function schedule(target: ReportTarget) {
   await client.set(REPORT_PREFIX + "identity:" + id, String(auth.uid), { EX: 120 });
   const revision = await snapshotRevision(scope);
   for (const period of ["today", "yesterday", "last_week", "last_month", "dead_stock"] as SnapshotPeriod[]) {
+    if (!reportScheduleDue(period, target.timezone, startup)) continue;
     const old = await readSnapshot(scope, period);
     if (!old || !snapshotFresh(old, revision)) await enqueueReport(scope, period, false, true);
   }
@@ -141,7 +142,7 @@ while (!stopping) {
     if (!client) { await pause(5000); continue; }
     if (Date.now() - lastSchedule >= 60_000) {
       for (const target of targets) {
-        try { await schedule(target); }
+        try { await schedule(target, lastSchedule === 0); }
         catch { console.error(JSON.stringify({ event: "report_schedule_failed", target: targetId(target) })); }
       }
       lastSchedule = Date.now();

@@ -153,4 +153,3 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     return response({ message: status === 401 ? "Orithos session expired" : error instanceof Error ? error.message : "Reports are unavailable" }, status);
   }
 }
-

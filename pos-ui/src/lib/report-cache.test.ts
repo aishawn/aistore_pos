@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getReportPeriodBounds } from "./report-period.ts";
-import { snapshotKey, snapshotFresh, reportTargets, digest, type ReportScope, type ReportSnapshot } from "./report-snapshots.ts";
+import { snapshotKey, snapshotFresh, reportScheduleDue, reportTargets, digest, type ReportScope, type ReportSnapshot } from "./report-snapshots.ts";
 import { cachedOdooRead, cachedReadPolicy, clearOdooReadCache, setOdooReadIdentity } from "./odoo-read-cache.ts";
 import { calculateReport, type ReportRpc } from "./report-data.ts";
 
@@ -20,6 +20,11 @@ test("snapshot keys are canonical and isolate each security and business dimensi
 
 test("history schedules catch up at 00:10 and 02:00; dead stock at 02:30", () => {
   const local = (hour: string) => new Date(`2026-11-03T${hour}:00+10:30`);
+  assert.equal(reportScheduleDue("yesterday", scope.timezone, false, local("00:09")), false);
+  assert.equal(reportScheduleDue("yesterday", scope.timezone, false, local("00:10")), true);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, false, local("02:29")), false);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, false, local("02:30")), true);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, true, local("00:01")), true);
   assert.equal(snapshotFresh(snapshot(local("00:05").toISOString()), "0", local("00:09")), true);
   assert.equal(snapshotFresh(snapshot(local("00:05").toISOString()), "0", local("00:10")), false);
   assert.equal(snapshotFresh(snapshot(local("00:11").toISOString()), "0", local("01:59")), true);
@@ -48,6 +53,7 @@ test("only whitelisted reads are cached; financial validation and immutable pagi
   for (const path of ["/api/odoo/checkout/quote", "/api/odoo/checkout/status", "/api/odoo/customer-balances", "/api/odoo/sales/5"]) assert.equal(cachedReadPolicy(path), null);
   assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", inventoryReport: true }) }), null);
   assert.equal(cachedReadPolicy("/api/odoo/purchase-orders"), 30_000);
+  assert.equal(cachedReadPolicy("/api/odoo/sales-daily", { method: "POST", body: JSON.stringify({ offset: 40 }) }), 30_000);
   assert.equal(cachedReadPolicy("/api/odoo/customer-groups"), 300_000);
 });
 
@@ -60,9 +66,10 @@ test("read cache coalesces requests, isolates parameters and identity, and force
   assert.equal(calls, 1); assert.deepEqual(await result[0].json(), await result[1].json());
   await cachedOdooRead(path, undefined, read); assert.equal(calls, 1);
   await cachedOdooRead(path + "&refresh=true", undefined, read); assert.equal(calls, 2);
-  await cachedOdooRead(path.replace("offset=0", "offset=1"), undefined, read); assert.equal(calls, 3);
+  await cachedOdooRead(path, undefined, read); assert.equal(calls, 3, "returning after manual refresh cannot restore the earlier browser entry");
+  await cachedOdooRead(path.replace("offset=0", "offset=1"), undefined, read); assert.equal(calls, 4);
   setOdooReadIdentity("user-two");
-  await cachedOdooRead(path, undefined, read); assert.equal(calls, 4);
+  await cachedOdooRead(path, undefined, read); assert.equal(calls, 5);
   clearOdooReadCache();
 });
 
@@ -83,14 +90,15 @@ test("one cancelled subscriber does not abort another, and invalidation rejects 
   await assert.rejects(stale, { name: "AbortError" });
 });
 
-test("summary requires only three RPCs and does not load graphs, lines or recent sales", async () => {
+test("summary preserves dashboard metrics without graphs, product rankings or recent sales", async () => {
   const calls: string[] = [];
   const rpc = (async (_session: string, model: string, method: string) => {
     calls.push(`${model}.${method}`);
-    return method === "read_group" ? [{ amount_total: 123.45 }] : 3;
+    return method === "read_group" ? [{ amount_total: 123.45 }] : method === "search_read" ? [] : 3;
   }) as ReportRpc;
   const result = await calculateReport(rpc, { sessionId: "fixture", companyId: 41, company: { name: "Fixture", currency: "AUD", timezone: scope.timezone }, period: "today", summaryOnly: true, now });
-  assert.equal(calls.length, 3); assert.equal(result.revenue, 123.45);
-  assert.ok(calls.every(value => !value.startsWith("pos.order.line")));
+  assert.equal(calls.length, 7); assert.equal(result.revenue, 123.45);
+  assert.equal(calls.filter(value => value === "pos.order.line.search_read").length, 1);
+  assert.equal(calls.includes("pos.order.search_read"), false);
   assert.equal("trend" in result, false);
 });

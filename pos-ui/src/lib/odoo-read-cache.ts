@@ -22,6 +22,7 @@ export function setOdooReadIdentity(value: string | null) {
 function policy(path: string, init?: RequestInit): number | null {
   const url = new URL(path, "https://cache.invalid");
   const method = init?.method?.toUpperCase() ?? "GET";
+  if (method === "POST" && url.pathname === "/api/odoo/sales-daily") return 30_000;
   if (method === "POST" && url.pathname === "/api/odoo/records") {
     try {
       const body = JSON.parse(String(init?.body));
@@ -45,6 +46,13 @@ function abortError() { return new DOMException("The request was aborted", "Abor
 export async function cachedOdooRead(path: string, init: RequestInit | undefined, transport: (init: RequestInit | undefined) => Promise<Response>) {
   const ttl = policy(path, init);
   if (ttl === null || identity === null) return transport(init);
+  const requested = new URL(path, "https://cache.invalid");
+  if (requested.searchParams.get("refresh") === "true") {
+    requested.searchParams.delete("refresh");
+    const ordinaryKey = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, requested.pathname + requested.search, init?.method ?? "GET", init?.body ?? null]);
+    entries.delete(ordinaryKey);
+    flights.get(ordinaryKey)?.controller.abort();
+  }
   const key = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, path, init?.method ?? "GET", init?.body ?? null]);
   if (init?.signal?.aborted) throw abortError();
   const entry = entries.get(key);
@@ -57,7 +65,7 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
     const task: Flight = { controller, subscribers: 0, promise: Promise.resolve(new Response()) };
     task.promise = transport({ ...init, signal: controller.signal }).then(async original => {
       let response = original;
-      if (revision !== generation) throw abortError();
+      if (revision !== generation || controller.signal.aborted) throw abortError();
       if (response.status === 401 || response.status === 403) { setOdooReadIdentity(null); return response; }
       if (response.status === 200 && ttl > 0) {
         const payload = await response.clone().json().catch(() => null);

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import type { WorkspaceRecords, WorkspaceRecordType } from "@/lib/workspace-records";
 
 /** Paginated read-only inventory, sales-line and payment views inside workspace dialogs. */
-export function WorkspaceRecordsPanel({ type }: { type: WorkspaceRecordType }) {
+export function WorkspaceRecordsPanel({ type, toolbarStart }: { type: WorkspaceRecordType; toolbarStart?: ReactNode }) {
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query, 250);
   const [period, setPeriod] = useState("all");
@@ -42,7 +42,8 @@ export function WorkspaceRecordsPanel({ type }: { type: WorkspaceRecordType }) {
   }
   return <div className="flex min-h-0 flex-col gap-3 text-sm">
     <p className="text-[var(--oh-muted)]">{type === "catalogue" ? "Product catalogue for this store, including products without stock records. Quantities use the company inventory context." : type === "inventory" ? "Stock by internal location in this store. Products without stock records remain in Catalogue." : "All-time records by default. Narrow the period or search for a receipt."}</p>
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {toolbarStart}
       <input aria-label="Search records" placeholder={type === "catalogue" ? "Product, SKU or barcode" : type === "inventory" ? "Product, SKU, barcode or location" : type === "lines" ? "Receipt, product, SKU or barcode" : "Receipt or payment method"} value={query} onChange={(event) => { setQuery(event.target.value); setOffset(0); }} className="h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3" />
       {(type === "lines" || type === "payments") && <select aria-label="Records period" value={period} onChange={(event) => { setPeriod(event.target.value); setOffset(0); }} className="h-11 rounded-lg border bg-white px-3">
         <option value="all">All time</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option>

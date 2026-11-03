@@ -1,0 +1,62 @@
+{
+  "target": "https://demo.orithos.com.au",
+  "database": "aipos_uat",
+  "runtimeIdentity": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "92ee91b2b1437f856855e929feb3d649800d5210",
+      "builtAt": "2026-11-03T07:03:35.076Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "92ee91b2b1437f856855e929feb3d649800d5210",
+      "builtAt": "2026-11-03T07:03:34Z"
+    }
+  },
+  "readOnly": true,
+  "realBusinessWrites": 0,
+  "at": "2026-11-03T07:09:26.746Z",
+  "checks": [
+    {
+      "name": "yesterday prepared before read with calendar bounds",
+      "from": "2026-11-01 13:30:00",
+      "to": "2026-11-02 13:30:00",
+      "generatedAt": "2026-11-03T06:53:47.539Z",
+      "status": "PASS"
+    },
+    {
+      "name": "last_week prepared before read with calendar bounds",
+      "from": "2026-10-25 13:30:00",
+      "to": "2026-11-01 13:30:00",
+      "generatedAt": "2026-11-03T06:56:05.996Z",
+      "status": "PASS"
+    },
+    {
+      "name": "last_month prepared before read with calendar bounds",
+      "from": "2026-09-30 14:30:00",
+      "to": "2026-10-31 13:30:00",
+      "generatedAt": "2026-11-03T06:53:52.055Z",
+      "status": "PASS"
+    },
+    {
+      "name": "three concurrent manual refreshes coalesce; authenticated status returns completed snapshot",
+      "status": "PASS",
+      "generatedAt": "2026-11-03T07:09:23.395Z"
+    },
+    {
+      "name": "independently prepared daily dead-stock snapshot",
+      "status": "PASS",
+      "generatedAt": "2026-11-03T06:54:00.661Z"
+    },
+    {
+      "name": "Today summary excludes graph/product/recent-sale payloads",
+      "status": "PASS",
+      "from": "2026-11-02 13:30:00",
+      "to": "2026-11-03 07:09:15"
+    },
+    {
+      "name": "unauthenticated snapshot access is rejected",
+      "status": "PASS"
+    }
+  ]
+}

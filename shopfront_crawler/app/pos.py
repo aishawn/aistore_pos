@@ -94,6 +94,9 @@ class OrithosClient:
     async def upsert_purchase_orders(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/purchase-orders:upsert", payload)
 
+    async def upsert_extended(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._post("/api/integrations/shopfront/extended:upsert", payload)
+
     async def snapshot(self, store_key: str) -> dict[str, Any]:
         return await self._get("/api/integrations/shopfront/snapshot", {"storeKey": store_key})
 

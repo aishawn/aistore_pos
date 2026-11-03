@@ -1,0 +1,58 @@
+{
+  "at": "2026-11-03T06:55:55.756Z",
+  "deployment": {
+    "id": "bz1SoyC2QP_TlkanGAtVZ",
+    "status": "done",
+    "title": "test(reports): verify merged mobile and desktop cache flows"
+  },
+  "containers": [
+    {
+      "containerId": "08fd248927bd",
+      "name": "compose-compress-bluetooth-array-8igtix-frontend-1",
+      "state": "running",
+      "status": "Up 2 minutes"
+    },
+    {
+      "containerId": "ff43beeec802",
+      "name": "compose-compress-bluetooth-array-8igtix-shopfront-crawler-1",
+      "state": "running",
+      "status": "Up 2 minutes"
+    },
+    {
+      "containerId": "28910e573126",
+      "name": "compose-compress-bluetooth-array-8igtix-backend-1",
+      "state": "running",
+      "status": "Up 2 minutes"
+    },
+    {
+      "containerId": "af4747f7e577",
+      "name": "compose-compress-bluetooth-array-8igtix-report-worker-1",
+      "state": "running",
+      "status": "Up 2 minutes (healthy)"
+    },
+    {
+      "containerId": "de160ad19071",
+      "name": "compose-compress-bluetooth-array-8igtix-redis-1",
+      "state": "running",
+      "status": "Up 2 minutes (healthy)"
+    },
+    {
+      "containerId": "9e3d0c18495f",
+      "name": "compose-compress-bluetooth-array-8igtix-r2-sync-1",
+      "state": "running",
+      "status": "Up 2 hours"
+    },
+    {
+      "containerId": "a07cd71353a8",
+      "name": "compose-compress-bluetooth-array-8igtix-inventory-snapshots-1",
+      "state": "running",
+      "status": "Up 2 hours"
+    },
+    {
+      "containerId": "88fca5d640f0",
+      "name": "compose-compress-bluetooth-array-8igtix-forecast-service-1",
+      "state": "running",
+      "status": "Up 2 hours"
+    }
+  ]
+}
