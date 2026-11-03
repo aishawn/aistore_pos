@@ -1,4 +1,5 @@
 import { getReportPeriodBounds, type ReportQueryPeriod } from "./report-period.ts";
+import { purchaseCosts, type CostSale } from "./dashboard-purchase-cost.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 export type ReportRpc = <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs?: Record<string, unknown>, correlationId?: string | null) => Promise<T | undefined>;
@@ -12,27 +13,58 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
-async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, correlationId?: string | null) {
-  const empty = { inventoryUnits: null as number | null, yesterdaySales: 0, yesterdaySalesAvailable: false, yesterdayGrossMargin: null as number | null, grossMarginCoverage: 0, inventoryAvailable: false };
-  try {
-    const bounds = getReportPeriodBounds("yesterday", now, timezone);
-    const yesterday = { from: bounds.start, to: bounds.end };
-    const fromDate = yesterday.from.toISOString().slice(0, 19).replace("T", " ");
-    const toDate = yesterday.to.toISOString().slice(0, 19).replace("T", " ");
-    const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", fromDate], ["date_order", "<", toDate], ["state", "in", ["paid", "done", "invoiced"]]];
-    const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", fromDate], ["order_id.date_order", "<", toDate], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
-    if (sampleDataClearedAt) { orderDomain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]); lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${companyId}-%`]); }
-    const [salesRows, lines, stockRows] = await Promise.all([
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => null),
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [lineDomain, ["price_subtotal", "price_subtotal_incl", "qty", "purchase_price"]], { limit: 5000 }, correlationId).catch(() => null),
-      rpc<Array<Record<string, unknown>>>(sessionId, "stock.quant", "read_group", [[["company_id", "=", companyId], ["location_id.usage", "=", "internal"]], ["quantity:sum"], []], {}, correlationId).catch(() => null),
-    ]);
-    const validLines = (lines ?? []).map((line) => ({ revenue: Number(line.price_subtotal ?? line.price_subtotal_incl ?? 0), cost: typeof line.purchase_price === "number" && Number.isFinite(line.purchase_price) ? Number(line.purchase_price) * Number(line.qty ?? 0) : null })).filter((line) => line.revenue > 0);
-    const costedLines = validLines.filter((line): line is { revenue: number; cost: number } => line.cost !== null);
-    const marginRevenue = costedLines.reduce((sum, line) => sum + line.revenue, 0);
-    const margin = marginRevenue > 0 ? costedLines.reduce((sum, line) => sum + line.revenue - line.cost, 0) / marginRevenue : null;
-    return { inventoryUnits: stockRows ? Number(stockRows[0]?.quantity ?? 0) : null, yesterdaySales: Number(salesRows?.[0]?.amount_total ?? 0), yesterdaySalesAvailable: Boolean(salesRows), yesterdayGrossMargin: lines && lines.length < 5000 ? margin : null, grossMarginCoverage: validLines.length ? costedLines.length / validLines.length : 0, inventoryAvailable: Boolean(stockRows) };
-  } catch { return empty; }
+async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, currency: string, correlationId?: string | null) {
+  const bounds = getReportPeriodBounds("yesterday", now, timezone);
+  const from = bounds.start.toISOString().slice(0, 19).replace("T", " ");
+  const to = bounds.end.toISOString().slice(0, 19).replace("T", " ");
+  const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", from], ["date_order", "<", to], ["state", "in", ["paid", "done", "invoiced"]]];
+  const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", from], ["order_id.date_order", "<", to], ["order_id.state", "in", ["paid", "done", "invoiced"]]];
+  if (sampleDataClearedAt) { orderDomain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]); lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${companyId}-%`]); }
+  const stockDomain = [["company_id", "=", companyId], ["location_id.usage", "=", "internal"]];
+  const [salesRows, lines, stockRows, negativeRows] = await Promise.all([
+    rpc<Array<{ amount_total: number; amount_tax: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => null),
+    rpc<Array<CostSale & { order_id: [number, string] }>>(sessionId, "pos.order.line", "search_read", [lineDomain], { fields: ["order_id", "product_id", "product_uom_id", "price_subtotal", "qty"], order: "id asc", limit: 10001 }, correlationId).catch(() => null),
+    rpc<Array<{ quantity: number; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
+    rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
+  ]);
+  const numeric = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  const salesAvailable = Array.isArray(salesRows) && (!salesRows.length || (numeric(salesRows[0].amount_total) && numeric(salesRows[0].amount_tax)));
+  const yesterdaySales = salesAvailable ? salesRows[0]?.amount_total ?? 0 : 0;
+  const yesterdayTax = salesAvailable ? salesRows[0]?.amount_tax ?? 0 : null;
+  const netSales = yesterdayTax === null ? null : yesterdaySales - yesterdayTax;
+  const completeLines = Array.isArray(lines) && lines.length <= 10000 && lines.every(line => numeric(line.price_subtotal) && numeric(line.qty));
+  const lineNet = completeLines ? lines.reduce((sum, line) => sum + line.price_subtotal, 0) : null;
+  const reconciled = netSales !== null && lineNet !== null && Math.abs(netSales - lineNet) < 0.011;
+  let grossMarginStatus = !completeLines || !salesAvailable ? "unavailable" : !reconciled ? "sales_mismatch" : !lines.length || netSales === 0 ? "no_sales" : "purchase_cost_missing";
+  let coverage = 0;
+  let margin: number | null = null;
+  if (completeLines && lines.length && reconciled && netSales !== null && netSales > 0) {
+    try {
+      const orders = await rpc<Array<{ id: number; date_order: string }>>(sessionId, "pos.order", "search_read", [[...orderDomain, ["id", "in", [...new Set(lines.map(line => line.order_id[0]))]]]], { fields: ["date_order"], limit: 10001 }, correlationId);
+      const dates = new Map((orders ?? []).map(order => [order.id, order.date_order]));
+      if (lines.some(line => !dates.has(line.order_id[0]))) throw new Error("Sale dates are incomplete");
+      const costLines = lines.filter(line => line.qty !== 0).map(line => ({ ...line, "order_id.date_order": dates.get(line.order_id[0])! }));
+      const costs = await purchaseCosts(rpc, sessionId, companyId, currency, costLines, correlationId);
+      const denominator = costLines.reduce((sum, line) => sum + Math.abs(line.price_subtotal), 0);
+      coverage = denominator ? costLines.reduce((sum, line) => sum + (costs.has(line.id) ? Math.abs(line.price_subtotal) : 0), 0) / denominator : 0;
+      if (costs.size === costLines.length && costLines.length) {
+        margin = (netSales - [...costs.values()].reduce((sum, value) => sum + value, 0)) / netSales;
+        grossMarginStatus = "verified";
+      }
+    } catch { grossMarginStatus = "unavailable"; }
+  }
+  const stockAvailable = Array.isArray(stockRows) && stockRows.every(row => numeric(row.quantity) && row.product_uom_id !== false);
+  const mixedUnits = stockAvailable && new Set(stockRows.map(row => row.product_uom_id && row.product_uom_id[0])).size > 1;
+  const inventoryUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : null;
+  return {
+    inventoryUnits, inventoryAvailable: stockAvailable && !mixedUnits,
+    inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
+    negativeStockProducts: negativeRows?.length ?? null,
+    yesterdaySales, yesterdaySalesAvailable: salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
+    yesterdayGrossMargin: margin, grossMarginCoverage: coverage, grossMarginStatus,
+    salesReconciled: reconciled, salesReconciliationDifference: netSales !== null && lineNet !== null ? Math.round((lineNet - netSales) * 100) / 100 : null,
+    costBasis: "last_received_purchase_ex_tax", yesterdayFrom: from, yesterdayTo: to,
+  };
 }
 
 
@@ -137,7 +169,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
         rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], []], {}, correlationId),
         rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
         rpc<number>(sessionId, "pos.session", "search_count", [[["company_id", "=", companyId], ["state", "=", "opened"]]], {}, correlationId),
-        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, correlationId),
+        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, company.currency, correlationId),
       ]);
       return { period: "today", from, to, timezone, company: company.name, currency: company.currency,
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };

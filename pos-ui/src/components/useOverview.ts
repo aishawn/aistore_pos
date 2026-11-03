@@ -30,6 +30,12 @@ export type OverviewPulse = {
   yesterdayGrossMargin?: number | null;
   grossMarginCoverage?: number;
   inventoryAvailable?: boolean;
+  inventoryStatus?: string;
+  negativeStockProducts?: number | null;
+  grossMarginStatus?: string;
+  yesterdayNetSales?: number | null;
+  yesterdayTax?: number | null;
+  salesReconciled?: boolean;
 };
 export function money(value: number, currency: string) {
   try {
@@ -94,6 +100,12 @@ export function useOverview() {
         yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? payload.yesterdayGrossMargin : null,
         grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? payload.grossMarginCoverage : 0,
         inventoryAvailable: payload.inventoryAvailable === true,
+        inventoryStatus: payload.inventoryStatus,
+        negativeStockProducts: payload.negativeStockProducts,
+        grossMarginStatus: payload.grossMarginStatus,
+        yesterdayNetSales: payload.yesterdayNetSales,
+        yesterdayTax: payload.yesterdayTax,
+        salesReconciled: payload.salesReconciled,
       });
     } catch (cause) {
       if (current === revision.current) {

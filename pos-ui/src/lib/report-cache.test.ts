@@ -97,7 +97,7 @@ test("summary preserves dashboard metrics without graphs, product rankings or re
     return method === "read_group" ? [{ amount_total: 123.45 }] : method === "search_read" ? [] : 3;
   }) as ReportRpc;
   const result = await calculateReport(rpc, { sessionId: "fixture", companyId: 41, company: { name: "Fixture", currency: "AUD", timezone: scope.timezone }, period: "today", summaryOnly: true, now });
-  assert.equal(calls.length, 6); assert.equal(result.revenue, 123.45);
+  assert.equal(calls.length, 7); assert.equal(result.revenue, 123.45);
   assert.equal(calls.filter(value => value === "pos.order.line.search_read").length, 1);
   assert.equal(calls.includes("pos.order.search_read"), false);
   assert.equal("trend" in result, false);
