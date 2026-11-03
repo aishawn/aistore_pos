@@ -4,7 +4,7 @@
 
 | ID | 类型 / 结果 | 范围与结论 | 原始材料 |
 |---|---|---|---|
-| E-SOURCE-TAX | online-demo-rollback-subset / PASS | 来源毛利只读及 demo 单笔税引擎/回滚；不代表全历史财务修复 | [材料](../UAT_SOURCE_TAX_MAPPING_2026-11-03.json) |
+| E-SOURCE-TAX | online-write / PASS（demo 回滚子集） | 来源毛利只读及 demo 单笔税引擎/回滚；提交业务写入 0，不代表全历史财务修复 | [材料](../UAT_SOURCE_TAX_MAPPING_2026-11-03.json) |
 | E-RO | online-readonly / PASS | Demo/SKR 各 23 项；目录 12987/12999；报表各 23/23；交期 0%；快照 2/3 天 | [材料](../../docs/UAT_AI_READONLY_VALIDATION_2026-11-03.json) |
 | E-WF-DEMO | online-readonly / BLOCKED | 390 条完整问法；379 PASS / 11 BLOCKED / 0 FAIL | [材料](../../docs/UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json) |
 | E-WF-SKR | online-readonly / BLOCKED | 390 条完整问法；382 PASS / 8 BLOCKED / 0 FAIL | [材料](../../docs/UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json) |

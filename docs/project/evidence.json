@@ -515,7 +515,7 @@
     {
       "id": "E-SOURCE-TAX",
       "status": "PASS",
-      "evidenceType": "online-demo-rollback-subset",
+      "evidenceType": "online-write",
       "recordedAt": "2026-11-03",
       "sourceSha": "d85bc0af",
       "runtimeSha": "b7249014d7231fa32b7d370ec629e164f281128e",
