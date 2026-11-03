@@ -18,6 +18,26 @@ export type OdooRecordType =
 export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelled" | "draft";
 export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d" | "90d" | "180d";
 
+export interface OdooDailySaleRecord {
+  date: string;
+  salesTransactions: number;
+  refundTransactions: number;
+  salesAmount: number;
+  refundAmount: number;
+  netSales: number;
+  tax: number;
+}
+
+export interface OdooDailySalesPage {
+  generatedAt?: string;
+  items: OdooDailySaleRecord[];
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+  timezone: string;
+  currency: string;
+}
+
 export interface OdooPage<T> {
   generatedAt?: string;
   items: T[];
@@ -488,7 +508,7 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : input.url;
   const response = await cachedOdooRead(path, init, options => fetchOdooTransport(input, options, safeToRetry));
   const method = init?.method?.toUpperCase() ?? "GET";
-  if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(method) && !(method === "POST" && path === "/api/odoo/records") && !path.includes("/checkout/quote")) clearOdooReadCache();
+  if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(method) && !(method === "POST" && ["/api/odoo/records", "/api/odoo/sales-daily"].includes(path)) && !path.includes("/checkout/quote")) clearOdooReadCache();
   return response;
 }
 
@@ -699,6 +719,28 @@ export async function searchOdooRecords<T>(
     throw new OdooApiError("Odoo returned an invalid records response", 502);
   }
   return payload as OdooPage<T>;
+}
+
+export async function searchOdooDailySales(options: {
+  status?: OdooSalesStatusFilter;
+  period?: OdooSalesPeriodFilter;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<OdooDailySalesPage> {
+  const response = await fetchOdooApi("/api/odoo/sales-daily", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(options),
+  }, true);
+  const payload = await response.json().catch(() => null) as (OdooDailySalesPage & { message?: string }) | null;
+  if (!response.ok || !payload || !Array.isArray(payload.items) || typeof payload.timezone !== "string") {
+    throw new OdooApiError(payload?.message || `Daily sales request failed (${response.status})`, response.status || 502);
+  }
+  return payload;
 }
 
 /** Download the current store product catalogue from the Odoo source of truth. */

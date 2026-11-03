@@ -12,6 +12,30 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
+async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, correlationId?: string | null) {
+  const empty = { inventoryUnits: null as number | null, yesterdaySales: 0, yesterdaySalesAvailable: false, yesterdayGrossMargin: null as number | null, grossMarginCoverage: 0, inventoryAvailable: false };
+  try {
+    const bounds = getReportPeriodBounds("yesterday", now, timezone);
+    const yesterday = { from: bounds.start, to: bounds.end };
+    const fromDate = yesterday.from.toISOString().slice(0, 19).replace("T", " ");
+    const toDate = yesterday.to.toISOString().slice(0, 19).replace("T", " ");
+    const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", fromDate], ["date_order", "<", toDate], ["state", "in", ["paid", "done", "invoiced"]]];
+    const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", fromDate], ["order_id.date_order", "<", toDate], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
+    if (sampleDataClearedAt) { orderDomain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]); lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${companyId}-%`]); }
+    const [salesRows, lines, stockRows] = await Promise.all([
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => null),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [lineDomain, ["price_subtotal", "price_subtotal_incl", "qty", "purchase_price"]], { limit: 5000 }, correlationId).catch(() => null),
+      rpc<Array<Record<string, unknown>>>(sessionId, "stock.quant", "read_group", [[["company_id", "=", companyId], ["location_id.usage", "=", "internal"]], ["quantity:sum"], []], {}, correlationId).catch(() => null),
+    ]);
+    const validLines = (lines ?? []).map((line) => ({ revenue: Number(line.price_subtotal ?? line.price_subtotal_incl ?? 0), cost: typeof line.purchase_price === "number" && Number.isFinite(line.purchase_price) ? Number(line.purchase_price) * Number(line.qty ?? 0) : null })).filter((line) => line.revenue > 0);
+    const costedLines = validLines.filter((line): line is { revenue: number; cost: number } => line.cost !== null);
+    const marginRevenue = costedLines.reduce((sum, line) => sum + line.revenue, 0);
+    const margin = marginRevenue > 0 ? costedLines.reduce((sum, line) => sum + line.revenue - line.cost, 0) / marginRevenue : null;
+    return { inventoryUnits: stockRows ? Number(stockRows[0]?.quantity ?? 0) : null, yesterdaySales: Number(salesRows?.[0]?.amount_total ?? 0), yesterdaySalesAvailable: Boolean(salesRows), yesterdayGrossMargin: lines && lines.length < 5000 ? margin : null, grossMarginCoverage: validLines.length ? costedLines.length / validLines.length : 0, inventoryAvailable: Boolean(stockRows) };
+  } catch { return empty; }
+}
+
+
 async function loadLineExtras(rpc: ReportRpc, sessionId: string, lineDomain: unknown[], compareLineDomain: unknown[], correlationId?: string | null) {
   const [qtyRows, productRows, compareQtyRows] = await Promise.all([
     rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }, correlationId),
@@ -109,13 +133,14 @@ export async function calculateReport(rpc: ReportRpc, options: {
 
 
     if (summaryOnly) {
-      const [totals, count, openRegisters] = await Promise.all([
+      const [totals, count, openRegisters, businessMetrics] = await Promise.all([
         rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], []], {}, correlationId),
         rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
         rpc<number>(sessionId, "pos.session", "search_count", [[["company_id", "=", companyId], ["state", "=", "opened"]]], {}, correlationId),
+        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, correlationId),
       ]);
       return { period: "today", from, to, timezone, company: company.name, currency: company.currency,
-        revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
+        ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
     }
 
     const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([

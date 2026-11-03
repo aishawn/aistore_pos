@@ -2,7 +2,7 @@
   "target": "local fixture Odoo/backend + real Redis + actual worker and GET handler",
   "runtime": "v24.19.0",
   "realBusinessWrites": 0,
-  "snapshotReadLocalP95Ms": 316,
+  "snapshotReadLocalP95Ms": 378,
   "checks": [
     {
       "name": "worker prepares all five results without a page visit",

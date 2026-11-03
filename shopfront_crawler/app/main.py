@@ -16,13 +16,13 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from .config import get_settings
+from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_store, sync_supply_chain, verify_webhook, without_credentials
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -231,7 +231,21 @@ async def auth_callback(code: str | None = None, state: str | None = None, error
 @app.get("/api/stores")
 def stores(db: Session = Depends(get_db)) -> list[dict]:
     tokens = {t.store_key: t for t in db.scalars(select(ShopfrontToken)).all()}
-    return [{"store_key": s.store_key, "vendor": s.vendor, "timezone": s.timezone, "active": s.active, "token_status": tokens.get(s.store_key).status if tokens.get(s.store_key) else "not_authorized"} for s in db.scalars(select(Store).order_by(Store.store_key)).all()]
+    result = []
+    for store in db.scalars(select(Store).order_by(Store.store_key)).all():
+        token = tokens.get(store.store_key)
+        granted = set((token.scopes or "").replace(",", " ").split()) if token else set()
+        result.append({
+            "store_key": store.store_key,
+            "vendor": store.vendor,
+            "timezone": store.timezone,
+            "active": store.active,
+            "token_status": token.status if token else "not_authorized",
+            "requested_scopes": settings.shopfront_scopes.split(),
+            "granted_scopes": sorted(granted),
+            "missing_scopes": sorted(set(REQUIRED_SHOPFRONT_SCOPES) - granted),
+        })
+    return result
 
 
 @app.get("/api/pos/mappings")
@@ -670,6 +684,12 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
     sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
     customer_count = db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0
+    extended_rows = db.execute(
+        select(ShopfrontExtendedRecord.entity_type, func.count(ShopfrontExtendedRecord.id))
+        .where(ShopfrontExtendedRecord.store_key == store)
+        .group_by(ShopfrontExtendedRecord.entity_type)
+    ).all()
+    extended_counts = {str(entity): int(count) for entity, count in extended_rows}
     missing_sale_item_names = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(
         Sale.store_key == store,
         or_(SaleItem.product_name.is_(None), func.trim(SaleItem.product_name) == ""),
@@ -730,6 +750,7 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
             "inventory": {"records": int(inventory_count), "outlets": int(outlet_count)},
             "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
             "customers": {"total": int(customer_count)},
+            "extended_data": extended_counts,
         },
         "source": "shopfront_crawler",
         "synced_at": datetime.now(timezone.utc),
@@ -958,6 +979,44 @@ async def customers_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
     db.commit()
     wake_durable_worker()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_customers"}
+
+
+@app.post("/api/stores/{store_key}/extended-data/sync")
+async def extended_data_sync(store_key: str, db: Session = Depends(get_db)) -> dict:
+    store = require_store(store_key, db)
+    active = active_job(db, store_key)
+    if active:
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
+    job = SyncJob(store_key=store.store_key, job_type="extended_data", status="queued")
+    db.add(job)
+    db.commit()
+    wake_durable_worker()
+    return {"status": "queued", "job_id": job.id, "store": store.store_key, "source": "shopfront_extended_records"}
+
+
+@app.get("/api/extended-records")
+def list_extended_records(
+    store: str,
+    entity_type: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+) -> dict:
+    require_store(store, db)
+    query = select(ShopfrontExtendedRecord).where(ShopfrontExtendedRecord.store_key == store)
+    count_query = select(func.count(ShopfrontExtendedRecord.id)).where(ShopfrontExtendedRecord.store_key == store)
+    if entity_type:
+        query = query.where(ShopfrontExtendedRecord.entity_type == entity_type)
+        count_query = count_query.where(ShopfrontExtendedRecord.entity_type == entity_type)
+    rows = db.scalars(query.order_by(ShopfrontExtendedRecord.entity_type, ShopfrontExtendedRecord.source_id)
+                       .offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(count_query) or 0
+    return {"data": [{
+        "entity_type": row.entity_type,
+        "source_id": row.source_id,
+        "raw_payload": row.raw_payload,
+        "synced_at": row.synced_at,
+    } for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_extended_records"}
 
 
 @app.get("/api/suppliers")
@@ -1955,7 +2014,19 @@ async def run_daily_sync_job(job_id: int) -> None:
         else:
             job.phase = "completed"
         job.finished_at = datetime.now(timezone.utc)
+        queued_types = {
+            row.job_type for row in db.scalars(select(SyncJob).where(
+                SyncJob.store_key == job.store_key,
+                SyncJob.status.in_(["queued", "running"]),
+            )).all()
+        }
+        if settings.shopfront_enable_customers and "customers" not in queued_types:
+            db.add(SyncJob(store_key=job.store_key, job_type="customers", status="queued", payload={"after_daily_job": job.id}))
+            queued_types.add("customers")
+        if "extended_data" not in queued_types:
+            db.add(SyncJob(store_key=job.store_key, job_type="extended_data", status="queued", payload={"after_daily_job": job.id}))
         db.commit()
+        wake_durable_worker()
     except Exception as exc:
         job = db.get(SyncJob, job_id)
         if job:
@@ -2047,6 +2118,21 @@ async def run_customers_job(job_id: int) -> None:
                     if staged.get("status") != "STAGED":
                         raise PosIntegrationError(f"Customer mirror batch was not staged: {staged.get('status', 'unknown')}")
                 job.payload["pos_staged"] = {"customers": len(customer_rows)}
+                balance_rows = db.scalars(select(ShopfrontExtendedRecord).where(
+                    ShopfrontExtendedRecord.store_key == store.store_key,
+                    ShopfrontExtendedRecord.entity_type == "customer_balances",
+                ).order_by(ShopfrontExtendedRecord.source_id)).all()
+                for offset in range(0, len(balance_rows), 200):
+                    batch = balance_rows[offset:offset + 200]
+                    response = await pos_client.upsert_extended({
+                        "store_key": store.store_key,
+                        "entity_type": "customer_balances",
+                        "items": [{"source_id": item.source_id, "raw_payload": item.raw_payload} for item in batch],
+                    })
+                    staged = response.get("data", response)
+                    if staged.get("status") != "STAGED":
+                        raise PosIntegrationError("Customer balance snapshots were not staged")
+                job.payload["pos_staged"]["customer_balances"] = len(balance_rows)
             finally:
                 await pos_client.close()
         # Odoo is the customer business source of truth. Staging success is
@@ -2070,6 +2156,41 @@ async def run_customers_job(job_id: int) -> None:
                 await odoo_client.close()
         job.status = "completed"
         job.phase = "completed"
+        job.finished_at = datetime.now(timezone.utc)
+        db.commit()
+    except Exception as exc:
+        job = db.get(SyncJob, job_id)
+        if job:
+            job.status = "failed"
+            job.error = str(exc)[:2000]
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+    finally:
+        db.close()
+
+
+async def run_extended_data_job(job_id: int) -> None:
+    db = next(get_db())
+    try:
+        now = datetime.now(timezone.utc)
+        claimed = db.execute(update(SyncJob).where(
+            SyncJob.id == job_id,
+            SyncJob.status == "queued",
+        ).values(status="running", started_at=now, heartbeat_at=now, phase="extended_data", attempts=SyncJob.attempts + 1))
+        db.commit()
+        if claimed.rowcount != 1:
+            return
+        job = db.get(SyncJob, job_id)
+        store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
+        if not job or not store:
+            raise RuntimeError("Store not found for extended-data sync")
+        job.payload = await sync_extended_data(db, settings, store)
+        job.status = "partial" if job.payload.get("status") == "partial" else "completed"
+        if job.status == "partial":
+            job.error = "; ".join(
+                f"{entity}: {message}" for entity, message in job.payload.get("errors", {}).items()
+            )[:2000]
+        job.phase = "completed_with_warnings" if job.status == "partial" else "completed"
         job.finished_at = datetime.now(timezone.utc)
         db.commit()
     except Exception as exc:
@@ -2110,6 +2231,7 @@ async def process_next_job() -> None:
         "daily_sync": run_daily_sync_job,
         "supply_chain": run_supply_chain_job,
         "customers": run_customers_job,
+        "extended_data": run_extended_data_job,
     }
     handler = handlers.get(job_type)
     if handler is None:
@@ -2181,6 +2303,8 @@ async def _run_history_job(job_id: int) -> None:
                 db.add(SyncJob(store_key=job.store_key, job_type="customers", status="queued", payload={"after_history_job": job.id}))
             if settings.shopfront_enable_supply_chain and "supply_chain" not in existing_types:
                 db.add(SyncJob(store_key=job.store_key, job_type="supply_chain", status="queued", payload={"after_history_job": job.id}))
+            if "extended_data" not in existing_types:
+                db.add(SyncJob(store_key=job.store_key, job_type="extended_data", status="queued", payload={"after_history_job": job.id}))
         db.commit()
         if job.status == "completed":
             wake_durable_worker()

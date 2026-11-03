@@ -13,7 +13,8 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
+from .pos import OrithosClient, PosIntegrationError
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -404,6 +405,30 @@ async def sync_customers(db: Session, settings: Settings, store: Store) -> dict[
             row.deleted = bool(source.get("deleted")) if source.get("deleted") is not None else None
             row.raw_payload = without_credentials(source)
             row.synced_at = now
+            balance_date = now.astimezone(ZoneInfo(store.timezone)).date().isoformat()
+            balance_id = f"{source_id}:{balance_date}"
+            balance = db.scalar(select(ShopfrontExtendedRecord).where(
+                ShopfrontExtendedRecord.store_key == store.store_key,
+                ShopfrontExtendedRecord.entity_type == "customer_balances",
+                ShopfrontExtendedRecord.source_id == balance_id,
+            ))
+            if balance is None:
+                balance = ShopfrontExtendedRecord(
+                    store_key=store.store_key,
+                    entity_type="customer_balances",
+                    source_id=balance_id,
+                )
+                db.add(balance)
+            balance.raw_payload = without_credentials({
+                "customerId": source_id,
+                "clientId": source.get("clientId"),
+                "code": source.get("code"),
+                "currentOwing": source.get("currentOwing"),
+                "accountLimit": source.get("accountLimit"),
+                "updatedAt": source.get("updatedAt"),
+                "snapshotAt": now.isoformat(),
+            })
+            balance.synced_at = now
             count += 1
         db.commit()
         return {"customers": count}
@@ -412,6 +437,71 @@ async def sync_customers(db: Session, settings: Settings, store: Store) -> dict[
         raise
     finally:
         await client.close()
+
+
+async def sync_extended_data(db: Session, settings: Settings, store: Store) -> dict[str, Any]:
+    token = await access_token(db, settings, store)
+    client = get_client(settings, store)
+    try:
+        entities, errors = await client.fetch_extended_data(token)
+    finally:
+        await client.close()
+
+    counts: dict[str, int] = {}
+    now = datetime.now(timezone.utc)
+    for entity_type, records in entities.items():
+        count = 0
+        for source in records:
+            source_id = str(source.get("id") or source.get("source_id") or "").strip()
+            if not source_id:
+                continue
+            row = db.scalar(select(ShopfrontExtendedRecord).where(
+                ShopfrontExtendedRecord.store_key == store.store_key,
+                ShopfrontExtendedRecord.entity_type == entity_type,
+                ShopfrontExtendedRecord.source_id == source_id,
+            ))
+            if row is None:
+                row = ShopfrontExtendedRecord(
+                    store_key=store.store_key,
+                    entity_type=entity_type,
+                    source_id=source_id,
+                )
+                db.add(row)
+            row.raw_payload = without_credentials(source)
+            row.synced_at = now
+            count += 1
+        counts[entity_type] = count
+    db.commit()
+
+    staged = 0
+    if settings.pos_import_enabled:
+        pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
+        try:
+            for entity_type in sorted(counts):
+                rows = db.scalars(select(ShopfrontExtendedRecord).where(
+                    ShopfrontExtendedRecord.store_key == store.store_key,
+                    ShopfrontExtendedRecord.entity_type == entity_type,
+                ).order_by(ShopfrontExtendedRecord.source_id)).all()
+                for offset in range(0, len(rows), 200):
+                    batch = rows[offset:offset + 200]
+                    response = await pos_client.upsert_extended({
+                        "store_key": store.store_key,
+                        "entity_type": entity_type,
+                        "items": [{"source_id": item.source_id, "raw_payload": item.raw_payload} for item in batch],
+                    })
+                    result = response.get("data", response)
+                    if result.get("status") != "STAGED":
+                        raise PosIntegrationError(f"Extended record mirror was not staged for {entity_type}")
+                    staged += len(batch)
+        finally:
+            await pos_client.close()
+
+    return {
+        "status": "partial" if errors else "completed",
+        "counts": counts,
+        "errors": errors,
+        "pos_staged": staged,
+    }
 
 
 async def access_token(db: Session, settings: Settings, store: Store) -> str:

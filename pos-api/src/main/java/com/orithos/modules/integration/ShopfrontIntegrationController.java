@@ -142,6 +142,38 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "purchase_orders", body);
     }
 
+    @PostMapping("/extended:upsert")
+    @Transactional
+    public ApiResult<Map<String, Object>> extendedRecords(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
+                                                           @RequestBody JsonNode body) {
+        authorize(supplied);
+        String store = body.path("store_key").asText("").trim();
+        String entityType = body.path("entity_type").asText("").trim();
+        JsonNode items = body.path("items");
+        if (store.isBlank() || !entityType.matches("[a-z][a-z0-9_]{0,63}") || !items.isArray() || items.size() > 200) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "store_key, entity_type and up to 200 items are required");
+        }
+        try {
+            ensureShadowTables();
+            boolean postgres = isPostgres();
+            String sql = postgres
+                    ? "INSERT INTO shopfront_extended_record (store_key,entity_type,source_id,raw_payload) VALUES (?,?,?,?) ON CONFLICT (store_key,entity_type,source_id) DO UPDATE SET raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
+                    : "INSERT INTO shopfront_extended_record (store_key,entity_type,source_id,raw_payload) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
+            int accepted = 0;
+            for (JsonNode item : items) {
+                String sourceId = text(item, "source_id");
+                if (sourceId == null || sourceId.isBlank() || sourceId.length() > 192) continue;
+                JsonNode raw = item.path("raw_payload").isMissingNode() ? item : item.path("raw_payload");
+                jdbc.update(sql, store, entityType, sourceId, objectMapper.writeValueAsString(raw));
+                accepted++;
+            }
+            return ApiResult.ok(Map.of("status", "STAGED", "entity_type", entityType, "item_count", accepted, "business_write", false));
+        } catch (Exception e) {
+            log.error("Shopfront extended staging failed: entity_type={}, store={}, message={}", entityType, store, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront extended records", e);
+        }
+    }
+
     @GetMapping("/snapshot")
     public ApiResult<Map<String, Object>> snapshot(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
@@ -158,6 +190,7 @@ public class ShopfrontIntegrationController {
         result.put("suppliers", count("shopfront_supplier", storeKey));
         result.put("customers", count("shopfront_customer", storeKey));
         result.put("purchase_orders", count("shopfront_purchase_order", storeKey));
+        result.put("extended_records", count("shopfront_extended_record", storeKey));
         return ApiResult.ok(result);
     }
 
@@ -181,6 +214,7 @@ public class ShopfrontIntegrationController {
             case "suppliers" -> "shopfront_supplier";
             case "customers" -> "shopfront_customer";
             case "purchase_orders" -> "shopfront_purchase_order";
+            case "extended_records" -> "shopfront_extended_record";
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
         };
         String orderBy = switch (type) {
@@ -189,6 +223,7 @@ public class ShopfrontIntegrationController {
             case "sales" -> "external_id ASC";
             case "sale_items" -> "external_sale_id ASC, line_key ASC";
             case "payments" -> "external_sale_id ASC, payment_key ASC";
+            case "extended_records" -> "entity_type ASC, source_id ASC";
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
         };
         ensureShadowTables();
@@ -355,6 +390,7 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, name VARCHAR(255), business_number VARCHAR(128), status VARCHAR(64), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_customer (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, client_id VARCHAR(255), code VARCHAR(128), name VARCHAR(255), email VARCHAR(255), phone VARCHAR(128), mobile VARCHAR(128), deleted BOOLEAN, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, supplier_source_id " + key + ", status VARCHAR(64), order_date VARCHAR(64), total_cost DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_extended_record (store_key VARCHAR(64) NOT NULL, entity_type VARCHAR(64) NOT NULL, source_id VARCHAR(192) NOT NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, entity_type, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
     }
 

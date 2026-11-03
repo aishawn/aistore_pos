@@ -90,6 +90,108 @@ query ShopfrontCustomers($after: Cursor) {
 }
 """
 
+CUSTOMER_GROUPS_QUERY = """
+{ customerGroups {
+  id name
+  defaultReceipt { id name type components receiptWidth accountReceipt padding { top left right bottom } attachments { id name attachment { id name } } }
+  emailReceipt { id name type components receiptWidth accountReceipt padding { top left right bottom } attachments { id name attachment { id name } } }
+  paymentReceipt { id name type components receiptWidth accountReceipt padding { top left right bottom } attachments { id name attachment { id name } } }
+  statementTemplate { id name components signature replyTo subject }
+  loyaltyEnabled loyaltyRate disablePromotions priceList { id name }
+  allowAccountSales accountLimit autoPrintReceipt autoPrintPaymentReceipt
+  autoPrintParkedReceipt autoEmailReceipt requireOrderReference creditTerms
+  createdAt updatedAt
+} }
+"""
+
+PRICE_LISTS_QUERY = """
+{ priceLists {
+  id name allowHigherPrice allowDiscountingPromotions createdAt updatedAt
+  items {
+    exclude type rule amount prices { quantity price }
+    item {
+      __typename
+      ... on Product { id name mdbId }
+      ... on Category { id name mdbId }
+      ... on Brand { id name mdbId }
+      ... on Family { id name mdbId }
+      ... on Tag { id name mdbId }
+      ... on PriceListFallback { fallbackId: id }
+    }
+    minRule minAmount minPrices { quantity price }
+  }
+} }
+"""
+
+CLASSIFICATION_QUERIES = {
+    "brands": "{ brands(first: 100) { edges { node { id name parent deleted mdbId } } } }",
+    "categories": "{ categories(first: 100) { edges { node { id name parent deleted mdbId metcashMSC } } } }",
+    "families": "{ families(first: 100) { edges { node { id name parent deleted mdbId deletedAt } } } }",
+    "tags": "{ tags(first: 100) { edges { node { id name parent deleted mdbId } } } }",
+}
+
+CUSTOMER_PAYMENTS_QUERY = """
+query ShopfrontCustomerPayments($after: Cursor) {
+  customerPayments(first: 100, after: $after) {
+    edges { node {
+      id reference status startBalance amount rounding timestamp cancelledAt
+      customer { id clientId } paymentMethod { id name } user { id }
+      register { id } relatesTo { id }
+    } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+"""
+
+SAVED_REPORTS_QUERY = """
+{ reports {
+  id name layers nextEmailDate syntaxErrors createdAt updatedAt
+  ... on FavouriteReport { favouriteType: type favouriteReport: report }
+  ... on SpecialFavouriteReport { specialType: type specialReport: report }
+} }
+"""
+
+EXTENDED_CONNECTION_QUERIES = {
+    "promotions": """query ShopfrontPromotions($after: Cursor) {
+      promotions(showInactive: true, first: 100, after: $after) { edges { node {
+      id mdbId mdbSyncing clientId name start end express mixCriteria active
+      saleMaxApplicationCount activatedBy promotionCategory { id name }
+      customerGroups { id name } outlets { id name }
+      criteria { buyAmount buyAmountMax buyAmountType discountAmount discountEverydayPromotions
+        excludeCountQuantity excludePricePoints minQuantity mixedOnly optional quantityType type
+        items { exclude rebate item { __typename ... on Product { id name mdbId }
+          ... on Category { id name mdbId } ... on Brand { id name mdbId }
+          ... on Family { id name mdbId } ... on Tag { id name mdbId } } } }
+      schedule { anchor period offset duration }
+    } } pageInfo { hasNextPage endCursor } }
+    }
+    """,
+    "product_backorders": """{ productBackorders(first: 100) { edges { node {
+      id quantity recurringPeriod nextDueDate notes
+    } } pageInfo { hasNextPage endCursor } } }""",
+    "stocktakes": """{ stocktakes(first: 100) { edges { node { id name type status displayExpected } }
+      pageInfo { hasNextPage endCursor } } }""",
+    "external_stocktakes": """{ externalStocktakes(first: 100) { edges { node {
+      id zeroStock overrideStock status timestamp
+    } } pageInfo { hasNextPage endCursor } } }""",
+    "closures": """{ closures(first: 100) { edges { node {
+      id movement totalExpected totalReceived totalTransactions
+    } } pageInfo { hasNextPage endCursor } } }""",
+}
+
+EXTENDED_CONNECTION_ROOTS = {
+    "product_backorders": "productBackorders",
+    "external_stocktakes": "externalStocktakes",
+}
+
+EXTENDED_LIST_QUERIES = {
+    "outlets": "{ outlets { id name } }",
+    "registers": "{ registers { id name invoiceNumber openTime closed } }",
+    "customer_groups": CUSTOMER_GROUPS_QUERY,
+    "price_lists": PRICE_LISTS_QUERY,
+    "saved_reports": SAVED_REPORTS_QUERY,
+}
+
 
 class ShopfrontClient:
     def __init__(self, vendor: str, client_id: str, client_secret: str, redirect_uri: str, scopes: str, http: httpx.AsyncClient | None = None):
@@ -557,6 +659,60 @@ UNCONSOLIDATED'''
 
     async def fetch_customers(self, access_token: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, CUSTOMERS_QUERY, "customers")
+
+    async def fetch_customer_groups(self, access_token: str) -> list[dict[str, Any]]:
+        data = await self.graphql(access_token, CUSTOMER_GROUPS_QUERY)
+        rows = data.get("customerGroups", [])
+        return rows if isinstance(rows, list) else []
+
+    async def fetch_price_lists(self, access_token: str) -> list[dict[str, Any]]:
+        data = await self.graphql(access_token, PRICE_LISTS_QUERY)
+        rows = data.get("priceLists", [])
+        return rows if isinstance(rows, list) else []
+
+    async def fetch_classifications(self, access_token: str) -> dict[str, list[dict[str, Any]]]:
+        result = {}
+        for entity, query in CLASSIFICATION_QUERIES.items():
+            result[entity] = await self._fetch_connection_nodes(access_token, query, entity)
+        return result
+
+    async def fetch_customer_payments(self, access_token: str) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, CUSTOMER_PAYMENTS_QUERY, "customerPayments")
+
+    async def fetch_saved_reports(self, access_token: str) -> list[dict[str, Any]]:
+        data = await self.graphql(access_token, SAVED_REPORTS_QUERY)
+        rows = data.get("reports", [])
+        return rows if isinstance(rows, list) else []
+
+    async def fetch_extended_data(self, access_token: str) -> tuple[dict[str, list[dict[str, Any]]], dict[str, str]]:
+        entities: dict[str, list[dict[str, Any]]] = {}
+        errors: dict[str, str] = {}
+        paginated = {**CLASSIFICATION_QUERIES, **EXTENDED_CONNECTION_QUERIES}
+        for entity, query in paginated.items():
+            try:
+                root = EXTENDED_CONNECTION_ROOTS.get(entity, entity)
+                entities[entity] = await self._fetch_connection_nodes(access_token, query, root)
+            except Exception as exc:
+                errors[entity] = str(exc)[:500]
+        for entity, query in EXTENDED_LIST_QUERIES.items():
+            root = {
+                "customer_groups": "customerGroups",
+                "price_lists": "priceLists",
+                "saved_reports": "reports",
+            }.get(entity, entity)
+            try:
+                data = await self.graphql(access_token, query)
+                rows = data.get(root, [])
+                if not isinstance(rows, list):
+                    raise ShopfrontError(f"Shopfront {root} query did not return a list")
+                entities[entity] = [row for row in rows if isinstance(row, dict)]
+            except Exception as exc:
+                errors[entity] = str(exc)[:500]
+        try:
+            entities["customer_payments"] = await self.fetch_customer_payments(access_token)
+        except Exception as exc:
+            errors["customer_payments"] = str(exc)[:500]
+        return entities, errors
 
     async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return await self._fetch_connection_nodes(access_token, query, "products")

@@ -22,6 +22,7 @@ export function setOdooReadIdentity(value: string | null) {
 function policy(path: string, init?: RequestInit): number | null {
   const url = new URL(path, "https://cache.invalid");
   const method = init?.method?.toUpperCase() ?? "GET";
+  if (method === "POST" && url.pathname === "/api/odoo/sales-daily") return 30_000;
   if (method === "POST" && url.pathname === "/api/odoo/records") {
     try {
       const body = JSON.parse(String(init?.body));

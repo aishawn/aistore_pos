@@ -48,6 +48,7 @@ test("only whitelisted reads are cached; financial validation and immutable pagi
   for (const path of ["/api/odoo/checkout/quote", "/api/odoo/checkout/status", "/api/odoo/customer-balances", "/api/odoo/sales/5"]) assert.equal(cachedReadPolicy(path), null);
   assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", inventoryReport: true }) }), null);
   assert.equal(cachedReadPolicy("/api/odoo/purchase-orders"), 30_000);
+  assert.equal(cachedReadPolicy("/api/odoo/sales-daily", { method: "POST", body: JSON.stringify({ offset: 40 }) }), 30_000);
   assert.equal(cachedReadPolicy("/api/odoo/customer-groups"), 300_000);
 });
 
@@ -83,14 +84,15 @@ test("one cancelled subscriber does not abort another, and invalidation rejects 
   await assert.rejects(stale, { name: "AbortError" });
 });
 
-test("summary requires only three RPCs and does not load graphs, lines or recent sales", async () => {
+test("summary preserves dashboard metrics without graphs, product rankings or recent sales", async () => {
   const calls: string[] = [];
   const rpc = (async (_session: string, model: string, method: string) => {
     calls.push(`${model}.${method}`);
-    return method === "read_group" ? [{ amount_total: 123.45 }] : 3;
+    return method === "read_group" ? [{ amount_total: 123.45 }] : method === "search_read" ? [] : 3;
   }) as ReportRpc;
   const result = await calculateReport(rpc, { sessionId: "fixture", companyId: 41, company: { name: "Fixture", currency: "AUD", timezone: scope.timezone }, period: "today", summaryOnly: true, now });
-  assert.equal(calls.length, 3); assert.equal(result.revenue, 123.45);
-  assert.ok(calls.every(value => !value.startsWith("pos.order.line")));
+  assert.equal(calls.length, 6); assert.equal(result.revenue, 123.45);
+  assert.equal(calls.filter(value => value === "pos.order.line.search_read").length, 1);
+  assert.equal(calls.includes("pos.order.search_read"), false);
   assert.equal("trend" in result, false);
 });

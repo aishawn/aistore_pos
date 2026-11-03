@@ -255,6 +255,17 @@ class InventorySnapshot(Base):
     __table_args__ = (UniqueConstraint("store_key", "shopfront_product_id", "outlet_id", name="uq_inventory_snapshot"),)
 
 
+class ShopfrontExtendedRecord(Base):
+    __tablename__ = "shopfront_extended_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    entity_type: Mapped[str] = mapped_column(String(64), index=True)
+    source_id: Mapped[str] = mapped_column(String(192), index=True)
+    raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "entity_type", "source_id", name="uq_shopfront_extended_record"),)
+
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
     id: Mapped[int] = mapped_column(primary_key=True)

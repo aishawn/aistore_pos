@@ -13,7 +13,7 @@ Reports defaults to Yesterday and keeps only Yesterday, Last week and Last month
 
 ## API and UI
 
-`/api/odoo/reporting-dashboard?period=today&view=summary` provides the lightweight Home overview (three statistical RPCs on computation, no product rankings, graph or sales details). Historical periods use `period=yesterday|last_week|last_month`. `/api/odoo/dead-stock` reads its independent daily result.
+`/api/odoo/reporting-dashboard?period=today&view=summary` provides the lightweight Home overview (six read RPCs on computation, including the concurrently introduced inventory/yesterday margin metrics, no product rankings, graph or sales details). Historical periods use `period=yesterday|last_week|last_month`. `/api/odoo/dead-stock` reads its independent daily result.
 
 `refresh=true` queues/coalesces a forced computation. HTTP 202 returns a `taskId`; polling the same authenticated endpoint with `task=<id>` checks scope, period, boundaries and revision. Poll requests must omit `refresh`. Polling pauses while hidden and is abortable. No standalone unauthenticated status endpoint exists.
 
@@ -27,9 +27,11 @@ Other reads use an explicit browser whitelist: lists 30 seconds; categories, cus
 
 - Node 24: 27 targeted date/cache/inventory/client-retry unit checks pass; TypeScript and targeted ESLint pass. No local application build.
 - Actual Reports handler: six groups cover calendar query/comparison domains, legacy parameters and authentication. Inventory handler: nine checks include reuse, explicit refresh and snapshot consistency.
-- Actual independent worker + real local Redis/AOF + fixture Odoo/backend: 16 checks pass, including unattended preparation, zero sales RPCs on snapshot hits, isolation, coalesced refresh, write invalidation, failure/backoff, rejected obsolete publication, Redis restart and outage fallback. Local snapshot P95 was 316 ms; this is fixture latency, not live UAT. Two worker failure logs are deliberately induced by these tests.
+- Actual independent worker + real local Redis/AOF + fixture Odoo/backend: 16 checks pass, including unattended preparation, zero sales RPCs on snapshot hits, isolation, coalesced refresh, write invalidation, failure/backoff, rejected obsolete publication, Redis restart and outage fallback. Local snapshot P95 was 378 ms after integration; this is fixture latency, not live UAT. Two worker failure logs are deliberately induced by these tests.
 - Intercepted Edge UI: 33 checks at 390/1024/1440, zero page errors. Visited-period switches render below 100 ms with no new report/dead-stock requests; checks include rapid switching, preparing, refresh failure, empty state and overflow. Fixtures do not reconcile real business totals.
 - Baseline Demo read-only requests before this change took 1009/1123/1652 ms for yesterday/week/month. Baseline runtime SHA and underlying RPC counts were not captured. Its `today&view=summary` probe ran against the legacy handler and does not prove Today support.
 - Demo target configured explicitly: vendor 1/company 137, `aipos_uat`, Australia/Adelaide. This is shared UAT, not isolated customer production. No business writes were used for verification. Deployment/runtime and live timing evidence are recorded separately after deployment.
 
 Evidence: `UAT_REPORT_CACHE_ROUTE_LOCAL_2026-11-03.json`, `UAT_REPORT_CACHE_UI_LOCAL_2026-11-03.json`, `UAT_REPORT_CACHE_BASELINE_ONLINE_2026-11-03.json`, and the existing calendar/inventory handler evidence. Reproduction scripts are `scripts/pilot-report-cache-local.cjs` and `scripts/pilot-report-cache-ui-local.cjs`.
+
+Integration with concurrent main: retained daily-sales history, added its 30-second cache/version guards, and preserved the newly introduced dashboard inventory/yesterday-margin metrics in the prepared Today summary. Yesterday margin is unavailable if its bounded 5,000-line scan reaches the limit; missing costs remain unavailable. The earlier three-RPC summary unit result predates this integration; the final targeted test expects six RPCs and no graph/product rankings/recent sales.
