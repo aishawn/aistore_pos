@@ -1239,6 +1239,7 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         include_catalog,
                         force_full_catalog,
                         refresh_inventory=bool(job and job.job_type == "daily_sync" and cursor == date.fromisoformat(job.from_date)),
+                        replay_sales_window=bool(job and (job.payload or {}).get("replay_sales_window")),
                     )
                     # Never advance a durable history cursor past a chunk that
                     # failed after all split retries. Advancing here would
@@ -1281,6 +1282,7 @@ async def _sync_history_chunk(
     include_catalog: bool,
     force_full_catalog: bool = False,
     refresh_inventory: bool = False,
+    replay_sales_window: bool = False,
 ) -> bool:
     try:
         async def keepalive() -> None:
@@ -1450,8 +1452,8 @@ async def _sync_history_chunk(
             return False
         midpoint = start + timedelta(days=(end - start).days // 2)
         logger.warning("Splitting failed Shopfront range: store=%s from=%s to=%s", store_key, start, end)
-        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog, force_full_catalog, refresh_inventory)
-        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False, False, False)
+        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog, force_full_catalog, refresh_inventory, replay_sales_window)
+        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False, False, False, replay_sales_window)
         return left and right
 
 
@@ -1496,6 +1498,14 @@ async def push_pos_snapshot(
         # or malformed source timestamp are still imported. Full snapshots
         # retain the normal date filter below.
         sales_query = sales_query.where(Sale.synced_at >= run.started_at)
+    elif run is not None and start is not None and end is not None and replay_sales_window:
+        window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
+        window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
+        sales_query = sales_query.where(
+            (Sale.synced_at >= run.started_at)
+            | ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
+            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        )
     elif start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
