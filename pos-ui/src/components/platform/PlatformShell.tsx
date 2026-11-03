@@ -46,7 +46,19 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return null;
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 px-4 py-10">
+        <OrithosLogo />
+        <section role="alert" className="space-y-3">
+          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Your session could not be loaded</h1>
+          <p className="text-sm text-[var(--oh-text-secondary)]">Try again, or sign in to open the admin console.</p>
+        </section>
+        <div className="flex flex-wrap items-center gap-3">
+          <AdminSecondaryButton onClick={() => window.location.reload()}>Retry</AdminSecondaryButton>
+          <Link href="/login" className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-[var(--oh-primary)] hover:underline">Sign in</Link>
+        </div>
+      </main>
+    );
   }
 
   if (!user.platformOperator) {

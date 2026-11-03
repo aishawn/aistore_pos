@@ -6,7 +6,7 @@ import Link from "next/link";
 import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
 import { AlertCircle, Download, FileText, LoaderCircle, RefreshCw, X } from "lucide-react";
 import { searchOdooDailySales, type OdooDailySaleRecord, type OdooSalesPeriodFilter, type OdooSalesStatusFilter } from "@/lib/odoo-api";
-import { formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
+import { formatOdooGroupedDate } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency: string) => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -35,8 +35,6 @@ export function OdooSalesHistoryPage({ variant = "page", onRequestClose, initial
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
-  const [timezone, setTimezone] = useState("Australia/Adelaide");
   const [currency, setCurrency] = useState("AUD");
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +50,7 @@ export function OdooSalesHistoryPage({ variant = "page", onRequestClose, initial
       const page = await searchOdooDailySales({ status, period, fromDate: fromDate || undefined, toDate: toDate || undefined, limit: PAGE_SIZE, offset: append ? nextOffset.current : 0 });
       if (current !== revision.current) return;
       setConnected(true);
-      setItems(previous => append ? [...previous, ...page.items.filter(row => !previous.some(item => item.date === row.date))] : page.items); nextOffset.current = page.offset + page.items.length; setHasNext(page.hasNext); setTimezone(page.timezone); setCurrency(page.currency); setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
+      setItems(previous => append ? [...previous, ...page.items.filter(row => !previous.some(item => item.date === row.date))] : page.items); nextOffset.current = page.offset + page.items.length; setHasNext(page.hasNext); setCurrency(page.currency);
     } catch (cause) { if (current === revision.current) setError(cause instanceof Error ? cause.message : "Could not load daily sales."); }
     finally { if (current === revision.current) { busy.current = false; setLoading(false); setLoadingMore(false); } }
   }, [fromDate, period, status, toDate]);
@@ -88,7 +86,7 @@ export function OdooSalesHistoryPage({ variant = "page", onRequestClose, initial
   );
 
   return <Root className={isPanel ? "flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-white p-3 sm:p-4" : "flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6"}>
-    <header className="flex shrink-0 items-start justify-between gap-3"><div className="min-w-0"><h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "oh-type-title text-[var(--oh-text)]"}>Sales History</h1>{!isPanel && <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Daily sales, refunds and reporting totals from the connected Orithos ledger.</p>}{view === "daily" && lastLoadedAt !== null && <p className="mt-1 text-xs text-[var(--oh-muted)]">Last refreshed {formatStoreEpoch(lastLoadedAt, timezone)}.</p>}</div><div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => { clearOdooReadCache(); if (view === "lines") setLinesRefreshKey((value) => value + 1); else void loadSales(); }} disabled={view === "daily" && loading} aria-label={view === "daily" && loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"><RefreshCw size={16} className={view === "daily" && loading ? "animate-spin" : ""} />{!isPanel ? "Refresh" : null}</button>{isPanel && onRequestClose && <button type="button" onClick={onRequestClose} aria-label="Close sales history" className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--oh-border)] text-[var(--oh-text)]"><X size={18} /></button>}</div></header>
+    <header className="flex shrink-0 items-start justify-between gap-3"><div className="min-w-0"><h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "oh-type-title text-[var(--oh-text)]"}>Sales History</h1>{!isPanel && <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Daily sales, refunds and reporting totals from the connected Orithos ledger.</p>}</div><div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => { clearOdooReadCache(); if (view === "lines") setLinesRefreshKey((value) => value + 1); else void loadSales(); }} disabled={view === "daily" && loading} aria-label={view === "daily" && loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"><RefreshCw size={16} className={view === "daily" && loading ? "animate-spin" : ""} />{!isPanel ? "Refresh" : null}</button>{isPanel && onRequestClose && <button type="button" onClick={onRequestClose} aria-label="Close sales history" className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--oh-border)] text-[var(--oh-text)]"><X size={18} /></button>}</div></header>
 
     {view === "lines" ? <section className="min-h-0 flex-1"><WorkspaceRecordsPanel type="lines" toolbarStart={viewSwitch} embedded refreshKey={linesRefreshKey} /></section> : <>
     {connected === false ? <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center"><div className="max-w-md"><AlertCircle className="mx-auto text-amber-600" size={28} /><h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view sales</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect with your Orithos staff account to view daily sales.</p><Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Orithos</Link></div></section> : <>

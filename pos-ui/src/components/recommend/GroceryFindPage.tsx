@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RecommendShell } from "@/components/recommend/RecommendShell";
 import { ProductRecommendCard } from "@/components/recommend/ProductRecommendCard";
 import {
@@ -45,6 +45,7 @@ export function GroceryFindPage() {
   const [budgetId, setBudgetId] = useState("any");
   const [occasion, setOccasion] = useState("not_sure");
   const [loading, setLoading] = useState(false);
+  const requestInFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [cards, setCards] = useState<GroceryCard[]>([]);
   const [emptyReason, setEmptyReason] = useState<string | null>(null);
@@ -62,17 +63,20 @@ export function GroceryFindPage() {
     setStep(next);
   }
 
-  async function runRecommend() {
+  async function runRecommend(requestProfile: GroceryRecommendPayload = profile) {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     setLoading(true);
     setError(null);
     try {
-      const res = await groceryRecommend(profile);
+      const res = await groceryRecommend(requestProfile);
       setCards(res.recommendations ?? []);
       setEmptyReason(res.emptyReason);
       setStep("results");
     } catch (e) {
       setError(apiFailureMessage(e, "Could not recommend products.", "Please sign in again."));
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   }
@@ -102,17 +106,20 @@ export function GroceryFindPage() {
       ) : null}
 
       {error ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-900">
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] text-red-900">
           <p>{error}</p>
           <button
             type="button"
-            className="mt-2 text-[13px] font-semibold text-red-800 underline"
+            disabled={loading}
+            className="mt-2 min-h-11 text-[13px] font-semibold text-red-800 underline disabled:opacity-50"
             onClick={() => void runRecommend()}
           >
             Retry recommendation
           </button>
         </div>
       ) : null}
+
+      {loading && <p role="status" className="mb-4 text-sm text-[var(--oh-muted)]">Matching stock…</p>}
 
       {step === "category" ? (
         <StepBlock label="What are they looking for?">
@@ -149,31 +156,13 @@ export function GroceryFindPage() {
           <ChipGrid
             options={OCCASIONS}
             selected={occasion}
+            disabled={loading}
             onSelect={(id) => {
               setOccasion(id);
-              void (async () => {
-                setLoading(true);
-                setError(null);
-                try {
-                  const res = await groceryRecommend({
-                    category,
-                    budgetMin,
-                    budgetMax,
-                    occasion: id,
-                  });
-                  setCards(res.recommendations ?? []);
-                  setEmptyReason(res.emptyReason);
-                  setStep("results");
-                } catch (e) {
-                  setError(apiFailureMessage(e, "Could not recommend products.", "Please sign in again."));
-                } finally {
-                  setLoading(false);
-                }
-              })();
+              void runRecommend({ ...profile, occasion: id });
             }}
           />
-          {loading ? <p className="mt-4 text-[13px] text-[var(--oh-muted)]">Matching stock…</p> : null}
-          <BackButton onClick={() => go("budget")} />
+          <BackButton disabled={loading} onClick={() => go("budget")} />
         </StepBlock>
       ) : null}
 
@@ -185,14 +174,8 @@ export function GroceryFindPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="text-[13px] font-semibold text-[var(--oh-primary)]"
-                  onClick={() => go("category")}
-                >
-                  Start over
-                </button>
-                <button
-                  type="button"
-                  className="text-[13px] font-semibold text-[var(--oh-primary)]"
+                  disabled={loading}
+                  className="min-h-11 text-[13px] font-semibold text-[var(--oh-primary)] disabled:opacity-50"
                   onClick={() => void runRecommend()}
                 >
                   Retry recommendation
@@ -204,7 +187,8 @@ export function GroceryFindPage() {
           )}
           <button
             type="button"
-            className="text-left text-[13px] font-semibold text-[var(--oh-primary)]"
+            disabled={loading}
+            className="min-h-11 text-left text-[13px] font-semibold text-[var(--oh-primary)] disabled:opacity-50"
             onClick={() => go("category")}
           >
             Start over
@@ -228,10 +212,12 @@ function ChipGrid({
   options,
   selected,
   onSelect,
+  disabled = false,
 }: {
   options: { id: string; label: string }[];
   selected: string;
   onSelect: (id: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -241,8 +227,9 @@ function ChipGrid({
           <button
             key={opt.id}
             type="button"
+            disabled={disabled}
             onClick={() => onSelect(opt.id)}
-            className={`min-h-11 rounded-lg border px-3.5 py-2.5 text-[14px] font-medium transition ${
+            className={`min-h-11 rounded-lg border px-3.5 py-2.5 text-[14px] font-medium transition disabled:cursor-wait disabled:opacity-50 ${
               active
                 ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
                 : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] hover:border-[var(--oh-primary)]"
@@ -256,12 +243,13 @@ function ChipGrid({
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
+function BackButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="mt-4 text-[13px] font-semibold text-[var(--oh-muted)] hover:text-[var(--oh-text)]"
+      disabled={disabled}
+      className="mt-4 min-h-11 disabled:opacity-50 text-[13px] font-semibold text-[var(--oh-muted)] hover:text-[var(--oh-text)]"
     >
       Back
     </button>

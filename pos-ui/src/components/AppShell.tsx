@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -43,6 +43,7 @@ function isAssistantPath(pathname: string): boolean {
 }
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register"]);
+const subscribeToHost = () => () => {};
 
 function safeInternalPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -75,12 +76,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, ready, logout } = useAuth();
+  const host = useSyncExternalStore(subscribeToHost, () => window.location.host, () => "");
 
   const localPreview =
     typeof document !== "undefined"
     && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
   const onControlPlaneHost =
-    typeof window !== "undefined" && !localPreview && isControlPlaneHost(window.location.host);
+    Boolean(host) && !localPreview && isControlPlaneHost(host);
   // Password reset must work on app.* without the store Sidebar/POS chrome.
   const chromeless =
     CHROMELESS.includes(pathname)
@@ -151,7 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user && mode !== "mobile" && pathname === "/m") {
       router.replace(STORE_WEB_LANDING_PATH);
     }
-  }, [ready, user, chromeless, pathname, router]);
+  }, [ready, user, chromeless, pathname, router, onControlPlaneHost]);
 
   if (chromeless) {
     return <>{children}</>;
