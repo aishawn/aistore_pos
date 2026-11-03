@@ -8,7 +8,7 @@
 | Started / timezone | 2026-11-04 / Asia/Shanghai |
 | Operator | Codex |
 | Branch | `codex/assistant-provenance-ui` |
-| Source SHA | `365716283c15cf523de26a0b2bbbb90230942927` |
+| Source SHA | `8f9c91718445f4eccc1a0ee018b93a10ccb0b541` |
 | Runtime SHA | Local only; no deployed runtime tested |
 | Environment | Local fixture / static checks |
 | Database | Not applicable |

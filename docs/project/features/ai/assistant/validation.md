@@ -4,7 +4,7 @@
 
 ## 2026-11-04 本地来源说明回归
 
-候选源码 `365716283c15cf523de26a0b2bbbb90230942927`，Node `v24.19.0`：UI 全量单测 153/153 PASS（含 provenance helper 8 项），`tsc --noEmit` PASS，改动文件 ESLint 0 errors / 3 warnings（均位于 SellAiPanel 既有 effect 行），只读验收脚本语法和 `git diff --check` PASS。完整记录：[session](../../../../test-sessions/2026-11-04-ai-answer-provenance.md)，机器证据 E-AI-PROVENANCE-LOCAL。
+候选源码 `8f9c91718445f4eccc1a0ee018b93a10ccb0b541`，Node `v24.19.0`：UI 全量单测 153/153 PASS（含 provenance helper 8 项），`tsc --noEmit` PASS，改动文件 ESLint 0 errors / 3 warnings（均位于 SellAiPanel 既有 effect 行），只读验收脚本语法和 `git diff --check` PASS。完整记录：[session](../../../../test-sessions/2026-11-04-ai-answer-provenance.md)，机器证据 E-AI-PROVENANCE-LOCAL。
 
 这只是本地静态/fixture 验证，不证明远端构建、部署或在线 UI 行为。安装依赖的 npm audit 报告 37 项已知漏洞（2 low、23 moderate、11 high、1 critical）；本次未执行依赖升级。在线验收需分别固定 SKR 与 Demo runtime SHA，并比较可见来源、路由、请求区间、实际返回日期和 API 数据时间戳；不能以请求结束日代替实际最新销售日。
 

@@ -864,7 +864,7 @@
       "status": "PASS",
       "evidenceType": "local-fixture",
       "recordedAt": "2026-11-04",
-      "sourceSha": "365716283c15cf523de26a0b2bbbb90230942927",
+      "sourceSha": "8f9c91718445f4eccc1a0ee018b93a10ccb0b541",
       "runtimeSha": null,
       "model": null,
       "promptVersion": null,
