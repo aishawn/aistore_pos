@@ -88,7 +88,14 @@ type ReplenishmentData = {
   exceptionCount?: number;
   truncated: boolean;
   catalogueCoverage?: { status: string; loadedProducts: number; eligibleProducts: number; forecastedProducts: number };
-  salesHistory?: { timezone: string; timezoneVerified: boolean };
+  salesHistory?: {
+    timezone: string;
+    timezoneVerified: boolean;
+    startDate?: string;
+    endDateExclusive?: string;
+    completeDaysOnly?: boolean;
+    refunds?: string;
+  };
   reviewRequiredCount?: number;
   reviewIssueCounts?: Record<string, number>;
   excludedProductCount?: number;
@@ -542,6 +549,12 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
           {data?.forecast?.enabled && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               Forecast service {data.forecast.status.toLowerCase()} · model version {data.forecast.modelVersion ?? "unknown"}. Products with insufficient history remain explicitly marked for human review and are excluded from automatic purchase quantities.
+            </p>
+          )}
+          {data?.forecast?.enabled && (
+            <p className="mt-1 text-xs text-[var(--oh-muted)]" role="status">
+              Sales input: {data.forecast.sourceVersion?.startsWith("odoo_pos_order_line_local_complete_days") ? "Odoo POS order lines" : "source unavailable"} · {data.salesHistory?.startDate ?? "start date unavailable"} to before {data.salesHistory?.endDateExclusive ?? "end date unavailable"} · {data.historyDays} {data.salesHistory?.completeDaysOnly ? "complete days" : "days"} · {data.salesHistory?.timezone ?? "timezone unavailable"}
+              {data.salesHistory?.refunds === "SIGNED_NET_UNITS" ? " · refunds netted" : ""}.
             </p>
           )}
           {data?.forecast?.enabled && data.products.length > 0 && (
