@@ -1,5 +1,6 @@
 import { getReportPeriodBounds, type ReportQueryPeriod } from "./report-period.ts";
-import { purchaseCosts, type CostSale } from "./dashboard-purchase-cost.ts";
+import { type CostSale } from "./dashboard-purchase-cost.ts";
+import { verifiedLedgerCosts } from "./dashboard-ledger-cost.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 
 export type ReportRpc = <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs?: Record<string, unknown>, correlationId?: string | null) => Promise<T | undefined>;
@@ -13,7 +14,7 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
-async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, currency: string, correlationId?: string | null) {
+async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, correlationId?: string | null) {
   const bounds = getReportPeriodBounds("yesterday", now, timezone);
   const from = bounds.start.toISOString().slice(0, 19).replace("T", " ");
   const to = bounds.end.toISOString().slice(0, 19).replace("T", " ");
@@ -24,7 +25,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const [salesRows, lines, stockRows, negativeRows] = await Promise.all([
     rpc<Array<{ amount_total: number; amount_tax: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => null),
     rpc<Array<CostSale & { order_id: [number, string] }>>(sessionId, "pos.order.line", "search_read", [lineDomain], { fields: ["order_id", "product_id", "product_uom_id", "price_subtotal", "qty"], order: "id asc", limit: 10001 }, correlationId).catch(() => null),
-    rpc<Array<{ quantity: number; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
+    rpc<Array<{ quantity: number; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", ">", 0]], ["quantity:sum"], ["product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
     rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
   ]);
   const numeric = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -35,7 +36,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const completeLines = Array.isArray(lines) && lines.length <= 10000 && lines.every(line => numeric(line.price_subtotal) && numeric(line.qty));
   const lineNet = completeLines ? lines.reduce((sum, line) => sum + line.price_subtotal, 0) : null;
   const reconciled = netSales !== null && lineNet !== null && Math.abs(netSales - lineNet) < 0.011;
-  let grossMarginStatus = !completeLines || !salesAvailable ? "unavailable" : !reconciled ? "sales_mismatch" : !lines.length || netSales === 0 ? "no_sales" : "purchase_cost_missing";
+  let grossMarginStatus = !completeLines || !salesAvailable ? "unavailable" : !reconciled ? "sales_mismatch" : !lines.length || netSales === 0 ? "no_sales" : "ledger_cost_unverified";
   let coverage = 0;
   let margin: number | null = null;
   if (completeLines && lines.length && reconciled && netSales !== null && netSales > 0) {
@@ -44,7 +45,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
       const dates = new Map((orders ?? []).map(order => [order.id, order.date_order]));
       if (lines.some(line => !dates.has(line.order_id[0]))) throw new Error("Sale dates are incomplete");
       const costLines = lines.filter(line => line.qty !== 0).map(line => ({ ...line, "order_id.date_order": dates.get(line.order_id[0])! }));
-      const costs = await purchaseCosts(rpc, sessionId, companyId, currency, costLines, correlationId);
+      const costs = await verifiedLedgerCosts(rpc, sessionId, companyId, costLines.map(line => line.id), correlationId);
       const denominator = costLines.reduce((sum, line) => sum + Math.abs(line.price_subtotal), 0);
       coverage = denominator ? costLines.reduce((sum, line) => sum + (costs.has(line.id) ? Math.abs(line.price_subtotal) : 0), 0) / denominator : 0;
       if (costs.size === costLines.length && costLines.length) {
@@ -55,7 +56,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   }
   const stockAvailable = Array.isArray(stockRows) && stockRows.every(row => numeric(row.quantity) && row.product_uom_id !== false);
   const mixedUnits = stockAvailable && new Set(stockRows.map(row => row.product_uom_id && row.product_uom_id[0])).size > 1;
-  const inventoryUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : null;
+  const inventoryUnits = stockAvailable && !mixedUnits ? Math.round(stockRows.reduce((sum, row) => sum + row.quantity, 0)) : null;
   return {
     inventoryUnits, inventoryAvailable: stockAvailable && !mixedUnits,
     inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
@@ -63,7 +64,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     yesterdaySales, yesterdaySalesAvailable: salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
     yesterdayGrossMargin: margin, grossMarginCoverage: coverage, grossMarginStatus,
     salesReconciled: reconciled, salesReconciliationDifference: netSales !== null && lineNet !== null ? Math.round((lineNet - netSales) * 100) / 100 : null,
-    costBasis: "last_received_purchase_ex_tax", yesterdayFrom: from, yesterdayTo: to,
+    costBasis: "verified_original_ledger", yesterdayFrom: from, yesterdayTo: to,
   };
 }
 
@@ -169,7 +170,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
         rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], []], {}, correlationId),
         rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
         rpc<number>(sessionId, "pos.session", "search_count", [[["company_id", "=", companyId], ["state", "=", "opened"]]], {}, correlationId),
-        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, company.currency, correlationId),
+        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, correlationId),
       ]);
       return { period: "today", from, to, timezone, company: company.name, currency: company.currency,
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };

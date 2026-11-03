@@ -24,6 +24,7 @@ import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 import { useAuth } from "@/lib/auth";
 import { StockWorkspaceDialog } from "@/components/admin/StockWorkspaceDialog";
 import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
+import { CostReconciliationPanel } from "@/components/CostReconciliationPanel";
 import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
 import { OdooCategoriesPanel } from "@/components/admin/OdooCategoriesPanel";
 import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
@@ -46,7 +47,8 @@ const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFra
 export function OdooProductCataloguePage({ inventoryReport = false }: { inventoryReport?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const canAuditCosts = user?.isAdmin === true || user?.roleCode === "ADMIN";
   const [stockBusy, setStockBusy] = useState(false);
   const [categoryBusy, setCategoryBusy] = useState(false);
   const dialog = searchParams.get("dialog");
@@ -516,7 +518,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
-          {(hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
+          {(canAuditCosts || hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
+          {canAuditCosts && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("cost-reconciliation"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Cost Reconciliation</button>}
           {hasPermission("stock.products.view") && <><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("catalogue"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Catalogue</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("inventory"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Inventory</button></>}
           {hasPermission("stock.stocktake") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stocktake"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stocktake</button>}
           {hasPermission("stock.products.edit") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("categories"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Manage Categories</button>}
@@ -529,6 +532,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       </header>
 
       {(dialog === "catalogue" || dialog === "inventory") && hasPermission("stock.products.view") && <StockWorkspaceDialog title={dialog === "catalogue" ? "Catalogue" : "Inventory"} busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type={dialog} /></StockWorkspaceDialog>}
+      {dialog === "cost-reconciliation" && canAuditCosts && <StockWorkspaceDialog title="Cost Reconciliation" busy={false} onClose={() => setDialog(null)} actions={<Link href="/products/cost-reconciliation" className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm">Expand to full page</Link>}><CostReconciliationPanel /></StockWorkspaceDialog>}
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Manage Categories" busy={categoryBusy} onClose={() => setDialog(null)}><OdooCategoriesPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
       {dialog === "stocktake" && hasPermission("stock.stocktake") && <StockWorkspaceDialog title="Stocktake" busy={stockBusy} onClose={() => setDialog(null)} actions={<button type="button" disabled={stockBusy} onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete("dialog"); next.set("tab", "stocktake"); router.replace(`/products?${next}`, { scroll: false }); }} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Expand to full page</button>}><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></StockWorkspaceDialog>}
       {priceListsOpen && <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setPriceListsOpen(false); }}>

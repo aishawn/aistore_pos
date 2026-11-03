@@ -44,14 +44,14 @@ test('tax mismatch blocks margin, preserves actual sales, and flags raw negative
  const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,-5);assert.equal(r.inventoryStatus,'negative_stock');
 });
 test('missing receipts cannot be replaced by corrupt existing sale cost',async()=>{
- const r=await calculateReport(summaryRpc(),options);assert.equal(r.salesReconciled,true);assert.equal(r.grossMarginStatus,'purchase_cost_missing');assert.equal(r.yesterdayGrossMargin,null);
+ const r=await calculateReport(summaryRpc(),options);assert.equal(r.salesReconciled,true);assert.equal(r.grossMarginStatus,'unavailable');assert.equal(r.yesterdayGrossMargin,null);
 });
 test('partial service failure and mixed units never become verified zero values',async()=>{
  const r=await calculateReport(summaryRpc({failStock:true,failLines:true}),options);assert.equal(r.inventoryUnits,null);assert.equal(r.inventoryAvailable,false);assert.equal(r.grossMarginStatus,'unavailable');assert.equal(r.yesterdaySales,110);
  const m=await calculateReport(summaryRpc({mixed:true}),options);assert.equal(m.inventoryUnits,null);assert.equal(m.inventoryStatus,'mixed_units');
 });
 
-test('verified summary uses ex-tax purchase cost per selling unit', async () => {
+test('receipt estimates cannot replace the original ledger valuation', async () => {
  const base = summaryRpc();
  const costing = costingRpc();
  const rpc = (async (session, model, method, args, kwargs, correlationId) => {
@@ -59,9 +59,9 @@ test('verified summary uses ex-tax purchase cost per selling unit', async () => 
   return base(session, model, method, args, kwargs, correlationId);
  }) as ReportRpc;
  const r = await calculateReport(rpc, options);
- assert.equal(r.grossMarginStatus, 'verified');
- assert.equal(r.grossMarginCoverage, 1);
- assert.equal(r.yesterdayGrossMargin, (100 - 49.68 / 20) / 100);
+ assert.equal(r.grossMarginStatus, 'unavailable');
+ assert.equal(r.grossMarginCoverage, 0);
+ assert.equal(r.yesterdayGrossMargin, null);
  assert.equal(r.yesterdayTax, 10);
 });
 

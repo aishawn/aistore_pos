@@ -49,6 +49,24 @@ def parse_decimal(value: Any) -> Decimal | None:
         return None
 
 
+def sale_tax_amount(row: dict[str, Any], *, line: bool = False) -> Decimal | None:
+    """Amounts only: never interpret a tax rate/name as a monetary amount.
+
+    Preserve explicit zero; null aliases must not hide the supplied amount.
+    Conflicting aliases are unresolved evidence, not a reason to select one.
+    """
+    names = ("tax", "Tax", "taxAmount", "tax_amount") if line else ("Tax Amount", "total_tax", "totalTax", "taxAmount", "tax")
+    values = []
+    for name in names:
+        if row.get(name) is None or row.get(name) == "":
+            continue
+        value = parse_decimal(row[name])
+        if value is None or not value.is_finite():
+            return None
+        values.append(value)
+    return values[0] if values and all(value == values[0] for value in values) else None
+
+
 def merge_sale_detail(row: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any]:
     """Merge a complete Sale response without discarding report fields."""
     merged = dict(row)
@@ -822,7 +840,7 @@ async def sync_store(
                 sale.created_at = parse_datetime(first(row, "createdAt", "created_at", "timestamp"))
                 sale.updated_at = parse_datetime(first(row, "updatedAt", "updated_at"))
                 sale.total_price = parse_decimal(first(row, "Total Price", "total_price", "totalPrice", "Revenue", "revenue"))
-                sale.total_tax = parse_decimal(first(row, "Tax Amount", "total_tax", "totalTax", "tax"))
+                sale.total_tax = sale_tax_amount(row)
                 sale.total_discount = parse_decimal(first(row, "Discount Amount", "total_discount", "totalDiscount", "discount"))
                 sale.total_cost = parse_decimal(first(row, "Cost", "cost", "totalCost"))
                 sale.customer_reference = first(row, "clientId", "client_id", "customerReference")
@@ -875,7 +893,7 @@ async def sync_store(
                     sale_item.unit_price = parse_decimal(first(item, "basePrice", "unitPrice"))
                     sale_item.line_total = parse_decimal(first(item, "totalPrice", "lineTotal"))
                     sale_item.cost = parse_decimal(first(item, "cost", "Cost"))
-                    sale_item.tax = parse_decimal(first(item, "tax", "Tax"))
+                    sale_item.tax = sale_tax_amount(item, line=True)
                     # Shopfront puts the product fields under SaleItem.item.
                     # Older queries only requested item.id, so retain the
                     # top-level fallbacks for tenants with legacy payloads.
