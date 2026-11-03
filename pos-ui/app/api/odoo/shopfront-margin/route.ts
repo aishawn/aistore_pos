@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     return json(report);
   } catch (error) {
     if (error instanceof OdooScopeError || error instanceof StoreAccessError) return json({ message: error.message }, error.status);
-    console.error("Shopfront source margin capture failed", { category: error instanceof Error ? error.name : "unknown" });
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    console.error("Shopfront source margin capture failed", { category: error instanceof Error ? error.name : "unknown", code: /^[A-Z_]{2,30}$/.test(code) ? code : undefined });
     return json({ message: "Could not capture complete source sales. Retry or choose a shorter period." }, 502);
   } finally { if (key) pending.delete(key); }
 }
