@@ -6,6 +6,10 @@
 - Corrected the earlier fixture, which incorrectly attached inventory snapshot fields to ordinary product responses. New targeted browser evidence: `UAT_PRODUCTS_APPEND_LOCAL_2026-11-03.json`, 54/54 at 390/1024/1440px, errors 0, real writes 0; TypeScript and targeted ESLint PASS. See `PRODUCTS_APPEND_FIX_2026-11-03.md`.
 - SKR runtime before fix: `7b610666`; supplied local demo credentials do not authenticate SKR, so authenticated live scroll verification is unavailable. No local production build or Maven; deployment verification remains separate.
 
+## 2026-11-03 Store pulse 单行三列
+
+- 按 owner 最新参考图，将昨日销售、毛利率、库存总数固定为一行三列，标题/数值/说明上下排列，用竖线分隔。窄屏仍保持三列，数值字号随卡片宽度调整。未核实值显示破折号及具体原因，保留原值 title 与明细链接。
+- 本地组件浏览器预览在 320/390/768/1024/1440 验证同一行、无溢出、焦点和链接；正常值、无销售、不可用、STALE、加载禁用和深色模式通过。typecheck、定向 ESLint、CSS 解析及 diff 检查通过。未修改业务数据或计算口径，未运行本地应用构建；部署状态与源代码推送分开确认。
 
 ## 2026-11-03 Product footer and continuous list loading repair
 
