@@ -56,3 +56,15 @@ test("tax-only captures cannot turn deliberately uncollected receipts into missi
   assert.equal(sourceTaxRepairPlan(s, "hash").summary.supported, 1);
   assert.throws(() => reconcileCosts(s, "batch", "hash"), /do not collect purchase cost evidence/);
 });
+
+test("repair evidence preserves recomputation inputs and posting references, including empty line taxes", () => {
+  const s = fixture();
+  Object.assign(s.lines[0], { price_unit: 5.5, discount: 0, tax_ids: [] });
+  Object.assign(s.orders[0], { session_id: [12, "session"], account_move: [13, "posted"] });
+  const p = sourceTaxRepairPlan(s, "hash"), expected = p.orders[0].lines[0].expected;
+  assert.equal(expected.priceUnit, 5.5); assert.equal(expected.discount, 0); assert.deepEqual(expected.taxIds, []);
+  assert.equal(p.orders[0].expected.sessionId, 12); assert.equal(p.orders[0].expected.accountMoveId, 13);
+  assert.equal(p.executable, false);
+  assert.ok(p.executionBlockers.includes("ODOO_TAX_RECOMPUTATION_NOT_VERIFIED"));
+  assert.ok(p.executionBlockers.includes("POSTED_ACCOUNTING_IMPACT_NOT_CHECKED"));
+});

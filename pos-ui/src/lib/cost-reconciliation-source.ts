@@ -77,11 +77,13 @@ export async function loadCostSnapshot(rpc: AuditRpc, options: AuditOptions): Pr
   const { companyId, store, timezone, from, to, fromDay, toDay, capturedAt, cutoff } = await auditPeriod(rpc, options);
   const lineFields = await rpc<Record<string, unknown>>("pos.order.line", "fields_get", [], { attributes: ["type"] });
   const identityFields = ["shopfront_source_line_ref", "refunded_orderline_id"].filter(field => Object.hasOwn(lineFields, field));
+  const taxInputFields = options.taxOnly ? ["price_unit", "discount", "tax_ids"] : [];
+  if (taxInputFields.some(field => !Object.hasOwn(lineFields, field))) throw new Error("Tax recomputation inputs unavailable");
   const orderDomain: unknown[] = [["company_id", "=", companyId], ["state", "in", ["paid", "done", "invoiced"]], ["date_order", ">=", from], ["date_order", "<", to]];
   const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.date_order", ">=", from], ["order_id.date_order", "<", to]];
   const [orders, lines, receipts, sourceSales] = await Promise.all([
-    readAll(rpc, "pos.order", orderDomain, ["company_id", "name", "uuid", "date_order", "amount_tax", "amount_total", "state", "write_date"]),
-    readAll(rpc, "pos.order.line", lineDomain, ["product_id", "order_id", "qty", "price_subtotal", "price_subtotal_incl", "total_cost", "is_total_cost_computed", "write_date", ...identityFields]),
+    readAll(rpc, "pos.order", orderDomain, ["company_id", "name", "uuid", "date_order", "amount_tax", "amount_total", "state", "write_date", ...(options.taxOnly ? ["session_id", "account_move"] : [])]),
+    readAll(rpc, "pos.order.line", lineDomain, ["product_id", "order_id", "qty", "price_subtotal", "price_subtotal_incl", "total_cost", "is_total_cost_computed", "write_date", ...identityFields, ...taxInputFields]),
     options.taxOnly ? Promise.resolve([] as AuditRecord[]) : readAll(rpc, "shopfront.sync.purchase.order", [["company_id", "=", companyId], ["store_key", "=", store], ["source_status", "=", "RECEIVED"]], ["company_id", "store_key", "source_id", "source_status", "order_date", "raw_payload", "write_date"], 20_000),
     readAll(rpc, "shopfront.sync.sale", [["store_key", "=", store], ["created_at", ">=", shiftDay(fromDay, -1)], ["created_at", "<", shiftDay(toDay, 1)]], ["external_id", "created_at", "total_price", "total_tax", "total_cost", "raw_payload", "write_date"]),
   ]);

@@ -58,6 +58,7 @@ export function sourceTaxRepairPlan(snapshot: AuditSnapshot, sourceHash: string)
       const net = gross !== null && tax !== null ? decimal(micro(gross) - micro(tax)) : null;
       return { id: line.id, sourceLineId: id || null, productId: relationId(line.product_id),
         expected: { writeDate: line.write_date ?? null, quantity: line.qty, net: line.price_subtotal, gross: line.price_subtotal_incl,
+          priceUnit: line.price_unit ?? null, discount: line.discount ?? null, taxIds: line.tax_ids ?? null,
           sourceLineRef: line.shopfront_source_line_ref ?? false, totalCost: line.total_cost ?? null, costComputed: line.is_total_cost_computed ?? null },
         proposed: { price_subtotal: net, price_subtotal_incl: gross },
         needsChange: !same(net, line.price_subtotal) };
@@ -66,7 +67,8 @@ export function sourceTaxRepairPlan(snapshot: AuditSnapshot, sourceHash: string)
     const reasons = [...new Set(blockers)];
     return { id: order.id, sourceSaleId: source?.external_id ?? null,
       status: reasons.length ? "review" : "source_tax_supported", blockers: reasons,
-      expected: { writeDate: order.write_date ?? null, state: order.state, total: order.amount_total, tax: order.amount_tax },
+      expected: { writeDate: order.write_date ?? null, state: order.state, total: order.amount_total, tax: order.amount_tax,
+        sessionId: relationId(order.session_id) || null, accountMoveId: relationId(order.account_move) || null },
       proposed: reasons.length ? null : { amount_tax: amount(raw.totalTax) },
       needsChange: !reasons.length && (proposals.some(l => l.needsChange) || !same(order.amount_tax, raw.totalTax)),
       lines: reasons.length ? [] : proposals };
