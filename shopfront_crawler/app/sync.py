@@ -812,6 +812,13 @@ async def sync_store(
                     break
                 unchanged_sales += 1
             if unchanged_sales == len(sale_rows):
+                # A replay must be able to select unchanged rows even when an
+                # older record has a missing or malformed business timestamp.
+                # Refresh the durable sync marker for every source row before
+                # dropping the in-memory window in the fast path.
+                synced_at = datetime.now(timezone.utc)
+                for sale in existing_sales.values():
+                    sale.synced_at = synced_at
                 counts["sales"] = len(sale_rows)
                 counts["sales_fetched"] = len(sale_rows)
                 counts["sales_processed"] = len(sale_rows)
@@ -869,6 +876,7 @@ async def sync_store(
                         existing_line_counts.get(sale.id, 0),
                     )
                 ):
+                    sale.synced_at = datetime.now(timezone.utc)
                     counts["sales"] += 1
                     counts["sales_skipped_unchanged"] = counts.get("sales_skipped_unchanged", 0) + 1
                     counts["phase"] = "sale_skipped_unchanged"

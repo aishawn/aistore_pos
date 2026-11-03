@@ -1544,7 +1544,22 @@ async def push_pos_snapshot(
         # source sales ledger and its margin evidence.
         "inventory_unmatched": [],
         "inventory_reconciliation_required": False,
+        "sales_batch_audit": [],
     }
+
+    def sales_response_audit(response: Any) -> dict[str, Any]:
+        """Keep bounded response counters for diagnosing partial imports."""
+        payload = response.get("data", response) if isinstance(response, dict) else {}
+        if not isinstance(payload, dict):
+            return {"response_type": type(payload).__name__}
+        audit: dict[str, Any] = {}
+        for key in ("accepted", "created", "updated", "upserted", "skipped", "errors"):
+            value = payload.get(key)
+            if isinstance(value, (int, float, str, list, dict)):
+                audit[key] = len(value) if isinstance(value, (list, dict)) else value
+        if "status" in payload:
+            audit["status"] = payload["status"]
+        return audit
 
     products_by_source = {str(product.shopfront_product_id): product for product in products}
 
@@ -2059,7 +2074,13 @@ async def push_pos_snapshot(
             db.commit()
             try:
                 for target_name, client in clients.items():
-                    await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                    response = await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                    result["sales_batch_audit"].append({
+                        "target": target_name,
+                        "offset": offset,
+                        "payload_count": len(items),
+                        "response": sales_response_audit(response),
+                    })
                     target_sale_batches[target_name] += 1
                 sale_batches += 1
             except Exception as exc:
@@ -2096,6 +2117,7 @@ async def push_pos_snapshot(
                     "sale_total": total_sales,
                     "sale_batches": sale_batches,
                     "target_sale_batches": dict(target_sale_batches),
+                    "sales_batch_audit": list(result["sales_batch_audit"]),
                     "odoo_sale_batches": odoo_batches,
                     "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
                 }

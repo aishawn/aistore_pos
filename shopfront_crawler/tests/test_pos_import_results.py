@@ -177,6 +177,15 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
     assert result["product_response"] == {target: {"data": {"upserted": 1}} for target in targets}
     assert result["inventory_response"] == {target: {"data": {"replaced": 1}} for target in targets}
     assert result["target_sale_batches"] == {target: 1 for target in targets}
+    assert result["sales_batch_audit"] == [
+        {
+            "target": target,
+            "offset": 0,
+            "payload_count": 1,
+            "response": {"upserted": 1},
+        }
+        for target in targets
+    ]
     assert result["mirror_errors"] == []
     assert len(FakePosClient.instances) == len(targets)
     assert all(client.closed and len(client.sales_payloads) == 1 for client in FakePosClient.instances)
