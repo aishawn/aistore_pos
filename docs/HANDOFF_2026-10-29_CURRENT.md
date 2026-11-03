@@ -1,5 +1,11 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-03 Dashboard 指标精简
+
+- 按 owner 要求，Store pulse 仅保留昨日销售、毛利率、库存总数，按此顺序显示；移除今日销售和交易数，以及区域内误导性的 Today 标签。沿用英文界面名称 Yesterday sales / Gross margin / Total inventory。
+- 三行布局保留明细链接、数据核验状态、刷新与缓存时间提示；移动端数字左对齐，链接有明确键盘焦点。仅改展示，不改变 API、成本口径或业务数据。未执行本地应用构建，部署状态另行确认。
+- 本地 typecheck、OverviewPageContent 定向 ESLint、PostCSS 语法解析与 diff whitespace 检查通过；未宣称浏览器或线上部署验收。
+
 ## 2026-11-03 Dashboard 数据可信核验
 
 - 按 owner 确认的口径，昨日毛利成本改为销售前最近一次有效采购收货的未税采购单价，支持箱/件换算，不再查询运行时不存在的 `pos.order.line.purchase_price`，不使用当前商品成本兜底。订单与销售行未税金额必须对齐、全部相关行成本有依据，才发布昨日毛利率；不完整成本、退货未追溯原销售、币种或单位不匹配均保留未核实状态。缓存版本已升级。
