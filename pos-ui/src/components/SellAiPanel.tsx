@@ -31,6 +31,7 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
+import { assistantDataAsOf, assistantDataSource, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -173,7 +174,9 @@ interface ChatMessage {
   cta?: ChatCta | null;
   retryQuestion?: string | null;
   source?: string | null;
+  dataSource?: string | null;
   dataAsOf?: string | null;
+  requestedDateRange?: string | null;
   suggestedFollowUps?: string[] | null;
   clarificationRequired?: boolean;
   clarifyingQuestion?: string | null;
@@ -917,7 +920,8 @@ export function SellAiPanel({
             ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
             ...(m.role === "assistant" ? {
               source: m.source ?? null,
-              dataAsOf: m.dataAsOf ?? null,
+              dataSource: assistantDataSource(m.intent) ?? null,
+              dataAsOf: assistantDataAsOf(m.dataAsOf),
               suggestedFollowUps: m.suggestedFollowUps ?? null,
               clarificationRequired: m.clarificationRequired === true,
               clarifyingQuestion: m.clarifyingQuestion ?? null,
@@ -1116,7 +1120,9 @@ export function SellAiPanel({
               cards: result.cards ?? null,
               retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
               source: result.source ?? null,
-              dataAsOf: result.dataAsOf ?? null,
+              dataSource: assistantDataSource(result.intent),
+              dataAsOf: assistantDataAsOf(result.dataAsOf),
+              requestedDateRange: requestedSalesDateRange(result.intent, result.slots),
               suggestedFollowUps: result.suggestedFollowUps ?? null,
               clarificationRequired: result.clarificationRequired === true,
               clarifyingQuestion: result.clarifyingQuestion ?? null,
@@ -2131,11 +2137,33 @@ function DialogueView({
                 ))}
               </div>
             ) : null}
-            {msg.role === "assistant" && (msg.source || msg.dataAsOf) ? (
+            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.diagnostics?.intent === "report_sales") ? (
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
-                {msg.source ? `Source: ${msg.source}` : ""}
-                {msg.source && msg.dataAsOf ? " · " : ""}
-                {msg.dataAsOf ? `Data as of ${new Date(msg.dataAsOf).toLocaleString("en-AU", { timeZone: "UTC" })} UTC` : ""}
+                {msg.dataSource
+                  ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
+                    ? `数据来源：${msg.dataSource}`
+                    : `Data source: ${msg.dataSource}`
+                  : ""}
+                {msg.source && assistantRouteLabel(msg.source)
+                  ? `${msg.dataSource ? " · " : ""}${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "查询路由" : "Query route"}: ${assistantRouteLabel(msg.source)}`
+                  : ""}
+                {msg.requestedDateRange
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "查询范围" : "Requested"}: ${msg.requestedDateRange}`
+                  : ""}
+                {msg.diagnostics?.intent === "report_sales" ? (
+                  <>
+                    {(msg.dataSource || msg.source || msg.requestedDateRange) ? " · " : ""}
+                    {returnedReportDateRange(msg.table?.rows)
+                      ? `${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "返回行日期范围" : "Rows span"}: ${returnedReportDateRange(msg.table?.rows)} · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "最新返回销售日" : "Latest returned sales date"}: ${latestReportDataDate(msg.table?.rows)}`
+                      : /[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "没有返回销售行" : "No sales rows returned"}
+                  </>
+                ) : null}
+                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.diagnostics?.intent === "report_sales") && msg.dataAsOf ? " · " : ""}
+                {msg.dataAsOf
+                  ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
+                    ? `数据时间：${formatAssistantDataAsOf(msg.dataAsOf)}`
+                    : `Data timestamp: ${formatAssistantDataAsOf(msg.dataAsOf)}`
+                  : ""}
               </p>
             ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
