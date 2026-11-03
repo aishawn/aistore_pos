@@ -263,13 +263,15 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         offset: append ? nextOffset.current : 0,
         categoryIds: categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined,
         catalogueView,
-        inventoryReport: true,
-        sortBy,
-        sortDirection,
-        snapshotId: append ? snapshotId.current : undefined,
+        ...(inventoryReport ? {
+          inventoryReport: true,
+          sortBy,
+          sortDirection,
+          snapshotId: append ? snapshotId.current : undefined,
+        } : {}),
       });
       if (revision !== requestRevision.current) return;
-      if (!page.snapshotId || typeof page.totalItems !== "number" || page.totalQty === undefined || page.totalStockValue === undefined || (page.hasNext && page.items.length === 0)) {
+      if (inventoryReport && (!page.snapshotId || typeof page.totalItems !== "number" || page.totalQty === undefined || page.totalStockValue === undefined || (page.hasNext && page.items.length === 0))) {
         throw new Error("Inventory results are incomplete. Refresh to try again.");
       }
       setItems((previous) => append ? [...previous, ...page.items.filter((item) => !previous.some((row) => row.id === item.id))] : page.items);

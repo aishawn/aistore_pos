@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getReportPeriodBounds, type ReportPeriod } from "@/lib/report-period";
 import { storeWeekStart } from "@/lib/assistant-business-period";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -69,22 +70,9 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
-async function loadLineExtras(sessionId: string, lineDomain: unknown[], correlationId?: string | null) {
+async function loadLineExtras(sessionId: string, lineDomain: unknown[], compareLineDomain: unknown[], correlationId?: string | null) {
   const empty = { itemsSold: 0, compareItemsSold: 0, topProducts: [] as Array<{ id: number; name: string; qty: number; revenue: number }>, byCategory: [] as Array<{ name: string; revenue: number; share: number }> };
   try {
-    const compareLineDomain = lineDomain.map((clause) => {
-      if (!Array.isArray(clause) || clause.length < 3) return clause;
-      const [field, op, value] = clause as [string, string, unknown];
-      if (field === "order_id.date_order" && typeof value === "string") {
-        const shifted = new Date(`${value.replace(" ", "T")}Z`);
-        if (!Number.isNaN(shifted.getTime())) {
-          shifted.setUTCDate(shifted.getUTCDate() - 7);
-          return [field, op, shifted.toISOString().slice(0, 19).replace("T", " ")];
-        }
-      }
-      return clause;
-    });
-
     const [qtyRows, productRows, categoryRows, compareQtyRows] = await Promise.all([
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }, correlationId).catch(() => []),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal_incl:sum"], ["product_id"]], { lazy: false }, correlationId).catch(async () => (
@@ -136,9 +124,9 @@ async function loadLineExtras(sessionId: string, lineDomain: unknown[], correlat
   }
 }
 
-async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number, timezone: string, correlationId?: string | null) {
+async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number, timezone: string, correlationId?: string | null, calendarGranularity?: "hour" | "day") {
   // Hourly for short windows; daily through 30d; weekly for 90d/180d so the chart stays readable.
-  const granularity = rangeHours <= 24 ? "hour" : rangeHours <= 720 ? "day" : "week";
+  const granularity = calendarGranularity ?? (rangeHours <= 24 ? "hour" : rangeHours <= 720 ? "day" : "week");
   try {
     const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], [`date_order:${granularity}`]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity };
@@ -152,8 +140,18 @@ async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: 
 
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "development" && request.cookies.get("orithos_local_preview")?.value === "1") {
+    const requested = request.nextUrl.searchParams.get("period");
+    const previewPeriod = getReportPeriodBounds(
+      requested === "last_week" || requested === "last_month" ? requested : "yesterday",
+      new Date(), "Australia/Adelaide",
+    );
     return NextResponse.json({
-      rangeHours: 24,
+      period: previewPeriod.period,
+      comparisonLabel: previewPeriod.comparisonLabel,
+      from: previewPeriod.start.toISOString(),
+      to: previewPeriod.end.toISOString(),
+      trendGranularity: previewPeriod.trendGranularity,
+      rangeHours: (previewPeriod.end.getTime() - previewPeriod.start.getTime()) / 3_600_000,
       company: "Orithos Local Preview",
       currency: "AUD",
       timezone: "Australia/Adelaide",
@@ -184,10 +182,10 @@ export async function GET(request: NextRequest) {
 
   const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? DEFAULT_RANGE_HOURS);
   const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : DEFAULT_RANGE_HOURS;
-  const end = new Date();
+  let end = new Date();
   let start = new Date(end.getTime() - rangeHours * 60 * 60 * 1000);
   let from = start.toISOString().slice(0, 19).replace("T", " ");
-  const to = end.toISOString().slice(0, 19).replace("T", " ");
+  let to = end.toISOString().slice(0, 19).replace("T", " ");
 
   try {
     const sessionResponse = await fetch(`${getOdooBaseUrl()}/web/session/get_session_info`, {
@@ -220,6 +218,17 @@ export async function GET(request: NextRequest) {
       from = start.toISOString().slice(0, 19).replace("T", " ");
     }
 
+    const calendarPeriod = ["yesterday", "last_week", "last_month"].includes(period ?? "")
+      ? getReportPeriodBounds(period as ReportPeriod, end, timezone)
+      : null;
+    if (calendarPeriod) {
+      start = calendarPeriod.start;
+      end = calendarPeriod.end;
+      from = start.toISOString().slice(0, 19).replace("T", " ");
+      to = end.toISOString().slice(0, 19).replace("T", " ");
+    }
+    const endOperator = calendarPeriod ? "<" : "<=";
+
     const excludeDemoSeed = Boolean(forced.binding?.sampleDataClearedAt);
     const demoUuidPrefix = `demo-seed-${companyId}-%`;
     const excludeDemoOrderClause: unknown[] = ["!", ["uuid", "=like", demoUuidPrefix]];
@@ -228,19 +237,19 @@ export async function GET(request: NextRequest) {
     const domain = [
       ["company_id", "=", companyId],
       ["date_order", ">=", from],
-      ["date_order", "<=", to],
+      ["date_order", endOperator, to],
       ["state", "in", ["paid", "done", "invoiced"]],
       ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
-    // Same-length window shifted back 7 days for week-over-week deltas.
-    const compareStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const compareEnd = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // Calendar periods supply aligned comparison bounds; legacy windows shift back seven days.
+    const compareStart = calendarPeriod?.compareStart ?? new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const compareEnd = calendarPeriod?.compareEnd ?? new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
     const compareFromAligned = compareStart.toISOString().slice(0, 19).replace("T", " ");
     const compareToAligned = compareEnd.toISOString().slice(0, 19).replace("T", " ");
     const compareDomain = [
       ["company_id", "=", companyId],
       ["date_order", ">=", compareFromAligned],
-      ["date_order", "<=", compareToAligned],
+      ["date_order", endOperator, compareToAligned],
       ["state", "in", ["paid", "done", "invoiced"]],
       ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
@@ -250,11 +259,18 @@ export async function GET(request: NextRequest) {
     const lineDomain = [
       ["order_id.company_id", "=", companyId],
       ["order_id.date_order", ">=", from],
-      ["order_id.date_order", "<=", to],
+      ["order_id.date_order", endOperator, to],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
       ["order_id.amount_total", ">", 0],
       ...(excludeDemoSeed ? [excludeDemoLineClause] : []),
     ];
+
+    const compareLineDomain = lineDomain.map((clause) => {
+      if (Array.isArray(clause) && clause[0] === "order_id.date_order") {
+        return [clause[0], clause[1], clause[1] === ">=" ? compareFromAligned : compareToAligned];
+      }
+      return clause;
+    });
 
     const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
@@ -262,7 +278,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
       rpc<number>(sessionId, "pos.order", "search_count", [refundDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []], {}, correlationId),
-      readSalesTrend(sessionId, salesDomain, rangeHours, timezone, correlationId),
+      readSalesTrend(sessionId, salesDomain, rangeHours, timezone, correlationId, calendarPeriod?.trendGranularity),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [domain], {
         fields: ["id", "name", "pos_reference", "date_order", "amount_total", "partner_id", "session_id"],
         order: "date_order desc, id desc",
@@ -274,7 +290,7 @@ export async function GET(request: NextRequest) {
       rpc<number>(sessionId, "pos.order", "search_count", [compareSalesDomain], {}, correlationId).catch(() => 0),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => []),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => []),
-      loadLineExtras(sessionId, lineDomain, correlationId),
+      loadLineExtras(sessionId, lineDomain, compareLineDomain, correlationId),
     ]);
 
     const summary = totals?.[0] ?? {};
@@ -291,8 +307,9 @@ export async function GET(request: NextRequest) {
     const compareGrossSales = Number(compareGrossTotals?.[0]?.amount_total ?? 0);
 
     return NextResponse.json({
-      rangeHours,
-      period: period === "this_week" ? "this_week" : "rolling",
+      rangeHours: calendarPeriod ? (end.getTime() - start.getTime()) / 3_600_000 : rangeHours,
+      period: calendarPeriod?.period ?? (period === "this_week" ? "this_week" : "rolling"),
+      comparisonLabel: calendarPeriod?.comparisonLabel ?? "vs last week",
       from,
       to,
       company: companies?.[0]?.name ?? "Current company",
