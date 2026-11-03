@@ -78,6 +78,41 @@ def merge_sale_detail(row: dict[str, Any], detail: dict[str, Any]) -> dict[str, 
     return merged
 
 
+async def enrich_sale_detail(
+    client: Any,
+    token: str,
+    sale_id: str,
+    row: dict[str, Any],
+    query: str,
+    warnings: list[dict[str, str]],
+    *,
+    timeout_seconds: float = 30,
+) -> dict[str, Any]:
+    items = row.get("items") if isinstance(row.get("items"), list) else []
+    has_product_metadata = bool(items) and all(
+        isinstance(line, dict)
+        and isinstance(line.get("item"), dict)
+        and bool(first(line.get("item", {}), "name", "displayName", "title"))
+        for line in items
+    )
+    has_payments = isinstance(row.get("payments"), list)
+    if not query or (has_product_metadata and has_payments):
+        return row
+    try:
+        detail = await asyncio.wait_for(
+            client.fetch_sale_detail(token, sale_id, query),
+            timeout=timeout_seconds,
+        )
+    except (ShopfrontError, asyncio.TimeoutError):
+        warnings.append({
+            "stage": "sale_detail",
+            "sale_id": sale_id,
+            "message": "Optional sale detail unavailable; retained the complete-sale query payload.",
+        })
+        return row
+    return merge_sale_detail(row, detail) if isinstance(detail, dict) else row
+
+
 def first(row: dict[str, Any], *names: str) -> Any:
     for name in names:
         if name in row:
@@ -577,7 +612,8 @@ async def sync_store(
     catalog_sync_complete = False
     sale_product_ids: set[str] = set()
     sale_products: dict[str, Product] = {}
-    commit_batch_size = max(1, int(getattr(settings, "sync_sale_commit_batch_size", 25)))
+    configured_batch_size = max(1, int(getattr(settings, "sync_sale_commit_batch_size", 25)))
+    commit_batch_size = 1 if db.bind is not None and db.bind.dialect.name == "sqlite" else configured_batch_size
     try:
         # A blocked lock or malformed database statement must fail the chunk
         # and be retried by the scheduler. Without a server-side timeout the
@@ -842,6 +878,14 @@ async def sync_store(
                         run.counts = counts
                         db.commit()
                     continue
+                row = await enrich_sale_detail(
+                    client,
+                    token,
+                    str(sale_id),
+                    row,
+                    settings.shopfront_sale_detail_query,
+                    counts["warnings"],
+                )
                 if sale is None:
                     sale = Sale(store_key=store.store_key, shopfront_sale_id=str(sale_id))
                     db.add(sale)
@@ -857,30 +901,6 @@ async def sync_store(
                 sale.total_cost = parse_decimal(first(row, "Cost", "cost", "totalCost"))
                 sale.customer_reference = first(row, "clientId", "client_id", "customerReference")
                 sale.raw_payload = row
-                # The complete sales GraphQL query already requests item,
-                # payment and product metadata. An optional per-sale detail
-                # query is expensive, so use it only for incomplete rows.
-                row_items = row.get("items") if isinstance(row.get("items"), list) else []
-                row_has_product_metadata = bool(row_items) and all(
-                    isinstance(line, dict)
-                    and isinstance(line.get("item"), dict)
-                    and bool(first(line.get("item", {}), "name", "displayName", "title"))
-                    for line in row_items
-                )
-                row_has_payments = isinstance(row.get("payments"), list)
-                if settings.shopfront_sale_detail_query and (not row_has_product_metadata or not row_has_payments):
-                    try:
-                        detail = await client.fetch_sale_detail(token, str(sale_id), settings.shopfront_sale_detail_query)
-                        if isinstance(detail, dict):
-                            # Detail queries often contain the only complete
-                            # items/payments payload. Merge it into the row
-                            # before processing structured fields so names,
-                            # images and payments are not stranded in JSON.
-                            row = merge_sale_detail(row, detail)
-                            sale.raw_payload = row
-                    except ShopfrontError:
-                        # The report remains usable when a tenant's GraphQL schema lacks the optional detail query.
-                        pass
                 for item in row.get("items", []) if isinstance(row.get("items"), list) else []:
                     item_id = first(item, "id", "ID")
                     product = item.get("item") if isinstance(item.get("item"), dict) else {}

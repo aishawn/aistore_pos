@@ -22,6 +22,31 @@ def test_conflicting_invalid_and_missing_tax_remain_unresolved():
     assert sale_tax_amount({"totalTax": "-0.45"}) == Decimal("-0.45")
 
 
+def test_optional_sale_detail_timeout_records_warning_and_keeps_source_payload():
+    import asyncio
+    from app.sync import enrich_sale_detail
+
+    class Client:
+        async def fetch_sale_detail(self, *_):
+            await asyncio.sleep(1)
+
+    row = {"id": "sale-1", "items": [{"item": {"id": "product-1"}}]}
+    warnings = []
+
+    async def run():
+        return await enrich_sale_detail(
+            Client(), "token", "sale-1", row, "query", warnings,
+            timeout_seconds=0.001,
+        )
+
+    assert asyncio.run(run()) is row
+    assert warnings == [{
+        "stage": "sale_detail",
+        "sale_id": "sale-1",
+        "message": "Optional sale detail unavailable; retained the complete-sale query payload.",
+    }]
+
+
 def test_legacy_row_is_consumed_once_for_repeated_product_sale_and_refund(monkeypatch):
     import asyncio
     from copy import deepcopy
