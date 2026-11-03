@@ -2336,6 +2336,7 @@ async def run_customers_job(job_id: int) -> None:
 
 async def run_extended_data_job(job_id: int) -> None:
     db = next(get_db())
+    heartbeat_task: asyncio.Task | None = None
     try:
         now = datetime.now(timezone.utc)
         claimed = db.execute(update(SyncJob).where(
@@ -2349,6 +2350,25 @@ async def run_extended_data_job(job_id: int) -> None:
         store = db.scalar(select(Store).where(Store.store_key == job.store_key)) if job else None
         if not job or not store:
             raise RuntimeError("Store not found for extended-data sync")
+
+        async def heartbeat() -> None:
+            while True:
+                await asyncio.sleep(15)
+                heartbeat_db = SessionLocal()
+                try:
+                    heartbeat_job = heartbeat_db.get(SyncJob, job_id)
+                    if heartbeat_job is None or heartbeat_job.status != "running":
+                        return
+                    heartbeat_job.heartbeat_at = datetime.now(timezone.utc)
+                    heartbeat_job.phase = "extended_data"
+                    heartbeat_db.commit()
+                except Exception:
+                    heartbeat_db.rollback()
+                    logger.warning("Extended-data heartbeat failed for job %s", job_id, exc_info=True)
+                finally:
+                    heartbeat_db.close()
+
+        heartbeat_task = asyncio.create_task(heartbeat())
         job.payload = await sync_extended_data(db, settings, store)
         job.status = "partial" if job.payload.get("status") == "partial" else "completed"
         if job.status == "partial":
@@ -2366,6 +2386,10 @@ async def run_extended_data_job(job_id: int) -> None:
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
     finally:
+        if heartbeat_task is not None:
+            heartbeat_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await heartbeat_task
         db.close()
 
 

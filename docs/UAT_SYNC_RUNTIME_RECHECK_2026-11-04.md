@@ -29,6 +29,8 @@
 
 趋势接口口径已在候选中补强：`/api/reports/sales-trend` 现在返回请求范围、实际返回日期、`missing_dates`，并明确 `missing_date_status=UNCLASSIFIED_NO_SUMMARY_ROW`；缺摘要不会被解释为闭店或零销售。crawler 测试复跑结果为 57 passed。
 
+候选进一步为 `extended_data` worker 增加 15 秒独立心跳，避免长时间 Shopfront 请求期间 `heartbeat_at` 停止更新而无法区分“慢任务”和“停滞任务”。改动后 crawler 测试仍为 57 passed；该修复尚未部署线上。
+
 ## 约束
 
 本复核所有线上请求均为 GET；没有创建、确认、收货或修改采购单，也没有重启或取消线上同步任务。
