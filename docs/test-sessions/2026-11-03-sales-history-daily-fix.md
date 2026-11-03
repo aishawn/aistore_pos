@@ -16,3 +16,11 @@ Odoo `read_group` returns a localized label (`02 Nov 2026`) and UTC `__range` bo
 - This pre-release evidence does not establish deployment or online browser acceptance of the repair.
 
 - Full typecheck BLOCKED: shared older dependencies lack redis and produce pre-existing report-worker errors; clean dependency installation hit ENOSPC. No full typecheck success claimed.
+
+## Deployment and live acceptance
+
+- Fix commit and verified frontend/backend runtime: `7f8ded6a30d86cd00466d4791ce838f7fa3dd777`.
+- Dokploy exact-commit build/deployment: DONE, finished 2026-11-03 09:15:03 UTC (17:15:03 Asia/Shanghai).
+- SKR daily API: HTTP 200 with daily rows, truthful next-page flag and matching latest-day totals; sales lines still returns 40 records.
+- Real browser read-only PASS: `/history` shows 2026-11-02, 133 sales, 1 refund, 3,584.98 gross, 5.00 refunds, 3,579.98 net, 307.67 tax. Selecting from/to 2026-11-02 yields exactly one day. Sales lines tab loads 40 items. Sell menu has one history entry and opens the same working daily summary.
+- Real business writes: 0. No local application build performed. Remote build and live runtime/browser acceptance PASS despite the local dependency/typecheck limitation above.
