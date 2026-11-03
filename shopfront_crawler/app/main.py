@@ -1167,6 +1167,7 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         job_id,
                         include_catalog,
                         force_full_catalog,
+                        refresh_inventory=bool(job and job.job_type == "daily_sync" and cursor == date.fromisoformat(job.from_date)),
                     )
                     # Never advance a durable history cursor past a chunk that
                     # failed after all split retries. Advancing here would
@@ -1208,6 +1209,7 @@ async def _sync_history_chunk(
     job_id: int | None,
     include_catalog: bool,
     force_full_catalog: bool = False,
+    refresh_inventory: bool = False,
 ) -> bool:
     try:
         async def keepalive() -> None:
@@ -1262,12 +1264,15 @@ async def _sync_history_chunk(
             # incremental query can contain no changed products and would
             # leave the mirror falsely empty.
             products_updated_after=(catalog_checkpoint.value if include_catalog and catalog_checkpoint and not force_full_catalog else None),
+            refresh_inventory=refresh_inventory,
             progress_callback=report_progress,
         )
         if run.status == "failed":
             await stop_keepalive()
             return False
         sync_counts = dict(run.counts or {})
+        if refresh_inventory and not sync_counts.get("inventory_sync_complete"):
+            raise RuntimeError("Shopfront full inventory snapshot did not complete")
         if settings.pos_import_enabled:
             # A catalog query may be incremental even when ``include_catalog``
             # is true. Only a first full snapshot should resend every product
@@ -1288,7 +1293,12 @@ async def _sync_history_chunk(
             )
             if skip_stable_history_products:
                 product_source_ids = []
-            push_kwargs = {"run": run, "include_catalog": full_catalog}
+            push_kwargs = {
+                "run": run,
+                "include_catalog": full_catalog,
+                "include_inventory_snapshot": refresh_inventory,
+                "inventory_snapshot_source_ids": sync_counts.get("inventory_source_product_ids") or [],
+            }
             if not full_catalog:
                 push_kwargs["product_source_ids"] = product_source_ids
                 push_kwargs["inventory_source_ids"] = catalog_source_ids
@@ -1312,6 +1322,9 @@ async def _sync_history_chunk(
             if product_source_ids is not None:
                 sync_counts["product_source_id_count"] = len(product_source_ids)
                 sync_counts.pop("product_source_ids", None)
+            if refresh_inventory:
+                sync_counts["inventory_source_product_id_count"] = len(sync_counts.get("inventory_source_product_ids") or [])
+                sync_counts.pop("inventory_source_product_ids", None)
             sync_counts["pos_products_skipped_unchanged"] = skip_stable_history_products
             run.counts = {"sync": sync_counts, "pos_import": pos_result}
         else:
@@ -1340,8 +1353,8 @@ async def _sync_history_chunk(
             return False
         midpoint = start + timedelta(days=(end - start).days // 2)
         logger.warning("Splitting failed Shopfront range: store=%s from=%s to=%s", store_key, start, end)
-        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog, force_full_catalog)
-        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False, False)
+        left = await _sync_history_chunk(db, store_key, store, start, midpoint, job_id, include_catalog, force_full_catalog, refresh_inventory)
+        right = await _sync_history_chunk(db, store_key, store, midpoint + timedelta(days=1), end, job_id, False, False, False)
         return left and right
 
 
@@ -1354,6 +1367,8 @@ async def push_pos_snapshot(
     include_catalog: bool = True,
     product_source_ids: list[str] | None = None,
     inventory_source_ids: list[str] | None = None,
+    include_inventory_snapshot: bool = False,
+    inventory_snapshot_source_ids: list[str] | None = None,
     include_sales: bool = True,
     sales_offset: int = 0,
     job: SyncJob | None = None,
@@ -1364,7 +1379,7 @@ async def push_pos_snapshot(
         ids = sorted({str(value) for value in (product_source_ids or []) if value})
         products_query = products_query.where(Product.shopfront_product_id.in_(ids)) if ids else products_query.where(False)
     products = db.scalars(products_query).all()
-    if include_catalog:
+    if include_catalog or include_inventory_snapshot:
         inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
     else:
         inventory_ids = sorted({str(value) for value in (inventory_source_ids or []) if value})
@@ -1843,7 +1858,7 @@ async def push_pos_snapshot(
                 product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
             if product_responses:
                 product_result = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
-            if include_catalog and inventory_items:
+            if include_catalog or include_inventory_snapshot:
                 inventory_result = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
         except Exception as exc:
             catalog_error = exc
@@ -1867,11 +1882,29 @@ async def push_pos_snapshot(
                 job.payload = {**(job.payload or {}), "products_imported": len(product_items)}
                 db.commit()
             odoo_product_result = odoo_product_responses[0] if len(odoo_product_responses) == 1 else {"batches": len(odoo_product_responses), "last": odoo_product_responses[-1]}
-        if odoo_enabled and include_catalog and inventory_items:
-            # Odoo treats snapshot_complete as the entire inventory set. Each
-            # chunk is only a partial set, so marking chunks complete deletes
-            # the rows written by earlier chunks.
+        if odoo_enabled and (include_catalog or include_inventory_snapshot):
             inventory_responses = await sync_odoo_batches("inventory", inventory_items)
+            def business_unmatched(response: dict) -> list:
+                payload = response.get("result", response) if isinstance(response, dict) else {}
+                business = payload.get("business") if isinstance(payload, dict) else None
+                unmatched = business.get("unmatched") if isinstance(business, dict) else None
+                return unmatched if isinstance(unmatched, list) else []
+
+            unmatched = [item for response in inventory_responses for item in business_unmatched(response)]
+            if unmatched:
+                raise RuntimeError(f"Odoo inventory import has {len(unmatched)} unmatched source items")
+            if include_inventory_snapshot:
+                finalize_response = await odoo_client.sync(
+                    "inventory",
+                    store_key,
+                    [],
+                    snapshot_finalize=True,
+                    snapshot_source_ids=inventory_snapshot_source_ids or [],
+                )
+                finalize_unmatched = business_unmatched(finalize_response)
+                if finalize_unmatched:
+                    raise RuntimeError(f"Odoo inventory snapshot finalization has {len(finalize_unmatched)} unmatched source items")
+                inventory_responses.append(finalize_response)
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0

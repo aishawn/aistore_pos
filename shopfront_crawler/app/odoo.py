@@ -28,6 +28,8 @@ class OdooSyncClient:
         items: list[dict[str, Any]],
         *,
         snapshot_complete: bool = False,
+        snapshot_finalize: bool = False,
+        snapshot_source_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         if not self.enabled:
             raise OdooIntegrationError("Odoo import is disabled")
@@ -36,6 +38,8 @@ class OdooSyncClient:
         params = {"type": import_type, "store_key": store_key, "business_write": self.business_write, "items": items}
         if import_type == "inventory" and snapshot_complete:
             params.update({"replace": True, "snapshot_complete": True})
+        if import_type == "inventory" and snapshot_finalize:
+            params.update({"snapshot_finalize": True, "snapshot_source_ids": snapshot_source_ids or []})
         payload = {
             "jsonrpc": "2.0",
             "method": "call",
