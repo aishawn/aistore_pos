@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-11-03T15:33:15.716Z",
+  "sourceSha": "bc7f4a2dbd5af004ea7acb3e15c309738ea32350",
+  "runtimeSha": "bc7f4a2dbd5af004ea7acb3e15c309738ea32350",
+  "environment": "SKR aipos_uat company 5, online read-only",
+  "result": "PASS source report after explicit retry; first-click recovery FAIL",
+  "attemptStatuses": [
+    401,
+    200
+  ],
+  "sample": {
+    "completedOrders": 133,
+    "lines": 275,
+    "netSales": 3270.26,
+    "salesCost": 2440.08,
+    "grossProfit": 830.18,
+    "grossMarginPercent": 25.385749,
+    "accountingVerified": false,
+    "costEvidencePendingLines": 275,
+    "ordersWithLineDifferences": 35,
+    "lineVsOrderTaxDifference": -0.11,
+    "lineVsOrderCostDifference": 0.17
+  },
+  "deploymentId": "UMx_wqHFPIr-8Wv0ZbAnI",
+  "crawlerHashesVerified": true,
+  "businessWrites": 0,
+  "limitations": [
+    "Initial report POST returned 401; UI session recovery required a second explicit click. Subsequent successful report does not certify first-click recovery.",
+    "Raw-fetch harness and stale-auth failures preserved separately; not product acceptance.",
+    "Source totals reproduced, not independently certified accounting costs; source line/order rounding differences preserved.",
+    "Read-only desktop and mobile rendering checked; no financial repair executed."
+  ],
+  "privateAcceptanceSha256": "e5febcfc2f1feff7bf62776048ca86ddc9a53bacea28e8dc3f2c0e5fef221d79"
+}

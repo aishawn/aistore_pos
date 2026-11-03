@@ -668,6 +668,33 @@
         "docs/test-sessions/2026-11-03-source-tax-batch.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-MARGIN-RELEASE",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": "bc7f4a2dbd5af004ea7acb3e15c309738ea32350",
+      "runtimeSha": "bc7f4a2dbd5af004ea7acb3e15c309738ea32350",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "e5febcfc2f1feff7bf62776048ca86ddc9a53bacea28e8dc3f2c0e5fef221d79",
+      "scope": "SKR read-only source report; demo read-only tax diagnostics; business writes 0",
+      "sample": "133 completed sales /275 lines;65 demo diagnostic orders",
+      "result": "Source gross profit830.18 agrees; first click401, explicit retry succeeds;65 tax blockers remain",
+      "limitations": [
+        "Initial report POST returned 401; UI session recovery required a second explicit click. Subsequent successful report does not certify first-click recovery.",
+        "Raw-fetch harness and stale-auth failures preserved separately; not product acceptance.",
+        "Source totals reproduced, not independently certified accounting costs; source line/order rounding differences preserved.",
+        "Read-only desktop and mobile rendering checked; no financial repair executed."
+      ],
+      "artifacts": [
+        "docs/UAT_MARGIN_RELEASE_2026-11-03.json",
+        "docs/UAT_DEMO_SOURCE_TAX_DIAGNOSTIC_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-margin-release.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

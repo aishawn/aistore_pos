@@ -459,13 +459,15 @@ async function recoverOdooSession() {
 
 async function fetchOdooTransport(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false) {
   const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
-  const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+  // These POSTs capture read-only reports; a 401 occurs before any capture.
+  const reportRead = method === "POST" && ["/api/odoo/shopfront-margin", "/api/odoo/cost-reconciliation"].includes(path);
+  const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry || reportRead;
   const canRetryRoute = canReplay || (method === "POST" && path === "/api/odoo/session");
   let response = await fetch(input, init);
   // A complete replenishment calculation is expensive. Let its explicit Retry
   // action control retries instead of silently running a second full scan.
-  const expensivePlan = ["/api/odoo/replenishment", "/api/odoo/reporting-dashboard", "/api/odoo/dead-stock"].some(route => path.split("?")[0].endsWith(route));
+  const expensivePlan = reportRead || ["/api/odoo/replenishment", "/api/odoo/reporting-dashboard", "/api/odoo/dead-stock"].some(route => path.split("?")[0].endsWith(route));
   if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
     response = await fetch(input, init);
   }

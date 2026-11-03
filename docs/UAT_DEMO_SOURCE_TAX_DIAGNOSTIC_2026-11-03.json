@@ -1,0 +1,24 @@
+{
+  "scope": "65 demo orders blocked by tax engine in v3; read-only arithmetic diagnostics, not tax certification",
+  "orders": 65,
+  "linesDiagnosed": 100,
+  "businessWrites": 0,
+  "blockers": {
+    "UNIT_PRICE_QTY_DISCOUNT_DIFFERS_FROM_SOURCE_GROSS": 55,
+    "SOURCE_TAX_DIFFERS_FROM_GST10_LINE_ROUNDING": 29,
+    "SOURCE_ZERO_TAX_WITH_CURRENT_GST10": 29
+  },
+  "ordersWithPriceGrossDifference": 50,
+  "ordersWithSourceGstRoundingDifference": 22,
+  "rawSha256": "d49fb2ce2d342e3d92ff5fb5a3bd99a54e3e16ac0f284731097beb24b1d88174",
+  "scriptSha256": "ea90b83eb0cde9f2ebea47defe0ca177a98c5e39bcc5ce52cab523b3cdb7d694",
+  "sourceSha": null,
+  "runtimeSha": null,
+  "limitations": [
+    "Read-only diagnosis of 65 v3-blocked orders only; 100 uniquely matched lines, not all historical lines",
+    "Reason counts overlap; arithmetic observations do not authorize price or tax changes",
+    "No source zero-tax classification certified; no shared product taxes changed",
+    "Probe is a private script, not part of POS commit; script hash identifies its source"
+  ],
+  "observedPosSourceSha": "bc7f4a2dbd5af004ea7acb3e15c309738ea32350"
+}
