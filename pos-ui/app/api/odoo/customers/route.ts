@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 import { customerWriteScope } from "@/lib/customer-access";
@@ -83,7 +84,7 @@ function parseCustomerValues(body: Record<string, unknown>, { requireName }: { r
   return { values, name };
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
 
   let body: Record<string, unknown>;
@@ -110,3 +111,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

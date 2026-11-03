@@ -7,6 +7,10 @@
       "status": "PASS"
     },
     {
+      "name": "revisiting an identical query reuses its snapshot; explicit refresh creates a new one",
+      "status": "PASS"
+    },
+    {
       "name": "all appended pages remain unique and stable, totals do not depend on loaded count",
       "status": "PASS"
     },
@@ -34,8 +38,5 @@
       "name": "Odoo failure is an error, never a fabricated empty result",
       "status": "PASS"
     }
-  ],
-  "sourceBase": "24854d147073a2c8c5dee16c53a90218431bfb58",
-  "sourceTreeDirty": true,
-  "runtime": "local fixture; live runtime not verified"
+  ]
 }

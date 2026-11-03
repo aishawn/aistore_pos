@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { createHash } from "node:crypto";
 import { RfqJournal } from "@/lib/rfq-idempotency";
 import { replenishmentIssues } from "@/lib/replenishment-safety";
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   // Behind Dokploy/Traefik, nextUrl may reflect the internal upstream host.
   // Evaluate the externally routed host first so the Demo-only allow-list is
@@ -305,3 +306,5 @@ export async function POST(request: NextRequest) {
     return jsonError(error);
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

@@ -1,5 +1,6 @@
 "use client";
 
+import { setOdooReadIdentity, clearOdooReadCache } from "./odoo-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, registerAuthFailureHandler } from "@/lib/api";
 
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const unregister = registerAuthFailureHandler(() => setUser(null));
+    const unregister = registerAuthFailureHandler(() => { setOdooReadIdentity(null); setUser(null); });
     return unregister;
   }, []);
 
@@ -107,6 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    setOdooReadIdentity(ready && user ? JSON.stringify([user.id, user.vendorId, user.outletId, user.roleCode, user.permissions]) : null);
+  }, [ready, user]);
+
   const login = useCallback(async (username: string, password: string, subdomain?: string) => {
     const body: Record<string, string> = { username, password };
     if (subdomain?.trim()) body.subdomain = subdomain.trim().toLowerCase();
@@ -125,6 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    setOdooReadIdentity(null);
+    clearOdooReadCache();
     try {
       await api.post("/api/auth/logout");
     } catch {

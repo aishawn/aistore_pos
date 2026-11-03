@@ -1,3 +1,4 @@
+import { clearOdooReadCache } from "./odoo-read-cache";
 /**
  * Typed client for the Orithos Spring Boot backend.
  * Unwraps the `{ code, message, data }` envelope. The same-origin Next BFF
@@ -259,6 +260,7 @@ async function request<T>(
     handleAuthFailure(path, res.status, json.code);
     throw new ApiError(json.message, json.code, res.status, res.headers.get("x-correlation-id"));
   }
+  if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !path.startsWith("/api/auth/refresh")) clearOdooReadCache();
   return json.data;
 }
 

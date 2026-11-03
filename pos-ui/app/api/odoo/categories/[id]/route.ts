@@ -1,10 +1,11 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { categoryError, categoryScope, categoryValues, ownedCategory } from "@/lib/odoo-categories";
 import { OdooScopeError } from "@/lib/odoo-scope";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
-export async function PATCH(request: NextRequest, context: Context) {
+async function handlePATCH(request: NextRequest, context: Context) {
   try {
     const scope = await categoryScope(request, true);
     const id = Number((await context.params).id);
@@ -15,7 +16,7 @@ export async function PATCH(request: NextRequest, context: Context) {
     return NextResponse.json({ id });
   } catch (error) { return categoryError(error); }
 }
-export async function DELETE(request: NextRequest, context: Context) {
+async function handleDELETE(request: NextRequest, context: Context) {
   try {
     const scope = await categoryScope(request, true);
     const id = Number((await context.params).id);
@@ -28,3 +29,7 @@ export async function DELETE(request: NextRequest, context: Context) {
     return NextResponse.json({ id });
   } catch (error) { return categoryError(error); }
 }
+
+export const PATCH = withReportInvalidation(handlePATCH);
+
+export const DELETE = withReportInvalidation(handleDELETE);

@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { isSameOrigin } from "@/lib/server-auth";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   } catch (error) { return errorResponse(error); }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   try {
     if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
     await requirePermission(request, "settings.store");
@@ -64,3 +65,5 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ code: 0, message: "ok", data: { ok: true } });
   } catch (error) { return errorResponse(error); }
 }
+
+export const PATCH = withReportInvalidation(handlePATCH);

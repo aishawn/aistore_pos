@@ -21,6 +21,7 @@ test("expensive replenishment failures wait for explicit Retry; ordinary reads r
         require: (name) => {
           if (name === "./api") return { isLocalPreviewSession: () => true };
           if (name === "./odoo-quote-timeout") return {};
+          if (name === "./odoo-read-cache") return { cachedOdooRead: (_path, init, transport) => transport(init), clearOdooReadCache: () => undefined, setOdooReadIdentity: () => undefined };
           throw new Error("Unexpected dependency: " + name);
         },
       });

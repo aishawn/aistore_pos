@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
@@ -42,7 +43,7 @@ class OdooRequestError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
@@ -131,3 +132,5 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ message, resultState: status >= 500 ? "unknown" : "rejected" }, { status });
   }
 }
+
+export const PATCH = withReportInvalidation(handlePATCH);

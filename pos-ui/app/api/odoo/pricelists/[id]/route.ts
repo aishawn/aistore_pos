@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -11,7 +12,7 @@ function parseId(raw: string) {
   return Number.isSafeInteger(id) && id >= 1 ? id : null;
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
     await requirePermission(request, "customers.pricelists");
@@ -61,7 +62,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
     await requirePermission(request, "customers.pricelists");
@@ -85,3 +86,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const PATCH = withReportInvalidation(handlePATCH);
+
+export const DELETE = withReportInvalidation(handleDELETE);

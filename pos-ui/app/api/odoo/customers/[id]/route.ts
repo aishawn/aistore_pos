@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 import { customerWriteScope } from "@/lib/customer-access";
@@ -83,7 +84,7 @@ function parseCustomerValues(body: Record<string, unknown>) {
   return { values };
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
 
   const { id: rawId } = await context.params;
@@ -114,7 +115,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
 
   const { id: rawId } = await context.params;
@@ -132,3 +133,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const PATCH = withReportInvalidation(handlePATCH);
+
+export const DELETE = withReportInvalidation(handleDELETE);

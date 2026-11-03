@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -59,7 +60,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result;
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
     await requirePermission(request, "sell.register.close");
@@ -218,3 +219,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

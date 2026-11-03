@@ -19,3 +19,11 @@ export function getInventorySnapshot(id: string, key: string, now = Date.now()) 
   if (!snapshot || snapshot.key !== key || snapshot.expires <= now) return null;
   return snapshot;
 }
+
+export function findInventorySnapshot(key: string, now = Date.now()) {
+  for (const [id, snapshot] of snapshots) {
+    if (snapshot.expires <= now) { snapshots.delete(id); continue; }
+    if (snapshot.key === key) return { id, snapshot };
+  }
+  return null;
+}

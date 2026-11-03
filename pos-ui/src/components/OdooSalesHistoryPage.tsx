@@ -1,12 +1,12 @@
 "use client";
 
+import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ChevronLeft, ChevronRight, Download, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSaleDetail,
-  getOdooSession,
   searchOdooRecords,
   submitOdooPosOrder,
   recoverOdooPosOrder,
@@ -117,22 +117,15 @@ export function OdooSalesHistoryPage({
     setLoading(true);
     setError(null);
     try {
-      const user = await getOdooSession();
-      if (revision !== requestRevision.current) return;
-      setConnected(Boolean(user));
-      if (!user) {
-        setItems([]);
-        setHasNext(false);
-        return;
-      }
       const [page, pos] = await Promise.all([
         searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, status, period, limit: PAGE_SIZE + 1, offset }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
+      setConnected(true);
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
-      setLastLoadedAt(Date.now());
+      setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
       if (pos) {
         setBootstrap(pos);
         setStoreTimezone(pos.configs.find((config) => config.session)?.timezone ?? pos.configs[0]?.timezone ?? "UTC");
@@ -355,7 +348,7 @@ export function OdooSalesHistoryPage({
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => void loadSales()}
+            onClick={() => { clearOdooReadCache(); void loadSales(); }}
             disabled={loading}
             aria-label={loading ? "Refreshing sales" : "Refresh sales"}
             className={isPanel
@@ -415,7 +408,7 @@ export function OdooSalesHistoryPage({
             </button>
           </div>
 
-          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadSales(); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
 
           <section className="min-h-0 flex-1 overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">

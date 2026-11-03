@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { companyDomain } from "@/lib/customer-access";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
@@ -40,12 +41,17 @@ export async function GET(request: NextRequest) {
     const categoryIds = page.map((row) => row.id);
     const counts = new Map<number, number>();
     if (categoryIds.length) {
-      for (const categoryId of categoryIds) {
+      let cursor = 0;
+      async function countWorker() {
+        while (cursor < categoryIds.length) {
+          const categoryId = categoryIds[cursor++];
         const count = await scope.rpc<number>("res.partner", "search_count", [[
           ["customer_rank", ">", 0], ["category_id", "in", [categoryId]], ...companyDomain(scope.companyIds, true),
         ]]);
-        counts.set(categoryId, count);
+          counts.set(categoryId, count);
+        }
       }
+      await Promise.all(Array.from({ length: Math.min(4, categoryIds.length) }, countWorker));
     }
 
     const items = page.map((row) => ({
@@ -65,7 +71,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
     await requirePermission(request, "customers.groups");
@@ -96,3 +102,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

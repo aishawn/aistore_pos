@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
@@ -261,7 +262,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   }
 }
 
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try { await requirePermission(request, "stock.purchases"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -292,3 +293,5 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     return errorResponse(error);
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

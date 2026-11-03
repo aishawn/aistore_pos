@@ -1,0 +1,28 @@
+{
+  "target": "https://demo.orithos.com.au",
+  "database": "aipos_uat",
+  "at": "2026-11-03T06:01:16.060Z",
+  "readOnly": true,
+  "results": [
+    {
+      "period": "yesterday",
+      "status": 200,
+      "durationMs": 1009
+    },
+    {
+      "period": "last_week",
+      "status": 200,
+      "durationMs": 1123
+    },
+    {
+      "period": "last_month",
+      "status": 200,
+      "durationMs": 1652
+    },
+    {
+      "period": "today&view=summary",
+      "status": 200,
+      "durationMs": 1550
+    }
+  ]
+}

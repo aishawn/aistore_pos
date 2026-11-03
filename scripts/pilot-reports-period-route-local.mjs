@@ -14,7 +14,7 @@ function load(file) {
   if (modules.has(file)) return modules.get(file).exports;
   const mod = new Module(file); modules.set(file, mod); mod.filename = file;
   mod.paths = Module._nodeModulePaths(path.dirname(file));
-  mod.require = (id) => id.startsWith("@/") ? load(path.join(ui, "src", id.slice(2)) + ".ts") : id.startsWith(".") && id.endsWith(".ts") ? load(path.resolve(path.dirname(file), id)) : require(id);
+  mod.require = (id) => id.startsWith("@/") ? load(path.join(ui, "src", id.slice(2)) + ".ts") : id.startsWith(".") ? load(path.resolve(path.dirname(file), id.endsWith(".ts") ? id : id + ".ts")) : require(id);
   mod._compile(ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file);
   return mod.exports;
 }
@@ -27,6 +27,7 @@ const calls = [], checks = [];
 const json = (body) => new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
 globalThis.fetch = async (input, options = {}) => {
   const url = String(input);
+  if (url.endsWith("/api/auth/me")) return json({ code: 0, data: { id: 17, isAdmin: true } });
   if (url.endsWith("/api/tenant/odoo-binding")) return json({ code: 0, data: { odooCompanyId: 41, odooProvisionStatus: "ready" } });
   assert.ok(url.startsWith("https://reports.fixture.invalid/"), "No live network");
   if (url.endsWith("/web/session/get_session_info")) return json({ result: { uid: 17, user_context: { allowed_company_ids: [41, 42] } } });

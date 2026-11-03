@@ -10,7 +10,7 @@ import { catalogueDomain } from "@/lib/product-catalogue";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
-import { getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
+import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown>; inventoryReport?: boolean; sortBy?: InventorySort; sortDirection?: InventoryDirection; snapshotId?: string };
+  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown>; inventoryReport?: boolean; sortBy?: InventorySort; sortDirection?: InventoryDirection; snapshotId?: string; refresh?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -209,7 +209,8 @@ export async function POST(request: NextRequest) {
     if (type !== "products" || body.inventoryReport !== true
       || (body.sortBy !== undefined && !INVENTORY_SORTS.includes(body.sortBy))
       || (body.sortDirection !== undefined && !["asc", "desc"].includes(body.sortDirection))
-      || (body.snapshotId !== undefined && (typeof body.snapshotId !== "string" || body.snapshotId.length > 64))) {
+      || (body.snapshotId !== undefined && (typeof body.snapshotId !== "string" || body.snapshotId.length > 64))
+      || (body.refresh !== undefined && typeof body.refresh !== "boolean")) {
       return NextResponse.json({ message: "Invalid inventory report options" }, { status: 400 });
     }
     try { await requirePermission(request, "stock.products.view"); }
@@ -369,7 +370,8 @@ export async function POST(request: NextRequest) {
       const sortBy = body.sortBy ?? "name";
       const sortDirection = body.sortDirection ?? "asc";
       const key = createHash("sha256").update(JSON.stringify([sessionId, request.cookies.get("orithos_access_token")?.value, request.nextUrl.host, context, domain, sortBy, sortDirection])).digest("hex");
-      let snapshotId = body.snapshotId;
+      const reused = !body.snapshotId && offset === 0 && !body.refresh ? findInventorySnapshot(key) : null;
+      let snapshotId = body.snapshotId ?? reused?.id;
       let snapshot = snapshotId ? getInventorySnapshot(snapshotId, key) : null;
       if (snapshotId && !snapshot) return NextResponse.json({ message: "Inventory results expired. Refresh to load current stock." }, { status: 409 });
       if (!snapshot) {
@@ -426,7 +428,7 @@ export async function POST(request: NextRequest) {
       }
       let items: unknown[] = snapshot.rows.slice(offset, offset + limit).map((row) => ({ ...row }));
       if (sortBy !== "price_included") items = await withTaxInclusivePrices(sessionId, items, correlationId);
-      return NextResponse.json({ items, limit, offset, hasNext: offset + limit < snapshot.rows.length, snapshotId, total: snapshot.totals.totalItems, ...snapshot.totals }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ items, limit, offset, hasNext: offset + limit < snapshot.rows.length, snapshotId, generatedAt: new Date(snapshot.expires - 300_000).toISOString(), total: snapshot.totals.totalItems, ...snapshot.totals }, { headers: { "Cache-Control": "no-store" } });
     }
 
     // After sample purge, hide seeded demo POS orders so History matches Reporting.

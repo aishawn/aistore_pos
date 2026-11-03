@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -266,7 +267,7 @@ export async function GET(request: NextRequest) {
 
 type CountLineInput = { productId: number; expectedQty: number; countedQty: number };
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
   try {
     // Authorize before parsing business input or checking the feature gate so every
@@ -398,3 +399,5 @@ export async function POST(request: NextRequest) {
     return responseError(error);
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

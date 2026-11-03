@@ -38,7 +38,7 @@ export async function scopedOdoo(request: NextRequest) {
     if (payload.result === undefined) throw new OdooScopeError("Odoo returned no result.", 502);
     return payload.result;
   }
-  const info = await envelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>("/web/session/get_session_info", {});
+  const info = await envelope<{ uid?: number; db?: string; user_context?: { allowed_company_ids?: number[] } }>("/web/session/get_session_info", {});
   if (!info.uid) throw new OdooScopeError("Odoo session expired.", 401);
   const allowed = await resolveOdooAllowedCompanyIds(session, info, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, allowed);
@@ -47,6 +47,7 @@ export async function scopedOdoo(request: NextRequest) {
   return {
     companyIds: forced.companyIds,
     uid: info.uid,
+    database: info.db,
     binding: forced.binding,
     rpc: <T>(model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) => {
       const { active_test: activeTest, context: suppliedContext, ...methodKwargs } = kwargs;

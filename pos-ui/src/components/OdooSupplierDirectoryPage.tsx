@@ -1,4 +1,5 @@
 "use client";
+import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -116,7 +117,7 @@ function OdooNativeSupplierDirectoryPage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
-      setLastLoadedAt(Date.now());
+      setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers.");
     } finally {
@@ -173,7 +174,7 @@ function OdooNativeSupplierDirectoryPage() {
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
           <Link href="/stock/replenishment" className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:px-3"><span className="sm:hidden">Replenish</span><span className="hidden sm:inline">Open replenishment</span></Link>
           <button type="button" onClick={openCreateSupplier} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={16} /> Add supplier</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={connected !== true || loading} aria-label="Refresh suppliers" title="Refresh suppliers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
+          <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={connected !== true || loading} aria-label="Refresh suppliers" title="Refresh suppliers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -197,7 +198,7 @@ function OdooNativeSupplierDirectoryPage() {
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input aria-label="Search suppliers by name, phone, email, ABN or reference" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or ABN" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos suppliers" className="hidden w-full min-w-[760px] border-collapse text-left text-sm xl:table">

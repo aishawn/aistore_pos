@@ -17,7 +17,7 @@ import {
   ShoppingBag,
   Store,
 } from "lucide-react";
-import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
+import { fetchPreparedReport } from "@/lib/report-client";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
@@ -36,6 +36,11 @@ type RecentSale = {
 };
 
 type OverviewData = {
+  taskId?: string;
+  generatedAt?: string;
+  queryThrough?: string;
+  cacheStatus?: string;
+  updateStatus?: string;
   period?: ReportPeriod;
   comparisonLabel?: string;
   rangeHours: number;
@@ -166,6 +171,24 @@ export function OrithosReportsDashboardPage() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [deadStock, setDeadStock] = useState<DeadStockData | null>(null);
   const requestRevision = useRef(0);
+  const periodCache = useRef(new Map<ReportPeriod, { data: OverviewData; expires: number; businessDay: string }>());
+  const reportAbort = useRef<AbortController | null>(null);
+  const deadAbort = useRef<AbortController | null>(null);
+  const [deadStockError, setDeadStockError] = useState<string | null>(null);
+  const [deadStockRefreshing, setDeadStockRefreshing] = useState(false);
+  const [deadStockGeneratedAt, setDeadStockGeneratedAt] = useState<string | null>(null);
+  const loadDeadStock = useCallback(async (refresh = false) => {
+    deadAbort.current?.abort();
+    const controller = new AbortController(); deadAbort.current = controller;
+    setDeadStockRefreshing(true); setDeadStockError(null);
+    try {
+      const response = await fetchPreparedReport("/api/odoo/dead-stock", { refresh, signal: controller.signal });
+      const payload = await response.json() as DeadStockData & { generatedAt?: string };
+      if (!response.ok || !payload.bucketCounts || !payload.cashValueByBucket) throw new Error("Dead-stock analysis is unavailable.");
+      if (!controller.signal.aborted) { setDeadStock(payload); setDeadStockGeneratedAt(payload.generatedAt ?? null); }
+    } catch (cause) { if (!controller.signal.aborted) setDeadStockError(cause instanceof Error ? cause.message : "Dead-stock analysis is unavailable."); }
+    finally { if (!controller.signal.aborted) setDeadStockRefreshing(false); }
+  }, []);
   const periodRef = useRef<ReportPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
@@ -183,22 +206,21 @@ export function OrithosReportsDashboardPage() {
 
   const load = useCallback(async (refresh = false, selectedPeriod = periodRef.current) => {
     const revision = ++requestRevision.current;
+    reportAbort.current?.abort();
+    const controller = new AbortController(); reportAbort.current = controller;
+    const cached = periodCache.current.get(selectedPeriod);
+    if (!refresh && cached && cached.expires > Date.now() && cached.businessDay === new Intl.DateTimeFormat("en-CA", { timeZone: cached.data.timezone }).format(new Date())) {
+      setData(cached.data); setLastLoadedAt(cached.data.generatedAt ? Date.parse(cached.data.generatedAt) : null);
+      setError(null); setLoading(false); setRefreshing(false); return;
+    }
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     setRequestId(null);
     try {
-      // Establish or restore the browser's Orithos cookie before loading the
-      // dashboard, so the first report request does not need a 401 retry.
-      await getOdooSessionStatus();
-      if (revision !== requestRevision.current) return;
       const correlationId = crypto.randomUUID();
       setRequestId(correlationId);
-      const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?period=${selectedPeriod}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "X-Correlation-ID": correlationId },
-      });
+      const response = await fetchPreparedReport(`/api/odoo/reporting-dashboard?period=${selectedPeriod}`, { refresh, signal: controller.signal, correlationId });
       if (revision !== requestRevision.current) return;
       setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as OverviewData | { message?: string } | null;
@@ -214,7 +236,9 @@ export function OrithosReportsDashboardPage() {
         throw new Error("Orithos returned an incomplete overview response.");
       }
       setNeedsConnection(false);
-      setLastLoadedAt(Date.now());
+      setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : null);
+      if (payload.cacheStatus !== "STALE") periodCache.current.set(selectedPeriod, { data: payload, expires: Date.now() + 300_000,
+        businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) });
       setData({
         ...payload,
         itemsSold: Number(payload.itemsSold ?? 0),
@@ -231,19 +255,8 @@ export function OrithosReportsDashboardPage() {
           averageSaleDeltaPct: null,
         },
       });
-      // Dead-stock analysis is intentionally independent of the sales overview:
-      // a slow or incomplete analysis must not prevent the operator from seeing
-      // the primary report.
-      void fetchOdooRoute("/api/odoo/dead-stock", { credentials: "same-origin", cache: "no-store" })
-        .then(async (response) => {
-          if (!response.ok) return null;
-          const payload = await response.json() as DeadStockData;
-          return payload && payload.bucketCounts && payload.cashValueByBucket ? payload : null;
-        })
-        .then((payload) => { if (revision === requestRevision.current && payload) setDeadStock(payload); })
-        .catch(() => undefined);
     } catch (cause) {
-      if (revision === requestRevision.current) {
+      if (revision === requestRevision.current && !controller.signal.aborted) {
         setError(cause instanceof Error ? cause.message : "Could not load overview.");
       }
     } finally {
@@ -254,7 +267,26 @@ export function OrithosReportsDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const saved = new URLSearchParams(location.search).get("period");
+    if (saved && OVERVIEW_RANGES.some(range => range.period === saved)) {
+      periodRef.current = saved as ReportPeriod; setPeriod(saved as ReportPeriod);
+    }
+    void load();
+    return () => { requestRevision.current++; reportAbort.current?.abort(); };
+  }, [load]);
+  useEffect(() => { void loadDeadStock(); return () => deadAbort.current?.abort(); }, [loadDeadStock]);
+  useEffect(() => {
+    const reset = (event: Event) => {
+      periodCache.current.clear();
+      const detail = (event as CustomEvent<{ reason?: string; active?: boolean }>).detail;
+      if (detail?.reason === "identity") { requestRevision.current++; reportAbort.current?.abort(); deadAbort.current?.abort(); setData(null); setDeadStock(null); }
+      if (detail?.active === false) { setLoading(false); setNeedsConnection(true); return; }
+      void load(); void loadDeadStock();
+    };
+    window.addEventListener("orithos-read-cache-cleared", reset);
+    return () => window.removeEventListener("orithos-read-cache-cleared", reset);
+  }, [load, loadDeadStock]);
   useEffect(() => {
     if (!loading || data) {
       setSlowLoading(false);
@@ -263,6 +295,19 @@ export function OrithosReportsDashboardPage() {
     const timer = window.setTimeout(() => setSlowLoading(true), 3000);
     return () => window.clearTimeout(timer);
   }, [data, loading]);
+  useEffect(() => {
+    if (!data?.taskId || data.cacheStatus !== "STALE") return;
+    const controller = new AbortController(); const selected = periodRef.current;
+    void fetchPreparedReport(`/api/odoo/reporting-dashboard?period=${selected}&task=${data.taskId}`, { signal: controller.signal }).then(async response => {
+      const next = await response.json() as OverviewData;
+      if (!response.ok || !Array.isArray(next.trend)) throw new Error("Report update failed. Please retry.");
+      if (!controller.signal.aborted && selected === periodRef.current) {
+        setData(next); setLastLoadedAt(next.generatedAt ? Date.parse(next.generatedAt) : null);
+        periodCache.current.set(selected, { data: next, expires: Date.now() + 300_000, businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: next.timezone }).format(new Date()) });
+      }
+    }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Report update failed."); });
+    return () => controller.abort();
+  }, [data?.taskId, data?.cacheStatus]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
@@ -372,7 +417,7 @@ export function OrithosReportsDashboardPage() {
               <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
                 {greeting} · Orithos POS activity · {rangeLabel}
                 {periodBounds ? <span className="ml-1.5 hidden sm:inline">· {periodBounds}</span> : null}
-                {lastLoadedAt !== null && <span className="ml-1.5">· Last refreshed {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}
+                {lastLoadedAt !== null && <span className="ml-1.5">· Data prepared {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -381,7 +426,10 @@ export function OrithosReportsDashboardPage() {
                   <button key={range.period} type="button" aria-pressed={period === range.period}
                     aria-label={range.label}
                     title={`${range.label}: complete calendar period in the store timezone`}
-                    onClick={() => { periodRef.current = range.period; setPeriod(range.period); void load(true, range.period); }}
+                    onClick={() => {
+                      const url = new URL(location.href); url.searchParams.set("period", range.period); history.replaceState(null, "", url);
+                      periodRef.current = range.period; setPeriod(range.period); void load(false, range.period);
+                    }}
                     className={cn("oh-type-meta min-h-9 rounded-md px-2.5 font-medium transition-colors sm:px-3", period === range.period ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
                     {range.label}
                   </button>
@@ -402,6 +450,12 @@ export function OrithosReportsDashboardPage() {
             </div>
           </header>
 
+          {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
+          {data?.cacheStatus === "STALE" && <p role="status" className="text-xs text-amber-800">Showing the last prepared report. An updated report is being prepared.</p>}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--oh-muted)]">
+            <span>{deadStockError ?? (deadStockGeneratedAt ? `Dead-stock prepared ${formatStoreEpoch(Date.parse(deadStockGeneratedAt), data?.timezone ?? "Australia/Adelaide")}` : "Preparing dead-stock analysis…")}</span>
+            <button type="button" disabled={deadStockRefreshing} onClick={() => void loadDeadStock(true)} className="min-h-9 rounded border px-2 disabled:opacity-50">{deadStockRefreshing ? "Preparing…" : "Refresh dead-stock"}</button>
+          </div>
           {error && (
             <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900">
               <span className="flex min-w-0 items-start gap-2">
@@ -472,7 +526,7 @@ export function OrithosReportsDashboardPage() {
             <KpiCard
               title="Open registers"
               value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}
-              detail="Across the current Orithos company"
+                detail="At the report preparation time"
               icon={<Store size={15} />}
             />
           </section>

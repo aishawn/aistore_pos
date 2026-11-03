@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
-import { fetchOdooRoute, getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
+import { fetchOdooRoute, getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { friendlyProductName } from "@/lib/product-display-name";
 
@@ -115,16 +115,10 @@ export function OdooPriceSuggestionsPage() {
     setError(null);
     setRequestId(null);
     try {
-      const session = await getOdooSessionStatus();
-      if (!session.user) {
-        setNeedsConnection(true);
-        throw new Error("Connect Orithos to review price suggestions.");
-      }
-      if (revision !== requestRevision.current) return;
       const correlationId = crypto.randomUUID();
       setRequestId(correlationId);
       const response = await fetchOdooRoute(
-        `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}`,
+        `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}${refresh ? "&refresh=true" : ""}`,
         { credentials: "same-origin", cache: "no-store", headers: { "X-Correlation-ID": correlationId } },
       );
       if (revision !== requestRevision.current) return;
@@ -141,15 +135,12 @@ export function OdooPriceSuggestionsPage() {
       }
       setNeedsConnection(false);
       setData(payload);
-      try {
-        const bootstrap = await getOdooPosBootstrap();
+      void getOdooPosBootstrap().then(bootstrap => {
         if (revision !== requestRevision.current) return;
-        const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
-        if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
-      } catch {
-        // Suggestions remain useful without register metadata.
-      }
-      setLastLoadedAt(Date.now());
+        const active = bootstrap.configs.find(config => config.session) ?? bootstrap.configs[0];
+        if (active?.timezone) setStoreTimezone(active.timezone);
+      }).catch(() => undefined);
+      setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : Date.now());
     } catch (cause) {
       if (revision !== requestRevision.current) return;
       setError(cause instanceof Error ? cause.message : "Could not load price suggestions.");

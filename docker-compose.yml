@@ -24,6 +24,24 @@ services:
     volumes:
       - inventory-snapshots:/data
 
+  report-worker:
+    build:
+      context: .
+      dockerfile: report-worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_DATABASE: ${ODOO_DATABASE:?Set ODOO_DATABASE in Dokploy}
+      ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
+      ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
+      REPORT_SNAPSHOT_TARGETS: ${REPORT_SNAPSHOT_TARGETS:-[]}
+      REPORT_REDIS_HOST: redis
+      REPORT_REDIS_DB: "1"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
+
   forecast-service:
     build:
       context: ./forecast-service
@@ -36,7 +54,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy} --appendonly yes --appendfsync everysec
     volumes:
       - redis-data:/data
     healthcheck:
@@ -276,6 +294,10 @@ services:
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.server.port=3000
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.passhostheader=true
     environment:
+      REPORT_SNAPSHOT_TARGETS: ${REPORT_SNAPSHOT_TARGETS:-[]}
+      REPORT_REDIS_HOST: redis
+      REPORT_REDIS_DB: "1"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
       RFQ_IDEMPOTENCY_DB: /var/lib/orithos/rfq/requests.sqlite
       INVENTORY_SNAPSHOT_ROOT: /var/lib/orithos/inventory-snapshots
       NODE_ENV: production

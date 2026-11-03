@@ -14,7 +14,7 @@ function load(file) {
   if (modules.has(file)) return modules.get(file).exports;
   const mod = new Module(file); modules.set(file, mod); mod.filename = file;
   mod.paths = Module._nodeModulePaths(path.dirname(file));
-  mod.require = (id) => id.startsWith("@/") ? load(path.join(ui, "src", id.slice(2)) + ".ts") : id.startsWith(".") && id.endsWith(".ts") ? load(path.resolve(path.dirname(file), id)) : require(id);
+  mod.require = (id) => id.startsWith("@/") ? load(path.join(ui, "src", id.slice(2)) + ".ts") : id.startsWith(".") ? load(path.resolve(path.dirname(file), id.endsWith(".ts") ? id : id + ".ts")) : require(id);
   mod._compile(ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file);
   return mod.exports;
 }
@@ -88,6 +88,11 @@ try {
     assert.equal(first.totalStockValue, Math.round(first.totalQty * 2.005 * 100) / 100);
     assert.ok(first.snapshotId); assert.ok(first.items.every((p) => !("standard_price" in p)));
   });
+  await check("revisiting an identical query reuses its snapshot; explicit refresh creates a new one", async () => {
+    const reused = await (await POST(request(opts))).json(); assert.equal(reused.snapshotId, first.snapshotId);
+    const refreshed = await (await POST(request({ ...opts, refresh: true }))).json(); assert.notEqual(refreshed.snapshotId, first.snapshotId);
+    assert.equal(refreshed.totalQty, first.totalQty);
+  });
   await check("all appended pages remain unique and stable, totals do not depend on loaded count", async () => {
     const ids = first.items.map((p) => p.id);
     const reads = calls.filter((c) => c.model === "product.product").length;
@@ -111,7 +116,7 @@ try {
     assert.ok(calls.filter((c) => c.model === "account.tax").length < 200, "Shared quotes are deduplicated");
   });
   await check("cost access denial preserves stock but never reports a partial value as a full total", async () => {
-    costDenied = true; const page = await (await POST(request(opts))).json();
+    costDenied = true; const page = await (await POST(request({ ...opts, refresh: true }))).json();
     assert.equal(page.totalStockValue, null); assert.equal(page.missingCostItems, 1012); assert.equal(page.totalQty, first.totalQty); costDenied = false;
   });
   await check("session, company, query and expired/unknown snapshot cannot be reused", async () => {
@@ -125,7 +130,7 @@ try {
     permissions = []; assert.equal((await POST(request(opts))).status, 403); permissions = ["stock.products.view"];
   });
   await check("Odoo failure is an error, never a fabricated empty result", async () => {
-    unavailable = true; assert.equal((await POST(request(opts))).status, 502); unavailable = false;
+    unavailable = true; assert.equal((await POST(request({ ...opts, refresh: true }))).status, 502); unavailable = false;
   });
   console.log(`${checks.length}/${checks.length} PASS; no live network/business writes`);
 } finally {

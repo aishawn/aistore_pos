@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { NextRequest, NextResponse } from "next/server";
 import { categoryDomain, categoryError, categoryScope, categoryValues, type OdooCategory } from "@/lib/odoo-categories";
 import { OdooScopeError } from "@/lib/odoo-scope";
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
   } catch (error) { return categoryError(error); }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const scope = await categoryScope(request, true);
     const values = await categoryValues(request, scope);
@@ -67,3 +68,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) { return categoryError(error); }
 }
+
+export const POST = withReportInvalidation(handlePOST);

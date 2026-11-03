@@ -1,4 +1,5 @@
 "use client";
+import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -240,7 +241,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     }
   }
 
+  const refreshVersion = useRef(refreshKey);
   const loadProducts = useCallback(async (append = false) => {
+    const forceRefresh = refreshVersion.current !== refreshKey;
+    refreshVersion.current = refreshKey;
     if (connected !== true) return;
     if (append && (requestBusy.current || !snapshotId.current)) return;
     const revision = ++requestRevision.current;
@@ -265,6 +269,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         catalogueView,
         ...(inventoryReport ? {
           inventoryReport: true,
+          refresh: forceRefresh,
           sortBy,
           sortDirection,
           snapshotId: append ? snapshotId.current : undefined,
@@ -279,7 +284,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       nextOffset.current = page.offset + page.items.length;
       setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
       setHasNext(page.hasNext === true);
-      if (!append) setLastLoadedAt(Date.now());
+      if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) {
         setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
@@ -292,7 +297,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, sortBy, sortDirection]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, sortBy, sortDirection, refreshKey]);
 
   useEffect(() => {
     const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
@@ -507,7 +512,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         {tab === "catalogue" && (
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
+          <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
           {(hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">

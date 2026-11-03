@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
@@ -96,7 +97,7 @@ function makeInvoiceNotes(invoiceNumber: string | null, invoiceDate: string | nu
   return `<p><strong>Orithos supplier invoice RFQ v1</strong></p><p>Invoice #${invoiceLabel} · Date ${dateLabel}. Created from a reviewed OCR scan; this record does not receive stock by itself.</p>${extra}<table><thead><tr><th>Product</th><th>Qty</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try { await requirePermission(request, "stock.invoices"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -245,3 +246,5 @@ export async function POST(request: NextRequest) {
     return jsonError(error);
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

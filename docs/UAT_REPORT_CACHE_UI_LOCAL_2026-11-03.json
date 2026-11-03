@@ -1,0 +1,174 @@
+{
+  "target": "http://localhost:3085",
+  "browser": "Edge headless",
+  "fixturesOnly": true,
+  "realBusinessWrites": 0,
+  "checks": [
+    {
+      "width": 390,
+      "name": "default Yesterday and exactly three calendar choices",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "obsolete weekly response cannot replace selected month",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "cached period switch renders within 100 ms",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "cached switch adds no report request or dead-stock scan",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "month date label shows inclusive natural dates",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "failed refresh preserves last successful report",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "manual refresh waits for one job and polls without refresh flag",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "empty report has no removed hour/day range links",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "no mobile or desktop horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "reload preserves the selected calendar period",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "home uses Today summary request",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "default Yesterday and exactly three calendar choices",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "obsolete weekly response cannot replace selected month",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "cached period switch renders within 100 ms",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "cached switch adds no report request or dead-stock scan",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "month date label shows inclusive natural dates",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "failed refresh preserves last successful report",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "manual refresh waits for one job and polls without refresh flag",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "empty report has no removed hour/day range links",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "no mobile or desktop horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "reload preserves the selected calendar period",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "home uses Today summary request",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "default Yesterday and exactly three calendar choices",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "obsolete weekly response cannot replace selected month",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "cached period switch renders within 100 ms",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "cached switch adds no report request or dead-stock scan",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "month date label shows inclusive natural dates",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "failed refresh preserves last successful report",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "manual refresh waits for one job and polls without refresh flag",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "empty report has no removed hour/day range links",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "no mobile or desktop horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "reload preserves the selected calendar period",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "home uses Today summary request",
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}

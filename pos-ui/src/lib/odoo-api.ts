@@ -1,3 +1,4 @@
+import { cachedOdooRead, clearOdooReadCache } from "./odoo-read-cache";
 import { isLocalPreviewSession } from "./api";
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 
@@ -18,6 +19,7 @@ export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelle
 export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d" | "90d" | "180d";
 
 export interface OdooPage<T> {
+  generatedAt?: string;
   items: T[];
   limit: number;
   offset: number;
@@ -273,6 +275,7 @@ export interface OdooPurchaseOrderDetail {
 }
 
 export interface OdooPurchaseOrderPage {
+  generatedAt?: string;
   items: OdooPurchaseOrderRecord[];
   limit: number;
   offset: number;
@@ -434,7 +437,7 @@ async function recoverOdooSession() {
   return odooRecoveryInFlight;
 }
 
-async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false) {
+async function fetchOdooTransport(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false) {
   const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
@@ -442,7 +445,7 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   let response = await fetch(input, init);
   // A complete replenishment calculation is expensive. Let its explicit Retry
   // action control retries instead of silently running a second full scan.
-  const expensivePlan = path.split("?")[0].endsWith("/api/odoo/replenishment");
+  const expensivePlan = ["/api/odoo/replenishment", "/api/odoo/reporting-dashboard", "/api/odoo/dead-stock"].some(route => path.split("?")[0].endsWith(route));
   if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
     response = await fetch(input, init);
   }
@@ -478,6 +481,14 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   }
 
   // Recover credentials in the background, but never replay a write request.
+  return response;
+}
+
+async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false): Promise<Response> {
+  const path = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : input.url;
+  const response = await cachedOdooRead(path, init, options => fetchOdooTransport(input, options, safeToRetry));
+  const method = init?.method?.toUpperCase() ?? "GET";
+  if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(method) && !(method === "POST" && path === "/api/odoo/records") && !path.includes("/checkout/quote")) clearOdooReadCache();
   return response;
 }
 
@@ -649,7 +660,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -673,6 +684,7 @@ export async function searchOdooRecords<T>(
       sortBy: options.sortBy,
       sortDirection: options.sortDirection,
       snapshotId: options.snapshotId,
+      refresh: options.refresh,
     }),
   }, true);
   const payload = (await response.json().catch(() => null)) as

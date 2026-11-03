@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
@@ -68,7 +69,7 @@ function validRow(value: unknown): value is ProductImportRow {
     && Array.isArray(row.pos_categ_ids) && row.pos_categ_ids.length <= 20 && row.pos_categ_ids.every((id) => Number.isSafeInteger(id) && Number(id) > 0);
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
     await requirePermission(request, "stock.products.import_export");
@@ -178,3 +179,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

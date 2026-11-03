@@ -1,3 +1,4 @@
+import { scopedReadCache } from "@/lib/scoped-read-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -18,7 +19,7 @@ const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 56;
 const PERIOD_DAYS = 28;
 const FORECAST_BATCH_SIZE = 500;
-const REPLENISHMENT_CACHE_TTL_MS = 30 * 60 * 1000;
+const REPLENISHMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const COVERAGE_OPTIONS = new Set([7, 14, 21, 28, 42]);
 const FORECAST_MODELS = new Set([
   "seasonal_naive_v1",
@@ -30,7 +31,6 @@ const FORECAST_MODELS = new Set([
   "analog_category_brand_price_v1",
 ]);
 
-const replenishmentCache = new Map<string, { expiresAt: number; body: Record<string, unknown> }>();
 
 type RpcEnvelope<T> = { result?: T; error?: { message?: string } };
 
@@ -202,14 +202,7 @@ export async function GET(request: NextRequest) {
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Orithos companies are available to this user." }, { status: 403 });
-    const cacheKey = `${companyId}:${coverageDays}:${exceptionMode ? "exceptions" : "all"}`;
-    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "true";
-    const cacheEntry = (forceRefresh || request.nextUrl.searchParams.get("validateSales") === "true") ? null : replenishmentCache.get(cacheKey);
-    if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
-      return NextResponse.json({ ...cacheEntry.body, cache: { status: "HIT", expiresAt: new Date(cacheEntry.expiresAt).toISOString() } }, { status: 200, headers: { "Cache-Control": "no-store" } });
-    }
-    if (cacheEntry) replenishmentCache.delete(cacheKey);
-
+    const body = await scopedReadCache(request, forced.binding!, ["replenishment", coverageDays, exceptionMode, process.env.AI_FORECAST_ENABLED, request.nextUrl.searchParams.get("validateSales")], async () => {
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
@@ -587,10 +580,9 @@ export async function GET(request: NextRequest) {
       cache: { status: "MISS", expiresAt: new Date(Date.now() + REPLENISHMENT_CACHE_TTL_MS).toISOString() },
     };
     markPhase("response", { products: replenishmentItems.length });
-    if (request.nextUrl.searchParams.get("validateSales") !== "true") {
-      replenishmentCache.set(cacheKey, { expiresAt: Date.now() + REPLENISHMENT_CACHE_TTL_MS, body: responseBody });
-    }
-    return NextResponse.json(responseBody, { status: 200, headers: { "Cache-Control": "no-store" } });
+    return { ...responseBody, generatedAt: new Date().toISOString() };
+    });
+    return NextResponse.json(body, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     // Keep the client response intentionally generic, but leave a correlation
     // breadcrumb in the frontend container logs so upstream Odoo/forecast

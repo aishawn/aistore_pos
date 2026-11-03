@@ -1,3 +1,4 @@
+import { scopedReadCache } from "@/lib/scoped-read-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { netMargin, simpleTaxTotals, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
@@ -100,14 +101,15 @@ export async function GET(request: NextRequest) {
     const companyId = forced.companyIds[0];
     if (!companyId) return noStoreJson({ message: "No Orithos companies are available to this user." }, 403, correlationId);
 
+    const rawOffset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
+    if (!Number.isSafeInteger(rawOffset) || rawOffset < 0) return noStoreJson({ message: "Invalid page offset." }, 400, correlationId);
+    const body = await scopedReadCache(request, forced.binding!, ["price-suggestions", marginTarget, rawOffset], async () => {
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
       ["order_id.date_order", ">=", recentFrom],
     ];
 
-    const rawOffset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
-    if (!Number.isSafeInteger(rawOffset) || rawOffset < 0) return noStoreJson({ message: "Invalid page offset." }, 400, correlationId);
     const context = { allowed_company_ids: [companyId], force_company: companyId };
     const products = await rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
       ["available_in_pos", "=", true], ["company_id", "=", companyId],
@@ -270,7 +272,7 @@ export async function GET(request: NextRequest) {
       return rank(a.status) - rank(b.status) || b.soldUnits - a.soldUnits || a.name.localeCompare(b.name);
     });
 
-    return noStoreJson({
+    return {
       company: companies?.[0]?.name ?? "Current company",
       historyDays: HISTORY_DAYS,
       marginTarget,
@@ -283,7 +285,9 @@ export async function GET(request: NextRequest) {
       stockScope: "company",
       generatedAt: new Date().toISOString(),
       writeEnabled: false,
+    };
     });
+    return noStoreJson(body, 200, correlationId);
   } catch (error) {
     if (error instanceof PriceSuggestionSessionExpiredError) {
       const response = noStoreJson({ message: "Orithos session expired" }, 401, correlationId);

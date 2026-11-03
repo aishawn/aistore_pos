@@ -1,3 +1,4 @@
+import { withReportInvalidation } from "@/lib/report-write-invalidation";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { validateCategoryIds } from "@/lib/odoo-categories";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
@@ -56,7 +57,7 @@ async function callOdoo<T>(sessionId: string, method: string, args: unknown[], k
   return payload.result as T;
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
@@ -128,3 +129,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message }, { status });
   }
 }
+
+export const POST = withReportInvalidation(handlePOST);

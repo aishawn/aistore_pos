@@ -173,7 +173,7 @@ export function OverviewPageContent({
     ...(canReport
       ? [{
           title: "Sales trend",
-          description: data?.revenue === 0 ? "No sales in the last 7 days." : "Review your latest store activity.",
+          description: data?.revenue === 0 ? "No sales today." : "Review your latest store activity.",
           href: "/reports/dashboard",
           tone: "blue",
         }]
@@ -223,7 +223,7 @@ export function OverviewPageContent({
                 {data ? " Showing your last loaded summary." : ""}
               </p>
             </div>
-            <button onClick={() => void load()} disabled={loading}>
+            <button onClick={() => void load(true)} disabled={loading}>
               <RefreshCw size={16} /> Retry
             </button>
             {authExpired ? (
@@ -237,13 +237,15 @@ export function OverviewPageContent({
         ) : null}
         {data && active === "workspace" ? (
           <>
-            <section className="ov-summary" aria-label="Last 7 days">
+            <section className="ov-summary" aria-label="Today">
               <span className="ov-summary-art" aria-hidden="true" />
               <div className="ov-summary-intro">
                 <span className="ov-summary-icon" aria-hidden="true"><BadgeCheck size={27} strokeWidth={1.8} /></span>
                 <div>
-                  <span className="ov-eyebrow">LAST 7 DAYS</span>
+                  <span className="ov-eyebrow">TODAY</span>
+                    {data.cacheStatus === "STALE" && <p role="status">Updating your summary. Showing the last prepared data.</p>}
                   <h2>Your store in focus.</h2>
+                  {data.queryThrough && <p className="text-xs text-[var(--oh-muted)]">As of {new Intl.DateTimeFormat("en-AU", { timeZone: data.timezone, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(data.queryThrough.includes("T") ? data.queryThrough : data.queryThrough.replace(" ", "T") + "Z"))}</p>}
                 </div>
               </div>
               <dl>

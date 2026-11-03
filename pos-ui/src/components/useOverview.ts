@@ -1,16 +1,20 @@
 "use client";
+import { fetchPreparedReport } from "@/lib/report-client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import {
-  fetchOdooRoute,
-  getOdooSessionStatus,
   OdooApiError,
 } from "@/lib/odoo-api";
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 
 export type OverviewPulse = {
+  generatedAt?: string;
+  queryThrough?: string;
+  cacheStatus?: string;
+  updateStatus?: string;
+  taskId?: string;
   company: string;
   currency: string;
   timezone: string;
@@ -32,7 +36,7 @@ export function money(value: number, currency: string) {
   }
 }
 export function useOverview() {
-  const { user, hasPermission } = useAuth();
+  const { user, ready, hasPermission } = useAuth();
   const [data, setData] = useState<OverviewPulse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,25 +44,15 @@ export function useOverview() {
   const [authExpired, setAuthExpired] = useState(false);
   const [parked, setParked] = useState(0);
   const revision = useRef(0);
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     const current = ++revision.current;
     setLoading(true);
     setError(null);
     setAuthExpired(false);
     let checkingSession = true;
     try {
-      const session = await getOdooSessionStatus();
       checkingSession = false;
-      if (!session.user) {
-        if (current !== revision.current) return;
-        setConnection(true);
-        setError("Connect your store to load dashboard data.");
-        return;
-      }
-      const response = await fetchOdooRoute(
-        "/api/odoo/reporting-dashboard?hours=168",
-        { cache: "no-store", credentials: "same-origin" },
-      );
+      const response = await fetchPreparedReport("/api/odoo/reporting-dashboard?period=today&view=summary", { refresh });
       const payload = await response.json();
       if (current !== revision.current) return;
       setConnection(response.status === 401);
@@ -70,6 +64,11 @@ export function useOverview() {
       if (!Number.isFinite(payload?.revenue))
         throw new Error("The store summary is incomplete. Please retry.");
       setData({
+        generatedAt: payload.generatedAt,
+        queryThrough: payload.queryThrough,
+        cacheStatus: payload.cacheStatus,
+        updateStatus: payload.updateStatus,
+        taskId: payload.taskId,
         company: payload.company || "Store",
         currency: payload.currency || "AUD",
         timezone: payload.timezone || "Australia/Adelaide",
@@ -110,12 +109,29 @@ export function useOverview() {
     }
   }, []);
   useEffect(() => {
+    if (!data?.taskId || data.cacheStatus !== "STALE") return;
+    const controller = new AbortController(); const current = revision.current;
+    void fetchPreparedReport(`/api/odoo/reporting-dashboard?period=today&view=summary&task=${data.taskId}`, { signal: controller.signal })
+      .then(async response => {
+        const next = await response.json();
+        if (!response.ok || !Number.isFinite(next.revenue)) throw new Error("Summary update failed. Please retry.");
+        if (!controller.signal.aborted && current === revision.current) setData(next);
+      }).catch(cause => { if (!controller.signal.aborted && current === revision.current) setError(cause instanceof Error ? cause.message : "Summary update failed."); });
+    return () => controller.abort();
+  }, [data?.taskId, data?.cacheStatus]);
+  useEffect(() => {
+    if (!ready || !user) return;
     void load();
     const counter = revision;
     return () => {
       counter.current++;
     };
-  }, [load]);
+  }, [load, ready, user?.id, user?.vendorId, user?.outletId]);
+  useEffect(() => {
+    const reset = (event: Event) => { revision.current++; setData(null); if ((event as CustomEvent<{ active?: boolean }>).detail?.active !== false && user && ready) void load(); };
+    window.addEventListener("orithos-read-cache-cleared", reset);
+    return () => window.removeEventListener("orithos-read-cache-cleared", reset);
+  }, [load, user, ready]);
   useEffect(() => {
     const sync = () => {
       try {
