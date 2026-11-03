@@ -90,8 +90,10 @@ async function loadBusinessMetrics(sessionId: string, companyId: number, timezon
   const empty = { inventoryUnits: null as number | null, yesterdaySales: 0, yesterdaySalesAvailable: false, yesterdayGrossMargin: null as number | null, grossMarginCoverage: 0, inventoryAvailable: false };
   try {
     const yesterday = yesterdayWindow(timezone);
-    const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", yesterday.from.toISOString().slice(0, 19).replace("T", " ")], ["date_order", "<", yesterday.to.toISOString().slice(0, 19).replace("T", " ")], ["state", "in", ["paid", "done", "invoiced"]]];
-    const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", orderDomain[1][2]], ["order_id.date_order", "<", orderDomain[2][2]], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
+    const fromDate = yesterday.from.toISOString().slice(0, 19).replace("T", " ");
+    const toDate = yesterday.to.toISOString().slice(0, 19).replace("T", " ");
+    const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", fromDate], ["date_order", "<", toDate], ["state", "in", ["paid", "done", "invoiced"]]];
+    const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", fromDate], ["order_id.date_order", "<", toDate], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
     const [salesRows, lines, stockRows] = await Promise.all([
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => null),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [lineDomain, ["price_subtotal", "price_subtotal_incl", "qty", "purchase_price"]], { limit: 5000 }, correlationId).catch(() => null),
