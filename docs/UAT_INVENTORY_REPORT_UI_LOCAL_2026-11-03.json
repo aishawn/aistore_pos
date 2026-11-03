@@ -1,0 +1,195 @@
+{
+  "scope": "Local intercepted browser fixture; no live acceptance",
+  "checks": [
+    {
+      "width": 390,
+      "name": "report title and full-result totals before scrolling",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "summary stays inside viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "continuous append loads all rows exactly once",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "completed list announces all loaded",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "sorting resets results and sends global descending order",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "empty search has zero totals",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "stale query response does not replace new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "append failure preserves existing products",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "retry resumes failed page with snapshot",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "expired snapshot refreshes from first batch",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "missing cost is explicit",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "no viewport horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "report title and full-result totals before scrolling",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "summary stays inside viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "continuous append loads all rows exactly once",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "completed list announces all loaded",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "sorting resets results and sends global descending order",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "empty search has zero totals",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "stale query response does not replace new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "append failure preserves existing products",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "retry resumes failed page with snapshot",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "expired snapshot refreshes from first batch",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "missing cost is explicit",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "no viewport horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "report title and full-result totals before scrolling",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "summary stays inside viewport",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "continuous append loads all rows exactly once",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "completed list announces all loaded",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "sorting resets results and sends global descending order",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "aria-sort exposes direction",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "empty search has zero totals",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "stale query response does not replace new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "append failure preserves existing products",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "retry resumes failed page with snapshot",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "expired snapshot refreshes from first batch",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "missing cost is explicit",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "no viewport horizontal overflow",
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "liveBusinessWrites": 0,
+  "sourceBase": "24854d147073a2c8c5dee16c53a90218431bfb58",
+  "sourceTreeDirty": true,
+  "runtime": "local fixture; live runtime not verified"
+}

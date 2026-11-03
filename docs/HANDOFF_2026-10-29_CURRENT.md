@@ -1,5 +1,14 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-03 Inventory report totals, sorting and continuous loading
+
+- `/reports/inventory` now identifies itself as Inventory report. The shared product catalogue uses 40-row continuous append, desktop column sorting, mobile sorting and a sticky summary of all matching products, stock quantity and current-cost value in AUD. Search/category/quick-view/sort changes reset results. Refresh retains last successful rows on failure; append retries resume the same batch. Snapshot expiry explicitly requires refresh.
+- Opt-in records API report requests retain the existing permission, company domain and category validation. Odoo computed quantities and many-to-many categories are sorted over the full server result, with ID tie breaks, rather than unsafe SQL ordering. Short-lived (5 minute), bounded process-local snapshots bind session/access credential, host, company and query; restart/replica/cache eviction returns 409. Inventory does not change while scrolling the same snapshot. Initial scans read Odoo in 500-row keyset batches; browser batches remain 40 rows. Sorting by inclusive sale price quotes the complete matching result, deduplicating shared price/tax combinations; this may take longer for large catalogues.
+- Stock value is quantity × Odoo current unit cost, calculated in decimal arithmetic and rounded once to cents; it is not an accounting valuation or last-purchase-cost report. Unknown/unreadable costs produce an explicit unavailable total (never an invented zero); valid zero costs remain zero. Mixed units are not added together. Individual costs are removed before returning/caching report rows. No Classic/R2 fallback and no Odoo business writes.
+- Local Node 24.19.0: unit tests 7/7, actual API handler with in-memory transport 8/8, browser fixtures 37/37 at 390/1024/1440, TypeScript and targeted ESLint PASS. Browser errors 0, real writes 0. Evidence: `UAT_INVENTORY_REPORT_ROUTE_LOCAL_2026-11-03.json`, `UAT_INVENTORY_REPORT_UI_LOCAL_2026-11-03.json`; screenshots in `screenshots/inventory-report-2026-11-03/`.
+- Implemented and locally verified; deployment/runtime SHA and real Odoo reconciliation remain unverified. No local application build or Maven run. Browser used webpack dev because this checkout's node_modules junction is incompatible with Turbopack's filesystem root; no configuration change included.
+
+
 ## 2026-11-03 Assistant History rollback, URL fix and database repair
 
 - Restored History to the original main-area searchable list with Back; Suggested workflows remains collapsed. Fixed URL validation rejecting the actual backend `vendor:user:UUID` session key after `%3A` decoding. Reproduced the link failure before the fix and added real-format direct-link/new-reply/reload tests at 390/768/1024/1440. Empty saved conversations now explicitly report unavailable messages rather than silently showing the greeting.

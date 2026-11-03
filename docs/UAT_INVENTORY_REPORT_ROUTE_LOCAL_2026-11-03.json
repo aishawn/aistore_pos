@@ -1,0 +1,41 @@
+{
+  "scope": "Actual route with in-memory Odoo transport; no live acceptance",
+  "liveBusinessWrites": 0,
+  "checks": [
+    {
+      "name": "global ordering, complete totals, 500-row keyset scan and scoped snapshots",
+      "status": "PASS"
+    },
+    {
+      "name": "all appended pages remain unique and stable, totals do not depend on loaded count",
+      "status": "PASS"
+    },
+    {
+      "name": "search and category/quick filters change both rows and full totals",
+      "status": "PASS"
+    },
+    {
+      "name": "category and true GST-inclusive price sort work globally",
+      "status": "PASS"
+    },
+    {
+      "name": "cost access denial preserves stock but never reports a partial value as a full total",
+      "status": "PASS"
+    },
+    {
+      "name": "session, company, query and expired/unknown snapshot cannot be reused",
+      "status": "PASS"
+    },
+    {
+      "name": "sort injection and invalid report types are rejected; permission remains enforced",
+      "status": "PASS"
+    },
+    {
+      "name": "Odoo failure is an error, never a fabricated empty result",
+      "status": "PASS"
+    }
+  ],
+  "sourceBase": "24854d147073a2c8c5dee16c53a90218431bfb58",
+  "sourceTreeDirty": true,
+  "runtime": "local fixture; live runtime not verified"
+}

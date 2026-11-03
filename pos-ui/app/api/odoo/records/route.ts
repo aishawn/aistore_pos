@@ -8,6 +8,9 @@ import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
 import { catalogueDomain } from "@/lib/product-catalogue";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
+import { createHash } from "node:crypto";
+import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
+import { getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,7 +117,14 @@ const RECORD_TYPES = {
 type RecordType = keyof typeof RECORD_TYPES;
 
 async function withTaxInclusivePrices(sessionId: string, items: unknown[], correlationId?: string | null) {
-  const products = items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
+  const allProducts = items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const product of allProducts) {
+    const key = JSON.stringify([product.list_price, product.taxes_id]);
+    const group = groups.get(key);
+    if (group) group.push(product); else groups.set(key, [product]);
+  }
+  const products = [...groups.values()].map((group) => group[0]);
   let cursor = 0;
   const worker = async () => {
     while (cursor < products.length) {
@@ -152,6 +162,10 @@ async function withTaxInclusivePrices(sessionId: string, items: unknown[], corre
     }
   };
   await Promise.all(Array.from({ length: Math.min(8, products.length) }, worker));
+  for (const group of groups.values()) for (const product of group.slice(1)) {
+    product.price_included = group[0].price_included;
+    product.price_tax = group[0].price_tax;
+  }
   return items;
 }
 
@@ -179,7 +193,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown>; inventoryReport?: boolean; sortBy?: InventorySort; sortDirection?: InventoryDirection; snapshotId?: string };
   try {
     body = await request.json();
   } catch {
@@ -191,6 +205,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Unsupported Orithos record type" }, { status: 400 });
   }
   const config = RECORD_TYPES[type];
+  if (body.inventoryReport !== undefined || body.sortBy !== undefined || body.sortDirection !== undefined || body.snapshotId !== undefined) {
+    if (type !== "products" || body.inventoryReport !== true
+      || (body.sortBy !== undefined && !INVENTORY_SORTS.includes(body.sortBy))
+      || (body.sortDirection !== undefined && !["asc", "desc"].includes(body.sortDirection))
+      || (body.snapshotId !== undefined && (typeof body.snapshotId !== "string" || body.snapshotId.length > 64))) {
+      return NextResponse.json({ message: "Invalid inventory report options" }, { status: 400 });
+    }
+    try { await requirePermission(request, "stock.products.view"); }
+    catch (error) { return NextResponse.json({ message: "Could not access this store's inventory" }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
+  }
   const requestedLimit = body.limit === undefined ? 40 : Number(body.limit);
   const requestedOffset = body.offset === undefined ? 0 : Number(body.offset);
   if (!Number.isFinite(requestedLimit) || !Number.isFinite(requestedOffset)) {
@@ -339,6 +363,70 @@ export async function POST(request: NextRequest) {
       domain.push(["id", "in", companyIds]);
     } else {
       domain.push(["company_id", "in", companyIds]);
+    }
+
+    if (body.inventoryReport) {
+      const sortBy = body.sortBy ?? "name";
+      const sortDirection = body.sortDirection ?? "asc";
+      const key = createHash("sha256").update(JSON.stringify([sessionId, request.cookies.get("orithos_access_token")?.value, request.nextUrl.host, context, domain, sortBy, sortDirection])).digest("hex");
+      let snapshotId = body.snapshotId;
+      let snapshot = snapshotId ? getInventorySnapshot(snapshotId, key) : null;
+      if (snapshotId && !snapshot) return NextResponse.json({ message: "Inventory results expired. Refresh to load current stock." }, { status: 409 });
+      if (!snapshot) {
+        if (offset !== 0) return NextResponse.json({ message: "Refresh inventory before loading more results." }, { status: 409 });
+        const rpc = async <T,>(model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> => {
+          const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
+            method: "POST", headers: correlationHeaders(sessionId, correlationId),
+            body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs: { ...kwargs, context } }, id: Date.now() }),
+            cache: "no-store", signal: AbortSignal.timeout(15_000),
+          });
+          const payload = await response.json() as { result?: T; error?: { data?: { name?: string } } };
+          if (!response.ok || payload.error || payload.result === undefined) {
+            const name = payload.error?.data?.name ?? "";
+            const status = /session|authenticate/i.test(name) ? 401 : /AccessError|AccessDenied/.test(name) ? 403 : 502;
+            throw Object.assign(new Error("Inventory data is unavailable. Try again."), { status });
+          }
+          return payload.result;
+        };
+        try {
+          const rows: InventoryRow[] = [];
+          let costReadable = true;
+          let afterId = 0;
+          for (;;) {
+            const readBatch = () => rpc<InventoryRow[]>(config.model, "search_read", [[...domain, ["id", ">", afterId]]], {
+              fields: [...config.fields, ...(costReadable ? ["standard_price"] : [])], limit: 500, order: "id asc",
+            });
+            let batch: InventoryRow[];
+            try { batch = await readBatch(); }
+            catch (error) {
+              if (!costReadable || !(error instanceof Error) || !("status" in error) || error.status !== 403) throw error;
+              costReadable = false;
+              batch = await readBatch();
+            }
+            if (!Array.isArray(batch)) throw new Error("Inventory data is unavailable.");
+            rows.push(...batch);
+            if (batch.length < 500) break;
+            const nextId = batch[batch.length - 1]?.id;
+            if (!Number.isSafeInteger(nextId) || nextId <= afterId) throw new Error("Inventory data is unavailable.");
+            afterId = nextId;
+          }
+          const categories = sortBy === "category"
+            ? await rpc<Array<{ id: number; name: string }>>("pos.category", "search_read", [categoryDomain(companyIds)], { fields: ["id", "name"] }) : [];
+          if (sortBy === "price_included") await withTaxInclusivePrices(sessionId, rows, correlationId);
+          const totals = inventoryTotals(rows);
+          const sorted = sortInventory(rows, sortBy, sortDirection, new Map(categories.map((item) => [item.id, item.name])));
+          // Costs are used for the aggregate only; never expose individual costs in this dataset.
+          for (const row of sorted) delete row.standard_price;
+          snapshotId = saveInventorySnapshot(key, sorted, totals);
+          snapshot = getInventorySnapshot(snapshotId, key)!;
+        } catch (error) {
+          const status = error instanceof Error && "status" in error ? Number(error.status) : 502;
+          return NextResponse.json({ message: status === 401 ? "Orithos session expired" : "Could not load inventory. Try again." }, { status });
+        }
+      }
+      let items: unknown[] = snapshot.rows.slice(offset, offset + limit).map((row) => ({ ...row }));
+      if (sortBy !== "price_included") items = await withTaxInclusivePrices(sessionId, items, correlationId);
+      return NextResponse.json({ items, limit, offset, hasNext: offset + limit < snapshot.rows.length, snapshotId, total: snapshot.totals.totalItems, ...snapshot.totals }, { headers: { "Cache-Control": "no-store" } });
     }
 
     // After sample purge, hide seeded demo POS orders so History matches Reporting.

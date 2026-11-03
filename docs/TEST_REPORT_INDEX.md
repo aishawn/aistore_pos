@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest inventory report verification: [2026-11-03 inventory report](test-sessions/2026-11-03-inventory-report.md): local unit 7/7, API fixture 8/8, browser fixture 37/37 PASS. Real Odoo/runtime acceptance remains NOT RUN.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.

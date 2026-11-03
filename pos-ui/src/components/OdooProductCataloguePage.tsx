@@ -5,13 +5,14 @@ import Link from "next/link";
 import { groupCategories } from "@/lib/category-groups";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
 import {
   createOdooProduct,
   fetchOdooRoute,
   getOdooPosBootstrap,
   getOdooSession,
   importOdooProducts,
+  OdooApiError,
   searchOdooRecords,
   updateOdooProduct,
   type OdooPosCategoryRecord,
@@ -35,12 +36,13 @@ import {
   looksLikeR2ImportMarker,
   truncateSku,
 } from "@/lib/product-display-name";
+import { type InventorySort, type InventoryDirection, type InventoryTotals } from "@/lib/inventory-report";
 
 const PAGE_SIZE = 40;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(amount);
 
-export function OdooProductCataloguePage() {
+export function OdooProductCataloguePage({ inventoryReport = false }: { inventoryReport?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { hasPermission } = useAuth();
@@ -70,7 +72,17 @@ export function OdooProductCataloguePage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [catalogueView, setCatalogueView] = useState<CatalogueView>("all");
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
-  const [offset, setOffset] = useState(0);
+  const [sortBy, setSortBy] = useState<InventorySort>("name");
+  const [sortDirection, setSortDirection] = useState<InventoryDirection>("asc");
+  const [totals, setTotals] = useState<InventoryTotals | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [expired, setExpired] = useState(false);
+  const snapshotId = useRef<string | undefined>(undefined);
+  const nextOffset = useRef(0);
+  const requestBusy = useRef(false);
+  const scrollRoot = useRef<HTMLElement>(null);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const loadedQuery = useRef("");
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
@@ -157,7 +169,6 @@ export function OdooProductCataloguePage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
-      setOffset(0);
       setRefreshKey((value) => value + 1);
     }, 250);
     return () => window.clearTimeout(timer);
@@ -229,31 +240,92 @@ export function OdooProductCataloguePage() {
     }
   }
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (append = false) => {
     if (connected !== true) return;
+    if (append && (requestBusy.current || !snapshotId.current)) return;
     const revision = ++requestRevision.current;
-    setLoading(true);
+    requestBusy.current = true;
+    if (append) setLoadingMore(true);
+    else {
+      setLoading(true);
+      setLoadingMore(false);
+      setHasNext(false);
+      setTotals(null);
+      snapshotId.current = undefined;
+      nextOffset.current = 0;
+    }
+    setExpired(false);
     setError(null);
     try {
       const page = await searchOdooRecords<OdooProductRecord>("products", {
         query: debouncedQuery,
         limit: PAGE_SIZE,
-        offset,
+        offset: append ? nextOffset.current : 0,
         categoryIds: categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined,
         catalogueView,
+        inventoryReport: true,
+        sortBy,
+        sortDirection,
+        snapshotId: append ? snapshotId.current : undefined,
       });
       if (revision !== requestRevision.current) return;
-      setItems(page.items.slice(0, PAGE_SIZE));
+      if (!page.snapshotId || typeof page.totalItems !== "number" || page.totalQty === undefined || page.totalStockValue === undefined || (page.hasNext && page.items.length === 0)) {
+        throw new Error("Inventory results are incomplete. Refresh to try again.");
+      }
+      setItems((previous) => append ? [...previous, ...page.items.filter((item) => !previous.some((row) => row.id === item.id))] : page.items);
+      snapshotId.current = page.snapshotId;
+      nextOffset.current = page.offset + page.items.length;
+      setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
       setHasNext(page.hasNext === true);
-      setLastLoadedAt(Date.now());
+      if (!append) setLastLoadedAt(Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
+        setExpired(cause instanceof OdooApiError && cause.status === 409);
+      }
     } finally {
-      if (revision === requestRevision.current) setLoading(false);
+      if (revision === requestRevision.current) {
+        requestBusy.current = false;
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, offset]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, sortBy, sortDirection]);
 
-  useEffect(() => { void loadProducts(); }, [loadProducts, refreshKey]);
+  useEffect(() => {
+    const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
+    if (loadedQuery.current !== key) {
+      setItems([]);
+      loadedQuery.current = key;
+    }
+    scrollRoot.current?.scrollTo({ top: 0 });
+    void loadProducts();
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
+  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
+
+  useEffect(() => {
+    if (!hasNext || resultsPending || loadingMore || error || !sentinel.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) void loadProducts(true);
+    }, { root: scrollRoot.current, rootMargin: "0px 0px 240px 0px" });
+    observer.observe(sentinel.current);
+    return () => observer.disconnect();
+  }, [hasNext, resultsPending, loadingMore, error, loadProducts]);
+
+  function changeSort(field: InventorySort, direction?: InventoryDirection) {
+    requestRevision.current += 1;
+    setLoading(true);
+    setSortDirection(direction ?? (field === sortBy && sortDirection === "asc" ? "desc" : "asc"));
+    setSortBy(field);
+  }
+
+  function sortHeader(field: InventorySort, label: string) {
+    const active = sortBy === field;
+    const Icon = active ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return <th scope="col" aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className={`px-4 py-2 ${field === "qty_available" || field === "price_included" ? "text-right" : ""}`}>
+      <button type="button" onClick={() => changeSort(field)} className="inline-flex min-h-11 items-center gap-1.5 rounded px-1 text-xs font-semibold uppercase focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}<Icon aria-hidden="true" size={14} /></button>
+    </th>;
+  }
 
   useEffect(() => {
     if (connected !== true) return;
@@ -279,14 +351,12 @@ export function OdooProductCataloguePage() {
     requestRevision.current += 1;
     setLoading(true);
     setCategoryId(value ? Number(value) : null);
-    setOffset(0);
   }
 
   function selectView(value: CatalogueView) {
     requestRevision.current += 1;
     setLoading(true);
     setCatalogueView(value);
-    setOffset(0);
   }
 
   function clearFilters() {
@@ -296,7 +366,6 @@ export function OdooProductCataloguePage() {
     setDebouncedQuery("");
     setCategoryId(null);
     setCatalogueView("all");
-    setOffset(0);
     setRefreshKey((value) => value + 1);
   }
 
@@ -365,7 +434,6 @@ export function OdooProductCataloguePage() {
       setQuery(name);
       setCatalogueView("all");
       setCategoryId(null);
-      setOffset(0);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
       setCreateError(cause instanceof Error ? cause.message : "Could not create this Orithos product.");
@@ -420,10 +488,10 @@ export function OdooProductCataloguePage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header inert={stockBusy || categoryBusy} className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
+          <h1 className="oh-type-title text-[var(--oh-text)]">{inventoryReport ? "Inventory report" : "Products"}</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
@@ -494,6 +562,12 @@ export function OdooProductCataloguePage() {
             </select>
           </div>
 
+          <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by
+            <select aria-label="Sort inventory" value={`${sortBy}:${sortDirection}`} onChange={(event) => { const [field, direction] = event.target.value.split(":"); changeSort(field as InventorySort, direction as InventoryDirection); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm">
+              {([ ["name", "Product"], ["category", "Category"], ["qty_available", "On hand"], ["price_included", "Sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
+            </select>
+          </label>
+
           <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] md:hidden">Quick view
             <select aria-label="Catalogue quick view" value={catalogueView} onChange={(event) => selectView(event.target.value as CatalogueView)} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
               {CATALOGUE_VIEWS.map((view) => <option key={view.value} value={view.value}>{view.label}</option>)}
@@ -506,21 +580,21 @@ export function OdooProductCataloguePage() {
           {(query || categoryId || catalogueView !== "all") && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
-            Stock quantities reflect the active Orithos inventory context. Use Orithos reports for location-specific counts.
+            Totals cover all matching products in the active inventory context. Stock value = on hand × current unit cost (AUD).
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
-          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && Boolean(snapshotId.current) && items.length > 0)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
 
           <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
-                  <th scope="col" className="px-4 py-3">Product</th>
-                  <th scope="col" className="px-4 py-3">Category</th>
+                  {sortHeader("name", "Product")}
+                  {sortHeader("category", "Category")}
                   <th scope="col" className="px-4 py-3">Barcode / SKU</th>
-                  <th scope="col" className="px-4 py-3 text-right">On hand</th>
-                  <th scope="col" className="px-4 py-3 text-right">Sale price · AUD</th>
+                  {sortHeader("qty_available", "On hand")}
+                  {sortHeader("price_included", "Sale price · AUD")}
                   <th scope="col" className="px-4 py-3">POS</th>
                   <th scope="col" className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -593,12 +667,19 @@ export function OdooProductCataloguePage() {
             </div>
           </section>
 
-          <footer className="flex shrink-0 flex-col gap-2 pr-24 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span role="status" aria-live="polite">{resultsPending ? "Loading products…" : items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => Math.max(0, value - PAGE_SIZE)); }} disabled={offset === 0 || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => { requestRevision.current += 1; setLoading(true); setOffset((value) => value + PAGE_SIZE); }} disabled={!hasNext || resultsPending} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
-            </div>
+          <div ref={sentinel} className="flex min-h-12 shrink-0 items-center justify-center gap-2 text-sm text-[var(--oh-muted)]" role="status" aria-live="polite">
+            {loadingMore ? <><LoaderCircle aria-hidden="true" size={16} className="animate-spin" /> Loading more products…</> : !resultsPending && !error && !hasNext ? "All results loaded" : null}
+            {hasNext && !resultsPending && !loadingMore && !error && <button type="button" onClick={() => void loadProducts(true)} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Load more</button>}
+          </div>
+          <footer className="sticky bottom-0 z-20 flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label="Totals for all matching products">
+            <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading inventory…" : totals ? `Loaded ${items.length} / ${totals.totalItems} products` : "Totals unavailable"}</span>
+            {totals && !resultsPending && <>
+              <span>Products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>On hand <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              <span>Stock value · AUD <strong className="ml-2 tabular-nums">{totals.totalStockValue === null ? "Unavailable" : money(totals.totalStockValue)}</strong></span>
+              {totals.missingCostItems > 0 && <span className="basis-full text-xs text-amber-800">Cost unavailable for {totals.missingCostItems} stocked products; value cannot be calculated.</span>}
+              {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
+            </>}
           </footer>
         </>
       )}

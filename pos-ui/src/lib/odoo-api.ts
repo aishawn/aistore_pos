@@ -25,6 +25,12 @@ export interface OdooPage<T> {
   hasNext?: boolean;
   /** Exact number of records matching the current filters, when available. */
   total?: number;
+  snapshotId?: string;
+  totalItems?: number;
+  totalQty?: number | null;
+  totalStockValue?: number | null;
+  missingCostItems?: number;
+  mixedUnits?: boolean;
 }
 
 export interface OdooProductRecord {
@@ -643,7 +649,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -663,6 +669,10 @@ export async function searchOdooRecords<T>(
       catalogueView: options.catalogueView,
       status: options.status,
       period: options.period,
+      inventoryReport: options.inventoryReport,
+      sortBy: options.sortBy,
+      sortDirection: options.sortDirection,
+      snapshotId: options.snapshotId,
     }),
   }, true);
   const payload = (await response.json().catch(() => null)) as
