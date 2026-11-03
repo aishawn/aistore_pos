@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, inspect
 from app.config import Settings
 from app.db import Base
 from app.models import Product, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier
-from app.shopfront import CLASSIFICATION_QUERIES, CUSTOMER_PAYMENTS_QUERY, EXTENDED_CONNECTION_QUERIES, EXTENDED_CONNECTION_ROOTS, PURCHASE_ORDERS_QUERY, SUPPLIERS_QUERY, _add_cursor_pagination
+from app.shopfront import CLASSIFICATION_QUERIES, CUSTOMER_GROUPS_QUERY, CUSTOMER_PAYMENTS_QUERY, EXTENDED_CONNECTION_QUERIES, EXTENDED_CONNECTION_ROOTS, PRICE_LISTS_QUERY, PURCHASE_ORDERS_QUERY, SAVED_REPORTS_QUERY, SUPPLIERS_QUERY, _add_cursor_pagination
 from app.sync import without_credentials
 
 
@@ -55,6 +55,17 @@ def test_extended_shopfront_queries_use_cursor_pagination_for_every_connection()
         paged = _add_cursor_pagination(query, EXTENDED_CONNECTION_ROOTS.get(entity, entity))
         assert "after: $after" in paged
         assert "pageInfo { hasNextPage endCursor }" in paged
+
+
+def test_shopfront_extended_list_queries_match_scalar_and_interface_shapes():
+    assert "creditTerms" in CUSTOMER_GROUPS_QUERY
+    assert "creditTerms {" not in CUSTOMER_GROUPS_QUERY
+    assert "period {" not in EXTENDED_CONNECTION_QUERIES["promotions"]
+    assert "offset {" not in EXTENDED_CONNECTION_QUERIES["promotions"]
+    assert "duration {" not in EXTENDED_CONNECTION_QUERIES["promotions"]
+    assert "fallbackId: id" in PRICE_LISTS_QUERY
+    assert "... on FavouriteReport { type report }" in SAVED_REPORTS_QUERY
+    assert "... on SpecialFavouriteReport { type report }" in SAVED_REPORTS_QUERY
 
 
 def test_extended_record_identity_includes_store_and_entity_type():

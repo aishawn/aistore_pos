@@ -99,7 +99,7 @@ CUSTOMER_GROUPS_QUERY = """
   statementTemplate { id name components signature replyTo subject }
   loyaltyEnabled loyaltyRate disablePromotions priceList { id name }
   allowAccountSales accountLimit autoPrintReceipt autoPrintPaymentReceipt
-  autoPrintParkedReceipt autoEmailReceipt requireOrderReference creditTerms { amount period inclusive }
+  autoPrintParkedReceipt autoEmailReceipt requireOrderReference creditTerms
   createdAt updatedAt
 } }
 """
@@ -116,7 +116,7 @@ PRICE_LISTS_QUERY = """
       ... on Brand { id name mdbId }
       ... on Family { id name mdbId }
       ... on Tag { id name mdbId }
-      ... on PriceListFallback { id }
+      ... on PriceListFallback { fallbackId: id }
     }
     minRule minAmount minPrices { quantity price }
   }
@@ -144,7 +144,11 @@ query ShopfrontCustomerPayments($after: Cursor) {
 """
 
 SAVED_REPORTS_QUERY = """
-{ reports { id name layers nextEmailDate syntaxErrors createdAt updatedAt type report } }
+{ reports {
+  id name layers nextEmailDate syntaxErrors createdAt updatedAt
+  ... on FavouriteReport { type report }
+  ... on SpecialFavouriteReport { type report }
+} }
 """
 
 EXTENDED_CONNECTION_QUERIES = {
@@ -158,8 +162,7 @@ EXTENDED_CONNECTION_QUERIES = {
         items { exclude rebate item { __typename ... on Product { id name mdbId }
           ... on Category { id name mdbId } ... on Brand { id name mdbId }
           ... on Family { id name mdbId } ... on Tag { id name mdbId } } } }
-      schedule { anchor period { amount period inclusive } offset { amount period inclusive }
-        duration { amount period inclusive } }
+      schedule { anchor period offset duration }
     } } pageInfo { hasNextPage endCursor } }
     }
     """,
