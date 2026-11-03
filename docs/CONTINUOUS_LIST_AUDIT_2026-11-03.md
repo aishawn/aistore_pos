@@ -21,3 +21,5 @@ TypeScript, targeted ESLint (zero errors; hooks/accessibility warnings remain), 
 Local result: **140/140 PASS**, browser errors 0, real business writes 0. TypeScript PASS; targeted ESLint exits 0 (27 warnings); script syntax and scoped whitespace checks PASS. SKR before this follow-up push runs frontend/backend `40906c80d78ace6d83f874605bff0486a1cd9911`.
 
 After merging origin/main, the shared dirty worktree fails TypeScript because its preserved, uncommitted WorkspaceRecordsPanel predates the remote fillHeight interface. The actual committed candidate `d3269afe97fa3000bc97a59a94fe07f1cf4f095c` passed `tsc --noEmit` from a separate git-archive source directory with the same installed dependencies. Unrelated worktree edits were preserved and excluded from these commits.
+
+Delivery status: push to origin/main attempted twice and failed to connect to github.com:443 (about 21 seconds each). Local main contains the scoped repair and integration; it is not pushed. SKR still reports frontend/backend `40906c80d78ace6d83f874605bff0486a1cd9911`. Retry normal git push when connectivity returns; no force push.
