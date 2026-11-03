@@ -357,6 +357,91 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
 
 
 @pytest.mark.asyncio
+async def test_daily_sync_requires_complete_inventory_before_pushing(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"inventory_sync_complete": False},
+    )
+    db_session.add(run)
+    db_session.commit()
+    pushed = False
+
+    async def fake_sync_store(*args, **kwargs):
+        assert kwargs["refresh_inventory"] is True
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        nonlocal pushed
+        pushed = True
+        return {"status": "completed", "sales_imported": 0}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        True,
+        refresh_inventory=True,
+    )
+
+    assert ok is False
+    assert pushed is False
+
+
+@pytest.mark.asyncio
+async def test_daily_sync_pushes_full_inventory_source_set(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={
+            "inventory_sync_complete": True,
+            "inventory_source_product_ids": ["product-1", "product-2"],
+            "sales": 0,
+        },
+    )
+    db_session.add(run)
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        assert kwargs["refresh_inventory"] is True
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 0}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        True,
+        refresh_inventory=True,
+    )
+
+    assert ok is True
+    assert captured["include_inventory_snapshot"] is True
+    assert captured["inventory_snapshot_source_ids"] == ["product-1", "product-2"]
+    assert "inventory_source_product_ids" not in db_session.get(SyncRun, run.id).counts["sync"]
+
+
+@pytest.mark.asyncio
 async def test_history_releases_writer_between_chunks_for_queued_repairs(db_session, monkeypatch):
     db_session.add(Store(store_key="skr", vendor="skr"))
     db_session.commit()
@@ -367,7 +452,7 @@ async def test_history_releases_writer_between_chunks_for_queued_repairs(db_sess
     finish_first_chunk = asyncio.Event()
     events = []
 
-    async def fake_sync_history_chunk(_db, _store_key, _store, start, _end, _job_id, _include_catalog, _force_full_catalog):
+    async def fake_sync_history_chunk(_db, _store_key, _store, start, _end, _job_id, _include_catalog, _force_full_catalog=False, **kwargs):
         events.append(("chunk-start", start))
         if start == date(2026, 10, 26):
             first_chunk_started.set()
@@ -405,13 +490,13 @@ async def test_resumed_history_skips_catalog_when_products_and_inventory_are_dur
     db_session.add_all([
         Store(store_key="skr", vendor="skr"),
         Product(store_key="skr", shopfront_product_id="existing", name="Existing product"),
-        InventorySnapshot(store_key="skr", shopfront_product_id="existing", quantity=Decimal("5")),
+        InventorySnapshot(store_key="skr", shopfront_product_id="existing", outlet_id="outlet-1", quantity=5),
     ])
     db_session.commit()
     monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
     calls = []
 
-    async def fake_sync_history_chunk(_db, _store_key, _store, _start, _end, _job_id, include_catalog, _force_full_catalog):
+    async def fake_sync_history_chunk(_db, _store_key, _store, _start, _end, _job_id, include_catalog, _force_full_catalog=False, **kwargs):
         calls.append(include_catalog)
         return True
 
@@ -437,7 +522,7 @@ async def test_history_does_not_advance_cursor_after_failed_chunk(db_session, mo
     monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
     calls = []
 
-    async def failed_chunk(_db, _store_key, _store, start, end, _job_id, _include_catalog, _force_full_catalog):
+    async def failed_chunk(_db, _store_key, _store, start, end, _job_id, _include_catalog, _force_full_catalog=False, **kwargs):
         calls.append((start, end))
         return False
 

@@ -565,6 +565,7 @@ async def sync_store(
     include_catalog: bool = True,
     defer_completion: bool = False,
     products_updated_after: str | None = None,
+    refresh_inventory: bool = False,
     progress_callback: Any | None = None,
 ) -> SyncRun:
     run = SyncRun(store_key=store.store_key, from_date=start.isoformat(), to_date=end.isoformat())
@@ -1013,6 +1014,78 @@ async def sync_store(
                     existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
                     existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
+        if refresh_inventory:
+            try:
+                inventory_products = await client.fetch_inventory(token, settings.shopfront_inventory_query)
+                snapshot_keys: set[tuple[str, str]] = set()
+                inventory_rows: list[tuple[str, str, str | None, Decimal, dict[str, Any]]] = []
+                inventory_product_ids: set[str] = set()
+                if not inventory_products:
+                    raise ShopfrontError("Shopfront inventory snapshot returned no products")
+                for item in inventory_products:
+                    product_id = first(item, "id", "ID")
+                    if not product_id:
+                        raise ShopfrontError("Shopfront inventory snapshot contains a product without an ID")
+                    product_id = str(product_id)
+                    if product_id in inventory_product_ids:
+                        raise ShopfrontError("Shopfront inventory snapshot contains duplicate product IDs")
+                    inventory_product_ids.add(product_id)
+                    if "inventory" not in item:
+                        raise ShopfrontError("Shopfront inventory snapshot omitted the inventory field")
+                    raw_inventory = item.get("inventory")
+                    rows_for_product = raw_inventory if isinstance(raw_inventory, list) else ([raw_inventory] if isinstance(raw_inventory, dict) else [])
+                    if raw_inventory is not None and not isinstance(raw_inventory, (list, dict)):
+                        raise ShopfrontError("Shopfront inventory snapshot contains an invalid inventory value")
+                    for inventory_row in rows_for_product:
+                        if not isinstance(inventory_row, dict):
+                            raise ShopfrontError("Shopfront inventory snapshot contains an invalid row")
+                        quantity = parse_decimal(first(inventory_row, "quantity", "Quantity"))
+                        if quantity is None or not quantity.is_finite():
+                            raise ShopfrontError("Shopfront inventory snapshot contains a missing or invalid quantity")
+                        outlet = inventory_row.get("outlet") if isinstance(inventory_row.get("outlet"), dict) else {}
+                        outlet_id = str(first(inventory_row, "outletId") or outlet.get("id") or "unknown")
+                        outlet_name = first(inventory_row, "outletName") or outlet.get("name")
+                        if (product_id, outlet_id) in snapshot_keys:
+                            raise ShopfrontError("Shopfront inventory snapshot contains duplicate product/outlet rows")
+                        snapshot_keys.add((product_id, outlet_id))
+                        inventory_rows.append((product_id, outlet_id, str(outlet_name) if outlet_name is not None else None, quantity, inventory_row))
+
+                existing_rows = db.scalars(select(InventorySnapshot).where(
+                    InventorySnapshot.store_key == store.store_key,
+                )).all()
+                existing_by_key = {
+                    (row.shopfront_product_id, row.outlet_id or "unknown"): row
+                    for row in existing_rows
+                }
+                snapshot_time = datetime.now(timezone.utc)
+                for product_id, outlet_id, outlet_name, quantity, raw in inventory_rows:
+                    row = existing_by_key.get((product_id, outlet_id))
+                    if row is None:
+                        row = InventorySnapshot(
+                            store_key=store.store_key,
+                            shopfront_product_id=product_id,
+                            outlet_id=outlet_id,
+                        )
+                        db.add(row)
+                    row.outlet_name = outlet_name
+                    row.quantity = quantity
+                    row.inventory_timestamp = snapshot_time
+                    row.raw_payload = raw
+                stale_rows = [
+                    row for row in existing_rows
+                    if (row.shopfront_product_id, row.outlet_id or "unknown") not in snapshot_keys
+                ]
+                for row in stale_rows:
+                    db.delete(row)
+                counts["inventory"] = len(inventory_rows)
+                counts["inventory_products_scanned"] = len(inventory_product_ids)
+                counts["inventory_source_keys"] = len(snapshot_keys)
+                counts["inventory_stale_keys_removed"] = len(stale_rows)
+                counts["inventory_sync_complete"] = True
+                counts["inventory_source_product_ids"] = sorted(inventory_product_ids)
+            except Exception as exc:
+                counts["inventory_sync_complete"] = False
+                counts["warnings"].append({"stage": "inventory", "message": str(exc)[:500]})
         # Catalog sync normally runs after sales sync in the same transaction.
         # Backfill historical SaleItem names after the catalog is available so
         # rerunning a date range repairs old rows without a full reimport.

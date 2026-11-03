@@ -642,6 +642,32 @@
         "docs/test-sessions/2026-11-03-source-purchase-full.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-DEMO-TAX-BATCH",
+      "status": "INFO",
+      "evidenceType": "online-write",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": "probe-sha256:5bd54fb4079167813a6e8e64032e382d6626c566f4db727e50849d075d50eff2",
+      "snapshotVersion": "8c50303f9db2d55a477d958fb8cc946fea58ab5de275e1939e0a40502b85092c",
+      "scope": "aipos_uat demo company 137, Oct20 Adelaide; temporary tax/order writes rolled back; committed business writes 0",
+      "sample": "162 native orders / 303 lines; padded source read 501 rows; v3 full day only",
+      "result": "37 orders / 44 lines rehearsed; 125 review; full new-transaction rollback verification; 48 local crawler tests pass",
+      "limitations": [
+        "First failed attempt and limited source-query attempt preserved separately; not merged into a full PASS",
+        "65 tax-engine mismatches, 38 ambiguous lines, 21 source line/order differences, 1 uncompleted source order remain",
+        "Clone reset audit missing; source cost/refund linkage/stock not certified or changed",
+        "Odoo source/runtime commit unknown; actual importer hash and probe hash recorded"
+      ],
+      "artifacts": [
+        "docs/UAT_DEMO_SOURCE_TAX_BATCH_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-source-tax-batch.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

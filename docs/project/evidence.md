@@ -33,6 +33,8 @@
 
 | E-PURCHASE-FULL | online-readonly / INFO | 48 页采购连接读完，2358 笔/32925 行；2308 收货、1987 收货单有发票号；接口附件 0 | [材料](../../docs/UAT_SHOPFRONT_PURCHASE_FULL_2026-11-03.json) |
 
+| E-DEMO-TAX-BATCH | online-write / INFO | demo 全日162单核对；37单/44行税引擎与回滚验证，125单待查；提交业务写入0 | [材料](../../docs/UAT_DEMO_SOURCE_TAX_BATCH_2026-11-03.json) |
+
 ## 证据冲突与缺口
 
 - E-WF 的 runtime 与 source 匹配，但原始 deployment 标签仍未验证；SKR 还标记工作树脏。保留这些差异，不把匹配 SHA 等同于候选全量验收。

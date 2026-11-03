@@ -12,6 +12,8 @@ Latest Sales History repair: [2026-11-03 daily sales](test-sessions/2026-11-03-s
 
 Latest inventory report verification: [2026-11-03 inventory report](test-sessions/2026-11-03-inventory-report.md): local unit 7/7, API fixture 8/8, browser fixture 37/37 PASS. Real Odoo/runtime acceptance remains NOT RUN.
 
+Latest Shopfront inventory snapshot repair: [2026-11-03 full inventory snapshot](test-sessions/2026-11-03-shopfront-inventory-snapshot.md): crawler fixture 45 passed / 1 long-wait test deselected; Odoo inventory/supply fixture 15 passed. Online read-only comparison confirms stale crawler inventory timestamps and material Odoo quantity mismatch; crawler push/Dokploy blocked by GitHub HTTPS timeout, and one open POS session plus one open picking gate business writes.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
@@ -35,15 +37,12 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `POS-001` |  | NOT RUN |  |  |  |  |
 | `POS-002` |  | NOT RUN |  |  |  |  |
 | `POS-003` |  | NOT RUN |  |  |  |  |
-| `INV-001` |  | NOT RUN |  |  |  |  |
+| `INV-001` | 2026-11-03-shopfront-inventory-snapshot | Local fixture PASS; online FAIL (data mismatch); write BLOCKED | `4fb02f65`; Odoo `41dab563` | Runtime SHA not recorded | [Session](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) | Wait for open operations to close; refresh source and reconcile |
 | `PUR-001` | 2026-11-03-source-purchase-full | INFO: source read complete, cost verification pending | Query/script hashes in UAT | Unrecorded | [Session](test-sessions/2026-11-03-source-purchase-full.md) | Tax/invoice/valuation evidence |
 | `PRC-001` |  | NOT RUN |  |  |  |  |
 | `CUS-001` |  | NOT RUN |  |  |  |  |
 | `TEN-001` |  | NOT RUN |  |  |  |  |
-| `RPT-001` (source margin / tax subset) | 2026-11-03-source-purchase-full | 2026-11-03 | Shopfront readonly 48-page procurement read | INFO: 2358 orders / 32925 lines; cost verification pending | [Report](test-sessions/2026-11-03-source-purchase-full.md) |
-| 2026-11-03-margin-inventory-moves | 2026-11-03 | SKR readonly inventory movement arithmetic | INFO: 10968 quant review; no stock repair | [Report](test-sessions/2026-11-03-margin-inventory-moves.md) |
-| 2026-11-03-source-refund-evidence | 2026-11-03 | Direct Shopfront readonly and local sync regression | Source day matches; refund original-line confirmation and full repair pending | [Report](test-sessions/2026-11-03-source-refund-evidence.md) |
-| 2026-11-03-source-margin-tax-mapping | PASS subset; full accounting repair BLOCKED | `d85bc0af` local | `b7249014` POS; Odoo SHA unrecorded | [Session](test-sessions/2026-11-03-source-margin-tax-mapping.md) | Full tax/cost/refund reconciliation remains open |
+| `RPT-001` (source margin / tax subset) | 2026-11-03-source-tax-batch | INFO: 37 demo orders rehearsed; 125 review; rollback verified | Probe hash in UAT; integration candidate in Git | Odoo commit unknown, importer hash recorded | [Session](test-sessions/2026-11-03-source-tax-batch.md) | Explain tax-engine mismatches and ambiguous lines before repair |
 | `AI-001` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
 | `AI-001` (online read-only, historical review) | 2026-11-03-project-fact-library | BLOCKED: Demo 379/390 PASS + 11 BLOCKED; SKR 382/390 PASS + 8 BLOCKED | `a6d5c7b0`; SKR dirty | `a6d5c7b0`, matched in original records | [Demo](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json), [SKR](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json) | Fixed-version full rerun; subset retries do not replace this result |
 | `AI-002` (historical provider/contract subsets) | 2026-11-03-project-fact-library | INFO: synthetic OCR/ASR and catalogue subsets only | Per artifact; incomplete | Per artifact; ASR unknown | [Evidence metadata](project/evidence.json) | Real invoice/image/microphone quality and current runtime remain unverified |
@@ -57,9 +56,14 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | Session ID | Date | Scope | Result summary | Report |
 |---|---|---|---|---|
+| 2026-11-03-source-tax-batch | 2026-11-03 | Demo tax transaction rollback / crawler integration | INFO: 37 orders rehearsed,125 review; 48 local tests PASS | [Report](test-sessions/2026-11-03-source-tax-batch.md) |
+| 2026-11-03-source-purchase-full | 2026-11-03 | Shopfront readonly 48-page procurement read | INFO: 2358 orders / 32925 lines; cost verification pending | [Report](test-sessions/2026-11-03-source-purchase-full.md) |
+| 2026-11-03-margin-inventory-moves | 2026-11-03 | SKR readonly inventory movement arithmetic | INFO: 10968 quant review; no stock repair | [Report](test-sessions/2026-11-03-margin-inventory-moves.md) |
+| 2026-11-03-source-refund-evidence | 2026-11-03 | Direct Shopfront readonly and local sync regression | Source day matches; original refund lines and full repair pending | [Report](test-sessions/2026-11-03-source-refund-evidence.md) |
 | 2026-11-03-source-margin-tax-mapping | 2026-11-03 | Source report readonly, demo transaction rollback, local units | 23 units; source report PASS; single-order tax/rollback PASS; full repair pending | [Report](test-sessions/2026-11-03-source-margin-tax-mapping.md) |
 | 2026-11-01-assistant-operations-recovery | 2026-11-01 | Local fixture subset | 24 unit tests and 1440/390px UI passed; live checks not run | [Report](test-sessions/2026-11-01-assistant-operations-recovery.md) |
 | 2026-11-03-project-fact-library | 2026-11-03 | Documentation checks and historical AI evidence review | No new provider/business tests; historical blocked/limited states retained | [Report](test-sessions/2026-11-03-project-fact-library.md) |
+| 2026-11-03-shopfront-inventory-snapshot | 2026-11-03 | Full Shopfront inventory refresh and Odoo reconciliation protocol | Local fixture PASS; online mismatch confirmed read-only; business writes 0 | [Report](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) |
 
 ## Classification rule
 

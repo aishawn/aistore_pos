@@ -53,3 +53,30 @@ def test_inventory_snapshot_flags_are_only_sent_for_complete_snapshot(snapshot_c
         assert {key for key in captured if key in {"replace", "snapshot_complete"}} == set(expected_flags)
 
     asyncio.run(run())
+
+
+def test_inventory_snapshot_finalizer_sends_all_source_ids():
+    async def run():
+        captured = {}
+
+        def handle(request):
+            captured.update(json.loads(request.content)["params"])
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True}})
+
+        http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
+        client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, business_write=True, http=http)
+        try:
+            await client.sync(
+                "inventory",
+                "skr",
+                [],
+                snapshot_finalize=True,
+                snapshot_source_ids=["product-1", "product-2"],
+            )
+        finally:
+            await client.close()
+
+        assert captured["snapshot_finalize"] is True
+        assert captured["snapshot_source_ids"] == ["product-1", "product-2"]
+
+    asyncio.run(run())
