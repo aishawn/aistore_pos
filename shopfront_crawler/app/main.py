@@ -544,11 +544,28 @@ def shopfront_audit(store: str = "skr", db: Session = Depends(get_db)) -> dict:
         ShopfrontSyncCheckpoint.store_key == store,
         ShopfrontSyncCheckpoint.checkpoint_key == "catalog",
     ))
+    latest_inventory_timestamp = db.scalar(
+        select(func.max(InventorySnapshot.inventory_timestamp)).where(InventorySnapshot.store_key == store)
+    )
+    latest_product_sync = db.scalar(
+        select(func.max(Product.synced_at)).where(Product.store_key == store)
+    )
+    latest_catalog_job = db.scalar(
+        select(SyncJob.finished_at)
+        .where(SyncJob.store_key == store, SyncJob.job_type == "catalog_snapshot", SyncJob.status == "completed")
+        .order_by(desc(SyncJob.finished_at), desc(SyncJob.id))
+        .limit(1)
+    )
     return {
         "store": store,
         "status": "running" if active else "ready",
         "active_job": ({"id": active.id, "type": active.job_type, "status": active.status, "phase": active.phase} if active else None),
         "catalog_checkpoint": checkpoint.value if checkpoint else None,
+        "freshness": {
+            "latest_inventory_timestamp": latest_inventory_timestamp,
+            "latest_product_sync": latest_product_sync,
+            "latest_completed_catalog_job": latest_catalog_job,
+        },
         "counts": {
             "products": db.scalar(select(func.count(Product.id)).where(Product.store_key == store)) or 0,
             "sales": db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0,

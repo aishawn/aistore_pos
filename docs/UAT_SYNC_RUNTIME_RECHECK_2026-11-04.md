@@ -35,6 +35,8 @@
 
 随后 catalog snapshot job 45 已完成：商品 `11,027/11,027`、库存 `10,849/10,849`，primary/mirror/Odoo 镜像批次均返回成功，当前无 active job。该任务标记 1 个 `inventory_unmatched`（源数量低于 reserved quantity），并设置 `inventory_reconciliation_required=true`；产品响应仍包含需要单位成本和采购税证据的 `cost_reviews`。因此本次完成的是数据同步，不是 stockout、fill-rate 或采购成本发布门禁通过。
 
+候选还增强了 `/shopfront-audit` 的 freshness 输出：`latest_inventory_timestamp`、`latest_product_sync`、`latest_completed_catalog_job`。旧 `catalog_checkpoint` 保留兼容，但库存门禁应优先使用这些实际同步时间。crawler 测试仍为 58 passed，改动尚未部署。
+
 ## 约束
 
 本复核所有线上请求均为 GET；没有创建、确认、收货或修改采购单，也没有重启或取消线上同步任务。
