@@ -28,7 +28,8 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
   onRefresh: () => void;
 }) {
   const timestamp = updatedAt(data.queryThrough, data.timezone);
-  const stockNeedsReview = data.inventoryStatus === "negative_stock" || data.inventoryStatus === "mixed_units";
+  const stockAvailable = data.inventoryAvailable && data.inventoryUnits != null && Number.isFinite(data.inventoryUnits)
+    && data.inventoryStatus !== "mixed_units" && data.inventoryStatus !== "unavailable";
   const marginAvailable = data.yesterdayGrossMargin != null;
   const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Sales tax mismatch"
     : data.grossMarginStatus === "purchase_cost_missing" ? "Purchase cost unverified"
@@ -55,9 +56,10 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(1)}%` : "—"}
           note={marginNote} />
         <Metric label="Total inventory" href="/stock/list"
-          title={stockNeedsReview && data.inventoryUnits != null ? `Recorded inventory: ${data.inventoryUnits.toLocaleString("en-AU")} units. Review stock details.` : undefined}
-          value={!stockNeedsReview && data.inventoryAvailable && data.inventoryUnits != null ? data.inventoryUnits.toLocaleString("en-AU") : "—"}
-          note={data.inventoryStatus === "negative_stock" ? "Negative stock detected" : data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : !data.inventoryAvailable ? "Temporarily unavailable" : "Current units on hand"} />
+          title={stockAvailable ? "Net units on hand across internal locations, including negative stock. Open stock details." : undefined}
+          value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
+          note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : !stockAvailable ? "Temporarily unavailable"
+            : data.inventoryStatus === "negative_stock" ? "Net on hand · Negative stock to review" : "Current units on hand"} />
       </dl>
       {canReport && <Link className="ov-pulse-report" href="/reports/dashboard">View reports<ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </section>
