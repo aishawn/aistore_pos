@@ -342,11 +342,17 @@ export function OverviewPageContent({
                     <h2>Store pulse</h2>
                     <span className="ov-panel-period">Last 7 days</span>
                   </div>
-                  <dl className="ov-pulse-stats">
-                    <div><dt>Sales</dt><dd>{money(data.revenue, data.currency)}</dd></div>
-                    <div><dt>Transactions</dt><dd>{data.transactions ?? "—"}</dd></div>
-                    <div><dt>Opportunities</dt><dd>{data.opportunities ?? "—"}</dd><span className="ov-stat-note">Needs your attention</span></div>
-                  </dl>
+                  <div className="ov-pulse-group" aria-label="Store metrics">
+                    <dl className="ov-pulse-stats ov-pulse-primary">
+                      <div><Link href="/reports/dashboard"><dt>Sales</dt><dd>{money(data.revenue, data.currency)}</dd><span className="ov-stat-note">Last 7 days</span></Link></div>
+                      <div><Link href="/reports/dashboard"><dt>Transactions</dt><dd>{data.transactions ?? "—"}</dd><span className="ov-stat-note">Last 7 days</span></Link></div>
+                    </dl>
+                    <dl className="ov-pulse-stats ov-pulse-secondary">
+                      <div><Link href="/stock/list"><dt>Inventory</dt><dd>{data.inventoryAvailable && data.inventoryUnits !== null && data.inventoryUnits !== undefined ? data.inventoryUnits.toLocaleString("en-AU") : "—"}</dd><span className="ov-stat-note">Units on hand</span></Link></div>
+                      <div><Link href="/reports/daily-sales"><dt>Yesterday sales</dt><dd>{data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}</dd><span className="ov-stat-note">{data.yesterdaySalesAvailable === false ? "Unavailable" : "Previous day"}</span></Link></div>
+                      <div><Link href="/reports/dashboard"><dt>Gross margin</dt><dd>{data.yesterdayGrossMargin !== null && data.yesterdayGrossMargin !== undefined ? `${(data.yesterdayGrossMargin * 100).toFixed(1)}%` : "—"}</dd><span className="ov-stat-note">{data.yesterdayGrossMargin === null || data.yesterdayGrossMargin === undefined ? "No cost data" : `${Math.round((data.grossMarginCoverage ?? 0) * 100)}% costed`}</span></Link></div>
+                    </dl>
+                  </div>
                   {canReport ? <Link className="ov-panel-action ov-pulse-banner" href="/reports/dashboard"><Sparkles size={28} /><span><strong>Your next insight starts here</strong><small>Explore your store’s sales and performance.</small></span><ArrowRight size={18} /></Link> : null}
                 </section>
                 <section className="ov-insights-panel">
