@@ -33,6 +33,8 @@
 
 线上 job 44 最终为 `partial`：1,873 条扩展记录已同步，唯一警告是 `saved_reports` 的多态 GraphQL 字段不兼容。候选已移除该不稳定字段，仅保留稳定公共字段；crawler 测试更新为 58 passed。该修复尚未部署，因此线上 job 44 的旧警告仍保留为审计事实。
 
+随后 catalog snapshot job 45 已完成：商品 `11,027/11,027`、库存 `10,849/10,849`，primary/mirror/Odoo 镜像批次均返回成功，当前无 active job。该任务标记 1 个 `inventory_unmatched`（源数量低于 reserved quantity），并设置 `inventory_reconciliation_required=true`；产品响应仍包含需要单位成本和采购税证据的 `cost_reviews`。因此本次完成的是数据同步，不是 stockout、fill-rate 或采购成本发布门禁通过。
+
 ## 约束
 
 本复核所有线上请求均为 GET；没有创建、确认、收货或修改采购单，也没有重启或取消线上同步任务。
