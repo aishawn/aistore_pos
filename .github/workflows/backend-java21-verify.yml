@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - codex/ai-assistant-quota
+      - codex/**
   pull_request:
     paths:
       - "pos-api/**"

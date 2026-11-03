@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-03 Shopfront 全量只读镜像扩展
+
+- Shopfront crawler 增加扩展只读记录表、每日扩展实体任务和分页查询 API。覆盖客户组、价格表、品牌/分类/系列/标签、客户付款、客户欠款日快照、保存报表定义、促销、商品欠货、盘点记录、收银结账、门店及收银机。原始 JSON 保留来源字段；POS 接收端增加独立只读影子表和分页读取类型，不触碰 Odoo/POS 销售、库存或采购业务账本。
+- GraphQL 查询按官方 Query/Objects 文档选择字段；Shopfront 单项查询失败按实体记为 partial，不能把未授权或查询错误记成零数据。扩展镜像在 crawler `/api/extended-records`，POS staging 通过 `type=extended_records` 查询；覆盖数量在 `/api/sync/coverage` 的 `extended_data` 返回。
+- Python 语法检查、GraphQL 文档解析（15 条）、定向 crawler 测试 6/6 和 `git diff --check` 通过。完整 crawler suite 在既有 `test_history_releases_writer_between_chunks_for_queued_repairs` 挂起，停止后未宣称全套通过。POS Java 变更待 `codex/**` 候选 SHA 的 Java 21 GitHub Actions `mvn -B clean verify` 通过；不以 Dokploy 部署构建代替该 pre-push gate。
+- 线上 OAuth 当前仍只有 6/28 个请求 scope，缺少 22 个，包括 `see_customer_groups`、`see_balances`、`see_pricelists`、`see_classifications` 和高级报表/促销/盘点/结账等。新授权入口已打开，但最新只读 `/api/stores` 仍显示旧 grant。必须由具备相应 Shopfront permission 的 Owner/Admin 账号完成新 consent；之后重新核验 scope 差异并执行全量同步。当前没有线上扩展实体同步或数量对账证据。
+
 ## 2026-11-03 Inventory report totals, sorting and continuous loading
 
 - `/reports/inventory` now identifies itself as Inventory report. The shared product catalogue uses 40-row continuous append, desktop column sorting, mobile sorting and a sticky summary of all matching products, stock quantity and current-cost value in AUD. Search/category/quick-view/sort changes reset results. Refresh retains last successful rows on failure; append retries resume the same batch. Snapshot expiry explicitly requires refresh.
