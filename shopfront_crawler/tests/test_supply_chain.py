@@ -64,8 +64,8 @@ def test_shopfront_extended_list_queries_match_scalar_and_interface_shapes():
     assert "offset {" not in EXTENDED_CONNECTION_QUERIES["promotions"]
     assert "duration {" not in EXTENDED_CONNECTION_QUERIES["promotions"]
     assert "fallbackId: id" in PRICE_LISTS_QUERY
-    assert "... on FavouriteReport { type report }" in SAVED_REPORTS_QUERY
-    assert "... on SpecialFavouriteReport { type report }" in SAVED_REPORTS_QUERY
+    assert "... on FavouriteReport { favouriteType: type favouriteReport: report }" in SAVED_REPORTS_QUERY
+    assert "... on SpecialFavouriteReport { specialType: type specialReport: report }" in SAVED_REPORTS_QUERY
 
 
 def test_extended_record_identity_includes_store_and_entity_type():

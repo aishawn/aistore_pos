@@ -146,8 +146,8 @@ query ShopfrontCustomerPayments($after: Cursor) {
 SAVED_REPORTS_QUERY = """
 { reports {
   id name layers nextEmailDate syntaxErrors createdAt updatedAt
-  ... on FavouriteReport { type report }
-  ... on SpecialFavouriteReport { type report }
+  ... on FavouriteReport { favouriteType: type favouriteReport: report }
+  ... on SpecialFavouriteReport { specialType: type specialReport: report }
 } }
 """
 
