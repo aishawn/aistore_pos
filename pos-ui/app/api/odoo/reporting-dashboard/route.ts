@@ -70,6 +70,41 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
+function zonedMidnightUtc(date: string, timezone: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(candidate);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const localAsUtc = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
+  return new Date(candidate.getTime() - (localAsUtc - candidate.getTime()));
+}
+
+function yesterdayWindow(timezone: string, now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const today = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
+  return { from: zonedMidnightUtc(new Date(today.getTime() - 86400000).toISOString().slice(0, 10), timezone), to: zonedMidnightUtc(today.toISOString().slice(0, 10), timezone) };
+}
+
+async function loadBusinessMetrics(sessionId: string, companyId: number, timezone: string, correlationId?: string | null) {
+  const empty = { inventoryUnits: null as number | null, yesterdaySales: 0, yesterdaySalesAvailable: false, yesterdayGrossMargin: null as number | null, grossMarginCoverage: 0, inventoryAvailable: false };
+  try {
+    const yesterday = yesterdayWindow(timezone);
+    const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", yesterday.from.toISOString().slice(0, 19).replace("T", " ")], ["date_order", "<", yesterday.to.toISOString().slice(0, 19).replace("T", " ")], ["state", "in", ["paid", "done", "invoiced"]]];
+    const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", orderDomain[1][2]], ["order_id.date_order", "<", orderDomain[2][2]], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
+    const [salesRows, lines, stockRows] = await Promise.all([
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => null),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [lineDomain, ["price_subtotal", "price_subtotal_incl", "qty", "purchase_price"]], { limit: 5000 }, correlationId).catch(() => null),
+      rpc<Array<Record<string, unknown>>>(sessionId, "stock.quant", "read_group", [[["company_id", "=", companyId], ["location_id.usage", "=", "internal"]], ["quantity:sum"], []], {}, correlationId).catch(() => null),
+    ]);
+    const validLines = (lines ?? []).map((line) => ({ revenue: Number(line.price_subtotal ?? line.price_subtotal_incl ?? 0), cost: Number.isFinite(Number(line.purchase_price)) ? Number(line.purchase_price) * Number(line.qty ?? 0) : null })).filter((line) => line.revenue > 0);
+    const costedLines = validLines.filter((line): line is { revenue: number; cost: number } => line.cost !== null);
+    const marginRevenue = costedLines.reduce((sum, line) => sum + line.revenue, 0);
+    const margin = marginRevenue > 0 ? costedLines.reduce((sum, line) => sum + line.revenue - line.cost, 0) / marginRevenue : null;
+    return { inventoryUnits: stockRows ? Number(stockRows[0]?.quantity ?? 0) : null, yesterdaySales: Number(salesRows?.[0]?.amount_total ?? 0), yesterdaySalesAvailable: Boolean(salesRows), yesterdayGrossMargin: margin, grossMarginCoverage: validLines.length ? costedLines.length / validLines.length : 0, inventoryAvailable: Boolean(stockRows) };
+  } catch { return empty; }
+}
+
 async function loadLineExtras(sessionId: string, lineDomain: unknown[], compareLineDomain: unknown[], correlationId?: string | null) {
   const empty = { itemsSold: 0, compareItemsSold: 0, topProducts: [] as Array<{ id: number; name: string; qty: number; revenue: number }>, byCategory: [] as Array<{ name: string; revenue: number; share: number }> };
   try {
@@ -168,6 +203,12 @@ export async function GET(request: NextRequest) {
       opportunities: 1,
       lowStockCount: 3,
       newCustomers: 0,
+      inventoryUnits: 248,
+      yesterdaySales: 438.2,
+      yesterdaySalesAvailable: true,
+      yesterdayGrossMargin: 0.342,
+      grossMarginCoverage: 1,
+      inventoryAvailable: true,
       trend: [],
       recentSales: [],
       topProducts: [],
@@ -272,7 +313,7 @@ export async function GET(request: NextRequest) {
       return clause;
     });
 
-    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([
+    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, businessMetrics] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
@@ -291,6 +332,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => []),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => []),
       loadLineExtras(sessionId, lineDomain, compareLineDomain, correlationId),
+      loadBusinessMetrics(sessionId, companyId, timezone, correlationId),
     ]);
 
     const summary = totals?.[0] ?? {};
@@ -334,6 +376,7 @@ export async function GET(request: NextRequest) {
       recentSales: recentSales ?? [],
       topProducts: lineExtras.topProducts,
       byCategory: lineExtras.byCategory,
+      ...businessMetrics,
       compare: {
         from: compareFromAligned,
         to: compareToAligned,

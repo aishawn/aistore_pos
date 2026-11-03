@@ -20,6 +20,12 @@ export type OverviewPulse = {
   opportunities?: number;
   lowStockCount?: number;
   newCustomers?: number;
+  inventoryUnits?: number | null;
+  yesterdaySales?: number;
+  yesterdaySalesAvailable?: boolean;
+  yesterdayGrossMargin?: number | null;
+  grossMarginCoverage?: number;
+  inventoryAvailable?: boolean;
 };
 export function money(value: number, currency: string) {
   try {
@@ -83,6 +89,12 @@ export function useOverview() {
         opportunities: Number.isFinite(payload.opportunities) ? payload.opportunities : undefined,
         lowStockCount: Number.isFinite(payload.lowStockCount) ? payload.lowStockCount : undefined,
         newCustomers: Number.isFinite(payload.newCustomers) ? payload.newCustomers : undefined,
+        inventoryUnits: Number.isFinite(payload.inventoryUnits) ? payload.inventoryUnits : null,
+        yesterdaySales: Number.isFinite(payload.yesterdaySales) ? payload.yesterdaySales : 0,
+        yesterdaySalesAvailable: payload.yesterdaySalesAvailable === true,
+        yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? payload.yesterdayGrossMargin : null,
+        grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? payload.grossMarginCoverage : 0,
+        inventoryAvailable: payload.inventoryAvailable === true,
       });
     } catch (cause) {
       if (current === revision.current) {
