@@ -14,7 +14,7 @@ export async function verifiedLedgerCosts(rpc: ReportRpc, session: string, compa
   }, correlationId);
   if (!Array.isArray(lines) || lines.length !== lineIds.length) throw new Error("Incomplete ledger costing");
   const products = await rpc<Array<{ id: number; shopfront_source_ref: string | false }>>(session, "product.product", "search_read", [[["id", "in", [...new Set(lines.map(l => l.product_id[0]))]], ["company_id", "in", [false, companyId]]]], {
-    fields: ["shopfront_source_ref"], limit: lineIds.length, active_test: false,
+    fields: ["shopfront_source_ref"], limit: lineIds.length, context: { active_test: false },
   }, correlationId);
   if (!Array.isArray(products)) throw new Error("Product costing evidence unavailable");
   const byId = new Map(products.map(p => [p.id, p]));
