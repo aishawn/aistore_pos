@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-11-03",
+  "reviewedAt": "2026-11-04",
   "baselineSha": "d2020745f5a2fa1c9f53e9beecdd96debbb164c3",
   "entries": [
     {
@@ -856,6 +856,33 @@
       "artifacts": [
         "docs/UAT_SOURCE_SALES_PROGRESS_2026-11-04.json",
         "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-AI-PROVENANCE-LOCAL",
+      "status": "PASS",
+      "evidenceType": "local-fixture",
+      "recordedAt": "2026-11-04",
+      "sourceSha": "365716283c15cf523de26a0b2bbbb90230942927",
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "Local POS UI assistant answer provenance helper, rendering typecheck, and read-only UAT script syntax; no live service",
+      "sample": "153 UI unit tests including 8 provenance helper cases; Node v24.19.0; targeted ESLint on 3 changed TS/TSX files",
+      "result": "153/153 unit tests, typecheck, script syntax, git diff --check PASS; ESLint 0 errors and 3 existing SellAiPanel warnings",
+      "limitations": [
+        "Local fixture/static checks only; remote build, deployment, runtime identity and online SKR/Demo UI behavior not tested.",
+        "Backend model, prompt, config and data snapshot versions not applicable or not observed in this session.",
+        "npm audit during lockfile install reported 37 dependency findings (2 low, 23 moderate, 11 high, 1 critical); no dependency upgrades were performed.",
+        "No real business writes; visible source and date claims still require online confirmation against actual response rows."
+      ],
+      "artifacts": [
+        "docs/test-sessions/2026-11-04-ai-answer-provenance.md",
+        "docs/project/features/ai/assistant/design.md",
+        "docs/project/features/ai/assistant/validation.md"
       ],
       "releaseAccepted": false
     }

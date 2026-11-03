@@ -1,6 +1,6 @@
 # Test Report Index
 
-功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。下方新增条目是历史证据复核，不代表本轮重新调用模型或执行业务测试。
+功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。本索引按 session 区分本地候选验证与线上行为，不把本地通过当作部署通过。
 
 Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 180 page templates catalogued (179 baseline + new cost reconciliation), 274 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Runtime 51e27c74: remote build and specified live/fixture UI acceptance PASS, including 18 records-dialog viewport checks; legacy 410 routes, alerts 500, AI failures and incomplete report data checks remain explicitly open.
 
@@ -44,6 +44,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `TEN-001` |  | NOT RUN |  |  |  |  |
 | `RPT-001` (source margin / tax subset) | 2026-11-03-source-tax-batch | INFO: 37 demo orders rehearsed; 125 review; rollback verified | Probe hash in UAT; integration candidate in Git | Odoo commit unknown, importer hash recorded | [Session](test-sessions/2026-11-03-source-tax-batch.md) | Explain tax-engine mismatches and ambiguous lines before repair |
 | `AI-001` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
+| `AI-001` (answer provenance local subset) | 2026-11-04-ai-answer-provenance | PASS: 153 UI unit tests, typecheck and targeted lint | `365716283c15cf523de26a0b2bbbb90230942927` | Local only; online pending | [Session](test-sessions/2026-11-04-ai-answer-provenance.md), [Evidence](project/evidence.json) | Deploy exact source SHA; read-only verify SKR and Demo |
 | `AI-001` (online read-only, historical review) | 2026-11-03-project-fact-library | BLOCKED: Demo 379/390 PASS + 11 BLOCKED; SKR 382/390 PASS + 8 BLOCKED | `a6d5c7b0`; SKR dirty | `a6d5c7b0`, matched in original records | [Demo](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json), [SKR](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json) | Fixed-version full rerun; subset retries do not replace this result |
 | `AI-002` (historical provider/contract subsets) | 2026-11-03-project-fact-library | INFO: synthetic OCR/ASR and catalogue subsets only | Per artifact; incomplete | Per artifact; ASR unknown | [Evidence metadata](project/evidence.json) | Real invoice/image/microphone quality and current runtime remain unverified |
 | `AI-003` |  | NOT RUN |  |  |  |  |
@@ -64,6 +65,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-01-assistant-operations-recovery | 2026-11-01 | Local fixture subset | 24 unit tests and 1440/390px UI passed; live checks not run | [Report](test-sessions/2026-11-01-assistant-operations-recovery.md) |
 | 2026-11-03-project-fact-library | 2026-11-03 | Documentation checks and historical AI evidence review | No new provider/business tests; historical blocked/limited states retained | [Report](test-sessions/2026-11-03-project-fact-library.md) |
 | 2026-11-03-shopfront-inventory-snapshot | 2026-11-03 | Full Shopfront inventory refresh and Odoo reconciliation protocol | Local fixture PASS; online mismatch confirmed read-only; business writes 0 | [Report](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) |
+| 2026-11-04-ai-answer-provenance | 2026-11-04 | Assistant source and returned-date visibility | Local UI 153/153, typecheck and targeted lint PASS; online pending; writes 0 | [Report](test-sessions/2026-11-04-ai-answer-provenance.md) |
 
 | 2026-11-03-margin-release | 2026-11-03 | SKR source report / demo diagnosis / local session retry | bc7 source retryPASS/first-click401; b8de first-click auto-recoveryPASS; local2PASS | [Report](test-sessions/2026-11-03-margin-release.md) |
 
