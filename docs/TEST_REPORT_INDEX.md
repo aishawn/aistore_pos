@@ -14,6 +14,8 @@ Latest inventory report verification: [2026-11-03 inventory report](test-session
 
 Latest Shopfront inventory snapshot repair: [2026-11-03 full inventory snapshot](test-sessions/2026-11-03-shopfront-inventory-snapshot.md): crawler fixture 45 passed / 1 long-wait test deselected; Odoo inventory/supply fixture 15 passed. Online read-only comparison confirms stale crawler inventory timestamps and material Odoo quantity mismatch; crawler push/Dokploy blocked by GitHub HTTPS timeout, and one open POS session plus one open picking gate business writes.
 
+Latest Shopfront sales mirror gap: [2026-11-04 daily sales replay](test-sessions/2026-11-04-shopfront-sales-mirror-gap.md): online read-only found 129 SKR sales for 2026-11-03 and both POS mirrors were short by exactly 129; run 143 had classified all 396 sales in its daily window unchanged. Fix `8b9b04a7` replays the daily window and keeps source-count acknowledgement strict; targeted crawler tests 19/19 PASS. Deployment and online repair verification pending.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
@@ -66,6 +68,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-03-project-fact-library | 2026-11-03 | Documentation checks and historical AI evidence review | No new provider/business tests; historical blocked/limited states retained | [Report](test-sessions/2026-11-03-project-fact-library.md) |
 | 2026-11-03-shopfront-inventory-snapshot | 2026-11-03 | Full Shopfront inventory refresh and Odoo reconciliation protocol | Local fixture PASS; online mismatch confirmed read-only; business writes 0 | [Report](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) |
 | 2026-11-04-ai-answer-provenance | 2026-11-04 | Assistant source and returned-date visibility | Local UI 153/153, typecheck and targeted lint PASS; online pending; writes 0 | [Report](test-sessions/2026-11-04-ai-answer-provenance.md) |
+| 2026-11-04-shopfront-sales-mirror-gap | 2026-11-04 | SKR daily sales source/mirror gap and idempotent replay fix | 19 crawler tests PASS; online source verified; deployment and mirror repair pending | [Report](test-sessions/2026-11-04-shopfront-sales-mirror-gap.md) |
 
 | 2026-11-03-margin-release | 2026-11-03 | SKR source report / demo diagnosis / local session retry | bc7 source retryPASS/first-click401; b8de first-click auto-recoveryPASS; local2PASS | [Report](test-sessions/2026-11-03-margin-release.md) |
 

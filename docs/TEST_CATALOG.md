@@ -26,6 +26,7 @@ Every session report must also state: source SHA, runtime SHA if online, environ
 | PUR-001 | Purchase and receiving | Supplier, partial/over receipt, retry, reconciliation | Approved Odoo target | Purchase/receipt write | `UAT_*PURCHASE*RECEIV*.json` |
 | PRC-001 | Pricing | GST, cost, margin, stale price, POS read-back | Approved Odoo target | Price write after review | `UAT_*PRIC*.json` |
 | CUS-001 | Customers and groups | CRUD, roles, pagination, search race, tenant scope | Local fixture, then approved Odoo target | Role-controlled writes | `UAT_*CUSTOMER*.json` |
+| SHP-001 | Shopfront staging sync | Daily window replay, retry, mirror count and idempotency | Local fixture, then approved staging mirrors | Idempotent Shopfront staging upserts only | `shopfront_crawler/tests/test_pos_import_results.py`, dated session |
 | TEN-001 | Tenant and platform authorization | Host, bootstrap, platform/store roles, cross-tenant denial | Online or dedicated UAT | Controlled platform writes | `UAT_*TENANT*`, `UAT_*AUTH*` |
 | RPT-001 | Reports and overview | Business date, timezone, refunds, totals, empty/error states | Online read-only | None | `UAT_*REPORT*.json` |
 | AI-001 | Assistant routing | Intent, routes, clarification, safe unknowns | Online read-only or fixture | No business writes | `UAT_AI_WORKFLOW*.json` |
