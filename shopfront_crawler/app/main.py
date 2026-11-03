@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
 from sqlalchemy import desc, func, or_, select, update
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
@@ -1243,18 +1244,29 @@ async def _sync_history_chunk(
         async def keepalive() -> None:
             while True:
                 await asyncio.sleep(30)
-                heartbeat_db = SessionLocal()
-                try:
-                    if job_id is None:
-                        return
-                    heartbeat_job = heartbeat_db.get(SyncJob, job_id)
-                    if heartbeat_job is None or heartbeat_job.status != "running":
-                        return
-                    heartbeat_job.heartbeat_at = datetime.now(timezone.utc)
-                    heartbeat_job.phase = heartbeat_job.phase or "sync:active"
-                    heartbeat_db.commit()
-                finally:
-                    heartbeat_db.close()
+                for attempt in range(3):
+                    heartbeat_db = SessionLocal()
+                    try:
+                        if job_id is None:
+                            return
+                        heartbeat_job = heartbeat_db.get(SyncJob, job_id)
+                        if heartbeat_job is None or heartbeat_job.status != "running":
+                            return
+                        heartbeat_job.heartbeat_at = datetime.now(timezone.utc)
+                        heartbeat_job.phase = heartbeat_job.phase or "sync:active"
+                        heartbeat_db.commit()
+                        break
+                    except OperationalError as exc:
+                        heartbeat_db.rollback()
+                        message = str(exc).lower()
+                        if "locked" not in message and "busy" not in message:
+                            raise
+                        if attempt == 2:
+                            logger.warning("Sync heartbeat deferred after SQLite contention for job %s", job_id)
+                        else:
+                            await asyncio.sleep(0.25 * (attempt + 1))
+                    finally:
+                        heartbeat_db.close()
 
         async def report_progress(field: str, item_count: int) -> None:
             if job_id is None:

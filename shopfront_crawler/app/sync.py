@@ -819,6 +819,9 @@ async def sync_store(
                 counts["stage"] = "sales_skipped_unchanged"
                 sale_product_ids.update(source_product_ids)
                 sale_rows = []
+                # Daily summaries are complete at this point. Release the
+                # SQLite write transaction before any remote catalog lookups.
+                db.commit()
         for sale_index, row in enumerate(sale_rows, start=1):
             # Cancellation is persisted by the API request in a separate
             # database session. Check it at each commit boundary so a bad or
