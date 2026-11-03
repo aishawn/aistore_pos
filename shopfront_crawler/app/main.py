@@ -1087,7 +1087,19 @@ async def retry_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(404, "Sync run not found")
     if active_job(db, run.store_key):
         raise HTTPException(409, "A sync job is already active for this store")
-    job = SyncJob(store_key=run.store_key, job_type="history", status="queued", from_date=run.from_date, to_date=run.to_date, cursor_date=run.from_date)
+    # A retry must replay the source sales window. The crawler may have
+    # persisted the rows while the downstream mirror stopped halfway through;
+    # treating them as unchanged would incorrectly report zero work and leave
+    # the mirror short.
+    job = SyncJob(
+        store_key=run.store_key,
+        job_type="history",
+        status="queued",
+        from_date=run.from_date,
+        to_date=run.to_date,
+        cursor_date=run.from_date,
+        payload={"retry_run_id": run.id, "replay_sales_window": True},
+    )
     db.add(job)
     db.commit()
     return {"status": "queued", "job_id": job.id, "retry_run_id": run.id}
@@ -1334,7 +1346,13 @@ async def _sync_history_chunk(
             if skip_stable_history_products:
                 product_source_ids = []
             sync_job = db.get(SyncJob, job_id) if job_id is not None else None
-            replay_daily_sales = bool(sync_job and sync_job.job_type == "daily_sync")
+            replay_daily_sales = bool(
+                sync_job
+                and (
+                    sync_job.job_type == "daily_sync"
+                    or (sync_job.job_type == "history" and (sync_job.payload or {}).get("replay_sales_window") is True)
+                )
+            )
             push_kwargs = {
                 "run": run,
                 "replay_sales_window": replay_daily_sales,

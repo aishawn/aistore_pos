@@ -480,6 +480,53 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
 
 
 @pytest.mark.asyncio
+async def test_history_retry_replays_unchanged_sales_window(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"sales": 10, "sales_skipped_unchanged": 10},
+    )
+    job = SyncJob(
+        store_key="skr",
+        job_type="history",
+        status="running",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        cursor_date="2026-10-26",
+        payload={"retry_run_id": 123, "replay_sales_window": True},
+    )
+    db_session.add_all([run, job])
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 10, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        job.id,
+        False,
+    )
+
+    assert ok is True
+    assert captured["replay_sales_window"] is True
+
+
+@pytest.mark.asyncio
 async def test_daily_sync_replays_unchanged_sales_and_requires_mirror_ack(db_session, monkeypatch):
     run = SyncRun(
         store_key="skr",
