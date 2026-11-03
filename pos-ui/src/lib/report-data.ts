@@ -24,7 +24,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const stockDomain = [["company_id", "=", companyId], ["location_id.usage", "=", "internal"]];
   const [salesRows, lines, stockRows, negativeRows] = await Promise.all([
     rpc<Array<{ amount_total: number; amount_tax: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => null),
-    rpc<Array<CostSale & { order_id: [number, string] }>>(sessionId, "pos.order.line", "search_read", [lineDomain], { fields: ["order_id", "product_id", "product_uom_id", "price_subtotal", "qty"], order: "id asc", limit: 10001 }, correlationId).catch(() => null),
+    rpc<Array<CostSale & { order_id: [number, string] }>>(sessionId, "pos.order.line", "search_read", [lineDomain], { fields: ["id", "order_id", "product_id", "product_uom_id", "price_subtotal", "qty"], order: "id asc", limit: 10001 }, correlationId).catch(() => null),
     rpc<Array<{ quantity: number; product_id: [number, string] | false; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_id", "product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
     rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
   ]);

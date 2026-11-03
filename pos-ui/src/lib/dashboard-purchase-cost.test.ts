@@ -33,6 +33,7 @@ function summaryRpc({net=100,failStock=false,failLines=false,mixed=false,withLin
  if(model==='pos.order.line'){
   if(failLines)throw Error('lines unavailable');
   assert.ok(!JSON.stringify(kwargs).includes('purchase_price'));
+  assert.ok(JSON.stringify(kwargs?.fields).includes('"id"'));
   return withLines?[{...sale(),order_id:[1,'Sale'],price_subtotal:net}]:[];
  }
  if(model==='pos.order'&&method==='search_read')return [{id:1,date_order:'2026-11-02 12:00:00'}];
