@@ -1,0 +1,186 @@
+{
+  "generatedAt": "2026-11-03T21:14:12.4575884Z",
+  "job40": {
+    "id": 40,
+    "store": "skr",
+    "type": "daily_sync",
+    "status": "failed",
+    "phase": "pos_import",
+    "attempts": 7,
+    "from": "2026-11-01",
+    "to": "2026-11-03",
+    "cursor": "2026-11-01",
+    "heartbeat_at": "2026-11-03T21:03:47.877498",
+    "error": "history chunk failed: 2026-11-01..2026-11-03",
+    "created_at": "2026-11-03T17:25:02.065924",
+    "started_at": "2026-11-03T19:39:47.648092",
+    "finished_at": "2026-11-03T21:03:48.611786",
+    "payload": {
+      "include_supply_chain": false,
+      "products_imported": 650,
+      "sales_offset": 113,
+      "sale_total": 113
+    }
+  },
+  "audit": {
+    "store": "skr",
+    "status": "ready",
+    "active_job": null,
+    "catalog_checkpoint": "2026-11-02T23:30:04.402443+08:00",
+    "counts": {
+      "products": 11027,
+      "sales": 155665,
+      "sale_items": 305052,
+      "inventory": 10849,
+      "suppliers": 109,
+      "purchase_orders": 2356,
+      "customers": 20,
+      "sale_status": {
+        "CANCELLED": 120,
+        "COMPLETED": 154722,
+        "INCOMPLETE": 818,
+        "PARKED": 5
+      },
+      "incomplete_sales": 818
+    },
+    "source": "crawler_database"
+  },
+  "syncCoverage": {
+    "data": {
+      "store": "skr",
+      "products": {
+        "total": 11027,
+        "fields": {
+          "name": 11027,
+          "description": 4393,
+          "barcode": 10965,
+          "sku": 4616,
+          "category": 10849,
+          "brand": 0,
+          "family": 0,
+          "image": 0,
+          "alternate_images": 0,
+          "tags": 734,
+          "price": 10991,
+          "cost": 11027,
+          "tax_rate": 10840,
+          "track_inventory": 10849,
+          "source_created_at": 10849,
+          "source_updated_at": 10849
+        }
+      },
+      "inventory": {
+        "records": 10849,
+        "outlets": 1
+      },
+      "sales": {
+        "total": 155665,
+        "sale_items": 305052,
+        "sale_items_missing_name": 0
+      },
+      "customers": {
+        "total": 20
+      },
+      "extended_data": {
+        "brands": 1,
+        "categories": 38,
+        "closures": 1131,
+        "customer_groups": 7,
+        "customer_payments": 2,
+        "outlets": 1,
+        "price_lists": 6,
+        "promotions": 544,
+        "registers": 2,
+        "stocktakes": 3,
+        "tags": 3
+      }
+    },
+    "source": "shopfront_crawler",
+    "synced_at": "2026-11-03T21:14:09.742012Z"
+  },
+  "posCoverage": {
+    "data": {
+      "store": "skr",
+      "snapshot": {
+        "store_key": "skr",
+        "products": 11027,
+        "inventory": 10849,
+        "sales": 155665,
+        "sale_items": 305052,
+        "payments": 187582,
+        "suppliers": 109,
+        "customers": 20,
+        "purchase_orders": 2356,
+        "extended_records": 1738
+      },
+      "matching": {
+        "store_key": "skr",
+        "products": 11027,
+        "products_missing_name": 0,
+        "barcode_matched": 10965,
+        "barcode_unmatched": 62,
+        "manually_mapped": 11027,
+        "sales_with_unmatched_items": 0,
+        "sale_items_missing_name": 0,
+        "sale_items_missing_source_product": 0,
+        "inventory_outlets": 1
+      },
+      "targets": {
+        "primary": {
+          "snapshot": {
+            "store_key": "skr",
+            "products": 11027,
+            "inventory": 10849,
+            "sales": 155665,
+            "sale_items": 305052,
+            "payments": 187582,
+            "suppliers": 109,
+            "customers": 20,
+            "purchase_orders": 2356,
+            "extended_records": 1738
+          },
+          "matching": {
+            "store_key": "skr",
+            "products": 11027,
+            "products_missing_name": 0,
+            "barcode_matched": 10965,
+            "barcode_unmatched": 62,
+            "manually_mapped": 11027,
+            "sales_with_unmatched_items": 0,
+            "sale_items_missing_name": 0,
+            "sale_items_missing_source_product": 0,
+            "inventory_outlets": 1
+          }
+        },
+        "mirror": {
+          "snapshot": {
+            "store_key": "skr",
+            "products": 11027,
+            "inventory": 10849,
+            "sales": 155665,
+            "sale_items": 305052,
+            "payments": 187582,
+            "suppliers": 109,
+            "customers": 20,
+            "purchase_orders": 2356,
+            "extended_records": 1738
+          },
+          "matching": {
+            "store_key": "skr",
+            "products": 11027,
+            "products_missing_name": 0,
+            "barcode_matched": 10965,
+            "barcode_unmatched": 62,
+            "manually_mapped": 11027,
+            "sales_with_unmatched_items": 0,
+            "sale_items_missing_name": 0,
+            "sale_items_missing_source_product": 0,
+            "inventory_outlets": 1
+          }
+        }
+      }
+    },
+    "source": "orithos_shopfront_staging"
+  },
+  "readOnly": true
+}

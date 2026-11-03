@@ -26,6 +26,12 @@ Demo 补货结果：
 - `.local/ai-eval/online-ai-readonly-continue-2026-11-04.json`
 - `.local/ai-eval/replenishment-readonly-continue-2026-11-04.json`
 
+## 同步任务终态
+
+轮询确认 job `40` 已终态失败，不应继续等待：`phase=pos_import`、`attempts=7`、错误为 `history chunk failed: 2026-11-01..2026-11-03`。失败载荷显示只导入了 650 个商品和 113 条销售，不能作为完整历史同步结果。失败后 `/shopfront-audit?store=skr` 为 `active_job=null`，但审计计数仍包含 818 条 `INCOMPLETE` 销售。
+
+失败后的只读覆盖计数为：商品 11,027、库存 10,849、销售 155,665、销售行 305,052、供应商 109、采购订单 2,356、客户 20。原始快照见 `docs/UAT_SHOPFRONT_SYNC_FAILURE_2026-11-04.json`。下一次同步应先定位 `pos_import` 的 113 条销售块失败原因，再重跑受控历史块；不应直接把当前计数标记为完整。
+
 ## 趋势接口缺日
 
 只读请求：
