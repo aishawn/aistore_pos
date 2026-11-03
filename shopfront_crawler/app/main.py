@@ -1492,6 +1492,7 @@ async def push_pos_snapshot(
         local_zone = timezone.utc
     repair_job = bool(job is not None and job.job_type == "sales_repair")
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id.desc() if repair_job else Sale.id)
+    sales_selection_diagnostics: dict[str, Any] | None = None
     if run is not None and start is not None and end is not None and not replay_sales_window:
         # A history sync has just upserted the exact source rows that belong
         # to this run. Use its durable sync timestamp so sales with a missing
@@ -1501,10 +1502,49 @@ async def push_pos_snapshot(
     elif run is not None and start is not None and end is not None and replay_sales_window:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
+        synced_filter = Sale.synced_at >= run.started_at
+        created_filter = (Sale.created_at >= window_start) & (Sale.created_at < window_end)
+        updated_filter = (Sale.updated_at >= window_start) & (Sale.updated_at < window_end)
+        union_filter = or_(synced_filter, created_filter, updated_filter)
+        total_local = db.scalar(
+            select(func.count()).select_from(select(Sale.id).where(Sale.store_key == store_key).subquery())
+        ) or 0
+        synced_count = db.scalar(
+            select(func.count()).select_from(select(Sale.id).where(Sale.store_key == store_key, synced_filter).subquery())
+        ) or 0
+        created_count = db.scalar(
+            select(func.count()).select_from(select(Sale.id).where(Sale.store_key == store_key, created_filter).subquery())
+        ) or 0
+        updated_count = db.scalar(
+            select(func.count()).select_from(select(Sale.id).where(Sale.store_key == store_key, updated_filter).subquery())
+        ) or 0
+        union_count = db.scalar(
+            select(func.count()).select_from(select(Sale.id).where(Sale.store_key == store_key, union_filter).subquery())
+        ) or 0
+        null_synced_count = db.scalar(
+            select(func.count()).select_from(
+                select(Sale.id).where(Sale.store_key == store_key, Sale.synced_at.is_(None)).subquery()
+            )
+        ) or 0
+        min_synced, max_synced = db.execute(
+            select(func.min(Sale.synced_at), func.max(Sale.synced_at)).where(Sale.store_key == store_key)
+        ).one()
+        sales_selection_diagnostics = {
+            "store_key": store_key,
+            "run_started_at": run.started_at.isoformat() if run.started_at else None,
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
+            "total_local": int(total_local),
+            "synced_at_count": int(synced_count),
+            "created_window_count": int(created_count),
+            "updated_window_count": int(updated_count),
+            "union_count": int(union_count),
+            "synced_at_null_count": int(null_synced_count),
+            "min_synced_at": min_synced.isoformat() if min_synced else None,
+            "max_synced_at": max_synced.isoformat() if max_synced else None,
+        }
         sales_query = sales_query.where(
-            (Sale.synced_at >= run.started_at)
-            | ((Sale.created_at >= window_start) & (Sale.created_at < window_end))
-            | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+            union_filter
         )
     elif start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
@@ -1556,6 +1596,8 @@ async def push_pos_snapshot(
         "inventory_reconciliation_required": False,
         "sales_batch_audit": [],
     }
+    if sales_selection_diagnostics is not None:
+        result["sales_selection_diagnostics"] = sales_selection_diagnostics
 
     def sales_response_audit(response: Any) -> dict[str, Any]:
         """Keep bounded response counters for diagnosing partial imports."""
