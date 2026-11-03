@@ -1,5 +1,12 @@
 # Orithos 当前交接（2026-10-29）
 
+## 2026-11-03 Continuous list audit follow-up
+
+- Fixed consumed-row pagination, synchronous append locking, stale-query protection and same-batch retries across Customers, Suppliers, Purchase orders, Base Prices, Stock List and Price Suggestions. Refresh resets accumulated results; append failures preserve rows and pause automatic retries. Purchase Transfers and shared Products/Inventory Stocktake return paths reattach scroll observers.
+- Local intercepted Edge browser regression: **140/140 PASS** at 390/1440px, browser errors 0, real business writes 0. TypeScript PASS; targeted ESLint exits 0 with 27 warnings; script syntax and scoped diff checks PASS. See `CONTINUOUS_LIST_AUDIT_2026-11-03.md` and `UAT_CONTINUOUS_LISTS_LOCAL_2026-11-03.json`. Products Stocktake observer change is source-inspected; preceding product append evidence remains separate.
+- No local production build or Maven. Before follow-up push SKR frontend/backend SHA is `40906c80d78ace6d83f874605bff0486a1cd9911`; authenticated SKR scrolling and post-push runtime remain unverified. Manual pagination/editing screens were audited and retained. No production-readiness change.
+
+
 ## 2026-11-03 Products ordinary-pagination follow-up
 
 - Fixed an append guard that incorrectly required an inventory snapshot on ordinary Products requests. These responses contain no snapshotId, so both scrolling and Load more returned without fetching offset 40. Retry now resumes the failed ordinary batch.
