@@ -36,6 +36,7 @@ SKR 序列中被询问的 11 个日期，用户已确认**全部闭店**：2024-
 - 线上 SKR 只读回归再次运行完成，运行时仍为 `767c018809306d8cd7bec3327a09bce535a0ebb1`；精确日期金额仍与 API 对账通过，`last week` 仍为 BLOCKED，原生库存仍 4 个观测日、交期覆盖 0%、页面错误 0、写请求 0。新证据：`docs/UAT_AI_READONLY_FUNCTIONAL_RECHECK_2026-11-04_RERUN2.json`。
 - 续测已同时验证 Demo/SKR 补货只读接口：两店均返回 200、产品覆盖完整、写请求为 0；Demo 原生库存 3 日、SKR 4 日，交期覆盖均为 0%，均保持 `REVIEW`。SKR `last week` 仍返回 50210。逐日趋势扫描发现 19 个无行日期，其中 11 个已确认闭店，另外 8 个仍需营业日历确认。详见 `docs/UAT_AI_READONLY_CONTINUATION_2026-11-04.md`。
 - 任务 40 已终态失败（`pos_import`，history chunk `2026-11-01..2026-11-03`，仅载荷记录 113 条销售），失败后无 active job；审计计数仍有 818 条 `INCOMPLETE` 销售，因此当前覆盖不能宣称完整。证据：`docs/UAT_SHOPFRONT_SYNC_FAILURE_2026-11-04.json`。
+- 本地候选已进一步增加只读报表 provenance：`dataAsOf`、`dataSource`、`storeScope`，并在 `OdooReportQueryNodeTest` 与 `AssistantFastPathRouterTest` 定向测试中通过；候选最新 SHA 为 `4527deae`，尚未推送或部署，线上仍为 `767c018...`。远端 Java 21 `mvn -B clean verify` 通过前不得发布。
 - 路由类已在本机 Temurin Java 21 独立编译，并用黑盒 runner 验证 `sales last week`、`How much did we take in the last week?`、`sales for the last week`、`What were our sales for the last week?` 和 `sales last 7 days` 均返回 `report_sales`；这只是局部静态/行为检查，不替代完整 Maven 门禁。
 
 - 原生逐日库存快照尚未积累到 28 个连续业务日，不能严格评估真实 stockout、fill rate、库存成本或采购策略收益；之前记录的状态为 `INSUFFICIENT_HISTORY`。运行下一轮前应重新读取快照 freshness 记录，不能假定计数没有变化。
