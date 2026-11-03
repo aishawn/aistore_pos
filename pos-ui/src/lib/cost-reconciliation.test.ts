@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileCosts, costAuditCsv, amount, divideCost, multiplyCost, type AuditSnapshot } from "./cost-reconciliation.ts";
-import { sourceOrderUuid, loadCostSnapshot } from "./cost-reconciliation-source.ts";
+import { sourceOrderUuid, loadCostSnapshot, sourceFinancialsComplete } from "./cost-reconciliation-source.ts";
 import { localMidnightUtc } from "./replenishment-safety.ts";
+import { costRepairManifest } from "./cost-repair-manifest.ts";
 
 function fixture(): AuditSnapshot {
   return { companyId: 5, store: "skr", timezone: "Australia/Adelaide", from: "2026-10-01 00:00:00", to: "2026-11-01 00:00:00", capturedAt: "2026-11-03T00:00:00Z",
@@ -64,4 +65,75 @@ test("invalid dates and incomplete source snapshots fail closed", async () => {
   const rpc = (async (_model: string, method: string) => method === "read" ? [{ id: 5, country_id: [13, "Australia"], state_id: false }] : method === "search_count" ? 2 : []) as Parameters<typeof loadCostSnapshot>[0];
   await assert.rejects(loadCostSnapshot(rpc, { companyId: 5, store: "skr", fromDay: "2026-02-30", now: new Date("2026-11-03T00:00:00Z") }));
   await assert.rejects(loadCostSnapshot(rpc, { companyId: 5, store: "skr", now: new Date("2026-11-03T00:00:00Z") }), /Incomplete/);
+});
+
+test("a supported correction cannot publish the uncorrected ledger's gross profit", () => {
+  const s = fixture(), raw = s.receipts[0].raw_payload as { products: Record<string, unknown>[] };
+  raw.products[0].costEvidence = { verified: true, documentRef: "invoice", unit: "case", netPerCase: 40, taxPerCase: 4, taxRecoverable: true };
+  s.lines[0].cost_evidence = { verified: true, documentRef: "history", unitCost: 3 };
+  assert.equal(audit(s).products[0].status, "correctable");
+  assert.equal(audit(s).summary.grossProfit, null);
+});
+
+test("source tax must agree with recorded line net even when order arithmetic balances", () => {
+  const s = fixture();
+  s.lines[0].source_evidence = { verified: true, saleId: "sale", lineId: "line", lineCost: 6, tax: 1 };
+  assert.ok(audit(s).products[0].lines[0].issues.includes("SOURCE_LINE_TAX_MISMATCH"));
+});
+
+test("an empty audit is unavailable, rather than zero verified profit", () => {
+  const s = fixture(); s.lines = []; s.products = []; s.orders = [];
+  assert.equal(audit(s).summary.grossProfit, null);
+});
+
+test("full-product scope includes refund-only products", async () => {
+  const s = fixture(); s.lines[0].qty = -2;
+  s.orders[0] = { ...s.orders[0], company_id: [5, "Demo"], amount_total: 9 };
+  const records: Record<string, typeof s.lines> = { "pos.order": s.orders, "pos.order.line": s.lines, "shopfront.sync.purchase.order": [], "shopfront.sync.sale": [], "product.product": s.products };
+  const rpc = (async (model: string, method: string, args: unknown[]) => {
+    if (model === "res.company") return [{ id: 5, country_id: [13, "Australia"], state_id: false }];
+    const domain = JSON.stringify(args[0]);
+    if (method === "search_count") return domain.includes("write_date") ? 0 : records[model].length;
+    return records[model];
+  }) as Parameters<typeof loadCostSnapshot>[0];
+  const captured = await loadCostSnapshot(rpc, { companyId: 5, store: "skr", limit: 0, now: new Date("2026-11-03T00:00:00Z") });
+  assert.equal(captured.lines.length, 1); assert.equal(captured.products.length, 1);
+});
+
+test("verified full scope publishes margin only after cost agrees, and samples never do", () => {
+  const s = fixture(), raw = s.receipts[0].raw_payload as { products: Record<string, unknown>[] };
+  raw.products[0].costEvidence = { verified: true, documentRef: "invoice", unit: "case", netPerCase: 40, taxPerCase: 4, taxRecoverable: true };
+  s.lines[0].cost_evidence = { verified: true, documentRef: "history", unitCost: 3 };
+  s.lines[0].total_cost = 6;
+  s.coverage = { allProducts: true, totalOrders: 1, totalLines: 1, selectedLines: 1 };
+  assert.equal(audit(s).summary.grossProfit, 3);
+  assert.equal(audit(s).summary.grossMarginPercent, 33.333333);
+  s.coverage.allProducts = false; assert.equal(audit(s).summary.grossProfit, null);
+  s.coverage.allProducts = true; s.coverage.totalLines = 2; assert.equal(audit(s).summary.grossProfit, null);
+});
+
+test("repair evidence preserves original and proposed tax/cost and never authorizes execution", () => {
+  const s = fixture(); s.lines[0].write_date = "2026-11-01 00:00:00";
+  s.lines[0].source_evidence = { verified: true, saleId: "sale", lineId: "line", lineCost: 6, tax: 1 };
+  const manifest = costRepairManifest(s, audit(s));
+  assert.equal(manifest.executable, false); assert.equal(manifest.businessWrites, 0);
+  assert.equal(manifest.rows[0].expected.net, 9); assert.equal(manifest.rows[0].proposed.net, 8);
+  assert.equal(manifest.rows[0].expected.totalCost, 99.36); assert.equal(manifest.rows[0].proposed.totalCost, 6);
+  assert.equal(manifest.rows[0].expected.writeDate, s.lines[0].write_date);
+  assert.ok(manifest.rows[0].blockers.includes("SOURCE_LINE_TAX_MISMATCH"));
+  assert.equal(manifest.summary.needsChange, 1);
+});
+
+test("normalized zero cannot substitute missing raw tax/cost; incomplete and duplicate source lines stay blocked", () => {
+  const original = { id: "line", item: { id: "water" }, quantity: 2, totalPrice: 11, tax: 1, cost: 6 };
+  const raw = { id: "sale", status: "COMPLETED", totalPrice: 11, totalTax: 1, totalCost: 6, items: [original] };
+  const item = { source_product_id: "water", quantity: 2, line_total: 11, tax: 1, cost: 6, raw_payload: original };
+  const row = { id: 1, external_id: "sale", total_price: 11, total_tax: 1, total_cost: 6, raw_payload: { status: "COMPLETED", items: [item], raw_payload: raw } };
+  assert.equal(sourceFinancialsComplete(row), true);
+  original.cost = undefined as unknown as number; item.cost = 0; raw.totalCost = 0; row.total_cost = 0;
+  assert.equal(sourceFinancialsComplete(row), false);
+  original.cost = 6; item.cost = 6; raw.totalCost = 6; row.total_cost = 6;
+  raw.status = "INCOMPLETE"; assert.equal(sourceFinancialsComplete(row), false);
+  raw.status = "COMPLETED"; raw.items.push(original); row.raw_payload.items.push(item);
+  assert.equal(sourceFinancialsComplete(row), false);
 });

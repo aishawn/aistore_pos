@@ -7,6 +7,7 @@ import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 import { reconcileCosts, type CostAudit } from "@/lib/cost-reconciliation";
 import { loadCostSnapshot } from "@/lib/cost-reconciliation-source";
+import { shopfrontSourceMargin } from "@/lib/shopfront-source-margin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
     const snapshot = await loadCostSnapshot(scope.rpc, { companyId, store: scope.binding!.subdomain, fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined, limit: body.limit === 0 ? 0 : 20 });
     const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"), id = randomUUID();
     const audit = reconcileCosts(snapshot, id, sourceHash), dir = directory(scope.database, companyId);
+    audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     await writeFile(path.join(dir, `${id}.json`), JSON.stringify({ audit, snapshot }), { flag: "wx", mode: 0o600 });
     return json(audit);

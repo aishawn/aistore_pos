@@ -2,15 +2,18 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { loadCostSnapshot } from "../pos-ui/src/lib/cost-reconciliation-source.ts";
+import { loadCostSnapshot, loadSourceMarginSnapshot } from "../pos-ui/src/lib/cost-reconciliation-source.ts";
 import { reconcileCosts, costAuditCsv } from "../pos-ui/src/lib/cost-reconciliation.ts";
+import { costRepairManifest } from "../pos-ui/src/lib/cost-repair-manifest.ts";
+import { shopfrontSourceMargin } from "../pos-ui/src/lib/shopfront-source-margin.ts";
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
   if (!process.argv[i]?.startsWith("--") || !process.argv[i + 1]) throw Error("Use --env PATH --company ID --store KEY --out DIRECTORY [--from YYYY-MM-DD --to YYYY-MM-DD --timezone IANA --limit 20|0]");
   args.set(process.argv[i].slice(2), process.argv[i + 1]);
 }
-if ([...args.keys()].some(k => !["env", "company", "store", "out", "from", "to", "timezone", "limit", "snapshot"].includes(k))) throw Error("Unsupported argument");
+if ([...args.keys()].some(k => !["env", "company", "store", "out", "from", "to", "timezone", "limit", "snapshot", "source-only"].includes(k))) throw Error("Unsupported argument");
+if (args.has("source-only") && args.get("source-only") !== "true") throw Error("Use --source-only true");
 const out = path.resolve(args.get("out") || ".local/cost-reconciliation");
 await fs.mkdir(out, { recursive: true });
 let snapshot;
@@ -27,11 +30,22 @@ else {
   if (new URL(base).protocol !== "https:") throw Error("HTTPS required");
   let cookie = "";
   async function call(endpoint, params) {
-    const response = await fetch(base + endpoint, { method: "POST", headers: { "Content-Type": "application/json", Cookie: cookie }, body: JSON.stringify({ jsonrpc: "2.0", method: "call", params, id: 1 }), signal: AbortSignal.timeout(60_000) });
-    for (const entry of response.headers.getSetCookie()) if (entry.startsWith("session_id=")) cookie = entry.split(";")[0];
-    if (!response.ok) throw Error(`Odoo HTTP ${response.status}`);
-    const body = await response.json(); if (body.error) throw Error(`Odoo read rejected (${body.error.data?.name || "RPC_ERROR"})`);
-    return body.result;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const response = await fetch(base + endpoint, { method: "POST", headers: { "Content-Type": "application/json", Cookie: cookie }, body: JSON.stringify({ jsonrpc: "2.0", method: "call", params, id: 1 }), signal: AbortSignal.timeout(60_000) });
+        for (const entry of response.headers.getSetCookie()) if (entry.startsWith("session_id=")) cookie = entry.split(";")[0];
+        if (!response.ok) {
+          await response.body?.cancel();
+          if ([502, 503, 504].includes(response.status) && attempt < 2) { await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); continue; }
+          throw Error(`Odoo HTTP ${response.status}`);
+        }
+        const body = await response.json(); if (body.error) throw Error(`Odoo read rejected (${body.error.data?.name || "RPC_ERROR"})`);
+        return body.result;
+      } catch (error) {
+        if (attempt === 2 || !["TimeoutError", "AbortError", "TypeError"].includes(error.name)) throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
   }
   const login = await call("/web/session/authenticate", { db: database, login: env.ODOO_USER || env.ODOO_SERVICE_USERNAME, password: env.ODOO_PASS || env.ODOO_SERVICE_PASSWORD });
   if (!login?.uid) throw Error("Odoo authentication failed");
@@ -42,16 +56,14 @@ else {
     const { active_test: activeTest, ...methodKwargs } = kwargs;
     return call("/web/dataset/call_kw", { model, method, args: rpcArgs, kwargs: { ...methodKwargs, context: { allowed_company_ids: [companyId], force_company: companyId, active_test: activeTest !== false } } });
   };
-  snapshot = await loadCostSnapshot(rpc, { companyId, store, fromDay: args.get("from"), toDay: args.get("to"), timezone: args.get("timezone"), limit: args.get("limit") === "0" ? 0 : 20 });
+  snapshot = await (args.get("source-only") === "true" ? loadSourceMarginSnapshot : loadCostSnapshot)(rpc, { companyId, store, fromDay: args.get("from"), toDay: args.get("to"), timezone: args.get("timezone"), limit: args.get("limit") === "0" ? 0 : 20 });
 }
 const bytes = JSON.stringify(snapshot), sourceHash = createHash("sha256").update(bytes).digest("hex");
 const audit = reconcileCosts(snapshot, randomUUID(), sourceHash), prefix = path.join(out, audit.batchId);
+audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
 await fs.writeFile(`${prefix}.snapshot.json`, bytes, { flag: "wx" });
 await fs.writeFile(`${prefix}.json`, JSON.stringify(audit, null, 2), { flag: "wx" });
 await fs.writeFile(`${prefix}.csv`, costAuditCsv(audit), { flag: "wx" });
-const repair = { batchId: audit.batchId, sourceHash, ruleVersion: audit.ruleVersion, dryRun: true, businessWrites: 0,
-  proposed: audit.products.flatMap(p => p.lines.filter(l => l.status === "correctable").map(l => ({ model: "pos.order.line", id: l.saleLineId, originalCost: l.originalTotalCost, proposedCost: l.proposedTotalCost }))),
-  supportedButBlocked: audit.products.flatMap(p => p.lines.filter(l => l.status === "review" && l.proposedTotalCost !== null).map(l => ({ id: l.saleLineId, originalCost: l.originalTotalCost, supportedSourceCost: l.proposedTotalCost, supportedNet: l.proposedNet, sourceSaleId: l.sourceSaleId, sourceLineId: l.sourceLineId, blockers: l.issues }))),
-  pending: audit.products.map(p => ({ productId: p.id, name: p.name, issues: p.issues })) };
+const repair = costRepairManifest(snapshot, audit);
 await fs.writeFile(`${prefix}.repair-manifest.json`, JSON.stringify(repair, null, 2), { flag: "wx" });
 console.log(JSON.stringify({ batchId: audit.batchId, sourceHash, store: audit.store, companyId: audit.companyId, timezone: audit.timezone, from: audit.from, to: audit.to, ...audit.summary, files: [".json", ".csv", ".snapshot.json", ".repair-manifest.json"].map(s => prefix + s), businessWrites: 0 }, null, 2));

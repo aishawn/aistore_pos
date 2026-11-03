@@ -5,6 +5,8 @@ export type AuditSnapshot = {
   companyId: number; store: string; timezone: string; from: string; to: string; capturedAt: string;
   products: AuditRecord[]; lines: AuditRecord[]; orders: AuditRecord[]; receipts: AuditRecord[];
   sourceSales?: AuditRecord[];
+  coverage?: { allProducts: boolean; totalOrders: number; totalLines: number; selectedLines: number;
+    sourceCompletedOrders?: number; sourceMissingNativeOrders?: number; importedMissingSourceOrders?: number; sourceRowsComplete?: boolean };
 };
 export type AuditLine = {
   productId: number; name: string; sourceId: string; saleLineId: number; orderId: number; soldAt: string;
@@ -25,10 +27,11 @@ export type AuditProduct = {
 export type CostAudit = {
   ruleVersion: string; batchId: string; sourceHash: string; companyId: number; store: string; timezone: string;
   from: string; to: string; capturedAt: string; readOnly: true; products: AuditProduct[];
-  summary: { matched: number; correctable: number; review: number; lines: number; originalCost: number; originalNet: number; gross: number; recordedTax: number; grossProfit: number | null };
+  sourceMargin?: import("./shopfront-source-margin.ts").SourceMargin;
+  summary: { matched: number; correctable: number; review: number; lines: number; originalCost: number; originalNet: number; gross: number; recordedTax: number; grossProfit: number | null; grossMarginPercent?: number | null; publicationBlockers?: string[] };
 };
 
-export const COST_RULE_VERSION = "receipt-evidence-v1";
+export const COST_RULE_VERSION = "receipt-evidence-v2";
 export function amount(value: unknown): number | null {
   if ((typeof value !== "string" && typeof value !== "number") || String(value).trim() === "") return null;
   const n = Number(value);
@@ -84,7 +87,7 @@ export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceH
     const id = relationId(line.product_id), product = products.get(id), order = orders.get(relationId(line.order_id));
     if (!product || !order) throw new Error("Incomplete product/order evidence");
     const qty = amount(line.qty);
-    if (qty === null || qty === 0) continue;
+    if (qty === null) throw new Error("Invalid sale quantity");
     const ref = text(product.shopfront_source_ref), prefix = `${snapshot.store}:`;
     const sourceId = ref.startsWith(prefix) ? ref.slice(prefix.length) : "";
     const issues: string[] = [], soldAt = text(order.date_order), time = auditTime(soldAt);
@@ -138,6 +141,8 @@ export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceH
     // Order-level arithmetic is checked once against ALL lines in the selected orders by the loader.
     if (order.audit_tax_mismatch === true) issues.push("SALES_TAX_MISMATCH");
     if (originalNet === null || gross === null || orderTax === null) issues.push("SALES_AMOUNTS_UNAVAILABLE");
+    if (sourceTax !== null && originalNet !== null && gross !== null && Math.abs(difference(difference(gross, originalNet), sourceTax)) > 0.011) issues.push("SOURCE_LINE_TAX_MISMATCH");
+    if (qty === 0) issues.push("ZERO_QUANTITY_REQUIRES_REVIEW");
     // A supported source total can be displayed even when receipt/tax review blocks execution.
     const proposedTotalCost = sourceLineCost ?? (issues.length === 0 && historicalCost !== null ? multiplyCost(historicalCost, qty) : null);
     const proposedNet = sourceTax !== null && gross !== null ? difference(gross, sourceTax) : null;
@@ -149,7 +154,7 @@ export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceH
       originalNet, gross, recordedTax: originalNet !== null && gross !== null ? difference(gross, originalNet) : null, status, issues: [...new Set(issues)],
       sourceSaleId: sourceVerified ? text(source.saleId) : null, sourceLineId: sourceVerified ? text(source.lineId) : null, sourceLineCost, sourceTax, proposedNet,
       candidateUnitDifference: candidateUnitCost !== null && currentUnitCost !== null ? difference(candidateUnitCost, currentUnitCost) : null,
-      sourceUnitCost: sourceLineCost !== null ? divideCost(sourceLineCost, qty) : null };
+      sourceUnitCost: sourceLineCost !== null && qty !== 0 ? divideCost(sourceLineCost, qty) : null };
     const group = groups.get(id) ?? { id, name: row.name, sold: 0, returned: 0, currentUnitCost, costMethod, status: "matched", issues: [], lines: [] };
     group.sold = sum([group.sold, Math.max(0, qty)]); group.returned = sum([group.returned, Math.max(0, -qty)]);
     group.lines.push(row); groups.set(id, group);
@@ -160,12 +165,18 @@ export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceH
     product.status = product.lines.some(l => l.status === "review") ? "review" : product.lines.some(l => l.status === "correctable") ? "correctable" : "matched";
   }
   const lines = result.flatMap(p => p.lines), originalCost = sum(lines.map(l => l.originalTotalCost ?? 0)), originalNet = sum(lines.map(l => l.originalNet ?? 0));
+  const publicationBlockers: string[] = [];
+  if (!lines.length) publicationBlockers.push("NO_SALES_LINES");
+  if (!snapshot.coverage?.allProducts || snapshot.coverage.selectedLines !== snapshot.coverage.totalLines || snapshot.coverage.selectedLines !== lines.length) publicationBlockers.push("FULL_SCOPE_NOT_VERIFIED");
+  if (snapshot.coverage?.sourceMissingNativeOrders || snapshot.coverage?.importedMissingSourceOrders) publicationBlockers.push("SOURCE_COVERAGE_MISMATCH");
+  if (lines.some(l => l.status !== "matched")) publicationBlockers.push("UNRESOLVED_COST_OR_TAX");
+  const grossProfit = publicationBlockers.length ? null : difference(originalNet, originalCost);
   return { ruleVersion: COST_RULE_VERSION, batchId, sourceHash, companyId: snapshot.companyId, store: snapshot.store, timezone: snapshot.timezone,
     from: snapshot.from, to: snapshot.to, capturedAt: snapshot.capturedAt, readOnly: true, products: result,
     summary: { matched: result.filter(p => p.status === "matched").length, correctable: result.filter(p => p.status === "correctable").length,
       review: result.filter(p => p.status === "review").length, lines: lines.length, originalCost, originalNet,
       gross: sum(lines.map(l => l.gross ?? 0)), recordedTax: sum(lines.map(l => l.recordedTax ?? 0)),
-      grossProfit: lines.every(l => l.status !== "review") ? difference(originalNet, originalCost) : null } };
+      grossProfit, grossMarginPercent: grossProfit !== null && originalNet > 0 ? divideCost(multiplyCost(grossProfit, 100), originalNet) : null, publicationBlockers } };
 }
 
 export function costAuditCsv(audit: CostAudit): string {

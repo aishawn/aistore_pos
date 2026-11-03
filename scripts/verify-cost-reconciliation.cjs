@@ -31,6 +31,14 @@ const audit = { ruleVersion: "receipt-evidence-v1", batchId: "77777777-7777-4777
         if (pathname === "/api/odoo/session") return json({ user: { name: "Fixture", allowedCompanyIds: [5] } });
         if (pathname === "/api/odoo/pos-bootstrap") return json({ configs: [] });
         if (pathname === "/api/odoo/cost-reconciliation") return fail ? json({ message: "Fixture evidence unavailable" }, 502) : json(audit);
+        if (pathname === "/api/odoo/shopfront-margin") return fail ? json({ message: "Fixture source unavailable" }, 502) : json({ ...audit, sourceMargin: {
+          basis: "shopfront_original_sale_cost", aggregation: "original_order_totals", accountingVerified: false, complete: true,
+          completedOrders: 133, excludedOrders: 1, invalidOrders: 0, lines: 275, refundLines: 1,
+          grossSales: 3577.72, tax: 307.46, netSales: 3270.26, salesCost: 2440.08, grossProfit: 830.18, grossMarginPercent: 25.385749,
+          costEvidencePendingLines: 275, lineReconciliationComplete: false, ordersWithLineDifferences: 35,
+          lineVsOrderGrossDifference: 0, lineVsOrderTaxDifference: -0.11, lineVsOrderCostDifference: 0.17,
+          excludedSourceTotals: { complete: true, grossSales: 2.26, tax: 0.21, salesCost: 2.26 }, issues: [], lineDifferences: [],
+        } });
         if (pathname === "/api/odoo/records") return json({ items: [], hasNext: false, total: 0 });
         if (!["GET", "HEAD", "OPTIONS"].includes(req.method())) unexpectedWrites.push(pathname);
         return json({ code: 0, data: [] });
@@ -52,7 +60,19 @@ const audit = { ruleVersion: "receipt-evidence-v1", batchId: "77777777-7777-4777
       const downloaded = page.waitForEvent("download"); await dialog.getByRole("button", { name: "Export all evidence CSV" }).click();
       const file = await downloaded; await file.saveAs(path.join(out, `fixture-${width}.csv`));
       check(`${width}: exported same batch`, fs.readFileSync(path.join(out, `fixture-${width}.csv`), "utf8").includes(audit.batchId));
+      await dialog.getByRole("button", { name: "Show Shopfront source margin", exact: true }).click();
+      const sourceSection = dialog.getByRole("region", { name: "Shopfront source gross margin" });
+      await sourceSection.waitFor();
+      check(`${width}: source margin uses ex-tax denominator`, await sourceSection.getByText("25.39%", { exact: true }).isVisible());
+      check(`${width}: source costs remain independently unverified`, await sourceSection.getByText(/Independent cost verification pending: 275/).isVisible());
+      check(`${width}: excluded status amounts disclosed`, await sourceSection.getByText(/Excluded source amounts/).isVisible());
+      check(`${width}: original line differences disclosed`, await sourceSection.getByText(/35 original source orders differ/).isVisible());
+      check(`${width}: source report fits`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      const sourceDownload = page.waitForEvent("download"); await dialog.getByRole("button", { name: "Save source margin evidence", exact: true }).click();
+      await (await sourceDownload).saveAs(path.join(out, `source-margin-${width}.json`));
       await page.screenshot({ path: path.join(out, `cost-audit-${width}.png`), fullPage: true });
+      fail = true; await dialog.getByRole("button", { name: "Show Shopfront source margin", exact: true }).click(); await dialog.getByRole("alert").waitFor();
+      check(`${width}: stale source margin cleared on failure`, await sourceSection.count() === 0);
       fail = true; await dialog.getByRole("button", { name: "Generate audit", exact: true }).click(); await dialog.getByRole("alert").waitFor();
       check(`${width}: old evidence cleared on failure`, await dialog.getByRole("button", { name: /Fixture Water/ }).count() === 0);
       fail = false; await dialog.getByRole("button", { name: "Generate audit", exact: true }).click(); await dialog.getByRole("button", { name: /Fixture Water/ }).waitFor();
@@ -65,6 +85,10 @@ const audit = { ruleVersion: "receipt-evidence-v1", batchId: "77777777-7777-4777
     check("API requires authentication", unauthorized.status === 401);
     const crossOrigin = await fetch(`${base}/api/odoo/cost-reconciliation`, { method: "POST", headers: { Origin: "https://foreign.invalid", Cookie: "orithos_local_preview=1", "Content-Type": "application/json" }, body: "{}" });
     check("cross-origin generation blocked", crossOrigin.status === 403);
+    const sourceUnauthorized = await fetch(`${base}/api/odoo/shopfront-margin`, { method: "POST", headers: { Origin: base, "Content-Type": "application/json" }, body: "{}" });
+    check("source API requires authentication", sourceUnauthorized.status === 401);
+    const sourceCrossOrigin = await fetch(`${base}/api/odoo/shopfront-margin`, { method: "POST", headers: { Origin: "https://foreign.invalid", Cookie: "orithos_local_preview=1", "Content-Type": "application/json" }, body: "{}" });
+    check("cross-origin source capture blocked", sourceCrossOrigin.status === 403);
     fs.writeFileSync(path.join(out, "result.json"), JSON.stringify({ environment: "local fixture", realBusinessWrites: 0, checks, errors }, null, 2));
     console.log(JSON.stringify({ passed: checks.length, realBusinessWrites: 0, output: out }));
   } finally { await browser.close(); }

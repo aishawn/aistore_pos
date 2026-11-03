@@ -883,7 +883,9 @@ async def sync_store(
                     # legacy row for the first matching line instead of making
                     # every retry duplicate it.
                     if sale_item is None:
-                        sale_item = legacy_items_by_product.get((sale.id, product_id))
+                        # Consume once: another line for the same product may
+                        # carry a different quantity/sign and source line ID.
+                        sale_item = legacy_items_by_product.pop((sale.id, product_id), None)
                     if sale_item is None:
                         sale_item = SaleItem(sale_id=sale.id, line_key=line_key, shopfront_product_id=product_id)
                         db.add(sale_item)

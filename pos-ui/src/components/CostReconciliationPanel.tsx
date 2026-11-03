@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { costAuditCsv, type CostAudit, type AuditLine } from "@/lib/cost-reconciliation";
+import type { SourceMargin } from "@/lib/shopfront-source-margin";
 import { formatOdooDateTime } from "@/lib/odoo-date";
+
+type SourceReport = Pick<CostAudit, "batchId" | "sourceHash" | "companyId" | "store" | "timezone" | "from" | "to" | "capturedAt"> & { sourceMargin: SourceMargin };
 
 const issueLabels: Record<string, string> = {
   NO_STABLE_SOURCE_ID: "Product source ID missing", NO_PRIOR_RECEIPT: "No receipt before sale",
@@ -14,6 +17,8 @@ const issueLabels: Record<string, string> = {
   HISTORICAL_STANDARD_COST_REQUIRED: "Standard cost at sale time required", REFUND_ORIGINAL_COST_REQUIRED: "Original refund cost required",
   SALE_UNIT_UNVERIFIED: "Sales unit requires verification", ORIGINAL_COST_UNAVAILABLE: "Original cost unavailable",
   SALES_TAX_MISMATCH: "Sales tax does not reconcile", SALES_AMOUNTS_UNAVAILABLE: "Sales amounts unavailable",
+  SOURCE_LINE_TAX_MISMATCH: "Line tax differs from the original source sale",
+  ZERO_QUANTITY_REQUIRES_REVIEW: "Zero-quantity financial line requires review",
 };
 const statusLabels = { matched: "Matched", correctable: "Correction supported", review: "Needs review" };
 const number = (value: number | null, places = 4) => value === null ? "—" : new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: places }).format(value);
@@ -37,35 +42,54 @@ function ReceiptDetail({ line, timezone }: { line: AuditLine; timezone: string }
 
 export function CostReconciliationPanel() {
   const [data, setData] = useState<CostAudit | null>(null), [error, setError] = useState<string | null>(null);
+  const [sourceReport, setSourceReport] = useState<SourceReport | null>(null);
   const [busy, setBusy] = useState(false), [fromDay, setFromDay] = useState(""), [toDay, setToDay] = useState("");
   const [limit, setLimit] = useState("20"), [filter, setFilter] = useState("all"), [query, setQuery] = useState("");
   const [page, setPage] = useState(0), [expanded, setExpanded] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  async function generate() {
+  async function generate(sourceOnly = false) {
     controller.current?.abort(); const request = new AbortController(); controller.current = request;
-    setBusy(true); setError(null); setData(null); setExpanded(null); setPage(0);
+    setBusy(true); setError(null); setData(null); setSourceReport(null); setExpanded(null); setPage(0);
     try {
-      const response = await fetchOdooRoute("/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: Number(limit), ...(fromDay ? { fromDay } : {}), ...(toDay ? { toDay } : {}) }), signal: request.signal });
+      const response = await fetchOdooRoute(sourceOnly ? "/api/odoo/shopfront-margin" : "/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...(!sourceOnly ? { limit: Number(limit) } : {}), ...(fromDay ? { fromDay } : {}), ...(toDay ? { toDay } : {}) }), signal: request.signal });
       const body = await response.json();
-      if (!response.ok || !Array.isArray(body.products) || !body.batchId) throw new Error(body.message || "Could not generate cost audit.");
-      if (!request.signal.aborted) setData(body);
+      if (!response.ok || !body.batchId || (sourceOnly ? !body.sourceMargin : !Array.isArray(body.products))) throw new Error(body.message || "Could not generate cost audit.");
+      if (!request.signal.aborted) { if (sourceOnly) setSourceReport(body); else setData(body); }
     } catch (cause) { if (!request.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not generate cost audit."); }
     finally { if (!request.signal.aborted) setBusy(false); }
   }
+  const sourceMargin = sourceReport?.sourceMargin ?? data?.sourceMargin;
   const rows = data?.products.filter(p => (filter === "all" || p.status === filter) && `${p.name} ${p.id}`.toLowerCase().includes(query.toLowerCase())) ?? [];
   return <div className="flex flex-col gap-4 text-sm">
     <p className="leading-6 text-[var(--oh-muted)]">Compare sales with the latest receipt available before each sale. Receipt prices are evidence for review; sales costs retain their original valuation method.</p>
     <form onSubmit={event => { event.preventDefault(); void generate(); }} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1">From (optional)<input type="date" value={fromDay} onChange={e => setFromDay(e.target.value)} disabled={busy} className="min-h-11 rounded-lg border bg-[var(--oh-surface-elevated)] px-3" /></label>
       <label className="flex flex-col gap-1">To, exclusive (optional)<input type="date" value={toDay} onChange={e => setToDay(e.target.value)} disabled={busy} className="min-h-11 rounded-lg border bg-[var(--oh-surface-elevated)] px-3" /></label>
-      <label className="flex flex-col gap-1">Products<select value={limit} disabled={busy} onChange={e => setLimit(e.target.value)} className="min-h-11 rounded-lg border bg-[var(--oh-surface-elevated)] px-3"><option value="20">Top 20 by units sold</option><option value="0">All sold products</option></select></label>
+      <label className="flex flex-col gap-1">Products<select value={limit} disabled={busy} onChange={e => setLimit(e.target.value)} className="min-h-11 rounded-lg border bg-[var(--oh-surface-elevated)] px-3"><option value="20">Top 20 by units sold</option><option value="0">All products sold or refunded</option></select></label>
+      <button type="button" disabled={busy} className={button} onClick={() => void generate(true)}>Show Shopfront source margin</button>
       <button type="submit" disabled={busy} className={`${button} bg-[var(--oh-primary)] text-white`}>{busy ? "Capturing evidence…" : "Generate audit"}</button>
     </form>
     <p className="text-[var(--oh-muted)]">Blank dates use the last 30 completed business days in the store timezone. Refunds are shown separately from units sold.</p>
     {busy && <p role="status">Reading sales and receipt history. This can take a minute.</p>}
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-950">{error}</p>}
+      {sourceMargin && <section aria-label="Shopfront source gross margin" className="rounded-lg border border-[var(--oh-border)] p-3">
+        <h3 className="font-semibold">Shopfront historical gross margin</h3>
+        <p className="mt-1 text-[var(--oh-muted)]">Original Shopfront order totals and costs, including signed source refunds. Covers all source sales in this period, independently of the product sample below.</p>
+        {sourceMargin.complete ? <>
+          <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[["Sales excluding tax", number(sourceMargin.netSales, 2)], ["Source gross profit", number(sourceMargin.grossProfit, 2)],
+              ["Source gross margin", sourceMargin.grossMarginPercent === null ? "—" : `${number(sourceMargin.grossMarginPercent, 2)}%`]].map(([label, value]) => <div key={label}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd></div>)}
+          </dl>
+          <p className="mt-3 text-[var(--oh-muted)]">{sourceMargin.completedOrders} completed orders · {sourceMargin.refundLines} refund lines · {sourceMargin.excludedOrders} non-completed orders excluded.</p>
+          {!!sourceMargin.normalizedMismatchSaleIds?.length && <p className="mt-2 text-amber-900">{sourceMargin.normalizedMismatchSaleIds.length} orders have inconsistent imported details. This report uses preserved original Shopfront lines; affected sale IDs are in the evidence download.</p>}
+          {sourceMargin.excludedOrders > 0 && sourceMargin.excludedSourceTotals.complete && <p className="mt-2 text-[var(--oh-muted)]">Excluded source amounts: sales including tax {number(sourceMargin.excludedSourceTotals.grossSales, 2)}, tax {number(sourceMargin.excludedSourceTotals.tax, 2)}, cost {number(sourceMargin.excludedSourceTotals.salesCost, 2)}. Source reports that include these statuses can differ.</p>}
+          {!sourceMargin.lineReconciliationComplete && <p className="mt-2 text-[var(--oh-muted)]">{sourceMargin.ordersWithLineDifferences} original source orders differ from their line sums. Line minus order totals: sales {number(sourceMargin.lineVsOrderGrossDifference, 2)}, tax {number(sourceMargin.lineVsOrderTaxDifference, 2)}, cost {number(sourceMargin.lineVsOrderCostDifference, 2)}. Differences are retained in the audit JSON.</p>}
+        </> : <p role="status" className="mt-3">Source margin is unavailable: {sourceMargin.invalidOrders} orders need review, or source coverage is incomplete. Download audit JSON for the affected sale IDs.</p>}
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">Independent cost verification pending: {sourceMargin.costEvidencePendingLines} lines. This source report reproduces Shopfront costs; it does not certify accounting costs, purchase invoices or refund original-sale valuation.</p>
+      </section>}
+    {sourceReport && <div className="flex flex-col gap-2"><p className="break-words text-[var(--oh-muted)]">{sourceReport.timezone} · {formatOdooDateTime(sourceReport.from, sourceReport.timezone)} – {formatOdooDateTime(sourceReport.to, sourceReport.timezone)} (exclusive) · captured {formatOdooDateTime(sourceReport.capturedAt, sourceReport.timezone)}</p><button type="button" className={button} onClick={() => download(`shopfront-margin-${sourceReport.batchId}.json`, JSON.stringify(sourceReport, null, 2), "application/json")}>Save source margin evidence</button></div>}
     {data && <>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{[["Matched", data.summary.matched], ["Correction supported", data.summary.correctable], ["Needs review", data.summary.review]].map(([label, count]) => <div key={label} className="rounded-lg border border-[var(--oh-border)] p-3"><p className="text-[var(--oh-muted)]">{label}</p><p className="mt-1 text-xl font-semibold tabular-nums">{count}</p></div>)}</div>
       <p className="break-words text-[var(--oh-muted)]">{data.store.toUpperCase()} · {data.timezone} · {formatOdooDateTime(data.from, data.timezone)} – {formatOdooDateTime(data.to, data.timezone)} (exclusive)<br />Batch {data.batchId} · {data.summary.lines} sales lines · captured {formatOdooDateTime(data.capturedAt, data.timezone)}</p>
