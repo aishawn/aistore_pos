@@ -1339,9 +1339,18 @@ async def _sync_history_chunk(
                 "include_inventory_snapshot": refresh_inventory,
                 "inventory_snapshot_source_ids": sync_counts.get("inventory_source_product_ids") or [],
             }
+            sync_job = db.get(SyncJob, job_id) if job_id is not None else None
+            if sync_job is not None and sync_job.status == "running":
+                sync_job.phase = "pos_import"
+                sync_job.heartbeat_at = datetime.now(timezone.utc)
+                db.commit()
+                push_kwargs["job"] = sync_job
             if not full_catalog:
                 push_kwargs["product_source_ids"] = product_source_ids
                 push_kwargs["inventory_source_ids"] = catalog_source_ids
+            # Do not keep a crawler write transaction open while waiting on
+            # the POS or Odoo services.
+            db.commit()
             pos_result = await push_pos_snapshot(db, store_key, start, end, **push_kwargs)
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
@@ -1867,6 +1876,9 @@ async def push_pos_snapshot(
             "timestamp": row.inventory_timestamp,
             "raw_payload": raw,
         })
+    # Payload construction may read or repair local rows. Persist those
+    # changes before the long-running POS/Odoo requests begin.
+    db.commit()
     try:
         async def sync_odoo_batches(import_type: str, values: list[dict], *, snapshot_complete: bool = False) -> list[dict]:
             """Write Odoo data with bounded retries and recursive split fallback.
@@ -1899,6 +1911,10 @@ async def push_pos_snapshot(
 
             for offset in range(0, len(values), 200):
                 await write_chunk(values[offset:offset + 200])
+                if job is not None and job.status == "running":
+                    job.phase = f"odoo_{import_type}:{min(offset + 200, len(values))}/{len(values)}"
+                    job.heartbeat_at = datetime.now(timezone.utc)
+                    db.commit()
             return responses
 
         product_result = {}
@@ -1968,6 +1984,7 @@ async def push_pos_snapshot(
             if not sales:
                 break
             items = [sale_payload(sale) for sale in sales]
+            db.commit()
             try:
                 for target_name, client in clients.items():
                     await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))

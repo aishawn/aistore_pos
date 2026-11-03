@@ -338,6 +338,15 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
         },
     )
     db_session.add(run)
+    job = SyncJob(
+        store_key="skr",
+        job_type="daily_sync",
+        status="running",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        cursor_date="2026-10-26",
+    )
+    db_session.add(job)
     db_session.commit()
     captured = {}
 
@@ -359,12 +368,14 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
         store,
         date(2026, 10, 26),
         date(2026, 10, 26),
-        None,
+        job.id,
         False,
     )
 
     assert ok is True
     assert captured["product_source_ids"] == []
+    assert captured["job"].id == job.id
+    assert db_session.get(SyncJob, job.id).phase == "pos_import"
     assert db_session.get(SyncRun, run.id).counts["sync"]["pos_products_skipped_unchanged"] is True
 
 
