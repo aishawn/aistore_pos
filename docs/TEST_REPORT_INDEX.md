@@ -1,5 +1,7 @@
 # Test Report Index
 
+功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。下方新增条目是历史证据复核，不代表本轮重新调用模型或执行业务测试。
+
 Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 180 page templates catalogued (179 baseline + new cost reconciliation), 274 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Runtime 51e27c74: remote build and specified live/fixture UI acceptance PASS, including 18 records-dialog viewport checks; legacy 410 routes, alerts 500, AI failures and incomplete report data checks remain explicitly open.
 
 Latest Sales History space optimization: [2026-11-03 table/toolbar](test-sessions/2026-11-03-sales-history-space.md): targeted syntax/ESLint (zero errors), remote build and live browser layout/refresh/pagination PASS; deployed runtime `f2091f31`. Read-only checks, zero business writes.
@@ -40,8 +42,11 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `TEN-001` |  | NOT RUN |  |  |  |  |
 | `RPT-001` |  | NOT RUN |  |  |  |  |
 | `AI-001` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
-| `AI-002` |  | NOT RUN |  |  |  |  |
+| `AI-001` (online read-only, historical review) | 2026-11-03-project-fact-library | BLOCKED: Demo 379/390 PASS + 11 BLOCKED; SKR 382/390 PASS + 8 BLOCKED | `a6d5c7b0`; SKR dirty | `a6d5c7b0`, matched in original records | [Demo](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json), [SKR](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json) | Fixed-version full rerun; subset retries do not replace this result |
+| `AI-002` (historical provider/contract subsets) | 2026-11-03-project-fact-library | INFO: synthetic OCR/ASR and catalogue subsets only | Per artifact; incomplete | Per artifact; ASR unknown | [Evidence metadata](project/evidence.json) | Real invoice/image/microphone quality and current runtime remain unverified |
 | `AI-003` |  | NOT RUN |  |  |  |  |
+| `AI-004` (offline research, historical review) | 2026-11-03-project-fact-library | BLOCKED: all absolute WAPE gates failed; relative segment gains only | Not recorded by research summary | Not applicable: offline research | [730-day report](UAT_AI_730D_SEGMENTED_BACKTEST_2026-11-03.md), [JSON](UAT_AI_730D_SEGMENTED_BACKTEST_2026-11-03.json) | Native inventory and supplier/cost labels before production decision acceptance |
+| `DOC-001` | 2026-11-03-project-fact-library | PASS: 56 Markdown files / 19 evidence entries; 12 checker regressions | Inventory baseline `d2020745`; integrated on `b7249014`; doc commit in Git | Not applicable: static documentation | [Session](test-sessions/2026-11-03-project-fact-library.md) | Maintain with behavior/evidence changes; no new business acceptance claimed |
 | `OPS-001` |  | NOT RUN |  |  |  |  |
 | `R2-001` |  | NOT RUN |  |  |  |  |
 
@@ -50,6 +55,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | Session ID | Date | Scope | Result summary | Report |
 |---|---|---|---|---|
 | 2026-11-01-assistant-operations-recovery | 2026-11-01 | Local fixture subset | 24 unit tests and 1440/390px UI passed; live checks not run | [Report](test-sessions/2026-11-01-assistant-operations-recovery.md) |
+| 2026-11-03-project-fact-library | 2026-11-03 | Documentation checks and historical AI evidence review | No new provider/business tests; historical blocked/limited states retained | [Report](test-sessions/2026-11-03-project-fact-library.md) |
 
 ## Classification rule
 

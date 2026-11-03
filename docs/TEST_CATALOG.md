@@ -31,6 +31,8 @@ Every session report must also state: source SHA, runtime SHA if online, environ
 | AI-001 | Assistant routing | Intent, routes, clarification, safe unknowns | Online read-only or fixture | No business writes | `UAT_AI_WORKFLOW*.json` |
 | AI-002 | AI provider features | Availability, OCR, voice, sommelier, provider errors | Online with configured provider | Preview/read-only by default | `UAT_AI_FEATURES*.json` |
 | AI-003 | AI write safety | Guided actions, confirmation, no automatic writes | Fixture then approved target | Explicit confirmation only | `UAT_AI_*SAFETY*.json` |
+| AI-004 | Forecast and decision quality | Leakage-aware rolling/segmented backtests, stockout/cost/lead-time quality, pricing/replenishment rules | Offline fixed snapshot, then online read-only | No business writes; audit metadata may persist | Forecast JSON and [feature validation](project/features/ai/forecasting/validation.md) |
+| DOC-001 | Project fact library | Required layout, local links/headings, evidence metadata and quoted JSON assertions | Local static / CI | None | [Checker](../scripts/check-project-docs.py), dated documentation session |
 | OPS-001 | Backup and recovery | Backup, restore, retry, runtime recovery | Dedicated operational environment | Controlled operational writes | `UAT_*BACKUP*`, `UAT_*RECOVER*` |
 | R2-001 | R2 archive | Archive read, manifest, dry run, import reconciliation | R2 / approved TEST only | Import only when approved | `UAT_*R2*.json` |
 

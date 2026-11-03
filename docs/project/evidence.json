@@ -1,0 +1,516 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-11-03",
+  "baselineSha": "d2020745f5a2fa1c9f53e9beecdd96debbb164c3",
+  "entries": [
+    {
+      "id": "E-RO",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": "28a433a97cf299ac606a27bc90a6f064aa79b171",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "Demo/SKR 各 23 项；目录 12987/12999",
+      "result": "报表各 23/23；交期 0%；快照 2/3 天",
+      "limitations": [
+        "汇总记录，原始执行材料部分仅存 .local；不覆盖本基线及完整 provider 能力。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_READONLY_VALIDATION_2026-11-03.json"
+      ],
+      "jsonChecks": {
+        "stores.demo.aiChecks.passed": 23,
+        "stores.skr.aiChecks.passed": 23,
+        "stores.demo.supplierLeadTimeCoverage": 0,
+        "stores.skr.supplierLeadTimeCoverage": 0
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-WF-DEMO",
+      "status": "BLOCKED",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-02T22:06:37.364Z",
+      "sourceSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "runtimeSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "390 条完整问法",
+      "result": "379 PASS / 11 BLOCKED / 0 FAIL",
+      "limitations": [
+        "deployment 标签仍 unverified-after-deploy；不可将后续重试拼成整轮通过。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json"
+      ],
+      "jsonChecks": {
+        "catalogTotal": 390,
+        "passed": 379,
+        "blocked": 11,
+        "failed": 0,
+        "status": "BLOCKED",
+        "acceptance.candidateAccepted": false
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-WF-SKR",
+      "status": "BLOCKED",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-02T22:12:42.090Z",
+      "sourceSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "runtimeSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "390 条完整问法",
+      "result": "382 PASS / 8 BLOCKED / 0 FAIL",
+      "limitations": [
+        "worktreeDirty=true，candidateAccepted=false；匹配 runtime 不消除脏源码和阻断。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json"
+      ],
+      "jsonChecks": {
+        "passed": 382,
+        "blocked": 8,
+        "failed": 0,
+        "worktreeDirty": true,
+        "status": "BLOCKED"
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-RETRY-DEMO",
+      "status": "BLOCKED",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-02T22:15:44.578Z",
+      "sourceSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "runtimeSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "11 条定向重试",
+      "result": "11 项检查 PASS；整份报告 BLOCKED",
+      "limitations": [
+        "不是完整目录，fullCatalogRun=false；不能冒充 390 条整轮通过。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_WORKFLOW_EXACT_SHA_RETRY_2026-11-03_DEMO.json"
+      ],
+      "jsonChecks": {
+        "passed": 11,
+        "blocked": 0,
+        "failed": 0,
+        "status": "BLOCKED",
+        "acceptance.fullCatalogRun": false
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-RETRY-SKR",
+      "status": "BLOCKED",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-02T22:14:13.991Z",
+      "sourceSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "runtimeSha": "a6d5c7b0c2c800ae1b477f88525afcc5028cf7d4",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "8 条定向重试",
+      "result": "8 项检查 PASS；整份报告 BLOCKED",
+      "limitations": [
+        "不是完整目录；不能改变前次整轮原始状态。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_WORKFLOW_EXACT_SHA_RETRY_2026-11-03_SKR.json"
+      ],
+      "jsonChecks": {
+        "passed": 8,
+        "blocked": 0,
+        "failed": 0,
+        "status": "BLOCKED"
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-ASR",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-10-22T20:17:47.428Z",
+      "sourceSha": "e21a794356594de3aed15805664dc0fcac482c5f",
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "合成中英文音频；4 项含登录/配置",
+      "result": "4/4 PASS",
+      "limitations": [
+        "runtime 未记录、测试工作树脏；不是 4 个真实音频样本，不证明真实麦克风和门店噪声表现。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_TRANSCRIPTION_ONLINE_2026-10-23_GOAL-RECHECK.json"
+      ],
+      "jsonChecks": {
+        "passed": 4,
+        "runtimeCommit": null,
+        "deploymentShaVerified": false
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-HISTORY",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": "0d3d0bc327c910bd7a6380fc9da706c9cf1f8fe7",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "3 类只读助手探针与历史/用量元数据；另有维护修复",
+      "result": "确定性销售报表 round-trip PASS；fallback 50210；旧会话 0 消息",
+      "limitations": [
+        "该文件还记录数据库历史元数据修复，不能称其全程无数据库写入；业务写入为空；不是所有历史和 provider 功能通过。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_CHAT_HISTORY_DEFAULTS_REPAIR_ONLINE_2026-11-03.json"
+      ],
+      "jsonChecks": {
+        "salesReadOnlyProbe.messageCount": 2,
+        "salesReadOnlyProbe.numericIdPresent": true,
+        "earlierGreetingProbe.code": 50210,
+        "reportedOldConversation.messageCount": 0
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-HISTORY-FINDING",
+      "status": "INFO",
+      "evidenceType": "historical-design",
+      "recordedAt": "2026-11-02",
+      "sourceSha": "3730b38d",
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "设计/历史实现资料复核，不是本轮业务测试",
+      "sample": "列表→详情历史契约问题",
+      "result": "id=null / HTTP 400，显式 MyBatis Results 修复",
+      "limitations": [
+        "历史修复说明中的本地编译记录不构成本轮推荐或重跑；原说明明确需线上复验。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/AI_HISTORY_THREAD_ID_FIX_2026-11-02.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-OCR",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-10-28T21:49:11.860Z",
+      "sourceSha": null,
+      "runtimeSha": "9a4dfeb92ec50ca1a618bf5fc4a6b8a76dc355ed",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "1 张合成澳洲税票；1 行明细",
+      "result": "字段存在、HTTP 200、业务写入 0",
+      "limitations": [
+        "不是真实供应商准确率；缺模型/prompt/config 版本与费用；不是当前基线 OCR 验收。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_VALID_INVOICE_OCR_ONLINE_SKR_PASS_2026-10-29.json"
+      ],
+      "jsonChecks": {
+        "status": "PASS",
+        "httpStatus": 200,
+        "businessWrites": 0,
+        "extractedFieldPresence.lineCount": 1
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-SOM",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-10-28T06:57:04.259Z",
+      "sourceSha": "dc3d4d8e9ad2f18bab2e8f0c796298addcd6a5dc",
+      "runtimeSha": "dc3d4d8e9ad2f18bab2e8f0c796298addcd6a5dc",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "10 项目录与契约检查",
+      "result": "10 项检查 PASS",
+      "limitations": [
+        "scope 明确无模型/图片/反馈；不据 pitch/ask 检查名称推断真实模型调用。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_SOMMELIER_RUNTIME-dc3d4d8e.json"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-FOUNDATION",
+      "status": "INFO",
+      "evidenceType": "historical-design",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "设计/历史实现资料复核，不是本轮业务测试",
+      "sample": "基础层设计与约束",
+      "result": "Gateway、价格/补货规则的历史设计说明",
+      "limitations": [
+        "recordedAt 是本次复核日；原文件无不可变实施 SHA，设计的下一步不当成当前未完成清单。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/AI_PRODUCTION_FOUNDATION.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-SUPPLIER",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "公司 5，可采购库存商品 13000",
+      "result": "交期 0%；基本成本售价条件 1352，覆盖 10.4%",
+      "limitations": [
+        "字段存在不等于成本可靠；与另一审计范围/标签冲突，不能外推全店成本。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_SUPPLIER_COST_AUDIT_2026-11-03.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-LEAD",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "supplierinfo / purchase / picking 来源复核",
+      "result": "supplierinfo 0 行；无可用供应商关联收货交期",
+      "limitations": [
+        "runtime/source 未记录；不能用 POS receipt 或计划日期代替实际供应商交期。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/AI_LEAD_TIME_SOURCE_RECHECK_2026-11-03.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-FC730",
+      "status": "BLOCKED",
+      "evidenceType": "offline-research",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "离线只读研究回测，不是生产验收",
+      "sample": "730 天、500 高销量商品；7/14/28 天",
+      "result": "全部绝对 WAPE 门失败；部分分群相对门通过",
+      "limitations": [
+        "无可信缺货标签、原生库存、供应商交期与实际成本；高销量样本不代表全目录，不能自动采购。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_730D_SEGMENTED_BACKTEST_2026-11-03.json"
+      ],
+      "jsonChecks": {
+        "historyDays": 730,
+        "productCount": 500,
+        "absoluteWapeGate": "FAILED_FOR_ALL_SEGMENTS",
+        "automatablePurchaseRecommendation": false,
+        "writeRequests": []
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-FC365",
+      "status": "BLOCKED",
+      "evidenceType": "offline-research",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "skr-odoo-readonly-2026-11-03",
+      "scope": "离线只读研究回测，不是生产验收",
+      "sample": "365 天、500 高销量商品；7/14/28 天",
+      "result": "研究模式缺 stockout 标签",
+      "limitations": [
+        "原始 snapshotVersion 是标签不是完整数据哈希；不能将探索门通过作为生产质量通过。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_365D_SEGMENTED_BACKTEST_2026-11-03.json"
+      ],
+      "jsonChecks": {
+        "historyDays": 365,
+        "productCount": 500,
+        "status": "RESEARCH_ONLY_BLOCKED_STOCKOUT_LABELS_UNAVAILABLE"
+      },
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-URGENT",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": "08b2dac9546bd912328cb083ec40e890c9d04914",
+      "runtimeSha": "08b2dac9546bd912328cb083ec40e890c9d04914",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "Demo/SKR 风险筛选页面",
+      "result": "筛选存在、API 200、历史计数 1203/1110",
+      "limitations": [
+        "计数是当时快照；REVIEW 门禁仍保留，不证明预测风险精度或当前部署。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_URGENT_RISK_DEPLOYMENT_2026-11-03.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-DEAD",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": "712134726fbe1d56ad004daf71fe208b07e5435b",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "Demo/SKR 全目录；历史时点",
+      "result": "HTTP 200；无效成本/库存 8360/8262；业务写入 0",
+      "limitations": [
+        "无销售不等于过时；金额仅有效子集且库存后续修复可能改变数值，不能称已节省。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/AI_DEAD_STOCK_CASH_OCCUPANCY_UAT_2026-11-03.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-COST-CONFLICT",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "历史线上检查；业务只读范围以原证据为准",
+      "sample": "成本覆盖审计：公司 5/137",
+      "result": "正成本覆盖和金额有记录，但门店标签与其他资料冲突",
+      "limitations": [
+        "AI-D01 OPEN：该文件标公司 5 为 Demo，而其他只读记录将公司 5 标为 SKR；成本范围也不一致。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/UAT_AI_COST_COVERAGE_READONLY_2026-11-03.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-COMMANDS",
+      "status": "INFO",
+      "evidenceType": "historical-design",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": null,
+      "scope": "设计/历史实现资料复核，不是本轮业务测试",
+      "sample": "命令实现说明",
+      "result": "草稿/权限/过期/确认设计；执行关闭",
+      "limitations": [
+        "无同 SHA 线上执行证据；旧适配器须 Odoo SoT 审查，recordedAt 为复核日。",
+        "模型、prompt/config 及部分版本元数据未记录；本期未重新执行业务测试。"
+      ],
+      "artifacts": [
+        "docs/AI_COMMANDS_IMPLEMENTATION.md"
+      ],
+      "jsonChecks": {},
+      "releaseAccepted": false
+    }
+  ]
+}

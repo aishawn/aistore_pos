@@ -1,5 +1,7 @@
 # Orithos POS
 
+项目设计、进展、效果、测试和问题的统一入口：[项目事实库](docs/project/README.md)。先读 [AI 全景](docs/project/features/ai/README.md) 或 [管理层摘要](docs/project/reports/2026-11-03-management-summary.md)；下文包含历史架构描述，当前业务边界以 [Product Boundaries](docs/PRODUCT_BOUNDARIES.md) 和适用版本证据为准。
+
 面向澳洲瓶装酒与精品零售的收银与进销存系统。收银员在同一套界面完成开单、结账、库存、采购和报表；店员还可以用自然语言问数、按酒标推荐在售葡萄酒，以及把供应商税票扫成收货单。
 
 前后端没有共享代码，只通过 HTTP 连接：浏览器访问 Next.js，业务与权限在 Spring Boot 里完成，数据落在 PostgreSQL，会话与缓存落在 Redis。
