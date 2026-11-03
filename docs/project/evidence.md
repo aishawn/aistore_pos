@@ -27,6 +27,8 @@
 
 | E-SOURCE-REFUND | online-readonly / INFO | Shopfront 单日来源毛利相符；388 笔退款候选重读，原行关联仍待确认 | [材料](../../docs/UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json) |
 
+| E-PURCHASE-SAMPLE | online-readonly / INFO | 首批 50 笔采购、2794 行，48 发票号、45 收货日期；计价/税额与后续分页未核实 | [材料](../../docs/UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json) |
+
 ## 证据冲突与缺口
 
 - E-WF 的 runtime 与 source 匹配，但原始 deployment 标签仍未验证；SKR 还标记工作树脏。保留这些差异，不把匹配 SHA 等同于候选全量验收。

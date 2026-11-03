@@ -12,3 +12,5 @@
 新增来源复核：直接 Shopfront 全天 134 笔/完成 133 笔，毛利 830.18，与报表相同；388 笔候选退款复取 592 行。19 项 crawler 测试覆盖无 outlet 查询、来源补证不被两层 unchanged 路径跳过、重复补证不增行与签名成本。候选查询哈希和结果见[来源证据](../../../UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json)，不是原生账已修复。快照候选清单依赖镜像发现，未证明独立全源完整性。
 
 Crawler 全目录回归最终单轮 45/45 通过（25 warnings），包含已有历史任务 mock/库存 fixture 修正；详见[本次 session](../../../test-sessions/2026-11-03-source-refund-evidence.md)。
+
+采购来源只读抽样：首批 50 笔、2794 行，48 笔发票号、45 笔收货日期；数量/箱规/baseCost 无空值，lineCount 均吻合。本批无附件；hasNextPage=true，不能推广至全源，计价与税额仍未认证。[证据](../../../UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json)。

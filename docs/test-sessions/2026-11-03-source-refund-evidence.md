@@ -18,3 +18,5 @@
 材料：[原始证据摘要](../UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json)、[专题与剩余事项](../SHOPFRONT_MARGIN_RECONCILIATION_2026-11-03.md)。source commit 在测试时尚未生成，以本 session 的 Git 提交定位；查询哈希为线上真实请求身份，不能替代候选部署验证。
 
 扩大回归：`python -m pytest tests -q --disable-warnings` 最终单轮 45 passed、25 warnings。初轮暴露三个已有历史测试模拟签名落后，以及“已落盘目录”样本缺库存；更新这些 fixture 后整轮通过。此结果仅属本地测试，不改变线上财务修复状态。
+
+采购来源只读抽样：首批 50 笔、2794 行，48 笔发票号、45 笔收货日期；数量/箱规/baseCost 无空值，lineCount 均吻合。本批无附件；hasNextPage=true，不能推广至全源，计价与税额仍未认证。[证据](../UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json)。

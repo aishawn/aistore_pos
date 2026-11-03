@@ -561,6 +561,32 @@
         "docs/test-sessions/2026-11-03-source-refund-evidence.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-PURCHASE-SAMPLE",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": "1e02bba257615b79a1c9db9cf82f95e14720d9f3",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "dcafebf91192e3878f0f0c3cb27c56ecfce0310a409652866a58be0f9e7145f0",
+      "scope": "First source page only: requested first 100; source returned 50 and hasNextPage=true",
+      "sample": "50 purchase orders / 2794 lines",
+      "result": "48 invoice numbers; 45 receivedAt; no attachments in this sample; 0 sample lineCount mismatches; business writes 0",
+      "limitations": [
+        "One page only; no inference that all source orders lack attachments",
+        "enteredAs is display-only; baseCost and orderedCost unit/tax semantics unverified",
+        "Purchase line products is deprecated; sample lineCount matches do not certify whole-source pagination",
+        "Invoice number and populated cost do not independently verify cost; no financial writes",
+        "Source checkout SHA unknown; exact query hash recorded"
+      ],
+      "artifacts": [
+        "docs/UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json"
+      ],
+      "releaseAccepted": false
     }
   ]
 }
