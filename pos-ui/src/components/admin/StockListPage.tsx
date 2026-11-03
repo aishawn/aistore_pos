@@ -1,13 +1,12 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExportIcon } from "@/components/icons";
-import { RefreshCw, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, X } from "lucide-react";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
-import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
@@ -307,14 +306,12 @@ function StockListPageInner() {
   const [search, setSearch] = useState(initialQ);
   const [categoryId, setCategoryId] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim() ?? "";
     setSearch(q);
-    setPage(1);
   }, [searchParams]);
 
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -325,21 +322,45 @@ function StockListPageInner() {
   const [total, setTotal] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "category" | "stock" | "price">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const nextOffset = useRef(0);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const scrollRoot = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
+  const requestBusy = useRef(false);
 
-  const reload = useCallback(() => {
+  const loadPage = useCallback((reset = false) => {
+    if (!reset && requestBusy.current) return;
+    requestBusy.current = true;
     const current = ++request.current;
-    setLoading(true);
+    const offset = reset ? 0 : nextOffset.current;
+    if (reset) {
+      scrollRoot.current?.scrollTo({ top: 0 });
+      setLoading(true);
+      setLoadingMore(false);
+      setItems([]);
+      setTotal(0);
+      setHasNext(false);
+      nextOffset.current = 0;
+      setLoadMoreError(null);
+    } else {
+      setLoadingMore(true);
+      setLoadMoreError(null);
+    }
     setError(null);
     void searchOdooRecords<OdooProductRecord>("products", {
       query: debouncedSearch || undefined,
       categoryIds: categoryId ? categoryId.split(",").map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : undefined,
       stockOnly: inStockOnly,
       limit: PAGE_SIZE,
-      offset: (page - 1) * PAGE_SIZE,
+      offset,
     }).then((result) => {
       if (current !== request.current) return;
+      if (result.hasNext && !result.items.length) throw new Error("Stock returned an empty batch. Retry to continue.");
       const rows = result.items.map((product) => ({
         id: String(product.id),
         productId: product.id,
@@ -354,17 +375,24 @@ function StockListPageInner() {
         cost: null,
         price: product.list_price,
       }));
-      setItems(rows);
+      setItems((previous) => reset ? rows : [...previous, ...rows.filter(row => !previous.some(item => item.id === row.id))]);
       setHasNext(Boolean(result.hasNext));
-      // Orithos exposes a cursor-style next-page signal rather than an expensive
-      // count query. Keep the count label honest until the last page is known.
-      setTotal((page - 1) * PAGE_SIZE + rows.length + (result.hasNext ? 1 : 0));
+      setTotal(typeof result.total === "number" ? result.total : offset + rows.length + (result.hasNext ? 1 : 0));
+      nextOffset.current = offset + rows.length;
     }).catch((cause) => {
-      if (current === request.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos stock.");
+      if (current !== request.current) return;
+      const message = cause instanceof Error ? cause.message : "Could not load Orithos stock.";
+      if (reset) setError(message); else setLoadMoreError(message);
     }).finally(() => {
-      if (current === request.current) setLoading(false);
+      if (current === request.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     });
-  }, [categoryData, categoryId, debouncedSearch, inStockOnly, page]);
+  }, [categoryData, categoryId, debouncedSearch, inStockOnly]);
+
+  const reload = useCallback(() => { loadPage(true); }, [loadPage]);
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasNext) return;
+    loadPage(false);
+  }, [hasNext, loadPage, loading, loadingMore]);
 
   const reloadCategories = useCallback(() => {
     setCategoriesLoading(true);
@@ -373,7 +401,30 @@ function StockListPageInner() {
   }, []);
 
   useEffect(() => { reloadCategories(); }, [reloadCategories]);
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { reload(); return () => { request.current += 1; requestBusy.current = false; }; }, [reload]);
+
+  useEffect(() => {
+    const node = sentinel.current;
+    const root = scrollRoot.current;
+    if (!node || !root || loadMoreError) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) loadMore();
+    }, { root, rootMargin: "480px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadMore, loadMoreError]);
+
+  const displayedItems = useMemo(() => [...items].sort((a, b) => {
+    const left = sortBy === "name" ? friendlyProductName(a.name) : sortBy === "category" ? (a.categoryName ?? "") : sortBy === "price" ? (a.price ?? -Infinity) : (a.itemsOnHand ?? 0);
+    const right = sortBy === "name" ? friendlyProductName(b.name) : sortBy === "category" ? (b.categoryName ?? "") : sortBy === "price" ? (b.price ?? -Infinity) : (b.itemsOnHand ?? 0);
+    const order = typeof left === "number" && typeof right === "number" ? left - right : String(left).localeCompare(String(right), "en-AU", { numeric: true, sensitivity: "base" });
+    return (sortDirection === "desc" ? -order : order) || a.productId - b.productId;
+  }), [items, sortBy, sortDirection]);
+
+  function toggleSort(next: typeof sortBy) {
+    if (next === sortBy) setSortDirection((value) => value === "asc" ? "desc" : "asc");
+    else { setSortBy(next); setSortDirection("asc"); }
+  }
 
   const categoryOptions: SelectOption[] = (() => {
     const groups = new Map<string, { label: string; ids: number[] }>();
@@ -410,7 +461,7 @@ function StockListPageInner() {
           {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
         <div data-testid="stock-list-product-count" className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
-            <span className="font-semibold tabular-nums text-[var(--oh-text)]">{hasNext ? `${(page - 1) * PAGE_SIZE + items.length}+` : total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
+            <span className="font-semibold tabular-nums text-[var(--oh-text)]">{items.length.toLocaleString()} / {total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 
@@ -439,7 +490,6 @@ function StockListPageInner() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setPage(1);
             }}
             placeholder="Search name, SKU or barcode"
             className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20"
@@ -450,12 +500,31 @@ function StockListPageInner() {
               value={categoryId}
               onChange={(v) => {
                 setCategoryId(v);
-                setPage(1);
               }}
               options={categoryOptions}
               placeholder="All categories"
             />
           </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-[var(--oh-text-secondary)] xl:hidden">
+            <span className="sr-only">Sort stock list</span>
+            <select
+              value={`${sortBy}:${sortDirection}`}
+              onChange={(event) => {
+                const [field, direction] = event.target.value.split(":") as [typeof sortBy, typeof sortDirection];
+                setSortBy(field);
+                setSortDirection(direction);
+              }}
+              className="h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text)]"
+            >
+              <option value="name:asc">Product A–Z</option>
+              <option value="name:desc">Product Z–A</option>
+              <option value="category:asc">Category A–Z</option>
+              <option value="stock:desc">Stock high to low</option>
+              <option value="stock:asc">Stock low to high</option>
+              <option value="price:desc">Price high to low</option>
+              <option value="price:asc">Price low to high</option>
+            </select>
+          </label>
           {hasActiveFilters ? (
             <button
               type="button"
@@ -464,7 +533,6 @@ function StockListPageInner() {
                 setSearch("");
                 setCategoryId("");
                 setInStockOnly(false);
-                setPage(1);
               }}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
@@ -475,34 +543,40 @@ function StockListPageInner() {
         </div>
         <Toggle
           checked={inStockOnly}
-          onChange={(v) => {
+            onChange={(v) => {
             setInStockOnly(v);
-            setPage(1);
           }}
           label="In-stock products only"
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto pl-3 pr-3 pb-4 sm:px-4 md:px-6">
+      <div ref={scrollRoot} data-testid="stock-results-scroll" className="min-h-0 flex-1 overflow-auto pl-3 pr-3 pb-4 sm:px-4 md:px-6">
         <div data-testid="stock-list-table" className="xl:min-w-[1100px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] xl:flex">
-            <div className="w-[22%] shrink-0 px-2">Product</div>
-            <div className="w-[10%] shrink-0 px-2">Category</div>
+            {([['name', 'Product', 'w-[22%]'], ['category', 'Category', 'w-[10%]']] as const).map(([field, label, width]) => {
+              const active = sortBy === field;
+              return <button key={field} type="button" onClick={() => toggleSort(field)} aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className={`${width} shrink-0 px-2 text-left hover:text-[var(--oh-text)]`}><span className="inline-flex items-center gap-1">{label}{active ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>;
+            })}
             <div className="w-[8%] shrink-0 px-2">Price Set</div>
             <div className="w-[7%] shrink-0 px-2 text-center">Case Quantity</div>
             <div className="w-[7%] shrink-0 px-2 text-center">Cases on Hand</div>
-            <div className="w-[7%] shrink-0 px-2 text-center">Items on Hand</div>
+            <button type="button" onClick={() => toggleSort("stock")} aria-sort={sortBy === "stock" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[7%] shrink-0 px-2 text-center hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">Items on Hand{sortBy === "stock" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
             <div className="w-[8%] shrink-0 px-2 text-center">Quantity</div>
             <div className="w-[8%] shrink-0 px-2">Cost</div>
-            <div className="w-[10%] shrink-0 px-2">Price</div>
+            <button type="button" onClick={() => toggleSort("price")} aria-sort={sortBy === "price" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[10%] shrink-0 px-2 text-left hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">Price{sortBy === "price" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
             <div className="min-w-0 flex-1 px-2">Profit %</div>
           </div>
 
           <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
-            {items.map((row) => (
+            {displayedItems.map((row) => (
               <StockListRowEditor key={row.id} row={row} onSaved={reload} />
             ))}
-        <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+            <div ref={sentinel} aria-hidden="true" className="h-2" />
+            {loadMoreError ? <div role="alert" className="flex items-center justify-center gap-3 py-3 text-xs text-[var(--oh-danger-text)]"><span>{loadMoreError}</span><button type="button" onClick={() => loadMore()} className="font-semibold underline underline-offset-2">Retry</button></div> : null}
+            <div className="py-3 text-center text-xs text-[var(--oh-muted)]" aria-live="polite">
+              {loadingMore ? "Loading more products…" : hasNext ? `Loaded ${items.length.toLocaleString()} of ${total.toLocaleString()}` : `All ${total.toLocaleString()} products loaded`}
+              {hasNext && !loadMoreError && <button type="button" disabled={loading || loadingMore} onClick={loadMore} className="ml-3 min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">Load more</button>}
+            </div>
           </AsyncState>
         </div>
       </div>

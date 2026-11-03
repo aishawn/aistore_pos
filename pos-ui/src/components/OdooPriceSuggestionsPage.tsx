@@ -94,7 +94,12 @@ function downloadSuggestions(products: PriceSuggestionProduct[]) {
 export function OdooPriceSuggestionsPage() {
   const [data, setData] = useState<PriceSuggestionData | null>(null);
   const [marginTarget, setMarginTarget] = useState(0.3);
-  const [offset, setOffset] = useState(0);
+  const nextOffset = useRef<number | null>(0);
+  const requestBusy = useRef(false);
+  const failedAppend = useRef(false);
+  const scrollRoot = useRef<HTMLElement>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
   const [showAll, setShowAll] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | SuggestionStatus>("all");
@@ -108,10 +113,15 @@ export function OdooPriceSuggestionsPage() {
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
 
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (refresh = false, append = false) => {
+    if (append && (requestBusy.current || nextOffset.current === null)) return;
+    requestBusy.current = true;
+    const offset = append ? nextOffset.current! : 0;
+    if (!append) { nextOffset.current = 0; setLoadingMore(false); scrollRoot.current?.scrollTo({ top: 0 }); }
     const revision = ++requestRevision.current;
     if (refresh) setRefreshing(true);
-    else setLoading(true);
+    if (append) setLoadingMore(true);
+    else if (!refresh) setLoading(true);
     setError(null);
     setRequestId(null);
     try {
@@ -134,7 +144,9 @@ export function OdooPriceSuggestionsPage() {
         throw new Error("Orithos returned an incomplete price suggestion list.");
       }
       setNeedsConnection(false);
-      setData(payload);
+      if (payload.nextOffset != null && payload.nextOffset <= offset) throw new Error("Suggestions did not advance. Retry to continue.");
+      nextOffset.current = payload.nextOffset ?? null;
+      setData((previous) => append && previous ? { ...payload, products: [...previous.products, ...payload.products.filter(row => !previous.products.some(item => item.id === row.id))] } : payload);
       void getOdooPosBootstrap().then(bootstrap => {
         if (revision !== requestRevision.current) return;
         const active = bootstrap.configs.find(config => config.session) ?? bootstrap.configs[0];
@@ -143,18 +155,32 @@ export function OdooPriceSuggestionsPage() {
       setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : Date.now());
     } catch (cause) {
       if (revision !== requestRevision.current) return;
+      failedAppend.current = append;
       setError(cause instanceof Error ? cause.message : "Could not load price suggestions.");
     } finally {
       if (revision === requestRevision.current) {
+        requestBusy.current = false;
         setLoading(false);
+        setLoadingMore(false);
         setRefreshing(false);
       }
     }
-  }, [marginTarget, offset]);
+  }, [marginTarget]);
 
   useEffect(() => {
+    setData(null);
     void load(false);
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
   }, [load]);
+  useEffect(() => {
+    const node = sentinel.current, root = scrollRoot.current;
+    if (!node || !root || data?.nextOffset == null || loading || refreshing || loadingMore || error) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) void load(false, true);
+    }, { root, rootMargin: "240px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [data?.nextOffset, loading, loadingMore, refreshing, error, load]);
 
   const actionItems = useMemo(
     () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost") ?? [],
@@ -198,7 +224,7 @@ export function OdooPriceSuggestionsPage() {
   }
 
   return (
-    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-7">
+    <main ref={scrollRoot} data-testid="price-suggestions-scroll" className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">AI Workspace</p>
@@ -216,7 +242,7 @@ export function OdooPriceSuggestionsPage() {
             Target margin
             <select
               value={String(marginTarget)}
-              onChange={(event) => { setOffset(0); setMarginTarget(Number(event.target.value)); }}
+              onChange={(event) => { setMarginTarget(Number(event.target.value)); }}
               className="rounded bg-transparent font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
               {MARGIN_OPTIONS.map((value) => (
@@ -243,7 +269,7 @@ export function OdooPriceSuggestionsPage() {
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
           <span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error}{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">
+          <button type="button" onClick={() => void load(true, failedAppend.current)} disabled={refreshing || loadingMore} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">
             {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry
           </button>
         </div>
@@ -384,11 +410,10 @@ export function OdooPriceSuggestionsPage() {
           </ul>
         )}
       </section>
-      {data && (offset > 0 || data.nextOffset != null || data.truncated) && <nav aria-label="Price suggestion pages" className="flex flex-wrap items-center gap-3 text-sm">
-        <button type="button" disabled={offset === 0 || loading || refreshing} onClick={() => setOffset(Math.max(0, offset - 30))} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Previous</button>
-        <span>Page {Math.floor(offset / 30) + 1}. Search and export cover this page.</span>
-        <button type="button" disabled={data.nextOffset == null || loading || refreshing} onClick={() => { if (data.nextOffset != null) setOffset(data.nextOffset); }} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Next</button>
-      </nav>}
+      {data && <div ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
+        <span>{loadingMore ? "Loading more price suggestions…" : data.nextOffset != null ? `Loaded ${data.products.length} suggestions` : "All suggestions loaded"}</span>
+        {data.nextOffset != null && <button type="button" disabled={loading || refreshing || loadingMore} onClick={() => void load(Boolean(error), true)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{error ? "Retry loading" : "Load more"}</button>}
+      </div>}
     </main>
   );
 }

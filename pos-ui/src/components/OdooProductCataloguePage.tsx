@@ -319,7 +319,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     }, { root: scrollRoot.current, rootMargin: "0px 0px 240px 0px" });
     observer.observe(sentinel.current);
     return () => observer.disconnect();
-  }, [hasNext, resultsPending, loadingMore, error, loadProducts]);
+  }, [hasNext, resultsPending, loadingMore, error, loadProducts, tab]);
 
   function changeSort(field: InventorySort, direction?: InventoryDirection) {
     requestRevision.current += 1;
