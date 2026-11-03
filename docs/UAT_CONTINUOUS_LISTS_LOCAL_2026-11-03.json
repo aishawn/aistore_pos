@@ -1,0 +1,847 @@
+{
+  "scope": "Local intercepted browser fixtures only",
+  "checks": [
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/capped-pricing",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/list",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/price-suggestions",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/capped-pricing",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/list",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "failure pauses automatic retries",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "failure retains loaded rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "retry resumes the failed offset",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "paging uses consumed rows despite deduplication",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "duplicate rows are hidden",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "append requests do not overlap",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "last batch stops loading",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "refresh restarts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "refresh replaces appended rows",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "stale query cannot overwrite new results",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "filter starts at offset zero",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/price-suggestions",
+      "name": "no horizontal document overflow",
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "realBusinessWrites": 0
+}

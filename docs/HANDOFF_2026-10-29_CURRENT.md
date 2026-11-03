@@ -1,4 +1,26 @@
 # Orithos 当前交接（2026-10-29）
+## 2026-11-03 Dashboard 净库存展示修复
+
+- SKR 线上确认：Total inventory 显示横杠，接口仅累计正 quant 返回 41,731，同时标记 negative_stock。已改为当前公司全部内部库位带符号净库存；负数正常显示并附待核对说明，混合单位/不可用仍保留横杠。缓存 schema 升级，避免复用正数合计。
+- Odoo 只读核验：共享 aipos_uat，公司 5，10,968 quants，统一 Units，净库存 -1,334,367、预留 3；与前次修复后结果一致。显示记录净库存不代表实盘可信；业务数据未写入。
+- 本地 10 项回归、typecheck、定向 ESLint 通过。实际组件 Edge 320–1440px 一行三指标、数字/提示、无溢出、焦点及链接检查通过，含零/正常/不可用等状态。未做本地构建。后续报表缓存测试 8/8 通过，合计 18 项定向测试。`a9bc0f87` 已推送 main，Dokploy 部署完成，远程 Maven 510 项通过，线上前后端 SHA 均吻合；SKR API/页面显示 -1,334,367，1440/768/390/320px 布局、刷新、键盘焦点及库存明细跳转均通过。详见 [DASHBOARD_NET_INVENTORY_2026-11-03.md](DASHBOARD_NET_INVENTORY_2026-11-03.md)。
+
+## 2026-11-03 库存重复扣减修复
+
+- 根因：Odoo 导入器误用会将负可用量截零的 `_get_available_quantity`，导致负库存重复扣减。Odoo 仓库 `886d1bd` 已推送 main 并部署，改为锁定后读取带符号实际库存，保留预留量并校验输入；POS 展示未改。
+- 完整数据库备份约 1.76 GB，受影响库存表已在独立恢复库实际恢复，并对 4,958 行演练更正及回滚。随后单事务更正 4,958 行，增加 9,015,698 件，合计 -10,350,065 → -1,334,367；服务端保留事务前镜像及逐行计划。未重放销售、采购或估值。
+- 独立只读 RPC 逐行核验：4,958 个目标值全部一致，预留量变动 0、范围外数量变动 0；商品 75 从 -1,424,089 恢复为 -89。实际部署控制器连续两次重放 -89 快照均 updated=0，事务已回滚。
+- 仍有 8,265 条负 quant，原清单 3,340 个 REVIEW 差异未自动覆盖。来源快照本身有负库存，不能直接归零。仅库存表恢复经过测试，未验证全库应用恢复；不代表全面库存可信或生产准入。详见 [INVENTORY_REPLAY_REPAIR_2026-11-03.md](INVENTORY_REPLAY_REPAIR_2026-11-03.md) 及 [独立核验汇总](UAT_INVENTORY_REPLAY_AFTER_2026-11-03.json)。
+
+
+## 2026-11-03 Continuous list audit follow-up
+
+- Delivery follow-up: the owner-requested normal push retry succeeded (`40906c80..75c02843`, main -> main). The scoped repair is now on GitHub. The earlier github.com:443 connection blocker is resolved; deployment and runtime SHA still require separate confirmation.
+
+- Fixed consumed-row pagination, synchronous append locking, stale-query protection and same-batch retries across Customers, Suppliers, Purchase orders, Base Prices, Stock List and Price Suggestions. Refresh resets accumulated results; append failures preserve rows and pause automatic retries. Purchase Transfers and shared Products/Inventory Stocktake return paths reattach scroll observers.
+- Local intercepted Edge browser regression: **140/140 PASS** at 390/1440px, browser errors 0, real business writes 0. TypeScript PASS; targeted ESLint exits 0 with 27 warnings; script syntax and scoped diff checks PASS. See `CONTINUOUS_LIST_AUDIT_2026-11-03.md` and `UAT_CONTINUOUS_LISTS_LOCAL_2026-11-03.json`. Products Stocktake observer change is source-inspected; preceding product append evidence remains separate.
+- No local production build or Maven. Before follow-up push SKR frontend/backend SHA is `40906c80d78ace6d83f874605bff0486a1cd9911`; authenticated SKR scrolling and post-push runtime remain unverified. Manual pagination/editing screens were audited and retained. No production-readiness change.
+
 
 ## 2026-11-03 Products ordinary-pagination follow-up
 

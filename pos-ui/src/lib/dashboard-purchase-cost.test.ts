@@ -43,6 +43,25 @@ function summaryRpc({net=100,failStock=false,failLines=false,mixed=false,withLin
 test('tax mismatch blocks margin, preserves actual sales, and flags raw negative inventory',async()=>{
  const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,-5);assert.equal(r.inventoryStatus,'negative_stock');
 });
+test('inventory total sums signed internal stock and preserves fractional units', async () => {
+ const base = summaryRpc();
+ const rpc = (async (session, model, method, args, kwargs, correlationId) => {
+  if (model !== 'stock.quant') return base(session, model, method, args, kwargs, correlationId);
+  const domain = args[0] as unknown[][];
+  assert.ok(domain.some(term => JSON.stringify(term) === JSON.stringify(['company_id', '=', 5])));
+  assert.ok(domain.some(term => JSON.stringify(term) === JSON.stringify(['location_id.usage', '=', 'internal'])));
+  const quantities = [8.25, -12.5, 0];
+  const quantityFilter = domain.find(term => term[0] === 'quantity');
+  if (JSON.stringify(kwargs).includes('product_id')) return [{product_id: [5, 'Negative stock'], quantity: -12.5}];
+  // Model filtering so a positive-only query fails this regression.
+  const included = quantityFilter?.[1] === '>' ? quantities.filter(q => q > 0) : quantities;
+  return [{product_uom_id: [1, 'Units'], quantity: included.reduce((sum, q) => sum + q, 0)}];
+ }) as ReportRpc;
+ const result = await calculateReport(rpc, options);
+ assert.equal(result.inventoryUnits, -4.25);
+ assert.equal(result.inventoryAvailable, true);
+ assert.equal(result.inventoryStatus, 'negative_stock');
+});
 test('missing receipts cannot be replaced by corrupt existing sale cost',async()=>{
  const r=await calculateReport(summaryRpc(),options);assert.equal(r.salesReconciled,true);assert.equal(r.grossMarginStatus,'unavailable');assert.equal(r.yesterdayGrossMargin,null);
 });

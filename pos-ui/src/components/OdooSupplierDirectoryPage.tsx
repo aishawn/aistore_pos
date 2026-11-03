@@ -48,7 +48,10 @@ function OdooNativeSupplierDirectoryPage() {
   const [items, setItems] = useState<OdooSupplierRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [offset, setOffset] = useState(0);
+  const nextOffset = useRef(0);
+  const requestBusy = useRef(false);
+  const loadedFilters = useRef("");
+  const failedAppend = useRef(false);
   const [hasNext, setHasNext] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -68,7 +71,6 @@ function OdooNativeSupplierDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ name: "", phone: "", email: "", vat: "", ref: "" });
   const requestRevision = useRef(0);
-  const loadedFilters = useRef("");
   const supplierNameInputRef = useRef<HTMLInputElement>(null);
   useDialogFocus(createOpen, () => {
     if (!creating) setCreateOpen(false);
@@ -77,7 +79,6 @@ function OdooNativeSupplierDirectoryPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
-      setOffset(0);
     }, 250);
     return () => window.clearTimeout(timer);
   }, [query]);
@@ -113,38 +114,43 @@ function OdooNativeSupplierDirectoryPage() {
 
   const loadSuppliers = useCallback(async (append = false) => {
     if (connected !== true) return;
-    if (!append && offset !== 0) setOffset(0);
+    if (append && requestBusy.current) return;
+    requestBusy.current = true;
+    const offset = append ? nextOffset.current : 0;
+    if (!append) { setHasNext(false); nextOffset.current = 0; }
     const revision = ++requestRevision.current;
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset: append ? offset : 0 });
+      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset });
       if (revision !== requestRevision.current) return;
+      if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
       setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
+      nextOffset.current = offset + Math.min(page.items.length, PAGE_SIZE);
       setHasNext(page.items.length > PAGE_SIZE);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers.");
+      if (revision === requestRevision.current) { failedAppend.current = append; setError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers."); }
     } finally {
-      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
+      if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
-  }, [connected, debouncedQuery, offset]);
+  }, [connected, debouncedQuery]);
 
   useEffect(() => {
-    const filters = JSON.stringify([connected, debouncedQuery, refreshKey]);
-    const append = offset > 0 && loadedFilters.current === filters;
-    loadedFilters.current = filters;
-    if (!append && offset !== 0) setOffset(0);
-    void loadSuppliers(append);
-  }, [loadSuppliers, refreshKey, offset, connected, debouncedQuery]);
+    const filters = JSON.stringify([connected, debouncedQuery]);
+    if (loadedFilters.current !== filters) { setItems([]); loadedFilters.current = filters; }
+    scrollRoot.current?.scrollTo({ top: 0 });
+    void loadSuppliers();
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
+  }, [loadSuppliers, refreshKey, connected, debouncedQuery]);
   useEffect(() => {
     const node = sentinel.current; const root = scrollRoot.current;
     if (!node || !root) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) setOffset(items.length);
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) void loadSuppliers(true);
     }, { root, rootMargin: "480px 0px" });
     observer.observe(node); return () => observer.disconnect();
-  }, [hasNext, loading, loadingMore, error, items.length]);
+  }, [hasNext, loading, loadingMore, error, loadSuppliers]);
 
   async function createSupplier(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -163,7 +169,7 @@ function OdooNativeSupplierDirectoryPage() {
       setCreateForm({ name: "", phone: "", email: "", vat: "", ref: "" });
       setQuery("");
       setDebouncedQuery("");
-      setOffset(0);
+
       setRefreshKey((value) => value + 1);
     } catch (cause) {
       setCreateError(cause instanceof Error ? cause.message : "Could not create the supplier.");
@@ -180,11 +186,11 @@ function OdooNativeSupplierDirectoryPage() {
   function clearSearch() {
     setQuery("");
     setDebouncedQuery("");
-    setOffset(0);
+
   }
 
   return (
-    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main ref={scrollRoot} data-testid="supplier-results-scroll" className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header className="mt-4 flex flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>
@@ -217,7 +223,7 @@ function OdooNativeSupplierDirectoryPage() {
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input aria-label="Search suppliers by name, phone, email, ABN or reference" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or ABN" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadSuppliers(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos suppliers" className="hidden w-full min-w-[760px] border-collapse text-left text-sm xl:table">
@@ -278,7 +284,7 @@ function OdooNativeSupplierDirectoryPage() {
           {items.length > 0 && <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
             {loadingMore ? "Loading more suppliers…" : hasNext ? `Loaded ${items.length} suppliers` : `${items.length} suppliers loaded`}
 
-            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => void loadSuppliers(true)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
           </footer>}
         </>
       )}

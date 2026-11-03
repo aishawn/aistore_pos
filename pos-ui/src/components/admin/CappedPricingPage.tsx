@@ -6,7 +6,6 @@ import { AsyncState } from "@/components/admin/AsyncState";
 import { getOdooPriceRules, updateOdooProduct } from "@/lib/odoo-api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
-import { Pagination } from "@/components/admin/Pagination";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
 
@@ -178,24 +177,55 @@ function CappedPriceRowEditor({
 export function CappedPricingPage() {
   const [tab] = useState<SourceTab>("PROVIDED");
   const [hasChanges, setHasChanges] = useState(false);
-  const [page, setPage] = useState(1);
+  const nextOffset = useRef(0);
+  const requestBusy = useRef(false);
+  const requestRevision = useRef(0);
+  const failedAppend = useRef(false);
+  const scrollRoot = useRef<HTMLDivElement>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
   const [items, setItems] = useState<CappedPriceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(false);
-  const reload = useCallback(() => {
-    setLoading(true); setError(null);
-    void getOdooPriceRules(debouncedSearch, (page - 1) * PAGE_SIZE, PAGE_SIZE).then((result) => {
-      setItems(result.items.map((item) => ({ ...item, id: item.id, productId: String(item.productId), priceId: String(item.productId) })));
+  const reload = useCallback(async (append = false) => {
+    if (append && requestBusy.current) return;
+    requestBusy.current = true;
+    const revision = ++requestRevision.current;
+    const offset = append ? nextOffset.current : 0;
+    if (append) setLoadingMore(true);
+    else { setLoading(true); setLoadingMore(false); setHasNext(false); nextOffset.current = 0; scrollRoot.current?.scrollTo({ top: 0 }); }
+    setError(null);
+    try {
+      const result = await getOdooPriceRules(debouncedSearch, offset, PAGE_SIZE);
+      if (revision !== requestRevision.current) return;
+      if (result.hasNext && !result.items.length) throw new Error("Price rules returned an empty batch. Retry to continue.");
+      const rows = result.items.map((item) => ({ ...item, id: item.id, productId: String(item.productId), priceId: String(item.productId) }));
+      setItems((previous) => append ? [...previous, ...rows.filter(row => !previous.some(item => item.id === row.id))] : rows);
+      nextOffset.current = offset + result.items.length;
       setHasNext(result.hasNext);
-    }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load Orithos price rules.")).finally(() => setLoading(false));
-  }, [debouncedSearch, page]);
-  // Data fetching is intentionally tied to the debounced query and page.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { reload(); }, [reload]);
-  const total = (page - 1) * PAGE_SIZE + items.length + (hasNext ? 1 : 0);
+    } catch (cause) {
+      if (revision === requestRevision.current) { failedAppend.current = append; setError(cause instanceof Error ? cause.message : "Could not load Orithos price rules."); }
+    } finally {
+      if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
+    }
+  }, [debouncedSearch]);
+  useEffect(() => {
+    setItems([]);
+    void reload();
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
+  }, [reload]);
+  useEffect(() => {
+    const node = sentinel.current, root = scrollRoot.current;
+    if (!node || !root || !hasNext || loading || loadingMore || error) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) void reload(true);
+    }, { root, rootMargin: "240px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNext, loading, loadingMore, error, reload]);
 
   return (
 <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
@@ -221,7 +251,7 @@ export function CappedPricingPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setHasChanges(false); setPage(1); }}
+                onClick={() => { setHasChanges(false); void reload(); }}
                 aria-pressed={active}
                 className={cn(
                   "flex min-h-11 items-center gap-2 px-4 py-2.5 text-[14px] font-medium transition-colors sm:px-5",
@@ -235,16 +265,16 @@ export function CappedPricingPage() {
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="sr-only" htmlFor="odoo-price-rule-search">Search Orithos price rules</label>
-<input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)]" />
+<input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)]" />
           {search.trim() ? (
-<button type="button" aria-label="Clear price rule search" onClick={() => { setSearch(""); setPage(1); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={15} aria-hidden="true" /> Clear</button>
+<button type="button" aria-label="Clear price rule search" onClick={() => { setSearch(""); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={15} aria-hidden="true" /> Clear</button>
           ) : null}
-<button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
+<button type="button" onClick={() => reload(false)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
         </div>
 <p className="mt-3 text-sm text-[var(--oh-text-secondary)]">Rules are read from Orithos. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Orithos.</p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-6">
+      <div ref={scrollRoot} data-testid="base-prices-scroll" className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-6">
         <div data-testid="capped-pricing-table" className="mt-3 min-w-0 xl:min-w-[1050px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md bg-[var(--oh-surface-inverse)] py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[24%] shrink-0 px-3">Product</div>
@@ -257,7 +287,7 @@ export function CappedPricingPage() {
             <div className="min-w-0 flex-1 px-3">%</div>
           </div>
 
-          <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+          <AsyncState loading={loading && !items.length} error={items.length ? null : error} empty={false} onRetry={() => reload(failedAppend.current)}>
             {!loading && !error && items.length === 0 ? (
 <div role="status" className="rounded border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 py-8 text-center text-sm text-[var(--oh-text-secondary)]">
                 No Orithos price rules are configured for this store yet.
@@ -274,7 +304,11 @@ export function CappedPricingPage() {
               />
             ))}
           </AsyncState>
-          <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+          <div ref={sentinel} className="flex flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
+            <span>{loadingMore ? "Loading more prices…" : hasNext ? `Loaded ${items.length} prices` : `${items.length} prices loaded`}</span>
+            {error && items.length > 0 && <span role="alert">{error}</span>}
+            {(hasNext || (error && items.length > 0)) && <button type="button" disabled={loading || loadingMore} onClick={() => void reload(error ? failedAppend.current : true)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{error ? "Retry" : "Load more"}</button>}
+          </div>
         </div>
       </div>
     </div>

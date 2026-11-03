@@ -71,7 +71,10 @@ export function OdooCustomerDirectoryPage() {
   const [items, setItems] = useState<OdooCustomerRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [offset, setOffset] = useState(0);
+  const nextOffset = useRef(0);
+  const requestBusy = useRef(false);
+  const loadedFilters = useRef("");
+  const failedAppend = useRef(false);
   const [hasNext, setHasNext] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -104,7 +107,6 @@ export function OdooCustomerDirectoryPage() {
   }, [searchParams, items, canEdit]);
 
   const requestRevision = useRef(0);
-  const loadedFilters = useRef("");
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const queryPending = query.trim() !== debouncedQuery;
   const resultsBusy = loading || queryPending;
@@ -118,14 +120,12 @@ export function OdooCustomerDirectoryPage() {
 
   function clearSearch() {
     setQuery("");
-    setOffset(0);
   }
 
   useEffect(() => {
     if (query.trim() === debouncedQuery) return;
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
-      setOffset(0);
     }, 250);
     return () => window.clearTimeout(timer);
   }, [query, debouncedQuery]);
@@ -180,41 +180,46 @@ export function OdooCustomerDirectoryPage() {
 
   const loadCustomers = useCallback(async (append = false) => {
     if (connected !== true) return;
-    if (!append && offset !== 0) setOffset(0);
+    if (append && requestBusy.current) return;
+    requestBusy.current = true;
+    const offset = append ? nextOffset.current : 0;
+    if (!append) { setHasNext(false); nextOffset.current = 0; }
     const revision = ++requestRevision.current;
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset: append ? offset : 0, groupId: groupFilter[0], pricelistId: priceFilter[0] });
+      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset, groupId: groupFilter[0], pricelistId: priceFilter[0] });
       if (revision !== requestRevision.current) return;
+      if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
       setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
+      nextOffset.current = offset + Math.min(page.items.length, PAGE_SIZE);
       setHasNext(page.hasNext ?? (page.items.length > PAGE_SIZE));
       setTotal(typeof page.total === "number" ? page.total : null);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos customers.");
+      if (revision === requestRevision.current) { failedAppend.current = append; setError(cause instanceof Error ? cause.message : "Could not load Orithos customers."); }
     } finally {
-      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
+      if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
-  }, [connected, debouncedQuery, offset, groupFilter, priceFilter]);
+  }, [connected, debouncedQuery, groupFilter, priceFilter]);
 
   useEffect(() => {
-    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, priceFilter, refreshKey]);
-    const append = offset > 0 && loadedFilters.current === filters;
-    loadedFilters.current = filters;
-    if (!append && offset !== 0) setOffset(0);
-    void loadCustomers(append);
-  }, [loadCustomers, refreshKey, offset, connected, debouncedQuery, groupFilter, priceFilter]);
+    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, priceFilter]);
+    if (loadedFilters.current !== filters) { setItems([]); loadedFilters.current = filters; }
+    scrollRoot.current?.scrollTo({ top: 0 });
+    void loadCustomers();
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
+  }, [loadCustomers, refreshKey, connected, debouncedQuery, groupFilter, priceFilter]);
   useEffect(() => {
     const node = sentinel.current; const root = scrollRoot.current;
     if (!node || !root) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) {
-        setOffset(items.length);
+        void loadCustomers(true);
       }
     }, { root, rootMargin: "480px 0px" });
     observer.observe(node); return () => observer.disconnect();
-  }, [hasNext, loading, loadingMore, error, items.length]);
+  }, [hasNext, loading, loadingMore, error, loadCustomers]);
 
   function openCreate() {
     setEditingCustomer(null);
@@ -263,7 +268,6 @@ export function OdooCustomerDirectoryPage() {
       }
       setCreateOpen(false);
       setEditingCustomer(null);
-      setOffset(0);
       if (!editingCustomer) setQuery(name);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
@@ -295,7 +299,7 @@ export function OdooCustomerDirectoryPage() {
   };
 
   return (
-    <main ref={scrollRoot} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
+    <main ref={scrollRoot} data-testid="customer-results-scroll" className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
@@ -332,12 +336,12 @@ export function OdooCustomerDirectoryPage() {
             <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
           <details className="rounded-lg border border-[var(--oh-border)] bg-white p-3 text-sm"><summary className="cursor-pointer font-semibold">Filters{groupFilter.length + priceFilter.length > 0 ? " · active" : ""}</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <CustomerLookup kind="groups" label="Customer group" values={groupFilter} onChange={(ids) => { setGroupFilter(ids); setOffset(0); }} initialOptions={groups} />
-            <CustomerLookup kind="pricelists" label="Customer price list" values={priceFilter} onChange={(ids) => { setPriceFilter(ids); setOffset(0); }} initialOptions={pricelists} />
+            <CustomerLookup kind="groups" label="Customer group" values={groupFilter} onChange={(ids) => { setGroupFilter(ids); }} initialOptions={groups} />
+            <CustomerLookup kind="pricelists" label="Customer price list" values={priceFilter} onChange={(ids) => { setPriceFilter(ids); }} initialOptions={pricelists} />
           </div></details>
           {resultsBusy && items.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer results…"} Existing rows are temporarily read-only.</p>}
           {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Price list and group assignment may be limited until this recovers.</div>}
-          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadCustomers(failedAppend.current); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section aria-busy={resultsBusy} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos customers" className="hidden w-full min-w-[1100px] border-collapse text-left text-sm xl:table">
@@ -407,7 +411,7 @@ export function OdooCustomerDirectoryPage() {
           <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">
             {loadingMore ? "Loading more customers…" : hasNext ? `Loaded ${items.length} of ${total ?? "more"} customers` : `${items.length} customers loaded`}
 
-            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => void loadCustomers(true)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
           </footer>
         </>
       )}

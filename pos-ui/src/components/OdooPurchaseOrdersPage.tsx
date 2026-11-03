@@ -117,7 +117,10 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [state, setState] = useState("all");
-  const [offset, setOffset] = useState(0);
+  const nextOffset = useRef(0);
+  const requestBusy = useRef(false);
+  const loadedFilters = useRef("");
+  const failedAppend = useRef(false);
   const [hasNext, setHasNext] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinel = useRef<HTMLElement>(null);
@@ -142,56 +145,59 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
-  const loadedFilters = useRef("");
   const detailRevision = useRef(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
-      setOffset(0);
     }, 250);
     return () => window.clearTimeout(timer);
   }, [query]);
 
   const loadOrders = useCallback(async (append = false) => {
-    if (!append && offset !== 0) setOffset(0);
+    if (append && requestBusy.current) return;
+    requestBusy.current = true;
+    const offset = append ? nextOffset.current : 0;
+    if (!append) { setHasNext(false); nextOffset.current = 0; }
     const revision = ++requestRevision.current;
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
       const [page, bootstrap] = await Promise.all([
-        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset: append ? offset : 0 }),
+        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
       const activeConfig = bootstrap?.configs.find((config) => config.session) ?? bootstrap?.configs[0];
       if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
       setConnected(true);
+      if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
       setItems((previous) => append ? [...previous, ...page.items.filter((row) => !previous.some((item) => item.id === row.id))] : page.items);
+      nextOffset.current = offset + Math.min(page.items.length, PAGE_SIZE);
       setHasNext(page.hasNext);
       setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos purchase orders.");
+      if (revision === requestRevision.current) { failedAppend.current = append; setError(cause instanceof Error ? cause.message : "Could not load Orithos purchase orders."); }
     } finally {
-      if (revision === requestRevision.current) { setLoading(false); setLoadingMore(false); }
+      if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
-  }, [debouncedQuery, offset, state]);
+  }, [debouncedQuery, state]);
 
   useEffect(() => {
-    const filters = JSON.stringify([debouncedQuery, state, refreshKey]);
-    const append = offset > 0 && loadedFilters.current === filters;
-    loadedFilters.current = filters;
-    if (!append && offset !== 0) setOffset(0);
-    void loadOrders(append);
-  }, [loadOrders, refreshKey, offset, debouncedQuery, state]);
+    const filters = JSON.stringify([debouncedQuery, state]);
+    if (loadedFilters.current !== filters) { setItems([]); loadedFilters.current = filters; }
+    scrollRoot.current?.scrollTo({ top: 0 });
+    void loadOrders();
+    return () => { requestRevision.current += 1; requestBusy.current = false; };
+  }, [loadOrders, refreshKey, debouncedQuery, state]);
   useEffect(() => {
     const node = sentinel.current; const root = scrollRoot.current;
     if (!node || !root) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) setOffset(items.length);
+      if (entries.some((entry) => entry.isIntersecting) && hasNext && !loading && !loadingMore && !error) void loadOrders(true);
     }, { root, rootMargin: "480px 0px" });
     observer.observe(node); return () => observer.disconnect();
-  }, [hasNext, loading, loadingMore, error, items.length]);
+  }, [hasNext, loading, loadingMore, error, loadOrders, tab]);
 
   async function openDetail(purchaseId: number, receiveMessage: string | null = null) {
     const revision = ++detailRevision.current;
@@ -311,7 +317,6 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
     setQuery("");
     setDebouncedQuery("");
     setState("all");
-    setOffset(0);
   }
 
   const requestedOrder = searchParams.get("orderId");
@@ -368,15 +373,15 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
         <CreateStockTransferPage embedded />
       ) : (
       <>
-      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadOrders(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15"><Search size={17} className="text-[var(--oh-muted)]" /><input aria-label="Search purchase orders by RFQ, order or supplier" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search RFQ, order or supplier" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" /></label>
-        <select aria-label="Filter purchase orders by status" value={state} onChange={(event) => { setState(event.target.value); setOffset(0); }} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 sm:w-[210px] sm:flex-none">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select aria-label="Filter purchase orders by status" value={state} onChange={(event) => { setState(event.target.value); }} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 sm:w-[210px] sm:flex-none">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         {embedded && <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchase orders" title="Refresh purchase orders" className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span>Refresh</span></button>}
       </div>
 
-      <section ref={scrollRoot} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+      <section ref={scrollRoot} data-testid="purchase-results-scroll" className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <table aria-label="Orithos purchase orders" className="hidden w-full min-w-[900px] border-collapse text-left text-sm xl:table">
           <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Reference</th><th scope="col" className="px-4 py-3">Supplier</th><th scope="col" className="px-4 py-3">Order date</th><th scope="col" className="px-4 py-3 text-right">Lines</th><th scope="col" className="px-4 py-3 text-right">Total</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3 text-right">Actions</th></tr></thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
@@ -426,7 +431,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
           ))}
         </div>
       {items.length > 0 && <footer ref={sentinel} className="flex shrink-0 flex-wrap items-center justify-center gap-3 py-3 text-sm text-[var(--oh-muted)]" aria-live="polite">{loadingMore ? "Loading more purchase orders…" : hasNext ? `Loaded ${items.length} purchase orders` : `${items.length} purchase orders loaded`}
-            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => setOffset(items.length)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
+            {hasNext && <button type="button" disabled={loading || loadingMore || Boolean(error)} onClick={() => void loadOrders(true)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
           </footer>}
       </section>
 

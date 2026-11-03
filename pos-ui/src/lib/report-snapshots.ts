@@ -48,7 +48,7 @@ export function targetId(target: ReportTarget) { return digest([target.database,
 export function snapshotKey(scope: ReportScope, period: SnapshotPeriod, now = new Date()) {
   const bounds = period === "dead_stock" ? null : getReportPeriodBounds(period, now, scope.timezone);
   return digest([scope, period, bounds?.start.toISOString() ?? salesDate(now.toISOString(), scope.timezone),
-    period === "today" ? "to-now" : bounds?.end.toISOString() ?? "daily", "report-schema-2-purchase-cost"]);
+    period === "today" ? "to-now" : bounds?.end.toISOString() ?? "daily", "report-schema-3-net-inventory"]);
 }
 
 const localRevisions = new Map<string, string>();
