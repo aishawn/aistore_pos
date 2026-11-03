@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getReportPeriodBounds } from "./report-period.ts";
-import { snapshotKey, snapshotFresh, reportTargets, digest, type ReportScope, type ReportSnapshot } from "./report-snapshots.ts";
+import { snapshotKey, snapshotFresh, reportScheduleDue, reportTargets, digest, type ReportScope, type ReportSnapshot } from "./report-snapshots.ts";
 import { cachedOdooRead, cachedReadPolicy, clearOdooReadCache, setOdooReadIdentity } from "./odoo-read-cache.ts";
 import { calculateReport, type ReportRpc } from "./report-data.ts";
 
@@ -20,6 +20,11 @@ test("snapshot keys are canonical and isolate each security and business dimensi
 
 test("history schedules catch up at 00:10 and 02:00; dead stock at 02:30", () => {
   const local = (hour: string) => new Date(`2026-11-03T${hour}:00+10:30`);
+  assert.equal(reportScheduleDue("yesterday", scope.timezone, false, local("00:09")), false);
+  assert.equal(reportScheduleDue("yesterday", scope.timezone, false, local("00:10")), true);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, false, local("02:29")), false);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, false, local("02:30")), true);
+  assert.equal(reportScheduleDue("dead_stock", scope.timezone, true, local("00:01")), true);
   assert.equal(snapshotFresh(snapshot(local("00:05").toISOString()), "0", local("00:09")), true);
   assert.equal(snapshotFresh(snapshot(local("00:05").toISOString()), "0", local("00:10")), false);
   assert.equal(snapshotFresh(snapshot(local("00:11").toISOString()), "0", local("01:59")), true);
@@ -61,9 +66,10 @@ test("read cache coalesces requests, isolates parameters and identity, and force
   assert.equal(calls, 1); assert.deepEqual(await result[0].json(), await result[1].json());
   await cachedOdooRead(path, undefined, read); assert.equal(calls, 1);
   await cachedOdooRead(path + "&refresh=true", undefined, read); assert.equal(calls, 2);
-  await cachedOdooRead(path.replace("offset=0", "offset=1"), undefined, read); assert.equal(calls, 3);
+  await cachedOdooRead(path, undefined, read); assert.equal(calls, 3, "returning after manual refresh cannot restore the earlier browser entry");
+  await cachedOdooRead(path.replace("offset=0", "offset=1"), undefined, read); assert.equal(calls, 4);
   setOdooReadIdentity("user-two");
-  await cachedOdooRead(path, undefined, read); assert.equal(calls, 4);
+  await cachedOdooRead(path, undefined, read); assert.equal(calls, 5);
   clearOdooReadCache();
 });
 

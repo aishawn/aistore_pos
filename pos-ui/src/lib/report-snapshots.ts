@@ -77,6 +77,12 @@ export async function snapshotRevision(target: ReportTarget) {
   catch { return localRevisions.get(targetId(target)) ?? "0"; }
 }
 
+export function reportScheduleDue(period: SnapshotPeriod, timezone: string, startup = false, now = new Date()) {
+  if (startup || period === "today") return true;
+  const local = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+  return local >= (period === "dead_stock" ? "02:30" : "00:10");
+}
+
 export function snapshotFresh(snapshot: ReportSnapshot, revision: string, now = new Date()) {
   if (snapshot.revision !== revision) return false;
   const generated = new Date(snapshot.generatedAt);
