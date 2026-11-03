@@ -40,7 +40,8 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `PRC-001` |  | NOT RUN |  |  |  |  |
 | `CUS-001` |  | NOT RUN |  |  |  |  |
 | `TEN-001` |  | NOT RUN |  |  |  |  |
-| `RPT-001` (source margin / tax subset) | 2026-11-03-source-refund-evidence | 2026-11-03 | Direct Shopfront readonly and local sync regression | Source day matches; refund original-line confirmation and full repair pending | [Report](test-sessions/2026-11-03-source-refund-evidence.md) |
+| `RPT-001` (source margin / tax subset) | 2026-11-03-margin-inventory-moves | 2026-11-03 | SKR readonly inventory movement arithmetic | INFO: 10968 quant review; no stock repair | [Report](test-sessions/2026-11-03-margin-inventory-moves.md) |
+| 2026-11-03-source-refund-evidence | 2026-11-03 | Direct Shopfront readonly and local sync regression | Source day matches; refund original-line confirmation and full repair pending | [Report](test-sessions/2026-11-03-source-refund-evidence.md) |
 | 2026-11-03-source-margin-tax-mapping | PASS subset; full accounting repair BLOCKED | `d85bc0af` local | `b7249014` POS; Odoo SHA unrecorded | [Session](test-sessions/2026-11-03-source-margin-tax-mapping.md) | Full tax/cost/refund reconciliation remains open |
 | `AI-001` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
 | `AI-001` (online read-only, historical review) | 2026-11-03-project-fact-library | BLOCKED: Demo 379/390 PASS + 11 BLOCKED; SKR 382/390 PASS + 8 BLOCKED | `a6d5c7b0`; SKR dirty | `a6d5c7b0`, matched in original records | [Demo](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_DEMO.json), [SKR](UAT_AI_WORKFLOW_FULL_EXACT_SHA_2026-11-03_SKR.json) | Fixed-version full rerun; subset retries do not replace this result |

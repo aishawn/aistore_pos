@@ -1,0 +1,55 @@
+{
+  "database": "aipos_uat",
+  "companyId": 5,
+  "locationId": 48,
+  "store": "skr",
+  "businessWrites": 0,
+  "readOnly": true,
+  "startedAt": "2026-11-03T14:40:32.345Z",
+  "capturedAt": "2026-11-03T14:41:11.180Z",
+  "executable": false,
+  "summary": {
+    "products": 10968,
+    "sourceRows": 10846,
+    "quants": 10968,
+    "movesSinceOldestSnapshot": 276,
+    "sourceNegative": 5201,
+    "postSnapshotMovementProducts": 228,
+    "snapshotPlusMovesNumericallyEqual": 7488,
+    "unexplainedResidualProducts": 1769,
+    "sourceIdentityMissing": 1711,
+    "allRequirePhysicalOrOpeningLedgerEvidence": 10968
+  },
+  "evidenceSha256": "50ad920b1ebe92f8de0b6c88a192d492653351f7485392c5b30e579dfaba36fb",
+  "auditScriptSha256": "edb147c2681cec5f7ff1cd7b7aa4abbeba1fd450fc3785e061f8771603dfe4cf",
+  "runtimeSha": null,
+  "sourceSha": null,
+  "sourceIdentityNote": "Products explicitly read by current quant product IDs in this run; identity failures not inferred solely from company-exclusive catalogue filter",
+  "limits": [
+    "Snapshot plus movement equality is arithmetic agreement, not proof of physical inventory",
+    "No opening inventory valuation or complete direct quant adjustment ledger; unexplained residual is not permission to overwrite stock",
+    "Post-snapshot movements selected by native move date; source snapshot timing and backdated entries require independent review",
+    "Source negative stock preserved; no stock, valuation or accounting writes"
+  ],
+  "historicalScopeCrosscheck": {
+    "priorRepair4958NowNumericallyEqual": 4958,
+    "priorReview3340": {
+      "residual": 1628,
+      "identityMissing": 1711,
+      "numericallyEqual": 1
+    },
+    "priorMatchNowResidual": 141,
+    "note": "Comparing snapshot plus later moves changes the equation; not proof these 141 should be adjusted"
+  },
+  "identityProbe": {
+    "productIds": [
+      83,
+      503,
+      507,
+      508
+    ],
+    "sourceRefEmpty": 4,
+    "companyId": 5,
+    "note": "Direct readonly read confirms source ref empty on these samples; default_code not accepted as certified source identity"
+  }
+}

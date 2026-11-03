@@ -89,3 +89,5 @@ tax-only 新快照增加单价、折扣、行税 ID、订单会话及会计分�
 源码新增抓取 `linkedSale { id }`、`totalRounding`、销售行 `caseQuantity` 与 `metaData`。同时修复两条 unchanged 快路径：来源 updatedAt 不变但新增证据时仍入库，重复补充后不会增单/增行或改变数量成本。无 outlet 过滤时不再声明未使用的 GraphQL `$outlets`；该问题在真实源端返回 400 后修复，修复查询已通过直接来源一日复核。19 项 crawler 财务/核心测试通过。
 
 采购 schema 说明 `Order.enteredAs` 只控制页面显示，明确不代表成本存储口径；不得据此认证采购成本含税或未税。`OrderProduct` 提供实际收货数量、箱规、采购成本及费用，附件字段可用于进一步取证，但采购税额和真实发票内容尚未核实。证据见 [来源复核及退款统计](UAT_SHOPFRONT_REFUND_SOURCE_EVIDENCE_2026-11-03.json)。私有原始来源文件位于 crawler 持久卷 `/data/margin-evidence-20261103/`，不入 Git。最新观察的 POS 运行版本为 `1e02bba2`；本节新采集源码部署状态须独立核验。
+
+库存另项只读对账（14:41 UTC）：10968 个 quant，来源快照加后续完成移动后 7488 数量相等、1769 残差、1711 来源身份待查。此前4958项修复仍全部算术相符；缺少直接调整台账/期初/实盘，不执行新库存修复。[证据](UAT_MARGIN_INVENTORY_MOVEMENTS_2026-11-03.json)。

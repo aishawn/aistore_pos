@@ -16,3 +16,5 @@ Crawler 全目录回归最终单轮 45/45 通过（25 warnings），包含已有
 采购来源只读抽样：首批 50 笔、2794 行，48 笔发票号、45 笔收货日期；数量/箱规/baseCost 无空值，lineCount 均吻合。本批无附件；hasNextPage=true，不能推广至全源，计价与税额仍未认证。[证据](../../../UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json)。
 
 采购查询新增 enteredAs/附件描述：`python -m pytest tests/test_supply_chain.py tests/test_core.py -q --disable-warnings` 20 passed、4 warnings；源端抽样已证明字段可读，但不是当前候选已部署证明。
+
+库存另项只读对账（14:41 UTC）：10968 个 quant，来源快照加后续完成移动后 7488 数量相等、1769 残差、1711 来源身份待查。此前4958项修复仍全部算术相符；缺少直接调整台账/期初/实盘，不执行新库存修复。[证据](../../../UAT_MARGIN_INVENTORY_MOVEMENTS_2026-11-03.json)。

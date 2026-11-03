@@ -587,6 +587,33 @@
         "docs/UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-MARGIN-STOCK-MOVES",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "50ad920b1ebe92f8de0b6c88a192d492653351f7485392c5b30e579dfaba36fb",
+      "scope": "aipos_uat SKR company 5/location 48; source snapshot plus done move arithmetic; business writes 0",
+      "sample": "10968 quants/products; 10846 source rows; 276 done move lines since oldest snapshot",
+      "result": "7488 numerical agreement; 1769 residual; 1711 missing certified source identity; no repair executed",
+      "limitations": [
+        "Snapshot plus movement equality is arithmetic agreement, not proof of physical inventory",
+        "No opening inventory valuation or complete direct quant adjustment ledger; unexplained residual is not permission to overwrite stock",
+        "Post-snapshot movements selected by native move date; source snapshot timing and backdated entries require independent review",
+        "Source negative stock preserved; no stock, valuation or accounting writes",
+        "Odoo runtime SHA unknown; counts are arithmetic observations, not physical inventory certification"
+      ],
+      "artifacts": [
+        "docs/UAT_MARGIN_INVENTORY_MOVEMENTS_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-margin-inventory-moves.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

@@ -29,6 +29,8 @@
 
 | E-PURCHASE-SAMPLE | online-readonly / INFO | 首批 50 笔采购、2794 行，48 发票号、45 收货日期；计价/税额与后续分页未核实 | [材料](../../docs/UAT_SHOPFRONT_PURCHASE_SAMPLE_2026-11-03.json) |
 
+| E-MARGIN-STOCK-MOVES | online-readonly / INFO | 10968 个 quant；7488 算术吻合、1769 差额、1711 来源身份待查；无库存修复 | [材料](../../docs/UAT_MARGIN_INVENTORY_MOVEMENTS_2026-11-03.json) |
+
 ## 证据冲突与缺口
 
 - E-WF 的 runtime 与 source 匹配，但原始 deployment 标签仍未验证；SKR 还标记工作树脏。保留这些差异，不把匹配 SHA 等同于候选全量验收。
