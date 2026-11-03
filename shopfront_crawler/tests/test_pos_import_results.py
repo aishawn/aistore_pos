@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app import main
+from app import sync
 from app.db import Base
+from app.config import Settings
 from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
@@ -79,6 +81,56 @@ def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_ses
     assert updated.price == Decimal("9.99")
     assert updated.raw_payload["description"] == "source description"
     assert updated.raw_payload["barcodes"][0]["code"] == "12345"
+
+
+@pytest.mark.asyncio
+async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr")
+    db_session.add(store)
+    db_session.commit()
+
+    class FakeClient:
+        async def fetch_outlets(self, *args):
+            return []
+
+        async def fetch_sales_graphql(self, *args):
+            return []
+
+        async def fetch_sales(self, *args):
+            return []
+
+        async def fetch_products(self, *args):
+            return [{"id": "product-1", "name": "Test product", "inventory": []}]
+
+        async def fetch_inventory(self, *args):
+            assert not db_session.in_transaction()
+            return [{
+                "id": "product-1",
+                "inventory": [{"outlet": {"id": "outlet-1", "name": "Main"}, "quantity": 4}],
+            }]
+
+        async def close(self):
+            return None
+
+    client = FakeClient()
+
+    async def fake_access_token(*args):
+        return "token"
+
+    monkeypatch.setattr(sync, "access_token", fake_access_token)
+    monkeypatch.setattr(sync, "get_client", lambda *args: client)
+
+    run = await sync.sync_store(
+        db_session,
+        Settings(),
+        store,
+        date(2026, 11, 1),
+        date(2026, 11, 1),
+        refresh_inventory=True,
+    )
+
+    assert run.status == "completed"
+    assert run.counts["inventory_sync_complete"] is True
 
 
 @pytest.mark.asyncio
