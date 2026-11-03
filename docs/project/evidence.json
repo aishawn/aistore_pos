@@ -614,6 +614,34 @@
         "docs/test-sessions/2026-11-03-margin-inventory-moves.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-PURCHASE-FULL",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "58bff652d29d2b83e991c80133e5ee03fd5c8bf958d90b2cc13ed4f178da12c2",
+      "scope": "Full returned Shopfront ORDER connection read: 48 pages; source/token refresh writes 0; procurement costs remain unverified",
+      "sample": "2358 orders / 32925 lines; 2308 received; order dates 2023-03-08..2026-11-02",
+      "result": "End cursor reached; duplicate IDs rejected; 0 lineCount mismatches; received invoices numbered 1987; returned attachments 0",
+      "limitations": [
+        "End cursor reached without repeated order IDs; not an atomic point-in-time source snapshot or an independent external completeness certification",
+        "No invoice attachments returned by this API/token across these 2358 orders; not proof documents cannot exist elsewhere",
+        "enteredAs is display-only; tax/unit/fees semantics and source valuation method remain unverified",
+        "Arithmetic formula matches do not independently certify procurement cost; no financial or stock write execution",
+        "Private per-order review stored on crawler volume; business raw data and attachment URLs not committed",
+        "Source API and server checkout versions unknown; exact query/script hashes recorded"
+      ],
+      "artifacts": [
+        "docs/UAT_SHOPFRONT_PURCHASE_FULL_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-source-purchase-full.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

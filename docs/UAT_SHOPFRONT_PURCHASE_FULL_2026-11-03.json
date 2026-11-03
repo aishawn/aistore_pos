@@ -1,0 +1,96 @@
+{
+  "fullRead": {
+    "startedAt": "2026-11-03T14:30:40.117175+00:00",
+    "sourceBusinessWrites": 0,
+    "tokenRefreshWrites": 0,
+    "scope": "Paginated full Shopfront purchase order API read; source cost tax/unit semantics not certified",
+    "pages": 48,
+    "statusCounts": {
+      "RECEIVED": 2308,
+      "SENT": 3,
+      "CANCELLED": 47
+    },
+    "receivedOrdersWithInvoiceNumber": 1987,
+    "receivedOrdersWithoutAttachments": 2308,
+    "orderDateRange": [
+      "2023-03-08",
+      "2026-11-02"
+    ],
+    "complete": true,
+    "orders": 2358,
+    "hasNextPage": false,
+    "lines": 32925,
+    "ordersWithInvoiceNumber": 2035,
+    "ordersWithReceivedAt": 2308,
+    "ordersWithAttachments": 0,
+    "attachmentCount": 0,
+    "attachmentMimeTypes": [],
+    "lineCountMismatches": 0,
+    "missingReceivedQuantity": 0,
+    "missingCaseQuantity": 0,
+    "missingBaseCost": 0,
+    "sourceSha256": "58bff652d29d2b83e991c80133e5ee03fd5c8bf958d90b2cc13ed4f178da12c2",
+    "querySha256": "5bb53400660671871ef425e3916d2a61b3436feaf269b1858217f7a9b19a6a3d",
+    "finishedAt": "2026-11-03T14:42:39.835803+00:00"
+  },
+  "arithmeticOnly": {
+    "scope": "All returned received orders; arithmetic hypotheses only, fees/tax and unit semantics not certified",
+    "receivedOrders": 2308,
+    "formulaMatchesTotalCost": {
+      "base_times_received": {
+        "comparableOrders": 2308,
+        "matchesTotalCost": 141
+      },
+      "base_times_received_div_case": {
+        "comparableOrders": 2308,
+        "matchesTotalCost": 1689
+      },
+      "ordered_times_received": {
+        "comparableOrders": 2308,
+        "matchesTotalCost": 110
+      },
+      "ordered_times_received_div_case": {
+        "comparableOrders": 2308,
+        "matchesTotalCost": 429
+      }
+    },
+    "feeOrders": 619,
+    "nonpositiveCaseQuantityLines": 0,
+    "enteredAsCounts": {
+      "EX_WET": 8,
+      "INC_TAX": 2192,
+      "EX_TAX": 158
+    }
+  },
+  "feeArithmeticOnly": {
+    "receivedOrders": 2308,
+    "comparableOrders": 2308,
+    "missingFields": {
+      "baseCost": 0,
+      "fees": 0,
+      "freight": 0,
+      "paymentFees": 0,
+      "rebate": 0,
+      "receivedQuantity": 0,
+      "caseQuantity": 0
+    },
+    "formulaMatches": {
+      "-1_lineRounded_False": 1811,
+      "-1_lineRounded_True": 1658,
+      "1_lineRounded_False": 1811,
+      "1_lineRounded_True": 1658
+    },
+    "certification": "Arithmetic hypotheses only; no independent tax or invoice verification"
+  },
+  "status": "FULL_RETURNED_PURCHASE_SET_READ_COST_VERIFICATION_PENDING",
+  "sourceSha": null,
+  "runtimeSha": null,
+  "probeScriptSha256": "421891b6f9a6e58dcb923f615368ce55c7098db776d30b1967d6ed26033af079",
+  "limitations": [
+    "End cursor reached without repeated order IDs; not an atomic point-in-time source snapshot or an independent external completeness certification",
+    "No invoice attachments returned by this API/token across these 2358 orders; not proof documents cannot exist elsewhere",
+    "enteredAs is display-only; tax/unit/fees semantics and source valuation method remain unverified",
+    "Arithmetic formula matches do not independently certify procurement cost; no financial or stock write execution",
+    "Private per-order review stored on crawler volume; business raw data and attachment URLs not committed"
+  ]
+}
