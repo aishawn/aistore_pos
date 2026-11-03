@@ -12,6 +12,8 @@ Latest Sales History repair: [2026-11-03 daily sales](test-sessions/2026-11-03-s
 
 Latest inventory report verification: [2026-11-03 inventory report](test-sessions/2026-11-03-inventory-report.md): local unit 7/7, API fixture 8/8, browser fixture 37/37 PASS. Real Odoo/runtime acceptance remains NOT RUN.
 
+Latest Shopfront inventory snapshot repair: [2026-11-03 full inventory snapshot](test-sessions/2026-11-03-shopfront-inventory-snapshot.md): crawler fixture 45 passed / 1 long-wait test deselected; Odoo inventory/supply fixture 15 passed. GitHub push and online data verification BLOCKED by HTTPS connection timeout; no live inventory write was run.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
@@ -35,7 +37,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `POS-001` |  | NOT RUN |  |  |  |  |
 | `POS-002` |  | NOT RUN |  |  |  |  |
 | `POS-003` |  | NOT RUN |  |  |  |  |
-| `INV-001` |  | NOT RUN |  |  |  |  |
+| `INV-001` | 2026-11-03-shopfront-inventory-snapshot | PASS local fixture; online BLOCKED | `4fb02f65`; Odoo `41dab563` | Runtime SHA not recorded | [Session](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) | Push crawler, deploy, then source-to-Odoo read-only reconcile |
 | `PUR-001` |  | NOT RUN |  |  |  |  |
 | `PRC-001` |  | NOT RUN |  |  |  |  |
 | `CUS-001` |  | NOT RUN |  |  |  |  |
@@ -57,6 +59,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-03-source-margin-tax-mapping | 2026-11-03 | Source report readonly, demo transaction rollback, local units | 23 units; source report PASS; single-order tax/rollback PASS; full repair pending | [Report](test-sessions/2026-11-03-source-margin-tax-mapping.md) |
 | 2026-11-01-assistant-operations-recovery | 2026-11-01 | Local fixture subset | 24 unit tests and 1440/390px UI passed; live checks not run | [Report](test-sessions/2026-11-01-assistant-operations-recovery.md) |
 | 2026-11-03-project-fact-library | 2026-11-03 | Documentation checks and historical AI evidence review | No new provider/business tests; historical blocked/limited states retained | [Report](test-sessions/2026-11-03-project-fact-library.md) |
+| 2026-11-03-shopfront-inventory-snapshot | 2026-11-03 | Full Shopfront inventory refresh and Odoo reconciliation protocol | Local fixture PASS; deployment/online verification blocked; business writes 0 | [Report](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) |
 
 ## Classification rule
 
