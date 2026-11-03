@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.graph.action.NodeAction;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,10 @@ public class OdooReportQueryNode implements NodeAction {
         out.put("report_rows", result.rows());
         out.put("report_columns", result.rows().isEmpty()
                 ? List.of() : List.copyOf(result.rows().get(0).keySet()));
+        ZoneId timezone = queryService.businessTimezone(ReportGraphState.tenant(state));
+        out.put("report_data_as_of", window.toExclusive().atZone(timezone).toOffsetDateTime().toString());
+        out.put("report_data_source", "odoo");
+        out.put("report_store_scope", "current_authenticated_store");
         return out;
     }
 

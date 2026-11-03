@@ -120,6 +120,9 @@ public class PosAssistantGraphService {
             String source = stringValue(data, "route_source");
             boolean llmFallback = Boolean.parseBoolean(stringValue(data, "llm_fallback"));
             Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
+            String dataAsOf = stringValue(data, "report_data_as_of");
+            String dataSource = stringValue(data, "report_data_source");
+            String storeScope = stringValue(data, "report_store_scope");
             List<AssistantCard> cards = cardsFor(intent, ui, answer, question, fastPathId);
             Object assistantCard = data.get("assistant_card");
             if (assistantCard instanceof AssistantCard card) {
@@ -145,7 +148,10 @@ public class PosAssistantGraphService {
                     List.of(),
                     fastPathId,
                     source,
-                    llmFallback
+                    llmFallback,
+                    dataAsOf,
+                    dataSource,
+                    storeScope
             );
         } finally {
             AssistantTenantContext.clear();
@@ -540,6 +546,9 @@ public class PosAssistantGraphService {
             List<String> writeRequests,
             String fastPathId,
             String source,
-            boolean llmFallback
+            boolean llmFallback,
+            String dataAsOf,
+            String dataSource,
+            String storeScope
     ) {}
 }

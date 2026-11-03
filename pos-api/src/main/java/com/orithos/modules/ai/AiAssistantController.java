@@ -118,7 +118,10 @@ public class AiAssistantController {
                 result.writeRequests(),
                 result.fastPathId(),
                 result.source(),
-                result.llmFallback()
+                result.llmFallback(),
+                result.dataAsOf(),
+                result.dataSource(),
+                result.storeScope()
         ));
     }
 

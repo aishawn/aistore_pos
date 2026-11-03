@@ -109,6 +109,9 @@ public class PosAssistantGraphConfig {
             strategies.put("report_from", new ReplaceStrategy());
             strategies.put("report_to", new ReplaceStrategy());
             strategies.put("report_t0", new ReplaceStrategy());
+            strategies.put("report_data_as_of", new ReplaceStrategy());
+            strategies.put("report_data_source", new ReplaceStrategy());
+            strategies.put("report_store_scope", new ReplaceStrategy());
             return strategies;
         };
     }

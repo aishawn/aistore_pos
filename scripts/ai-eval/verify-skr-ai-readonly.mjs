@@ -68,6 +68,8 @@ function assistantSummary(result) {
       route: null,
       answer: null,
       source: null,
+      dataSource: null,
+      storeScope: null,
       dataAsOf: null,
       fastPathId: null,
       llmFallback: null,
@@ -84,6 +86,8 @@ function assistantSummary(result) {
     route: body.ui?.route ?? null,
     answer: body.answer ?? null,
     source: body.source ?? null,
+    dataSource: body.dataSource ?? null,
+    storeScope: body.storeScope ?? null,
     dataAsOf: body.dataAsOf ?? null,
     fastPathId: body.fastPathId ?? null,
     llmFallback: body.llmFallback ?? null,
@@ -187,8 +191,8 @@ try {
       traceability: {
         dateOrRange: businessDateInAnswer,
         dataAsOf: Boolean(assistant.dataAsOf || /data (?:checked|as of|through)/i.test(amountText)),
-        storeScope: Boolean(reportData.company && amountText.includes(reportData.company)),
-        dataSource: assistant.cards.some((card) => Boolean(card.source)),
+        storeScope: Boolean(assistant.storeScope || (reportData.company && amountText.includes(reportData.company))),
+        dataSource: Boolean(assistant.dataSource) || assistant.cards.some((card) => Boolean(card.source)),
       },
     };
   }

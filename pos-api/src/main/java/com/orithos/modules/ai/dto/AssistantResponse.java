@@ -16,5 +16,8 @@ public record AssistantResponse(
         List<String> writeRequests,
         String fastPathId,
         String source,
-        boolean llmFallback
+        boolean llmFallback,
+        String dataAsOf,
+        String dataSource,
+        String storeScope
 ) {}
