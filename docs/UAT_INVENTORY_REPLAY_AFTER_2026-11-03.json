@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-11-03T12:03:56.324Z",
+  "database": "aipos_uat",
+  "companyId": 5,
+  "locationId": 48,
+  "readOnly": true,
+  "quantCount": 10968,
+  "totalAfter": -1334367,
+  "negativeCount": 8265,
+  "repairedCount": 4958,
+  "targetMismatches": 0,
+  "reservationChanges": 0,
+  "outsideScopeQuantityChanges": 0,
+  "product75": -89
+}
