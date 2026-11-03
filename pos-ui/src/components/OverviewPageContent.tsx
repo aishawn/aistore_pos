@@ -23,6 +23,7 @@ import { AssistantComposer } from "./AssistantComposer";
 import { fetchAiClientConfig } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { OverviewHeader } from "./OverviewHeader";
+import { OverviewStorePulse } from "./OverviewStorePulse";
 import { RadialPie } from "./RadialPie";
 import { money, useOverview } from "./useOverview";
 import { useAiAssistant } from "@/lib/ai-assistant";
@@ -338,21 +339,7 @@ export function OverviewPageContent({
                 </div>
               </div>
               <aside className="ov-radial-side" aria-label="Store summary">
-                <section className="ov-pulse-panel">
-                  <div className="ov-panel-heading">
-                    <span className="ov-panel-icon"><BarChart3 size={18} /></span>
-                    <h2>Store pulse</h2>
-                  </div>
-                  {data.queryThrough && <p className="text-xs text-[var(--oh-muted)]">As of {new Intl.DateTimeFormat("en-AU", { timeZone: data.timezone, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(data.queryThrough.includes("T") ? data.queryThrough : data.queryThrough.replace(" ", "T") + "Z"))}</p>}
-                  {data.cacheStatus === "STALE" && <p role="status">Updating your summary. Showing the last prepared data.</p>}
-                  <button type="button" disabled={loading} onClick={() => void load(true)} className="min-h-9 text-sm disabled:opacity-50">{loading ? "Preparing…" : "Refresh summary"}</button>
-                    <dl className="ov-pulse-stats" aria-label="Store metrics">
-                      <div><Link href="/reports/daily-sales"><dt>Yesterday sales</dt><dd>{data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}</dd><span className="ov-stat-note">{data.yesterdaySalesAvailable === false ? "Unavailable" : "Previous day · Incl. tax"}</span></Link></div>
-                      <div><Link href="/reports/dashboard"><dt>Gross margin</dt><dd>{data.yesterdayGrossMargin !== null && data.yesterdayGrossMargin !== undefined ? `${(data.yesterdayGrossMargin * 100).toFixed(1)}%` : "—"}</dd><span className="ov-stat-note">{data.grossMarginStatus === "sales_mismatch" ? "Sales tax needs reconciliation" : data.grossMarginStatus === "purchase_cost_missing" ? "Receipt cost needs verification" : data.grossMarginStatus === "no_sales" ? "No sales yesterday" : data.grossMarginStatus === "unavailable" ? "Cost check unavailable" : data.yesterdayGrossMargin == null ? "Cost not verified" : "Yesterday · Ex tax"}</span></Link></div>
-                      <div><Link href="/stock/list"><dt>Total inventory</dt><dd>{data.inventoryAvailable && data.inventoryUnits !== null && data.inventoryUnits !== undefined ? data.inventoryUnits.toLocaleString("en-AU") : "—"}</dd><span className="ov-stat-note">{data.inventoryStatus === "negative_stock" ? `${data.negativeStockProducts?.toLocaleString("en-AU")} products below zero · Review stock` : data.inventoryStatus === "mixed_units" ? "Mixed units · Review stock" : data.inventoryStatus === "unavailable" ? "Stock could not be verified" : "Current units on hand"}</span></Link></div>
-                    </dl>
-                  {canReport ? <Link className="ov-panel-action ov-pulse-banner" href="/reports/dashboard"><Sparkles size={28} /><span><strong>Your next insight starts here</strong><small>Explore your store’s sales and performance.</small></span><ArrowRight size={18} /></Link> : null}
-                </section>
+                <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} />
                 <section className="ov-insights-panel">
                   <div className="ov-panel-heading">
                     <span className="ov-panel-icon ov-panel-icon-green"><Lightbulb size={18} /></span>
