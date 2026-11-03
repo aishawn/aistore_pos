@@ -1087,7 +1087,19 @@ async def retry_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(404, "Sync run not found")
     if active_job(db, run.store_key):
         raise HTTPException(409, "A sync job is already active for this store")
-    job = SyncJob(store_key=run.store_key, job_type="history", status="queued", from_date=run.from_date, to_date=run.to_date, cursor_date=run.from_date)
+    # A retry must replay the source sales window. The crawler may have
+    # persisted the rows while the downstream mirror stopped halfway through;
+    # treating them as unchanged would incorrectly report zero work and leave
+    # the mirror short.
+    job = SyncJob(
+        store_key=run.store_key,
+        job_type="history",
+        status="queued",
+        from_date=run.from_date,
+        to_date=run.to_date,
+        cursor_date=run.from_date,
+        payload={"retry_run_id": run.id, "replay_sales_window": True},
+    )
     db.add(job)
     db.commit()
     return {"status": "queued", "job_id": job.id, "retry_run_id": run.id}
@@ -1333,13 +1345,21 @@ async def _sync_history_chunk(
             )
             if skip_stable_history_products:
                 product_source_ids = []
+            sync_job = db.get(SyncJob, job_id) if job_id is not None else None
+            replay_daily_sales = bool(
+                sync_job
+                and (
+                    sync_job.job_type == "daily_sync"
+                    or (sync_job.job_type == "history" and (sync_job.payload or {}).get("replay_sales_window") is True)
+                )
+            )
             push_kwargs = {
                 "run": run,
+                "replay_sales_window": replay_daily_sales,
                 "include_catalog": full_catalog,
                 "include_inventory_snapshot": refresh_inventory,
                 "inventory_snapshot_source_ids": sync_counts.get("inventory_source_product_ids") or [],
             }
-            sync_job = db.get(SyncJob, job_id) if job_id is not None else None
             if sync_job is not None and sync_job.status == "running":
                 sync_job.phase = "pos_import"
                 sync_job.heartbeat_at = datetime.now(timezone.utc)
@@ -1355,11 +1375,9 @@ async def _sync_history_chunk(
             if pos_result.get("status") != "completed" or pos_result.get("error"):
                 raise RuntimeError(pos_result.get("error") or "POS mirror did not confirm a completed import")
             imported_sales = int(pos_result.get("sales_imported") or 0)
-            # A compensation window normally contains already mirrored sales.
-            # Those rows are intentionally skipped by the crawler and do not
-            # need a second POS write; validate only rows that changed or were
-            # newly created during this run.
-            required_sales = max(0, source_sales - unchanged_sales)
+            # Daily runs replay the whole bounded source window so a prior
+            # partial mirror write cannot be mistaken for a complete import.
+            required_sales = source_sales if replay_daily_sales else max(0, source_sales - unchanged_sales)
             if imported_sales < required_sales:
                 raise RuntimeError(
                     "POS sales import is smaller than Shopfront source: "
@@ -1419,6 +1437,7 @@ async def push_pos_snapshot(
     include_inventory_snapshot: bool = False,
     inventory_snapshot_source_ids: list[str] | None = None,
     include_sales: bool = True,
+    replay_sales_window: bool = False,
     sales_offset: int = 0,
     job: SyncJob | None = None,
 ) -> dict:
@@ -1441,7 +1460,7 @@ async def push_pos_snapshot(
         local_zone = timezone.utc
     repair_job = bool(job is not None and job.job_type == "sales_repair")
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id.desc() if repair_job else Sale.id)
-    if run is not None and start is not None and end is not None:
+    if run is not None and start is not None and end is not None and not replay_sales_window:
         # A history sync has just upserted the exact source rows that belong
         # to this run. Use its durable sync timestamp so sales with a missing
         # or malformed source timestamp are still imported. Full snapshots
@@ -1450,7 +1469,10 @@ async def push_pos_snapshot(
     elif start is not None and end is not None:
         window_start = datetime.combine(start, datetime.min.time(), tzinfo=local_zone)
         window_end = datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=local_zone)
-        sales_query = sales_query.where(((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end)))
+        window_filter = ((Sale.created_at >= window_start) & (Sale.created_at < window_end)) | ((Sale.updated_at >= window_start) & (Sale.updated_at < window_end))
+        if run is not None and replay_sales_window:
+            window_filter = or_(Sale.synced_at >= run.started_at, window_filter)
+        sales_query = sales_query.where(window_filter)
     if repair_job:
         # POS repair is a compensation pass for the newest changes. A fixed
         # keyset window avoids counting and scanning the entire ledger.
@@ -1479,7 +1501,20 @@ async def push_pos_snapshot(
         and (settings.odoo_api_token or fallback_token)
     )
     odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, settings.odoo_business_write_enabled, fallback_token)
-    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
+    result = {
+        "status": "failed",
+        "products": len(products),
+        "inventory": len(inventory),
+        "sales": total_sales,
+        "sales_imported": 0,
+        "error": None,
+        "mirror_errors": [],
+        # Inventory is reconciled independently from historical sales. A
+        # missing product mapping must remain visible without blocking the
+        # source sales ledger and its margin evidence.
+        "inventory_unmatched": [],
+        "inventory_reconciliation_required": False,
+    }
 
     products_by_source = {str(product.shopfront_product_id): product for product in products}
 
@@ -1961,8 +1996,13 @@ async def push_pos_snapshot(
 
             unmatched = [item for response in inventory_responses for item in business_unmatched(response)]
             if unmatched:
-                raise RuntimeError(f"Odoo inventory import has {len(unmatched)} unmatched source items")
-            if include_inventory_snapshot:
+                # Keep the exact source identities in the run result for a
+                # later inventory-only repair. Do not finalize a partial
+                # snapshot: stale quant cleanup would be unsafe while one or
+                # more source products are unresolved.
+                result["inventory_unmatched"] = unmatched
+                result["inventory_reconciliation_required"] = True
+            if include_inventory_snapshot and not unmatched:
                 finalize_response = await odoo_client.sync(
                     "inventory",
                     store_key,
@@ -1972,8 +2012,10 @@ async def push_pos_snapshot(
                 )
                 finalize_unmatched = business_unmatched(finalize_response)
                 if finalize_unmatched:
-                    raise RuntimeError(f"Odoo inventory snapshot finalization has {len(finalize_unmatched)} unmatched source items")
-                inventory_responses.append(finalize_response)
+                    result["inventory_unmatched"] = finalize_unmatched
+                    result["inventory_reconciliation_required"] = True
+                else:
+                    inventory_responses.append(finalize_response)
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0

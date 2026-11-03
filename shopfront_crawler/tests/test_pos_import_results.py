@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app import main
+from app import sync
 from app.db import Base
+from app.config import Settings
 from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
@@ -79,6 +81,56 @@ def test_sale_product_replaces_placeholder_name_and_keeps_source_metadata(db_ses
     assert updated.price == Decimal("9.99")
     assert updated.raw_payload["description"] == "source description"
     assert updated.raw_payload["barcodes"][0]["code"] == "12345"
+
+
+@pytest.mark.asyncio
+async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr")
+    db_session.add(store)
+    db_session.commit()
+
+    class FakeClient:
+        async def fetch_outlets(self, *args):
+            return []
+
+        async def fetch_sales_graphql(self, *args):
+            return []
+
+        async def fetch_sales(self, *args):
+            return []
+
+        async def fetch_products(self, *args):
+            return [{"id": "product-1", "name": "Test product", "inventory": []}]
+
+        async def fetch_inventory(self, *args):
+            assert not db_session.in_transaction()
+            return [{
+                "id": "product-1",
+                "inventory": [{"outlet": {"id": "outlet-1", "name": "Main"}, "quantity": 4}],
+            }]
+
+        async def close(self):
+            return None
+
+    client = FakeClient()
+
+    async def fake_access_token(*args):
+        return "token"
+
+    monkeypatch.setattr(sync, "access_token", fake_access_token)
+    monkeypatch.setattr(sync, "get_client", lambda *args: client)
+
+    run = await sync.sync_store(
+        db_session,
+        Settings(),
+        store,
+        date(2026, 11, 1),
+        date(2026, 11, 1),
+        refresh_inventory=True,
+    )
+
+    assert run.status == "completed"
+    assert run.counts["inventory_sync_complete"] is True
 
 
 @pytest.mark.asyncio
@@ -323,6 +375,53 @@ async def test_sync_chunk_rejects_pos_count_below_shopfront_source(db_session, m
 
 
 @pytest.mark.asyncio
+async def test_sync_chunk_keeps_sales_successful_when_inventory_needs_reconciliation(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"sales": 10},
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        return {
+            "status": "completed",
+            "sales": 10,
+            "sales_imported": 10,
+            "error": None,
+            "inventory_unmatched": [{"source_id": "product-missing", "reason": "product not found"}],
+            "inventory_reconciliation_required": True,
+        }
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        True,
+    )
+
+    assert ok is True
+    persisted = db_session.get(SyncRun, run.id)
+    assert persisted.status == "completed"
+    assert persisted.counts["pos_import"]["sales_imported"] == 10
+    assert persisted.counts["pos_import"]["inventory_reconciliation_required"] is True
+    assert persisted.counts["pos_import"]["inventory_unmatched"][0]["source_id"] == "product-missing"
+
+
+@pytest.mark.asyncio
 async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(db_session, monkeypatch):
     run = SyncRun(
         store_key="skr",
@@ -340,7 +439,7 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
     db_session.add(run)
     job = SyncJob(
         store_key="skr",
-        job_type="daily_sync",
+        job_type="history",
         status="running",
         from_date="2026-10-26",
         to_date="2026-10-26",
@@ -374,9 +473,106 @@ async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(
 
     assert ok is True
     assert captured["product_source_ids"] == []
+    assert captured["replay_sales_window"] is False
     assert captured["job"].id == job.id
     assert db_session.get(SyncJob, job.id).phase == "pos_import"
     assert db_session.get(SyncRun, run.id).counts["sync"]["pos_products_skipped_unchanged"] is True
+
+
+@pytest.mark.asyncio
+async def test_history_retry_replays_unchanged_sales_window(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"sales": 10, "sales_skipped_unchanged": 10},
+    )
+    job = SyncJob(
+        store_key="skr",
+        job_type="history",
+        status="running",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        cursor_date="2026-10-26",
+        payload={"retry_run_id": 123, "replay_sales_window": True},
+    )
+    db_session.add_all([run, job])
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 10, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        job.id,
+        False,
+    )
+
+    assert ok is True
+    assert captured["replay_sales_window"] is True
+
+
+@pytest.mark.asyncio
+async def test_daily_sync_replays_unchanged_sales_and_requires_mirror_ack(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-11-03",
+        to_date="2026-11-03",
+        status="completed",
+        counts={"sales": 10, "sales_skipped_unchanged": 10},
+    )
+    job = SyncJob(
+        store_key="skr",
+        job_type="daily_sync",
+        status="running",
+        from_date="2026-11-03",
+        to_date="2026-11-03",
+        cursor_date="2026-11-03",
+    )
+    db_session.add_all([run, job])
+    db_session.commit()
+    captured = {}
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 9, "error": None}
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 11, 3),
+        date(2026, 11, 3),
+        job.id,
+        False,
+    )
+
+    assert ok is False
+    assert captured["run"] is run
+    assert captured["replay_sales_window"] is True
+    failed = db_session.get(SyncRun, run.id)
+    assert failed.status == "failed"
+    assert "required=10, source=10, imported=9" in (failed.error or "")
 
 
 @pytest.mark.asyncio

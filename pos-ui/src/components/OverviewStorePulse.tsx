@@ -56,10 +56,10 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(1)}%` : "—"}
           note={marginNote} />
         <Metric label="Total inventory" href="/stock/list"
-          title={stockAvailable ? "Net units on hand across internal locations, including negative stock. Open stock details." : undefined}
+          title={stockAvailable ? "Available units on hand across internal locations. Negative balances are shown for review." : undefined}
           value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
           note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : !stockAvailable ? "Temporarily unavailable"
-            : data.inventoryStatus === "negative_stock" ? "Net on hand · Negative stock to review" : "Current units on hand"} />
+            : data.inventoryStatus === "negative_stock" ? "Available units · Negative stock to review" : "Current units on hand"} />
       </dl>
       {canReport && <Link className="ov-pulse-report" href="/reports/dashboard">View reports<ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </section>

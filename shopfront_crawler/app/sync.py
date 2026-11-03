@@ -1038,6 +1038,14 @@ async def sync_store(
                     existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
         if refresh_inventory:
+            # The full product snapshot can dirty thousands of SQLite rows.
+            # Persist that batch before waiting on the paginated inventory API
+            # so the worker and its heartbeat do not compete for the writer.
+            counts["stage"] = "inventory_fetch"
+            counts["products_fetched"] = len(products)
+            counts["products_processed"] = counts["products"]
+            run.counts = counts
+            db.commit()
             try:
                 inventory_products = await client.fetch_inventory(token, settings.shopfront_inventory_query)
                 snapshot_keys: set[tuple[str, str]] = set()
