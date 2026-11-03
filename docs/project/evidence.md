@@ -58,3 +58,7 @@ E-TAX-HISTORY-V2：完整原生155142单303839行新快照及48+4计数/版本�
 
 
 E-SOURCE-SALES-RESUME：crawler启动问题已健康/文件哈希核验；源端断点读取继续，218页4960单只是16:41 UTC观测，未完成；6项离线验证器测试通过不代替全源验证。[证据](../UAT_SOURCE_SALES_RESUME_2026-11-04.json)。
+
+E-SOURCE-MARGIN-WINDOW：56个已观察日直接Shopfront订单ID/财务投影逐日与镜像相同；线上fcdccef同范围总额与来源口径毛利匹配，401后自动恢复200；行级税/成本仍有差额，全部行成本未独立核实，未声明全源完整。[证据](../UAT_SOURCE_MARGIN_WINDOW_2026-11-04.json)。
+
+E-SOURCE-SALES-PROGRESS：直接来源PID38在17:12 UTC仍存活，385页/13310单，终态结果尚无；页级完整全量比对NOT RUN。[证据](../UAT_SOURCE_SALES_PROGRESS_2026-11-04.json)。

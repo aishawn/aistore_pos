@@ -806,6 +806,58 @@
         "docs/test-sessions/2026-11-04-source-tax-pricing.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-SOURCE-MARGIN-WINDOW",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-04",
+      "sourceSha": "fcdccefad8633a6042fc285c68f935ff656246cf",
+      "runtimeSha": "fcdccefad8633a6042fc285c68f935ff656246cf",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "2a607348645d7af79b549bc3e8fe9d4a0e6c6e57c0ca66a64252413839fc731c",
+      "scope": "SKR source-margin report for 2024-01-25 <= Adelaide business day < 2024-03-21; no financial writes",
+      "sample": "56 observed dates match direct Shopfront vs source mirror:8249 IDs,8214 completed orders,16302 lines",
+      "result": "Online report and independent source order totals both gross228452.16 tax19592.87 net208859.29 cost153954.29 profit54905.00 margin26.288033%;401 automatically recovered to200",
+      "limitations": [
+        "The direct source scan is unfinished; later pages may add sales even to observed dates, so matched observed sets do not prove full source coverage.",
+        "2024-03-21 is a partial pagination boundary (111 source rows observed vs165 mirror rows); this is not a confirmed missing-order count.",
+        "1909 lines/orders have line aggregation differences; total line tax difference1.65 and cost difference3.31, gross difference0.",
+        "All16302 source sale cost lines remain independently unverified; accountingVerified=false.",
+        "No delete, import, tax/cost repair or other business write was executed."
+      ],
+      "artifacts": [
+        "docs/UAT_SOURCE_MARGIN_WINDOW_2026-11-04.json",
+        "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
+    },
+    {
+      "id": "E-SOURCE-SALES-PROGRESS",
+      "status": "INFO",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-04",
+      "sourceSha": null,
+      "runtimeSha": null,
+      "model": null,
+      "promptVersion": null,
+      "configVersion": "resume-query-sha256:028224609bbfe626c912bfdc20f8da44a168480f511d607eab8e23c1edb3a79e",
+      "snapshotVersion": "d2c7e233324a4126468e6f533e4aa66b0b3124053da2807a13e951801904ae83",
+      "scope": "SKR original Shopfront sales API capture, resumed from immutable saved pages, readonly",
+      "sample": "PID38 live at17:12 UTC;385 pages,13310 orders,13274 completed,26566 lines; no terminal result",
+      "result": "Capture continues; full-page verifier and final mirror projection are not run",
+      "limitations": [
+        "Point-in-time progress only; later status must be re-read from process and persistent progress.",
+        "Partial capture cannot certify all-history completeness or accounting cost validity.",
+        "No business writes or token refresh writes."
+      ],
+      "artifacts": [
+        "docs/UAT_SOURCE_SALES_PROGRESS_2026-11-04.json",
+        "docs/test-sessions/2026-11-04-source-tax-pricing.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }
