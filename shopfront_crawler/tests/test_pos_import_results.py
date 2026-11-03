@@ -375,6 +375,53 @@ async def test_sync_chunk_rejects_pos_count_below_shopfront_source(db_session, m
 
 
 @pytest.mark.asyncio
+async def test_sync_chunk_keeps_sales_successful_when_inventory_needs_reconciliation(db_session, monkeypatch):
+    run = SyncRun(
+        store_key="skr",
+        from_date="2026-10-26",
+        to_date="2026-10-26",
+        status="completed",
+        counts={"sales": 10},
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    async def fake_sync_store(*args, **kwargs):
+        return run
+
+    async def fake_push_snapshot(*args, **kwargs):
+        return {
+            "status": "completed",
+            "sales": 10,
+            "sales_imported": 10,
+            "error": None,
+            "inventory_unmatched": [{"source_id": "product-missing", "reason": "product not found"}],
+            "inventory_reconciliation_required": True,
+        }
+
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    monkeypatch.setattr(main, "sync_store", fake_sync_store)
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push_snapshot)
+
+    ok = await main._sync_history_chunk(
+        db_session,
+        "skr",
+        Store(store_key="skr", vendor="skr"),
+        date(2026, 10, 26),
+        date(2026, 10, 26),
+        None,
+        True,
+    )
+
+    assert ok is True
+    persisted = db_session.get(SyncRun, run.id)
+    assert persisted.status == "completed"
+    assert persisted.counts["pos_import"]["sales_imported"] == 10
+    assert persisted.counts["pos_import"]["inventory_reconciliation_required"] is True
+    assert persisted.counts["pos_import"]["inventory_unmatched"][0]["source_id"] == "product-missing"
+
+
+@pytest.mark.asyncio
 async def test_history_chunk_skips_stable_products_when_all_sales_are_unchanged(db_session, monkeypatch):
     run = SyncRun(
         store_key="skr",

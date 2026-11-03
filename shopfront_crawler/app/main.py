@@ -1483,7 +1483,20 @@ async def push_pos_snapshot(
         and (settings.odoo_api_token or fallback_token)
     )
     odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, settings.odoo_business_write_enabled, fallback_token)
-    result = {"status": "failed", "products": len(products), "inventory": len(inventory), "sales": total_sales, "sales_imported": 0, "error": None, "mirror_errors": []}
+    result = {
+        "status": "failed",
+        "products": len(products),
+        "inventory": len(inventory),
+        "sales": total_sales,
+        "sales_imported": 0,
+        "error": None,
+        "mirror_errors": [],
+        # Inventory is reconciled independently from historical sales. A
+        # missing product mapping must remain visible without blocking the
+        # source sales ledger and its margin evidence.
+        "inventory_unmatched": [],
+        "inventory_reconciliation_required": False,
+    }
 
     products_by_source = {str(product.shopfront_product_id): product for product in products}
 
@@ -1965,8 +1978,13 @@ async def push_pos_snapshot(
 
             unmatched = [item for response in inventory_responses for item in business_unmatched(response)]
             if unmatched:
-                raise RuntimeError(f"Odoo inventory import has {len(unmatched)} unmatched source items")
-            if include_inventory_snapshot:
+                # Keep the exact source identities in the run result for a
+                # later inventory-only repair. Do not finalize a partial
+                # snapshot: stale quant cleanup would be unsafe while one or
+                # more source products are unresolved.
+                result["inventory_unmatched"] = unmatched
+                result["inventory_reconciliation_required"] = True
+            if include_inventory_snapshot and not unmatched:
                 finalize_response = await odoo_client.sync(
                     "inventory",
                     store_key,
@@ -1976,8 +1994,10 @@ async def push_pos_snapshot(
                 )
                 finalize_unmatched = business_unmatched(finalize_response)
                 if finalize_unmatched:
-                    raise RuntimeError(f"Odoo inventory snapshot finalization has {len(finalize_unmatched)} unmatched source items")
-                inventory_responses.append(finalize_response)
+                    result["inventory_unmatched"] = finalize_unmatched
+                    result["inventory_reconciliation_required"] = True
+                else:
+                    inventory_responses.append(finalize_response)
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0
