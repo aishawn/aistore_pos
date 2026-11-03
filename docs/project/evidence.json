@@ -695,6 +695,32 @@
         "docs/test-sessions/2026-11-03-margin-release.md"
       ],
       "releaseAccepted": false
+    },
+    {
+      "id": "E-MARGIN-SESSION-RECOVERY",
+      "status": "PASS",
+      "evidenceType": "online-readonly",
+      "recordedAt": "2026-11-03",
+      "sourceSha": "b8de6af46010a22d9df8224bb137edb58700c467",
+      "runtimeSha": "b8de6af46010a22d9df8224bb137edb58700c467",
+      "model": null,
+      "promptVersion": null,
+      "configVersion": null,
+      "snapshotVersion": "edbd656203a1446cc89288816961020cab166514882c792cc389e609756a04de",
+      "scope": "SKR one user click with automatic session recovery; readonly, business writes0",
+      "sample": "133 completed sales /275 source lines, desktop and mobile",
+      "result": "401 recovered to200 without second click; source profit830.18, margin25.385749%",
+      "limitations": [
+        "Prior attempt during deployment timed out at login, before report action; kept separate from this successful run.",
+        "Real desktop/mobile report rendering; no writable financial repair or full-history source completeness certification.",
+        "All 275 source cost lines independently unverified; source line/order rounding differences retained.",
+        "ESLint blocked by existing missing react-hooks plugin configuration; 2 client regression tests, typecheck and documentation checks passed."
+      ],
+      "artifacts": [
+        "docs/UAT_MARGIN_SESSION_RECOVERY_2026-11-03.json",
+        "docs/test-sessions/2026-11-03-margin-release.md"
+      ],
+      "releaseAccepted": false
     }
   ]
 }

@@ -17,3 +17,8 @@ bc7f4a2dbd5af004ea7acb3e15c309738ea32350 已推送main，Dokploy UMx_wqHFPIr-8Wv
 两个报表POST在401恢复后允许重试；503等昂贵失败保留明确重试。销售/修复写入接口不允许自动重放。2项实际客户端回归通过，tsc --noEmit通过，文档检查62文件通过。定向ESLint未执行规则检查：现有配置找不到react-hooks插件（react-hooks/set-state-in-effect），记录为配置阻断，不称lint通过；没有修改无关配置。尚未宣称本候选线上首击通过。税清单仍v1只读，不支持直接批量执行。
 
 证据：[部署](../UAT_MARGIN_RELEASE_2026-11-03.json)、[税诊断](../UAT_DEMO_SOURCE_TAX_DIAGNOSTIC_2026-11-03.json)。源码/运行版本、原始私有哈希、限制分开记录；无模型或provider调用。
+
+
+## 后续候选真实线上验收
+
+b8de6af46010a22d9df8224bb137edb58700c467 已推送main，Dokploy Sy7YzeB7kONPuhwPckus5 done，前后端运行SHA一致。新浏览器登录，一次用户点击后401自动恢复至200，133完成单、毛利830.18、25.385749%保持一致；桌面/手机截图通过核对，业务写入0。部署期间另一轮登录超时，未进入报表操作，独立保留而非抹除。见[首击恢复验收](../UAT_MARGIN_SESSION_RECOVERY_2026-11-03.json)。只关闭报表首击会话恢复缺陷，不关闭历史财务、成本与库存缺口。

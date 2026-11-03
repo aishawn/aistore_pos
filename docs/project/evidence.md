@@ -49,3 +49,5 @@
 jsonChecks 检查选定 JSON 字段是否与引用一致；它不验证原测试真实性，不联网、不重新发起模型或 Odoo 调用。
 
 E-MARGIN-RELEASE：bc7f4a2d部署核验与报表明确重试后通过，首击401独立保留；65单税诊断不认证免税或允许修复。见[session](../test-sessions/2026-11-03-margin-release.md)。
+
+E-MARGIN-SESSION-RECOVERY：b8de6af4真实首击会话恢复PASS，133单毛利830.18，业务写入0；只关闭此缺陷。见[证据](../UAT_MARGIN_SESSION_RECOVERY_2026-11-03.json)。
