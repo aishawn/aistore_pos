@@ -53,7 +53,9 @@ export function CostReconciliationPanel() {
     const from = params.get("fromDay"), to = params.get("toDay");
     if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) setFromDay(from);
     if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) setToDay(to);
-    if (from || to) void generate(true, { fromDay: from ?? undefined, toDay: to ?? undefined });
+    // The reconciliation URL is also the dashboard's gross-margin detail entry point.
+    // Always load its source margin on entry; the API defaults to the last 30 completed days.
+    void generate(true, { fromDay: from ?? undefined, toDay: to ?? undefined });
   // URL parameters are read once on entry; generate uses the defaults only for this initial capture.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
