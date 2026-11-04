@@ -8,6 +8,7 @@ import {
 } from "@/lib/odoo-api";
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
+import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -25,6 +26,7 @@ export type OverviewPulse = {
   lowStockCount?: number;
   newCustomers?: number;
   inventoryUnits?: number | null;
+  inventoryNetUnits?: number | null;
   yesterdaySales?: number;
   yesterdaySalesAvailable?: boolean;
   yesterdayGrossMargin?: number | null;
@@ -43,6 +45,7 @@ export type OverviewPulse = {
 const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v1";
 const PULSE_FRESH_MS = 45_000;
 const PULSE_KEEP_MS = 10 * 60_000;
+const PULSE_SYNC_POLL_MS = 5 * 60_000;
 type StoredPulse = { scope: string; at: number; data: OverviewPulse };
 let memoryPulse: StoredPulse | null = null;
 function pulseScope(vendorId?: number) {
@@ -67,6 +70,23 @@ function writePulse(scope: string, data: OverviewPulse) {
   memoryPulse = stored;
   try { sessionStorage.setItem(PULSE_STORAGE_KEY, JSON.stringify(stored)); } catch { /* Keep the in-memory copy when storage is full. */ }
 }
+
+export function pulseMarginNote(data: OverviewPulse): string {
+  const status = data.grossMarginStatus;
+  if (status === "sales_mismatch") return "Odoo sales do not reconcile";
+  if (status === "purchase_cost_missing" || status === "ledger_cost_unverified") return "Odoo cost records incomplete";
+  if (status === "no_sales") return "No sales yesterday";
+  if (status === "verified") return `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% coverage`;
+  if (status === "complete") {
+    return `POS purchase cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% lines · not ledger-audited`;
+  }
+  if (status === "partial") {
+    return `${Math.round((data.grossMarginCoverage ?? 0) * 100)}% purchase cost · lines missing cost`;
+  }
+  if (data.yesterdayGrossMargin == null) return "Purchase cost unavailable · open reconciliation";
+  return "Purchase cost on POS lines · not ledger-audited";
+}
+
 function mapPayload(payload: Record<string, unknown>): OverviewPulse {
   return {
     generatedAt: payload.generatedAt as string | undefined,
@@ -84,6 +104,7 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     lowStockCount: Number.isFinite(payload.lowStockCount) ? Number(payload.lowStockCount) : undefined,
     newCustomers: Number.isFinite(payload.newCustomers) ? Number(payload.newCustomers) : undefined,
     inventoryUnits: Number.isFinite(payload.inventoryUnits) ? Number(payload.inventoryUnits) : null,
+    inventoryNetUnits: Number.isFinite(payload.inventoryNetUnits) ? Number(payload.inventoryNetUnits) : null,
     yesterdaySales: Number.isFinite(payload.yesterdaySales) ? Number(payload.yesterdaySales) : 0,
     yesterdaySalesAvailable: payload.yesterdaySalesAvailable === true,
     yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? Number(payload.yesterdayGrossMargin) : null,
@@ -119,6 +140,7 @@ export function useOverview() {
   const [authExpired, setAuthExpired] = useState(false);
   const [parked, setParked] = useState(0);
   const revision = useRef(0);
+  const lastFetchAt = useRef(0);
   const load = useCallback(async (refresh = false) => {
     const current = ++revision.current;
     const scope = pulseScope(user?.vendorId);
@@ -150,6 +172,7 @@ export function useOverview() {
       const next = mapPayload(payload as Record<string, unknown>);
       setData(next);
       writePulse(scope, next);
+      lastFetchAt.current = Date.now();
     } catch (cause) {
       if (current === revision.current) {
         const authExpired = cause instanceof OdooApiError
@@ -189,6 +212,7 @@ export function useOverview() {
   useEffect(() => {
     if (!ready || !user) return;
     void load();
+    void fetchShopfrontSyncStamp();
     const counter = revision;
     return () => {
       counter.current++;
@@ -205,6 +229,25 @@ export function useOverview() {
     window.addEventListener("orithos-read-cache-cleared", reset);
     return () => window.removeEventListener("orithos-read-cache-cleared", reset);
   }, [load, user, ready]);
+  useEffect(() => {
+    const onSync = () => { void load(true); };
+    window.addEventListener("orithos-shopfront-sync", onSync);
+    return () => window.removeEventListener("orithos-shopfront-sync", onSync);
+  }, [load]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      const stamp = readShopfrontSyncStamp();
+      if (stamp && stamp > lastFetchAt.current) {
+        void load(true);
+        return;
+      }
+      void fetchShopfrontSyncStamp().then((remote) => {
+        if (remote && remote > lastFetchAt.current) void load(true);
+      });
+    }, PULSE_SYNC_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [load]);
   useEffect(() => {
     const sync = () => {
       try {

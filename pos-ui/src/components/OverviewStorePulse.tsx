@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight, BarChart3, RefreshCw } from "lucide-react";
-import { money, type OverviewPulse } from "./useOverview";
+import { money, type OverviewPulse, pulseMarginNote } from "./useOverview";
 
 function updatedAt(value: string | undefined, timezone: string) {
   if (!value) return null;
@@ -21,23 +21,22 @@ function Metric({ label, href, value, note, noteHref, title }: { label: string; 
   </div>;
 }
 
-export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
+export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandboxNote }: {
   data: OverviewPulse;
   loading: boolean;
   canReport: boolean;
   onRefresh: () => void;
+  sandboxNote?: boolean;
 }) {
   const timestamp = updatedAt(data.queryThrough, data.timezone);
   const stockAvailable = data.inventoryAvailable && data.inventoryUnits != null && Number.isFinite(data.inventoryUnits)
     && data.inventoryStatus !== "mixed_units" && data.inventoryStatus !== "unavailable";
   const marginAvailable = data.yesterdayGrossMargin != null;
-  const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Odoo sales do not reconcile"
-    : data.grossMarginStatus === "purchase_cost_missing" || data.grossMarginStatus === "ledger_cost_unverified" ? "Odoo cost records incomplete"
-    : data.grossMarginStatus === "no_sales" ? "No sales yesterday"
-    : data.grossMarginStatus === "verified" ? `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% coverage`
-    : !marginAvailable ? "Odoo margin unavailable" : "Odoo recorded cost · verification incomplete";
+  const marginNote = pulseMarginNote(data);
   const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";
   const marginHref = `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
+  const netUnits = data.inventoryNetUnits;
+  const negativeStockHref = "/products?view=negative-stock";
 
   return (
     <section className="ov-pulse-panel" aria-labelledby="ov-pulse-title">
@@ -45,6 +44,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
         <div>
           <div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2 id="ov-pulse-title">Store pulse</h2></div>
           {timestamp && <p className="ov-pulse-updated">Updated {timestamp}</p>}
+          {sandboxNote && <p className="ov-pulse-updated">Sandbox snapshot · not live Shopfront sync</p>}
         </div>
         <button type="button" className="ov-pulse-refresh" disabled={loading} aria-label={loading ? "Refreshing store summary" : "Refresh store summary"} aria-busy={loading} title={loading ? "Refreshing…" : "Refresh"} onClick={onRefresh}>
           <RefreshCw size={17} aria-hidden="true" />
@@ -58,12 +58,21 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
         <Metric label="Gross margin" href={marginHref}
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(1)}%` : "—"}
           note={marginNote} />
-        <Metric label="Total inventory" href="/reports/inventory"
-          title={stockAvailable ? "Available units on hand across internal locations. Negative balances are shown for review." : undefined}
-          value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
+        <Metric label="Sellable units" href="/products"
+          title={stockAvailable ? "Sum of positive on-hand balances by product across internal locations." : undefined}
+          value={stockAvailable ? (
+            <div className="flex flex-col gap-0.5">
+              <span>{data.inventoryUnits!.toLocaleString("en-AU")}</span>
+              {netUnits != null && Number.isFinite(netUnits) && (
+                <span className={netUnits < 0 ? "text-sm font-medium text-amber-800" : "text-sm text-[var(--oh-muted)]"}>
+                  Net {netUnits.toLocaleString("en-AU")}
+                </span>
+              )}
+            </div>
+          ) : "—"}
           note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : !stockAvailable ? "Temporarily unavailable"
-            : data.inventoryStatus === "negative_stock" ? "Review negative stock" : "Current units on hand"}
-          noteHref={data.inventoryStatus === "negative_stock" ? "/reports/inventory?view=negative-stock" : undefined} />
+            : data.inventoryStatus === "negative_stock" ? `${data.negativeStockProducts ?? 0} SKUs below zero · review list` : "Positive on-hand only"}
+          noteHref={data.inventoryStatus === "negative_stock" ? negativeStockHref : undefined} />
       </dl>
       {canReport && <Link className="ov-pulse-report" href="/reports/dashboard">View reports<ArrowUpRight size={16} aria-hidden="true" /></Link>}
     </section>

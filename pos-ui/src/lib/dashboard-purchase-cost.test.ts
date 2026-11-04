@@ -42,7 +42,7 @@ function summaryRpc({net=100,failStock=false,failLines=false,mixed=false,withLin
  throw Error(data);
 }) as ReportRpc;}
 test('tax mismatch blocks margin, preserves actual sales, and excludes negative inventory',async()=>{
- const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,0);assert.equal(r.inventoryStatus,'negative_stock');
+ const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,0);assert.equal(r.inventoryNetUnits,-5);assert.equal(r.inventoryStatus,'negative_stock');
 });
 test('inventory total sums signed internal stock and preserves fractional units', async () => {
  const base = summaryRpc();
@@ -60,6 +60,7 @@ test('inventory total sums signed internal stock and preserves fractional units'
  }) as ReportRpc;
  const result = await calculateReport(rpc, options);
  assert.equal(result.inventoryUnits, 8.25);
+ assert.equal(result.inventoryNetUnits, -4.25);
  assert.equal(result.inventoryAvailable, true);
  assert.equal(result.inventoryStatus, 'negative_stock');
 });

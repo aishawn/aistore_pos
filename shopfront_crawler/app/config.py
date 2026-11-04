@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     odoo_api_database: str = ""
     odoo_import_enabled: bool = True
     odoo_business_write_enabled: bool = False
+    pos_ui_notify_url: str = "http://frontend:3000/api/internal/shopfront-sync-notify"
+    orithos_shopfront_sync_notify_secret: str = ""
     shopfront_products_query: str = DEFAULT_PRODUCTS_QUERY
     shopfront_inventory_query: str = DEFAULT_INVENTORY_QUERY
     shopfront_sale_detail_query: str = ""

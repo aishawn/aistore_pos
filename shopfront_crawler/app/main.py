@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -28,6 +29,33 @@ from .sync import access_token, ensure_stores, get_client, is_after, make_state,
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
 logger = logging.getLogger(__name__)
+
+POS_UI_NOTIFY_HOSTS: dict[str, list[str]] = {
+    "skr": ["skr.orithos.com.au"],
+}
+
+
+async def notify_pos_ui_sync(store_key: str) -> None:
+    url = settings.pos_ui_notify_url.strip()
+    secret = settings.orithos_shopfront_sync_notify_secret.strip()
+    if not url or not secret:
+        return
+    payload = {
+        "storeKey": store_key,
+        "hosts": POS_UI_NOTIFY_HOSTS.get(store_key, []),
+        "syncedAt": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as http:
+            response = await http.post(
+                url,
+                json=payload,
+                headers={"Authorization": f"Bearer {secret}"},
+            )
+            if response.status_code >= 300:
+                logger.warning("POS UI sync notify rejected: store=%s status=%s", store_key, response.status_code)
+    except Exception as exc:
+        logger.warning("POS UI sync notify failed: store=%s error=%r", store_key, exc)
 
 
 def should_include_catalog(job_type: str | None, existing_products: int, existing_inventory: int) -> bool:
@@ -2339,6 +2367,8 @@ async def push_pos_snapshot(
             "odoo_product_response": odoo_product_result,
             "odoo_inventory_response": odoo_inventory_result,
         })
+        if result.get("status") == "completed" and not result.get("mirror_errors"):
+            await notify_pos_ui_sync(store_key)
     except Exception as exc:
         result["error"] = str(exc)[:500]
         logger.exception("Shopfront snapshot push failed: store=%s", store_key)

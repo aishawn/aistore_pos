@@ -73,8 +73,9 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   // Negative quants are shortage adjustments, not sellable units. Aggregate by
   // product/UOM and count only each product's available positive balance.
   const inventoryUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + Math.max(row.quantity, 0), 0) : null;
+  const inventoryNetUnits = stockAvailable && !mixedUnits ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : null;
   return {
-    inventoryUnits, inventoryAvailable: stockAvailable && !mixedUnits,
+    inventoryUnits, inventoryNetUnits, inventoryAvailable: stockAvailable && !mixedUnits,
     inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
     negativeStockProducts: negativeRows?.length ?? null,
     yesterdaySales, yesterdaySalesAvailable: marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,

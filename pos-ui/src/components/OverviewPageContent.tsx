@@ -98,6 +98,10 @@ export function OverviewPageContent({
     navigation,
     destinations,
   } = useOverview();
+  const [demoSandbox, setDemoSandbox] = useState(false);
+  useEffect(() => {
+    setDemoSandbox(window.location.hostname === "demo.orithos.com.au");
+  }, []);
   const { hasPermission } = useAuth();
   const openAssistant = (source: "center" | "ai-bar", element?: HTMLElement, question?: string) => {
     if (transitionState !== "idle") return;
@@ -333,7 +337,7 @@ export function OverviewPageContent({
                 </div>
               </div>
               <aside className="ov-radial-side" aria-label="Store summary">
-                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} /> : (
+                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} sandboxNote={demoSandbox} /> : (
                   <section className="ov-pulse-panel" aria-busy="true" aria-label="Loading store pulse">
                     <p className="ov-pulse-pending" role="status">Preparing yesterday&apos;s numbers…</p>
                   </section>
