@@ -3,7 +3,7 @@
 
 - 在 `9305186fa3994cec049c78aab194ed31b9ba3dca` 基础增加 Dashboard/Reports 对 Shopfront 来源毛利接口的只读展示；来源成本标注未会计核实。Dashboard 卡片及 Reports 毛利指标链接到成本核对页并附带门店营业日起止日；成本核对页按 URL 自动读取来源毛利。
 - Reports 新增“近 7 天”，定义为最近七个已完成门店营业日，期间数据及来源毛利共用相同起止边界。来源接口读取权限改为 `reports.dashboard`，但保留已验证 SKR 单店范围限制。
-- 候选尚未提交或部署。Node 24 下 `report-period.test.ts` 10/10 PASS；项目文档检查（62 Markdown）及 `git diff --check` PASS。候选目录无 `pos-ui/node_modules`，类型检查/lint 未运行；本地 build 与线上验收 NOT RUN。成本编辑、成本认证、原生税额修复和退款成本关联仍未实现。
+- `98fb7422` 已推送 GitHub `main`（父提交 `36a2378a`），部署和线上验收待完成。Node 24 下 `report-period.test.ts` 10/10 PASS；项目文档检查（62 Markdown）及 `git diff --check` PASS。候选目录无 `pos-ui/node_modules`，类型检查/lint 未运行；本地 build 与线上验收 NOT RUN。成本编辑、成本认证、原生税额修复和退款成本关联仍未实现。
 - 原候选工作树中 `ShopfrontIntegrationController.java`、其测试及 `shopfront_crawler/app/main.py` 有其他未提交改动，本次不属于毛利 UI 变更，提交时须排除。
 
 ## 2026-11-03 Shopfront 来源毛利与全库恢复
