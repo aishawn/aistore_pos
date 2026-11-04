@@ -13,7 +13,7 @@
 - `python -m compileall -q shopfront_crawler/app`: PASS.
 - `git diff --check`: PASS.
 - UI full typecheck: PASS.
-- Targeted ESLint: 0 errors, 7 React Hook warnings.
+- Targeted ESLint: 0 errors, 8 React Hook warnings.
 - Compose YAML parse: PASS. Docker CLI was unavailable, so `docker compose config` was not run.
 - Dokploy auto-deploy for `7cff2e25` was triggered, but clone failed with `early EOF / unexpected disconnect` while receiving the repository. Deployment did not complete; live page acceptance: NOT RUN. Business writes: 0.
 
