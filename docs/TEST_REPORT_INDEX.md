@@ -22,6 +22,8 @@ Latest Shopfront SQLite lock follow-up: [2026-11-04 inventory request lock](test
 
 Latest Shopfront inventory finalization follow-up: [2026-11-04 complete inventory cleanup gate](test-sessions/2026-11-04-shopfront-inventory-finalization.md): crawler `test_pos_import_results.py` 28/28 PASS, compile and diff checks PASS. Full snapshots now finalize stale cleanup when one listed source row is quarantined, while preserving that row's warning. Online job 61 was cancelled during its pre-existing partial import; candidate deployment and post-deploy quantity reconciliation are pending.
 
+Latest Shopfront daily completeness/report refresh candidate: [2026-11-05 sync revision refresh](test-sessions/2026-11-05-shopfront-sync-refresh.md): reporting/cache and period tests 19/19, crawler schedule tests 3/3, Python compile and diff checks PASS. Full UI typecheck BLOCKED by incomplete local dependencies. Not deployed; formal company mapping and backup recovery are unverified; no Odoo writes.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.

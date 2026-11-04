@@ -9,6 +9,7 @@ export type SnapshotPeriod = ReportQueryPeriod | "dead_stock";
 export type ReportTarget = {
   vendorId: number; companyId: number; host: string; timezone: string;
   database: string; sampleDataClearedAt: string | null;
+  shopfrontStore?: string;
 };
 export type ReportScope = ReportTarget & { uid: number; permissionScope: string };
 export type ReportSnapshot = {
@@ -29,6 +30,7 @@ export function reportTargets(env = process.env): ReportTarget[] {
     const row = value as ReportTarget;
     if (!Number.isSafeInteger(row.vendorId) || row.vendorId < 1 || !Number.isSafeInteger(row.companyId) || row.companyId < 1
       || !/^[a-z0-9][a-z0-9.-]*(?::\d+)?$/.test(row.host) || !row.database || row.database !== env.ODOO_DATABASE
+      || (row.shopfrontStore != null && !/^[a-z0-9][a-z0-9-]*$/.test(row.shopfrontStore))
       || (row.sampleDataClearedAt != null && !Number.isFinite(Date.parse(row.sampleDataClearedAt)))) throw new Error("Invalid report target scope");
     new Intl.DateTimeFormat("en", { timeZone: row.timezone }).format();
     const identity = `${row.database}:${row.vendorId}:${row.companyId}:${row.host}`;
@@ -137,5 +139,91 @@ export async function invalidateReportTarget(target: ReportTarget) {
   const client = await reportRedis();
   if (!client) return;
   await client.set(REPORT_PREFIX + "revision:" + targetId(target), revision, { EX: SNAPSHOT_TTL });
-  await client.set(REPORT_PREFIX + "target:" + targetId(target), JSON.stringify(target), { EX: SNAPSHOT_TTL });
+  const targetKey = REPORT_PREFIX + "target:" + targetId(target);
+  const previous = await client.get(targetKey);
+  let enriched: Record<string, unknown> = {};
+  try { enriched = previous ? JSON.parse(previous) as Record<string, unknown> : {}; } catch { /* Replace malformed cached scope. */ }
+  await client.set(targetKey, JSON.stringify({ ...enriched, ...target,
+    ...(typeof enriched.uid === "number" ? { uid: enriched.uid } : {}),
+    ...(typeof enriched.permissionScope === "string" ? { permissionScope: enriched.permissionScope } : {}) }), { EX: SNAPSHOT_TTL });
+}
+
+export type ShopfrontSyncState = {
+  fromDay: string; toDay: string; runId: number | null; status: "completed" | "partial" | "failed";
+  updatedAt: string; revision: string;
+};
+
+export function summarizeShopfrontSyncDays(days: Record<string, ShopfrontSyncState>, fromDay: string, toDay: string): ShopfrontSyncState | null {
+  const expected: string[] = [];
+  const cursor = new Date(`${fromDay}T12:00:00Z`), end = new Date(`${toDay}T12:00:00Z`);
+  for (; cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) expected.push(cursor.toISOString().slice(0, 10));
+  const covered = expected.flatMap(day => days[day] ? [days[day]] : []);
+  if (!covered.length) return null;
+  const latest = [...covered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  let contiguousThrough: string | null = null;
+  for (const day of expected) {
+    if (days[day]?.status !== "completed") break;
+    contiguousThrough = day;
+  }
+  const status = expected.length > 0 && expected.every(day => days[day]?.status === "completed")
+    ? "completed" : covered.some(day => day.status === "completed") ? "partial" : latest.status;
+  const syncedThrough = contiguousThrough ?? new Date(new Date(`${fromDay}T12:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);
+  return { ...latest, fromDay, toDay: syncedThrough, status };
+}
+
+export async function readShopfrontSyncState(target: ReportTarget, fromDay?: string | null, toDay?: string | null): Promise<ShopfrontSyncState | null> {
+  const client = await reportRedis();
+  if (!client) return null;
+  try {
+    const raw = await client.get(REPORT_PREFIX + "source-sync:" + targetId(target));
+    if (!raw) return null;
+    const state = JSON.parse(raw) as ShopfrontSyncState | { days?: Record<string, ShopfrontSyncState> };
+    if ("days" in state && state.days) {
+      if (fromDay && toDay) return summarizeShopfrontSyncDays(state.days, fromDay, toDay);
+      let days: ShopfrontSyncState[];
+      days = Object.values(state.days);
+      if (!days.length) return null;
+      const latest = [...days].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      const completed = days.filter(day => day.status === "completed");
+      const min = days.reduce((value, day) => day.fromDay < value ? day.fromDay : value, latest.fromDay);
+      const max = completed.length ? completed.reduce((value, day) => day.toDay > value ? day.toDay : value, completed[0].toDay) : latest.toDay;
+      const cursor = new Date(`${min}T12:00:00Z`), end = new Date(`${max}T12:00:00Z`);
+      let hasGap = false;
+      for (; cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) if (!state.days![cursor.toISOString().slice(0, 10)]) hasGap = true;
+      return { ...latest, fromDay: min, toDay: max,
+        status: !hasGap && days.every(day => day.status === "completed") ? "completed" : completed.length ? "partial" : latest.status };
+    }
+    return state as ShopfrontSyncState;
+  } catch { return null; }
+}
+
+export async function recordShopfrontSync(target: ReportTarget, state: Omit<ShopfrontSyncState, "updatedAt" | "revision">) {
+  await invalidateReportTarget(target);
+  const client = await reportRedis();
+  if (!client) throw new Error("Report cache is unavailable");
+  const revision = await snapshotRevision(target);
+  const key = REPORT_PREFIX + "source-sync:" + targetId(target);
+  const previous = await client.get(key);
+  let saved: { days: Record<string, ShopfrontSyncState> } = { days: {} };
+  try {
+    const parsed = previous ? JSON.parse(previous) as { days?: Record<string, ShopfrontSyncState> } : null;
+    if (parsed?.days) saved.days = parsed.days;
+  } catch { /* Start a fresh per-day ledger when the cached value is malformed. */ }
+  const updatedAt = new Date().toISOString();
+  const from = new Date(`${state.fromDay}T12:00:00Z`), to = new Date(`${state.toDay}T12:00:00Z`);
+  for (const day = new Date(from); day <= to; day.setUTCDate(day.getUTCDate() + 1)) {
+    const businessDay = day.toISOString().slice(0, 10);
+    const old = saved.days[businessDay];
+    saved.days[businessDay] = { ...state, fromDay: businessDay, toDay: businessDay, status: state.status,
+      runId: state.runId ?? old?.runId ?? null, revision, updatedAt };
+  }
+  await client.set(key, JSON.stringify(saved), { EX: SNAPSHOT_TTL });
+  const targetKey = REPORT_PREFIX + "target:" + targetId(target);
+  const rawTarget = await client.get(targetKey);
+  if (rawTarget) {
+    const scope = JSON.parse(rawTarget) as ReportScope;
+    if (typeof scope.uid === "number" && typeof scope.permissionScope === "string") {
+      await Promise.all((['yesterday', 'last_week'] as const).map(period => enqueueReport(scope, period, true, true, true)));
+    }
+  }
 }

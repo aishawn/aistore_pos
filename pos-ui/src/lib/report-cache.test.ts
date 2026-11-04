@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getReportPeriodBounds } from "./report-period.ts";
-import { snapshotKey, snapshotFresh, reportScheduleDue, reportTargets, digest, type ReportScope, type ReportSnapshot } from "./report-snapshots.ts";
+import { snapshotKey, snapshotFresh, reportScheduleDue, reportTargets, digest, summarizeShopfrontSyncDays, type ReportScope, type ReportSnapshot, type ShopfrontSyncState } from "./report-snapshots.ts";
 import { cachedOdooRead, cachedReadPolicy, clearOdooReadCache, setOdooReadIdentity } from "./odoo-read-cache.ts";
 import { calculateReport, type ReportRpc } from "./report-data.ts";
 
@@ -47,6 +47,21 @@ test("targets require explicit valid database/company/tenant and timezone", () =
   for (const change of [{ database: "production" }, { companyId: 0 }, { vendorId: -1 }, { timezone: "invalid" }, { host: "https://wrong.invalid" }]) {
     assert.throws(() => reportTargets({ ODOO_DATABASE: "fixture", REPORT_SNAPSHOT_TARGETS: JSON.stringify([{ ...scope, ...change }]) }));
   }
+});
+
+test("Shopfront completeness is evaluated per requested business day and exposes gaps", () => {
+  const state = (day: string, status: ShopfrontSyncState["status"]): ShopfrontSyncState => ({
+    fromDay: day, toDay: day, runId: 7, status, updatedAt: `${day}T12:00:00Z`, revision: "r1",
+  });
+  const days = {
+    "2026-11-01": state("2026-11-01", "completed"),
+    "2026-11-02": state("2026-11-02", "partial"),
+    "2026-11-04": state("2026-11-04", "completed"),
+  };
+  assert.equal(summarizeShopfrontSyncDays(days, "2026-11-01", "2026-11-01")?.status, "completed");
+  assert.equal(summarizeShopfrontSyncDays(days, "2026-11-02", "2026-11-02")?.status, "partial");
+  assert.equal(summarizeShopfrontSyncDays(days, "2026-11-01", "2026-11-04")?.status, "partial");
+  assert.equal(summarizeShopfrontSyncDays(days, "2026-11-03", "2026-11-03"), null);
 });
 
 test("only whitelisted reads are cached; financial validation and immutable pagination remain live", () => {

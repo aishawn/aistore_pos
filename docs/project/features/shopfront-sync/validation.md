@@ -2,6 +2,13 @@
 
 更新日期：2026-11-04。代码候选基线：GitHub `main` 的 `f73c3417`；线上运行 SHA 尚未复核。
 
+## 2026-11-05 每日同步与缓存失效候选
+
+- 环境：本地 Windows；候选基线 `c2d2f617`，未部署。`python -m pytest tests/test_schedule.py -q`：3 passed；Node 24 下报表缓存/日期边界测试 19/19；`python -m compileall -q shopfront_crawler/app` 与 `git diff --check` 通过。
+- UI 完整 typecheck：NOT RUN 成功。`npm ci --ignore-scripts` 未完成；直接执行 TypeScript 时 Next 类型声明缺失。报表完整单测未完整通过，当前只引用定向 19/19 结果。
+- 线上只读核查：Shopfront 只有 `skr -> company 55/outlet 87` 映射；Odoo 查询可见 company 5、137；报表目标只发现 demo company 137；`aipos_uat`；备份主密钥未配置。业务写入 0，未执行数据补齐、刷新或部署。
+- 限制：尚无 SKR 与 demo 双目标映射证明，也没有可验证恢复的备份。不能宣称双站报表刷新或历史数据完整。
+
 ## 2026-11-04 库存收尾门槛回归
 
 - 代码候选基线：GitHub `main` `dfda8a93`，crawler working-tree patch；crawler 线上 SHA 未确认。POS public version endpoint 返回 frontend/backend `dfda8a93`。

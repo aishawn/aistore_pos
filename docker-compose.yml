@@ -211,6 +211,7 @@ services:
       ODOO_API_DATABASE: ${ODOO_API_DATABASE:-aipos_uat}
       ODOO_IMPORT_ENABLED: ${ODOO_IMPORT_ENABLED:-true}
       ODOO_BUSINESS_WRITE_ENABLED: ${ODOO_BUSINESS_WRITE_ENABLED:-false}
+      REPORT_SYNC_NOTIFICATION_URL: ${REPORT_SYNC_NOTIFICATION_URL:-https://skr.orithos.com.au/api/internal/shopfront-sync-complete}
       SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR: ${SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR:-}
     volumes:
       - shopfront-crawler-data:/data

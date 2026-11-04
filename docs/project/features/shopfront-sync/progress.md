@@ -2,6 +2,13 @@
 
 更新日期：2026-11-04。负责人：集成 owner 待指定。
 
+## 2026-11-05 每日数据优先与报表失效候选
+
+- 默认调度改为 Adelaide 06:00、23:00；窗口从上周一覆盖到昨日/当日。日常任务优先于历史任务，历史任务在分片后让位。
+- 导入完成或部分失败后向 POS 内部回调逐营业日写状态，按报表所查日期范围计算覆盖；报表缓存版本失效并排队预热昨日、上周。Dashboard/Reports 可见时每分钟检查一次，恢复焦点时立即检查。
+- 定向本地验证：报表缓存/营业日覆盖与日期边界 19/19，crawler 调度 3/3，Python compileall 和 diff whitespace 检查通过。完整 UI typecheck 未运行成功，依赖安装不完整；源码未部署。
+- 线上只读核查发现 crawler 的 SKR 映射为 company 55/outlet 87，Odoo 可见公司为 5 和 137，报表目标仅 demo company 137；备份主密钥未配置。未启动 Odoo 写入或全量补数。需先核实 SKR/demo 映射、Shopfront token 与灾备，再执行限定日期逐日对账。
+
 ## 2026-11-04 夜间同步时刻修复
 
 - Compose 原先只传 `SYNC_DAILY_HOUR`，但 crawler 实际读取 `SYNC_DAILY_HOURS`；因此部署配置无法控制多时刻计划，代码默认仍在 02:00、10:00、18:00 Adelaide 运行。
