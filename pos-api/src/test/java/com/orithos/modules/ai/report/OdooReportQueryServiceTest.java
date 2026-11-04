@@ -46,9 +46,9 @@ class OdooReportQueryServiceTest {
     }
 
     @Test
-    void salesReportUsesOnlyTheBoundOdooCompanyAndReadMethods() throws Exception {
+    void salesReportAllowsSignedRefundTotalsAndUsesOnlyBoundCompanyReadMethods() throws Exception {
         List<JsonNode> requests = startServer("""
-                [{"date_order:day":"2026-10-14","amount_total":125.50,"__count":2}]
+                [{"date_order:day":"2026-10-14","amount_total":100.00,"__count":3}]
                 """);
         VendorMapper vendors = mock(VendorMapper.class);
         when(vendors.findById(42L)).thenReturn(readyVendor(false));
@@ -63,7 +63,7 @@ class OdooReportQueryServiceTest {
         assertNull(result.error());
         assertEquals(1, result.rows().size());
         assertEquals("2026-10-14", result.rows().get(0).get("date"));
-        assertEquals(0, new BigDecimal("125.50").compareTo((BigDecimal) result.rows().get(0).get("sales")));
+        assertEquals(0, new BigDecimal("100.00").compareTo((BigDecimal) result.rows().get(0).get("sales")));
         assertEquals(2, requests.size());
         assertEquals("service", requests.get(0).path("params").path("login").asText());
         JsonNode query = requests.get(1).path("params");
@@ -73,18 +73,39 @@ class OdooReportQueryServiceTest {
                 MAPPER.getTypeFactory().constructCollectionType(List.class, Integer.class)));
         assertEquals(77, query.path("kwargs").path("context").path("force_company").asInt());
         String domain = query.path("args").get(0).toString();
+        assertFalse(domain.contains("\"amount_total\",\">\",0"));
+        assertFalse(domain.contains("\"is_refund\""));
         String fromUtc = day.atStartOfDay().atZone(com.orithos.common.AustraliaTime.ZONE)
                 .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         String toUtc = day.plusDays(1).atStartOfDay().atZone(com.orithos.common.AustraliaTime.ZONE)
                 .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         assertTrue(domain.contains("\"company_id\""));
-        assertTrue(domain.contains("\"is_refund\",\"=\",false"));
+        assertFalse(domain.contains("\"is_refund\""));
         assertTrue(domain.contains(fromUtc));
         assertTrue(domain.contains(toUtc));
         assertFalse(requests.stream().anyMatch(node -> {
             String method = node.path("params").path("method").asText();
             return Set.of("create", "write", "unlink").contains(method);
         }));
+    }
+
+    @Test
+    void averageTicketKeepsRefundsOutOfPositiveSalesDenominator() throws Exception {
+        List<JsonNode> requests = startServer("""
+                [{"amount_total":125.50,"__count":2}]
+                """);
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        LocalDate day = LocalDate.of(2026, 10, 14);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.Result result = service.query(tenant, "report_aov", Map.of(),
+                new ReportPeriodResolver.Window(day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1));
+
+        assertNull(result.error());
+        String domain = requests.get(1).path("params").path("args").get(0).toString();
+        assertTrue(domain.contains("\"amount_total\",\">\",0"));
     }
 
     @Test

@@ -456,7 +456,7 @@ public class OdooReportQueryService {
         String category = ReportTemplateRegistry.sanitizeCategory(slots == null ? null : slots.get("category"));
         if (category == null) {
             List<Map<String, Object>> grouped = readGroup(session, "pos.order",
-                    orderDomain(companyId, vendor, window, timezone(context)),
+                    signedSalesOrderDomain(companyId, vendor, window, timezone(context)),
                     List.of("amount_total:sum"), List.of("date_order:day"), context, 367);
             if (grouped.size() > 366) return null;
             List<Map<String, Object>> rows = new ArrayList<>();
@@ -651,13 +651,19 @@ public class OdooReportQueryService {
 
     private List<Object> orderDomain(long companyId, Vendor vendor,
                                     ReportPeriodResolver.Window window, ZoneId timezone) {
+        List<Object> domain = signedSalesOrderDomain(companyId, vendor, window, timezone);
+        domain.add(List.of("amount_total", ">", 0));
+        domain.add(List.of("is_refund", "=", false));
+        return domain;
+    }
+
+    private List<Object> signedSalesOrderDomain(long companyId, Vendor vendor,
+                                                ReportPeriodResolver.Window window, ZoneId timezone) {
         List<Object> domain = new ArrayList<>();
         domain.add(List.of("company_id", "=", companyId));
         domain.add(List.of("date_order", ">=", utc(window.from(), timezone)));
         domain.add(List.of("date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("state", "in", PAID_STATES));
-        domain.add(List.of("amount_total", ">", 0));
-        domain.add(List.of("is_refund", "=", false));
         excludeClearedDemoSeed(domain, companyId, vendor, "uuid");
         return domain;
     }
@@ -669,8 +675,6 @@ public class OdooReportQueryService {
         domain.add(List.of("order_id.date_order", ">=", utc(window.from(), timezone)));
         domain.add(List.of("order_id.date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("order_id.state", "in", PAID_STATES));
-        domain.add(List.of("order_id.amount_total", ">", 0));
-        domain.add(List.of("order_id.is_refund", "=", false));
         excludeClearedDemoSeed(domain, companyId, vendor, "order_id.uuid");
         if (category != null) {
             List<Object> matches = new ArrayList<>();
