@@ -1,5 +1,11 @@
 # 历史毛利验证
 
+## 2026-11-05 页面刷新跟进
+
+- 环境：本地 Node 22.22.2（低于仓库要求 Node >=24）；UI typecheck PASS，`npm run test:unit` 157/157 PASS；改动文件定向 ESLint 0 errors / 16 hooks warnings，新增 hook 无 warning；`git diff --check` PASS。
+- 覆盖源码：单调同步 stamp、跨标签页广播，以及产品/库存、销售历史/明细、采购、Reports、成本审计新批次刷新。成本旧批次不可变。
+- 在线真实双站验收、生产构建和正式 Shopfront 同步未运行；当前终端未配置 SKR/demo 登录与 Dokploy 凭据。源数据映射、完整性和 Odoo 业务数据未通过本次 UI 变更核验。
+
 ## 2026-11-05 同步后 revision 刷新候选
 
 - 环境：本地 Node 24；来源基线 `c2d2f617`，候选未部署。report cache + period 测试 19/19 PASS，包含逐营业日完成、失败日与缺日；Adelaide DST/周边界覆盖在该 19 项中。

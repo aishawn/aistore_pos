@@ -24,6 +24,7 @@ import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/l
 import type { ReportPeriod } from "@/lib/report-period";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { DashboardInsightsPanel } from "@/components/admin/DashboardInsightsPanel";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 
 type RecentSale = {
   id: number;
@@ -280,6 +281,12 @@ export function OrithosReportsDashboardPage() {
       }
     }
   }, []);
+
+  useShopfrontSyncRefresh(() => {
+    periodCache.current.clear();
+    void load(true, periodRef.current);
+    void loadDeadStock(true);
+  });
 
   useEffect(() => {
     const saved = new URLSearchParams(location.search).get("period");

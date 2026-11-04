@@ -24,6 +24,8 @@ Latest Shopfront inventory finalization follow-up: [2026-11-04 complete inventor
 
 Latest Shopfront daily completeness/report refresh candidate: [2026-11-05 sync revision refresh](test-sessions/2026-11-05-shopfront-sync-refresh.md): reporting/cache and period tests 19/19, crawler schedule tests 3/3, Python compile and diff checks PASS. Full UI typecheck BLOCKED by incomplete local dependencies. Not deployed; formal company mapping and backup recovery are unverified; no Odoo writes.
 
+Latest Shopfront page refresh follow-up: [2026-11-05 page refresh](test-sessions/2026-11-05-shopfront-page-refresh.md): UI typecheck PASS, existing unit suites 157/157, targeted ESLint 0 errors / 16 warnings, diff check PASS. Candidate refreshes products/inventory, sales, purchases, reports, and a new immutable cost audit on sync stamp advance; live two-store verification is pending deployment and credentials.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.

@@ -10,6 +10,7 @@ import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { StockTransfersPage } from "@/components/admin/StockTransfersPage";
 import { CreateStockTransferPage } from "@/components/admin/CreateStockTransferPage";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -182,6 +183,11 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
   }, [debouncedQuery, state]);
+
+  useShopfrontSyncRefresh(() => {
+    setRefreshKey((value) => value + 1);
+    if (detailPurchaseId !== null) void openDetail(detailPurchaseId);
+  });
 
   useEffect(() => {
     const filters = JSON.stringify([debouncedQuery, state]);

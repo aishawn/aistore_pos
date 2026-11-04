@@ -6,6 +6,7 @@ import { fetchOdooRoute } from "@/lib/odoo-api";
 import { costAuditCsv, type CostAudit, type AuditLine } from "@/lib/cost-reconciliation";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { readJsonApiResponse } from "@/lib/json-api-response";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 
 const issueLabels: Record<string, string> = {
   NO_STABLE_SOURCE_ID: "Product source ID missing", NO_PRIOR_RECEIPT: "No receipt before sale",
@@ -47,6 +48,7 @@ export function CostReconciliationPanel() {
   const [limit, setLimit] = useState("20"), [filter, setFilter] = useState("all"), [query, setQuery] = useState("");
   const [page, setPage] = useState(0), [expanded, setExpanded] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
+  const syncRefreshPending = useRef(false);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -69,8 +71,20 @@ export function CostReconciliationPanel() {
       }
       if (!request.signal.aborted) setData(body as CostAudit);
     } catch (cause) { if (!request.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not generate cost audit."); }
-    finally { if (!request.signal.aborted) setBusy(false); }
+    finally {
+      if (!request.signal.aborted) {
+        setBusy(false);
+        if (syncRefreshPending.current) {
+          syncRefreshPending.current = false;
+          queueMicrotask(() => void generate());
+        }
+      }
+    }
   }
+  useShopfrontSyncRefresh(() => {
+    if (busy) syncRefreshPending.current = true;
+    else void generate();
+  });
   const rows = data?.products.filter(p => (filter === "all" || p.status === filter) && `${p.name} ${p.id}`.toLowerCase().includes(query.toLowerCase())) ?? [];
   return <div className="flex flex-col gap-4 text-sm">
     <p className="leading-6 text-[var(--oh-muted)]">Compare sales with the latest receipt available before each sale. Receipt prices are evidence for review; sales costs retain their original valuation method.</p>

@@ -17,6 +17,8 @@ export function readShopfrontSyncStamp(): number | null {
 
 export function writeShopfrontSyncStamp(at: number) {
   if (typeof window === "undefined" || !Number.isFinite(at)) return;
+  const previous = readShopfrontSyncStamp();
+  if (previous !== null && at <= previous) return;
   try { localStorage.setItem(STORAGE_KEY, String(at)); } catch { /* ignore */ }
   try {
     document.cookie = `${COOKIE_NAME}=${encodeURIComponent(String(at))}; path=/; max-age=86400; samesite=lax`;

@@ -7,6 +7,7 @@ import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
 import { AlertCircle, Download, FileText, LoaderCircle, RefreshCw, X } from "lucide-react";
 import { searchOdooDailySales, type OdooDailySaleRecord, type OdooSalesPeriodFilter, type OdooSalesStatusFilter } from "@/lib/odoo-api";
 import { formatOdooGroupedDate } from "@/lib/odoo-date";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency: string) => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -54,6 +55,11 @@ export function OdooSalesHistoryPage({ variant = "page", onRequestClose, initial
     } catch (cause) { if (current === revision.current) setError(cause instanceof Error ? cause.message : "Could not load daily sales."); }
     finally { if (current === revision.current) { busy.current = false; setLoading(false); setLoadingMore(false); } }
   }, [fromDate, period, status, toDate]);
+
+  useShopfrontSyncRefresh(() => {
+    if (view === "lines") setLinesRefreshKey((value) => value + 1);
+    else void loadSales();
+  });
 
   useEffect(() => {
     setItems([]); setHasNext(false); nextOffset.current = 0;

@@ -30,10 +30,10 @@ import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
 import { OdooCategoriesPanel } from "@/components/admin/OdooCategoriesPanel";
 import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 import { ProductImage } from "@/components/ProductImage";
 import { prepareProductImage } from "@/lib/product-image";
 import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
-import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
 import {
   friendlyProductName,
@@ -80,7 +80,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     CATALOGUE_VIEWS.some((view) => view.value === requestedView) ? requestedView as CatalogueView : "all",
   );
   const [shopfrontSyncBanner, setShopfrontSyncBanner] = useState(false);
-  const catalogueLoadedAt = useRef(0);
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
   const [sortBy, setSortBy] = useState<InventorySort>("name");
   const [sortDirection, setSortDirection] = useState<InventoryDirection>("asc");
@@ -138,30 +137,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setCatalogueView(requestedView as CatalogueView);
     }
   }, [requestedView]);
-  useEffect(() => {
-    catalogueLoadedAt.current = Date.now();
-    void fetchShopfrontSyncStamp();
-    const onSync = () => {
-      if (catalogueLoadedAt.current && Date.now() - catalogueLoadedAt.current > 2000) {
-        setShopfrontSyncBanner(true);
-      }
-    };
-    window.addEventListener("orithos-shopfront-sync", onSync);
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void fetchShopfrontSyncStamp().then((remote) => {
-        if (remote && remote > catalogueLoadedAt.current) setShopfrontSyncBanner(true);
-      });
-    }, 5 * 60_000);
-    return () => {
-      window.removeEventListener("orithos-shopfront-sync", onSync);
-      window.clearInterval(timer);
-    };
-  }, []);
-  useEffect(() => {
-    const stamp = readShopfrontSyncStamp();
-    if (stamp && stamp > catalogueLoadedAt.current) setShopfrontSyncBanner(true);
-  }, [refreshKey]);
+  useShopfrontSyncRefresh(() => {
+    setShopfrontSyncBanner(true);
+    setRefreshKey((value) => value + 1);
+  });
   useLayoutEffect(() => {
     if (!importOpen || categoryLoading || importBusy) return;
     let attempts = 0;
@@ -645,12 +624,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
           {shopfrontSyncBanner && (
-            <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
-              <span>Shopfront catalogue sync finished · refresh to load updated stock.</span>
-              <button type="button" onClick={() => { setShopfrontSyncBanner(false); setRefreshKey((value) => value + 1); }} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-sky-300 bg-white px-3 font-semibold text-sky-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700">
-                <RefreshCw size={14} /> Refresh catalogue
-              </button>
-            </div>
+            <p role="status" className="shrink-0 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">Shopfront sync finished · catalogue and stock were refreshed.</p>
           )}
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && items.length > 0 && (!inventoryReport || Boolean(snapshotId.current)))} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
