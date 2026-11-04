@@ -207,6 +207,14 @@ try {
     ? [Number(exactDaily.salesAmount), Number(exactDaily.netSales)] : [];
   const exactAssistantRevenueMatch = exactSalesAssistant.code !== 0 ? null
     : exactExpectedAmounts.some((amount) => exactAnswerAmounts.some((answer) => Math.abs(amount - answer) < 0.005));
+  const exactTraceability = {
+    dateOrRange: /\b2026-10-16\b|\b16\s+Oct(?:ober)?\s+2026\b/i.test(exactAnswerText),
+    dataAsOf: Boolean(exactSalesAssistant.dataAsOf || /data (?:checked|as of|through)/i.test(exactAnswerText)),
+    storeScope: Boolean(exactSalesAssistant.storeScope
+      || (report.company && exactAnswerText.includes(report.company))),
+    dataSource: Boolean(exactSalesAssistant.dataSource)
+      || exactSalesAssistant.cards.some((card) => Boolean(card.source)),
+  };
   results = {
     generatedAt: new Date().toISOString(),
     target: base,
@@ -257,6 +265,9 @@ try {
       ...yesterdayReconciliation,
     },
     exactDateSalesQuestion: {
+      status: exactSalesAssistant.httpStatus >= 200 && exactSalesAssistant.httpStatus < 300
+        && exactSalesAssistant.code === 0 && exactAssistantRevenueMatch === true
+        && Object.values(exactTraceability).every(Boolean) ? "PASS" : "FAIL",
       businessDate: exactDate,
       ...exactSalesAssistant,
       directSalesDailyApi: {
@@ -268,12 +279,7 @@ try {
       directRevenueCandidates: exactExpectedAmounts,
       amountCandidates: exactAnswerAmounts,
       assistantRevenueMatch: exactAssistantRevenueMatch,
-      traceability: {
-        dateOrRange: /\b2026-10-16\b|\b16\s+Oct(?:ober)?\s+2026\b/i.test(exactAnswerText),
-        dataAsOf: Boolean(exactSalesAssistant.dataAsOf || /data (?:checked|as of|through)/i.test(exactAnswerText)),
-        storeScope: Boolean(report.company && exactAnswerText.includes(report.company)),
-        dataSource: exactSalesAssistant.cards.some((card) => Boolean(card.source)),
-      },
+      traceability: exactTraceability,
     },
     weeklySalesQuestion: {
       ...weeklySalesAssistant,
@@ -327,11 +333,15 @@ console.log(JSON.stringify({
     traceability: results.salesQuestion.traceability,
   },
   exactDateSalesQuestion: {
-    status: results.exactDateSalesQuestion.httpStatus,
+    status: results.exactDateSalesQuestion.status,
+    httpStatus: results.exactDateSalesQuestion.httpStatus,
     code: results.exactDateSalesQuestion.code,
     intent: results.exactDateSalesQuestion.intent,
     answer: results.exactDateSalesQuestion.answer,
     date: results.exactDateSalesQuestion.businessDate,
+    dataAsOf: results.exactDateSalesQuestion.dataAsOf,
+    dataSource: results.exactDateSalesQuestion.dataSource,
+    storeScope: results.exactDateSalesQuestion.storeScope,
     directRevenueCandidates: results.exactDateSalesQuestion.directRevenueCandidates,
     answerAmountCandidates: results.exactDateSalesQuestion.amountCandidates,
     assistantRevenueMatch: results.exactDateSalesQuestion.assistantRevenueMatch,

@@ -1,5 +1,15 @@
 # AI 销售预测与补货交接（2026-11-04）
 
+## 2026-11-04 14:58 UTC 当前线上只读回归
+
+- SKR 和 Demo 登录、Odoo session、AI 问答和补货读取均完成；两店前后端运行 `4d7fc99e0085a469e8da1e94c42f1b18c3afa9a7`，与 GitHub `main` 一致。问答回归页面错误数均为 0。
+- 精确日期问答 `2026-10-16` 两店均返回 AUD `7,738.14`，与 `/api/odoo/sales-daily` 一致。响应包含 `dataAsOf=2026-10-17T00:00+10:30`、`dataSource=odoo`、`storeScope=current_authenticated_store`；日期、数据时间、门店范围、来源四项均通过。前端 `SellAiPanel` 会展示这些元数据。
+- 昨日（2026-11-04）两店销售问答均为 AUD `0`，与只读 dashboard API 一致；上周 SKR AUD `27,857.38`、Demo AUD `25,571.92`，均与各自直接 API 一致，范围、时间、门店和来源齐全。退款净额修复在当前运行时复验通过。
+- “What do we need to buy?”仍返回导航 `/stock/replenishment`，没有生成采购建议；响应 `writeRequests=[]`。两店补货只读探针均 PASS：补货 GET 为 HTTP 200，目录完整，`nonGetOdooCalls=[]`、`writeRequests=[]`；未创建 RFQ 或采购单。
+- 预测服务均为 `AVAILABLE`，来源 `odoo_pos_order_line_local_complete_days_v2`；SKU 目录覆盖完整（SKR 2,263，Demo 12,986）。但整体质量状态为 `REVIEW`：SKR 有效预测 697、历史不足 1,566；Demo 有效预测 2,086、历史不足 10,900，所有商品都需审核。成本政策是待审核的默认假设，业务成本基于模拟周期，不代表实际节省。
+- 新鲜度接口最新业务日均为 `2026-11-05`、无缺日/无效快照。SKR 原生库存观察 5 日（2026-11-01 至 11-05），覆盖 `13,292/13,292` 商品、`1/1` 仓库；Demo 观察 4 日（2026-11-02 至 11-05），覆盖 `12,987/12,987` 商品、`2/2` 仓库。两店供应商交期覆盖均为 `0%`，状态继续 `REVIEW`，不可做可信 fill-rate/stockout 或成本放行。
+- 修正了精确日期 UAT 脚本：此前只检查答案文本和卡片，忽略了响应顶层的 `dataSource` / `storeScope`，造成错误 FAIL；现在从 API 元数据验证并汇总为明确 PASS/FAIL。代码结果保存在忽略目录 `.local/ai-eval/online-ai-readonly-after-current-main-2026-11-04.json`、`online-ai-readonly-demo-after-current-main-2026-11-04.json` 和 `replenishment-readonly-after-runtime-2026-11-04.json`。
+
 ## 当前目标续验（2026-11-04）
 
 ### 12:16 UTC 只读快照 freshness 复核
