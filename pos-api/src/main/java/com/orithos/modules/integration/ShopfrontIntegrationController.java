@@ -620,15 +620,18 @@ public class ShopfrontIntegrationController {
             for (JsonNode sale : items) {
                 String external = text(sale, "external_id");
                 if (external.isBlank()) continue;
+                boolean sourceComplete = sale.path("source_complete").asBoolean(false);
                 String sql = postgres
                         ? "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,external_id) DO UPDATE SET invoice_id=EXCLUDED.invoice_id,status=EXCLUDED.status,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,total_price=EXCLUDED.total_price,total_tax=EXCLUDED.total_tax,total_discount=EXCLUDED.total_discount,total_cost=EXCLUDED.total_cost,customer_reference=EXCLUDED.customer_reference,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                         : "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE invoice_id=VALUES(invoice_id),status=VALUES(status),created_at=VALUES(created_at),updated_at=VALUES(updated_at),total_price=VALUES(total_price),total_tax=VALUES(total_tax),total_discount=VALUES(total_discount),total_cost=VALUES(total_cost),customer_reference=VALUES(customer_reference),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
                 jdbc.update(sql, store, external, text(sale,"invoice_id"), text(sale,"status"), text(sale,"created_at"), text(sale,"updated_at"), decimal(sale,"total_price"), decimal(sale,"total_tax"), decimal(sale,"total_discount"), decimal(sale,"total_cost"), text(sale,"customer_reference"), objectMapper.writeValueAsString(sale));
                 JsonNode saleItems = sale.path("items");
+                Set<String> currentLineKeys = new HashSet<>();
                 if (saleItems.isArray()) {
                     int index = 0;
                     for (JsonNode item : saleItems) {
-                        String lineKey = item.hasNonNull("id") ? item.get("id").asText() : Integer.toString(index);
+                        String lineKey = childKey(item, "id", index);
+                        currentLineKeys.add(lineKey);
                         String itemSql = postgres
                                 ? "INSERT INTO shopfront_sale_item (store_key,external_sale_id,line_key,source_product_id,product_name,quantity,unit_price,line_total,cost,tax,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,external_sale_id,line_key) DO UPDATE SET source_product_id=EXCLUDED.source_product_id,product_name=EXCLUDED.product_name,quantity=EXCLUDED.quantity,unit_price=EXCLUDED.unit_price,line_total=EXCLUDED.line_total,cost=EXCLUDED.cost,tax=EXCLUDED.tax,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                                 : "INSERT INTO shopfront_sale_item (store_key,external_sale_id,line_key,source_product_id,product_name,quantity,unit_price,line_total,cost,tax,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE source_product_id=VALUES(source_product_id),product_name=VALUES(product_name),quantity=VALUES(quantity),unit_price=VALUES(unit_price),line_total=VALUES(line_total),cost=VALUES(cost),tax=VALUES(tax),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
@@ -636,11 +639,14 @@ public class ShopfrontIntegrationController {
                         index++;
                     }
                 }
+                if (sourceComplete) reconcileSaleChildren("shopfront_sale_item", "line_key", store, external, currentLineKeys);
                 JsonNode payments = sale.path("payments");
+                Set<String> currentPaymentKeys = new HashSet<>();
                 if (payments.isArray()) {
                     int index = 0;
                     for (JsonNode payment : payments) {
-                        String paymentKey = payment.hasNonNull("id") ? payment.get("id").asText() : Integer.toString(index);
+                        String paymentKey = childKey(payment, "id", index);
+                        currentPaymentKeys.add(paymentKey);
                         String paymentSql = postgres
                                 ? "INSERT INTO shopfront_sale_payment (store_key,external_sale_id,payment_key,amount,status,subtype,raw_payload) VALUES (?,?,?,?,?,?,?) ON CONFLICT (store_key,external_sale_id,payment_key) DO UPDATE SET amount=EXCLUDED.amount,status=EXCLUDED.status,subtype=EXCLUDED.subtype,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                                 : "INSERT INTO shopfront_sale_payment (store_key,external_sale_id,payment_key,amount,status,subtype,raw_payload) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE amount=VALUES(amount),status=VALUES(status),subtype=VALUES(subtype),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
@@ -648,6 +654,7 @@ public class ShopfrontIntegrationController {
                         index++;
                     }
                 }
+                if (sourceComplete) reconcileSaleChildren("shopfront_sale_payment", "payment_key", store, external, currentPaymentKeys);
             }
         } else if ("suppliers".equals(type)) {
             for (JsonNode item : items) {
@@ -681,6 +688,26 @@ public class ShopfrontIntegrationController {
                 jdbc.update(sql, store, source, text(item, "supplier_source_id"), text(item, "status"), text(item, "order_date"), decimal(item, "total_cost"), objectMapper.writeValueAsString(item.path("raw_payload").isMissingNode() ? item : item.path("raw_payload")));
             }
         }
+    }
+
+    private void reconcileSaleChildren(String table, String keyColumn, String store, String external, Set<String> currentKeys) {
+        if (currentKeys.isEmpty()) {
+            jdbc.update("DELETE FROM " + table + " WHERE store_key = ? AND external_sale_id = ?", store, external);
+            return;
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(currentKeys.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(store);
+        args.add(external);
+        args.addAll(currentKeys);
+        jdbc.update("DELETE FROM " + table + " WHERE store_key = ? AND external_sale_id = ? AND " + keyColumn + " NOT IN (" + placeholders + ")", args.toArray());
+    }
+
+    private String childKey(JsonNode child, String idField, int index) {
+        JsonNode id = child.path(idField);
+        if (id.isMissingNode() || id.isNull()) id = child.path("raw_payload").path(idField);
+        if (id.isMissingNode() || id.isNull()) id = child.path("raw_payload").path("item").path(idField);
+        return id.isMissingNode() || id.isNull() || id.asText().isBlank() ? Integer.toString(index) : id.asText();
     }
 
     private String text(JsonNode node, String field) {

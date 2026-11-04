@@ -1709,7 +1709,7 @@ async def push_pos_snapshot(
 
     def sale_payload(sale: Sale) -> dict:
         raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
-        return {"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
+        return {"external_id": sale.shopfront_sale_id, "source_complete": True, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
             **sale_line_payload(item),
         } for item in sale.items]}
 
@@ -2841,7 +2841,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else catalog_raw.get("barcodes", [])
         return {"source_product_id": item.shopfront_product_id, "name": name, "sku": (catalog.sku if catalog else None), "barcodes": barcodes or [], "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": raw}
 
-    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [repair_line(i) for i in x.items]} for x in rows]})
+    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "source_complete": True, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "payments": (x.raw_payload or {}).get("payments", []) if isinstance(x.raw_payload, dict) else [], "items": [repair_line(i) for i in x.items]} for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
