@@ -1,6 +1,12 @@
 # 库存同步验证
 
-更新日期：2026-11-03。源码候选：crawler `4fb02f65`；Odoo `41dab563`。线上 runtime SHA：未记录。
+更新日期：2026-11-04。源码候选：crawler `4fb02f65`；Odoo `41dab563`。线上 runtime SHA：未记录。
+
+## POS 导航与库存列表候选（2026-11-04）
+
+- 源码候选：本轮 Git commit 待记录；仅修改 `pos-ui` 和本模块文档，未触及 API 或 Odoo 库存数据。
+- 本地 Node 24 `tsc --noEmit`：通过；四个改动 TSX 文件定向 ESLint：0 errors、14 warnings（现有 React effect 同步和 `aria-sort` button 警告）。结果仅说明静态源码检查。
+- 线上入口、负库存深链、权限差异和 runtime SHA：待 main 部署后只读验收；没有业务数据写入。
 
 ## 本地验证
 

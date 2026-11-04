@@ -2,6 +2,13 @@
 
 更新日期：2026-11-03。状态：实现候选，线上尚未验收。
 
+## POS 库存导航职责（2026-11-04）
+
+- Sidebar 保持不变；Products 的 More 菜单提供 Stock list 直达入口，要求 `stock.products.view`，不依赖导入或价目表权限。
+- Stock list 展示商品、分类、在手数量/单位和零售价；数量为只读，商品名/零售价编辑要求 `stock.products.edit`。采购收货通过 Purchases 订单流程完成。
+- `/reports/inventory` 负责库存分析和异常筛选。Dashboard 库存总数进入库存报表，负库存提示带 `view=negative-stock` 深链；Products 与库存报表共用筛选视图并保留 URL 状态。
+- 这项导航/呈现调整不改变 Odoo 库存来源、库存写入规则或已有 `/stock/list` 路由。未部署前不代表线上入口已更新。
+
 ## 来源与目标
 
 Shopfront 是当前库存快照来源。crawler 本地镜像供 POS staging 和 Odoo 集成消费；Odoo 的库存数量在 company/location 映射范围内校正。历史销售重放不得再次扣减当前库存。

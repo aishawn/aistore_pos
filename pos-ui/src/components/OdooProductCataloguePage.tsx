@@ -73,7 +73,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [catalogueView, setCatalogueView] = useState<CatalogueView>("all");
+  const requestedView = searchParams.get("view");
+  const [catalogueView, setCatalogueView] = useState<CatalogueView>(() =>
+    CATALOGUE_VIEWS.some((view) => view.value === requestedView) ? requestedView as CatalogueView : "all",
+  );
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
   const [sortBy, setSortBy] = useState<InventorySort>("name");
   const [sortDirection, setSortDirection] = useState<InventoryDirection>("asc");
@@ -168,7 +171,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     const parsed = Number(requestedCategoryId);
     if (Number.isSafeInteger(parsed) && parsed > 0) setCategoryId(parsed);
   }, [requestedCategoryId]);
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
@@ -366,6 +368,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     requestRevision.current += 1;
     setLoading(true);
     setCatalogueView(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "all") params.delete("view"); else params.set("view", value);
+    const path = inventoryReport ? "/reports/inventory" : "/products";
+    router.replace(`${path}${params.size ? `?${params}` : ""}`, { scroll: false });
   }
 
   function clearFilters() {
@@ -375,6 +381,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setDebouncedQuery("");
     setCategoryId(null);
     setCatalogueView("all");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("q");
+    params.delete("categoryId");
+    params.delete("view");
+    const path = inventoryReport ? "/reports/inventory" : "/products";
+    router.replace(`${path}${params.size ? `?${params}` : ""}`, { scroll: false });
     setRefreshKey((value) => value + 1);
   }
 
@@ -520,7 +532,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           </button>
           {(canAuditCosts || hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
           {canAuditCosts && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("cost-reconciliation"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Cost Reconciliation</button>}
-          {hasPermission("stock.products.view") && <><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("catalogue"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Catalogue</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("inventory"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Inventory</button></>}
+          {hasPermission("stock.products.view") && <><Link href="/stock/list" onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stock list</Link><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("catalogue"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Catalogue</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("inventory"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Inventory</button></>}
           {hasPermission("stock.stocktake") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stocktake"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stocktake</button>}
           {hasPermission("stock.products.edit") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("categories"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Manage Categories</button>}
           {hasPermission("stock.products.import_export") && <><button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
