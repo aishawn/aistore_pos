@@ -13,6 +13,12 @@ Shopfront API -> crawler 数据库 -> POS staging / Odoo 同步镜像。crawler 
 - 全历史销售对账仅写 POS/Odoo 镜像，不写正式业务销售、库存或商品。当前库存由独立完整库存快照负责。
 - 任务按 250 笔销售分批，持久化偏移并使用幂等 upsert，失败可从已保存进度继续。
 
+## 正式销售回执
+
+- `sales_reconcile` 明确关闭 Odoo 正式业务写入，只核对 POS/Odoo 同步镜像；不得把这类任务描述为正式销售已补齐。
+- 是否要求 Odoo 正式订单回执，必须依据本次任务的有效 `odoo_business_write` 值，而不是全局配置值。其它启用正式写入的销售同步仍必须核对 imported、updated 和允许跳过的订单总数。
+- 任务结果中的写入标记和阶段名称必须反映本次任务实际模式，区分 `odoo_business`、`odoo_mirror` 和 `pos_mirror`。
+
 ## 失败与数据缺失
 
 API 认证失败、来源分页不完整、批次失败或目标 coverage 不一致，都不能标记为数据完整。成本、图片、品牌等源字段缺失时保留缺失，不推测填充。

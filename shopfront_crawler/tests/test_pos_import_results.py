@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine
@@ -225,6 +226,60 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
     assert len(client.sales_payloads) == 1
     assert client.sales_payloads[0]["items"][0]["external_id"] == "sale-1"
     assert client.sales_payloads[0]["items"][0]["items"][0]["name"] == "Test wine"
+
+
+@pytest.mark.asyncio
+async def test_sales_reconcile_does_not_require_formal_order_receipt(db_session, monkeypatch):
+    seed_snapshot(db_session)
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def upsert_products(self, payload):
+            return {"data": {"upserted": len(payload["items"])}}
+
+        async def replace_inventory(self, payload):
+            return {"data": {"replaced": len(payload["items"])}}
+
+        async def upsert_sales(self, payload):
+            return {"data": {"upserted": len(payload["items"])}}
+
+        async def close(self):
+            pass
+
+    class FakeOdooClient:
+        business_write = None
+
+        def __init__(self, base_url, token, database, enabled, business_write, fallback_token=""):
+            FakeOdooClient.business_write = business_write
+
+        async def sync(self, import_type, store_key, items, **kwargs):
+            return {"result": {"ok": True, "business": None}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main, "OdooSyncClient", FakeOdooClient)
+    monkeypatch.setattr(main.settings, "odoo_import_enabled", True)
+    monkeypatch.setattr(main.settings, "odoo_api_base_url", "https://odoo.test")
+    monkeypatch.setattr(main.settings, "odoo_api_token", "test-token")
+    monkeypatch.setattr(main.settings, "odoo_api_database", "aipos_uat")
+    monkeypatch.setattr(main.settings, "odoo_business_write_enabled", True)
+    monkeypatch.setattr(main.settings, "pos_api_mirror_base_url", "")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_token", "")
+
+    result = await main.push_pos_snapshot(
+        db_session,
+        "skr",
+        job=SimpleNamespace(job_type="sales_reconcile", status="queued", payload={}),
+    )
+
+    assert result["status"] == "completed"
+    assert result["odoo_business_write"] is False
+    assert result["odoo_sales"] == {"imported": 0, "updated_orders": 0, "skipped": 0, "batches": 0}
+    assert FakeOdooClient.business_write is False
 
 
 @pytest.mark.asyncio

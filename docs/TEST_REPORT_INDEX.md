@@ -37,6 +37,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | Suite ID | Latest session | Result | Source SHA | Runtime SHA | Evidence | Next action |
 |---|---|---|---|---|---|---|
+| `SHP-001` (formal sale receipt mode) | 2026-11-04-shopfront-business-write-receipt | PASS: 27 crawler tests; online state BLOCKED | `007064cc` plus candidate diff | Not verified | [Session](test-sessions/2026-11-04-shopfront-business-write-receipt.md) | Deploy exact candidate; read run 173; separately authorize and verify formal sale backfill |
 | `UI-001` (inventory navigation static subset) | 2026-11-04-inventory-navigation | PASS: TypeScript; ESLint 0 errors / 14 warnings | Candidate pending commit | Not deployed | [Session](test-sessions/2026-11-04-inventory-navigation.md) | Deploy main; verify route access, permissions and SHA |
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
@@ -76,6 +77,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-04-ai-answer-provenance | 2026-11-04 | Assistant source and returned-date visibility | Local UI 153/153, typecheck and targeted lint PASS; online pending; writes 0 | [Report](test-sessions/2026-11-04-ai-answer-provenance.md) |
 | 2026-11-04-shopfront-sales-mirror-gap | 2026-11-04 | SKR daily sales source/mirror gap and idempotent replay fix | 19 crawler tests PASS; online source verified; deployment and mirror repair pending | [Report](test-sessions/2026-11-04-shopfront-sales-mirror-gap.md) |
 | 2026-11-04-shopfront-sqlite-inventory-lock | 2026-11-04 | SQLite writer transaction during full inventory API pagination | Crawler POS import module 20/20 PASS; online job heartbeat stale; no business writes | [Report](test-sessions/2026-11-04-shopfront-sqlite-inventory-lock.md) |
+| 2026-11-04-shopfront-business-write-receipt | 2026-11-04 | Effective per-job business-write receipt gate | Local fixture 27/27 PASS; online run status BLOCKED; no business writes | [Report](test-sessions/2026-11-04-shopfront-business-write-receipt.md) |
 | 2026-11-04-forecast-open-day-backtest | 2026-11-04 | SKR open-day masked 365-day segmented sales backtest | 2,000 SKUs; 216 model summaries; 4/4 targeted tests; WAPE gate failed; writes 0 | [Report](test-sessions/2026-11-04-forecast-open-day-backtest.md) |
 
 | 2026-11-03-margin-release | 2026-11-03 | SKR source report / demo diagnosis / local session retry | bc7 source retryPASS/first-click401; b8de first-click auto-recoveryPASS; local2PASS | [Report](test-sessions/2026-11-03-margin-release.md) |

@@ -1663,7 +1663,7 @@ async def push_pos_snapshot(
         and settings.odoo_api_base_url
         and (settings.odoo_api_token or fallback_token)
     )
-    odoo_business_write = settings.odoo_business_write_enabled and not sales_reconcile_job
+    odoo_business_write = bool(odoo_enabled and settings.odoo_business_write_enabled and not sales_reconcile_job)
     odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, odoo_business_write, fallback_token)
     result = {
         "status": "failed",
@@ -2248,13 +2248,13 @@ async def push_pos_snapshot(
                         for retry_offset in range(0, len(batch), 50):
                             retry_batch = batch[retry_offset:retry_offset + 50]
                             response = await odoo_client.sync("sales", store_key, jsonable_encoder(retry_batch))
-                            if settings.odoo_business_write_enabled:
+                            if odoo_business_write:
                                 audit = audit_odoo_sales_batch(response, len(retry_batch))
                                 for key in ("imported", "updated_orders", "skipped"):
                                     result["odoo_sales"][key] += audit[key]
                                 result["odoo_sales"]["batches"] += 1
                     else:
-                        if settings.odoo_business_write_enabled:
+                        if odoo_business_write:
                             audit = audit_odoo_sales_batch(response, len(batch))
                             for key in ("imported", "updated_orders", "skipped"):
                                 result["odoo_sales"][key] += audit[key]
@@ -2281,7 +2281,11 @@ async def push_pos_snapshot(
                     "sales_batch_audit": list(result["sales_batch_audit"]),
                     "odoo_sale_batches": odoo_batches,
                     "odoo_sales": dict(result["odoo_sales"]),
-                    "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
+                    "stage": (
+                        "odoo_business"
+                        if odoo_business_write
+                        else "odoo_mirror" if odoo_enabled else "pos_mirror"
+                    ),
                 }
                 if job is not None:
                     job.payload = {**(job.payload or {}), "sales_offset": offset, "sale_total": total_sales}
@@ -2297,7 +2301,7 @@ async def push_pos_snapshot(
             "inventory_response": inventory_result,
             "targets": list(clients),
             "target_sale_batches": target_sale_batches,
-            "odoo_business_write": bool(odoo_enabled and settings.odoo_business_write_enabled),
+            "odoo_business_write": bool(odoo_enabled and odoo_business_write),
             "odoo_product_response": odoo_product_result,
             "odoo_inventory_response": odoo_inventory_result,
         })
