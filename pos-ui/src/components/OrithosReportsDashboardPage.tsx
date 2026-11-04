@@ -18,6 +18,8 @@ import {
   Store,
 } from "lucide-react";
 import { fetchPreparedReport } from "@/lib/report-client";
+import { fetchOdooRoute } from "@/lib/odoo-api";
+import type { SourceMargin } from "@/lib/shopfront-source-margin";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
@@ -76,6 +78,12 @@ type OverviewData = {
   };
 };
 
+function storeDay(value: string, timezone: string) {
+  const date = new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
+}
+
 type DeadStockData = {
   bucketCounts: Record<string, number>;
   cashValueByBucket: Record<string, number>;
@@ -88,6 +96,7 @@ type DeadStockData = {
 
 const OVERVIEW_RANGES = [
   { period: "yesterday", label: "Yesterday" },
+  { period: "last_7_days", label: "Last 7 days" },
   { period: "last_week", label: "Last week" },
   { period: "last_month", label: "Last month" },
 ] as const;
@@ -177,6 +186,8 @@ export function OrithosReportsDashboardPage() {
   const [deadStockError, setDeadStockError] = useState<string | null>(null);
   const [deadStockRefreshing, setDeadStockRefreshing] = useState(false);
   const [deadStockGeneratedAt, setDeadStockGeneratedAt] = useState<string | null>(null);
+  const [sourceMargin, setSourceMargin] = useState<SourceMargin | null>(null);
+  const marginAbort = useRef<AbortController | null>(null);
   const loadDeadStock = useCallback(async (refresh = false) => {
     deadAbort.current?.abort();
     const controller = new AbortController(); deadAbort.current = controller;
@@ -191,6 +202,21 @@ export function OrithosReportsDashboardPage() {
   }, []);
   const periodRef = useRef<ReportPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
+
+  useEffect(() => {
+    if (!data?.from || !data.to || !data.timezone) return;
+    marginAbort.current?.abort();
+    const controller = new AbortController(); marginAbort.current = controller;
+    setSourceMargin(null);
+    void fetchOdooRoute("/api/odoo/shopfront-margin", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromDay: storeDay(data.from, data.timezone), toDay: storeDay(data.to, data.timezone) }), signal: controller.signal })
+      .then(async (response) => {
+        const report = await response.json();
+        if (!response.ok || !report.sourceMargin) throw new Error(report.message || "Source margin unavailable");
+        if (!controller.signal.aborted) setSourceMargin(report.sourceMargin as SourceMargin);
+      }).catch(() => { if (!controller.signal.aborted) setSourceMargin(null); });
+    return () => controller.abort();
+  }, [data?.from, data?.to, data?.timezone, data?.generatedAt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -492,6 +518,13 @@ export function OrithosReportsDashboardPage() {
               delta={data && data.compare.revenue >= 50 ? data.compare.revenueDeltaPct : null}
               comparisonMessage={data && data.compare.revenue < 50 ? "Prior activity too small to compare" : undefined}
               icon={<ShoppingBag size={15} />}
+            />
+            <KpiCard
+              title="Gross margin"
+              value={sourceMargin?.complete && sourceMargin.grossMarginPercent !== null ? `${sourceMargin.grossMarginPercent.toFixed(1)}%` : "—"}
+              detail={sourceMargin?.complete ? `Shopfront source · ${formatMoney(sourceMargin.grossProfit ?? 0, currency)} profit · accounting unverified` : "Shopfront source data unavailable"}
+              icon={<BarChart3 size={15} />}
+              href={`/products?dialog=cost-reconciliation&fromDay=${data ? storeDay(data.from, data.timezone) : ""}&toDay=${data ? storeDay(data.to, data.timezone) : ""}`}
             />
             <KpiCard
               title="Sales"
@@ -839,6 +872,7 @@ function KpiCard({
   comparisonMessage,
   comparisonLabel,
   icon,
+  href,
 }: {
   title: string;
   value: string;
@@ -847,8 +881,9 @@ function KpiCard({
   comparisonMessage?: string;
   comparisonLabel?: string;
   icon: React.ReactNode;
+  href?: string;
 }) {
-  return (
+  const card = (
     <article className="flex min-h-[104px] flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-center justify-between gap-2">
         <p className="oh-type-meta text-[var(--oh-muted)]">{title}</p>
@@ -861,4 +896,5 @@ function KpiCard({
       </div>
     </article>
   );
+  return href ? <Link href={href} className="block rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{card}</Link> : card;
 }

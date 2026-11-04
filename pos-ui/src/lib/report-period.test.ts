@@ -19,6 +19,15 @@ test("last week starts on Monday", () => {
   assert.equal(iso(bounds.compareStart), "2026-10-18T13:30:00.000Z");
 });
 
+test("last 7 days covers the seven most recent completed store days", () => {
+  const bounds = getReportPeriodBounds("last_7_days", new Date("2026-11-03T03:00:00Z"), "Australia/Adelaide");
+  assert.equal(iso(bounds.start), "2026-10-26T13:30:00.000Z");
+  assert.equal(iso(bounds.end), "2026-11-02T13:30:00.000Z");
+  assert.equal(iso(bounds.compareStart), "2026-10-19T13:30:00.000Z");
+  assert.equal(iso(bounds.compareEnd), iso(bounds.start));
+  assert.equal(bounds.trendGranularity, "day");
+});
+
 test("last month handles year boundaries", () => {
   const bounds = getReportPeriodBounds("last_month", new Date("2026-01-15T03:00:00Z"), "Australia/Adelaide");
   assert.equal(iso(bounds.start), "2025-11-30T13:30:00.000Z");

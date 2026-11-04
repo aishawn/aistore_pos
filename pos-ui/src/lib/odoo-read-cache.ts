@@ -81,7 +81,7 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
           && (endpoint !== "/api/odoo/records" || Array.isArray(payload.items));
         if (complete && payload.cacheStatus !== "STALE") {
           let expires = Date.now() + ttl;
-          if (payload?.timezone && ["yesterday", "last_week", "last_month"].includes(payload.period)) {
+          if (payload?.timezone && ["yesterday", "last_7_days", "last_week", "last_month"].includes(payload.period)) {
             // Store business date is rechecked on every lookup below via the response metadata.
             expires = Date.now() + 300_000;
           }

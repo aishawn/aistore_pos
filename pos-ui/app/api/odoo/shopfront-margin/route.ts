@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 import { loadSourceMarginSnapshot } from "@/lib/cost-reconciliation-source";
 import { shopfrontSourceMargin } from "@/lib/shopfront-source-margin";
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return json({ message: "Cross-origin requests are not allowed" }, 403);
   let key: string | undefined;
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "reports.dashboard");
     const scope = await scopedOdoo(request);
     if (scope.companyIds.length !== 1 || !scope.database || scope.binding?.subdomain !== "skr" || scope.binding.r2Prefix !== "shopfront/skr/" || scope.binding.odooProvisionStatus !== "ready") throw new OdooScopeError("Verified Shopfront store scope is required.", 403);
     const body = await request.json().catch(() => null) as Record<string, unknown> | null;

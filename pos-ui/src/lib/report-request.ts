@@ -88,7 +88,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const requested = request.nextUrl.searchParams.get("period");
     const period = deadStock ? "dead_stock" : summary ? "today" : requested;
     if (!summary && requested === "today") return response({ message: "Today requires view=summary" }, 400);
-    const calendar = ["today", "yesterday", "last_week", "last_month", "dead_stock"].includes(period || "");
+    const calendar = ["today", "yesterday", "last_7_days", "last_week", "last_month", "dead_stock"].includes(period || "");
     const force = request.nextUrl.searchParams.get("refresh") === "true";
     const task = request.nextUrl.searchParams.get("task");
     const revision = await snapshotRevision(access.scope);

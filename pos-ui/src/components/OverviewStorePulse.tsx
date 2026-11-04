@@ -34,7 +34,9 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
   const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Sales tax mismatch"
     : data.grossMarginStatus === "purchase_cost_missing" ? "Purchase cost unverified"
     : data.grossMarginStatus === "no_sales" ? "No sales yesterday"
-    : !marginAvailable ? "Cost data unverified" : "Yesterday · Excluding tax";
+    : !marginAvailable ? "Shopfront source unavailable" : "Shopfront source · accounting unverified";
+  const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";
+  const marginHref = `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
 
   return (
     <section className="ov-pulse-panel" aria-labelledby="ov-pulse-title">
@@ -52,7 +54,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
         <Metric label="Yesterday sales" href="/reports/daily-sales"
           value={data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}
           note={data.yesterdaySalesAvailable === false ? "Temporarily unavailable" : "Including tax"} />
-        <Metric label="Gross margin" href="/reports/dashboard"
+        <Metric label="Gross margin" href={marginHref}
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(1)}%` : "—"}
           note={marginNote} />
         <Metric label="Total inventory" href="/stock/list"

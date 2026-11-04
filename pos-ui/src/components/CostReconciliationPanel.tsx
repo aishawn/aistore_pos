@@ -48,12 +48,21 @@ export function CostReconciliationPanel() {
   const [page, setPage] = useState(0), [expanded, setExpanded] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  async function generate(sourceOnly = false) {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("fromDay"), to = params.get("toDay");
+    if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) setFromDay(from);
+    if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) setToDay(to);
+    if (from || to) void generate(true, { fromDay: from ?? undefined, toDay: to ?? undefined });
+  // URL parameters are read once on entry; generate uses the defaults only for this initial capture.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  async function generate(sourceOnly = false, dates?: { fromDay?: string; toDay?: string }) {
     controller.current?.abort(); const request = new AbortController(); controller.current = request;
     setBusy(true); setError(null); setData(null); setSourceReport(null); setExpanded(null); setPage(0);
     try {
       const response = await fetchOdooRoute(sourceOnly ? "/api/odoo/shopfront-margin" : "/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...(!sourceOnly ? { limit: Number(limit) } : {}), ...(fromDay ? { fromDay } : {}), ...(toDay ? { toDay } : {}) }), signal: request.signal });
+        body: JSON.stringify({ ...(!sourceOnly ? { limit: Number(limit) } : {}), ...((dates?.fromDay ?? fromDay) ? { fromDay: dates?.fromDay ?? fromDay } : {}), ...((dates?.toDay ?? toDay) ? { toDay: dates?.toDay ?? toDay } : {}) }), signal: request.signal });
       const body = await response.json();
       if (!response.ok || !body.batchId || (sourceOnly ? !body.sourceMargin : !Array.isArray(body.products))) throw new Error(body.message || "Could not generate cost audit.");
       if (!request.signal.aborted) { if (sourceOnly) setSourceReport(body); else setData(body); }

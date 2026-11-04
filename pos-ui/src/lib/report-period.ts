@@ -1,7 +1,7 @@
 import { storeWeekStart } from "./assistant-business-period.ts";
 import { localMidnightUtc, salesDate, shiftDay } from "./replenishment-safety.ts";
 
-export type ReportPeriod = "yesterday" | "last_week" | "last_month";
+export type ReportPeriod = "yesterday" | "last_7_days" | "last_week" | "last_month";
 export type ReportQueryPeriod = ReportPeriod | "today";
 
 export type ReportPeriodBounds = {
@@ -43,6 +43,12 @@ export function getReportPeriodBounds(period: ReportQueryPeriod, now: Date, time
     const start = utcDate(startDay, timezone);
     const end = utcDate(currentMonday, timezone);
     return { period, start, end, compareStart: utcDate(shiftDay(startDay, -7), timezone), compareEnd: utcDate(shiftDay(currentMonday, -7), timezone), comparisonLabel: "vs previous week", trendGranularity: "day" };
+  }
+  if (period === "last_7_days") {
+    const startDay = shiftDay(today, -7);
+    const start = utcDate(startDay, timezone);
+    const end = utcDate(today, timezone);
+    return { period, start, end, compareStart: utcDate(shiftDay(startDay, -7), timezone), compareEnd: start, comparisonLabel: "vs previous 7 days", trendGranularity: "day" };
   }
   const currentMonth = monthStart(today, 0);
   const previousMonth = monthStart(today, -1);

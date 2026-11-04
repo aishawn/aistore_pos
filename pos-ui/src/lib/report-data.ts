@@ -118,7 +118,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
   let end = options.now ?? new Date();
   let start = new Date(end.getTime() - rangeHours * 3_600_000);
   if (period === "this_week") start = storeWeekStart(end, timezone);
-  const calendarPeriod = ["today", "yesterday", "last_week", "last_month"].includes(period ?? "")
+  const calendarPeriod = ["today", "yesterday", "last_7_days", "last_week", "last_month"].includes(period ?? "")
     ? getReportPeriodBounds(period as ReportQueryPeriod, end, timezone) : null;
   if (calendarPeriod) { start = calendarPeriod.start; end = calendarPeriod.end; }
   const from = start.toISOString().slice(0, 19).replace("T", " ");

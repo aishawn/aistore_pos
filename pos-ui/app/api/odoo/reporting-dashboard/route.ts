@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "development" && request.cookies.get("orithos_local_preview")?.value === "1") {
     const requested = request.nextUrl.searchParams.get("period");
     const previewPeriod = getReportPeriodBounds(
-      requested === "today" || requested === "last_week" || requested === "last_month" ? requested : "yesterday",
+      requested === "today" || requested === "last_7_days" || requested === "last_week" || requested === "last_month" ? requested : "yesterday",
       new Date(), "Australia/Adelaide",
     );
     return NextResponse.json({
