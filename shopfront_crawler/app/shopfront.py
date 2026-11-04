@@ -64,12 +64,11 @@ PURCHASE_ORDERS_QUERY = """
 query ShopfrontPurchaseOrders($after: Cursor) {
   orders(type: ORDER, first: 100, after: $after) {
     edges { node { id type status completed undergoingReview orderDate dueDate
-      enteredAs attachments { id name mimeType }
-      invoiceNumber reference notes internalNotes includeFreight totalCost
-      lineCount expectedTotal feePercentage createdAt sentAt receivedAt
+      invoiceNumber reference includeFreight totalCost
+      lineCount expectedTotal createdAt sentAt receivedAt
       products { caseQuantity orderedQuantity receivedQuantity baseCost orderedCost
-        fees freight paymentFees rebate supplierCode itemsPerWeek supplier { id name }
-        item { id name mdbId barcodes { code } } } } }
+        supplier { id name }
+        item { id name mdbId } } } }
     pageInfo { hasNextPage endCursor }
   }
 }

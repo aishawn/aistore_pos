@@ -21,6 +21,11 @@ def test_full_read_scopes_are_requested_even_when_optional_jobs_are_disabled():
 def test_queries_read_supplier_directory_and_orders_without_auth_secrets():
     assert "suppliers(first: 100" in SUPPLIERS_QUERY
     assert "orders(type: ORDER" in PURCHASE_ORDERS_QUERY
+    # Purchase order sync only needs auditable header and identity fields.
+    # Large attachments and nested barcode payloads make the paginated query
+    # time out before all orders can be mirrored.
+    assert "attachments" not in PURCHASE_ORDERS_QUERY
+    assert "barcodes" not in PURCHASE_ORDERS_QUERY
     assert "authentication" not in (SUPPLIERS_QUERY + PURCHASE_ORDERS_QUERY).lower()
     assert "password" not in (SUPPLIERS_QUERY + PURCHASE_ORDERS_QUERY).lower()
 
