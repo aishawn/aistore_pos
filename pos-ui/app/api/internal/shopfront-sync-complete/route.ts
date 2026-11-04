@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       status: body.status as "completed" | "partial" | "failed",
     };
     await Promise.all(targets.map(async target => {
-      recordShopfrontSyncForHost(target.host, Date.now());
+      await recordShopfrontSyncForHost(target.host, Date.now());
       clearReportingCache(`${target.host.toLowerCase()}|`);
       await recordShopfrontSync(target, state);
     }));

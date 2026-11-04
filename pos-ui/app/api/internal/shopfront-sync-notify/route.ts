@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const at = Number.isFinite(Date.parse(String(body.syncedAt || ""))) ? Date.parse(String(body.syncedAt)) : Date.now();
 
   for (const host of hosts) {
-    recordShopfrontSyncForHost(host, at);
+    await recordShopfrontSyncForHost(host, at);
     clearReportingCache(`${host}|`);
   }
   for (const target of reportTargets()) {
