@@ -286,7 +286,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setItems((previous) => append ? [...previous, ...page.items.filter((item) => !previous.some((row) => row.id === item.id))] : page.items);
       snapshotId.current = page.snapshotId;
       nextOffset.current = page.offset + page.items.length;
-      setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
+      setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, negativeStockItems: page.negativeStockItems ?? 0, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
       setHasNext(page.hasNext === true);
       if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
@@ -705,7 +705,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
             {hasNext && !resultsPending && !error && <button type="button" onClick={() => void loadProducts(true)} disabled={loadingMore} className="min-h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
             {totals && !resultsPending && <>
               <span>Products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
-              <span>On hand <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              <span>Available units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} products have negative stock; their balances remain visible in the list.</span>}
               <span>Stock value · AUD <strong className="ml-2 tabular-nums">{totals.totalStockValue === null ? "Unavailable" : money(totals.totalStockValue)}</strong></span>
               {totals.missingCostItems > 0 && <span className="basis-full text-xs text-amber-800">Cost unavailable for {totals.missingCostItems} stocked products; value cannot be calculated.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}

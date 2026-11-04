@@ -5,10 +5,12 @@ import { getInventorySnapshot, saveInventorySnapshot } from "./inventory-snapsho
 
 const row = (id: number, qty = 1, cost: number | false = 2): InventoryRow => ({ id, name: `Wine ${id}`, qty_available: qty, standard_price: cost, pos_categ_ids: [1], uom_id: [1, "Units"], price_included: 12 });
 
-test("full totals include negative/fractional stock and round decimal cost only once", () => {
+test("available units exclude negative balances while valuation keeps their signed cost", () => {
   assert.deepEqual(inventoryTotals([row(1, 2.5, 1.23), row(2, -1, 0.07), row(3, 0, false)]), {
-    totalItems: 3, totalQty: 1.5, totalStockValue: 3.01, missingCostItems: 0, mixedUnits: false,
+    totalItems: 3, totalQty: 2.5, negativeStockItems: 1, totalStockValue: 3.01, missingCostItems: 0, mixedUnits: false,
   });
+  assert.equal(inventoryTotals([row(1, -5), row(2, -2), row(3, 4)]).totalQty, 4);
+  assert.equal(inventoryTotals([row(1, -5), row(2, -2), row(3, 4)]).negativeStockItems, 2);
   assert.equal(inventoryTotals([row(1, -1, 1.005)]).totalStockValue, -1.01);
   assert.equal(inventoryTotals([row(1, 1, 1.005)]).totalStockValue, 1.01);
   assert.equal(inventoryTotals([row(1, 1e-7, 1e7)]).totalStockValue, 1);
@@ -26,6 +28,7 @@ test("missing cost is distinguished from valid zero cost", () => {
 test("different units are not silently summed", () => {
   const totals = inventoryTotals([row(1), { ...row(2), uom_id: [2, "kg"] }]);
   assert.equal(totals.totalQty, null);
+  assert.equal(totals.negativeStockItems, 0);
   assert.equal(totals.mixedUnits, true);
   assert.equal(totals.totalStockValue, 4);
 });

@@ -18,6 +18,7 @@ export interface InventoryRow {
 export interface InventoryTotals {
   totalItems: number;
   totalQty: number | null;
+  negativeStockItems: number;
   totalStockValue: number | null;
   missingCostItems: number;
   mixedUnits: boolean;
@@ -36,10 +37,12 @@ export function inventoryTotals(rows: InventoryRow[]): InventoryTotals {
   let valueUnits = BigInt(0);
   let valueScale = 0;
   let missingCostItems = 0;
+  let negativeStockItems = 0;
   const units = new Set(rows.map((row) => row.uom_id ? row.uom_id[0] : "unknown"));
   for (const row of rows) {
     if (!Number.isFinite(row.qty_available)) throw new Error("Inventory quantities are unavailable.");
-    totalQty += row.qty_available;
+    totalQty += Math.max(row.qty_available, 0);
+    if (row.qty_available < 0) negativeStockItems += 1;
     if (typeof row.standard_price !== "number" || !Number.isFinite(row.standard_price)) {
       if (row.qty_available !== 0) missingCostItems += 1;
     } else {
@@ -60,6 +63,7 @@ export function inventoryTotals(rows: InventoryRow[]): InventoryTotals {
   return {
     totalItems: rows.length,
     totalQty: units.size > 1 ? null : totalQty,
+    negativeStockItems,
     totalStockValue: missingCostItems ? null : totalStockValue,
     missingCostItems,
     mixedUnits: units.size > 1,

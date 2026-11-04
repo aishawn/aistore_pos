@@ -50,6 +50,7 @@ export interface OdooPage<T> {
   snapshotId?: string;
   totalItems?: number;
   totalQty?: number | null;
+  negativeStockItems?: number;
   totalStockValue?: number | null;
   missingCostItems?: number;
   mixedUnits?: boolean;
