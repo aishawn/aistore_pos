@@ -78,6 +78,7 @@ class OdooReportQueryServiceTest {
         String toUtc = day.plusDays(1).atStartOfDay().atZone(com.orithos.common.AustraliaTime.ZONE)
                 .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         assertTrue(domain.contains("\"company_id\""));
+        assertTrue(domain.contains("\"is_refund\",\"=\",false"));
         assertTrue(domain.contains(fromUtc));
         assertTrue(domain.contains(toUtc));
         assertFalse(requests.stream().anyMatch(node -> {

@@ -657,6 +657,7 @@ public class OdooReportQueryService {
         domain.add(List.of("date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("state", "in", PAID_STATES));
         domain.add(List.of("amount_total", ">", 0));
+        domain.add(List.of("is_refund", "=", false));
         excludeClearedDemoSeed(domain, companyId, vendor, "uuid");
         return domain;
     }
@@ -669,6 +670,7 @@ public class OdooReportQueryService {
         domain.add(List.of("order_id.date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("order_id.state", "in", PAID_STATES));
         domain.add(List.of("order_id.amount_total", ">", 0));
+        domain.add(List.of("order_id.is_refund", "=", false));
         excludeClearedDemoSeed(domain, companyId, vendor, "order_id.uuid");
         if (category != null) {
             List<Object> matches = new ArrayList<>();
