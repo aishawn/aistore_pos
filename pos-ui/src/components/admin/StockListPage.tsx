@@ -11,6 +11,7 @@ import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
+import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 import { exportOdooProductsCsv, searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
 import { validatePositiveMoney } from "@/lib/quantity";
 import { useAuth } from "@/lib/auth";
@@ -305,6 +306,11 @@ function StockListPageInner() {
     setCategoryError(null);
     void searchOdooRecords<OdooProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Orithos categories.")).finally(() => setCategoriesLoading(false));
   }, []);
+
+  useShopfrontSyncRefresh(() => {
+    reload();
+    reloadCategories();
+  });
 
   useEffect(() => { reloadCategories(); }, [reloadCategories]);
   useEffect(() => { reload(); return () => { request.current += 1; requestBusy.current = false; }; }, [reload]);

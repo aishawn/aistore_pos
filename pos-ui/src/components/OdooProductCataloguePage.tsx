@@ -558,7 +558,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         )}
       </header>
 
-      {(dialog === "catalogue" || dialog === "inventory") && hasPermission("stock.products.view") && <StockWorkspaceDialog title={dialog === "catalogue" ? "Catalogue" : "Inventory"} variant="records" busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type={dialog} fillHeight /></StockWorkspaceDialog>}
+      {(dialog === "catalogue" || dialog === "inventory") && hasPermission("stock.products.view") && <StockWorkspaceDialog title={dialog === "catalogue" ? "Catalogue" : "Inventory"} variant="records" busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type={dialog} fillHeight refreshKey={refreshKey} /></StockWorkspaceDialog>}
       {dialog === "stock-list" && hasPermission("stock.products.view") && <StockWorkspaceDialog title="Stock list" variant="records" busy={false} onClose={() => setDialog(null)}><StockListPage /></StockWorkspaceDialog>}
       {dialog === "cost-reconciliation" && canAuditCosts && <StockWorkspaceDialog title="Cost Reconciliation" busy={false} onClose={() => setDialog(null)} actions={<Link href="/products/cost-reconciliation" className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm">Expand to full page</Link>}><CostReconciliationPanel /></StockWorkspaceDialog>}
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Manage Categories" busy={categoryBusy} onClose={() => setDialog(null)}><OdooCategoriesPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
