@@ -131,7 +131,7 @@ export function Sidebar({
       inert={!open && !mobileOpen}
     >
       <div className="flex min-w-[var(--oh-sidebar-width)] flex-1 flex-col">
-      <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-2 py-1.5">
+      <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-2 py-2">
         <Link
           href="/dashboard"
           aria-label="Open Dashboard"
@@ -140,7 +140,7 @@ export function Sidebar({
             guardNav(event, "/dashboard");
             if (!event.defaultPrevented) onNavigate?.();
           }}
-          className="flex h-full min-h-11 w-full items-center rounded-lg px-3 transition-colors hover:bg-[var(--oh-sidebar-active-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          className="group flex h-full min-h-10 w-full items-center rounded-[var(--oh-radius)] border border-transparent px-3 transition-[background-color,border-color,box-shadow] duration-150 hover:border-[var(--oh-sidebar-border)] hover:bg-[var(--oh-sidebar-active-bg)] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
           <OrithosLogo />
         </Link>
