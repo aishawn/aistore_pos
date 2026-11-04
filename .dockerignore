@@ -1,0 +1,15 @@
+**
+
+!scripts/
+!scripts/ai-eval/
+!scripts/ai-eval/fetch-skr-inventory-snapshot.py
+!scripts/ai-eval/inventory-snapshot-worker.py
+
+!pos-ui/
+!pos-ui/package.json
+!pos-ui/package-lock.json
+!pos-ui/src/
+!pos-ui/src/lib/
+!pos-ui/src/lib/**
+!pos-ui/scripts/
+!pos-ui/scripts/report-worker.ts

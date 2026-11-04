@@ -34,6 +34,9 @@ pos-ui/build-out*.txt
 # Docker image export (too large for git)
 orithos-images.tar
 
+# UAT screenshots and handoffs — keep locally; omit from deploy clones
+/docs/
+
 # Local database dumps and snapshots (may contain store/customer data)
 /orithos*.sql
 /db/*.sql
