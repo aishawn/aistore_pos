@@ -11,5 +11,6 @@
 | CAP-CUS | [客户与价格表](customers/README.md) | 待盘点，已有角色和定价方案 | 客户模块 owner 待指定 | CUS-001 |
 | CAP-RPT | [报表与经营看板](reporting/README.md) | 待盘点，日期、税、成本、库存需分别核实 | 报表 owner 待指定 | RPT-001 |
 | CAP-PLT | [平台、租户与集成](platform/README.md) | 待盘点，共享试用库不等于生产隔离 | 平台 owner 待指定 | TEN-001 / OPS-001 / R2-001 |
+| CAP-SHP | [Shopfront 数据同步](shopfront-sync/README.md) | 已实现；本轮销售镜像对账与修复待线上验收 | 集成 owner 待指定 | SHP-001 |
 
 各套件定义见[测试目录](../../TEST_CATALOG.md)，结果见[测试索引](../../TEST_REPORT_INDEX.md)。UI、硬件、离线、供应商及历史归档分别由相关模块入口关联，不遗漏但不在首期伪造完整成熟度。

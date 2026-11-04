@@ -86,7 +86,7 @@ async def startup() -> None:
         # worker below will pick up the surviving queued job after startup.
         queued_snapshots = db.scalars(
             select(SyncJob)
-            .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair"]))
+            .where(SyncJob.status == "queued", SyncJob.job_type.in_(["snapshot", "catalog_snapshot", "sales_repair", "sales_reconcile"]))
             .order_by(SyncJob.store_key, desc(SyncJob.id))
         ).all()
         queued_snapshot_keys: set[tuple[str, str]] = set()
@@ -443,6 +443,17 @@ async def run_sales_repair_job(job_id: int) -> None:
             active_job_tasks.pop(job_id, None)
 
 
+async def run_sales_reconcile_job(job_id: int) -> None:
+    task = asyncio.current_task()
+    if task is not None:
+        active_job_tasks[job_id] = task
+    try:
+        await _run_catalog_job(job_id, include_sales=True)
+    finally:
+        if task is not None and active_job_tasks.get(job_id) is task:
+            active_job_tasks.pop(job_id, None)
+
+
 @app.post("/api/stores/{store_key}/pos/full-snapshot")
 async def start_full_snapshot(store_key: str, db: Session = Depends(get_db)) -> dict:
     store = require_store(store_key, db)
@@ -489,6 +500,30 @@ async def start_sales_repair(store_key: str, db: Session = Depends(get_db)) -> d
     db.add(job)
     db.commit()
     return {"status": "queued", "job_id": job.id, "store": store.store_key, "scope": "saved sales and SaleItem metadata"}
+
+
+@app.post("/api/stores/{store_key}/pos/sales-reconcile")
+async def start_sales_reconcile(store_key: str, db: Session = Depends(get_db)) -> dict:
+    """Reconcile complete saved sales to mirrors without formal business writes."""
+    store = require_store(store_key, db)
+    active = active_job(db, store.store_key)
+    if active:
+        raise HTTPException(409, f"A {active.job_type} job is already active for this store")
+    job = SyncJob(
+        store_key=store.store_key,
+        job_type="sales_reconcile",
+        status="queued",
+        payload={"mirror_only": True},
+    )
+    db.add(job)
+    db.commit()
+    wake_durable_worker()
+    return {
+        "status": "queued",
+        "job_id": job.id,
+        "store": store.store_key,
+        "scope": "saved sales only; POS and Odoo mirrors; no inventory or formal business writes",
+    }
 
 
 def active_job(db: Session, store_key: str) -> SyncJob | None:
@@ -1507,6 +1542,7 @@ async def push_pos_snapshot(
     except (KeyError, ValueError):
         local_zone = timezone.utc
     repair_job = bool(job is not None and job.job_type == "sales_repair")
+    sales_reconcile_job = bool(job is not None and job.job_type == "sales_reconcile")
     sales_query = select(Sale).where(Sale.store_key == store_key).order_by(Sale.id.desc() if repair_job else Sale.id)
     sales_selection_diagnostics: dict[str, Any] | None = None
     if run is not None and start is not None and end is not None and not replay_sales_window:
@@ -1596,7 +1632,8 @@ async def push_pos_snapshot(
         and settings.odoo_api_base_url
         and (settings.odoo_api_token or fallback_token)
     )
-    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, settings.odoo_business_write_enabled, fallback_token)
+    odoo_business_write = settings.odoo_business_write_enabled and not sales_reconcile_job
+    odoo_client = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, odoo_enabled, odoo_business_write, fallback_token)
     result = {
         "status": "failed",
         "products": len(products),
@@ -2151,7 +2188,10 @@ async def push_pos_snapshot(
             db.commit()
             try:
                 for target_name, client in clients.items():
-                    response = await client.upsert_sales(jsonable_encoder({"store_key": store_key, "items": items}))
+                    sales_payload = {"store_key": store_key, "items": items}
+                    if sales_reconcile_job:
+                        sales_payload["business_write"] = False
+                    response = await client.upsert_sales(jsonable_encoder(sales_payload))
                     result["sales_batch_audit"].append({
                         "target": target_name,
                         "offset": offset,
@@ -2533,6 +2573,7 @@ async def process_next_job() -> None:
         "snapshot": run_full_snapshot_job,
         "catalog_snapshot": run_catalog_snapshot_job,
         "sales_repair": run_sales_repair_job,
+        "sales_reconcile": run_sales_reconcile_job,
         "daily_sync": run_daily_sync_job,
         "supply_chain": run_supply_chain_job,
         "customers": run_customers_job,
