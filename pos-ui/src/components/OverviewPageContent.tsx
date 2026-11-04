@@ -196,19 +196,6 @@ export function OverviewPageContent({
           active={active}
           company={data?.company || "Your store"}
         />
-        {loading && !data ? (
-          <div
-            role="status"
-            aria-label="Loading dashboard"
-            aria-busy="true"
-            className="ov-skeleton"
-          >
-            <div />
-            <div />
-            <div />
-            <span className="sr-only">Preparing your workspace…</span>
-          </div>
-        ) : null}
         {error ? (
           <section role="alert" className="ov-error">
             <div>
@@ -236,9 +223,9 @@ export function OverviewPageContent({
             ) : null}
           </section>
         ) : null}
-        {data && active === "workspace" ? (
+        {active === "workspace" ? (
           <>
-            <section className="ov-summary" aria-label="Today">
+            {data ? <section className="ov-summary" aria-label="Today">
               <span className="ov-summary-art" aria-hidden="true" />
               <div className="ov-summary-intro">
                 <span className="ov-summary-icon" aria-hidden="true"><BadgeCheck size={27} strokeWidth={1.8} /></span>
@@ -268,7 +255,14 @@ export function OverviewPageContent({
                   View insights <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               ) : null}
-            </section>
+            </section> : (
+              <section className="ov-summary" aria-busy="true" aria-label="Loading store summary">
+                <div className="ov-summary-intro">
+                  <span className="ov-eyebrow">TODAY</span>
+                  <h2>Loading your store summary.</h2>
+                </div>
+              </section>
+            )}
             <div className="ov-section-label">
               <h2>Your workspace</h2>
               <span>Everything you need, within reach.</span>
@@ -319,7 +313,7 @@ export function OverviewPageContent({
             ) : null}
           </>
         ) : null}
-        {data && active === "radial" ? (
+        {active === "radial" ? (
           <>
             <DashboardIntroAnimation />
             <div className="ov-radial-dashboard">
@@ -339,7 +333,11 @@ export function OverviewPageContent({
                 </div>
               </div>
               <aside className="ov-radial-side" aria-label="Store summary">
-                <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} />
+                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} /> : (
+                  <section className="ov-pulse-panel" aria-busy="true" aria-label="Loading store pulse">
+                    <p className="ov-pulse-pending" role="status">Preparing yesterday&apos;s numbers…</p>
+                  </section>
+                )}
                 <section className="ov-insights-panel">
                   <div className="ov-panel-heading">
                     <span className="ov-panel-icon ov-panel-icon-green"><Lightbulb size={18} /></span>

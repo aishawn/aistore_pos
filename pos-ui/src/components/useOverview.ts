@@ -40,6 +40,66 @@ export type OverviewPulse = {
   yesterdayTo?: string;
   grossMarginBasis?: string;
 };
+const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v1";
+const PULSE_FRESH_MS = 45_000;
+const PULSE_KEEP_MS = 10 * 60_000;
+type StoredPulse = { scope: string; at: number; data: OverviewPulse };
+let memoryPulse: StoredPulse | null = null;
+function pulseScope(vendorId?: number) {
+  return String(vendorId ?? "store");
+}
+function readPulse(scope: string): StoredPulse | null {
+  if (memoryPulse?.scope === scope && Date.now() - memoryPulse.at < PULSE_KEEP_MS && Number.isFinite(memoryPulse.data.revenue)) {
+    return memoryPulse;
+  }
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PULSE_STORAGE_KEY) || "null") as StoredPulse | null;
+    if (!parsed || parsed.scope !== scope || Date.now() - parsed.at > PULSE_KEEP_MS || !Number.isFinite(parsed.data?.revenue)) return null;
+    memoryPulse = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function writePulse(scope: string, data: OverviewPulse) {
+  const stored = { scope, at: Date.now(), data };
+  memoryPulse = stored;
+  try { sessionStorage.setItem(PULSE_STORAGE_KEY, JSON.stringify(stored)); } catch { /* Keep the in-memory copy when storage is full. */ }
+}
+function mapPayload(payload: Record<string, unknown>): OverviewPulse {
+  return {
+    generatedAt: payload.generatedAt as string | undefined,
+    queryThrough: payload.queryThrough as string | undefined,
+    cacheStatus: payload.cacheStatus as string | undefined,
+    updateStatus: payload.updateStatus as string | undefined,
+    taskId: payload.taskId as string | undefined,
+    company: (payload.company as string) || "Store",
+    currency: (payload.currency as string) || "AUD",
+    timezone: (payload.timezone as string) || "Australia/Adelaide",
+    revenue: payload.revenue as number,
+    transactions: Number.isFinite(payload.transactions) ? Number(payload.transactions) : undefined,
+    openRegisters: Number.isFinite(payload.openRegisters) ? Number(payload.openRegisters) : undefined,
+    opportunities: Number.isFinite(payload.opportunities) ? Number(payload.opportunities) : undefined,
+    lowStockCount: Number.isFinite(payload.lowStockCount) ? Number(payload.lowStockCount) : undefined,
+    newCustomers: Number.isFinite(payload.newCustomers) ? Number(payload.newCustomers) : undefined,
+    inventoryUnits: Number.isFinite(payload.inventoryUnits) ? Number(payload.inventoryUnits) : null,
+    yesterdaySales: Number.isFinite(payload.yesterdaySales) ? Number(payload.yesterdaySales) : 0,
+    yesterdaySalesAvailable: payload.yesterdaySalesAvailable === true,
+    yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? Number(payload.yesterdayGrossMargin) : null,
+    grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? Number(payload.grossMarginCoverage) : 0,
+    inventoryAvailable: payload.inventoryAvailable === true,
+    inventoryStatus: payload.inventoryStatus as string | undefined,
+    negativeStockProducts: payload.negativeStockProducts as number | null | undefined,
+    grossMarginStatus: payload.grossMarginStatus as string | undefined,
+    yesterdayNetSales: payload.yesterdayNetSales as number | null | undefined,
+    yesterdayTax: payload.yesterdayTax as number | null | undefined,
+    salesReconciled: payload.salesReconciled as boolean | undefined,
+    yesterdayFrom: payload.yesterdayFrom as string | undefined,
+    yesterdayTo: payload.yesterdayTo as string | undefined,
+    grossMarginBasis: payload.costBasis as string | undefined,
+  };
+}
 export function money(value: number, currency: string) {
   try {
     return new Intl.NumberFormat("en-AU", {
@@ -61,7 +121,16 @@ export function useOverview() {
   const revision = useRef(0);
   const load = useCallback(async (refresh = false) => {
     const current = ++revision.current;
-    setLoading(true);
+    const scope = pulseScope(user?.vendorId);
+    const cached = refresh ? null : readPulse(scope);
+    if (cached) {
+      setData(cached.data);
+      setLoading(false);
+      const freshFor = cached.data.cacheStatus === "STALE" ? 15_000 : PULSE_FRESH_MS;
+      if (Date.now() - cached.at < freshFor) return;
+    } else {
+      setLoading(true);
+    }
     setError(null);
     setAuthExpired(false);
     let checkingSession = true;
@@ -78,41 +147,9 @@ export function useOverview() {
         );
       if (!Number.isFinite(payload?.revenue))
         throw new Error("The store summary is incomplete. Please retry.");
-      setData({
-        generatedAt: payload.generatedAt,
-        queryThrough: payload.queryThrough,
-        cacheStatus: payload.cacheStatus,
-        updateStatus: payload.updateStatus,
-        taskId: payload.taskId,
-        company: payload.company || "Store",
-        currency: payload.currency || "AUD",
-        timezone: payload.timezone || "Australia/Adelaide",
-        revenue: payload.revenue,
-        transactions: Number.isFinite(payload.transactions)
-          ? payload.transactions
-          : undefined,
-        openRegisters: Number.isFinite(payload.openRegisters)
-          ? payload.openRegisters
-          : undefined,
-        opportunities: Number.isFinite(payload.opportunities) ? payload.opportunities : undefined,
-        lowStockCount: Number.isFinite(payload.lowStockCount) ? payload.lowStockCount : undefined,
-        newCustomers: Number.isFinite(payload.newCustomers) ? payload.newCustomers : undefined,
-        inventoryUnits: Number.isFinite(payload.inventoryUnits) ? payload.inventoryUnits : null,
-        yesterdaySales: Number.isFinite(payload.yesterdaySales) ? payload.yesterdaySales : 0,
-        yesterdaySalesAvailable: payload.yesterdaySalesAvailable === true,
-        yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? payload.yesterdayGrossMargin : null,
-        grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? payload.grossMarginCoverage : 0,
-        inventoryAvailable: payload.inventoryAvailable === true,
-        inventoryStatus: payload.inventoryStatus,
-        negativeStockProducts: payload.negativeStockProducts,
-        grossMarginStatus: payload.grossMarginStatus,
-        yesterdayNetSales: payload.yesterdayNetSales,
-        yesterdayTax: payload.yesterdayTax,
-        salesReconciled: payload.salesReconciled,
-        yesterdayFrom: payload.yesterdayFrom,
-        yesterdayTo: payload.yesterdayTo,
-        grossMarginBasis: payload.costBasis,
-      });
+      const next = mapPayload(payload as Record<string, unknown>);
+      setData(next);
+      writePulse(scope, next);
     } catch (cause) {
       if (current === revision.current) {
         const authExpired = cause instanceof OdooApiError
@@ -137,7 +174,7 @@ export function useOverview() {
     } finally {
       if (current === revision.current) setLoading(false);
     }
-  }, []);
+  }, [user?.vendorId]);
   useEffect(() => {
     if (!data?.taskId || data.cacheStatus !== "STALE") return;
     const controller = new AbortController(); const current = revision.current;
