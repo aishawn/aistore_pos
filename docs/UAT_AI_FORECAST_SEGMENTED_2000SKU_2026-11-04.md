@@ -3,6 +3,8 @@
 日期：2026-11-04（Australia/Adelaide 数据边界；报告生成时间见 JSON）
 环境：SKR 只读销售快照，离线研究；真实业务写入 `0`。当前营业日评估的机器可读结果见 [JSON](UAT_FORECAST_ROLLING_BACKTEST_2026-11-04.json)，逐 validation/holdout 分群的六模型指标见 [全模型 CSV](UAT_AI_FORECAST_SEGMENTED_OPEN_DAYS_ALL_MODELS_2026-11-04.csv)，共 216 行。原日历日口径结果保留在 [旧 CSV](UAT_AI_FORECAST_SEGMENTED_ALL_MODELS_2026-11-04.csv) 作为历史证据。
 
+2026-11-04 追加可复现性核对：使用版本化店主确认闭店日 [JSON](AI_SKR_CONFIRMED_CLOSED_DATES_2026-11-04.json) 重新运行后，全部指标、模型、分群、折配置和门槛与主报告逐字段一致（差异 0）。销售快照 SHA-256 仍为 `1db83438ef97c0d131ee38994b222b8cd7538fdb9381a375a21a4710061f9729`；新版闭店日文件 SHA-256 为 `1f2962afc6d6e04152e24f672fd9488090e5d4badac4593a715fe982ce94f70d`；当前评测器 SHA-256 为 `a05b6e9494dbb98141e2704d8850aa58f97ad3d2b084a6fba376b5921b53dd02`。复跑产物在忽略目录 `.local/ai-eval/skr-segmented-open-days-365d-current.json`，完整运行约 21 分 43 秒，`writeRequests=[]`。本次只优化离线显式模型执行路径；18 组不同历史长度/六模型预测与 forecast engine 逐点一致。此结果仍为销售-only 回测，不提供库存缺货或填充率证据。
+
 ## 结论
 
 营业日掩码复评已完成，但没有通过生产发布门禁。它是 365 天、2,000 个商品序列的销售需求研究，不能证明库存 fill rate、缺货成本或自动采购收益。模型预测值安全违规为 `0`，已评分分群的预测窗口覆盖率为 `100%`；冠军 WAPE 约 `103.6%`–`172.1%`，新品代理分群 Bias 约 `-83.6%` 至 `-88.0%`，且没有可信的原生库存/交期/成本标签。掩码处理没有改善结论：当前冠军误差仍远超绝对 WAPE `30%` 探索门槛。

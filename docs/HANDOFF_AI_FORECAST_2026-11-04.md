@@ -2,6 +2,19 @@
 
 ## 当前目标续验（2026-11-04）
 
+### 12:16 UTC 只读快照 freshness 复核
+
+- 通过 SKR 项目凭据重新认证并读取 `/api/odoo/replenishment?coverageDays=21&validateSales=true`；登录、Odoo session 和补货 GET 均为 HTTP 200，`writeRequests=[]`。SKR 当前线上前后端为 `4162b68b126f9b7e0c832ac8992234a74a09ee46`，构建时间 `2026-11-04T10:53:49Z`。
+- 最新库存状态仍为 `lastSuccessAt=2026-11-03T15:30:13+00:00`、`latestBusinessDate=2026-11-04`、`firstBusinessDate=2026-11-01`、`observedDays=4`、`gapDays=0`、`invalidSnapshots=0`；商品覆盖 `13035/13035`、仓库 `1/1`。供应商交期覆盖仍为 `0/13035`，质量为 `ODOO_SUPPLIERINFO_UNAVAILABLE`，状态 `REVIEW`。
+- Dokploy Compose 页面只读确认 `inventory-snapshots-1` 容器处于 running（容器 ID 前缀 `714b1ddf16e6`，约运行 3 小时）；日志正文控件未能稳定展开，因此没有把容器运行状态当成新的采集成功证据，也没有重启、手动触发或修改环境变量。
+- 结论：相对上一份证据没有新增原生库存业务日，`ai_forecast_walkforward_eval.py` 仍不能运行可信的 stockout/fill-rate 评估；继续等待自然采集并在下一轮只读检查比较同一 freshness 字段。
+
+### 分群评测器优化与复跑（2026-11-04）
+
+- `scripts/ai_forecast_segmented_eval.py` 原先在每个折/模型中为 2,000 个 SKU 重建 Pydantic 训练请求和响应，重复验证完整日期序列；改为直接调用预测引擎相同的显式模型归一化和区间计算。18 组（7/20/120 日序列 × 六模型）输出与 forecast engine 逐点完全一致。
+- 使用 `.worktrees/ai-main-review/.local/ai-eval/skr-sales-snapshot-365d.json`（SHA-256 `1db83438ef97c0d131ee38994b222b8cd7538fdb9381a375a21a4710061f9729`）及 [店主确认闭店日](AI_SKR_CONFIRMED_CLOSED_DATES_2026-11-04.json) 完整复跑 7/14/28 天，约 21 分 43 秒完成。新版日历 SHA-256 `1f2962afc6d6e04152e24f672fd9488090e5d4badac4593a715fe982ce94f70d`；评测器 SHA-256 `a05b6e9494dbb98141e2704d8850aa58f97ad3d2b084a6fba376b5921b53dd02`。
+- 与 [已提交分群报告](UAT_AI_FORECAST_SEGMENTED_2000SKU_2026-11-04.md) 对比，指标、配置、分群、时间折和门槛逐字段一致，差异 0。详情产物留在忽略目录 `.local/ai-eval/skr-segmented-open-days-365d-current.json`；线上/业务写入为 0。该销售-only评估不满足 `ai_forecast_walkforward_eval.py` 的库存感知要求；因没有足量原生库存标签，stockout-aware/fill-rate 评估仍阻塞。
+
 ### 0a4dc523 主线运行时复验（2026-11-04 09:24 UTC）
 
 - `origin/main` 已推进到 `0a4dc523e3afee18013871a0701020405b487db9`（销售导入 effective write mode 审计修复）；SKR 和 Demo `/api/public/version` 前后端均报告该 SHA，构建时间 `2026-11-04T08:46:14Z`。这是此前 443 网络失败后观察到的主线更新；本地交接文档提交已重放到该 `origin/main` 之上。
