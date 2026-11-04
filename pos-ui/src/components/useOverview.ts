@@ -1,7 +1,5 @@
 "use client";
 import { fetchPreparedReport } from "@/lib/report-client";
-import { fetchOdooRoute } from "@/lib/odoo-api";
-import type { SourceMargin } from "@/lib/shopfront-source-margin";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
@@ -42,11 +40,6 @@ export type OverviewPulse = {
   yesterdayTo?: string;
   grossMarginBasis?: string;
 };
-function storeDay(value: string, timezone: string) {
-  const date = new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`);
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
-  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
-}
 export function money(value: number, currency: string) {
   try {
     return new Intl.NumberFormat("en-AU", {
@@ -107,30 +100,19 @@ export function useOverview() {
         inventoryUnits: Number.isFinite(payload.inventoryUnits) ? payload.inventoryUnits : null,
         yesterdaySales: Number.isFinite(payload.yesterdaySales) ? payload.yesterdaySales : 0,
         yesterdaySalesAvailable: payload.yesterdaySalesAvailable === true,
-        yesterdayGrossMargin: null,
+        yesterdayGrossMargin: Number.isFinite(payload.yesterdayGrossMargin) ? payload.yesterdayGrossMargin : null,
         grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? payload.grossMarginCoverage : 0,
         inventoryAvailable: payload.inventoryAvailable === true,
         inventoryStatus: payload.inventoryStatus,
         negativeStockProducts: payload.negativeStockProducts,
-        grossMarginStatus: "unavailable",
+        grossMarginStatus: payload.grossMarginStatus,
         yesterdayNetSales: payload.yesterdayNetSales,
         yesterdayTax: payload.yesterdayTax,
         salesReconciled: payload.salesReconciled,
         yesterdayFrom: payload.yesterdayFrom,
         yesterdayTo: payload.yesterdayTo,
-        grossMarginBasis: undefined,
+        grossMarginBasis: payload.costBasis,
       });
-      if (payload?.yesterdayFrom && payload?.yesterdayTo && payload?.timezone) {
-        void fetchOdooRoute("/api/odoo/shopfront-margin", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fromDay: storeDay(payload.yesterdayFrom, payload.timezone), toDay: storeDay(payload.yesterdayTo, payload.timezone) }) })
-          .then(async (marginResponse) => {
-            const marginPayload = await marginResponse.json();
-            const sourceMargin = marginResponse.ok ? marginPayload?.sourceMargin as SourceMargin | undefined : undefined;
-            if (current === revision.current && sourceMargin) setData((previous) => previous ? { ...previous,
-              yesterdayGrossMargin: sourceMargin.complete && sourceMargin.grossMarginPercent !== null ? sourceMargin.grossMarginPercent / 100 : null,
-              grossMarginStatus: sourceMargin.complete ? "source_unverified" : "unavailable", grossMarginBasis: sourceMargin.basis } : previous);
-          }).catch(() => undefined);
-      }
     } catch (cause) {
       if (current === revision.current) {
         const authExpired = cause instanceof OdooApiError

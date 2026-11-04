@@ -18,9 +18,6 @@ import {
   Store,
 } from "lucide-react";
 import { fetchPreparedReport } from "@/lib/report-client";
-import { fetchOdooRoute } from "@/lib/odoo-api";
-import { readJsonApiResponse } from "@/lib/json-api-response";
-import type { SourceMargin } from "@/lib/shopfront-source-margin";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
@@ -77,6 +74,10 @@ type OverviewData = {
     itemsSoldDeltaPct: number | null;
     averageSaleDeltaPct: number | null;
   };
+  grossMarginPercent?: number | null;
+  grossMarginCoverage?: number;
+  grossMarginStatus?: string;
+  grossMarginBasis?: string;
 };
 
 function storeDay(value: string, timezone: string) {
@@ -187,10 +188,6 @@ export function OrithosReportsDashboardPage() {
   const [deadStockError, setDeadStockError] = useState<string | null>(null);
   const [deadStockRefreshing, setDeadStockRefreshing] = useState(false);
   const [deadStockGeneratedAt, setDeadStockGeneratedAt] = useState<string | null>(null);
-  const [sourceMargin, setSourceMargin] = useState<SourceMargin | null>(null);
-  const [sourceMarginError, setSourceMarginError] = useState<string | null>(null);
-  const [sourceMarginLoading, setSourceMarginLoading] = useState(false);
-  const marginAbort = useRef<AbortController | null>(null);
   const loadDeadStock = useCallback(async (refresh = false) => {
     deadAbort.current?.abort();
     const controller = new AbortController(); deadAbort.current = controller;
@@ -205,26 +202,6 @@ export function OrithosReportsDashboardPage() {
   }, []);
   const periodRef = useRef<ReportPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
-
-  useEffect(() => {
-    if (!data?.from || !data.to || !data.timezone) return;
-    marginAbort.current?.abort();
-    const controller = new AbortController(); marginAbort.current = controller;
-    setSourceMargin(null); setSourceMarginError(null); setSourceMarginLoading(true);
-    void fetchOdooRoute("/api/odoo/shopfront-margin", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fromDay: storeDay(data.from, data.timezone), toDay: storeDay(data.to, data.timezone) }), signal: controller.signal })
-      .then(async (response) => {
-        const report = await readJsonApiResponse<Record<string, unknown>>(response, "Shopfront margin request");
-        if (!response.ok || !report.sourceMargin) throw new Error(typeof report.message === "string" ? report.message : "Shopfront source margin is unavailable.");
-        if (!controller.signal.aborted) setSourceMargin(report.sourceMargin as SourceMargin);
-      }).catch((cause) => {
-        if (!controller.signal.aborted) {
-          setSourceMargin(null);
-          setSourceMarginError(cause instanceof Error ? cause.message : "Shopfront source margin is unavailable.");
-        }
-      }).finally(() => { if (!controller.signal.aborted) setSourceMarginLoading(false); });
-    return () => controller.abort();
-  }, [data?.from, data?.to, data?.timezone, data?.generatedAt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -529,11 +506,11 @@ export function OrithosReportsDashboardPage() {
             />
             <KpiCard
               title="Gross margin"
-              value={sourceMarginLoading ? "…" : sourceMargin?.complete && sourceMargin.grossMarginPercent !== null ? `${sourceMargin.grossMarginPercent.toFixed(1)}%` : "—"}
-              detail={sourceMargin?.complete
-                ? `Shopfront · profit ${formatMoney(sourceMargin.grossProfit ?? 0, currency)} · tax ${formatMoney(sourceMargin.tax ?? 0, currency)} · unverified`
-                : sourceMarginLoading ? "Loading Shopfront source…" : sourceMarginError ? "Source unavailable · tap to inspect" : "Shopfront source unavailable"}
-              detailTitle={sourceMarginError ?? undefined}
+              value={typeof data?.grossMarginPercent === "number" && Number.isFinite(data.grossMarginPercent) ? `${(data.grossMarginPercent * 100).toFixed(1)}%` : "—"}
+              detail={data?.grossMarginStatus === "verified"
+                ? `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% cost coverage`
+                : data?.grossMarginStatus === "sales_mismatch" ? "Odoo sales and line totals do not reconcile"
+                  : data?.grossMarginStatus === "no_sales" ? "No sales in this period" : "Odoo cost records are incomplete"}
               icon={<BarChart3 size={15} />}
               href={`/products?dialog=cost-reconciliation&fromDay=${data ? storeDay(data.from, data.timezone) : ""}&toDay=${data ? storeDay(data.to, data.timezone) : ""}`}
             />
