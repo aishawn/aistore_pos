@@ -1143,10 +1143,26 @@ def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
             job.status = "cancelled"
             job.error = "cancelled by operator"
             job.finished_at = datetime.now(timezone.utc)
+        active_run = None
+        if job.started_at is not None:
+            active_run = db.scalars(
+                select(SyncRun)
+                .where(
+                    SyncRun.store_key == job.store_key,
+                    SyncRun.status == "running",
+                    SyncRun.started_at >= job.started_at,
+                )
+                .order_by(desc(SyncRun.started_at))
+            ).first()
+        if active_run is not None:
+            active_run.status = "cancelled"
+            active_run.error = "cancelled by operator"
+            active_run.finished_at = datetime.now(timezone.utc)
+        if job.status == "cancelled":
             db.commit()
-            task = active_sync_tasks.get(job.store_key)
-            if task is not None and task is not asyncio.current_task() and not task.done():
-                task.cancel()
+        task = active_job_tasks.get(job.id) or active_sync_tasks.get(job.store_key)
+        if task is not None and task is not asyncio.current_task() and not task.done():
+            task.cancel()
         return {"status": job.status, "run_id": job.id, "type": "job"}
     run = db.get(SyncRun, run_id)
     if run is None:
