@@ -5,6 +5,7 @@ import { fetchOdooRoute } from "@/lib/odoo-api";
 import { costAuditCsv, type CostAudit, type AuditLine } from "@/lib/cost-reconciliation";
 import type { SourceMargin } from "@/lib/shopfront-source-margin";
 import { formatOdooDateTime } from "@/lib/odoo-date";
+import { readJsonApiResponse } from "@/lib/json-api-response";
 
 type SourceReport = Pick<CostAudit, "batchId" | "sourceHash" | "companyId" | "store" | "timezone" | "from" | "to" | "capturedAt"> & { sourceMargin: SourceMargin };
 
@@ -66,9 +67,11 @@ export function CostReconciliationPanel() {
     try {
       const response = await fetchOdooRoute(sourceOnly ? "/api/odoo/shopfront-margin" : "/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...(!sourceOnly ? { limit: Number(limit) } : {}), ...((dates?.fromDay ?? fromDay) ? { fromDay: dates?.fromDay ?? fromDay } : {}), ...((dates?.toDay ?? toDay) ? { toDay: dates?.toDay ?? toDay } : {}) }), signal: request.signal });
-      const body = await response.json();
-      if (!response.ok || !body.batchId || (sourceOnly ? !body.sourceMargin : !Array.isArray(body.products))) throw new Error(body.message || "Could not generate cost audit.");
-      if (!request.signal.aborted) { if (sourceOnly) setSourceReport(body); else setData(body); }
+      const body = await readJsonApiResponse<Record<string, unknown>>(response, sourceOnly ? "Shopfront margin request" : "Cost audit request");
+      if (!response.ok || !body.batchId || (sourceOnly ? !body.sourceMargin : !Array.isArray(body.products))) {
+        throw new Error(typeof body.message === "string" ? body.message : "Could not generate cost audit.");
+      }
+      if (!request.signal.aborted) { if (sourceOnly) setSourceReport(body as SourceReport); else setData(body as CostAudit); }
     } catch (cause) { if (!request.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not generate cost audit."); }
     finally { if (!request.signal.aborted) { setBusy(false); setBusyMode(null); } }
   }

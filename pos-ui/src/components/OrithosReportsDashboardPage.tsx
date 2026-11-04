@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { fetchPreparedReport } from "@/lib/report-client";
 import { fetchOdooRoute } from "@/lib/odoo-api";
+import { readJsonApiResponse } from "@/lib/json-api-response";
 import type { SourceMargin } from "@/lib/shopfront-source-margin";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,8 @@ export function OrithosReportsDashboardPage() {
   const [deadStockRefreshing, setDeadStockRefreshing] = useState(false);
   const [deadStockGeneratedAt, setDeadStockGeneratedAt] = useState<string | null>(null);
   const [sourceMargin, setSourceMargin] = useState<SourceMargin | null>(null);
+  const [sourceMarginError, setSourceMarginError] = useState<string | null>(null);
+  const [sourceMarginLoading, setSourceMarginLoading] = useState(false);
   const marginAbort = useRef<AbortController | null>(null);
   const loadDeadStock = useCallback(async (refresh = false) => {
     deadAbort.current?.abort();
@@ -207,14 +210,19 @@ export function OrithosReportsDashboardPage() {
     if (!data?.from || !data.to || !data.timezone) return;
     marginAbort.current?.abort();
     const controller = new AbortController(); marginAbort.current = controller;
-    setSourceMargin(null);
+    setSourceMargin(null); setSourceMarginError(null); setSourceMarginLoading(true);
     void fetchOdooRoute("/api/odoo/shopfront-margin", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fromDay: storeDay(data.from, data.timezone), toDay: storeDay(data.to, data.timezone) }), signal: controller.signal })
       .then(async (response) => {
-        const report = await response.json();
-        if (!response.ok || !report.sourceMargin) throw new Error(report.message || "Source margin unavailable");
+        const report = await readJsonApiResponse<Record<string, unknown>>(response, "Shopfront margin request");
+        if (!response.ok || !report.sourceMargin) throw new Error(typeof report.message === "string" ? report.message : "Shopfront source margin is unavailable.");
         if (!controller.signal.aborted) setSourceMargin(report.sourceMargin as SourceMargin);
-      }).catch(() => { if (!controller.signal.aborted) setSourceMargin(null); });
+      }).catch((cause) => {
+        if (!controller.signal.aborted) {
+          setSourceMargin(null);
+          setSourceMarginError(cause instanceof Error ? cause.message : "Shopfront source margin is unavailable.");
+        }
+      }).finally(() => { if (!controller.signal.aborted) setSourceMarginLoading(false); });
     return () => controller.abort();
   }, [data?.from, data?.to, data?.timezone, data?.generatedAt]);
 
@@ -521,8 +529,11 @@ export function OrithosReportsDashboardPage() {
             />
             <KpiCard
               title="Gross margin"
-              value={sourceMargin?.complete && sourceMargin.grossMarginPercent !== null ? `${sourceMargin.grossMarginPercent.toFixed(1)}%` : "—"}
-              detail={sourceMargin?.complete ? `Shopfront source · ${formatMoney(sourceMargin.grossProfit ?? 0, currency)} profit · accounting unverified` : "Shopfront source data unavailable"}
+              value={sourceMarginLoading ? "…" : sourceMargin?.complete && sourceMargin.grossMarginPercent !== null ? `${sourceMargin.grossMarginPercent.toFixed(1)}%` : "—"}
+              detail={sourceMargin?.complete
+                ? `Shopfront · profit ${formatMoney(sourceMargin.grossProfit ?? 0, currency)} · tax ${formatMoney(sourceMargin.tax ?? 0, currency)} · unverified`
+                : sourceMarginLoading ? "Loading Shopfront source…" : sourceMarginError ? "Source unavailable · tap to inspect" : "Shopfront source unavailable"}
+              detailTitle={sourceMarginError ?? undefined}
               icon={<BarChart3 size={15} />}
               href={`/products?dialog=cost-reconciliation&fromDay=${data ? storeDay(data.from, data.timezone) : ""}&toDay=${data ? storeDay(data.to, data.timezone) : ""}`}
             />
@@ -868,6 +879,7 @@ function KpiCard({
   title,
   value,
   detail,
+  detailTitle,
   delta,
   comparisonMessage,
   comparisonLabel,
@@ -877,6 +889,7 @@ function KpiCard({
   title: string;
   value: string;
   detail?: string;
+  detailTitle?: string;
   delta?: number | null;
   comparisonMessage?: string;
   comparisonLabel?: string;
@@ -891,7 +904,7 @@ function KpiCard({
       </div>
       <p className="mt-1.5 text-[1.25rem] font-bold leading-tight tracking-tight text-[var(--oh-text)]">{value}</p>
       <div className="mt-auto pt-1">
-        {detail && <p className="oh-type-meta truncate text-[var(--oh-muted)]" title={detail}>{detail}</p>}
+        {detail && <p className="oh-type-meta line-clamp-2 whitespace-normal text-[var(--oh-muted)]" title={detailTitle ?? detail}>{detail}</p>}
         <div className="min-h-4"><Delta value={delta} comparisonMessage={comparisonMessage} comparisonLabel={comparisonLabel} /></div>
       </div>
     </article>
