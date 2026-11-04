@@ -2,6 +2,16 @@
 
 更新日期：2026-11-04。代码候选基线：GitHub `main` 的 `f73c3417`；线上运行 SHA 尚未复核。
 
+## 2026-11-04 库存收尾门槛回归
+
+- 代码候选基线：GitHub `main` `dfda8a93`，crawler working-tree patch；crawler 线上 SHA 未确认。POS public version endpoint 返回 frontend/backend `dfda8a93`。
+- 环境：本地 crawler SQLite fixture；测试目标只模拟 POS/Odoo API，不连接线上 Odoo。
+- `python -m pytest -q -c pyproject.toml tests/test_pos_import_results.py`：PASS，28 项。新增用例验证一条库存因预留量而未匹配时仍发送完整 source-ID finalizer，并保留该行核对告警。
+- `python -m py_compile app/main.py tests/test_pos_import_results.py` 与 `git diff --check`：PASS。
+- 线上只读：crawler 与 POS 各 11,029 商品、10,851 库存、155,665 销售和 305,052 销售行。Shopfront 库存为 5,372 个负数、净量 `-257,488`。既有 Odoo 负库存基线 `-1,334,367` 尚未在该次部分同步后复查。
+- 当时已有 daily job 61 于 Odoo inventory `3000/10851` 后被标记取消；本次没有发起线上同步。该自动任务部分写入范围的逐 SKU 实际变化未读回。
+- 结论限于本地 fixture 和只读差异；未部署本修复，未确认旧 Odoo 镜像已清理，也未证明 Shopfront 源库存准确或实盘正确。
+
 ## 线上只读基线
 
 环境：crawler `https://shopfront.orithos.com.au`、Odoo `https://odoo.orithos.com.au`。只读 coverage 与认证探测；没有触发业务导入。

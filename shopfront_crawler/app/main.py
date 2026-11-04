@@ -2187,26 +2187,37 @@ async def push_pos_snapshot(
 
             unmatched = [item for response in inventory_responses for item in business_unmatched(response)]
             if unmatched:
-                # Keep the exact source identities in the run result for a
-                # later inventory-only repair. Do not finalize a partial
-                # snapshot: stale quant cleanup would be unsafe while one or
-                # more source products are unresolved.
+                # Keep unresolved source rows visible for a later repair. A
+                # validated full source-ID set still permits safe stale cleanup.
                 result["inventory_unmatched"] = unmatched
                 result["inventory_reconciliation_required"] = True
-            if include_inventory_snapshot and not unmatched:
-                finalize_response = await odoo_client.sync(
-                    "inventory",
-                    store_key,
-                    [],
-                    snapshot_finalize=True,
-                    snapshot_source_ids=inventory_snapshot_source_ids or [],
-                )
-                finalize_unmatched = business_unmatched(finalize_response)
-                if finalize_unmatched:
-                    result["inventory_unmatched"] = finalize_unmatched
-                    result["inventory_reconciliation_required"] = True
+            if include_inventory_snapshot:
+                source_ids = sorted({str(value).strip() for value in (inventory_snapshot_source_ids or []) if str(value).strip()})
+                if source_ids:
+                    # The caller only enables finalization after the crawler
+                    # validated a complete source snapshot. Unmatched rows stay
+                    # visible above, while their source IDs protect them from
+                    # stale cleanup; they must not block cleanup of unrelated
+                    # Shopfront products that are absent from this full set.
+                    finalize_response = await odoo_client.sync(
+                        "inventory",
+                        store_key,
+                        [],
+                        snapshot_finalize=True,
+                        snapshot_source_ids=source_ids,
+                    )
+                    finalize_unmatched = business_unmatched(finalize_response)
+                    if finalize_unmatched:
+                        result["inventory_unmatched"].extend(finalize_unmatched)
+                        result["inventory_reconciliation_required"] = True
+                    else:
+                        inventory_responses.append(finalize_response)
                 else:
-                    inventory_responses.append(finalize_response)
+                    result["inventory_unmatched"].append({
+                        "source_id": "",
+                        "reason": "complete inventory snapshot has no source product IDs",
+                    })
+                    result["inventory_reconciliation_required"] = True
             odoo_inventory_result = inventory_responses[0] if len(inventory_responses) == 1 else {"batches": len(inventory_responses), "last": inventory_responses[-1]}
         sale_batches = 0
         odoo_batches = 0

@@ -283,6 +283,70 @@ async def test_sales_reconcile_does_not_require_formal_order_receipt(db_session,
 
 
 @pytest.mark.asyncio
+async def test_full_inventory_snapshot_finalizes_even_when_source_row_is_unmatched(db_session, monkeypatch):
+    seed_snapshot(db_session)
+    calls = []
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def upsert_products(self, payload):
+            return {"data": {"upserted": len(payload["items"])} }
+
+        async def replace_inventory(self, payload):
+            assert payload["replace"] is True
+            return {"data": {"replaced": len(payload["items"])}}
+
+        async def close(self):
+            pass
+
+    class FakeOdooClient:
+        def __init__(self, *args):
+            pass
+
+        async def sync(self, import_type, store_key, items, **kwargs):
+            calls.append((import_type, store_key, items, kwargs))
+            unmatched = [] if import_type != "inventory" or kwargs.get("snapshot_finalize") else [
+                {"source_id": "product-1", "reason": "source quantity is below reserved quantity"}
+            ]
+            return {"result": {"ok": True, "business": {"unmatched": unmatched}}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main, "OdooSyncClient", FakeOdooClient)
+    monkeypatch.setattr(main.settings, "odoo_import_enabled", True)
+    monkeypatch.setattr(main.settings, "odoo_api_base_url", "https://odoo.test")
+    monkeypatch.setattr(main.settings, "odoo_api_token", "test-token")
+    monkeypatch.setattr(main.settings, "odoo_api_database", "aipos_uat")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_base_url", "")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_token", "")
+
+    result = await main.push_pos_snapshot(
+        db_session,
+        "skr",
+        include_catalog=False,
+        product_source_ids=["product-1"],
+        include_inventory_snapshot=True,
+        inventory_snapshot_source_ids=["product-1", "product-2"],
+        include_sales=False,
+    )
+
+    assert calls[-1] == (
+        "inventory",
+        "skr",
+        [],
+        {"snapshot_finalize": True, "snapshot_source_ids": ["product-1", "product-2"]},
+    )
+    assert result["inventory_reconciliation_required"] is True
+    assert result["inventory_unmatched"] == [
+        {"source_id": "product-1", "reason": "source quantity is below reserved quantity"}
+    ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mirror_enabled", [False, True])
 async def test_push_pos_snapshot_records_failure_and_closes_client(db_session, monkeypatch, mirror_enabled):
     seed_snapshot(db_session)

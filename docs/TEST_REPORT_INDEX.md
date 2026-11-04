@@ -20,6 +20,8 @@ Latest Shopfront sales mirror gap: [2026-11-04 daily sales replay](test-sessions
 
 Latest Shopfront SQLite lock follow-up: [2026-11-04 inventory request lock](test-sessions/2026-11-04-shopfront-sqlite-inventory-lock.md): crawler POS import test module 20/20 PASS. Online job 40 / run 147 remained at `sales:fetched:396` with a stale heartbeat; deployment and data repair are pending.
 
+Latest Shopfront inventory finalization follow-up: [2026-11-04 complete inventory cleanup gate](test-sessions/2026-11-04-shopfront-inventory-finalization.md): crawler `test_pos_import_results.py` 28/28 PASS, compile and diff checks PASS. Full snapshots now finalize stale cleanup when one listed source row is quarantined, while preserving that row's warning. Online job 61 was cancelled during its pre-existing partial import; candidate deployment and post-deploy quantity reconciliation are pending.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
@@ -45,7 +47,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `POS-001` |  | NOT RUN |  |  |  |  |
 | `POS-002` |  | NOT RUN |  |  |  |  |
 | `POS-003` |  | NOT RUN |  |  |  |  |
-| `INV-001` | 2026-11-03-shopfront-inventory-snapshot | Local fixture PASS; online FAIL (data mismatch); write BLOCKED | `4fb02f65`; Odoo `41dab563` | Runtime SHA not recorded | [Session](test-sessions/2026-11-03-shopfront-inventory-snapshot.md) | Wait for open operations to close; refresh source and reconcile |
+| `INV-001` | 2026-11-04-shopfront-inventory-finalization | PASS (28 crawler tests); online data mismatch remains | `dfda8a93` + candidate patch | Crawler not verified; POS `dfda8a93` | [Session](test-sessions/2026-11-04-shopfront-inventory-finalization.md) | Deploy, run full snapshot in approved test scope, reconcile unresolved quantities |
 | `SHP-001` | 2026-11-04-shopfront-sqlite-inventory-lock | Local targeted PASS (20/20); online BLOCKED (job 40 heartbeat stale) | `0893da47` plus candidate diff | Runtime `0893da47` before fix | [Session](test-sessions/2026-11-04-shopfront-sqlite-inventory-lock.md) | Deploy candidate; finish job and source/mirror reconciliation |
 | `PUR-001` | 2026-11-03-source-purchase-full | INFO: source read complete, cost verification pending | Query/script hashes in UAT | Unrecorded | [Session](test-sessions/2026-11-03-source-purchase-full.md) | Tax/invoice/valuation evidence |
 | `PRC-001` |  | NOT RUN |  |  |  |  |
