@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-11-04T06:50:50.479Z",
+  "target": "https://skr.orithos.com.au",
+  "mode": "read-only-ai-questions-and-GET-reports; no RFQ or purchase writes",
+  "runtime": {
+    "frontendCommit": "91e1ed2b5322fd2eae40aa2613bd23dbd69d4eed",
+    "frontendBuiltAt": "2026-11-04T06:36:50.949Z",
+    "backendCommit": "91e1ed2b5322fd2eae40aa2613bd23dbd69d4eed",
+    "backendBuiltAt": "2026-11-04T06:36:50Z"
+  },
+  "yesterdaySales": {
+    "businessDate": "2026-11-03",
+    "httpStatus": 200,
+    "intent": "report_sales",
+    "answerTotal": 6.49,
+    "directReportTotal": 6.49,
+    "matches": true,
+    "dataAsOf": "2026-11-04T00:00+10:30",
+    "traceability": {
+      "dateOrRange": true,
+      "dataAsOf": true,
+      "storeScope": true,
+      "dataSource": true
+    }
+  },
+  "exactDateSales": {
+    "businessDate": "2026-10-16",
+    "httpStatus": 200,
+    "answerTotal": 7738.14,
+    "directApiTotals": [
+      7738.14,
+      7738.14
+    ],
+    "matches": true,
+    "traceability": {
+      "dateOrRange": true,
+      "dataAsOf": true,
+      "storeScope": true,
+      "dataSource": true
+    }
+  },
+  "weeklyNetSales": {
+    "from": "2026-10-26",
+    "to": "2026-11-01",
+    "assistantAnswerTotal": 25990.14,
+    "assistantTableTotal": 25990.14,
+    "directNetSales": 25613.32,
+    "sameRangeSalesDailyTotal": 25613.32,
+    "refunds": 376.82,
+    "delta": 376.8199999999997,
+    "matchesNetSales": false,
+    "traceability": {
+      "dateOrRange": true,
+      "dataAsOf": true,
+      "storeScope": true,
+      "dataSource": true
+    }
+  },
+  "operationsQuestion": {
+    "httpStatus": 200,
+    "intent": "navigate",
+    "route": "/stock/replenishment",
+    "writeRequests": []
+  },
+  "deadStock": {
+    "period": "Top 50 dead-stock item(s) in the last 30 days (on hand > 0, qty sold = 0). Source: native Odoo stock quantities and POS sales; sales period: 2026-10-06 to 2026-11-04.",
+    "assistantRows": 50,
+    "matchingDirectApiRows": 50,
+    "unmatchedRows": 0,
+    "traceability": {
+      "periodInAnswer": true,
+      "dataAsOf": true,
+      "storeScope": true,
+      "dataSource": true
+    },
+    "writeRequests": []
+  },
+  "forecast": {
+    "httpStatus": 200,
+    "generatedAt": "2026-11-04T06:50:36.778Z",
+    "status": "AVAILABLE",
+    "products": 2263,
+    "inventoryHistoryDays": 4,
+    "latestInventoryBusinessDate": "2026-11-04",
+    "inventoryHistoryStatus": "REVIEW",
+    "supplierLeadTimeProducts": 0,
+    "supplierLeadTimeCoverage": 0,
+    "purchaseMode": "DRAFT_RFQ"
+  },
+  "pageErrors": 0,
+  "writeRequests": []
+}

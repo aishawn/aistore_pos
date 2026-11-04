@@ -2,6 +2,13 @@
 
 本表用于审核 `AI_LEADTIME_MANUAL_REVIEW_CANDIDATES_2026-11-04.md` 中的 Shopfront 采购候选。审核完成前不得回写 Odoo `product.supplierinfo`、供应商成本或自动采购参数。
 
+## 来源与店主反馈（2026-11-04）
+
+- 店主说明这些值来自 Shopfront 同步，但无法确认 `orderDate` 是否代表批准下单、`receivedAt` 是否代表实物到货，也无法确认 GST、箱/瓶单位、运费及费用口径；目前尚未提供可核对的供应商发票或送货凭证。因此 Shopfront 来源已知，业务事件语义和金额口径仍未验证，不能作为 Odoo 交期/成本主数据。
+- crawler 的 `PURCHASE_ORDERS_QUERY` 读取 Shopfront `orderDate`、`createdAt`、`sentAt`、`receivedAt` 及采购行 `caseQuantity`、`orderedQuantity`、`receivedQuantity`、`baseCost`、`orderedCost`。同步代码把 `orderDate` 映射到镜像 `order_date`，保留去凭据后的原始响应于 `raw_payload`，并单独记录 crawler `synced_at`。这些字段只能证明来源链和可供复核的值，不定义供应商的业务事件含义。
+- 本轮抽样 62 个采购单的 `orderDateRaw`、`receivedAtRaw`、箱规、数量和成本/费用候选字段均有值；62/62 的 `reviewerDecision` 与 `businessEvidence` 仍为空，`leadTimeEligibility=NEEDS_EVIDENCE`。日期字段存在不等于事件已获验证。
+- 状态保持 `NEEDS_EVIDENCE`；不将 Shopfront 镜像值写入 Odoo，不用其计算正式供应商交期、真实成本、毛利或节省。后续需以供应商发票/送货凭证或书面字段定义、单位与税费约定补足证据。
+
 ## 每条样本必须确认
 
 | 字段 | 审核值 | 证据/备注 |

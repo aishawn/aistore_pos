@@ -2,25 +2,57 @@
 
 ## 当前目标续验（2026-11-04）
 
-- 已完成 365 天、2,000 SKU 的六模型营业日掩码分群回测。销售快照 SHA-256 为 `1db83438ef97c0d131ee38994b222b8cd7538fdb9381a375a21a4710061f9729`，店主确认闭店日表 SHA-256 为 `b756a4869b923542bfc265688eb58966328bc05ac787af005a23321a89e90d20`。机器可读结果见 `docs/UAT_FORECAST_ROLLING_BACKTEST_2026-11-04.json`，216 行逐分群/模型 CSV 见 `docs/UAT_AI_FORECAST_SEGMENTED_OPEN_DAYS_ALL_MODELS_2026-11-04.csv`。
-- 两个落入窗口的闭店日（2025-12-25、2026-04-03）均从训练暴露、分群频率、MASE 差分及 holdout 评分排除，未移动日期索引。冠军 WAPE 仍为 103.6%–172.1%，新品代理 Bias 为 -83.6% 至 -88.0%；预测结构违规 0、预测窗口覆盖 100%、写请求 0。结论仍是不准入。生产 forecast engine 仍不识别门店营业日历；stockout/fill rate/成本没有可信标签。
-- 预测接口再次返回完整商品覆盖和 100% 快照商品覆盖，但原生库存只有 4 个连续观测日、交期覆盖 0%，状态 `REVIEW`、工作流 `DRAFT_RFQ`。Dokploy 目标数据库 `aipos_uat`、公司 5/137、Adelaide 时区配置正确。Dokploy 显示 `inventory-snapshots` 容器为 `running`，但日志面板为 `No logs found`；不能据此声称最新一次采集成功，需以快照 freshness / observedDays 增长作为证据。
+### 0a4dc523 主线运行时复验（2026-11-04 09:24 UTC）
 
-## 最新线上只读复验（2026-11-04 05:13 UTC）
+- `origin/main` 已推进到 `0a4dc523e3afee18013871a0701020405b487db9`（销售导入 effective write mode 审计修复）；SKR 和 Demo `/api/public/version` 前后端均报告该 SHA，构建时间 `2026-11-04T08:46:14Z`。这是此前 443 网络失败后观察到的主线更新；本地交接文档提交已重放到该 `origin/main` 之上。
+- 针对新运行时重跑 SKR 只读 AI 检查：昨日 AUD 6.49 和 2026-10-16 AUD 7,738.14 均匹配直接 API，日期/as-of/门店/来源齐全；30 天滞销商品 50/50 匹配。周问答仍回复毛销售 AUD 28,234.20，直接 API 净收入 AUD 27,857.38，退款差额 AUD 376.82；经营问答“要买什么”仍只导航。页面错误 0、业务写请求 0。
+- 补货 GET 返回 2,263 商品且目录覆盖完整。原生库存仍 `latestBusinessDate=2026-11-04`、4 个连续日、商品覆盖 13,035/13,035、仓库 1/1、交期覆盖 0%，`status=REVIEW`、`purchaseMode=DRAFT_RFQ`；采集最近成功时间未变。预测与采购保持人工审核。
+- 脱敏本轮摘要：[UAT JSON](UAT_AI_READONLY_AFTER_0A4DC523_2026-11-04.json)，详细测试会话：[SKR AI 运行时复验](test-sessions/2026-11-04-skr-ai-after-0a4dc523.md)。
+
+### 最新线上只读复验（2026-11-04 08:11 UTC）
+
+- SKR 前后端仍运行 `91e1ed2b5322fd2eae40aa2613bd23dbd69d4eed`。昨天销售 AUD 6.49、2026-10-16 销售 AUD 7,738.14 与只读 API 一致；30 天滞销前 50 个商品与直接 API 50/50 匹配，来源、范围和 `dataAsOf` 字段齐全。
+- “last week”回答 AUD 28,234.20，等于直接 API `grossSales`；净销售 `revenue` 为 AUD 27,857.38，退款 AUD 376.82。按净销售口径验收仍失败；“What do we need to buy?”仍只导航到补货页，没有给出采购建议。
+- 补货 GET 返回 2,263 商品、完整目录覆盖。库存历史状态为 `SUCCESS`：`lastSuccessAt=2026-11-03T15:30:13Z`，业务日 `2026-11-01` 至 `2026-11-04` 共 4 天、`gapDays=0`、无无效快照，商品覆盖 13,035/13,035、仓库覆盖 1/1。与上一份交接相比最新业务日和观测天数未增长；交期覆盖仍为 0%，状态 `REVIEW`、采购流程 `DRAFT_RFQ`。
+- 本轮页面错误 0、业务写请求 0；没有触发库存 worker、RFQ 或采购单。脱敏摘要：[UAT JSON](UAT_AI_READONLY_RERUN_2026-11-04_0811Z.json)，运行记录：[测试会话](test-sessions/2026-11-04-skr-ai-rerun.md)。
+
+### 原生库存事件时间抽查与后续 freshness 检查
+
+- 对已保存的 SKR 只读 `stock.move` 导出逐行核对：303,830 条移动的事件 `date` 与 `writeDate` 均有值，company 均为 5，时间覆盖仅 `2026-10-26` 至 `2026-11-02`；303,225 条是内部库位发往 customer 的 POS 出库，603 条为内部移动，1 条为库存调整。`date` 可作这些移动的事件时间，但该窄时间窗和缺少对应完整逐日库存基线，不能据此重建 365 天可售库存或计算 fill rate。
+- Odoo 盘点抽样（`aipos_uat`、company 5）显示 2 条 `stock.move` 库存调整，`date/createDate/writeDate` 一致；10,968 个 `stock.quant` 行仅 1 行带 `lastCountDate`，盘点数量字段无有效集合行；旧 `stock.inventory` / `stock.inventory.line` 模型不可用。这些零散事件不足以形成全店历史盘点标签。
+- 08:31 UTC 再次以 SKR 项目凭据认证读取补货接口：后端仍为 `91e1ed2b`；库存最近成功时间仍为 `2026-11-03T15:30:13Z`，`latestBusinessDate=2026-11-04`、`observedDays=4`、`gapDays=0`，没有较 08:11 UTC 检查新增。未调用 worker；仓库的销售回放 job 40 不作为库存快照采集证据。
+- 本地 GitHub `origin/main` 仍只到 `91e1ed2b`；本轮远端查询失败（GitHub 443 connection reset），提交 `8f6066e8` 尚未推送，也未触发 Dokploy。
+
+- 已完成 365 天、2,000 SKU 的六模型营业日掩码分群回测。销售快照 SHA-256 为 `1db83438ef97c0d131ee38994b222b8cd7538fdb9381a375a21a4710061f9729`，店主确认闭店日表 SHA-256 为 `b756a4869b923542bfc265688eb58966328bc05ac787af005a23321a89e90d20`。机器可读结果见 `docs/UAT_FORECAST_ROLLING_BACKTEST_2026-11-04.json`，216 行逐分群/模型 CSV 见 `docs/UAT_AI_FORECAST_SEGMENTED_OPEN_DAYS_ALL_MODELS_2026-11-04.csv`。
+- 在当前主线代码上使用同一 365 天原始快照和闭店表重新运行 `scripts/ai_forecast_segmented_eval.py`；与既有分群 JSON 忽略生成时间后递归逐字段完全一致，规范化 JSON SHA-256 均为 `27876f2ea5ed52039429d5e26b26bdce598db4a00b6cbb8392e7f05e56e41743`，2,000 SKU、7/14/28 天、35/17/8 folds、写请求 0。可复现性确认不改变原有发布门禁结论。
+- 两个落入窗口的闭店日（2025-12-25、2026-04-03）均从训练暴露、分群频率、MASE 差分及 holdout 评分排除，未移动日期索引。冠军 WAPE 仍为 103.6%–172.1%，新品代理 Bias 为 -83.6% 至 -88.0%；预测结构违规 0、预测窗口覆盖 100%、写请求 0。结论仍是不准入。生产 forecast engine 仍不识别门店营业日历；stockout/fill rate/成本没有可信标签。
+- 预测接口返回完整商品目录覆盖和 100% 快照商品覆盖，但原生库存只有 4 个连续观测日、交期覆盖 0%，状态 `REVIEW` / `DRAFT_RFQ`。Dokploy 的 `inventory-snapshots` 日志面板曾显示 `No logs found`；08:11 UTC 的认证只读补货接口随后确认 `lastAttemptStatus=SUCCESS` 和成功时间，但 `latestBusinessDate` / `observedDays` 未增长，不能据此宣称库存历史已扩充到可回测长度。
+
+## Main 部署后 AI 只读复验（2026-11-04 06:50 UTC）
+
+- 主线提交 `91e1ed2b5322fd2eae40aa2613bd23dbd69d4eed` 已在 SKR 与 Demo 的 `/api/public/version` 核对：两店前端和后端均运行该 SHA，构建时间为 `2026-11-04T06:36:50Z`。本提交包含营业日离线评测工具与文档，不含 `pos-api` 退款修复。
+- SKR 昨日销售回答 AUD 6.49 与直接 dashboard API 一致；2026-10-16 精确日期回答 AUD 7,738.14 与 `sales-daily` API 一致。两者均包含日期、`dataAsOf`、门店范围和来源字段。
+- 2026-10-26 至 2026-11-01 周销售回答/表格仍为 AUD 25,990.14；同范围净销售 API 为 AUD 25,613.32，差额 AUD 376.82，与退款总额相同。周范围、as-of、门店和来源字段齐全，因此属于退款符号/口径错误；此项仍 `FAIL`。
+- 30 天滞销问答返回 50 个商品，逐行与 Odoo 直接 API 比较 50/50 匹配，范围为 2026-10-06 至 2026-11-04。`What do we need to buy?` 仍只导航到补货页，不构成采购建议验收。
+- 预测 GET 返回 2,263 个商品；原生库存历史覆盖 13,035/13,035 商品，但只有 4 个连续观测日（最新业务日 2026-11-04），供应商交期覆盖 0/13,035，状态 `REVIEW`，采购仍为 `DRAFT_RFQ`。未触发 worker、未创建 RFQ 或采购单，写请求为 0。
+- 结构化证据：[在线只读摘要](docs/UAT_AI_READONLY_AFTER_91E1ED2B_2026-11-04.json)，详细运行保留在忽略目录 `.local/ai-eval/online-ai-after-91e1ed2b.json`；测试会话见 `docs/test-sessions/2026-11-04-skr-ai-after-main.md`。
+
+## 前一轮线上只读复验（2026-11-04 05:13 UTC；运行时 8aeb80dd）
 
 - SKR 前后端运行时均为 GitHub `main` 的 `8aeb80dd6d34014c04732344150fdcf09231f0f9`，页面错误 0。昨天销售问答 AUD 6.49 与 dashboard API 一致；2026-10-16 精确日期问答 AUD 7,738.14 与 `sales-daily` API 一致。日期、`dataAsOf`、门店范围和来源信息均可追溯。
 - 周销售问答仍失败：2026-10-26 至 2026-11-01 的回答和表格均为 AUD 25,990.14；同范围 `sales-daily.netSales` 合计 AUD 25,613.32，差额 AUD 376.82，等于该范围退款额。问答与自身表格一致，但销售口径仍把退款计入，不能验收通过。当前 `main` 的 `OdooReportQueryService` 没有 `is_refund=false` 过滤。
 - 实际经营问答“Which products have had no sales for 30 days?”命中 `report_dead_stock`，返回 50 个商品；逐一与同会话 `/api/odoo/dead-stock` 的正库存、30 天零销量集合核对，50/50 命中。`dataAsOf`、范围、来源均存在，`writeRequests=[]`。另一个“What do we need to buy?”仍只导航到补货页，不是建议数据本身的验收。
 - 预测 GET 返回 2,263 商品、预测接口状态 `AVAILABLE`。原生库存历史覆盖 13,035/13,035 商品、1/1 仓库，最新业务日 `2026-11-04`，连续观测日 4、缺口 0；交期覆盖 0/13,035、库存历史状态 `REVIEW`，采购仍 `DRAFT_RFQ`。已有 `SKR inventory snapshot review` 每日监测处于 ACTIVE，按 05:30 本地时间检查次日快照；本轮没有手动触发 worker。
 - 本次仅登录/注销、AI 问答和只读 API；未创建 RFQ、采购单或修改商品/库存/销售。完整响应保存在忽略目录 `.local/ai-eval/skr-readonly-rerun-2026-11-04-operational.json`；摘要见 `docs/UAT_AI_READONLY_RERUN_2026-11-04_CURRENT.md`。
-- 当前远端 `main` 为 `8aeb80d`；本地候选 `a680e220` 与其预览合并无冲突，但尚未合入。仓库要求 `pos-api` 改动必须在精确 SHA 上先通过远端 Java 21 `mvn -B clean verify`；当前工作流没有手动触发入口，主线推送会触发部署。按 owner 指示不维护候选分支，因此未推送或部署，不能将 post-push CI 当作满足预推门禁。
+- 此前本地退款修复候选 `d74daba4` 尚未合入当前主线。`pos-api` 改动必须在精确 SHA 上先通过远端 Java 21 `mvn -B clean verify`；当前工作流没有手动触发入口，不能以本次已部署的文档/脚本提交代替退款候选 SHA 的预推构建。采购仍保持只读/人工审核。
 
 ## 交期样本续核（2026-11-04）
 
 - 复核忽略目录中的最新审核抽样：62 个订单、1,379 条订单行，62/62 仍为空白 reviewer decision，均为 `NEEDS_EVIDENCE`；没有业务确认或主数据写入。
+- 店主反馈这些候选是 Shopfront 同步数据，但本人无法确认 `orderDate` / `receivedAt` 的采购批准和实到语义，也无法确认 GST、采购单位、运费及费用口径。crawler 的 GraphQL 查询确实读取 Shopfront 的 `orderDate`、`createdAt`、`sentAt`、`receivedAt` 和采购行数量/箱规/成本字段，并保留原始 payload 与单独的 `synced_at`；这证明来源链，不证明业务含义。审核 CSV 的 62 个样本日期/成本候选字段存在，但业务证据与 reviewer decision 仍全空。
 - 正确按 Adelaide 收货日期计算后，2 个负差样本为 −29 天和 −1 天（均为订购量 0、收货量正数）；另有 10 个超过 30 天样本，以及 5 家主要供应商各 10 个常规样本。较早候选文档中的 8 个负差使用了旧日期口径，应以本轮有时区的审核 CSV 为准，不能回写采购交期。
-- 样本成本的 GST、箱/瓶换算和运费/返利口径仍待业务确认。逐条 CSV 在忽略目录 `.local/ai-eval/leadtime-review-order-samples-2026-11-04.csv` 与 `.local/ai-eval/leadtime-review-samples-2026-11-04.csv`；修订说明见 `docs/AI_LEADTIME_MANUAL_REVIEW_RERUN_2026-11-04.md`。
-- SKU 销量分群重评通过 `ai_forecast_segmented_eval.py` 完成。`ai_forecast_walkforward_eval.py` 需要本地可信原生库存历史；本工作树中未找到该快照，所以 stockout-aware 评估仍不可运行。禁止使用 `qty_available(to_date)` 回建值替代。
+- 样本成本的 GST、箱/瓶换算和运费/返利口径仍待业务确认；须取得供应商发票/送货凭证或书面字段定义，不能仅凭“来自 Shopfront 同步”接受为事实。逐条 CSV 在忽略目录 `.local/ai-eval/leadtime-review-order-samples-2026-11-04.csv` 与 `.local/ai-eval/leadtime-review-samples-2026-11-04.csv`；修订说明见 `docs/AI_LEADTIME_MANUAL_REVIEW_RERUN_2026-11-04.md`。
+- SKU 销量分群重评通过 `ai_forecast_segmented_eval.py` 完成。`ai_forecast_walkforward_eval.py` 需要时间可信、覆盖完整的原生库存历史作为 `--inventory-history` 输入；本地目前没有对齐 365 天销售序列的库存标签文件，线上也只有 4 个连续原生日。stockout-aware 评估未运行，不能以 `qty_available(to_date)` 回建值替代。
 
 ## 本轮续测结果（2026-11-04）
 
