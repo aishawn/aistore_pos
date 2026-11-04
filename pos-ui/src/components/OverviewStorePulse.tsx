@@ -31,11 +31,11 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
   const stockAvailable = data.inventoryAvailable && data.inventoryUnits != null && Number.isFinite(data.inventoryUnits)
     && data.inventoryStatus !== "mixed_units" && data.inventoryStatus !== "unavailable";
   const marginAvailable = data.yesterdayGrossMargin != null;
-  const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Sales tax mismatch"
-    : data.grossMarginStatus === "purchase_cost_missing" ? "Purchase cost unverified"
-    : data.grossMarginStatus === "ledger_cost_unverified" ? "Purchase cost unverified"
+  const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Odoo sales do not reconcile"
+    : data.grossMarginStatus === "purchase_cost_missing" || data.grossMarginStatus === "ledger_cost_unverified" ? "Odoo cost records incomplete"
     : data.grossMarginStatus === "no_sales" ? "No sales yesterday"
-    : !marginAvailable ? "Shopfront source unavailable" : "Shopfront source · accounting unverified";
+    : data.grossMarginStatus === "verified" ? `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% coverage`
+    : !marginAvailable ? "Odoo margin unavailable" : "Odoo recorded cost · verification incomplete";
   const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";
   const marginHref = `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
 
