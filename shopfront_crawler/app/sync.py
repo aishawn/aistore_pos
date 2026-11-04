@@ -13,7 +13,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .pos import OrithosClient, PosIntegrationError
 from .shopfront import ShopfrontClient, ShopfrontError
 
@@ -1055,6 +1055,10 @@ async def sync_store(
             run.counts = counts
             db.commit()
             try:
+                # Use the beginning of the request window as the cutoff so
+                # stock moves made while Shopfront paginates the snapshot are
+                # preserved by the Odoo reconciliation guard.
+                snapshot_time = datetime.now(timezone.utc)
                 inventory_products = await client.fetch_inventory(token, settings.shopfront_inventory_query)
                 snapshot_keys: set[tuple[str, str]] = set()
                 inventory_rows: list[tuple[str, str, str | None, Decimal, dict[str, Any]]] = []
@@ -1096,7 +1100,6 @@ async def sync_store(
                     (row.shopfront_product_id, row.outlet_id or "unknown"): row
                     for row in existing_rows
                 }
-                snapshot_time = datetime.now(timezone.utc)
                 for product_id, outlet_id, outlet_name, quantity, raw in inventory_rows:
                     row = existing_by_key.get((product_id, outlet_id))
                     if row is None:
@@ -1122,6 +1125,16 @@ async def sync_store(
                 counts["inventory_stale_keys_removed"] = len(stale_rows)
                 counts["inventory_sync_complete"] = True
                 counts["inventory_source_product_ids"] = sorted(inventory_product_ids)
+                counts["inventory_snapshot_at"] = snapshot_time.isoformat()
+                manifest = db.scalar(select(InventorySnapshotManifest).where(
+                    InventorySnapshotManifest.store_key == store.store_key,
+                ))
+                if manifest is None:
+                    manifest = InventorySnapshotManifest(store_key=store.store_key)
+                    db.add(manifest)
+                manifest.source_product_ids = sorted(inventory_product_ids)
+                manifest.snapshot_at = snapshot_time
+                manifest.complete = True
             except Exception as exc:
                 counts["inventory_sync_complete"] = False
                 counts["warnings"].append({"stage": "inventory", "message": str(exc)[:500]})

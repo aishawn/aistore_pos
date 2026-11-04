@@ -255,6 +255,15 @@ class InventorySnapshot(Base):
     __table_args__ = (UniqueConstraint("store_key", "shopfront_product_id", "outlet_id", name="uq_inventory_snapshot"),)
 
 
+class InventorySnapshotManifest(Base):
+    __tablename__ = "inventory_snapshot_manifests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    source_product_ids: Mapped[list] = mapped_column(JSONType, default=list)
+    snapshot_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    complete: Mapped[bool] = mapped_column(default=False)
+
+
 class ShopfrontExtendedRecord(Base):
     __tablename__ = "shopfront_extended_records"
     id: Mapped[int] = mapped_column(primary_key=True)

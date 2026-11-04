@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient
@@ -428,6 +428,25 @@ async def run_full_snapshot_job(job_id: int) -> None:
             active_job_tasks.pop(job_id, None)
 
 
+def _inventory_snapshot_evidence(db: Session, store_key: str) -> dict[str, Any] | None:
+    manifest = db.scalar(select(InventorySnapshotManifest).where(
+        InventorySnapshotManifest.store_key == store_key,
+        InventorySnapshotManifest.complete.is_(True),
+    ))
+    if manifest is None or not manifest.snapshot_at:
+        return None
+    source_ids = sorted({str(value).strip() for value in (manifest.source_product_ids or []) if str(value).strip()})
+    if not source_ids:
+        return None
+    snapshot_at = manifest.snapshot_at
+    if snapshot_at.tzinfo is None:
+        snapshot_at = snapshot_at.replace(tzinfo=timezone.utc)
+    snapshot_age = datetime.now(timezone.utc) - snapshot_at
+    if snapshot_age < timedelta(minutes=-5) or snapshot_age > timedelta(hours=24):
+        return None
+    return {"source_product_ids": source_ids, "snapshot_at": snapshot_at.isoformat()}
+
+
 async def _run_full_snapshot_body(job_id: int, db: Session) -> None:
         run = None
         try:
@@ -448,7 +467,19 @@ async def _run_full_snapshot_body(job_id: int, db: Session) -> None:
             run = SyncRun(store_key=job.store_key, status="running", counts={"type": "full_snapshot"})
             db.add(run)
             db.commit()
-            result = await push_pos_snapshot(db, job.store_key, run=run)
+            inventory_manifest = _inventory_snapshot_evidence(db, job.store_key)
+            result = await push_pos_snapshot(
+                db,
+                job.store_key,
+                run=run,
+                include_inventory_snapshot=inventory_manifest is not None,
+                inventory_snapshot_source_ids=inventory_manifest["source_product_ids"] if inventory_manifest else None,
+                inventory_snapshot_at=inventory_manifest["snapshot_at"] if inventory_manifest else None,
+            )
+            if inventory_manifest is None:
+                result["inventory_reconciliation_required"] = True
+                result["inventory_reconciliation_reason"] = "no verified complete Shopfront inventory snapshot manifest"
+                result["error"] = result.get("error") or result["inventory_reconciliation_reason"]
             run.status = "completed" if result.get("error") is None else "failed"
             run.counts = {"type": "full_snapshot", **result}
             run.error = result.get("error")
@@ -499,6 +530,7 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
             run = SyncRun(store_key=job.store_key, status="running", counts={"type": job.job_type})
             db.add(run)
             db.commit()
+            inventory_manifest = _inventory_snapshot_evidence(db, job.store_key) if not include_sales else None
             result = await push_pos_snapshot(
                 db,
                 job.store_key,
@@ -506,8 +538,15 @@ async def _run_catalog_job(job_id: int, *, include_sales: bool) -> None:
                 include_catalog=not include_sales,
                 include_sales=include_sales,
                 sales_offset=int((job.payload or {}).get("sales_offset", 0) or 0),
+                include_inventory_snapshot=inventory_manifest is not None,
+                inventory_snapshot_source_ids=inventory_manifest["source_product_ids"] if inventory_manifest else None,
+                inventory_snapshot_at=inventory_manifest["snapshot_at"] if inventory_manifest else None,
                 job=job,
             )
+            if not include_sales and inventory_manifest is None:
+                result["inventory_reconciliation_required"] = True
+                result["inventory_reconciliation_reason"] = "no verified complete Shopfront inventory snapshot manifest"
+                result["error"] = result.get("error") or result["inventory_reconciliation_reason"]
             run.status = "completed" if result.get("error") is None else "failed"
             run.counts = {"type": job.job_type, **result}
             run.error = result.get("error")
@@ -1564,6 +1603,7 @@ async def _sync_history_chunk(
                 "include_catalog": full_catalog,
                 "include_inventory_snapshot": refresh_inventory,
                 "inventory_snapshot_source_ids": sync_counts.get("inventory_source_product_ids") or [],
+                "inventory_snapshot_at": sync_counts.get("inventory_snapshot_at"),
             }
             if sync_job is not None and sync_job.status == "running":
                 sync_job.phase = "pos_import"
@@ -1645,6 +1685,7 @@ async def push_pos_snapshot(
     inventory_source_ids: list[str] | None = None,
     include_inventory_snapshot: bool = False,
     inventory_snapshot_source_ids: list[str] | None = None,
+    inventory_snapshot_at: str | None = None,
     include_sales: bool = True,
     replay_sales_window: bool = False,
     sales_offset: int = 0,
@@ -1773,6 +1814,7 @@ async def push_pos_snapshot(
         # source sales ledger and its margin evidence.
         "inventory_unmatched": [],
         "inventory_reconciliation_required": False,
+        "inventory_legacy_duplicates_cleared": 0,
         "sales_batch_audit": [],
         "odoo_sales": {"imported": 0, "updated_orders": 0, "skipped": 0, "batches": 0},
     }
@@ -2279,6 +2321,14 @@ async def push_pos_snapshot(
                 return unmatched if isinstance(unmatched, list) else []
 
             unmatched = [item for response in inventory_responses for item in business_unmatched(response)]
+            result["inventory_legacy_duplicates_cleared"] = sum(
+                int(
+                    (response.get("result", response).get("business") or {}).get("cleared_legacy_duplicates") or 0
+                )
+                for response in inventory_responses
+                if isinstance(response, dict)
+                and isinstance(response.get("result", response), dict)
+            )
             if unmatched:
                 # Keep unresolved source rows visible for a later repair. A
                 # validated full source-ID set still permits safe stale cleanup.
@@ -2292,13 +2342,13 @@ async def push_pos_snapshot(
                     # visible above, while their source IDs protect them from
                     # stale cleanup; they must not block cleanup of unrelated
                     # Shopfront products that are absent from this full set.
-                    finalize_response = await odoo_client.sync(
-                        "inventory",
-                        store_key,
-                        [],
-                        snapshot_finalize=True,
-                        snapshot_source_ids=source_ids,
-                    )
+                    finalize_kwargs = {
+                        "snapshot_finalize": True,
+                        "snapshot_source_ids": source_ids,
+                    }
+                    if inventory_snapshot_at:
+                        finalize_kwargs["snapshot_at"] = inventory_snapshot_at
+                    finalize_response = await odoo_client.sync("inventory", store_key, [], **finalize_kwargs)
                     finalize_unmatched = business_unmatched(finalize_response)
                     if finalize_unmatched:
                         result["inventory_unmatched"].extend(finalize_unmatched)

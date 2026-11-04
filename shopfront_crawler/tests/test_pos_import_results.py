@@ -1,10 +1,10 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import asyncio
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -12,7 +12,7 @@ from app import main
 from app import sync
 from app.db import Base
 from app.config import Settings
-from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJob, SyncRun
+from app.models import InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
@@ -163,6 +163,12 @@ async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, mon
 
     assert run.status == "completed"
     assert run.counts["inventory_sync_complete"] is True
+    manifest = db_session.scalar(select(InventorySnapshotManifest).where(
+        InventorySnapshotManifest.store_key == "skr",
+    ))
+    assert manifest.complete is True
+    assert manifest.source_product_ids == ["product-1"]
+    assert manifest.snapshot_at is not None
 
 
 @pytest.mark.asyncio
@@ -816,7 +822,79 @@ async def test_daily_sync_pushes_full_inventory_source_set(db_session, monkeypat
     assert ok is True
     assert captured["include_inventory_snapshot"] is True
     assert captured["inventory_snapshot_source_ids"] == ["product-1", "product-2"]
+    assert captured["inventory_snapshot_at"] is None
     assert "inventory_source_product_ids" not in db_session.get(SyncRun, run.id).counts["sync"]
+
+
+def test_inventory_snapshot_evidence_requires_complete_manifest(db_session):
+    assert main._inventory_snapshot_evidence(db_session, "skr") is None
+    manifest = InventorySnapshotManifest(
+        store_key="skr",
+        source_product_ids=["product-2", " product-1 ", "product-1"],
+        snapshot_at=datetime.now(timezone.utc),
+        complete=True,
+    )
+    db_session.add(manifest)
+    db_session.commit()
+
+    assert main._inventory_snapshot_evidence(db_session, "skr") == {
+        "source_product_ids": ["product-1", "product-2"],
+        "snapshot_at": manifest.snapshot_at.replace(tzinfo=timezone.utc).isoformat(),
+    }
+    manifest.snapshot_at = datetime.now(timezone.utc) - timedelta(hours=25)
+    db_session.commit()
+    assert main._inventory_snapshot_evidence(db_session, "skr") is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("job_type", ["snapshot", "catalog_snapshot"])
+async def test_snapshot_jobs_finalize_only_with_fresh_complete_manifest(db_session, monkeypatch, job_type):
+    job = SyncJob(store_key="skr", job_type=job_type, status="queued", payload={})
+    manifest = InventorySnapshotManifest(
+        store_key="skr",
+        source_product_ids=["product-1", "product-2"],
+        snapshot_at=datetime.now(timezone.utc),
+        complete=True,
+    )
+    db_session.add_all([job, manifest])
+    db_session.commit()
+    job_id = job.id
+    captured = {}
+
+    async def fake_push(_db, _store_key, **kwargs):
+        captured.update(kwargs)
+        return {"status": "completed", "sales_imported": 0, "error": None}
+
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push)
+    if job_type == "snapshot":
+        await main._run_full_snapshot_body(job_id, db_session)
+    else:
+        monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+        await main._run_catalog_job(job_id, include_sales=False)
+
+    assert captured["include_inventory_snapshot"] is True
+    assert captured["inventory_snapshot_source_ids"] == ["product-1", "product-2"]
+    assert captured["inventory_snapshot_at"].endswith("+00:00")
+    assert db_session.get(SyncJob, job_id).status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_snapshot_job_does_not_claim_success_without_manifest(db_session, monkeypatch):
+    job = SyncJob(store_key="skr", job_type="catalog_snapshot", status="queued", payload={})
+    db_session.add(job)
+    db_session.commit()
+    job_id = job.id
+    monkeypatch.setattr(main, "get_db", lambda: iter((db_session,)))
+
+    async def fake_push(*_args, **_kwargs):
+        return {"status": "completed", "sales_imported": 0, "error": None}
+
+    monkeypatch.setattr(main, "push_pos_snapshot", fake_push)
+    await main._run_catalog_job(job_id, include_sales=False)
+
+    completed_job = db_session.get(SyncJob, job_id)
+    assert completed_job.status == "failed"
+    assert "no verified complete Shopfront inventory snapshot manifest" in completed_job.error
 
 
 @pytest.mark.asyncio

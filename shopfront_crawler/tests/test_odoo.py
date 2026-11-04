@@ -72,12 +72,14 @@ def test_inventory_snapshot_finalizer_sends_full_source_id_set_without_replacing
                 [],
                 snapshot_finalize=True,
                 snapshot_source_ids=["product-1", "product-2"],
+                snapshot_at="2026-11-05T01:02:03+00:00",
             )
         finally:
             await client.close()
 
         assert captured["snapshot_finalize"] is True
         assert captured["snapshot_source_ids"] == ["product-1", "product-2"]
+        assert captured["snapshot_at"] == "2026-11-05T01:02:03+00:00"
         assert "snapshot_complete" not in captured
         assert captured["items"] == []
 
