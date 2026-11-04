@@ -1,9 +1,30 @@
 import unittest
+from datetime import date, timedelta
 
-from scripts.ai_forecast_segmented_eval import fold_stability, summarize
+from scripts.ai_forecast_segmented_eval import (
+    demand_segment,
+    fold_stability,
+    open_holdout_offsets,
+    open_training_values,
+    summarize,
+)
 
 
 class SegmentedForecastStabilityTests(unittest.TestCase):
+    def test_closed_dates_do_not_dilute_training_demand_occurrence(self):
+        dates = [date(2026, 1, 1) + timedelta(days=index) for index in range(100)]
+        units = [1.0] * 9 + [0.0] * 91
+        closed = set(dates[9:94])
+
+        self.assertEqual("REGULAR", demand_segment(units, dates, 100, closed))
+        self.assertEqual(15, len(open_training_values(units, dates, 100, closed)))
+
+    def test_closed_holdout_dates_are_excluded_without_shifting_calendar_offsets(self):
+        dates = [date(2026, 1, 1) + timedelta(days=index) for index in range(7)]
+        closed = {dates[2], dates[5]}
+
+        self.assertEqual([0, 1, 3, 4, 6], open_holdout_offsets(dates, 0, 7, closed))
+
     def test_fold_stability_reports_coverage_dispersion_and_paired_wins(self):
         model_rows = [
             {"evaluationStart": "2026-01-01", "weightedWape": 0.5, "biasRatio": 0.1},

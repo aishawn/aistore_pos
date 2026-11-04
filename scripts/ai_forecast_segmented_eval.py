@@ -17,10 +17,15 @@ from app.forecast_engine import MODEL_NAMES, WAPE_BASELINE_MODEL, forecast
 from app.schemas import ForecastRequest, Series
 
 
-def demand_segment(units: list[float], dates: list[date], origin: int) -> str:
-    train = [max(0.0, float(value)) for value in units[:origin]]
-    first_sale = next((index for index, value in enumerate(train) if value > 0), None)
-    if first_sale is not None and origin - first_sale <= 60:
+def demand_segment(units: list[float], dates: list[date], origin: int,
+                   closed_dates: set[date] | None = None) -> str:
+    closed_dates = closed_dates or set()
+    training = [(day, max(0.0, float(value)))
+                for day, value in zip(dates[:origin], units[:origin])
+                if day not in closed_dates]
+    train = [value for _, value in training]
+    first_sale = next((day for day, value in training if value > 0), None)
+    if first_sale is not None and (dates[origin - 1] - first_sale).days <= 60:
         return "RECENT_FIRST_SALE_PROXY"
     if not train:
         return "NO_DEMAND"
@@ -34,7 +39,7 @@ def demand_segment(units: list[float], dates: list[date], origin: int) -> str:
 
     if origin >= 84 and average >= 1.0:
         weekdays: dict[int, list[float]] = defaultdict(list)
-        for day, value in zip(dates[:origin], train):
+        for day, value in training:
             weekdays[day.weekday()].append(value)
         weekday_means = [mean(values) for values in weekdays.values() if values]
         if len(weekday_means) == 7 and min(weekday_means) > 0.1 \
@@ -45,6 +50,18 @@ def demand_segment(units: list[float], dates: list[date], origin: int) -> str:
     if average >= 2.0 and occurrence >= 0.60 and cv <= 0.75:
         return "STABLE_HIGH"
     return "REGULAR"
+
+
+def open_training_values(units: list[float], dates: list[date], origin: int,
+                         closed_dates: set[date]) -> list[float]:
+    return [max(0.0, float(value)) for day, value in zip(dates[:origin], units[:origin])
+            if day not in closed_dates]
+
+
+def open_holdout_offsets(dates: list[date], origin: int, horizon: int,
+                         closed_dates: set[date]) -> list[int]:
+    return [offset for offset, day in enumerate(dates[origin:origin + horizon])
+            if day not in closed_dates]
 
 
 def new_metrics() -> dict:
@@ -170,7 +187,8 @@ def percentile_of(values: list[float], fraction: float) -> float:
 
 
 def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
-             validation_fraction: float, minimum_segment_products: int) -> dict:
+             validation_fraction: float, minimum_segment_products: int,
+             closed_dates: set[date] | None = None) -> dict:
     if snapshot.get("writeRequests", []) != []:
         raise ValueError("snapshot must have empty writeRequests")
     raw = snapshot.get("series", [])
@@ -179,6 +197,7 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
     series = [Series(**{key: item[key] for key in (
         "productId", "dates", "units", "stockoutFlags") if key in item}) for item in raw]
     dates = series[0].dates
+    closed_dates = closed_dates or set()
     if any(item.dates != dates for item in series):
         raise ValueError("series must share the same daily date range")
     if not all(not item.stockoutFlags for item in series):
@@ -199,7 +218,7 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
             split = "validation" if fold_index < split_index else "holdout"
             fold_metrics: dict[tuple[str, str, str], dict] = {}
             segments = {
-                item.productId: demand_segment(item.units, dates, origin)
+                item.productId: demand_segment(item.units, dates, origin, closed_dates)
                 for item in series
             }
             for segment, product_id in ((segments[item.productId], item.productId) for item in series):
@@ -216,7 +235,7 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
                     productId=item.productId,
                     dates=item.dates[:origin],
                     units=item.units[:origin],
-                    stockoutFlags=[],
+                    stockoutFlags=[day in closed_dates for day in item.dates[:origin]],
                     selectedModel=model,
                 ) for item in series]
                 response = forecast(ForecastRequest(
@@ -235,12 +254,15 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
                     key = (split, segments[item.productId], model)
                     bucket = metrics.setdefault(key, new_metrics())
                     fold_bucket = fold_metrics[key]
-                    add_window(bucket, item.productId, item.units[:origin],
-                               item.units[origin:origin + horizon], prediction.forecast,
-                               prediction.confidence)
-                    add_window(fold_bucket, item.productId, item.units[:origin],
-                               item.units[origin:origin + horizon], prediction.forecast,
-                               prediction.confidence)
+                    open_train = open_training_values(item.units, item.dates, origin, closed_dates)
+                    open_offsets = open_holdout_offsets(dates, origin, horizon, closed_dates)
+                    open_actual = [item.units[origin + offset] for offset in open_offsets]
+                    open_forecast = [prediction.forecast[offset] for offset in open_offsets]
+                    confidence = "HIGH" if len(open_train) >= 56 else "MEDIUM" if len(open_train) >= 14 else "LOW"
+                    add_window(bucket, item.productId, open_train, open_actual,
+                               open_forecast, confidence)
+                    add_window(fold_bucket, item.productId, open_train, open_actual,
+                               open_forecast, confidence)
 
             for key, bucket in fold_metrics.items():
                 row = summarize(bucket, bucket["expectedProductWindows"])
@@ -345,6 +367,12 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
         "dateRange": [dates[0].isoformat(), dates[-1].isoformat()],
         "historyDays": len(dates),
         "productCount": len(series),
+        "calendar": {
+            "closedDates": sorted(day.isoformat() for day in closed_dates),
+            "closedDatesInSnapshot": sorted(day.isoformat() for day in dates if day in closed_dates),
+            "closedDaysMaskedFromTrainingAndScoring": sum(day in closed_dates for day in dates),
+            "productionForecastCalendarAware": False,
+        },
         "horizons": result_horizons,
         "segmentDefinitions": {
             "RECENT_FIRST_SALE_PROXY": "first observed sale is within 60 days of the forecast origin; not a verified creation date",
@@ -364,6 +392,7 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
             "Unobserved stockouts may censor recorded sales; this dataset cannot evaluate lost demand.",
             "New-item status is only proxied by first sale date because product creation dates are absent.",
             "Weekly patterns are exploratory and do not establish annual seasonality from one year of data.",
+            "This offline run masks owner-confirmed closed dates from model training and open-day scoring; production forecast requests remain calendar-unaware.",
             "Model winners are selected on earlier validation folds and scored on later holdout folds; this is still one store and one 365-day window.",
             "No true inventory, lead-time, expiry, or realized cost data is available for operational planning metrics.",
         ],
@@ -378,16 +407,28 @@ def main() -> int:
     parser.add_argument("--minimum-train-days", type=int, default=120)
     parser.add_argument("--validation-fraction", type=float, default=0.70)
     parser.add_argument("--minimum-segment-products", type=int, default=20)
+    parser.add_argument("--closed-dates-file", type=Path)
     args = parser.parse_args()
     if any(h < 1 or h > 90 for h in args.horizons):
         parser.error("horizons must be between 1 and 90 days")
     if not 0.5 <= args.validation_fraction <= 0.9:
         parser.error("validation fraction must be between 0.5 and 0.9")
     snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
+    closed_dates = set()
+    if args.closed_dates_file:
+        calendar = json.loads(args.closed_dates_file.read_text(encoding="utf-8"))
+        if not isinstance(calendar.get("closedDates"), list):
+            parser.error("closed-dates file must contain a closedDates array")
+        try:
+            closed_dates = {date.fromisoformat(value) for value in calendar["closedDates"]}
+        except (TypeError, ValueError):
+            parser.error("closedDates entries must be YYYY-MM-DD strings")
     report = evaluate(snapshot, args.horizons, args.minimum_train_days,
-                      args.validation_fraction, args.minimum_segment_products)
+                      args.validation_fraction, args.minimum_segment_products, closed_dates)
     report["sourceSnapshotSha256"] = __import__("hashlib").sha256(
         args.snapshot.read_bytes()).hexdigest()
+    report["sourceCalendarSha256"] = (__import__("hashlib").sha256(
+        args.closed_dates_file.read_bytes()).hexdigest() if args.closed_dates_file else None)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps({
