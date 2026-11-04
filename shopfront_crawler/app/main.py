@@ -33,6 +33,37 @@ logger = logging.getLogger(__name__)
 def should_include_catalog(job_type: str | None, existing_products: int, existing_inventory: int) -> bool:
     """Refresh stock when the catalogue exists but its inventory mirror does not."""
     return job_type == "daily_sync" or existing_products == 0 or existing_inventory == 0
+
+
+def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dict[str, int]:
+    """Reject a successful mirror response when formal Odoo orders were skipped."""
+    payload = response.get("result", response) if isinstance(response, dict) else {}
+    business = payload.get("business") if isinstance(payload, dict) else None
+    if not isinstance(business, dict):
+        raise RuntimeError("Odoo did not confirm formal Shopfront sales business writes")
+
+    imported = int(business.get("imported") or 0)
+    updated = int(business.get("updated_orders") or 0)
+    skipped = business.get("skipped")
+    if not isinstance(skipped, list):
+        raise RuntimeError("Odoo sales response did not include skipped-order details")
+    if imported + updated + len(skipped) != expected_count:
+        raise RuntimeError(
+            "Odoo sales import count mismatch: "
+            f"expected={expected_count}, imported={imported}, updated={updated}, skipped={len(skipped)}"
+        )
+
+    expected_skips = {"cancelled source sale", "source sale is not completed"}
+    unexpected = [
+        str(item.get("reason") or "unknown") if isinstance(item, dict) else "malformed skipped-order detail"
+        for item in skipped
+        if not isinstance(item, dict) or item.get("reason") not in expected_skips
+    ]
+    if unexpected:
+        reasons = ", ".join(sorted(set(unexpected)))
+        raise RuntimeError(f"Odoo skipped Shopfront sales that require repair: {reasons}")
+
+    return {"imported": imported, "updated_orders": updated, "skipped": len(skipped)}
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
@@ -1648,6 +1679,7 @@ async def push_pos_snapshot(
         "inventory_unmatched": [],
         "inventory_reconciliation_required": False,
         "sales_batch_audit": [],
+        "odoo_sales": {"imported": 0, "updated_orders": 0, "skipped": 0, "batches": 0},
     }
     if sales_selection_diagnostics is not None:
         result["sales_selection_diagnostics"] = sales_selection_diagnostics
@@ -2211,10 +2243,22 @@ async def push_pos_snapshot(
                 for small_offset in range(0, len(items), 200):
                     batch = items[small_offset:small_offset + 200]
                     try:
-                        await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
+                        response = await odoo_client.sync("sales", store_key, jsonable_encoder(batch))
                     except Exception:
                         for retry_offset in range(0, len(batch), 50):
-                            await odoo_client.sync("sales", store_key, jsonable_encoder(batch[retry_offset:retry_offset + 50]))
+                            retry_batch = batch[retry_offset:retry_offset + 50]
+                            response = await odoo_client.sync("sales", store_key, jsonable_encoder(retry_batch))
+                            if settings.odoo_business_write_enabled:
+                                audit = audit_odoo_sales_batch(response, len(retry_batch))
+                                for key in ("imported", "updated_orders", "skipped"):
+                                    result["odoo_sales"][key] += audit[key]
+                                result["odoo_sales"]["batches"] += 1
+                    else:
+                        if settings.odoo_business_write_enabled:
+                            audit = audit_odoo_sales_batch(response, len(batch))
+                            for key in ("imported", "updated_orders", "skipped"):
+                                result["odoo_sales"][key] += audit[key]
+                            result["odoo_sales"]["batches"] += 1
                     odoo_batches += 1
             offset += len(sales)
             result["sales_imported"] = offset
@@ -2236,6 +2280,7 @@ async def push_pos_snapshot(
                     "target_sale_batches": dict(target_sale_batches),
                     "sales_batch_audit": list(result["sales_batch_audit"]),
                     "odoo_sale_batches": odoo_batches,
+                    "odoo_sales": dict(result["odoo_sales"]),
                     "stage": "odoo_business" if settings.odoo_import_enabled else "pos_mirror",
                 }
                 if job is not None:

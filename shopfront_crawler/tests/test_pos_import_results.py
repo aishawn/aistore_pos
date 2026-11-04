@@ -15,6 +15,37 @@ from app.models import InventorySnapshot, Product, Sale, SaleItem, Store, SyncJo
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
+def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
+    audit = main.audit_odoo_sales_batch(
+        {
+            "result": {
+                "ok": True,
+                "business": {
+                    "imported": 2,
+                    "updated_orders": 1,
+                    "skipped": [{"reason": "cancelled source sale"}],
+                },
+            }
+        },
+        expected_count=4,
+    )
+
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 1}
+
+
+@pytest.mark.parametrize(
+    "business, expected_error",
+    [
+        ({"imported": 1, "updated_orders": 0, "skipped": []}, "count mismatch"),
+        ({"imported": 1, "updated_orders": 0, "skipped": [{"reason": "unmatched or empty sale lines"}]}, "require repair"),
+        ({"imported": 1, "updated_orders": 0}, "skipped-order details"),
+    ],
+)
+def test_audit_odoo_sales_batch_rejects_incomplete_formal_import(business, expected_error):
+    with pytest.raises(RuntimeError, match=expected_error):
+        main.audit_odoo_sales_batch({"result": {"ok": True, "business": business}}, expected_count=2)
+
+
 @pytest.fixture
 def db_session():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
