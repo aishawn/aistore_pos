@@ -155,7 +155,7 @@ class ShopfrontIntegrationControllerTest {
                 com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
         persistShadow.setAccessible(true);
         persistShadow.invoke(controller, "sales", "skr", Map.of(), new ObjectMapper().readTree(
-                "[{\"external_id\":\"sale-1\",\"source_complete\":true,\"items\":[{\"raw_payload\":{\"item\":{\"id\":\"line-42\"}}}],\"payments\":[]}]"), false);
+                "[{\"external_id\":\"sale-1\",\"source_complete\":true,\"items\":[{\"id\":\"line-42\",\"raw_payload\":{\"item\":{\"id\":\"product-7\"}}}],\"payments\":[]}]"), false);
 
         verify(jdbc).update(contains("INSERT INTO shopfront_sale_item"),
                 org.mockito.ArgumentMatchers.eq("skr"), org.mockito.ArgumentMatchers.eq("sale-1"),

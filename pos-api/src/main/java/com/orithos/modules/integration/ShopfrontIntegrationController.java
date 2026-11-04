@@ -706,7 +706,6 @@ public class ShopfrontIntegrationController {
     private String childKey(JsonNode child, String idField, int index) {
         JsonNode id = child.path(idField);
         if (id.isMissingNode() || id.isNull()) id = child.path("raw_payload").path(idField);
-        if (id.isMissingNode() || id.isNull()) id = child.path("raw_payload").path("item").path(idField);
         return id.isMissingNode() || id.isNull() || id.asText().isBlank() ? Integer.toString(index) : id.asText();
     }
 

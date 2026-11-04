@@ -1677,6 +1677,7 @@ async def push_pos_snapshot(
         case_quantity = metadata("caseQuantity", "case_quantity")
         prices = metadata("prices") or []
         return {
+            "id": item.line_key,
             "source_product_id": item.shopfront_product_id,
             "name": name,
             "sku": sku,
@@ -1709,9 +1710,17 @@ async def push_pos_snapshot(
 
     def sale_payload(sale: Sale) -> dict:
         raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
-        return {"external_id": sale.shopfront_sale_id, "source_complete": True, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": raw_sale.get("payments", []) if isinstance(raw_sale.get("payments"), list) else [], "raw_payload": raw_sale, "items": [{
+        source_items = raw_sale.get("items")
+        source_payments = raw_sale.get("payments")
+        sale_items = [{
             **sale_line_payload(item),
-        } for item in sale.items]}
+        } for item in sale.items]
+        source_complete = (
+            isinstance(source_items, list)
+            and isinstance(source_payments, list)
+            and len(source_items) == len(sale_items)
+        )
+        return {"external_id": sale.shopfront_sale_id, "source_complete": source_complete, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": source_payments if isinstance(source_payments, list) else [], "raw_payload": raw_sale, "items": sale_items}
 
     def product_payload(product: Product) -> dict:
         raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
@@ -2839,9 +2848,16 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         if not nested and catalog_raw:
             raw["item"] = catalog_raw
         barcodes = nested.get("barcodes") if isinstance(nested.get("barcodes"), list) else catalog_raw.get("barcodes", [])
-        return {"source_product_id": item.shopfront_product_id, "name": name, "sku": (catalog.sku if catalog else None), "barcodes": barcodes or [], "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": raw}
+        return {"id": item.line_key, "source_product_id": item.shopfront_product_id, "name": name, "sku": (catalog.sku if catalog else None), "barcodes": barcodes or [], "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total, "cost": item.cost, "tax": item.tax, "raw_payload": raw}
 
-    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "source_complete": True, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "payments": (x.raw_payload or {}).get("payments", []) if isinstance(x.raw_payload, dict) else [], "items": [repair_line(i) for i in x.items]} for x in rows]})
+    def repair_sale_payload(sale: Sale) -> dict:
+        raw = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
+        source_items = raw.get("items")
+        source_payments = raw.get("payments")
+        items = [repair_line(item) for item in sale.items]
+        return {"external_id": sale.shopfront_sale_id, "source_complete": isinstance(source_items, list) and isinstance(source_payments, list) and len(source_items) == len(items), "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "payments": source_payments if isinstance(source_payments, list) else [], "items": items}
+
+    payload = jsonable_encoder({"store_key": store, "items": [repair_sale_payload(sale) for sale in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
