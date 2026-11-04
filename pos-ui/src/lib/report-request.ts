@@ -5,9 +5,11 @@ import { requirePermission, StoreAccessError } from "./store-access";
 import { isSameOrigin } from "./server-auth";
 import { calculateReport } from "./report-data";
 import { calculateDeadStock } from "./dead-stock-data";
+import { getReportPeriodBounds } from "./report-period.ts";
+import { salesDate } from "./replenishment-safety.ts";
 import { companyReportRpc, readReportCompany } from "./report-odoo";
 import {
-  REPORT_PREFIX, digest, enqueueReport, readSnapshot, reportRedis, reportTargets, snapshotFresh,
+  REPORT_PREFIX, digest, enqueueReport, readSnapshot, readShopfrontSyncState, reportRedis, reportTargets, snapshotFresh,
   snapshotKey, snapshotRevision, targetId, type ReportJob, type ReportScope, type ReportSnapshot, type SnapshotPeriod,
 } from "./report-snapshots";
 
@@ -89,6 +91,19 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const period = deadStock ? "dead_stock" : summary ? "today" : requested;
     if (!summary && requested === "today") return response({ message: "Today requires view=summary" }, 400);
     const calendar = ["today", "yesterday", "last_7_days", "last_week", "last_month", "dead_stock"].includes(period || "");
+    const bounds = calendar && period && period !== "dead_stock" ? getReportPeriodBounds(period as Exclude<SnapshotPeriod, "dead_stock">, new Date(), access.scope.timezone) : null;
+    const periodFrom = bounds ? salesDate(bounds.start.toISOString(), access.scope.timezone) : null;
+    const periodThrough = bounds ? salesDate(new Date(bounds.end.getTime() - 1).toISOString(), access.scope.timezone) : null;
+    const sourceState = await readShopfrontSyncState(access.scope, periodFrom, periodThrough);
+    const sourceComplete = Boolean(sourceState && sourceState.status === "completed" && periodFrom && periodThrough
+      && sourceState.fromDay <= periodFrom && sourceState.toDay >= periodThrough);
+    const sourceMetadata = {
+      sourceSyncedThrough: sourceState?.toDay ?? null,
+      syncRunId: sourceState?.runId ?? null,
+      dataRevision: await snapshotRevision(access.scope),
+      completeness: sourceComplete ? "complete" : sourceState?.status === "partial" || sourceState?.status === "failed" ? "incomplete" : "unverified",
+      sourceSyncStatus: sourceState?.status ?? "unknown",
+    };
     const force = request.nextUrl.searchParams.get("refresh") === "true";
     const task = request.nextUrl.searchParams.get("task");
     const revision = await snapshotRevision(access.scope);
@@ -112,9 +127,9 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         const job = await enqueueReport(access.scope, period as SnapshotPeriod, true, true, force);
         if (!job) throw new Error("Report queue unavailable");
         nextTask = job.id;
-        if (!snapshot || (force && !task)) return response({ taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
+        if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
       }
-      if (snapshot) return response({ ...snapshot.body, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
+      if (snapshot) return response({ ...snapshot.body, ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
       `auth;dur=${authMs.toFixed(1)}, cache;dur=${(performance.now() - started - authMs).toFixed(1)}, odoo;desc="0 aggregate calls"`);
     }
@@ -146,7 +161,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       }
       snapshot = await flight;
     }
-    return response({ ...snapshot.body, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
+    return response({ ...snapshot.body, ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
       `auth;dur=${authMs.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`);
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;

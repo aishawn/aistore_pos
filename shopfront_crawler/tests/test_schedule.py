@@ -46,9 +46,28 @@ def test_nightly_sync_includes_current_day_and_early_morning_repeats_closed_day(
     from app.main import scheduled_sync_range
 
     zone = ZoneInfo("Australia/Adelaide")
+    assert Settings().daily_sync_hours() == [6, 23]
     assert scheduled_sync_range(datetime(2026, 11, 4, 23, 0, tzinfo=zone), 3) == (
-        datetime(2026, 11, 2).date(), datetime(2026, 11, 4).date()
+        datetime(2026, 10, 26).date(), datetime(2026, 11, 4).date()
     )
-    assert scheduled_sync_range(datetime(2026, 11, 5, 2, 0, tzinfo=zone), 3) == (
-        datetime(2026, 11, 2).date(), datetime(2026, 11, 4).date()
+    assert scheduled_sync_range(datetime(2026, 11, 5, 6, 0, tzinfo=zone), 10) == (
+        datetime(2026, 10, 26).date(), datetime(2026, 11, 4).date()
     )
+
+
+def test_monday_morning_and_sunday_night_preserve_previous_week_boundaries():
+    from app.main import scheduled_sync_range
+
+    zone = ZoneInfo("Australia/Adelaide")
+    assert scheduled_sync_range(datetime(2026, 11, 9, 6, 0, tzinfo=zone), 10) == (
+        datetime(2026, 11, 2).date(), datetime(2026, 11, 8).date()
+    )
+    assert scheduled_sync_range(datetime(2026, 11, 8, 23, 0, tzinfo=zone), 10) == (
+        datetime(2026, 10, 26).date(), datetime(2026, 11, 8).date()
+    )
+
+
+def test_shopfront_sync_notifies_both_mapped_store_hosts():
+    from app.main import POS_UI_NOTIFY_HOSTS
+
+    assert POS_UI_NOTIFY_HOSTS["skr"] == ["skr.orithos.com.au", "demo.orithos.com.au"]

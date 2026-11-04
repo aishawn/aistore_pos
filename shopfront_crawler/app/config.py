@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     token_encryption_key: str = ""
     sync_timezone: str = "Australia/Adelaide"
     sync_interval_minutes: int = 30
-    sync_lookback_days: int = 3
-    sync_daily_hours: str = "2,10,18,23"
+    sync_lookback_days: int = 10
+    sync_daily_hours: str = "6,23"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
     worker_poll_seconds: int = 2
@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     odoo_business_write_enabled: bool = False
     pos_ui_notify_url: str = "http://frontend:3000/api/internal/shopfront-sync-notify"
     orithos_shopfront_sync_notify_secret: str = ""
+    report_sync_notification_url: str = ""
     shopfront_products_query: str = DEFAULT_PRODUCTS_QUERY
     shopfront_inventory_query: str = DEFAULT_INVENTORY_QUERY
     shopfront_sale_detail_query: str = ""

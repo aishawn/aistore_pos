@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const STORE_HOSTS: Record<string, string[]> = {
-  skr: ["skr.orithos.com.au"],
+  skr: ["skr.orithos.com.au", "demo.orithos.com.au"],
 };
 
 function notifySecret() {

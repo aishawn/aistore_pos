@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import os
+import httpx
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -14,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import desc, func, or_, select, update
+from sqlalchemy import case, desc, func, or_, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -31,7 +32,7 @@ app = FastAPI(title="Shopfront Crawler", version="0.1.0")
 logger = logging.getLogger(__name__)
 
 POS_UI_NOTIFY_HOSTS: dict[str, list[str]] = {
-    "skr": ["skr.orithos.com.au"],
+    "skr": ["skr.orithos.com.au", "demo.orithos.com.au"],
 }
 
 
@@ -127,6 +128,21 @@ def wake_durable_worker() -> None:
         loop.create_task(process_next_job())
     except RuntimeError:
         logger.warning("Could not wake durable worker: no running event loop")
+
+
+async def notify_report_refresh(store_key: str, start: date, end: date, run_id: int | None, status: str) -> None:
+    url = settings.report_sync_notification_url.strip()
+    token = settings.shopfront_integration_token or settings.pos_api_token
+    if not url or not token:
+        return
+    payload = {"storeKey": store_key, "fromDay": start.isoformat(), "toDay": end.isoformat(),
+               "syncRunId": run_id, "status": status}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(url, json=payload, headers={"X-Shopfront-Integration-Token": token})
+            response.raise_for_status()
+    except Exception as exc:
+        logger.warning("Report refresh notification failed: store=%s run=%s error=%s", store_key, run_id, type(exc).__name__)
 
 
 @app.on_event("startup")
@@ -1393,6 +1409,17 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                             # the currently healthy worker.
                             job.error = None
                             db.commit()
+                            if job.job_type == "history":
+                                daily_waiting = db.scalar(select(SyncJob.id).where(
+                                    SyncJob.store_key == store_key,
+                                    SyncJob.job_type == "daily_sync",
+                                    SyncJob.status == "queued",
+                                ).limit(1))
+                                if daily_waiting:
+                                    job.status = "queued"
+                                    job.phase = "yielded_to_daily_sync"
+                                    db.commit()
+                                    break
     finally:
         db.close()
 
@@ -1562,6 +1589,8 @@ async def _sync_history_chunk(
             catalog_checkpoint.value = sync_counts["catalog_cursor"]
             catalog_checkpoint.updated_at = datetime.now(timezone.utc)
         db.commit()
+        if start is not None and end is not None:
+            await notify_report_refresh(store_key, start, end, run.id, "completed")
         await stop_keepalive()
         return True
     except Exception as exc:
@@ -1572,6 +1601,8 @@ async def _sync_history_chunk(
             failed_run.status = "superseded" if start < end else "failed"
             failed_run.error = "split into smaller retry ranges" if start < end else str(exc)[:2000]
             db.commit()
+        if start is not None and end is not None:
+            await notify_report_refresh(store_key, start, end, failed_run.id if failed_run else None, "partial")
         if start >= end:
             logger.exception("Shopfront single-day chunk failed: store=%s from=%s", store_key, start)
             return False
@@ -2381,10 +2412,9 @@ async def push_pos_snapshot(
 
 def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date, date]:
     today = local_now.date()
-    # The 23:00 run captures the current business day before midnight. The
-    # 02:00 run repeats the preceding day after it has fully closed.
+    # The 23:00 run captures today's business day; the 06:00 run closes yesterday.
     end = today if local_now.hour >= 23 else today - timedelta(days=1)
-    start = end - timedelta(days=lookback_days - 1)
+    start = today - timedelta(days=today.weekday() + 7)
     return start, end
 
 
@@ -2394,13 +2424,20 @@ async def scheduled_sync() -> None:
     db = next(get_db())
     try:
         for store_key in settings.stores():
-            # A persisted history/snapshot job owns the store writer. Waiting
-            # behind it would add another full report/import window and can
-            # make the historical job appear stalled while doing duplicate
-            # work. The next scheduled run will cover this lookback window.
+            pending_daily = db.scalar(select(SyncJob).where(
+                SyncJob.store_key == store_key,
+                SyncJob.job_type == "daily_sync",
+                SyncJob.status == "queued",
+            ).order_by(SyncJob.id.desc()).limit(1))
+            if pending_daily:
+                pending_daily.from_date = min(pending_daily.from_date or start.isoformat(), start.isoformat())
+                pending_daily.cursor_date = min(pending_daily.cursor_date or start.isoformat(), start.isoformat())
+                pending_daily.to_date = max(pending_daily.to_date or end.isoformat(), end.isoformat())
+                pending_daily.payload = {**(pending_daily.payload or {}), "scheduled_hours": settings.daily_sync_hours()}
+                continue
             active = active_job(db, store_key)
-            if active:
-                logger.info("Skipping scheduled sync for store=%s; active job=%s/%s", store_key, active.id, active.job_type)
+            if active and active.job_type == "daily_sync":
+                logger.info("Scheduled sync already running for store=%s job=%s", store_key, active.id)
                 continue
             db.add(SyncJob(
                 store_key=store_key,
@@ -2681,7 +2718,9 @@ async def process_next_job() -> None:
             SyncJob.heartbeat_at < stale_before,
         ).values(status="queued", error="requeued after stale worker heartbeat"))
         db.commit()
-        job = db.scalar(select(SyncJob).where(SyncJob.status == "queued").order_by(SyncJob.id).limit(1))
+        job = db.scalar(select(SyncJob).where(SyncJob.status == "queued").order_by(
+            case((SyncJob.job_type == "daily_sync", 0), else_=1), SyncJob.id
+        ).limit(1))
         job_id = job.id if job else None
         job_type = job.job_type if job else None
     finally:
@@ -2753,6 +2792,8 @@ async def _run_history_job(job_id: int) -> None:
         await run_sync_background(job.store_key, start, date.fromisoformat(job.to_date), job.id)
         db.refresh(job)
         if job.status == "cancelled":
+            return
+        if job.status == "queued" and job.phase == "yielded_to_daily_sync":
             return
         failed = db.scalar(select(SyncRun.id).where(SyncRun.store_key == job.store_key, SyncRun.started_at >= job.started_at, SyncRun.status == "failed"))
         job.status = "failed" if failed else "completed"

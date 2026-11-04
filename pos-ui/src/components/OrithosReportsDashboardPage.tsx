@@ -41,6 +41,9 @@ type OverviewData = {
   queryThrough?: string;
   cacheStatus?: string;
   updateStatus?: string;
+  completeness?: "complete" | "incomplete" | "unverified";
+  sourceSyncedThrough?: string | null;
+  dataRevision?: string;
   period?: ReportPeriod;
   comparisonLabel?: string;
   rangeHours: number;
@@ -248,7 +251,7 @@ export function OrithosReportsDashboardPage() {
       }
       setNeedsConnection(false);
       setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : null);
-      if (payload.cacheStatus !== "STALE") periodCache.current.set(selectedPeriod, { data: payload, expires: Date.now() + 300_000,
+      if (payload.cacheStatus !== "STALE") periodCache.current.set(selectedPeriod, { data: payload, expires: Date.now() + 30_000,
         businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) });
       setData({
         ...payload,
@@ -319,6 +322,23 @@ export function OrithosReportsDashboardPage() {
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Report update failed."); });
     return () => controller.abort();
   }, [data?.taskId, data?.cacheStatus]);
+  useEffect(() => {
+    let lastRefresh = 0;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastRefresh < 15_000) return;
+      lastRefresh = Date.now();
+      periodCache.current.delete(periodRef.current);
+      void load(false, periodRef.current);
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [load]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
@@ -460,6 +480,12 @@ export function OrithosReportsDashboardPage() {
               </Link>
             </div>
           </header>
+          {data && data.completeness !== "complete" ? (
+            <section role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <span>{data.completeness === "incomplete" ? "Shopfront data is incomplete for this period." : "Shopfront coverage has not been confirmed for this period."}</span>
+              <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"}</span>
+            </section>
+          ) : null}
 
           {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
           {data?.cacheStatus === "STALE" && <p role="status" className="text-xs text-amber-800">Showing the last prepared report. An updated report is being prepared.</p>}

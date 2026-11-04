@@ -1,5 +1,12 @@
 # 历史毛利验证
 
+## 2026-11-05 同步后 revision 刷新候选
+
+- 环境：本地 Node 24；来源基线 `c2d2f617`，候选未部署。report cache + period 测试 19/19 PASS，包含逐营业日完成、失败日与缺日；Adelaide DST/周边界覆盖在该 19 项中。
+- Python scheduler 回归 3/3 PASS；crawler Python compileall 和 `git diff --check` PASS。
+- 完整 UI typecheck、ESLint、应用 build：NOT RUN 成功，依赖安装不完整。SKR/demo 页面实时自动更新、Redis 故障恢复和成本审计新批次自动生成：NOT RUN。
+- 线上映射/灾备前置未满足，未触发 Odoo 写入；响应中的同步状态上线后仍需验证。
+
 更新日期：2026-11-03；负责人：待指定。套件 RPT-001 的定向子集，不宣称整套通过。
 
 2026-11-04 `98fb7422` UI 与近 7 天范围：Node 24 定向 `report-period.test.ts` 10/10 PASS；项目文档检查 62 Markdown 文件 PASS；`git diff --check` PASS。项目依赖目录缺失，类型检查和 ESLint 未执行；本地 build、部署和线上验收均 NOT RUN。不得把既有线上来源报表证据外推至本候选。

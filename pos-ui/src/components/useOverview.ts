@@ -15,6 +15,9 @@ export type OverviewPulse = {
   queryThrough?: string;
   cacheStatus?: string;
   updateStatus?: string;
+  completeness?: "complete" | "incomplete" | "unverified";
+  sourceSyncedThrough?: string | null;
+  dataRevision?: string;
   taskId?: string;
   company: string;
   currency: string;
@@ -93,6 +96,9 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     queryThrough: payload.queryThrough as string | undefined,
     cacheStatus: payload.cacheStatus as string | undefined,
     updateStatus: payload.updateStatus as string | undefined,
+    completeness: payload.completeness as OverviewPulse["completeness"],
+    sourceSyncedThrough: payload.sourceSyncedThrough as string | null | undefined,
+    dataRevision: payload.dataRevision as string | undefined,
     taskId: payload.taskId as string | undefined,
     company: (payload.company as string) || "Store",
     currency: (payload.currency as string) || "AUD",
@@ -141,10 +147,10 @@ export function useOverview() {
   const [parked, setParked] = useState(0);
   const revision = useRef(0);
   const lastFetchAt = useRef(0);
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (refresh = false, revalidate = false) => {
     const current = ++revision.current;
     const scope = pulseScope(user?.vendorId);
-    const cached = refresh ? null : readPulse(scope);
+    const cached = refresh || revalidate ? null : readPulse(scope);
     if (cached) {
       setData(cached.data);
       setLoading(false);
@@ -218,6 +224,23 @@ export function useOverview() {
       counter.current++;
     };
   }, [load, ready, user?.id, user?.vendorId, user?.outletId]);
+  useEffect(() => {
+    if (!ready || !user) return;
+    let lastRefresh = 0;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastRefresh < 15_000) return;
+      lastRefresh = Date.now();
+      void load(false, true);
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [load, ready, user]);
   useEffect(() => {
     const reset = (event: Event) => {
       const detail = (event as CustomEvent<{ reason?: string; active?: boolean }>).detail;
