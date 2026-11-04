@@ -42,3 +42,6 @@ orithos-images.tar
 /db/*.sql
 /pos-api/src/main/resources/db/orithos*.sql
 node_modules/
+
+# UAT screenshots and handoffs — keep locally; omit from deploy clones
+/docs/
