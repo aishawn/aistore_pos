@@ -33,6 +33,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh }: {
   const marginAvailable = data.yesterdayGrossMargin != null;
   const marginNote = data.grossMarginStatus === "sales_mismatch" ? "Sales tax mismatch"
     : data.grossMarginStatus === "purchase_cost_missing" ? "Purchase cost unverified"
+    : data.grossMarginStatus === "ledger_cost_unverified" ? "Purchase cost unverified"
     : data.grossMarginStatus === "no_sales" ? "No sales yesterday"
     : !marginAvailable ? "Shopfront source unavailable" : "Shopfront source · accounting unverified";
   const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";

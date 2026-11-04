@@ -180,6 +180,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }, [query]);
 
   useEffect(() => {
+    if (dialog === "cost-reconciliation") { setCheckingConnection(false); return; }
     let cancelled = false;
     setCheckingConnection(true);
     void getOdooSession().then((user) => {
@@ -193,7 +194,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       if (!cancelled) setCheckingConnection(false);
     });
     return () => { cancelled = true; };
-  }, [connectionRetryKey]);
+  }, [connectionRetryKey, dialog]);
 
   useEffect(() => {
     if (searchParams.get("import") === "1" && connected === true) {
@@ -207,6 +208,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
   useEffect(() => {
     if (connected !== true) return;
+    if (dialog === "cost-reconciliation") return;
     let cancelled = false;
     void getOdooPosBootstrap().then((bootstrap) => {
       if (cancelled) return;
@@ -216,7 +218,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       // Keep Adelaide as the display fallback when bootstrap is unavailable.
     });
     return () => { cancelled = true; };
-  }, [categoryRetryKey, connected]);
+  }, [categoryRetryKey, connected, dialog]);
 
   async function exportProductsCsv() {
     if (exportBusy || connected !== true) return;
@@ -249,7 +251,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const loadProducts = useCallback(async (append = false) => {
     const forceRefresh = refreshVersion.current !== refreshKey;
     refreshVersion.current = refreshKey;
-    if (connected !== true) return;
+    if (connected !== true || dialog === "cost-reconciliation") return;
     if (append && (requestBusy.current || (inventoryReport && !snapshotId.current))) return;
     const revision = ++requestRevision.current;
     requestBusy.current = true;
@@ -301,9 +303,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, inventoryReport, sortBy, sortDirection, refreshKey]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, dialog, inventoryReport, sortBy, sortDirection, refreshKey]);
 
   useEffect(() => {
+    if (dialog === "cost-reconciliation") { setLoading(false); return; }
     const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
     if (loadedQuery.current !== key) {
       setItems([]);
@@ -312,7 +315,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadProducts();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
+  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, dialog]);
 
   useEffect(() => {
     if (!hasNext || resultsPending || loadingMore || error || !sentinel.current) return;
@@ -339,7 +342,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }
 
   useEffect(() => {
-    if (connected !== true) return;
+    if (connected !== true || dialog === "cost-reconciliation") return;
     let cancelled = false;
     setCategoryLoading(true);
     setCategoryError(null);
@@ -356,7 +359,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       .catch((cause) => { if (!cancelled) setCategoryError(cause instanceof Error ? cause.message : "Product categories are unavailable."); })
       .finally(() => { if (!cancelled) setCategoryLoading(false); });
     return () => { cancelled = true; };
-  }, [categoryRetryKey, connected]);
+  }, [categoryRetryKey, connected, dialog]);
 
   function selectCategory(value: string) {
     requestRevision.current += 1;

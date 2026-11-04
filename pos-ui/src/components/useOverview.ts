@@ -176,7 +176,13 @@ export function useOverview() {
     };
   }, [load, ready, user?.id, user?.vendorId, user?.outletId]);
   useEffect(() => {
-    const reset = (event: Event) => { revision.current++; setData(null); if ((event as CustomEvent<{ active?: boolean }>).detail?.active !== false && user && ready) void load(); };
+    const reset = (event: Event) => {
+      const detail = (event as CustomEvent<{ reason?: string; active?: boolean }>).detail;
+      revision.current++;
+      setData(null);
+      // Identity changes already trigger the authenticated load effect below.
+      if (detail?.reason !== "identity" && detail?.active !== false && user && ready) void load();
+    };
     window.addEventListener("orithos-read-cache-cleared", reset);
     return () => window.removeEventListener("orithos-read-cache-cleared", reset);
   }, [load, user, ready]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { costAuditCsv, type CostAudit, type AuditLine } from "@/lib/cost-reconciliation";
 import type { SourceMargin } from "@/lib/shopfront-source-margin";
@@ -42,10 +43,11 @@ function ReceiptDetail({ line, timezone }: { line: AuditLine; timezone: string }
 }
 
 export function CostReconciliationPanel() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<CostAudit | null>(null), [error, setError] = useState<string | null>(null);
   const [sourceReport, setSourceReport] = useState<SourceReport | null>(null);
   const [busy, setBusy] = useState(false), [busyMode, setBusyMode] = useState<"source" | "audit" | null>(null);
-  const [fromDay, setFromDay] = useState(""), [toDay, setToDay] = useState("");
+  const [fromDay, setFromDay] = useState(() => searchParams.get("fromDay") ?? ""), [toDay, setToDay] = useState(() => searchParams.get("toDay") ?? "");
   const [limit, setLimit] = useState("20"), [filter, setFilter] = useState("all"), [query, setQuery] = useState("");
   const [page, setPage] = useState(0), [expanded, setExpanded] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);
@@ -63,7 +65,7 @@ export function CostReconciliationPanel() {
   }, []);
   async function generate(sourceOnly = false, dates?: { fromDay?: string; toDay?: string }) {
     controller.current?.abort(); const request = new AbortController(); controller.current = request;
-    setBusy(true); setBusyMode(sourceOnly ? "source" : "audit"); setError(null); setData(null); setSourceReport(null); setExpanded(null); setPage(0);
+    setBusy(true); setBusyMode(sourceOnly ? "source" : "audit"); setError(null); setExpanded(null); setPage(0);
     try {
       const response = await fetchOdooRoute(sourceOnly ? "/api/odoo/shopfront-margin" : "/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...(!sourceOnly ? { limit: Number(limit) } : {}), ...((dates?.fromDay ?? fromDay) ? { fromDay: dates?.fromDay ?? fromDay } : {}), ...((dates?.toDay ?? toDay) ? { toDay: dates?.toDay ?? toDay } : {}) }), signal: request.signal });
