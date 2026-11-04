@@ -12,7 +12,7 @@ from app.odoo import OdooIntegrationError, OdooSyncClient
     [
         ({"jsonrpc": "2.0", "error": {"message": "Odoo Server Error", "data": {"message": "column missing"}}}, "column missing"),
         ({"jsonrpc": "2.0", "result": {"ok": False, "error": "schema upgrade required"}}, "schema upgrade required"),
-        ({"jsonrpc": "2.0", "result": {"ok": True, "run_id": 4}}, None),
+        ({"jsonrpc": "2.0", "result": {"ok": True, "run_id": 4, "item_count": 0}}, None),
     ],
 )
 def test_sync_requires_explicit_odoo_success(body, expected):
@@ -40,7 +40,7 @@ def test_inventory_snapshot_flags_are_only_sent_for_complete_snapshot(snapshot_c
 
         def handle(request):
             captured.update(json.loads(request.content)["params"])
-            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True}})
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True, "item_count": 1}})
 
         http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
         client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, http=http)
@@ -61,7 +61,7 @@ def test_inventory_snapshot_finalizer_sends_full_source_id_set_without_replacing
 
         def handle(request):
             captured.update(json.loads(request.content)["params"])
-            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True}})
+            return httpx.Response(200, json={"jsonrpc": "2.0", "result": {"ok": True, "item_count": 0, "business": {}}})
 
         http = httpx.AsyncClient(transport=httpx.MockTransport(handle))
         client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, business_write=True, http=http)

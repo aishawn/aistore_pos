@@ -83,9 +83,39 @@ class OdooSyncClient:
                     last_error = str(error)
                 break
             result = data.get("result") if isinstance(data, dict) and isinstance(data.get("result"), dict) else data
-            if result.get("ok") is True:
-                return data
-            last_error = str(result.get("error", "Odoo response did not confirm a successful import"))
-            if last_error != "unauthorized":
+            if not isinstance(result, dict) or result.get("ok") is not True:
+                last_error = str(result.get("error", "Odoo returned no successful import receipt")) if isinstance(result, dict) else "Odoo returned an invalid import response"
+                if last_error != "unauthorized":
+                    break
+                continue
+            if result.get("item_count") != len(items):
+                last_error = f"Odoo receipt item_count mismatch: expected {len(items)}, got {result.get('item_count')!r}"
                 break
+            if self.business_write and import_type != "customer_history":
+                business = result.get("business")
+                if not isinstance(business, dict):
+                    last_error = f"Odoo did not return a formal {import_type} business receipt"
+                    break
+                if import_type == "sales":
+                    skipped = business.get("skipped")
+                    imported = business.get("imported")
+                    updated = business.get("updated_orders")
+                    if not isinstance(skipped, list):
+                        last_error = "Odoo sales receipt has no skipped-item details"
+                        break
+                    if not isinstance(imported, int) or not isinstance(updated, int) or imported < 0 or updated < 0:
+                        last_error = "Odoo sales receipt has invalid imported/updated counts"
+                        break
+                    if imported + updated + len(skipped) != len(items):
+                        last_error = (
+                            "Odoo sales receipt count mismatch: "
+                            f"requested={len(items)}, imported={imported}, updated={updated}, skipped={len(skipped)}"
+                        )
+                        break
+                elif import_type == "products":
+                    unmatched = business.get("unmatched", 0)
+                    if unmatched not in (None, 0, [], {}):
+                        last_error = f"Odoo product receipt contains unmatched products: {unmatched}"
+                        break
+            return data
         raise OdooIntegrationError(last_error)

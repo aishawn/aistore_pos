@@ -64,6 +64,21 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
         raise RuntimeError(f"Odoo skipped Shopfront sales that require repair: {reasons}")
 
     return {"imported": imported, "updated_orders": updated, "skipped": len(skipped)}
+
+
+def validate_pos_import_receipt(response: Any, expected_count: int, entity: str) -> dict[str, Any]:
+    receipt = response.get("data", response) if isinstance(response, dict) else None
+    if not isinstance(receipt, dict):
+        raise PosIntegrationError(f"POS {entity} import returned no structured receipt")
+    status = str(receipt.get("status") or "").upper()
+    if status in {"FAILED", "BLOCKED", "BLOCKED_MAPPING", "REJECTED"}:
+        raise PosIntegrationError(f"POS {entity} import was rejected: {status}")
+    acknowledged = receipt.get("item_count", receipt.get("upserted", receipt.get("accepted")))
+    if acknowledged != expected_count:
+        raise PosIntegrationError(
+            f"POS {entity} receipt count mismatch: expected {expected_count}, got {acknowledged!r}"
+        )
+    return receipt
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 history_lock = __import__("asyncio").Lock()
@@ -2106,6 +2121,9 @@ async def push_pos_snapshot(
     # changes before the long-running POS/Odoo requests begin.
     db.commit()
     try:
+        if settings.odoo_business_write_enabled and not odoo_enabled and not sales_reconcile_job:
+            raise RuntimeError("Formal Odoo business writes are enabled, but the Odoo import integration is unavailable")
+
         async def sync_odoo_batches(import_type: str, values: list[dict], *, snapshot_complete: bool = False) -> list[dict]:
             """Write Odoo data with bounded retries and recursive split fallback.
 
@@ -2235,6 +2253,7 @@ async def push_pos_snapshot(
                     if sales_reconcile_job:
                         sales_payload["business_write"] = False
                     response = await client.upsert_sales(jsonable_encoder(sales_payload))
+                    validate_pos_import_receipt(response, len(items), "sales")
                     result["sales_batch_audit"].append({
                         "target": target_name,
                         "offset": offset,
@@ -2304,6 +2323,10 @@ async def push_pos_snapshot(
         if include_sales and result["sales_imported"] != total_sales:
             result["mirror_errors"].append(
                 f"sales import incomplete: expected {total_sales}, imported {result['sales_imported']}"
+            )
+        if result["inventory_reconciliation_required"]:
+            result["mirror_errors"].append(
+                f"inventory reconciliation required for {len(result['inventory_unmatched'])} unmatched source row(s)"
             )
         result.update({
             "status": "failed" if result["mirror_errors"] else "completed",
@@ -2856,8 +2879,9 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
     try:
         if settings.pos_import_enabled:
             result = await client.upsert_products(payload)
+            receipt = validate_pos_import_receipt(result, len(products), "product")
             run.status = "completed"
-            run.counts = result.get("data", result) if isinstance(result, dict) else {"returned": len(products)}
+            run.counts = receipt
         else:
             run.counts = {"staged": len(products), "ready": len(products), "import_enabled": False}
             run.status = "staged"
@@ -2906,8 +2930,9 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
     try:
         if settings.pos_import_enabled:
             result = await client.replace_inventory(payload)
+            receipt = validate_pos_import_receipt(result, len(rows), "inventory")
             run.status = "completed"
-            run.counts = result.get("data", result) if isinstance(result, dict) else {"returned": len(rows)}
+            run.counts = receipt
         else:
             run.counts = {"staged": len(rows), "import_enabled": False}
         db.commit()
@@ -2979,8 +3004,9 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
     try:
         if settings.pos_import_enabled:
             result = await client.upsert_sales(payload)
+            receipt = validate_pos_import_receipt(result, len(rows), "sales")
             run.status = "completed"
-            run.counts = result.get("data", result) if isinstance(result, dict) else {"returned": len(rows)}
+            run.counts = receipt
         else:
             run.counts = {"staged": len(rows), "import_enabled": False}
         db.commit()
