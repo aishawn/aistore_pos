@@ -2349,10 +2349,18 @@ async def push_pos_snapshot(
     return result
 
 
+def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date, date]:
+    today = local_now.date()
+    # The 23:00 run captures the current business day before midnight. The
+    # 02:00 run repeats the preceding day after it has fully closed.
+    end = today if local_now.hour >= 23 else today - timedelta(days=1)
+    start = end - timedelta(days=lookback_days - 1)
+    return start, end
+
+
 async def scheduled_sync() -> None:
-    today = datetime.now(ZoneInfo(settings.sync_timezone)).date()
-    end = today - timedelta(days=1)
-    start = end - timedelta(days=settings.sync_lookback_days - 1)
+    local_now = datetime.now(ZoneInfo(settings.sync_timezone))
+    start, end = scheduled_sync_range(local_now, settings.sync_lookback_days)
     db = next(get_db())
     try:
         for store_key in settings.stores():

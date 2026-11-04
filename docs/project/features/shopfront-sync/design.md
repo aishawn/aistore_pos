@@ -2,6 +2,8 @@
 
 更新日期：2026-11-04。状态：已实现；数据准确性以对账证据为准。
 
+每日增量同步使用 `Australia/Adelaide` 的 `02:00、10:00、18:00、23:00`。23:00 包含当前营业日，02:00 再覆盖刚结束的完整营业日；Compose 必须传入与配置模型一致的 `SYNC_DAILY_HOURS`。
+
 ## 数据流
 
 Shopfront API -> crawler 数据库 -> POS staging / Odoo 同步镜像。crawler 使用稳定的来源门店、Sale ID、商品 ID 和 SaleItem 行键执行幂等 upsert。POS/Odoo staging 不等同于正式 POS 订单或库存账本。

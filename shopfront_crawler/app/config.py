@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     sync_timezone: str = "Australia/Adelaide"
     sync_interval_minutes: int = 30
     sync_lookback_days: int = 3
-    sync_daily_hours: str = "2,10,18"
+    sync_daily_hours: str = "2,10,18,23"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
     worker_poll_seconds: int = 2
