@@ -2,6 +2,12 @@
 
 更新日期：2026-11-04。负责人：库存模块 owner 待指定。
 
+## POS 导航与库存列表可用性（2026-11-04）
+
+- 候选源码：Products More 增加受库存查看权限控制的 Stock list 入口；Dashboard 汇总跳库存报表、负库存说明跳异常筛选；Purchases 说明打开订单后确认或收货。
+- Stock list 隐藏后端未提供的箱数、成本、利润及价目表数量字段，显示 Odoo 商品单位；商品名/零售价仅对 `stock.products.edit` 用户可编辑。采购收货仍在 Purchases。
+- 本地验证与部署状态待本次收尾补记；线上 runtime SHA 未核验。
+
 ## 当前阶段
 
 - 源码：已实现每日完整 Shopfront 库存分页、失败不覆盖、POS 全量镜像推送、Odoo 分批导入后 finalizer，以及 unmatched 失败处理。

@@ -350,7 +350,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
             {tab === "orders"
-              ? <>Review RFQs and purchase orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</>
+              ? <>Review RFQs and purchase orders. Open an order to confirm it or receive stock.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</>
               : tab === "transfer-new"
                 ? "Create a same-company warehouse transfer."
                 : "Move stock between warehouses in this company (optional; only if you have 2+ locations)."}

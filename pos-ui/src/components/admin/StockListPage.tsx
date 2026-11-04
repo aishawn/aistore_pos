@@ -2,8 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ExportIcon } from "@/components/icons";
-import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, ShoppingCart, X } from "lucide-react";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
@@ -11,7 +12,8 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { exportOdooProductsCsv, searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
-import { validateNonNegativeMoney, validatePositiveMoney } from "@/lib/quantity";
+import { validatePositiveMoney } from "@/lib/quantity";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 interface StockListRow {
@@ -19,22 +21,12 @@ interface StockListRow {
   productId: number;
   name: string;
   categoryName?: string | null;
-  priceSetName?: string | null;
-  caseQuantity?: number | null;
-  casesOnHand?: number | null;
   itemsOnHand?: number | null;
-  priceQuantity?: number | null;
-  priceId?: string | null;
-  cost?: number | null;
+  unitName?: string | null;
   price?: number | null;
 }
 
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
-
-function profitPct(cost?: number | null, price?: number | null) {
-  if (cost == null || price == null || price <= 0) return "";
-  return (((price - cost) / price) * 100).toFixed(2);
-}
 
 function num(v?: number | null) {
   if (v == null) return "";
@@ -83,15 +75,15 @@ function Toggle({
 function StockListRowEditor({
   row,
   onSaved,
+  canEdit,
 }: {
   row: StockListRow;
   onSaved: () => void;
+  canEdit: boolean;
 }) {
   const productLabel = friendlyProductName(row.name);
   const [name, setName] = useState(productLabel);
   const [nameEdited, setNameEdited] = useState(false);
-  const [quantity, setQuantity] = useState(num(row.priceQuantity));
-  const [cost, setCost] = useState(num(row.cost));
   const [price, setPrice] = useState(num(row.price));
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -100,32 +92,17 @@ function StockListRowEditor({
   useEffect(() => {
     setName(friendlyProductName(row.name));
     setNameEdited(false);
-    setQuantity(num(row.priceQuantity));
-    setCost(num(row.cost));
     setPrice(num(row.price));
     setSaveError(null);
   }, [row]);
 
   const save = useCallback(async () => {
-    if (savingRef.current) return;
+    if (!canEdit || savingRef.current) return;
     setSaveError(null);
     const body: Record<string, unknown> = {};
     if (nameEdited && name.trim() !== row.name) body.name = name.trim();
-    const costNum = cost === "" ? null : Number(cost);
     const priceNum = price === "" ? null : Number(price);
-    const costError = validateNonNegativeMoney(costNum, "Cost");
-    if (costError) {
-      setSaveError(costError);
-      return;
-    }
-    if (costNum !== row.cost) {
-      setSaveError("Cost is managed by Orithos purchasing and cannot be edited here.");
-      return;
-    }
-    if (
-      row.priceId &&
-      priceNum !== row.price
-    ) {
+    if (priceNum !== row.price) {
       const priceError = validatePositiveMoney(priceNum, "Price");
       if (priceError) {
         setSaveError(priceError);
@@ -148,15 +125,14 @@ function StockListRowEditor({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [cost, name, nameEdited, onSaved, price, row]);
+  }, [canEdit, name, nameEdited, onSaved, price, row]);
 
-  const profit = profitPct(cost === "" ? null : Number(cost), price === "" ? null : Number(price));
-  const hasStock = Number(row.casesOnHand ?? 0) > 0 || Number(row.itemsOnHand ?? 0) > 0;
+  const hasStock = Number(row.itemsOnHand ?? 0) > 0;
 
   return (
     <>
     <div className="hidden items-center border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)] xl:flex">
-      <div className="w-[22%] shrink-0 px-2">
+      <div className="w-[38%] shrink-0 px-2">
         <input
           className={cellInput()}
           aria-label={`Product name for ${productLabel}`}
@@ -164,64 +140,19 @@ function StockListRowEditor({
           aria-busy={saving}
           aria-invalid={saveError ? true : undefined}
           disabled={saving}
+          readOnly={!canEdit}
           value={name}
           onChange={(e) => {
             setName(e.target.value);
             setNameEdited(true);
             if (saveError) setSaveError(null);
           }}
-          onBlur={() => void save()}
+          onBlur={() => { if (canEdit) void save(); }}
         />
       </div>
-      <div className="w-[10%] shrink-0 px-2">{row.categoryName ?? ""}</div>
-      <div className="w-[8%] shrink-0 px-2">{row.priceSetName ?? ""}</div>
-      <div className="w-[7%] shrink-0 px-2 text-center">{num(row.caseQuantity)}</div>
-      <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.casesOnHand)}</div>
-      <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.itemsOnHand)}</div>
-      <div className="w-[8%] shrink-0 px-2">
-        <input
-          type="number"
-          min="1"
-          step="1"
-          className={cellInput("text-center")}
-          aria-label={`Price quantity for ${productLabel}`}
-          aria-busy={saving}
-          aria-invalid={saveError ? true : undefined}
-          disabled
-          readOnly
-          value={quantity}
-          onChange={(e) => {
-            setQuantity(e.target.value);
-            if (saveError) setSaveError(null);
-          }}
-          onBlur={() => void save()}
-          title={saveError ?? undefined}
-        />
-      </div>
-      <div className="w-[8%] shrink-0 px-2">
-        <div className="relative">
-          {row.cost != null ? <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span> : null}
-          <input
-            className={cellInput(row.cost != null ? "pl-5" : "px-1")}
-            aria-label={`Cost for ${productLabel}`}
-            aria-describedby={row.cost == null ? `stock-cost-managed-desktop-${row.id}` : undefined}
-            aria-busy={saving}
-            aria-invalid={saveError ? true : undefined}
-            disabled={saving || row.cost == null}
-            readOnly={row.cost == null}
-            placeholder={row.cost == null ? "Managed" : undefined}
-            title={row.cost == null ? "Managed in purchasing" : saveError ?? undefined}
-            value={cost}
-            onChange={(e) => {
-              setCost(e.target.value);
-              if (saveError) setSaveError(null);
-            }}
-            onBlur={() => void save()}
-          />
-          {row.cost == null ? <span id={`stock-cost-managed-desktop-${row.id}`} className="sr-only">Cost is managed in purchasing.</span> : null}
-        </div>
-      </div>
-      <div className="w-[10%] shrink-0 px-2">
+      <div className="w-[25%] shrink-0 px-2">{row.categoryName ?? "—"}</div>
+      <div className={`w-[17%] shrink-0 px-2 text-right tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.itemsOnHand) || "0"} {row.unitName ?? ""}</div>
+      <div className="w-[20%] shrink-0 px-2">
         <div className="relative">
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
           <input
@@ -230,30 +161,14 @@ function StockListRowEditor({
             aria-busy={saving}
             aria-invalid={saveError ? true : undefined}
             disabled={saving}
+            readOnly={!canEdit}
             value={price}
             onChange={(e) => {
               setPrice(e.target.value);
               if (saveError) setSaveError(null);
             }}
-            onBlur={() => void save()}
+            onBlur={() => { if (canEdit) void save(); }}
           />
-        </div>
-      </div>
-      <div className="min-w-0 flex-1 px-2">
-        <div className="relative">
-          <input
-            className={cn(
-              cellInput("pr-6 text-right"),
-              Number(profit) < 0
-                ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] font-semibold text-[var(--oh-danger)]"
-                : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]",
-            )}
-            aria-label={`Profit margin for ${productLabel}`}
-            value={profit}
-            readOnly
-            tabIndex={-1}
-          />
-          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500">%</span>
         </div>
       </div>
     </div>
@@ -268,30 +183,24 @@ function StockListRowEditor({
           aria-busy={saving}
           aria-invalid={saveError ? true : undefined}
           disabled={saving}
+          readOnly={!canEdit}
           value={name}
           onChange={(e) => { setName(e.target.value); setNameEdited(true); if (saveError) setSaveError(null); }}
-          onBlur={() => void save()}
+          onBlur={() => { if (canEdit) void save(); }}
         />
       </div>
       <dl className="grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3">
         <div><dt className="text-xs text-[var(--oh-muted)]">Category</dt><dd className="mt-1 break-words font-medium">{row.categoryName ?? "—"}</dd></div>
-        <div><dt className="text-xs text-[var(--oh-muted)]">Price set</dt><dd className="mt-1 break-words font-medium">{row.priceSetName ?? "—"}</dd></div>
-        <div><dt className="text-xs text-[var(--oh-muted)]">Case quantity</dt><dd className="mt-1 tabular-nums font-medium">{num(row.caseQuantity) || "—"}</dd></div>
-        <div><dt className="text-xs text-[var(--oh-muted)]">Stock on hand</dt><dd className={`mt-1 tabular-nums font-medium ${hasStock ? "text-[var(--oh-text)]" : "text-[var(--oh-danger)]"}`}>{num(row.casesOnHand) || "0"} cases · {num(row.itemsOnHand) || "0"} items</dd></div>
+        <div><dt className="text-xs text-[var(--oh-muted)]">On hand</dt><dd className={`mt-1 tabular-nums font-medium ${hasStock ? "text-[var(--oh-text)]" : "text-[var(--oh-danger)]"}`}>{num(row.itemsOnHand) || "0"} {row.unitName ?? ""}</dd></div>
       </dl>
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${productLabel}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled value={quantity} readOnly /></div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative">{row.cost != null ? <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span> : null}<input id={`stock-cost-${row.id}`} className={cellInput(row.cost != null ? "pl-5" : "px-1")} aria-label={`Cost for ${productLabel}`} aria-describedby={row.cost == null ? `stock-cost-managed-mobile-${row.id}` : undefined} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving || row.cost == null} readOnly={row.cost == null} placeholder={row.cost == null ? "Managed" : undefined} title={row.cost == null ? "Managed in purchasing" : saveError ?? undefined} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div>{row.cost == null ? <span id={`stock-cost-managed-mobile-${row.id}`} className="sr-only">Cost is managed in purchasing.</span> : null}</div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Price</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${productLabel}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${productLabel}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]">%</span></div></div>
-      </div>
+      <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Retail price · AUD</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${productLabel}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} readOnly={!canEdit} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => { if (canEdit) void save(); }} /></div></div>
     </article>
     {saveError && <p role="alert" className="border-b border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2 text-xs font-medium text-[var(--oh-tile-red-text)]">{saveError}</p>}
     </>
   );
 }
 
-/** Stock list grid — exportable product cost, inventory and prices. */
+/** Stock list grid — on-hand quantities are read-only; product edits require stock.products.edit. */
 export function StockListPage() {
   return (
     <Suspense fallback={<div className="p-6 text-[14px] text-neutral-500">Loading stock list…</div>}>
@@ -302,6 +211,8 @@ export function StockListPage() {
 
 function StockListPageInner() {
   const searchParams = useSearchParams();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission("stock.products.edit");
   const initialQ = searchParams.get("q")?.trim() ?? "";
   const [search, setSearch] = useState(initialQ);
   const [categoryId, setCategoryId] = useState("");
@@ -366,13 +277,8 @@ function StockListPageInner() {
         productId: product.id,
         name: product.display_name || product.name,
         categoryName: product.pos_categ_ids?.map((id) => categoryData.find((category) => category.id === id)?.name).filter(Boolean).join(", ") || null,
-        priceSetName: "Orithos list price",
-        caseQuantity: null,
-        casesOnHand: null,
         itemsOnHand: product.free_qty ?? product.qty_available ?? 0,
-        priceQuantity: 1,
-        priceId: String(product.id),
-        cost: null,
+        unitName: Array.isArray(product.uom_id) ? product.uom_id[1] : null,
         price: product.list_price,
       }));
       setItems((previous) => reset ? rows : [...previous, ...rows.filter(row => !previous.some(item => item.id === row.id))]);
@@ -455,12 +361,16 @@ function StockListPageInner() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6">
-        <h1 className="oh-type-title text-[var(--oh-text)]">Stock List</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="oh-type-title text-[var(--oh-text)]">Stock list</h1>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">View on-hand quantities and update retail prices. Receive stock through Purchases.</p>
+        </div>
+        <Link href="/purchases" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"><ShoppingCart size={16} /> Purchases &amp; receiving</Link>
         <AdminPrimaryButton onClick={() => void onExport()} disabled={exporting} className="min-h-11">
           <ExportIcon size={16} />
           {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
-        <div data-testid="stock-list-product-count" className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
+        <div data-testid="stock-list-product-count" className="oh-type-meta rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
             <span className="font-semibold tabular-nums text-[var(--oh-text)]">{items.length.toLocaleString()} / {total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
@@ -551,25 +461,19 @@ function StockListPageInner() {
       </div>
 
       <div ref={scrollRoot} data-testid="stock-results-scroll" className="min-h-0 flex-1 overflow-auto pl-3 pr-3 pb-4 sm:px-4 md:px-6">
-        <div data-testid="stock-list-table" className="xl:min-w-[1100px]">
+        <div data-testid="stock-list-table" className="xl:min-w-[780px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] xl:flex">
-            {([['name', 'Product', 'w-[22%]'], ['category', 'Category', 'w-[10%]']] as const).map(([field, label, width]) => {
+            {([['name', 'Product', 'w-[38%]'], ['category', 'Category', 'w-[25%]']] as const).map(([field, label, width]) => {
               const active = sortBy === field;
               return <button key={field} type="button" onClick={() => toggleSort(field)} aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className={`${width} shrink-0 px-2 text-left hover:text-[var(--oh-text)]`}><span className="inline-flex items-center gap-1">{label}{active ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>;
             })}
-            <div className="w-[8%] shrink-0 px-2">Price Set</div>
-            <div className="w-[7%] shrink-0 px-2 text-center">Case Quantity</div>
-            <div className="w-[7%] shrink-0 px-2 text-center">Cases on Hand</div>
-            <button type="button" onClick={() => toggleSort("stock")} aria-sort={sortBy === "stock" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[7%] shrink-0 px-2 text-center hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">Items on Hand{sortBy === "stock" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
-            <div className="w-[8%] shrink-0 px-2 text-center">Quantity</div>
-            <div className="w-[8%] shrink-0 px-2">Cost</div>
-            <button type="button" onClick={() => toggleSort("price")} aria-sort={sortBy === "price" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[10%] shrink-0 px-2 text-left hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">Price{sortBy === "price" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
-            <div className="min-w-0 flex-1 px-2">Profit %</div>
+            <button type="button" onClick={() => toggleSort("stock")} aria-sort={sortBy === "stock" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[17%] shrink-0 px-2 text-right hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">On hand{sortBy === "stock" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
+            <button type="button" onClick={() => toggleSort("price")} aria-sort={sortBy === "price" ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="w-[20%] shrink-0 px-2 text-right hover:text-[var(--oh-text)]"><span className="inline-flex items-center gap-1">Retail price{sortBy === "price" ? sortDirection === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} /> : <ArrowUpDown size={13} />}</span></button>
           </div>
 
           <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
             {displayedItems.map((row) => (
-              <StockListRowEditor key={row.id} row={row} onSaved={reload} />
+              <StockListRowEditor key={row.id} row={row} onSaved={reload} canEdit={canEdit} />
             ))}
             <div ref={sentinel} aria-hidden="true" className="h-2" />
             {loadMoreError ? <div role="alert" className="flex items-center justify-center gap-3 py-3 text-xs text-[var(--oh-danger-text)]"><span>{loadMoreError}</span><button type="button" onClick={() => loadMore()} className="font-semibold underline underline-offset-2">Retry</button></div> : null}

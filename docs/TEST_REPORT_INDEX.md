@@ -4,6 +4,8 @@
 
 Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 180 page templates catalogued (179 baseline + new cost reconciliation), 274 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Runtime 51e27c74: remote build and specified live/fixture UI acceptance PASS, including 18 records-dialog viewport checks; legacy 410 routes, alerts 500, AI failures and incomplete report data checks remain explicitly open.
 
+Latest inventory navigation and stock list candidate: [2026-11-04 navigation static checks](test-sessions/2026-11-04-inventory-navigation.md): Node 24 TypeScript check PASS; targeted ESLint 0 errors / 14 existing warnings. Online acceptance and runtime SHA remain NOT RUN pending main deployment.
+
 Latest Sales History space optimization: [2026-11-03 table/toolbar](test-sessions/2026-11-03-sales-history-space.md): targeted syntax/ESLint (zero errors), remote build and live browser layout/refresh/pagination PASS; deployed runtime `f2091f31`. Read-only checks, zero business writes.
 
 Latest Sales History layout: [2026-11-03 modal/toolbar](test-sessions/2026-11-03-sales-history-layout.md): targeted TSX syntax, ESLint, remote build and live desktop/mobile browser checks PASS; deployed runtime `8cbd0d49`. Local full typecheck BLOCKED by incomplete dependencies. Real business writes: 0.
@@ -35,6 +37,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | Suite ID | Latest session | Result | Source SHA | Runtime SHA | Evidence | Next action |
 |---|---|---|---|---|---|---|
+| `UI-001` (inventory navigation static subset) | 2026-11-04-inventory-navigation | PASS: TypeScript; ESLint 0 errors / 14 warnings | Candidate pending commit | Not deployed | [Session](test-sessions/2026-11-04-inventory-navigation.md) | Deploy main; verify route access, permissions and SHA |
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
 | `UI-002` | 2026-11-01-assistant-operations-recovery (local fixture subset) | PASS (subset only) | `73ee86e7` | Local only; live unverified | [Session](test-sessions/2026-11-01-assistant-operations-recovery.md) | Verify deployed read-only flow |
