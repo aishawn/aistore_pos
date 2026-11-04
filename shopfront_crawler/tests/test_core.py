@@ -1,5 +1,5 @@
 from app.shopfront import ShopfrontClient
-from app.main import sales_trend_missing_dates
+from app.main import sales_trend_missing_dates, source_sale_snapshot_is_complete
 from app.sync import _dedupe_sales, parse_decimal, verify_webhook
 
 
@@ -38,6 +38,22 @@ def test_sales_trend_missing_dates_are_unclassified():
         date(2024, 1, 1), date(2024, 1, 3),
         [Row("2024-01-01"), Row("2024-01-03")],
     ) == ["2024-01-02"]
+
+
+def test_source_sale_snapshot_requires_exact_unique_line_ids_and_payments():
+    from types import SimpleNamespace
+
+    raw = {"items": [{"id": "line-1"}, {"id": "line-2"}], "payments": []}
+    stored = [SimpleNamespace(line_key="line-1"), SimpleNamespace(line_key="line-2")]
+
+    assert source_sale_snapshot_is_complete(raw, stored)
+    assert not source_sale_snapshot_is_complete(
+        {**raw, "items": [{"id": "line-1"}, {"id": "line-3"}]}, stored
+    )
+    assert not source_sale_snapshot_is_complete(
+        {**raw, "items": [{"id": "line-1"}, {"id": "line-1"}]}, stored
+    )
+    assert not source_sale_snapshot_is_complete({"items": raw["items"]}, stored)
 
 
 def test_saved_reports_query_uses_only_schema_stable_fields():

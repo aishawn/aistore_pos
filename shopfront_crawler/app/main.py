@@ -95,6 +95,27 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
     return {"imported": imported, "updated_orders": updated, "skipped": len(skipped)}
 
 
+def source_sale_snapshot_is_complete(raw_sale: Any, sale_items: list[SaleItem]) -> bool:
+    if not isinstance(raw_sale, dict):
+        return False
+    source_items = raw_sale.get("items")
+    source_payments = raw_sale.get("payments")
+    if not isinstance(source_items, list) or not isinstance(source_payments, list):
+        return False
+
+    source_ids = [str(item.get("id") or "").strip() for item in source_items if isinstance(item, dict)]
+    stored_ids = [str(item.line_key or "").strip() for item in sale_items]
+    return (
+        len(source_ids) == len(source_items)
+        and len(stored_ids) == len(sale_items)
+        and all(source_ids)
+        and all(stored_ids)
+        and len(set(source_ids)) == len(source_ids)
+        and len(set(stored_ids)) == len(stored_ids)
+        and set(source_ids) == set(stored_ids)
+    )
+
+
 def validate_pos_import_receipt(response: Any, expected_count: int, entity: str) -> dict[str, Any]:
     receipt = response.get("data", response) if isinstance(response, dict) else None
     if not isinstance(receipt, dict):
@@ -1869,16 +1890,11 @@ async def push_pos_snapshot(
 
     def sale_payload(sale: Sale) -> dict:
         raw_sale = sale.raw_payload if isinstance(sale.raw_payload, dict) else {}
-        source_items = raw_sale.get("items")
         source_payments = raw_sale.get("payments")
         sale_items = [{
             **sale_line_payload(item),
         } for item in sale.items]
-        source_complete = (
-            isinstance(source_items, list)
-            and isinstance(source_payments, list)
-            and len(source_items) == len(sale_items)
-        )
+        source_complete = source_sale_snapshot_is_complete(raw_sale, sale.items)
         return {"external_id": sale.shopfront_sale_id, "source_complete": source_complete, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": source_payments if isinstance(source_payments, list) else [], "raw_payload": raw_sale, "items": sale_items}
 
     def product_payload(product: Product) -> dict:
