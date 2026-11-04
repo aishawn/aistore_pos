@@ -26,6 +26,8 @@ Latest Shopfront daily completeness/report refresh candidate: [2026-11-05 sync r
 
 Latest Shopfront page refresh follow-up: [2026-11-05 page refresh](test-sessions/2026-11-05-shopfront-page-refresh.md): UI typecheck PASS, existing unit suites 157/157, targeted ESLint 0 errors / 16 warnings, diff check PASS. Candidate refreshes products/inventory, sales, purchases, reports, and a new immutable cost audit on sync stamp advance; live two-store verification is pending deployment and credentials.
 
+Latest Shopfront page refresh deployment follow-up: [2026-11-05 page refresh deployment](test-sessions/2026-11-05-shopfront-page-refresh-deploy.md): filled the remaining stock-list and Inventory-dialog stamp refresh gaps. Auto-deploy is enabled, but the only running job is for pre-candidate SHA `1511804b`; the pushed candidate has no deployment record and both public runtime SHAs remain stale. Online acceptance is BLOCKED pending a normal Deploy after the old job terminates.
+
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.

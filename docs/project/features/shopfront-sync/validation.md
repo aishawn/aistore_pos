@@ -1,6 +1,13 @@
 # Shopfront 同步验证
 
-更新日期：2026-11-04。代码候选基线：GitHub `main` 的 `f73c3417`；线上运行 SHA 尚未复核。
+更新日期：2026-11-05。代码候选基线：GitHub `main` 的 `f73c3417`；线上运行 SHA 尚未复核。
+
+## 2026-11-05 产品和库存视图刷新跟进
+
+- 本地代码提交：`eb13167816e0a6049d6756381d5c71b7e8e5bba9`。`npm run typecheck` PASS；`npm run test:unit` PASS（157/157）；定向 ESLint 0 errors / 14 warnings；`git diff --check` PASS。没有触发本地生产构建。
+- Dokploy 只读配置确认 repository `aishawn/aistore_pos`、branch `main`、Compose `./docker-compose.yml`，auto-deploy enabled。运行中的 deployment `nNMGuu-QI4bHHMt-mUYeN` 描述为旧 SHA `1511804b629a24f92311bf94ea7700527543f701`，启动时间早于候选 push；候选 SHA 未进入 deployment 列表。
+- SKR 与 demo `/api/public/version` 均为 HTTP 200，但 frontend/backend 仍报告 `7832a032268ec1774df7ef8dc769e8833239b853`。自动推送漏掉候选且旧部署仍运行，页面刷新与线上 SHA 验收为 BLOCKED；旧任务终态后需对 `main` 执行一次正常 Deploy。
+- 本次没有登录业务页面、触发 Shopfront 同步或修改 Odoo/业务数据。只验证了自动部署记录与公开版本接口；不据此宣称昨日/上周数据完整。
 
 ## 2026-11-05 每日同步与缓存失效候选
 

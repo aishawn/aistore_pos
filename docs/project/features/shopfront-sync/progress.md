@@ -1,6 +1,14 @@
 # Shopfront 同步进度
 
-更新日期：2026-11-04。负责人：集成 owner 待指定。
+更新日期：2026-11-05。负责人：集成 owner 待指定。
+
+## 2026-11-05 产品与库存弹窗刷新补齐
+
+- `StockListPage` 新增同步 stamp 订阅：清空旧分页后重读第一页和商品分类；旧请求由序号校验丢弃。
+- Products 内 Inventory/目录记录面板接收父级 `refreshKey`，stamp 变化后重取当前筛选与页码对应的数据。
+- 源码已推送 `main`（`eb13167816e0a6049d6756381d5c71b7e8e5bba9`）。Dokploy 任务 `nNMGuu-QI4bHHMt-mUYeN` 的部署描述明确是旧 SHA `1511804b629a24f92311bf94ea7700527543f701`，且在候选推送前启动；截至 2026-11-05 05:12 Asia/Shanghai 仍为 running。候选 SHA 没有对应部署记录，两站 runtime 仍为 `7832a032268ec1774df7ef8dc769e8833239b853`。
+- 观察到 auto-deploy 配置为 true，但旧任务运行期间后续 push 未进入部署列表。待旧任务终止后按部署 runbook 对 `main` 执行一次正常 Deploy，再验收候选 SHA。
+- 本地 TypeScript 与 157 个既有单测通过，定向 ESLint 0 errors；具体命令与在线验收限制见 [2026-11-05 部署跟进验证](../../../test-sessions/2026-11-05-shopfront-page-refresh-deploy.md)。线上自动部署尚未验收。
 
 ## 2026-11-05 每日数据优先与报表失效候选
 
