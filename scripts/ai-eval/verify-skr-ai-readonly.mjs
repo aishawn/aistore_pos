@@ -15,6 +15,8 @@ const env = Object.fromEntries(fs.readFileSync(envPath, "utf8")
 const base = (process.env.SKR_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
 const username = process.env.SKR_USERNAME || env.ORITHOS_SKR_USER || env.SKR_USER;
 const password = process.env.SKR_PASSWORD || env.ORITHOS_SKR_PASS || env.SKR_PASS;
+const odooUsername = process.env.ODOO_USERNAME || env.ODOO_USER || env.ODOO_SERVICE_USERNAME;
+const odooPassword = process.env.ODOO_PASSWORD || env.ODOO_PASS || env.ODOO_SERVICE_PASSWORD;
 const outputPath = path.resolve(root, process.env.SKR_AI_UAT_OUTPUT
   || ".local/ai-eval/online-ai-readonly-uat.json");
 if (!username || !password) throw new Error("SKR_READONLY_CREDENTIALS_MISSING");
@@ -127,8 +129,18 @@ try {
   // the read-only checks depend on the full UI navigation completing.
   await page.goto(`${base}/overview`, { waitUntil: "commit", timeout: 30_000 }).catch(() => null);
 
-  const session = await api("/api/odoo/session");
-  const sessionBody = unwrap(session.body);
+  let session = await api("/api/odoo/session");
+  let sessionBody = unwrap(session.body);
+  // GET only reports the current Odoo cookie. Establish the explicitly
+  // configured Odoo session before business reads when auto-recovery has not
+  // populated a cookie for this tenant.
+  if (!sessionBody?.user && odooUsername && odooPassword) {
+    session = await api("/api/odoo/session", "POST", {
+      username: odooUsername,
+      password: odooPassword,
+    });
+    sessionBody = unwrap(session.body);
+  }
   const [reportResult, weeklyReportResult] = await Promise.all([
     api("/api/odoo/reporting-dashboard?period=yesterday"),
     api("/api/odoo/reporting-dashboard?period=last_week"),
@@ -225,7 +237,12 @@ try {
       backend: versionBody.backend ?? null,
     },
     login: { httpStatus: loginResponse.status, succeeded: true, companyId: loginBody.data?.user?.companyId ?? null },
-    odooSession: { httpStatus: session.status, authenticated: Boolean(sessionBody?.authenticated ?? sessionBody?.ok ?? true) },
+    odooSession: {
+      httpStatus: session.status,
+      authenticated: Boolean(sessionBody?.user),
+      username: sessionBody?.user?.username ?? null,
+      explicitLoginUsed: Boolean(sessionBody?.user && odooUsername && odooPassword),
+    },
     reportApi: {
       httpStatus: reportResult.status,
       period: report.period ?? null,

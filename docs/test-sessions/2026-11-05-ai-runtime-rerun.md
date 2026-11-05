@@ -45,3 +45,7 @@ At the later stable runtime `69f613e0e20da43f85a19838420642bb54a79149` (`2026-11
 - Both stores reproduced AI assistant `502` and report/forecast probe `401`; both returned safe replenishment navigation with `writeRequests=[]` and zero page errors.
 
 This confirms a shared runtime/session failure on a fixed deployment SHA. Online AI acceptance remains blocked until the route/session contract is repaired.
+
+## Root-Cause Probe
+
+The harness was corrected to use `ODOO_USER`/`ODOO_PASS` (or service-account equivalents) for an explicit read-only `POST /api/odoo/session` when the initial GET has no Odoo user. The explicit POS session POST still returned Cloudflare HTTP 502. A direct read-only JSON-RPC login to `https://odoo.orithos.com.au/web/session/authenticate` timed out after 30 seconds, and the Odoo database selector GET also timed out. This points to the Odoo upstream being unavailable or unreachable at this check time; it is stronger evidence than an assumed cookie failure. No business write was attempted.
