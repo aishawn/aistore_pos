@@ -184,7 +184,7 @@ async function recoverOdooSession(): Promise<boolean> {
   return odooRecoveryInFlight;
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+export async function refreshAccessToken(): Promise<boolean> {
   if (typeof window === "undefined" || isLocalPreviewSession()) return false;
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {

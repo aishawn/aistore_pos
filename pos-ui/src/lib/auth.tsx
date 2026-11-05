@@ -2,7 +2,7 @@
 
 import { setOdooReadIdentity, clearOdooReadCache } from "./odoo-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, isLocalPreviewSession, registerAuthFailureHandler } from "@/lib/api";
+import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
 
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
@@ -110,6 +110,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setOdooReadIdentity(ready && user ? JSON.stringify([user.id, user.vendorId, user.outletId, user.roleCode, user.permissions]) : null);
+  }, [ready, user]);
+
+  useEffect(() => {
+    if (!ready || !user || isLocalPreviewSession()) return;
+
+    let active = true;
+    let lastRefreshAt = Date.now();
+    const refreshIfDue = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastRefreshAt < 60 * 60 * 1000) return;
+      void refreshAccessToken().then((refreshed) => {
+        if (active && refreshed) lastRefreshAt = Date.now();
+      });
+    };
+    const interval = window.setInterval(refreshIfDue, 5 * 60 * 1000);
+    window.addEventListener("focus", refreshIfDue);
+    document.addEventListener("visibilitychange", refreshIfDue);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfDue);
+      document.removeEventListener("visibilitychange", refreshIfDue);
+    };
   }, [ready, user]);
 
   const login = useCallback(async (username: string, password: string, subdomain?: string) => {
