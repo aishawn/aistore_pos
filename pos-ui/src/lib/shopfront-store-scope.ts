@@ -11,3 +11,11 @@ export function verifiedShopfrontSourceStore(binding: StoreBinding | null | unde
   if (binding.subdomain === "demo" && binding.r2Prefix === "shopfront/demo/") return "skr";
   return null;
 }
+
+/** Source pages are read-only and already protected by Orithos permissions.
+ * Keep them available when the separate Odoo service session has expired. */
+export function verifiedShopfrontSourceStoreFromHost(host: string | null | undefined): string | null {
+  const value = (host || "").split(",")[0].trim().toLowerCase().split(":")[0];
+  if (value === "demo.orithos.com.au" || value === "skr.orithos.com.au") return "skr";
+  return null;
+}

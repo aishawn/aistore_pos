@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
-import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { isSameOrigin } from "@/lib/server-auth";
-import { verifiedShopfrontSourceStore } from "@/lib/shopfront-store-scope";
+import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,8 +33,7 @@ export async function GET(request: NextRequest) {
     if (!endpoint) return NextResponse.json({ message: "Unknown Shopfront source view." }, { status: 400 });
 
     await requirePermission(request, ...endpoint.permissions);
-    const scope = await scopedOdoo(request);
-    const store = verifiedShopfrontSourceStore(scope.binding);
+    const store = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
     const base = (process.env.SHOPFRONT_CRAWLER_URL || "http://shopfront-crawler:8000").trim().replace(/\/+$/, "");
