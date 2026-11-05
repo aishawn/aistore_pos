@@ -95,6 +95,10 @@ export async function GET(request: NextRequest) {
   try {
     const correlationId = request.headers.get("x-correlation-id");
     const companyIds = await getCompanies(request, sessionId);
+    const companies = await rpc<Array<{ id: number; name: string }>>(sessionId, "res.company", "read", [companyIds], {
+      fields: ["id", "name"],
+      context: { allowed_company_ids: companyIds },
+    }, correlationId).catch(() => companyIds.map((id) => ({ id, name: `Company ${id}` })));
     const domain: unknown[] = [["company_id", "in", companyIds]];
     if (requestedState !== "all") domain.push(["state", "=", requestedState]);
     if (query) domain.push("|", ["name", "ilike", query], ["partner_id", "ilike", query]);
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
       context: { allowed_company_ids: companyIds },
     }, correlationId);
     const hasNext = (items?.length ?? 0) > limit;
-    return NextResponse.json({ items: (items ?? []).slice(0, limit), limit, offset, hasNext }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ items: (items ?? []).slice(0, limit), limit, offset, hasNext, generatedAt: new Date().toISOString(), scope: companies.map((company) => company.name) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);
   }

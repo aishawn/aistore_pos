@@ -111,13 +111,14 @@ export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolea
 function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean }) {
   const Container = embedded ? "section" : "main";
   const searchParams = useSearchParams();
+  const requestedState = searchParams.get("state");
   const tabParam = searchParams.get("tab");
   const tab = tabParam === "transfer-new" ? "transfer-new" : tabParam === "transfers" ? "transfers" : "orders";
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooPurchaseOrderRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [state, setState] = useState("all");
+  const [state, setState] = useState(() => STATUS_OPTIONS.some(([value]) => value === requestedState) ? requestedState! : "all");
   const nextOffset = useRef(0);
   const requestBusy = useRef(false);
   const loadedFilters = useRef("");
@@ -128,6 +129,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
   const scrollRoot = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const [companyScope, setCompanyScope] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [detail, setDetail] = useState<OdooPurchaseOrderDetail | null>(null);
@@ -172,6 +174,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       const activeConfig = bootstrap?.configs.find((config) => config.session) ?? bootstrap?.configs[0];
       if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
       setConnected(true);
+      if (page.scope?.length) setCompanyScope(page.scope);
       if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
       setItems((previous) => append ? [...previous, ...page.items.filter((row) => !previous.some((item) => item.id === row.id))] : page.items);
       nextOffset.current = offset + Math.min(page.items.length, PAGE_SIZE);
@@ -353,7 +356,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       {!embedded && <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Orithos</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchase Orders</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
             {tab === "orders"
               ? <>Review RFQs and purchase orders. Open an order to confirm it or receive stock.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</>
@@ -361,8 +364,10 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
                 ? "Create a same-company warehouse transfer."
                 : "Move stock between warehouses in this company (optional; only if you have 2+ locations)."}
           </p>
+          <p className="mt-2 text-xs text-[var(--oh-muted)]">Source: Odoo · Store scope: {companyScope.length ? companyScope.join(", ") : "companies available to your connected account"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>
           <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Purchases views">
-            <Link href="/purchases" role="tab" aria-selected={tab === "orders"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "orders" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Orders</Link>
+            <Link href="/purchases" role="tab" aria-selected={tab === "orders" && state !== "purchase"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "orders" && state !== "purchase" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Purchase Orders</Link>
+            <Link href="/purchases?state=purchase" role="tab" aria-selected={tab === "orders" && state === "purchase"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "orders" && state === "purchase" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Receipts · To receive</Link>
             <Link href="/purchases?tab=transfers" role="tab" aria-selected={tab === "transfers" || tab === "transfer-new"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "transfers" || tab === "transfer-new" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Transfers</Link>
           </div>
         </div>
@@ -381,6 +386,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       <>
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadOrders(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
+      {embedded && <p className="shrink-0 text-xs text-[var(--oh-muted)]">Source: Odoo · Store scope: {companyScope.length ? companyScope.join(", ") : "companies available to your connected account"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>}
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15"><Search size={17} className="text-[var(--oh-muted)]" /><input aria-label="Search purchase orders by RFQ, order or supplier" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search RFQ, order or supplier" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" /></label>
         <select aria-label="Filter purchase orders by status" value={state} onChange={(event) => { setState(event.target.value); }} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 sm:w-[210px] sm:flex-none">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>

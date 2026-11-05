@@ -297,6 +297,7 @@ export interface OdooPurchaseOrderDetail {
 
 export interface OdooPurchaseOrderPage {
   generatedAt?: string;
+  scope?: string[];
   items: OdooPurchaseOrderRecord[];
   limit: number;
   offset: number;
