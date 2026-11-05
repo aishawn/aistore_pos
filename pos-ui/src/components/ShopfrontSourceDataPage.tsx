@@ -65,6 +65,13 @@ function sourceNumber(row: SourceRow, ...keys: string[]) {
   return 0;
 }
 
+function sourceMoney(row: SourceRow, ...keys: string[]) {
+  const raw = keys.map(key => row[key]).find(value => value !== null && value !== undefined && value !== "");
+  if (raw === undefined) return "—";
+  const value = typeof raw === "number" ? raw : Number(String(raw).replace(/[,$%\s]/g, ""));
+  return Number.isFinite(value) ? money(value) : "—";
+}
+
 function sourceText(row: SourceRow, ...keys: string[]) {
   for (const key of keys) {
     const value = row[key];
@@ -440,9 +447,9 @@ function InventoryTable({ rows, loading, fetchedAt, total, totals }: { rows: Sou
     <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[680px] border-collapse text-left">
       <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Name", "Case Quantity", "Case Level", "Item Level", "Value (Inc) (Last)"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
       <tbody className="divide-y divide-[var(--oh-border)]">{rows.map((row, index) => <tr key={`${sourceText(row, "Name", "BY_NAME")}-${index}`} className="hover:bg-[var(--oh-surface)]">
-        <Cell><span className="font-medium">{sourceText(row, "Name", "BY_NAME")}</span></Cell><Cell>{quantity(sourceNumber(row, "Case Quantity", "case_quantity"))}</Cell><Cell>{quantity(sourceNumber(row, "Case Level", "case_level"))}</Cell><Cell>{quantity(sourceNumber(row, "Item Level", "single_level"))}</Cell><Cell>{money(sourceNumber(row, "Value (Inc) (Last)", "value"))}</Cell>
+        <Cell><span className="font-medium">{sourceText(row, "Name", "BY_NAME")}</span></Cell><Cell>{quantity(sourceNumber(row, "Case Quantity", "case_quantity"))}</Cell><Cell>{quantity(sourceNumber(row, "Case Level", "case_level"))}</Cell><Cell>{quantity(sourceNumber(row, "Item Level", "single_level"))}</Cell><Cell>{sourceMoney(row, "Value (Inc) (Last)", "value")}</Cell>
       </tr>)}</tbody>
-      {!loading && <tfoot className="sticky bottom-0 bg-[var(--oh-surface)] font-semibold"><tr><td className="px-3 py-3">Total</td><td></td><td className="px-3 py-3">{quantity(totals.case_level)}</td><td className="px-3 py-3">{quantity(totals.item_level)}</td><td className="px-3 py-3">{money(totals.value_last_cost)}</td></tr></tfoot>}
+      {!loading && <tfoot className="sticky bottom-0 bg-[var(--oh-surface)] font-semibold"><tr><td className="px-3 py-3">Total</td><td></td><td className="px-3 py-3">{quantity(totals.case_level)}</td><td className="px-3 py-3">{quantity(totals.item_level)}</td><td className="px-3 py-3">{totals.value_last_cost_complete === 1 ? money(Number(totals.value_last_cost)) : "—"}</td></tr></tfoot>}
       {loading && <tfoot><tr><td colSpan={5} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront report…</td></tr></tfoot>}
     </table></TableFrame>
   </>;

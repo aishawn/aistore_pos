@@ -11,6 +11,8 @@ def test_inventory_totals_convert_cases_and_items_and_exclude_negative_units():
         "sellable_units": 19.0,
         "negative_stock_products": 1.0,
         "inventory_metrics_complete": 1.0,
+        "value_last_cost": 0.0,
+        "value_last_cost_complete": 0.0,
     }
 
 
@@ -82,6 +84,27 @@ def test_persisted_inventory_snapshot_maps_to_report_rows_and_case_units():
     ])
     assert rows == [{"ID": "p1", "Name": "Beer", "Case Quantity": 6, "Case Level": 2, "Item Level": 3, "Value (Inc) (Last)": 100}]
     assert inventory_report_totals(rows or [])['sellable_units'] == 15
+    assert inventory_report_totals(rows or [])['value_last_cost'] == 100
+
+
+def test_persisted_inventory_snapshot_reconstructs_shopfront_last_cost_value():
+    rows = inventory_snapshot_report_rows([
+        {"product": {"id": "p1", "name": "Beer", "caseQuantity": 6, "lastCost": 30},
+         "inventory": [{"caseLevel": 2, "singleLevel": 3}]},
+    ])
+    assert rows is not None
+    assert rows[0]["Value (Inc) (Last)"] == 75
+    totals = inventory_report_totals(rows)
+    assert totals["value_last_cost"] == 75
+    assert totals["value_last_cost_complete"] == 1
+
+
+def test_inventory_value_total_is_incomplete_when_a_product_cost_is_missing():
+    totals = inventory_report_totals([
+        {"Case Quantity": 6, "Case Level": 1, "Item Level": 0, "Value (Inc) (Last)": 12},
+        {"Case Quantity": 1, "Case Level": 0, "Item Level": 2, "Value (Inc) (Last)": None},
+    ])
+    assert totals["value_last_cost_complete"] == 0
 
 
 def test_persisted_inventory_snapshot_accepts_one_database_inventory_row():

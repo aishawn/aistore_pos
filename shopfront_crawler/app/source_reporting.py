@@ -18,10 +18,17 @@ def inventory_report_totals(rows: list[dict[str, Any]]) -> dict[str, float]:
     sellable_units = 0.0
     negative_stock_products = 0
     complete = True
+    value_last_cost_total = 0.0
+    value_last_cost_complete = True
     for row in rows:
         cases = _number(row, "Case Level", "case_level")
         items = _number(row, "Item Level", "single_level")
         case_quantity = _number(row, "Case Quantity", "case_quantity")
+        value_last_cost = _number(row, "Value (Inc) (Last)", "value")
+        if value_last_cost is None:
+            value_last_cost_complete = False
+        else:
+            value_last_cost_total += value_last_cost
         if cases is None or items is None or case_quantity is None or case_quantity <= 0:
             complete = False
             continue
@@ -33,6 +40,8 @@ def inventory_report_totals(rows: list[dict[str, Any]]) -> dict[str, float]:
         "sellable_units": round(sellable_units, 3),
         "negative_stock_products": float(negative_stock_products),
         "inventory_metrics_complete": float(complete),
+        "value_last_cost": round(value_last_cost_total, 2) if value_last_cost_complete else 0.0,
+        "value_last_cost_complete": float(value_last_cost_complete),
     }
 
 
@@ -112,12 +121,17 @@ def inventory_snapshot_report_rows(rows: list[dict[str, Any]]) -> list[dict[str,
             item_level = _number(inventory, "singleLevel", "single_level")
             if case_level is None or item_level is None:
                 return None
+            value_last_cost = _number(inventory, "valueLastCost", "value")
+            if value_last_cost is None:
+                last_cost = _number(product, "lastCost", "last_cost")
+                if last_cost is not None:
+                    value_last_cost = last_cost * (case_level + item_level / case_quantity)
             result.append({
                 "ID": product.get("id") or product.get("ID"),
                 "Name": product.get("name") or product.get("Name") or "—",
                 "Case Quantity": case_quantity,
                 "Case Level": case_level,
                 "Item Level": item_level,
-                "Value (Inc) (Last)": inventory.get("valueLastCost", inventory.get("value")),
+                "Value (Inc) (Last)": value_last_cost,
             })
     return result
