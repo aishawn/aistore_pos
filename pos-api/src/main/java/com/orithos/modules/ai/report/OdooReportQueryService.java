@@ -600,7 +600,7 @@ public class OdooReportQueryService {
         for (Map<String, Object> product : products) {
             long id = ((Number) product.getOrDefault("id", 0)).longValue();
             BigDecimal quantity = decimal(product.get("qty_available"));
-            if (quantity.signum() > 0 && soldByProduct.getOrDefault(id, BigDecimal.ZERO).compareTo(BigDecimal.ONE) < 0) {
+            if (quantity.signum() > 0 && soldByProduct.getOrDefault(id, BigDecimal.ZERO).signum() == 0) {
                 rows.add(Map.of("id", id, "name", product.getOrDefault("display_name", ""),
                         "on_hand", quantity, "sold_qty", soldByProduct.getOrDefault(id, BigDecimal.ZERO)));
             }
