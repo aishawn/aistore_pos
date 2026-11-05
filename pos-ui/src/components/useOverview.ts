@@ -46,22 +46,22 @@ export type OverviewPulse = {
   yesterdayTo?: string;
   grossMarginBasis?: string;
 };
-const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v1";
-const PULSE_FRESH_MS = 45_000;
-const PULSE_KEEP_MS = 10 * 60_000;
+const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v2";
+const PULSE_FRESH_MS = 2 * 60_000;
+const PULSE_KEEP_MS = 30 * 60_000;
 const PULSE_SYNC_POLL_MS = 5 * 60_000;
 type StoredPulse = { scope: string; at: number; data: OverviewPulse };
 let memoryPulse: StoredPulse | null = null;
 function pulseScope(vendorId?: number) {
-  return String(vendorId ?? "store");
+  return `${window.location.hostname}:${vendorId ?? "store"}`;
 }
 function readPulse(scope: string): StoredPulse | null {
   if (memoryPulse?.scope === scope && Date.now() - memoryPulse.at < PULSE_KEEP_MS && Number.isFinite(memoryPulse.data.revenue)) {
     return memoryPulse;
   }
-  if (typeof sessionStorage === "undefined") return null;
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(PULSE_STORAGE_KEY) || "null") as StoredPulse | null;
+    const raw = localStorage.getItem(PULSE_STORAGE_KEY) ?? sessionStorage.getItem(PULSE_STORAGE_KEY);
+    const parsed = JSON.parse(raw || "null") as StoredPulse | null;
     if (!parsed || parsed.scope !== scope || Date.now() - parsed.at > PULSE_KEEP_MS || !Number.isFinite(parsed.data?.revenue)) return null;
     memoryPulse = parsed;
     return parsed;
@@ -72,7 +72,7 @@ function readPulse(scope: string): StoredPulse | null {
 function writePulse(scope: string, data: OverviewPulse) {
   const stored = { scope, at: Date.now(), data };
   memoryPulse = stored;
-  try { sessionStorage.setItem(PULSE_STORAGE_KEY, JSON.stringify(stored)); } catch { /* Keep the in-memory copy when storage is full. */ }
+  try { localStorage.setItem(PULSE_STORAGE_KEY, JSON.stringify(stored)); } catch { /* Keep the in-memory copy when storage is full. */ }
 }
 
 export function pulseMarginNote(data: OverviewPulse): string {

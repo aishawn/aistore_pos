@@ -227,12 +227,6 @@ export function OverviewPageContent({
             ) : null}
           </section>
         ) : null}
-        {data && data.completeness !== "complete" ? (
-          <section role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            <span>{data.sourceReconciliation === "mismatch" ? "Shopfront sales do not reconcile with this store's Odoo sales." : data.completeness === "incomplete" ? "Shopfront data is still syncing for this period." : "Shopfront sync coverage has not been confirmed for this period."}</span>
-            <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"}</span>
-          </section>
-        ) : null}
         {active === "workspace" ? (
           <>
             {data ? <section className="ov-summary" aria-label="Today">
