@@ -78,6 +78,7 @@ export function pulseMarginNote(data: OverviewPulse): string {
   const status = data.grossMarginStatus;
   if (status === "sales_mismatch") return "Odoo sales do not reconcile";
   if (status === "source_margin") return "Shopfront source cost · not ledger-audited";
+  if (status === "source_margin_unverified") return "Shopfront cost · sync coverage unverified";
   if (status === "purchase_cost_missing" || status === "ledger_cost_unverified") return "Odoo cost records incomplete";
   if (status === "no_sales") return "No sales yesterday";
   if (status === "verified") return `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% coverage`;

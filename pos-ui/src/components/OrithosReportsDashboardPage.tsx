@@ -569,6 +569,7 @@ export function OrithosReportsDashboardPage() {
               detail={data?.grossMarginStatus === "verified"
                 ? `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% cost coverage`
                 : data?.grossMarginStatus === "source_margin" ? "Shopfront source cost · not ledger-audited"
+                : data?.grossMarginStatus === "source_margin_unverified" ? "Shopfront source cost · sync coverage unverified"
                 : data?.grossMarginStatus === "sales_mismatch" ? "Odoo sales and line totals do not reconcile"
                   : data?.grossMarginStatus === "no_sales" ? "No sales in this period" : "Odoo cost records are incomplete"}
               icon={<BarChart3 size={15} />}

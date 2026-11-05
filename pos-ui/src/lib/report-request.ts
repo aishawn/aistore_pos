@@ -85,7 +85,7 @@ function response(body: unknown, status = 200, timing?: string) {
 
 function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean) {
   const { sourceMarginFallback, ...visible } = body;
-  if (!sourceComplete || !sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
+  if (!sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
   const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown };
   if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)
     || visible.grossMarginStatus === "verified" || visible.grossMarginStatus === "no_sales") return visible;
@@ -93,7 +93,7 @@ function responseReportBody(body: Record<string, unknown>, sourceComplete: boole
     ...visible,
     ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
     grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
-    grossMarginStatus: "source_margin",
+    grossMarginStatus: sourceComplete ? "source_margin" : "source_margin_unverified",
     grossMarginBasis: "shopfront_original_sale_cost",
   };
 }
