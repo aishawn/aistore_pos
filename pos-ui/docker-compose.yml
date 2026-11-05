@@ -17,6 +17,8 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+      SHOPFRONT_CRAWLER_URL: ${SHOPFRONT_CRAWLER_URL:-http://shopfront-crawler:8000}
+      SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
     env_file:
       - path: .env
         required: false

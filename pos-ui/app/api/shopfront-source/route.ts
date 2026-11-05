@@ -13,6 +13,9 @@ const ENDPOINTS: Record<string, { path: string; params: string[]; permissions: s
   "sales": { path: "/api/sales", params: ["from", "to", "page", "size", "snapshot_id"], permissions: ["reports.dashboard"] },
   "sales-trend": { path: "/api/reports/sales-trend", params: ["from", "to"], permissions: ["reports.dashboard"] },
   "daily-sales": { path: "/api/reports/daily-sales", params: ["report_date"], permissions: ["reports.dashboard"] },
+  "report-sales": { path: "/api/source-reports/sales", params: ["from", "to", "dashboard"], permissions: ["reports.dashboard"] },
+  "report-inventory": { path: "/api/source-reports/inventory", params: ["page", "size", "q", "negative_only"], permissions: ["reports.dashboard", "stock.inventory.view", "stock.products.view"] },
+  "report-purchase": { path: "/api/source-reports/purchase", params: ["from", "to", "q"], permissions: ["reports.dashboard", "purchase.orders.view", "stock.purchases.view"] },
   "purchase-orders": { path: "/api/purchase-orders", params: ["page", "size", "status", "q"], permissions: ["reports.dashboard", "purchase.orders.view", "stock.purchases.view"] },
   "coverage": { path: "/api/sync/coverage", params: [], permissions: ["reports.dashboard", "stock.inventory.view", "stock.products.view"] },
 };
@@ -36,6 +39,11 @@ export async function GET(request: NextRequest) {
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
     const base = (process.env.SHOPFRONT_CRAWLER_URL || "http://shopfront-crawler:8000").trim().replace(/\/+$/, "");
+    const usesSourceReport = resource.startsWith("report-");
+    const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim();
+    if (usesSourceReport && !integrationToken) {
+      return NextResponse.json({ message: "Shopfront source reporting is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
     const target = new URL(endpoint.path, `${base}/`);
     target.searchParams.set("store", store);
     for (const name of endpoint.params) {
@@ -43,7 +51,11 @@ export async function GET(request: NextRequest) {
       if (value !== null) target.searchParams.set(name, value);
     }
 
-    const upstream = await fetch(target, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+    const upstream = await fetch(target, {
+      cache: "no-store",
+      headers: usesSourceReport ? { Authorization: `Bearer ${integrationToken}` } : undefined,
+      signal: AbortSignal.timeout(usesSourceReport ? 90_000 : 15_000),
+    });
     if (!upstream.ok) {
       return NextResponse.json({ message: upstream.status >= 500 ? "Shopfront source service is temporarily unavailable." : "Shopfront source request was rejected." }, { status: upstream.status >= 500 ? 503 : upstream.status, headers: { "Cache-Control": "no-store" } });
     }

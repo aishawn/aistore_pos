@@ -133,6 +133,17 @@ class DailySalesSummary(Base):
     __table_args__ = (UniqueConstraint("store_key", "business_date", "outlet", name="uq_daily_summary"),)
 
 
+class ShopfrontReportSnapshot(Base):
+    __tablename__ = "shopfront_report_snapshots"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    report_type: Mapped[str] = mapped_column(String(32))
+    period_key: Mapped[str] = mapped_column(String(64), default="all")
+    rows: Mapped[list] = mapped_column(JSONType, default=list)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("store_key", "report_type", "period_key", name="uq_shopfront_report_snapshot"),)
+
+
 class Sale(Base):
     __tablename__ = "sales"
     id: Mapped[int] = mapped_column(primary_key=True)

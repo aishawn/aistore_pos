@@ -1,6 +1,7 @@
 import asyncio
 import asyncio
 import contextlib
+import hmac
 import json
 import logging
 import os
@@ -21,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient, receipt_count
@@ -366,6 +367,190 @@ def sales_trend_missing_dates(from_date: date, to_date: date, rows: list[DailySa
             missing.append(value)
         current += timedelta(days=1)
     return missing
+
+
+def shopfront_source_report_query(report_type: str, from_date: date | None, to_date: date | None) -> str:
+    if report_type == "inventory":
+        return '''SELECT BY_NAME AS "Name", case_quantity AS "Case Quantity",
+inventory.case_level AS "Case Level", inventory.single_level AS "Item Level",
+FORMAT(costs.last_cost * (inventory.case_level + (inventory.single_level / case_quantity)), '$', '', 2)
+AS "Value (Inc) (Last)" TOTAL(SUM)
+FROM products BY product'''
+    if report_type == "sales" and from_date and to_date:
+        return f'''SELECT BY_NAME AS "Name",
+revenue AS "Revenue",
+cost AS "Cost of Goods Sold",
+transaction_count AS "Transaction Count",
+FORMAT(revenue / transaction_count, '$') AS "Average Sale",
+profit AS "Profit",
+FORMAT((revenue - cost) / revenue * 100, '', '%', 2) AS "Profit Percentage",
+tax AS "Tax Amount",
+discount AS "Discount Amount",
+FORMAT(revenue, '', '%', 2) AS "Revenue Percentage" TOTAL(PERCENTAGE_FROM_TOTAL),
+FORMAT(transaction_count, '', '%', 2) AS "Transaction Percentage" TOTAL(PERCENTAGE_FROM_TOTAL)
+FROM sales BY outlet START '{from_date.isoformat()}' END '{to_date.isoformat()}'
+ORDER "Name" asc CONSOLIDATED'''
+    if report_type == "purchase" and from_date and to_date:
+        return f'''SELECT BY_NAME AS "Name", cost AS "Total Cost", fees AS "Fees",
+freight AS "Freight", payment_fees AS "Payment Fees", tax AS "Tax Amount"
+FROM orders BY outlet START '{from_date.isoformat()}' END '{to_date.isoformat()}'
+ORDER "Name" asc CONSOLIDATED'''
+    raise ValueError("Unsupported Shopfront source report")
+
+
+@app.get("/api/source-reports/{report_type}")
+async def shopfront_source_report(
+    report_type: str,
+    request: Request,
+    store: str,
+    from_date: date | None = Query(None, alias="from"),
+    to_date: date | None = Query(None, alias="to"),
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=500),
+    q: str | None = None,
+    negative_only: bool = False,
+    dashboard: bool = False,
+    db: Session = Depends(get_db),
+) -> dict:
+    expected = settings.shopfront_integration_token.strip()
+    supplied = request.headers.get("authorization", "")
+    if not expected or not hmac.compare_digest(supplied, f"Bearer {expected}"):
+        raise HTTPException(401, "Shopfront source report authorization failed")
+    if report_type not in {"inventory", "sales", "purchase"}:
+        raise HTTPException(404, "Unknown Shopfront source report")
+    if report_type in {"sales", "purchase"}:
+        if from_date is None or to_date is None or from_date > to_date:
+            raise HTTPException(400, "Choose a valid source report date range")
+        if (to_date - from_date).days > 366:
+            raise HTTPException(400, "Source report ranges are limited to 366 days")
+    if q is not None and len(q) > 120:
+        raise HTTPException(400, "q must be at most 120 characters")
+
+    period_key = f"{from_date.isoformat()}:{to_date.isoformat()}" if from_date and to_date else "all"
+    cached = db.scalar(select(ShopfrontReportSnapshot).where(
+        ShopfrontReportSnapshot.store_key == store,
+        ShopfrontReportSnapshot.report_type == report_type,
+        ShopfrontReportSnapshot.period_key == period_key,
+    ))
+    now = datetime.now(timezone.utc)
+    fetched = cached.fetched_at.replace(tzinfo=timezone.utc) if cached and cached.fetched_at.tzinfo is None else (cached.fetched_at if cached else None)
+    if cached and fetched and now - fetched < timedelta(seconds=60):
+        rows = cached.rows if isinstance(cached.rows, list) else []
+        source_fetched_at = cached.fetched_at
+        cache_status = "hit"
+    else:
+        store_row = require_store(store, db)
+        client = get_client(settings, store_row)
+        try:
+            token = await access_token(db, settings, store_row)
+            query = shopfront_source_report_query(report_type, from_date, to_date)
+            rows = await client.run_report(token, query)
+        except ShopfrontError as exc:
+            raise HTTPException(502, f"Shopfront source report failed: {exc}") from exc
+        finally:
+            await client.close()
+        if cached is None:
+            # Older volumes created this table with a (store, report_type)
+            # unique key. Reuse that row when the schema has not been migrated
+            # yet, so changing report periods never breaks a live worker.
+            cached = db.scalar(select(ShopfrontReportSnapshot).where(
+                ShopfrontReportSnapshot.store_key == store,
+                ShopfrontReportSnapshot.report_type == report_type,
+            ))
+        if cached is None:
+            cached = ShopfrontReportSnapshot(store_key=store, report_type=report_type, period_key=period_key)
+            db.add(cached)
+        else:
+            cached.period_key = period_key
+        cached.rows = rows
+        cached.fetched_at = now.replace(tzinfo=None)
+        source_fetched_at = cached.fetched_at
+        db.execute(
+            ShopfrontReportSnapshot.__table__.delete().where(
+                ShopfrontReportSnapshot.store_key == store,
+                ShopfrontReportSnapshot.report_type == report_type,
+                ShopfrontReportSnapshot.fetched_at < (now - timedelta(days=30)).replace(tzinfo=None),
+                ShopfrontReportSnapshot.period_key != period_key,
+            )
+        )
+        db.commit()
+        cache_status = "refreshed"
+
+    normalized_rows = [row for row in rows if isinstance(row, dict)]
+    metrics: dict[str, Any] = {}
+    if report_type == "sales" and dashboard and from_date and to_date:
+        store_row = require_store(store, db)
+        client = get_client(settings, store_row)
+        try:
+            token = await access_token(db, settings, store_row)
+            sales_rows = await client.fetch_sales_graphql(token, from_date.isoformat(), to_date.isoformat(), store_row.timezone)
+        except ShopfrontError as exc:
+            raise HTTPException(502, f"Shopfront dashboard metrics failed: {exc}") from exc
+        finally:
+            await client.close()
+        customer_ids = {str(row.get("customer", {}).get("id")) for row in sales_rows if isinstance(row.get("customer"), dict) and row.get("customer", {}).get("id")}
+        quantity_total = 0.0
+        for sale in sales_rows:
+            for item in sale.get("items", []) if isinstance(sale.get("items"), list) else []:
+                if isinstance(item, dict):
+                    raw_quantity = item.get("quantity")
+                    try:
+                        quantity_total += float(raw_quantity or 0)
+                    except (TypeError, ValueError):
+                        pass
+        transaction_count = len(sales_rows)
+        metrics = {"customer_count": len(customer_ids), "basket_size": round(quantity_total / transaction_count, 2) if transaction_count else 0}
+    if q and q.strip():
+        needle = q.strip().casefold()
+        normalized_rows = [row for row in normalized_rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]
+    if negative_only and report_type == "inventory":
+        def negative_row(row: dict[str, Any]) -> bool:
+            def value(*keys: str) -> float | None:
+                for key in keys:
+                    raw = row.get(key)
+                    if raw is None:
+                        continue
+                    try:
+                        return float(re.sub(r"[^0-9.\-]", "", str(raw)))
+                    except ValueError:
+                        return None
+                return None
+            cases = value("Case Level", "case_level")
+            items = value("Item Level", "single_level")
+            case_quantity = value("Case Quantity", "case_quantity")
+            return cases is not None and items is not None and case_quantity is not None and case_quantity > 0 and cases + items / case_quantity < 0
+        normalized_rows = [row for row in normalized_rows if negative_row(row)]
+    total = len(normalized_rows)
+    totals: dict[str, float] = {}
+    if report_type == "inventory":
+        for result_key, row_keys in {
+            "case_level": ("Case Level", "case_level"),
+            "item_level": ("Item Level", "single_level"),
+            "value_last_cost": ("Value (Inc) (Last)", "Value (Inc) (Last)", "value"),
+        }.items():
+            field_total = 0.0
+            for row in normalized_rows:
+                for key in row_keys:
+                    raw = row.get(key)
+                    if raw is not None:
+                        try:
+                            field_total += float(re.sub(r"[^0-9.\-]", "", str(raw)))
+                        except ValueError:
+                            pass
+                        break
+            totals[result_key] = round(field_total, 2)
+    page_rows = normalized_rows[(page - 1) * size:page * size]
+    return {
+        "data": page_rows,
+        "pagination": {"page": page, "size": size, "returned": len(page_rows), "total": total},
+        "totals": totals,
+        "metrics": metrics,
+        "report": report_type,
+        "period": period_key,
+        "source": "shopfront_reporting_api",
+        "fetched_at": source_fetched_at,
+        "cache": cache_status,
+    }
 
 
 @app.get("/auth/shopfront/{store_key}/start")
@@ -3539,6 +3724,8 @@ def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=
             "sku": product.sku if product else None,
             "category": product.category if product else None,
             "cost": product.cost if product else None,
+            "last_cost": (product.raw_payload or {}).get("lastCost") if product and isinstance(product.raw_payload, dict) else None,
+            "case_quantity": (product.raw_payload or {}).get("caseQuantity") if product and isinstance(product.raw_payload, dict) else None,
             "price": product.price if product else None,
             "outlet_id": row.outlet_id,
             "outlet_name": row.outlet_name,

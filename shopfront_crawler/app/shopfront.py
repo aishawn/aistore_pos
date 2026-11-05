@@ -307,7 +307,10 @@ class ShopfrontClient:
         return data.get("data", data)
 
     async def fetch_sales(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
-        query = f'''SELECT BY_NAME, revenue, cost
+        query = f'''SELECT BY_NAME, revenue, cost, transaction_count,
+FORMAT(revenue / transaction_count, '$') AS average_sale,
+profit, FORMAT((revenue - cost) / revenue * 100, '', '%', 2) AS profit_percentage,
+tax, discount
 FROM sales
 BY outlet
 START '{start}'
