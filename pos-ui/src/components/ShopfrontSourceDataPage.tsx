@@ -17,7 +17,7 @@ const MODE_META: Record<Mode, { title: string; odooHref: string; odooLabel: stri
   sales: { title: "Shopfront sales", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
   inventory: { title: "Shopfront inventory", odooHref: "/reports/inventory/odoo", odooLabel: "Orithos inventory" },
   products: { title: "Shopfront products", odooHref: "/products/odoo", odooLabel: "Orithos products" },
-  purchase: { title: "Shopfront purchase orders", odooHref: "/reports/purchase/odoo", odooLabel: "Orithos purchasing" },
+  purchase: { title: "Shopfront purchase report", odooHref: "/reports/purchase/odoo", odooLabel: "Orithos purchasing" },
 };
 const MODE_HREF: Record<Mode, string> = {
   dashboard: "/reports/shopfront/dashboard",
@@ -235,6 +235,10 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     setPage(1);
     setProductFilters({ brand: brandInput.trim(), category: categoryInput.trim(), family: familyInput.trim(), tag: tagInput.trim(), supplier: supplierInput.trim(), type: typeInput.trim(), taxRate: taxRateInput.trim(), costTaxRate: costTaxRateInput.trim(), giftCard: giftCardInput });
   }
+  const advancedFilters: Array<[string, string, (value: string) => void]> = [
+    ["Brand", brandInput, setBrandInput], ["Category", categoryInput, setCategoryInput], ["Family", familyInput, setFamilyInput], ["Tag", tagInput, setTagInput],
+    ["Supplier", supplierInput, setSupplierInput], ["Type", typeInput, setTypeInput], ["Retail tax rate", taxRateInput, setTaxRateInput], ["Purchase tax rate", costTaxRateInput, setCostTaxRateInput],
+  ];
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
@@ -280,7 +284,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {mode === "products" && <details className="border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <summary className="cursor-pointer text-sm font-semibold text-[var(--oh-text)]">Advanced product filters</summary>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {[["Brand", brandInput, setBrandInput], ["Category", categoryInput, setCategoryInput], ["Family", familyInput, setFamilyInput], ["Tag", tagInput, setTagInput], ["Supplier", supplierInput, setSupplierInput], ["Type", typeInput, setTypeInput], ["Retail tax rate", taxRateInput, setTaxRateInput], ["Purchase tax rate", costTaxRateInput, setCostTaxRateInput]].map(([label, value, setter]) => <label key={String(label)} className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">{label}<input value={String(value)} onChange={event => (setter as (value: string) => void)(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)]" /></label>)}
+          {advancedFilters.map(([label, value, setter]) => <label key={label} className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">{label}<input value={value} onChange={event => setter(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)]" /></label>)}
           <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Gift card<select value={giftCardInput} onChange={event => setGiftCardInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]"><option value="all">All</option><option value="true">Gift cards</option><option value="false">Not gift cards</option></select></label>
           <button type="button" onClick={applyProductFilters} className="h-9 self-end rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Apply filters</button>
         </div>
