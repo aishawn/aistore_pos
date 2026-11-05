@@ -135,3 +135,31 @@ def inventory_snapshot_report_rows(rows: list[dict[str, Any]]) -> list[dict[str,
                 "Value (Inc) (Last)": value_last_cost,
             })
     return result
+
+
+def dashboard_report_transaction_count(report_rows: list[dict[str, Any]]) -> int | None:
+    source_count = 0
+    for row in report_rows:
+        count = _number(row, "Transaction Count", "transaction_count")
+        if count is None or count < 0 or not count.is_integer():
+            return None
+        source_count += int(count)
+    return source_count
+
+
+def completed_dashboard_sales(
+    sales_rows: list[dict[str, Any]], report_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]] | None:
+    """Use completed GraphQL sales only when their count agrees with the report."""
+    source_count = dashboard_report_transaction_count(report_rows)
+    if source_count is None:
+        return None
+
+    completed: list[dict[str, Any]] = []
+    for row in sales_rows:
+        status = str(row.get("status") or "").strip().upper()
+        if not status:
+            return None
+        if status == "COMPLETED":
+            completed.append(row)
+    return completed if len(completed) == source_count else None

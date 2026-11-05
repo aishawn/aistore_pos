@@ -258,6 +258,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
   const inventory = coverage?.inventory ?? {};
   const catalog = coverage?.catalog ?? {};
+  const dashboardMetricsAvailable = reportMetrics.available !== false;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const meta = MODE_META[mode];
 
@@ -340,8 +341,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Average sale" value={money(averageSale)} />
         <Metric label="Profit percentage" value={`${quantity(profitPercentage)}%`} />
         <Metric label="Sale count" value={quantity(sums.transactions)} />
-        <Metric label="Customers" value={quantity(reportMetrics.customer_count)} />
-        <Metric label="Basket size" value={quantity(reportMetrics.basket_size)} />
+        <Metric label="Customers" value={dashboardMetricsAvailable ? quantity(reportMetrics.customer_count) : "—"} />
+        <Metric label="Basket size" value={dashboardMetricsAvailable ? quantity(reportMetrics.basket_size) : "—"} />
         <Metric label="Discount amount" value={money(sums.discount)} />
         <Metric label="Active products" value={liveActiveProducts === null ? "—" : quantity(liveActiveProducts)} detail={liveCatalogFetchedAt ? `Live Shopfront catalog · ${dateLabel(liveCatalogFetchedAt)}` : "Live Shopfront catalog unavailable"} />
         <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail="Shopfront case and item levels" />
@@ -397,6 +398,12 @@ function Metric({ label, value, emphasis = false, detail }: { label: string; val
 function DashboardBreakdown({ metrics }: { metrics: SourceRow }) {
   const products = Array.isArray(metrics.top_products) ? metrics.top_products as SourceRow[] : [];
   const users = Array.isArray(metrics.users) ? metrics.users as SourceRow[] : [];
+  if (metrics.available === false) {
+    const sourceCount = metrics.source_transaction_count === null || metrics.source_transaction_count === undefined ? "—" : quantity(metrics.source_transaction_count);
+    return <p role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 md:px-6">
+      Dashboard detail metrics are unavailable: Shopfront reports {sourceCount} transactions, but {quantity(metrics.completed_transaction_count)} completed sales were loaded.
+    </p>;
+  }
   if (!products.length && !users.length) return null;
   return <div className="grid gap-4 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-4 md:grid-cols-2 md:px-6">
     <section className="overflow-x-auto border border-[var(--oh-border)] bg-white">
