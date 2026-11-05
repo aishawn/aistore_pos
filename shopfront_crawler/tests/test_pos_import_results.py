@@ -34,6 +34,14 @@ def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
     assert audit == {"imported": 2, "updated_orders": 1, "skipped": 1}
 
 
+def test_audit_odoo_sales_batch_accepts_legacy_receipt_when_counts_cover_every_item():
+    audit = main.audit_odoo_sales_batch(
+        {"result": {"ok": True, "business": {"imported": 2, "updated_orders": 1}}},
+        expected_count=3,
+    )
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0}
+
+
 @pytest.mark.parametrize(
     "business, expected_error",
     [

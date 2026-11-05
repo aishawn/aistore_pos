@@ -103,11 +103,16 @@ class OdooSyncClient:
                     skipped = business.get("skipped")
                     imported = business.get("imported")
                     updated = business.get("updated_orders")
-                    if not isinstance(skipped, list):
-                        last_error = "Odoo sales receipt has no skipped-item details"
-                        break
                     if not isinstance(imported, int) or not isinstance(updated, int) or imported < 0 or updated < 0:
                         last_error = "Odoo sales receipt has invalid imported/updated counts"
+                        break
+                    if skipped is None and imported + updated == len(items):
+                        # Older Odoo builds omit skipped=[] when every order
+                        # was imported or updated. Counts still prove that no
+                        # item was skipped, so accept this complete receipt.
+                        skipped = []
+                    if not isinstance(skipped, list):
+                        last_error = "Odoo sales receipt has no skipped-item details"
                         break
                     if imported + updated + len(skipped) != len(items):
                         last_error = (

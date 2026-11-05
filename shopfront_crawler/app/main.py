@@ -74,6 +74,8 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
     imported = int(business.get("imported") or 0)
     updated = int(business.get("updated_orders") or 0)
     skipped = business.get("skipped")
+    if skipped is None and imported + updated == expected_count:
+        skipped = []
     if not isinstance(skipped, list):
         raise RuntimeError("Odoo sales response did not include skipped-order details")
     if imported + updated + len(skipped) != expected_count:
