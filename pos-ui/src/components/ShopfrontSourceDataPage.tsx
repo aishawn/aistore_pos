@@ -188,16 +188,16 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const sums = useMemo(() => rows.reduce<{ revenue: number; cost: number; profit: number; tax: number; discount: number; transactions: number; averageSale: number; profitPercentage: number }>((acc, row) => ({
+  const sums = useMemo(() => rows.reduce<{ revenue: number; cost: number; profit: number; tax: number; discount: number; transactions: number }>((acc, row) => ({
     revenue: acc.revenue + sourceNumber(row, "Revenue", "revenue"),
     cost: acc.cost + sourceNumber(row, "Cost of Goods Sold", "cost"),
     profit: acc.profit + sourceNumber(row, "Profit", "profit"),
     tax: acc.tax + sourceNumber(row, "Tax Amount", "tax"),
     discount: acc.discount + sourceNumber(row, "Discount Amount", "discount"),
     transactions: acc.transactions + sourceNumber(row, "Transaction Count", "transaction_count"),
-    averageSale: acc.averageSale + sourceNumber(row, "Average Sale", "average_sale"),
-    profitPercentage: acc.profitPercentage + sourceNumber(row, "Profit Percentage", "profit_percentage"),
-  }), { revenue: 0, cost: 0, profit: 0, tax: 0, discount: 0, transactions: 0, averageSale: 0, profitPercentage: 0 }), [rows]);
+  }), { revenue: 0, cost: 0, profit: 0, tax: 0, discount: 0, transactions: 0 }), [rows]);
+  const averageSale = sums.transactions > 0 ? sums.revenue / sums.transactions : 0;
+  const profitPercentage = sums.revenue !== 0 ? (sums.profit / sums.revenue) * 100 : 0;
   const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
   const inventory = coverage?.inventory ?? {};
   const catalog = coverage?.catalog ?? {};
@@ -261,12 +261,13 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {mode === "dashboard" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <Metric label="Revenue" value={money(sums.revenue)} />
         <Metric label="Cost of goods sold" value={money(sums.cost)} />
-        <Metric label="Shopfront Profit" value={money(sums.profit)} emphasis />
-        <Metric label="Average sale" value={money(sums.averageSale)} />
-        <Metric label="Profit percentage" value={`${quantity(sums.profitPercentage)}%`} />
-        <Metric label="Transactions" value={quantity(sums.transactions)} />
+        <Metric label="Gross profit" value={money(sums.profit)} emphasis />
+        <Metric label="Average sale" value={money(averageSale)} />
+        <Metric label="Profit percentage" value={`${quantity(profitPercentage)}%`} />
+        <Metric label="Sale count" value={quantity(sums.transactions)} />
         <Metric label="Customers" value={quantity(reportMetrics.customer_count)} />
         <Metric label="Basket size" value={quantity(reportMetrics.basket_size)} />
+        <Metric label="Discount amount" value={money(sums.discount)} />
         <Metric label="Active products" value={quantity(catalog.active_records)} detail="Shopfront ACTIVE catalog" />
         <Metric label="Inventory records" value={quantity(inventory.records)} />
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
@@ -277,9 +278,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {mode === "sales" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <Metric label="Revenue" value={money(sums.revenue)} />
         <Metric label="Cost of goods sold" value={money(sums.cost)} />
-        <Metric label="Shopfront Profit" value={money(sums.profit)} emphasis />
-        <Metric label="Average sale" value={money(sums.averageSale)} />
-        <Metric label="Profit percentage" value={`${quantity(sums.profitPercentage)}%`} />
+        <Metric label="Profit" value={money(sums.profit)} emphasis />
+        <Metric label="Average sale" value={money(averageSale)} />
+        <Metric label="Profit percentage" value={`${quantity(profitPercentage)}%`} />
         <Metric label="Tax" value={money(sums.tax)} />
         <Metric label="Discount" value={money(sums.discount)} />
         <Metric label="Transactions" value={quantity(sums.transactions)} />
