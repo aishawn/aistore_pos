@@ -25,6 +25,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
+from .source_reporting import inventory_report_totals, inventory_snapshot_totals
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -670,6 +671,7 @@ async def shopfront_source_report(
                             pass
                         break
             totals[result_key] = round(field_total, 2)
+        totals.update(inventory_report_totals(normalized_rows))
     page_rows = normalized_rows[(page - 1) * size:page * size]
     return {
         "data": page_rows,
@@ -681,6 +683,68 @@ async def shopfront_source_report(
         "source": "shopfront_reporting_api",
         "fetched_at": source_fetched_at,
         "cache": cache_status,
+    }
+
+
+@app.get("/api/dashboard/inventory")
+def dashboard_inventory(store: str, db: Session = Depends(get_db)) -> dict:
+    """Return Dashboard stock KPIs from the durable GraphQL inventory snapshot."""
+    require_store(store, db)
+    manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    if manifest is None or not manifest.complete:
+        return {"available": False, "reason": "snapshot_incomplete", "source": "shopfront_inventory_snapshot"}
+
+    mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
+    snapshot_ids = {str(value) for value in (manifest.source_product_ids or [])}
+    present_ids = {str(value) for value in db.scalars(
+        select(InventorySnapshot.shopfront_product_id).where(InventorySnapshot.store_key == store).distinct()
+    ).all()}
+    # Zero-stock products may have no inventory row; all persisted rows must still belong to the manifest.
+    if not present_ids.issubset(snapshot_ids):
+        return {"available": False, "reason": "snapshot_manifest_mismatch", "source": "shopfront_inventory_snapshot"}
+
+    query = select(InventorySnapshot, Product).outerjoin(
+        Product,
+        (Product.store_key == InventorySnapshot.store_key)
+        & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
+    ).where(InventorySnapshot.store_key == store)
+    if mapping and mapping.shopfront_outlet:
+        query = query.where(InventorySnapshot.outlet_name == mapping.shopfront_outlet)
+    rows = db.execute(query).all()
+    outlet_ids = {row.outlet_id for row, _ in rows if row.outlet_id}
+    if not outlet_ids:
+        # An empty but complete snapshot is a valid zero only when the source manifest is empty.
+        if mapping and mapping.shopfront_outlet and snapshot_ids:
+            return {"available": False, "reason": "mapped_outlet_missing", "source": "shopfront_inventory_snapshot"}
+        if snapshot_ids:
+            return {"available": False, "reason": "inventory_rows_missing", "source": "shopfront_inventory_snapshot"}
+        return {"available": True, "sellable_units": 0, "negative_stock_products": 0, "record_count": 0,
+                "outlet_count": 0, "snapshot_at": manifest.snapshot_at, "source": "shopfront_inventory_snapshot"}
+    if len(outlet_ids) > 1 and not (mapping and mapping.shopfront_outlet):
+        return {"available": False, "reason": "outlet_mapping_required", "source": "shopfront_inventory_snapshot"}
+
+    metrics_rows = []
+    seen_products: set[str] = set()
+    for row, product in rows:
+        product_id = str(row.shopfront_product_id)
+        if product_id in seen_products:
+            return {"available": False, "reason": "duplicate_product_inventory", "source": "shopfront_inventory_snapshot"}
+        seen_products.add(product_id)
+        metrics_rows.append({
+            "inventory": row.raw_payload if isinstance(row.raw_payload, dict) else {},
+            "product": product.raw_payload if product and isinstance(product.raw_payload, dict) else {},
+        })
+    totals = inventory_snapshot_totals(metrics_rows)
+    if totals["inventory_metrics_complete"] != 1:
+        return {"available": False, "reason": "inventory_units_incomplete", "source": "shopfront_inventory_snapshot"}
+    return {
+        "available": True,
+        "sellable_units": totals["sellable_units"],
+        "negative_stock_products": int(totals["negative_stock_products"]),
+        "record_count": len(rows),
+        "outlet_count": len(outlet_ids),
+        "snapshot_at": manifest.snapshot_at,
+        "source": "shopfront_inventory_snapshot",
     }
 
 
@@ -3999,7 +4063,7 @@ def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=
     source_product_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.shopfront_product_id))).where(InventorySnapshot.store_key == store)) or 0
     manifest_product_ids = {str(product_id) for product_id in (manifest.source_product_ids or [])} if manifest else set()
     source_product_ids = {str(product_id) for product_id in db.scalars(select(InventorySnapshot.shopfront_product_id).where(InventorySnapshot.store_key == store).distinct()).all()}
-    products_match_manifest = source_product_ids == manifest_product_ids
+    products_match_manifest = source_product_ids.issubset(manifest_product_ids)
     return {
         "data": [{
             "shopfront_product_id": row.shopfront_product_id,
@@ -4021,6 +4085,8 @@ def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=
             "complete": bool(manifest and manifest.complete and products_match_manifest),
             "manifest_complete": bool(manifest and manifest.complete),
             "products_match_manifest": products_match_manifest,
+            "manifest_products": len(manifest_product_ids),
+            "products_with_inventory_rows": len(source_product_ids),
             "snapshot_at": manifest.snapshot_at if manifest else None,
             "products": len(manifest_product_ids),
             "source_products": int(source_product_count),

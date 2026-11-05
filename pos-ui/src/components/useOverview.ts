@@ -9,6 +9,7 @@ import {
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -45,6 +46,10 @@ export type OverviewPulse = {
   yesterdayFrom?: string;
   yesterdayTo?: string;
   grossMarginBasis?: string;
+  sourceReportsFetchedAt?: string | null;
+  sourceSalesAvailable?: boolean;
+  sourceInventoryAvailable?: boolean;
+  shopfrontReportsMode?: "source" | "odoo";
 };
 const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v2";
 const PULSE_FRESH_MS = 2 * 60_000;
@@ -78,6 +83,8 @@ function writePulse(scope: string, data: OverviewPulse) {
 export function pulseMarginNote(data: OverviewPulse): string {
   const status = data.grossMarginStatus;
   if (status === "sales_mismatch") return "Odoo sales do not reconcile";
+  if (status === "shopfront_source_report") return "Shopfront Sales · Profit / Revenue";
+  if (data.shopfrontReportsMode === "source" && status === "unavailable") return "Shopfront Sales report unavailable";
   if (status === "source_margin") return "Shopfront source cost · not ledger-audited";
   if (status === "source_margin_unverified") return "Shopfront cost · sync coverage unverified";
   if (status === "purchase_cost_missing" || status === "ledger_cost_unverified") return "Odoo cost records incomplete";
@@ -129,6 +136,68 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     yesterdayFrom: payload.yesterdayFrom as string | undefined,
     yesterdayTo: payload.yesterdayTo as string | undefined,
     grossMarginBasis: payload.costBasis as string | undefined,
+    sourceReportsFetchedAt: payload.sourceReportsFetchedAt as string | null | undefined,
+    sourceSalesAvailable: payload.sourceSalesAvailable === true,
+    sourceInventoryAvailable: payload.sourceInventoryAvailable === true,
+    shopfrontReportsMode: "odoo",
+  };
+}
+
+function businessDay(value: unknown, timezone: string): string | null {
+  if (typeof value !== "string") return null;
+  const date = new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`);
+  if (!Number.isFinite(date.getTime())) return null;
+  const result = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  return /^\d{4}-\d{2}-\d{2}$/.test(result) ? result : null;
+}
+
+async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
+  const timezone = typeof payload.timezone === "string" ? payload.timezone : "Australia/Adelaide";
+  const day = businessDay(payload.yesterdayFrom, timezone);
+  if (!day) return { mapped: true as const, sales: null, inventory: null };
+  const salesPath = `/api/shopfront-source?resource=report-sales&from=${day}&to=${day}&size=600`;
+  const inventoryPath = "/api/shopfront-source?resource=report-inventory";
+  const read = async (path: string) => {
+    try {
+      const response = await fetchPreparedReport(path);
+      if (response.status === 409) return { mapped: false as const, report: null };
+      if (!response.ok) return { mapped: true as const, report: null };
+      return { mapped: true as const, report: await response.json() as Record<string, unknown> };
+    } catch {
+      return { mapped: true as const, report: null };
+    }
+  };
+  const [salesResponse, inventoryResponse] = await Promise.all([read(salesPath), read(inventoryPath)]);
+  if (!salesResponse.mapped || !inventoryResponse.mapped) return { mapped: false as const, sales: null, inventory: null };
+  return {
+    mapped: true as const,
+    sales: parseShopfrontSalesReport(salesResponse.report),
+    inventory: parseShopfrontInventoryReport(inventoryResponse.report),
+  };
+}
+
+function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<ReturnType<typeof loadShopfrontDashboardMetrics>>): OverviewPulse {
+  if (!source.mapped) return data;
+  const sales = source.sales;
+  const inventory = source.inventory;
+  const fetchedTimes = [sales?.fetchedAt, inventory?.fetchedAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
+  const sourceReportsFetchedAt = fetchedTimes.length ? new Date(Math.min(...fetchedTimes)).toISOString() : null;
+  return {
+    ...data,
+    yesterdaySales: sales?.revenue ?? 0,
+    yesterdaySalesAvailable: sales !== null,
+    yesterdayGrossMargin: sales?.grossMargin ?? null,
+    grossMarginCoverage: sales ? 1 : 0,
+    grossMarginStatus: sales ? sales.grossMargin === null ? "no_sales" : "shopfront_source_report" : "unavailable",
+    grossMarginBasis: "shopfront_sales_report_profit_percentage",
+    inventoryUnits: inventory?.sellableUnits ?? null,
+    inventoryAvailable: inventory !== null,
+    inventoryStatus: !inventory ? "unavailable" : inventory.negativeStockProducts ? "negative_stock" : "verified",
+    negativeStockProducts: inventory?.negativeStockProducts ?? null,
+    sourceReportsFetchedAt,
+    sourceSalesAvailable: sales !== null,
+    sourceInventoryAvailable: inventory !== null,
+    shopfrontReportsMode: "source",
   };
 }
 export function money(value: number, currency: string) {
@@ -179,7 +248,10 @@ export function useOverview() {
         );
       if (!Number.isFinite(payload?.revenue))
         throw new Error("The store summary is incomplete. Please retry.");
-      const next = mapPayload(payload as Record<string, unknown>);
+      let next = mapPayload(payload as Record<string, unknown>);
+      const source = await loadShopfrontDashboardMetrics(payload as Record<string, unknown>);
+      next = applyShopfrontDashboardMetrics(next, source);
+      if (current !== revision.current) return;
       setData(next);
       writePulse(scope, next);
       lastFetchAt.current = Date.now();
