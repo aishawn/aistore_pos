@@ -15,6 +15,7 @@ const ENDPOINTS: Record<string, { path: string; params: string[]; permissions: s
   "report-sales": { path: "/api/source-reports/sales", params: ["from", "to", "dashboard"], permissions: ["reports.dashboard"] },
   "report-inventory": { path: "/api/source-reports/inventory", params: ["page", "size", "q", "negative_only"], permissions: ["reports.dashboard", "stock.inventory.view", "stock.products.view"] },
   "report-purchase": { path: "/api/source-reports/purchase", params: ["from", "to", "q"], permissions: ["reports.dashboard", "purchase.orders.view", "stock.purchases.view"] },
+  "report-products": { path: "/api/source-reports/products", params: ["page", "size", "q", "status", "brand", "category", "family", "tag", "supplier", "type", "tax_rate", "cost_tax_rate", "gift_card"], permissions: ["reports.dashboard", "stock.products.view", "stock.products.edit"] },
   "purchase-orders": { path: "/api/purchase-orders", params: ["page", "size", "status", "q"], permissions: ["reports.dashboard", "purchase.orders.view", "stock.purchases.view"] },
   "coverage": { path: "/api/sync/coverage", params: [], permissions: ["reports.dashboard", "stock.inventory.view", "stock.products.view"] },
 };

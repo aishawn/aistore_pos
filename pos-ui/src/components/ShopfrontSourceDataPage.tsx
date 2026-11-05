@@ -141,7 +141,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     setLoading(true);
     setError(null);
     try {
-      const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "products" : mode === "inventory" ? "report-inventory" : "report-purchase";
+      const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "report-products" : mode === "inventory" ? "report-inventory" : "report-purchase";
       const params = new URLSearchParams({ resource });
       if (mode === "dashboard" || mode === "sales") {
         params.set("from", range.from);
@@ -156,7 +156,6 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         params.set("size", String(PAGE_SIZE));
         if (query) params.set("q", query);
         if (mode === "products") {
-          params.set("catalog_only", "true");
           params.set("status", status === "all" ? "ACTIVE" : status);
           for (const [key, value] of [["brand", productFilters.brand], ["category", productFilters.category], ["family", productFilters.family], ["tag", productFilters.tag], ["supplier", productFilters.supplier], ["type", productFilters.type], ["tax_rate", productFilters.taxRate], ["cost_tax_rate", productFilters.costTaxRate]] as const) {
             if (value) params.set(key, value);
@@ -322,8 +321,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
 
       {mode === "products" && <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--oh-border)] bg-white px-4 py-2 text-xs text-[var(--oh-muted)] md:px-6">
         <span>Current view: {status === "all" ? "ACTIVE" : status} products{query ? ` matching “${query}”` : ""}</span>
-        <span>{quantity(catalog.active_records)} ACTIVE</span>
-        <span>{quantity(catalog.current_records)} current catalog</span>
+        <span>{quantity(total)} matching source products</span>
+        <span>{quantity(catalog.active_records)} archived ACTIVE snapshot</span>
+        <span>{quantity(catalog.current_records)} archived current catalog</span>
         <span>{quantity(coverage?.products?.total)} archived records</span>
         <span>{quantity(catalog.historical_or_unconfirmed_records)} historical / unconfirmed</span>
       </div>}

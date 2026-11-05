@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
-from .shopfront import ShopfrontError
+from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
@@ -398,6 +398,41 @@ ORDER "Name" asc CONSOLIDATED'''
     raise ValueError("Unsupported Shopfront source report")
 
 
+def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
+    def name(value: Any) -> str | None:
+        return value.get("name") if isinstance(value, dict) else None
+
+    prices = raw.get("prices") if isinstance(raw.get("prices"), list) else []
+    first_price = prices[0] if prices and isinstance(prices[0], dict) else {}
+    suppliers = raw.get("suppliers") if isinstance(raw.get("suppliers"), list) else []
+    first_supplier = suppliers[0] if suppliers and isinstance(suppliers[0], dict) else None
+    supplier = raw.get("coreSupplier") or raw.get("lastSupplier") or first_supplier
+    first_barcode = raw.get("barcodes")[0] if isinstance(raw.get("barcodes"), list) and raw.get("barcodes") and isinstance(raw.get("barcodes")[0], dict) else {}
+    return {
+        "shopfront_product_id": raw.get("id"),
+        "sku": raw.get("mdbId"),
+        "barcode": first_barcode.get("code"),
+        "name": raw.get("name"),
+        "category": name(raw.get("category")),
+        "brand": name(raw.get("brand")),
+        "family": name(raw.get("family")),
+        "supplier": name(supplier),
+        "tags": raw.get("tags"),
+        "suppliers": raw.get("suppliers"),
+        "coreSupplier": raw.get("coreSupplier"),
+        "lastSupplier": raw.get("lastSupplier"),
+        "type": raw.get("type"),
+        "tax_rate": name(raw.get("taxRate")),
+        "cost_tax_rate": name(raw.get("costTaxRate")),
+        "track_inventory": raw.get("trackInventory"),
+        "case_quantity": raw.get("caseQuantity"),
+        "cost": raw.get("cost"),
+        "price": first_price.get("price"),
+        "status": raw.get("status"),
+        "raw_payload": raw,
+    }
+
+
 @app.get("/api/source-reports/{report_type}")
 async def shopfront_source_report(
     report_type: str,
@@ -410,13 +445,23 @@ async def shopfront_source_report(
     q: str | None = None,
     negative_only: bool = False,
     dashboard: bool = False,
+    status: str | None = None,
+    brand: str | None = None,
+    category: str | None = None,
+    family: str | None = None,
+    tag: str | None = None,
+    supplier: str | None = None,
+    product_type: str | None = Query(None, alias="type"),
+    tax_rate: str | None = None,
+    cost_tax_rate: str | None = None,
+    gift_card: bool | None = None,
     db: Session = Depends(get_db),
 ) -> dict:
     expected = settings.shopfront_integration_token.strip()
     supplied = request.headers.get("authorization", "")
     if not expected or not hmac.compare_digest(supplied, f"Bearer {expected}"):
         raise HTTPException(401, "Shopfront source report authorization failed")
-    if report_type not in {"inventory", "sales", "purchase"}:
+    if report_type not in {"inventory", "sales", "purchase", "products"}:
         raise HTTPException(404, "Unknown Shopfront source report")
     if report_type in {"sales", "purchase"}:
         if from_date is None or to_date is None or from_date > to_date:
@@ -425,6 +470,8 @@ async def shopfront_source_report(
             raise HTTPException(400, "Source report ranges are limited to 366 days")
     if q is not None and len(q) > 120:
         raise HTTPException(400, "q must be at most 120 characters")
+    if report_type == "products" and status and status.strip().upper() not in {"ACTIVE", "NOT_ACTIVE"}:
+        raise HTTPException(400, "status must be ACTIVE or NOT_ACTIVE")
 
     period_key = f"{from_date.isoformat()}:{to_date.isoformat()}" if from_date and to_date else "all"
     cached = db.scalar(select(ShopfrontReportSnapshot).where(
@@ -443,8 +490,11 @@ async def shopfront_source_report(
         client = get_client(settings, store_row)
         try:
             token = await access_token(db, settings, store_row)
-            query = shopfront_source_report_query(report_type, from_date, to_date)
-            rows = await client.run_report(token, query)
+            if report_type == "products":
+                rows = [source_product_row(row) for row in await client.fetch_products(token, CATALOG_QUERY) if isinstance(row, dict)]
+            else:
+                query = shopfront_source_report_query(report_type, from_date, to_date)
+                rows = await client.run_report(token, query)
         except ShopfrontError as exc:
             raise HTTPException(502, f"Shopfront source report failed: {exc}") from exc
         finally:
@@ -531,6 +581,39 @@ async def shopfront_source_report(
             "top_products": sorted(top_products.values(), key=lambda row: (-float(row["quantity"]), str(row["name"])))[:20],
             "users": user_rows,
         }
+    if report_type == "products":
+        def product_text(value: Any) -> str:
+            if isinstance(value, dict):
+                return " ".join(product_text(item) for item in value.values())
+            if isinstance(value, list):
+                return " ".join(product_text(item) for item in value)
+            return str(value or "")
+
+        def product_has(row: dict[str, Any], needle: str | None, *keys: str) -> bool:
+            if needle is None:
+                return True
+            target = needle.strip().casefold()
+            return target in " ".join(product_text(row.get(key)) for key in keys).casefold()
+
+        selected_status = (status or "ACTIVE").strip().upper()
+        filtered_products: list[dict[str, Any]] = []
+        for row in normalized_rows:
+            raw = row.get("raw_payload") if isinstance(row.get("raw_payload"), dict) else {}
+            if str(row.get("status") or "UNKNOWN").upper() != selected_status:
+                continue
+            if not product_has(row, brand, "brand") or not product_has(row, category, "category") or not product_has(row, family, "family"):
+                continue
+            if not product_has(row, tag, "tags") or not product_has(row, supplier, "supplier", "suppliers", "coreSupplier", "lastSupplier"):
+                continue
+            if not product_has(row, product_type, "type") or not product_has(row, tax_rate, "tax_rate", "taxRate") or not product_has(row, cost_tax_rate, "cost_tax_rate", "costTaxRate"):
+                continue
+            if gift_card is not None:
+                raw_text = product_text(raw).casefold()
+                is_gift_card = bool(raw.get("giftCard") or raw.get("gift_card")) or "gift" in str(row.get("type") or "").casefold()
+                if is_gift_card != gift_card:
+                    continue
+            filtered_products.append(row)
+        normalized_rows = filtered_products
     if q and q.strip():
         needle = q.strip().casefold()
         normalized_rows = [row for row in normalized_rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]
