@@ -35,3 +35,13 @@ Keep production forecast policy, manual review gates, and procurement automation
 ## Deployment Follow-Up
 
 After the record was pushed, both `https://demo.orithos.com.au/api/public/version` and `https://skr.orithos.com.au/api/public/version` returned HTTP 200 with frontend and backend commit `3602173f649e426cf067e4e751f3ef36ca45dde7` (`2026-11-05T12:08:11Z`). This confirms deployment identity only; the failed AI/runtime checks above were not silently reclassified as passing.
+
+## Fixed-SHA Rerun
+
+At the later stable runtime `69f613e0e20da43f85a19838420642bb54a79149` (`2026-11-05T12:20:23Z`), the same harness was rerun separately against both stores:
+
+- SKR evidence SHA-256: `be87e3b19e3ef4e7055612fbc1956098658d651f771cc9bd423e3b40e7fb0ed5`.
+- Demo evidence SHA-256: `d45fa8fa336d3872194408793a66f1439d743b950da4bcc35db67c30716d0e6f`.
+- Both stores reproduced AI assistant `502` and report/forecast probe `401`; both returned safe replenishment navigation with `writeRequests=[]` and zero page errors.
+
+This confirms a shared runtime/session failure on a fixed deployment SHA. Online AI acceptance remains blocked until the route/session contract is repaired.
