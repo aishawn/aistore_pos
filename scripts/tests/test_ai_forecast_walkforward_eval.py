@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "forecast-service"))
 from app.forecast_engine import MODEL_NAMES
 from app.schemas import Series
 from scripts.ai_forecast_walkforward_eval import (
-    _demand_segment, _metric_summary, _score_fold, evaluate, walk_forward_origins,
+    BASELINE_MODELS, _demand_segment, _metric_summary, _score_fold, evaluate, walk_forward_origins,
 )
 from scripts.ai_forecast_eval import require_native_inventory_event_times
 
@@ -198,6 +198,46 @@ class WalkForwardForecastTests(unittest.TestCase):
                          [row["evaluationStatus"] for row in report["horizons"]])
         self.assertIsNone(report["horizons"][0]["metrics"]["seasonal_naive_v1"]["weightedWape"])
         self.assertEqual([], report["writeRequests"])
+
+    def test_sales_only_mode_reports_observed_sales_and_disclaims_inventory_metrics(self):
+        sales, _ = snapshots(2.0)
+
+        report = evaluate(sales, None, [7])
+
+        horizon = report["horizons"][0]
+        segment = horizon["metricsByTrainingDemandSegment"]["REGULAR"]
+        self.assertEqual("expanding_window_walk_forward_sales_only_no_future_features",
+                         report["evaluationMode"])
+        self.assertEqual("observed_sales_uncorrected_for_stockouts", report["evaluationTarget"])
+        self.assertFalse(report["stockoutLabelsAvailable"])
+        self.assertEqual("NOT_EVALUATED", report["fillRateEvaluationStatus"])
+        self.assertEqual("NOT_EVALUATED_NO_VERIFIED_COST_LABELS", report["businessCostEvaluationStatus"])
+        self.assertEqual(2, segment["seasonal_naive_v1"]["expectedSkuCount"])
+        self.assertIsNotNone(segment["seasonal_naive_v1"]["weightedWape"])
+        self.assertTrue(set(BASELINE_MODELS).issubset(segment))
+        self.assertIn("wapeCv", segment["tsb_v1"]["foldStability"])
+        self.assertIn("winsVsSeasonalNaive", segment["two_stage_occurrence_v1"]["foldStability"])
+
+    def test_sales_only_mode_rejects_unverified_stockout_flags(self):
+        sales, _ = snapshots(1.0)
+        sales["series"][0]["stockoutFlags"] = [False] * 35
+        with self.assertRaisesRegex(ValueError, "requires empty stockoutFlags"):
+            evaluate(sales, None, [7])
+
+    def test_owner_confirmed_closed_dates_mask_training_and_scoring_without_shifting_offsets(self):
+        sales, inventory = snapshots(1.0)
+        closed_dates = {date(2026, 1, 1), date(2026, 1, 30)}
+
+        report = evaluate(sales, inventory, [7], closed_dates=closed_dates)
+
+        horizon = report["horizons"][0]
+        selected = horizon["metrics"]["selected"]
+        self.assertEqual("2026-01-29", horizon["foldScheduleSample"][0]["evaluationStart"])
+        self.assertEqual(1, selected["censoredDaysExcluded"])
+        self.assertEqual(2, selected["closedDaysExcluded"])
+        self.assertEqual(11, selected["observedDays"])
+        self.assertEqual(2, report["closedCalendar"]["maskedDatesInSalesRange"])
+        self.assertTrue(report["closedCalendar"]["maskedFromTrainingAndScoring"])
 
     def test_demand_segment_uses_only_training_prefix(self):
         dates = [date(2026, 1, 1) + timedelta(days=index) for index in range(35)]

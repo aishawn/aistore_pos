@@ -42,7 +42,9 @@ def _forecast_request(series: list[Series], vendor_id: int, outlet_id: int,
 
 
 def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Series,
-                forecast_item, origin: int, horizon: int) -> None:
+                forecast_item, origin: int, horizon: int,
+                closed_dates: set | None = None) -> None:
+    closed_dates = closed_dates or set()
     points = forecast_item.forecast[:horizon]
     if len(points) != horizon:
         raise ValueError(
@@ -58,7 +60,8 @@ def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Seri
     training_values = [
         max(0.0, float(value))
         for index, value in enumerate(actual_series.units[:origin])
-        if index >= len(actual_series.stockoutFlags) or not actual_series.stockoutFlags[index]
+        if actual_series.dates[index] not in closed_dates
+        and (index >= len(actual_series.stockoutFlags) or not actual_series.stockoutFlags[index])
     ]
     mase_scale = (
         sum(abs(right - left) for left, right in zip(training_values, training_values[1:]))
@@ -69,6 +72,9 @@ def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Seri
         index = origin + offset
         if index >= len(actual_series.units):
             break
+        if actual_series.dates[index] in closed_dates:
+            metrics["closedDaysExcluded"] += 1
+            continue
         if index < len(actual_series.stockoutFlags) and actual_series.stockoutFlags[index]:
             metrics["censoredDays"] += 1
             continue
@@ -106,6 +112,7 @@ def _metric_summary(metrics: dict, scored_product_ids: set[int],
                         if expected_product_ids else None),
         "observedDays": days,
         "censoredDaysExcluded": metrics["censoredDays"],
+        "closedDaysExcluded": metrics["closedDaysExcluded"],
         "actualUnits": round(actual, 4),
         "absoluteErrorUnits": round(metrics["absoluteError"], 4),
         "weightedWape": metrics["absoluteError"] / actual if actual > 0 else None,
@@ -123,11 +130,14 @@ def _metric_summary(metrics: dict, scored_product_ids: set[int],
     }
 
 
-def _demand_segment(series: Series, training_days: int) -> str:
+def _demand_segment(series: Series, training_days: int,
+                    closed_dates: set | None = None) -> str:
+    closed_dates = closed_dates or set()
     observed = [
         max(0.0, float(value))
         for index, value in enumerate(series.units[:training_days])
-        if index >= len(series.stockoutFlags) or not series.stockoutFlags[index]
+        if series.dates[index] not in closed_dates
+        and (index >= len(series.stockoutFlags) or not series.stockoutFlags[index])
     ]
     if not observed or not any(observed):
         return "NO_DEMAND_TRAIN"
@@ -139,37 +149,44 @@ def _demand_segment(series: Series, training_days: int) -> str:
     return "REGULAR"
 
 
-def evaluate(sales: dict, inventory: dict, horizons: list[int],
-             minimum_train_days: int = 28) -> dict:
-    if sales.get("writeRequests", []) != [] or inventory.get("writeRequests", []) != []:
+def evaluate(sales: dict, inventory: dict | None, horizons: list[int],
+             minimum_train_days: int = 28,
+             closed_dates: set | None = None) -> dict:
+    if sales.get("writeRequests", []) != [] or (inventory is not None and inventory.get("writeRequests", []) != []):
         raise ValueError("evaluation snapshots must have empty writeRequests")
-    require_native_inventory_event_times(inventory)
-    if any(item.get("productId") is None for item in inventory.get("qualityWarnings", [])):
+    if inventory is not None:
+        require_native_inventory_event_times(inventory)
+    if inventory is not None and any(item.get("productId") is None for item in inventory.get("qualityWarnings", [])):
         raise ValueError("global inventory quality warning blocks stockout-aware evaluation")
 
     warning_ids = {
         int(item["productId"])
-        for item in inventory.get("qualityWarnings", [])
+        for item in (inventory or {}).get("qualityWarnings", [])
         if item.get("productId") is not None
     }
     raw_series = [Series(**item) for item in sales.get("series", [])]
     if not raw_series:
         raise ValueError("sales snapshot has no product series")
     shared_dates = raw_series[0].dates
+    closed_dates = closed_dates or set()
     if any(item.dates != shared_dates for item in raw_series):
         raise ValueError("all product series must share the same daily date range")
-    applied = [apply_inventory_history(item, inventory) for item in raw_series]
-    known_series = []
+    if inventory is None and any(item.stockoutFlags for item in raw_series):
+        raise ValueError("sales-only evaluation requires empty stockoutFlags; provide validated inventory history instead")
+    applied = ([apply_inventory_history(item, inventory) for item in raw_series]
+               if inventory is not None else raw_series)
+    known_series = list(applied) if inventory is None else []
     excluded_warning_count = 0
     excluded_unknown_count = 0
-    for item in applied:
-        if item.productId in warning_ids:
-            excluded_warning_count += 1
-        elif (item.stockoutDataQuality in ("EXCLUDED_SUSPECT_HISTORICAL_INVENTORY", "HISTORICAL_INVENTORY_INCOMPLETE")
-              or len(item.stockoutFlags) != len(item.units)):
-            excluded_unknown_count += 1
-        else:
-            known_series.append(item)
+    if inventory is not None:
+        for item in applied:
+            if item.productId in warning_ids:
+                excluded_warning_count += 1
+            elif (item.stockoutDataQuality in ("EXCLUDED_SUSPECT_HISTORICAL_INVENTORY", "HISTORICAL_INVENTORY_INCOMPLETE")
+                  or len(item.stockoutFlags) != len(item.units)):
+                excluded_unknown_count += 1
+            else:
+                known_series.append(item)
     if not known_series:
         return _blocked_inventory_report(
             sales, inventory, raw_series, horizons, excluded_warning_count,
@@ -190,7 +207,11 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
         for origin in origins:
             train_series = [series.model_copy(update={
                 "dates": series.dates[:origin], "units": series.units[:origin],
-                "stockoutFlags": series.stockoutFlags[:origin], "selectedModel": None,
+                "stockoutFlags": [
+                    (index < len(series.stockoutFlags) and series.stockoutFlags[index])
+                    or day in closed_dates
+                    for index, day in enumerate(series.dates[:origin])
+                ], "selectedModel": None,
                 "unitCost": None, "unitPrice": None,
             }) for series in known_series]
             test_start = shared_dates[origin]
@@ -209,7 +230,7 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
             fold_segments = {}
             fold_segment_expected = {}
             for series in known_series:
-                segment = _demand_segment(series, origin)
+                segment = _demand_segment(series, origin, closed_dates)
                 fold_segment_expected.setdefault(segment, set()).add(series.productId)
                 segment_expected_products.setdefault(segment, set()).add(series.productId)
                 segment_methods.setdefault(segment, {
@@ -223,29 +244,33 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
                 selected = predictions[series.productId]
                 methods["selected"]["models"][selected.model] += 1
                 _score_fold(methods["selected"]["metrics"], methods["selected"]["products"],
-                            series, selected, origin, horizon)
+                            series, selected, origin, horizon, closed_dates)
                 fold_methods["selected"]["models"][selected.model] += 1
                 _score_fold(fold_methods["selected"]["metrics"], fold_methods["selected"]["products"],
-                            series, selected, origin, horizon)
+                            series, selected, origin, horizon, closed_dates)
                 segment_methods[segment]["selected"]["models"][selected.model] += 1
                 _score_fold(segment_methods[segment]["selected"]["metrics"],
                             segment_methods[segment]["selected"]["products"],
-                            series, selected, origin, horizon)
+                            series, selected, origin, horizon, closed_dates)
                 fold_segments[segment]["selected"]["models"][selected.model] += 1
                 _score_fold(fold_segments[segment]["selected"]["metrics"],
                             fold_segments[segment]["selected"]["products"],
-                            series, selected, origin, horizon)
+                            series, selected, origin, horizon, closed_dates)
                 for model in BASELINE_MODELS:
                     _score_fold(methods[model]["metrics"], methods[model]["products"],
-                                series, baseline_predictions[model][series.productId], origin, horizon)
+                                series, baseline_predictions[model][series.productId], origin, horizon,
+                                closed_dates)
                     _score_fold(fold_methods[model]["metrics"], fold_methods[model]["products"],
-                                series, baseline_predictions[model][series.productId], origin, horizon)
+                                series, baseline_predictions[model][series.productId], origin, horizon,
+                                closed_dates)
                     _score_fold(segment_methods[segment][model]["metrics"],
                                 segment_methods[segment][model]["products"],
-                                series, baseline_predictions[model][series.productId], origin, horizon)
+                                series, baseline_predictions[model][series.productId], origin, horizon,
+                                closed_dates)
                     _score_fold(fold_segments[segment][model]["metrics"],
                                 fold_segments[segment][model]["products"],
-                                series, baseline_predictions[model][series.productId], origin, horizon)
+                                series, baseline_predictions[model][series.productId], origin, horizon,
+                                closed_dates)
             fold_summary = {
                 method: _metric_summary(row["metrics"], row["products"],
                                         {series.productId for series in known_series})
@@ -338,16 +363,31 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
         "status": ("BLOCKED" if not results or any(item["qualityGate"] == "BLOCKED" for item in results)
                    else "FAIL" if any(item["qualityGate"] == "FAIL" for item in results)
                    else "PASS"),
-        "evaluationMode": "expanding_window_walk_forward_no_future_features",
+        "evaluationMode": ("expanding_window_walk_forward_no_future_features" if inventory is not None
+                           else "expanding_window_walk_forward_sales_only_no_future_features"),
+        "evaluationTarget": ("observed_sales_with_native_stockout_censoring" if inventory is not None
+                             else "observed_sales_uncorrected_for_stockouts"),
         "salesSnapshotVersion": sales.get("snapshotVersion"),
-        "inventoryHistoryVersion": inventory.get("historyVersion"),
-        "inventoryDataQuality": inventory.get("dataQuality"),
-        "inventoryLabelMethod": "historical_stockout_labels_applied_to_sales_series_before_each_fold",
-        "inventoryLabelUse": "training_labels_through_cutoff; holdout_stockout_labels_only_mask_censored_actuals_during_scoring",
+        "inventoryHistoryVersion": inventory.get("historyVersion") if inventory is not None else None,
+        "inventoryDataQuality": inventory.get("dataQuality") if inventory is not None else None,
+        "inventoryLabelMethod": ("historical_stockout_labels_applied_to_sales_series_before_each_fold"
+                                 if inventory is not None else "NONE_SALES_ONLY_NO_INVENTORY_LABELS"),
+        "inventoryLabelUse": ("training_labels_through_cutoff; holdout_stockout_labels_only_mask_censored_actuals_during_scoring"
+                              if inventory is not None else "NONE; observed sales are not corrected for lost demand"),
+        "stockoutLabelsAvailable": inventory is not None,
         "holdoutInventoryLabelsUsedAsForecastFeatures": False,
         "requiresFutureNativeInventoryObservations": False,
-        "inventoryResearchOnly": bool(inventory.get("researchOnly") or inventory.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS"),
+        "inventoryResearchOnly": (bool(inventory.get("researchOnly") or inventory.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS")
+                                  if inventory is not None else True),
+        "fillRateEvaluationStatus": ("NOT_EVALUATED" if inventory is None else "NOT_COMPUTED_BY_FORECAST_ERROR_METRICS"),
+        "businessCostEvaluationStatus": "NOT_EVALUATED_NO_VERIFIED_COST_LABELS",
         "salesDateRange": [min(item.dates).isoformat() for item in raw_series[:1]] + [max(item.dates).isoformat() for item in raw_series[:1]],
+        "closedCalendar": {
+            "status": "OWNER_CONFIRMED_CLOSED" if closed_dates else "NOT_PROVIDED",
+            "maskedDatesInSalesRange": sum(day in closed_dates for day in shared_dates),
+            "maskedFromTrainingAndScoring": True,
+            "productionForecastCalendarAware": False,
+        },
         "productCount": len(raw_series),
         "inventoryLabelledProducts": len(known_series),
         "excludedSuspectInventoryProducts": excluded_warning_count,
@@ -390,13 +430,14 @@ def _blocked_inventory_report(sales: dict, inventory: dict, raw_series: list[Ser
         "evaluationMode": "expanding_window_walk_forward_no_future_features",
         "blockedReason": "NO_PRODUCTS_WITH_COMPLETE_NATIVE_INVENTORY_LABELS",
         "salesSnapshotVersion": sales.get("snapshotVersion"),
-        "inventoryHistoryVersion": inventory.get("historyVersion"),
-        "inventoryDataQuality": inventory.get("dataQuality"),
+        "inventoryHistoryVersion": inventory.get("historyVersion") if inventory is not None else None,
+        "inventoryDataQuality": inventory.get("dataQuality") if inventory is not None else None,
         "inventoryLabelMethod": "historical_stockout_labels_applied_to_sales_series_before_each_fold",
         "inventoryLabelUse": "training_labels_through_cutoff; holdout_stockout_labels_only_mask_censored_actuals_during_scoring",
         "holdoutInventoryLabelsUsedAsForecastFeatures": False,
         "requiresFutureNativeInventoryObservations": False,
-        "inventoryResearchOnly": bool(inventory.get("researchOnly") or inventory.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS"),
+        "inventoryResearchOnly": (bool(inventory.get("researchOnly") or inventory.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS")
+                                  if inventory is not None else True),
         "salesDateRange": [min(dates).isoformat(), max(dates).isoformat()],
         "productCount": len(raw_series),
         "inventoryLabelledProducts": 0,
@@ -442,27 +483,48 @@ def _fold_stability(fold_metrics: list[dict]) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sales-snapshot", type=Path, required=True)
-    parser.add_argument("--inventory-history", type=Path, required=True)
+    parser.add_argument("--inventory-history", type=Path)
+    parser.add_argument("--sales-only", action="store_true",
+                        help="evaluate observed sales without stockout labels; does not estimate lost demand or fill rate")
+    parser.add_argument("--closed-dates-file", type=Path,
+                        help="owner-confirmed closed-date calendar JSON")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--horizons", type=int, nargs="+", default=[7, 14, 28])
     parser.add_argument("--minimum-train-days", type=int, default=28)
     args = parser.parse_args()
     if any(horizon < 1 or horizon > 90 for horizon in args.horizons):
         parser.error("horizons must be between 1 and 90 days")
+    if args.sales_only == (args.inventory_history is not None):
+        parser.error("provide exactly one of --inventory-history or --sales-only")
     sales = json.loads(args.sales_snapshot.read_text(encoding="utf-8"))
-    inventory = json.loads(args.inventory_history.read_text(encoding="utf-8"))
-    report = evaluate(sales, inventory, args.horizons, args.minimum_train_days)
+    inventory = (json.loads(args.inventory_history.read_text(encoding="utf-8"))
+                 if args.inventory_history is not None else None)
+    closed_dates = set()
+    calendar = None
+    if args.closed_dates_file is not None:
+        calendar = json.loads(args.closed_dates_file.read_text(encoding="utf-8"))
+        if calendar.get("status", calendar.get("classification")) != "OWNER_CONFIRMED_CLOSED":
+            parser.error("closed-dates file must have owner-confirmed CLOSED status")
+        try:
+            from datetime import date
+            closed_dates = {date.fromisoformat(value) for value in calendar.get("closedDates", [])}
+        except (TypeError, ValueError):
+            parser.error("closedDates entries must be YYYY-MM-DD strings")
+    report = evaluate(sales, inventory, args.horizons, args.minimum_train_days, closed_dates)
     report["sourceSalesSnapshotSha"] = subprocess.check_output(
         ["git", "hash-object", str(args.sales_snapshot.resolve())], cwd=ROOT, text=True,
     ).strip()
-    report["sourceInventoryHistorySha"] = subprocess.check_output(
+    report["sourceInventoryHistorySha"] = (subprocess.check_output(
         ["git", "hash-object", str(args.inventory_history.resolve())], cwd=ROOT, text=True,
-    ).strip()
+    ).strip() if args.inventory_history is not None else None)
+    report["sourceClosedDatesSha256"] = (__import__("hashlib").sha256(
+        args.closed_dates_file.read_bytes()).hexdigest() if args.closed_dates_file is not None else None)
     report["runtimeSha"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps({
         "output": str(args.output), "status": report["status"],
+        "evaluationTarget": report["evaluationTarget"],
         "products": report["productCount"], "inventoryLabelledProducts": report["inventoryLabelledProducts"],
         "excludedSuspectInventoryProducts": report["excludedSuspectInventoryProducts"],
         "horizons": [{"days": item["horizonDays"], "qualityGate": item["qualityGate"],
