@@ -534,32 +534,37 @@ UNCONSOLIDATED'''
         field: str,
         variables: dict[str, Any] | None = None,
         progress_callback: Any | None = None,
+        initial_after: str | None = None,
+        page_callback: Any | None = None,
     ) -> list[dict[str, Any]]:
         paged_query = _add_cursor_pagination(query, field)
         result: list[dict[str, Any]] = []
-        after: str | None = None
-        seen_cursors: set[str] = set()
+        after: str | None = initial_after
+        seen_cursors: set[str] = {str(initial_after)} if initial_after else set()
         while True:
             request_variables = dict(variables or {})
             request_variables["after"] = after
             data = await self.graphql(access_token, paged_query, request_variables)
             connection = data.get(field, {}) if isinstance(data, dict) else {}
             edges = connection.get("edges", []) if isinstance(connection, dict) else []
-            result.extend(
-                edge["node"]
-                for edge in edges
+            page_nodes = [
+                edge["node"] for edge in edges
                 if isinstance(edge, dict) and isinstance(edge.get("node"), dict)
-            )
+            ]
+            result.extend(page_nodes)
+            page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+            has_next = bool(page_info.get("hasNextPage"))
+            end_cursor = page_info.get("endCursor")
+            if has_next and (not end_cursor or str(end_cursor) in seen_cursors):
+                raise ShopfrontError(f"Shopfront {field} pagination returned a missing or repeated cursor")
+            if page_callback is not None:
+                await page_callback(field, page_nodes, str(end_cursor) if end_cursor else None, has_next)
             if progress_callback is not None:
                 await progress_callback(field, len(result))
-            page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
-            if not page_info.get("hasNextPage"):
+            if not has_next:
                 return result
-            next_cursor = page_info.get("endCursor")
-            if not next_cursor or str(next_cursor) in seen_cursors:
-                raise ShopfrontError(f"Shopfront {field} pagination returned a missing or repeated cursor")
-            seen_cursors.add(str(next_cursor))
-            after = str(next_cursor)
+            seen_cursors.add(str(end_cursor))
+            after = str(end_cursor)
 
     async def fetch_products_by_ids(self, access_token: str, product_ids: list[str]) -> list[dict[str, Any]]:
         """Fetch products referenced by history, including archived products."""
@@ -718,8 +723,18 @@ UNCONSOLIDATED'''
             errors["customer_payments"] = str(exc)[:500]
         return entities, errors
 
-    async def fetch_inventory(self, access_token: str, query: str, progress_callback: Any | None = None) -> list[dict[str, Any]]:
-        return await self._fetch_connection_nodes(access_token, query, "products", progress_callback=progress_callback)
+    async def fetch_inventory(
+        self,
+        access_token: str,
+        query: str,
+        progress_callback: Any | None = None,
+        initial_after: str | None = None,
+        page_callback: Any | None = None,
+    ) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(
+            access_token, query, "products", progress_callback=progress_callback,
+            initial_after=initial_after, page_callback=page_callback,
+        )
 
     async def fetch_sale_detail(self, access_token: str, sale_id: str, query: str) -> dict[str, Any]:
         data = await self.graphql(access_token, query, {"id": sale_id})

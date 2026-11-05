@@ -243,11 +243,11 @@ export function OverviewPageContent({
               <dl>
                 <div>
                   <dt>Sales</dt>
-                  <dd>{money(data.revenue, data.currency)}</dd>
+                  <dd>{data.shopfrontReportsMode === "source" && !data.todayShopfrontSalesAvailable ? "—" : money(data.revenue, data.currency)}</dd>
                 </div>
                 <div>
                   <dt>Transactions</dt>
-                  <dd>{data.transactions ?? "—"}</dd>
+                  <dd>{data.shopfrontReportsMode === "source" && !data.todayShopfrontSalesAvailable ? "—" : data.transactions ?? "—"}</dd>
                 </div>
                 <div>
                   <dt>Open registers · Orithos</dt>
@@ -257,7 +257,7 @@ export function OverviewPageContent({
               {data.shopfrontReportsMode === "source" && <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">
                 {data.todayShopfrontSalesAvailable
                   ? `Sales and transactions from Shopfront · ${data.todaySalesReconciliation === "matched" ? "matches Orithos" : data.todaySalesReconciliation === "mismatch" ? "differs from Orithos" : "Orithos comparison unavailable"}${data.todaySourceFetchedAt ? ` · ${new Intl.DateTimeFormat("en-AU", { timeZone: data.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(data.todaySourceFetchedAt))}` : ""}`
-                  : "Shopfront sales report unavailable · showing Orithos totals"}
+                  : "Shopfront sales report unavailable · Shopfront totals not shown"}
               </p>}
               {canReport ? (
                 <Link className="ov-report-link" href="/reports/dashboard">

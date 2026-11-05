@@ -214,12 +214,14 @@ async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, mon
         async def fetch_products(self, *args):
             return [{"id": "product-1", "name": "Test product", "inventory": []}]
 
-        async def fetch_inventory(self, *args):
+        async def fetch_inventory(self, *args, **kwargs):
             assert not db_session.in_transaction()
-            return [{
+            rows = [{
                 "id": "product-1",
                 "inventory": [{"outlet": {"id": "outlet-1", "name": "Main"}, "quantity": 4}],
             }]
+            await kwargs["page_callback"]("products", rows, None, False)
+            return rows
 
         async def close(self):
             return None
@@ -242,13 +244,63 @@ async def test_inventory_fetch_releases_sqlite_write_transaction(db_session, mon
     )
 
     assert run.status == "completed"
-    assert run.counts["inventory_sync_complete"] is True
+    assert run.counts["inventory_sync_complete"] is True, run.counts
     manifest = db_session.scalar(select(InventorySnapshotManifest).where(
         InventorySnapshotManifest.store_key == "skr",
     ))
     assert manifest.complete is True
     assert manifest.source_product_ids == ["product-1"]
     assert manifest.snapshot_at is not None
+
+
+@pytest.mark.asyncio
+async def test_inventory_scan_resumes_from_last_committed_page(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr")
+    prior_snapshot_at = datetime(2026, 10, 31, tzinfo=timezone.utc)
+    db_session.add_all([
+        store,
+        InventorySnapshotManifest(store_key="skr", source_product_ids=["old-product"], snapshot_at=prior_snapshot_at, complete=True),
+        InventorySnapshot(store_key="skr", shopfront_product_id="old-product", outlet_id="outlet-1", quantity=Decimal("9")),
+    ])
+    db_session.commit()
+    inventory_calls = []
+
+    class FakeClient:
+        async def fetch_outlets(self, *args): return []
+        async def fetch_sales_graphql(self, *args): return []
+        async def fetch_sales(self, *args): return []
+        async def fetch_products(self, *args): return [{"id": "p1", "name": "One"}, {"id": "p2", "name": "Two"}]
+        async def fetch_inventory(self, *args, **kwargs):
+            inventory_calls.append(kwargs.get("initial_after"))
+            if len(inventory_calls) == 1:
+                await kwargs["page_callback"]("products", [{"id": "p1", "inventory": []}], "cursor-1", True)
+                raise TimeoutError("page two request timed out")
+            assert kwargs.get("initial_after") == "cursor-1"
+            await kwargs["page_callback"]("products", [{"id": "p2", "inventory": [
+                {"outlet": {"id": "outlet-1", "name": "Main"}, "quantity": -2},
+            ]}], None, False)
+            return [{"id": "p2", "inventory": [{"outlet": {"id": "outlet-1", "name": "Main"}, "quantity": -2}]}]
+        async def close(self): return None
+
+    client = FakeClient()
+    async def fake_access_token(*args): return "token"
+    monkeypatch.setattr(sync, "access_token", fake_access_token)
+    monkeypatch.setattr(sync, "get_client", lambda *args: client)
+
+    first_run = await sync.sync_store(db_session, Settings(), store, date(2026, 11, 1), date(2026, 11, 1), refresh_inventory=True)
+    assert first_run.counts["inventory_sync_complete"] is False
+    assert db_session.scalar(select(sync.InventorySnapshotScan).where(sync.InventorySnapshotScan.store_key == "skr")).cursor == "cursor-1"
+    assert db_session.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == "skr")).snapshot_at.replace(tzinfo=timezone.utc) == prior_snapshot_at
+    assert db_session.scalar(select(InventorySnapshot.quantity).where(InventorySnapshot.shopfront_product_id == "old-product")) == Decimal("9.0000")
+
+    second_run = await sync.sync_store(db_session, Settings(), store, date(2026, 11, 1), date(2026, 11, 1), refresh_inventory=True)
+    assert second_run.counts["inventory_sync_complete"] is True
+    assert inventory_calls == [None, "cursor-1"]
+    assert db_session.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == "skr")).source_product_ids == ["p1", "p2"]
+    assert db_session.scalar(select(InventorySnapshot.id).where(InventorySnapshot.shopfront_product_id == "old-product")) is None
+    snapshot = db_session.scalar(select(InventorySnapshot).where(InventorySnapshot.shopfront_product_id == "p2"))
+    assert snapshot.quantity == Decimal("-2")
+    assert db_session.scalar(select(sync.InventorySnapshotScan).where(sync.InventorySnapshotScan.store_key == "skr")) is None
 
 
 @pytest.mark.asyncio
@@ -648,6 +700,7 @@ def test_sync_coverage_distinguishes_active_catalog_from_history_and_preserves_n
         Product(store_key="skr", shopfront_product_id="inactive", name="Inactive", raw_payload={"status": "NOT_ACTIVE"}, catalog_last_seen_at=datetime(2026, 11, 5)),
         Product(store_key="skr", shopfront_product_id="historical", name="Historical", raw_payload={"status": "ACTIVE"}),
         InventorySnapshotManifest(store_key="skr", source_product_ids=["active", "inactive"], snapshot_at=datetime(2026, 11, 5), complete=True),
+        sync.InventorySnapshotScan(store_key="skr", snapshot_id="scan-1", query_hash="query-hash", cursor="cursor-2", status="fetching", product_count=27),
         InventorySnapshot(store_key="skr", shopfront_product_id="active", outlet_id="outlet-1", quantity=Decimal("-3")),
         InventorySnapshot(store_key="skr", shopfront_product_id="inactive", outlet_id="outlet-1", quantity=Decimal("5")),
     ])
@@ -663,6 +716,9 @@ def test_sync_coverage_distinguishes_active_catalog_from_history_and_preserves_n
     assert result["inventory"]["negative_records"] == 1
     assert result["inventory"]["signed_quantity_total"] == Decimal("2.0000")
     assert result["inventory"]["snapshot_complete"] is True
+    assert result["inventory"]["scan"]["status"] == "fetching"
+    assert result["inventory"]["scan"]["cursor_checkpointed"] is True
+    assert result["inventory"]["scan"]["products_checkpointed"] == 27
 
 
 def test_sales_endpoint_uses_store_local_date_bounds_and_stable_snapshot(db_session):
@@ -1042,6 +1098,34 @@ async def test_daily_sync_pushes_full_inventory_source_set(db_session, monkeypat
     assert captured["inventory_snapshot_source_ids"] == ["product-1", "product-2"]
     assert captured["inventory_snapshot_at"] is None
     assert "inventory_source_product_ids" not in db_session.get(SyncRun, run.id).counts["sync"]
+
+
+@pytest.mark.asyncio
+async def test_daily_sync_marks_purchase_mirror_timeout_partial(db_session, monkeypatch):
+    store = Store(store_key="skr", vendor="skr")
+    job = SyncJob(
+        store_key="skr", job_type="daily_sync", status="queued",
+        from_date="2026-11-05", to_date="2026-11-05", payload={"purchase_mirror": True},
+    )
+    db_session.add_all([store, job])
+    db_session.commit()
+    job_id = job.id
+
+    async def no_sync(*args, **kwargs): return None
+    async def timeout(*args, **kwargs): raise asyncio.TimeoutError
+    monkeypatch.setattr(main, "get_db", lambda: iter([db_session]))
+    monkeypatch.setattr(main, "run_sync_background", no_sync)
+    monkeypatch.setattr(main, "push_purchase_mirror", timeout)
+    monkeypatch.setattr(main, "wake_durable_worker", lambda: None)
+
+    await main.run_daily_sync_job(job_id)
+
+    db_session.expire_all()
+    result = db_session.get(SyncJob, job_id)
+    assert result.status == "partial"
+    assert result.phase == "completed_with_warnings"
+    assert result.payload["purchase_mirror_result"]["status"] == "timeout"
+    assert "timed out" in result.error
 
 
 def test_inventory_snapshot_evidence_requires_complete_manifest(db_session):

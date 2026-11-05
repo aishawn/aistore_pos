@@ -322,16 +322,20 @@ def test_inventory_fetch_reports_paged_product_progress():
 
     async def run():
         progress = []
+        pages = []
         async def on_progress(field: str, count: int) -> None:
             progress.append((field, count))
+        async def on_page(field: str, rows: list[dict], cursor: str | None, has_next: bool) -> None:
+            pages.append((field, [row["id"] for row in rows], cursor, has_next))
         client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
-        products = await client.fetch_inventory("token", "query Products($after: Cursor) { products(first: 100, after: $after) { edges { node { id } } pageInfo { hasNextPage endCursor } } }", on_progress)
+        products = await client.fetch_inventory("token", "query Products($after: Cursor) { products(first: 100, after: $after) { edges { node { id } } pageInfo { hasNextPage endCursor } } }", on_progress, page_callback=on_page)
         await client.close()
-        return products, progress
+        return products, progress, pages
 
-    products, progress = asyncio.run(run())
+    products, progress, pages = asyncio.run(run())
     assert [product["id"] for product in products] == ["p1", "p2"]
     assert progress == [("products", 1), ("products", 2)]
+    assert pages == [("products", ["p1"], "cursor-2", True), ("products", ["p2"], None, False)]
 
 
 def test_sales_query_keeps_line_product_identity_and_falls_back_for_tenant_schema():

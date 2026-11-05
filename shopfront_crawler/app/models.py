@@ -275,6 +275,29 @@ class InventorySnapshotManifest(Base):
     complete: Mapped[bool] = mapped_column(default=False)
 
 
+class InventorySnapshotScan(Base):
+    __tablename__ = "inventory_snapshot_scans"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(64), unique=True)
+    query_hash: Mapped[str] = mapped_column(String(64))
+    cursor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="fetching")
+    product_count: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class InventorySnapshotStage(Base):
+    __tablename__ = "inventory_snapshot_stage"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    store_key: Mapped[str] = mapped_column(String(64), index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(64), index=True)
+    shopfront_product_id: Mapped[str] = mapped_column(String(128))
+    raw_payload: Mapped[dict] = mapped_column(JSONType, default=dict)
+    __table_args__ = (UniqueConstraint("store_key", "snapshot_id", "shopfront_product_id", name="uq_inventory_snapshot_stage_product"),)
+
+
 class ShopfrontExtendedRecord(Base):
     __tablename__ = "shopfront_extended_records"
     id: Mapped[int] = mapped_column(primary_key=True)

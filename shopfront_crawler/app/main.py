@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from .config import REQUIRED_SHOPFRONT_SCOPES, get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
+from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, InventorySnapshotScan, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh, inventory_snapshot_report_rows, inventory_snapshot_totals
@@ -1428,6 +1428,7 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
         func.max(inventory_quantity),
     ).where(InventorySnapshot.store_key == store)).one()
     inventory_manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    inventory_scan = db.scalar(select(InventorySnapshotScan).where(InventorySnapshotScan.store_key == store))
     inventory_product_ids = db.scalars(
         select(InventorySnapshot.shopfront_product_id)
         .where(InventorySnapshot.store_key == store)
@@ -1521,6 +1522,13 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
                 "snapshot_complete": inventory_manifest_state["complete"],
                 "snapshot_at": inventory_manifest.snapshot_at if inventory_manifest else None,
                 **inventory_manifest_state,
+                "scan": ({
+                    "status": inventory_scan.status,
+                    "cursor_checkpointed": bool(inventory_scan.cursor),
+                    "products_checkpointed": inventory_scan.product_count,
+                    "started_at": inventory_scan.started_at,
+                    "updated_at": inventory_scan.updated_at,
+                } if inventory_scan else None),
             },
             "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
             "customers": {"total": int(customer_count)},
@@ -3366,13 +3374,24 @@ async def run_daily_sync_job(job_id: int) -> None:
                         timeout=120,
                     )
                     job.payload = {**(job.payload or {}), "purchase_mirror_result": mirrored}
+                    if not isinstance(mirrored, dict) or mirrored.get("status") != "completed":
+                        job.status = "partial"
+                        job.error = "Purchase mirror did not complete successfully"
+                        if isinstance(mirrored, dict) and mirrored.get("error"):
+                            job.error += f": {str(mirrored['error'])[:500]}"
                     db.commit()
                 except asyncio.TimeoutError:
                     logger.warning("Shopfront purchase mirror timed out: store=%s", job.store_key)
                     job.payload = {**(job.payload or {}), "purchase_mirror_result": {"status": "timeout"}}
+                    job.status = "partial"
+                    job.error = "Purchase mirror timed out after 120 seconds"
                     db.commit()
                 except Exception as exc:
                     logger.warning("Shopfront purchase mirror failed: store=%s error=%r", job.store_key, exc)
+                    job.payload = {**(job.payload or {}), "purchase_mirror_result": {"status": "failed", "error": str(exc)[:500]}}
+                    job.status = "partial"
+                    job.error = f"Purchase mirror failed: {str(exc)[:500]}"
+                    db.commit()
         db.refresh(job)
         if job.status == "running":
             job.status = "completed"

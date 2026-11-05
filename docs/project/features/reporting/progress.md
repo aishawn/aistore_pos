@@ -2,6 +2,12 @@
 
 Updated: 2026-11-05. Owner: TBD.
 
+## Shopfront parity reliability follow-up (2026-11-06)
+
+- Shopfront-mode Overview now displays an unavailable marker for current sales and transaction counts when the source report is missing; it no longer presents the Odoo fallback as if it were a Shopfront total. Yesterday sales, source Profit/Revenue, and sellable inventory already have source availability/freshness guards.
+- Source calculation contract and the local reliability candidate are recorded in [Shopfront sync](../shopfront-sync/README.md) and the [2026-11-06 test session](../../../test-sessions/2026-11-06-shopfront-sync-reliability.md).
+- Typecheck/lint and live Shopfront page parity remain unverified. Do not treat the candidate as deployed or fully aligned.
+
 ## Follow-up review (2026-11-05)
 
 - Online read-only root-cause check on POS runtime `809ef630`: crawler run 212 for `skr`, 2026-11-04..05, fetched/processed 311 Shopfront sales; the POS mirror acknowledged 311 and Odoo acknowledged 3 mirror batches (`mirrored=311`, native `imported=0`). Historical Shopfront rows are intentionally stored in `shopfront.sync.sale`, not native `pos.order`, even when the business-write gate is reported enabled. The dashboard's cross-ledger comparison was invalid; this candidate classifies it `not_comparable` and removes the Shopfront coverage banner. No business data was written or replayed.

@@ -3,6 +3,7 @@ import hmac
 import secrets
 import asyncio
 import re
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -13,7 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, InventorySnapshotScan, InventorySnapshotStage, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .pos import OrithosClient, PosIntegrationError
 from .source_reporting import merge_incremental_inventory_manifest
 from .shopfront import ShopfrontClient, ShopfrontError
@@ -1082,21 +1083,79 @@ async def sync_store(
             run.counts = counts
             db.commit()
             try:
-                # Use the beginning of the request window as the cutoff so
-                # stock moves made while Shopfront paginates the snapshot are
-                # preserved by the Odoo reconciliation guard.
+                inventory_query = settings.shopfront_inventory_query
+                query_hash = hashlib.sha256(inventory_query.encode("utf-8")).hexdigest()
+                scan = db.scalar(select(InventorySnapshotScan).where(InventorySnapshotScan.store_key == store.store_key))
+                if scan is None or scan.query_hash != query_hash or scan.status not in {"fetching", "pages_complete"}:
+                    if scan is not None:
+                        for staged in db.scalars(select(InventorySnapshotStage).where(
+                            InventorySnapshotStage.store_key == store.store_key,
+                            InventorySnapshotStage.snapshot_id == scan.snapshot_id,
+                        )).all():
+                            db.delete(staged)
+                        db.delete(scan)
+                    scan = InventorySnapshotScan(
+                        store_key=store.store_key, snapshot_id=uuid.uuid4().hex,
+                        query_hash=query_hash, cursor=None, status="fetching", product_count=0,
+                    )
+                    db.add(scan)
+                    db.commit()
+                snapshot_id = scan.snapshot_id
+                scan_status = scan.status
+                resume_cursor = scan.cursor
+                db.commit()
+
+                async def persist_inventory_page(_field: str, page_nodes: list[dict[str, Any]], next_cursor: str | None, has_next: bool) -> None:
+                    current_scan = db.scalar(select(InventorySnapshotScan).where(InventorySnapshotScan.store_key == store.store_key))
+                    if current_scan is None or current_scan.snapshot_id != snapshot_id:
+                        raise ShopfrontError("Inventory scan was replaced while a page was being committed")
+                    page_ids: set[str] = set()
+                    for node in page_nodes:
+                        product_id = first(node, "id", "ID")
+                        if not product_id:
+                            raise ShopfrontError("Shopfront inventory snapshot contains a product without an ID")
+                        product_id = str(product_id)
+                        if product_id in page_ids or db.scalar(select(InventorySnapshotStage.id).where(
+                            InventorySnapshotStage.store_key == store.store_key,
+                            InventorySnapshotStage.snapshot_id == snapshot_id,
+                            InventorySnapshotStage.shopfront_product_id == product_id,
+                        )) is not None:
+                            raise ShopfrontError("Shopfront inventory snapshot contains duplicate product IDs")
+                        page_ids.add(product_id)
+                        db.add(InventorySnapshotStage(
+                            store_key=store.store_key, snapshot_id=snapshot_id,
+                            shopfront_product_id=product_id, raw_payload=node,
+                        ))
+                    current_scan.product_count = int(current_scan.product_count or 0) + len(page_ids)
+                    current_scan.cursor = next_cursor if has_next else None
+                    current_scan.status = "fetching" if has_next else "pages_complete"
+                    current_scan.updated_at = datetime.now(timezone.utc)
+                    db.commit()
+                    if progress_callback is not None:
+                        await progress_callback("products", int(current_scan.product_count or 0))
+
+                if scan_status == "fetching":
+                    await client.fetch_inventory(
+                        token, inventory_query,
+                        initial_after=resume_cursor, page_callback=persist_inventory_page,
+                    )
+                db.refresh(scan)
+                if scan.status != "pages_complete":
+                    raise ShopfrontError("Shopfront inventory pagination ended before the final page was checkpointed")
+                staged_products = db.scalars(select(InventorySnapshotStage).where(
+                    InventorySnapshotStage.store_key == store.store_key,
+                    InventorySnapshotStage.snapshot_id == snapshot_id,
+                )).all()
+                if len(staged_products) != scan.product_count:
+                    raise ShopfrontError("Shopfront inventory staged product count does not match committed page count")
                 snapshot_time = datetime.now(timezone.utc)
-                inventory_products = await client.fetch_inventory(
-                    token,
-                    settings.shopfront_inventory_query,
-                    progress_callback,
-                )
                 snapshot_keys: set[tuple[str, str]] = set()
                 inventory_rows: list[tuple[str, str, str | None, Decimal, dict[str, Any]]] = []
                 inventory_product_ids: set[str] = set()
-                if not inventory_products:
+                if not staged_products:
                     raise ShopfrontError("Shopfront inventory snapshot returned no products")
-                for item in inventory_products:
+                for staged_product in staged_products:
+                    item = staged_product.raw_payload
                     product_id = first(item, "id", "ID")
                     if not product_id:
                         raise ShopfrontError("Shopfront inventory snapshot contains a product without an ID")
@@ -1166,7 +1225,14 @@ async def sync_store(
                 manifest.source_product_ids = sorted(inventory_product_ids)
                 manifest.snapshot_at = snapshot_time
                 manifest.complete = True
+                # Promote the verified data and discard staging atomically so
+                # readers retain the previous complete snapshot until commit.
+                for staged_product in staged_products:
+                    db.delete(staged_product)
+                db.delete(scan)
+                db.commit()
             except Exception as exc:
+                db.rollback()
                 counts["inventory_sync_complete"] = False
                 counts["warnings"].append({"stage": "inventory", "message": str(exc)[:500]})
         # Catalog sync normally runs after sales sync in the same transaction.

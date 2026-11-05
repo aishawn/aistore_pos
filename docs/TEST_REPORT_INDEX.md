@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Shopfront reliability candidate: [feature validation](project/features/shopfront-sync/validation.md): crawler 129/129 and Odoo supply fixture 7/7 PASS; inventory page resume and daily mirror timeout regressions pass. POS UI typecheck/lint are blocked by absent dependencies; two UI tests cannot import `redis`. Not deployed; Shopfront-to-POS parity remains NOT RUN.
+
 功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。本索引按 session 区分本地候选验证与线上行为，不把本地通过当作部署通过。
 
 Latest broad UI audit: [2026-11-03 page-by-page review](test-sessions/2026-11-03-ui-page-audit.md): 180 page templates catalogued (179 baseline + new cost reconciliation), 274 live page visits across SKR/Demo/platform plus brand signup; desktop/mobile evidence recorded. Shared records dialogs, platform session fallback, account hydration, report errors and recommendation pending states improved. Runtime 51e27c74: remote build and specified live/fixture UI acceptance PASS, including 18 records-dialog viewport checks; legacy 410 routes, alerts 500, AI failures and incomplete report data checks remain explicitly open.
