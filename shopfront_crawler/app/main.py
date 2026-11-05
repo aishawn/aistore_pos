@@ -65,7 +65,7 @@ def should_include_catalog(job_type: str | None, existing_products: int, existin
 
 
 def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dict[str, int]:
-    """Reject a successful mirror response when formal Odoo orders were skipped."""
+    """Verify every source sale reached Odoo without inventing POS orders."""
     payload = response.get("result", response) if isinstance(response, dict) else {}
     business = payload.get("business") if isinstance(payload, dict) else None
     if not isinstance(business, dict):
@@ -79,6 +79,21 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
         updated_value = business.get("updated", 0)
     imported = receipt_count(imported_value)
     updated = receipt_count(updated_value)
+    mirrored = receipt_count(business.get("mirrored"))
+    stock_writes = receipt_count(business.get("stock_writes"))
+    if (
+        imported == 0
+        and updated in (None, 0)
+        and mirrored == expected_count
+        and stock_writes == 0
+        and business.get("disabled_reason") == "historical sales are retained in the Shopfront mirror to protect current stock"
+    ):
+        return {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": mirrored}
+    if "mirrored" in business and imported == 0 and updated == 0:
+        raise RuntimeError(
+            "Odoo historical sales mirror acknowledgement mismatch: "
+            f"expected={expected_count}, mirrored={mirrored}, stock_writes={stock_writes}"
+        )
     if imported is None or updated is None:
         raise RuntimeError("Odoo sales response contains invalid imported/updated counts")
     skipped = business.get("skipped")
@@ -102,7 +117,7 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
         reasons = ", ".join(sorted(set(unexpected)))
         raise RuntimeError(f"Odoo skipped Shopfront sales that require repair: {reasons}")
 
-    return {"imported": imported, "updated_orders": updated, "skipped": len(skipped)}
+    return {"imported": imported, "updated_orders": updated, "skipped": len(skipped), "mirrored": 0}
 
 
 def source_sale_snapshot_is_complete(raw_sale: Any, sale_items: list[SaleItem]) -> bool:
@@ -1847,7 +1862,7 @@ async def push_pos_snapshot(
         "inventory_reconciliation_required": False,
         "inventory_legacy_duplicates_cleared": 0,
         "sales_batch_audit": [],
-        "odoo_sales": {"imported": 0, "updated_orders": 0, "skipped": 0, "batches": 0},
+        "odoo_sales": {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": 0, "batches": 0},
     }
     if sales_selection_diagnostics is not None:
         result["sales_selection_diagnostics"] = sales_selection_diagnostics
@@ -2436,13 +2451,13 @@ async def push_pos_snapshot(
                             response = await odoo_client.sync("sales", store_key, jsonable_encoder(retry_batch))
                             if odoo_business_write:
                                 audit = audit_odoo_sales_batch(response, len(retry_batch))
-                                for key in ("imported", "updated_orders", "skipped"):
+                                for key in ("imported", "updated_orders", "skipped", "mirrored"):
                                     result["odoo_sales"][key] += audit[key]
                                 result["odoo_sales"]["batches"] += 1
                     else:
                         if odoo_business_write:
                             audit = audit_odoo_sales_batch(response, len(batch))
-                            for key in ("imported", "updated_orders", "skipped"):
+                            for key in ("imported", "updated_orders", "skipped", "mirrored"):
                                 result["odoo_sales"][key] += audit[key]
                             result["odoo_sales"]["batches"] += 1
                     odoo_batches += 1

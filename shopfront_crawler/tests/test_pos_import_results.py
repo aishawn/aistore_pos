@@ -55,7 +55,7 @@ def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
         expected_count=4,
     )
 
-    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 1}
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 1, "mirrored": 0}
 
 
 def test_audit_odoo_sales_batch_accepts_legacy_receipt_when_counts_cover_every_item():
@@ -63,7 +63,31 @@ def test_audit_odoo_sales_batch_accepts_legacy_receipt_when_counts_cover_every_i
         {"result": {"ok": True, "business": {"imported": 2, "updated_orders": 1}}},
         expected_count=3,
     )
-    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0}
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0, "mirrored": 0}
+
+
+def test_audit_odoo_sales_batch_accepts_complete_historical_mirror_without_stock_writes():
+    audit = main.audit_odoo_sales_batch(
+        {"result": {"ok": True, "business": {
+            "imported": 0,
+            "mirrored": 129,
+            "stock_writes": 0,
+            "disabled_reason": "historical sales are retained in the Shopfront mirror to protect current stock",
+        }}},
+        expected_count=129,
+    )
+
+    assert audit == {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": 129}
+
+
+def test_audit_odoo_sales_batch_rejects_partial_historical_mirror():
+    with pytest.raises(RuntimeError, match="mirror acknowledgement mismatch"):
+        main.audit_odoo_sales_batch({"result": {"ok": True, "business": {
+            "imported": 0,
+            "mirrored": 128,
+            "stock_writes": 0,
+            "disabled_reason": "historical sales are retained in the Shopfront mirror to protect current stock",
+        }}}, expected_count=129)
 
 
 def test_audit_odoo_sales_batch_normalizes_legacy_created_updated_fields():
@@ -71,7 +95,7 @@ def test_audit_odoo_sales_batch_normalizes_legacy_created_updated_fields():
         {"result": {"ok": True, "business": {"created": "2", "updated": 1.0}}},
         expected_count=3,
     )
-    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0}
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0, "mirrored": 0}
 
 
 @pytest.mark.parametrize(
@@ -324,7 +348,7 @@ async def test_sales_reconcile_does_not_require_formal_order_receipt(db_session,
 
     assert result["status"] == "completed"
     assert result["odoo_business_write"] is False
-    assert result["odoo_sales"] == {"imported": 0, "updated_orders": 0, "skipped": 0, "batches": 0}
+    assert result["odoo_sales"] == {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": 0, "batches": 0}
     assert FakeOdooClient.business_write is False
 
 

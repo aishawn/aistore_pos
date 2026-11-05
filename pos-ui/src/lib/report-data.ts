@@ -2,6 +2,7 @@ import { getReportPeriodBounds, type ReportQueryPeriod } from "./report-period.t
 import { type CostSale } from "./dashboard-purchase-cost.ts";
 import { verifiedLedgerCosts } from "./dashboard-ledger-cost.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
+import { readShopfrontReportMargin } from "./shopfront-report-margin.ts";
 
 export type ReportRpc = <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs?: Record<string, unknown>, correlationId?: string | null) => Promise<T | undefined>;
 export type ReportCompany = { name: string; currency: string; timezone: string };
@@ -51,7 +52,7 @@ async function calculateOdooGrossMargin(rpc: ReportRpc, sessionId: string, compa
     tax: salesAvailable ? salesRows[0]?.amount_tax ?? null : null, salesAvailable, reconciled, lineNet };
 }
 
-async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, correlationId?: string | null) {
+async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, sourceStore?: string, correlationId?: string | null) {
   const bounds = getReportPeriodBounds("yesterday", now, timezone);
   const from = bounds.start.toISOString().slice(0, 19).replace("T", " ");
   const to = bounds.end.toISOString().slice(0, 19).replace("T", " ");
@@ -59,10 +60,11 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", from], ["order_id.date_order", "<", to], ["order_id.state", "in", ["paid", "done", "invoiced"]]];
   if (sampleDataClearedAt) { orderDomain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]); lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${companyId}-%`]); }
   const stockDomain = [["company_id", "=", companyId], ["location_id.usage", "=", "internal"]];
-  const [stockRows, negativeRows, marginMetrics] = await Promise.all([
+  const [stockRows, negativeRows, marginMetrics, sourceMarginFallback] = await Promise.all([
     rpc<Array<{ quantity: number; product_id: [number, string] | false; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_id", "product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
     rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
     calculateOdooGrossMargin(rpc, sessionId, companyId, orderDomain, lineDomain, correlationId),
+    readShopfrontReportMargin(rpc, sessionId, sourceStore, from, to, correlationId).catch(() => null),
   ]);
   const yesterdaySales = marginMetrics.salesTotal;
   const yesterdayTax = marginMetrics.tax;
@@ -80,6 +82,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     negativeStockProducts: negativeRows?.length ?? null,
     yesterdaySales, yesterdaySalesAvailable: marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
     yesterdayGrossMargin: marginMetrics.margin, grossMarginCoverage: marginMetrics.coverage, grossMarginStatus: marginMetrics.status,
+    sourceMarginFallback: marginMetrics.status === "sales_mismatch" || marginMetrics.status === "unavailable" ? sourceMarginFallback : null,
     salesReconciled: reconciled, salesReconciliationDifference: netSales !== null && marginMetrics.lineNet !== null ? Math.round((marginMetrics.lineNet - netSales) * 100) / 100 : null,
     costBasis: "odoo_recorded_cost", yesterdayFrom: from, yesterdayTo: to,
   };
@@ -125,9 +128,9 @@ async function readSalesTrend(rpc: ReportRpc, sessionId: string, domain: unknown
 
 export async function calculateReport(rpc: ReportRpc, options: {
   sessionId: string; companyId: number; company: ReportCompany; period?: string | null;
-  hours?: number; summaryOnly?: boolean; sampleDataClearedAt?: string | null; now?: Date; correlationId?: string | null;
+  hours?: number; summaryOnly?: boolean; sampleDataClearedAt?: string | null; sourceStore?: string; now?: Date; correlationId?: string | null;
 }) {
-  const { sessionId, companyId, company, period, summaryOnly = false, sampleDataClearedAt = null, correlationId } = options;
+  const { sessionId, companyId, company, period, summaryOnly = false, sampleDataClearedAt = null, sourceStore, correlationId } = options;
   const timezone = company.timezone;
   const rangeHours = options.hours ?? 720;
   let end = options.now ?? new Date();
@@ -187,13 +190,13 @@ export async function calculateReport(rpc: ReportRpc, options: {
         rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], []], {}, correlationId),
         rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
         rpc<number>(sessionId, "pos.session", "search_count", [[["company_id", "=", companyId], ["state", "=", "opened"]]], {}, correlationId),
-        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, correlationId),
+        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, sourceStore, correlationId),
       ]);
       return { period: "today", from, to, timezone, company: company.name, currency: company.currency,
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
     }
 
-    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, marginMetrics] = await Promise.all([
+    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, marginMetrics, sourceMarginFallback] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
@@ -214,6 +217,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       loadLineExtras(rpc, sessionId, lineDomain, compareLineDomain, correlationId),
       calculateOdooGrossMargin(rpc, sessionId, companyId, domain,
         lineDomain.filter(clause => !(Array.isArray(clause) && clause[0] === "order_id.amount_total")), correlationId),
+      readShopfrontReportMargin(rpc, sessionId, sourceStore, from, to, correlationId).catch(() => null),
     ]);
 
     const summary = totals?.[0] ?? {};
@@ -249,6 +253,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       grossMarginCoverage: marginMetrics.coverage,
       grossMarginStatus: marginMetrics.status,
       grossMarginBasis: "odoo_recorded_cost",
+      sourceMarginFallback: marginMetrics.status === "sales_mismatch" || marginMetrics.status === "unavailable" ? sourceMarginFallback : null,
       tax: Number(summary.amount_tax ?? 0),
       transactions,
       itemsSold: lineExtras.itemsSold,

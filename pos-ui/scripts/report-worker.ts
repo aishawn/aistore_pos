@@ -101,7 +101,7 @@ async function processJob(job: ReportJob) {
     const body = job.period === "dead_stock"
       ? await calculateDeadStock(rpc, auth.id, target.companyId, undefined, new Date(), job.scope.sampleDataClearedAt)
       : await calculateReport(rpc, { sessionId: auth.id, companyId: target.companyId, company, period: job.period,
-        summaryOnly: job.period === "today", sampleDataClearedAt: job.scope.sampleDataClearedAt });
+        summaryOnly: job.period === "today", sampleDataClearedAt: job.scope.sampleDataClearedAt, sourceStore: job.scope.shopfrontStore });
     const now = new Date();
     const snapshot: ReportSnapshot = { key: job.key, scope: job.scope, period: job.period, revision: job.revision,
       generatedAt: now.toISOString(), queryThrough: String("to" in body ? body.to : now.toISOString()),

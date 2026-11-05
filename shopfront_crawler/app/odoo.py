@@ -124,6 +124,22 @@ class OdooSyncClient:
                         updated_value = business.get("updated")
                     imported = receipt_count(imported_value)
                     updated = receipt_count(updated_value)
+                    mirrored = receipt_count(business.get("mirrored"))
+                    stock_writes = receipt_count(business.get("stock_writes"))
+                    if (
+                        imported == 0
+                        and updated in (None, 0)
+                        and mirrored == len(items)
+                        and stock_writes == 0
+                        and business.get("disabled_reason") == "historical sales are retained in the Shopfront mirror to protect current stock"
+                    ):
+                        return data
+                    if "mirrored" in business and imported == 0 and updated in (None, 0):
+                        last_error = (
+                            "Odoo historical sales mirror acknowledgement mismatch: "
+                            f"expected={len(items)}, mirrored={mirrored}, stock_writes={stock_writes}"
+                        )
+                        break
                     if imported is None or updated is None:
                         count_types = {
                             key: type(business.get(key)).__name__

@@ -8,6 +8,7 @@ import { calculateDeadStock } from "./dead-stock-data";
 import { getReportPeriodBounds } from "./report-period.ts";
 import { salesDate } from "./replenishment-safety.ts";
 import { companyReportRpc, readReportCompany } from "./report-odoo";
+import { verifiedShopfrontSourceStore } from "./shopfront-store-scope";
 import {
   REPORT_PREFIX, digest, enqueueReport, readSnapshot, readShopfrontSyncState, reportRedis, reportTargets, snapshotFresh,
   snapshotKey, snapshotRevision, targetId, type ReportJob, type ReportScope, type ReportSnapshot, type SnapshotPeriod,
@@ -57,6 +58,7 @@ export async function reportAccess(request: NextRequest, summary = false) {
   const reportScope: ReportScope = {
     database: process.env.ODOO_DATABASE || "unconfigured", vendorId: binding.vendorId, companyId, host,
     timezone: company.timezone, sampleDataClearedAt: binding.sampleDataClearedAt ?? null,
+    shopfrontStore: verifiedShopfrontSourceStore(binding) ?? undefined,
     uid: scope.uid, permissionScope: `user:${userKey}`,
   };
   let shared = false;
@@ -81,6 +83,21 @@ function response(body: unknown, status = 200, timing?: string) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...(timing ? { "Server-Timing": timing } : {}) } });
 }
 
+function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean) {
+  const { sourceMarginFallback, ...visible } = body;
+  if (!sourceComplete || !sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
+  const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown };
+  if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)
+    || visible.grossMarginStatus === "verified" || visible.grossMarginStatus === "no_sales") return visible;
+  return {
+    ...visible,
+    ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
+    grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
+    grossMarginStatus: "source_margin",
+    grossMarginBasis: "shopfront_original_sale_cost",
+  };
+}
+
 export async function serveReport(request: NextRequest, deadStock = false) {
   const started = performance.now();
   try {
@@ -91,7 +108,8 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const period = deadStock ? "dead_stock" : summary ? "today" : requested;
     if (!summary && requested === "today") return response({ message: "Today requires view=summary" }, 400);
     const calendar = ["today", "yesterday", "last_7_days", "last_week", "last_month", "dead_stock"].includes(period || "");
-    const bounds = calendar && period && period !== "dead_stock" ? getReportPeriodBounds(period as Exclude<SnapshotPeriod, "dead_stock">, new Date(), access.scope.timezone) : null;
+    const coveragePeriod = summary ? "yesterday" : period;
+    const bounds = calendar && coveragePeriod && coveragePeriod !== "dead_stock" ? getReportPeriodBounds(coveragePeriod as Exclude<SnapshotPeriod, "dead_stock">, new Date(), access.scope.timezone) : null;
     const periodFrom = bounds ? salesDate(bounds.start.toISOString(), access.scope.timezone) : null;
     const periodThrough = bounds ? salesDate(new Date(bounds.end.getTime() - 1).toISOString(), access.scope.timezone) : null;
     const sourceState = await readShopfrontSyncState(access.scope, periodFrom, periodThrough);
@@ -129,7 +147,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         nextTask = job.id;
         if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
       }
-      if (snapshot) return response({ ...snapshot.body, ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
+      if (snapshot) return response({ ...responseReportBody(snapshot.body, sourceComplete), ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
       `auth;dur=${authMs.toFixed(1)}, cache;dur=${(performance.now() - started - authMs).toFixed(1)}, odoo;desc="0 aggregate calls"`);
     }
@@ -149,7 +167,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
           const body = deadStock
             ? await calculateDeadStock(rpc, access.sessionId, access.scope.companyId, undefined, new Date(), access.scope.sampleDataClearedAt)
             : await calculateReport(rpc, { sessionId: access.sessionId, companyId: access.scope.companyId, company: access.company,
-              period, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt });
+              period, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt, sourceStore: access.scope.shopfrontStore });
           const result: ReportSnapshot = { key: localKey, generatedAt: new Date().toISOString(), queryThrough: String("to" in body ? body.to : new Date().toISOString()),
             body: { ...body, queryMetrics: { rpcCalls, durationMs: Math.round(performance.now() - queryStarted) } }, scope: access.scope,
             period: (calendar ? period : "today") as SnapshotPeriod, revision };
@@ -161,7 +179,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       }
       snapshot = await flight;
     }
-    return response({ ...snapshot.body, ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
+    return response({ ...responseReportBody(snapshot.body, sourceComplete), ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
       `auth;dur=${authMs.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`);
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;

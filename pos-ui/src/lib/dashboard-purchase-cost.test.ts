@@ -44,6 +44,20 @@ function summaryRpc({net=100,failStock=false,failLines=false,mixed=false,withLin
 test('tax mismatch blocks margin, preserves actual sales, and excludes negative inventory',async()=>{
  const r=await calculateReport(summaryRpc({net:110}),options);assert.equal(r.yesterdaySales,110);assert.equal(r.yesterdayNetSales,100);assert.equal(r.grossMarginStatus,'sales_mismatch');assert.equal(r.yesterdayGrossMargin,null);assert.equal(r.inventoryUnits,0);assert.equal(r.inventoryNetUnits,-5);assert.equal(r.inventoryStatus,'negative_stock');
 });
+test('complete Shopfront source evidence is retained as a separate margin fallback', async () => {
+ const line = {id:'line-1',item:{id:'water'},quantity:1,totalPrice:11,tax:1,cost:6};
+ const sourceSale = {id:1,external_id:'sale-1',created_at:'2026-11-02 12:00:00',total_price:11,total_tax:1,total_cost:6,
+  raw_payload:{status:'COMPLETED',items:[{source_product_id:'water',quantity:1,line_total:11,tax:1,cost:6,raw_payload:line}],
+   raw_payload:{id:'sale-1',status:'COMPLETED',createdAt:'2026-11-02T12:00:00Z',totalPrice:11,totalTax:1,totalCost:6,items:[line]}}};
+ const base = summaryRpc({net:110});
+ const rpc = (async (session,model,method,args,kwargs,correlationId) => {
+  if(model==='shopfront.sync.sale') return method==='search_count' ? 1 : [sourceSale];
+  return base(session,model,method,args,kwargs,correlationId);
+ }) as ReportRpc;
+ const r=await calculateReport(rpc,{...options,sourceStore:'skr'});
+ assert.equal(r.grossMarginStatus,'sales_mismatch');
+ assert.deepEqual(r.sourceMarginFallback,{grossMarginPercent:0.4,coverage:1});
+});
 test('inventory total sums signed internal stock and preserves fractional units', async () => {
  const base = summaryRpc();
  const rpc = (async (session, model, method, args, kwargs, correlationId) => {
