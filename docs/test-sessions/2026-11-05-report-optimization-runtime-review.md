@@ -26,6 +26,7 @@
 | SKR direct sales report | PASS (read-only) | On `9b4c8510`, business date 2026-11-04 in `Australia/Adelaide`: 141 orders, `$3,760.72` order gross, `$3,760.72` date-group total, `$0.00` difference. |
 | SKR purchase and closure report | INFO (read-only) | Both returned zero matching rows for 2026-11-04. |
 | Dashboard versus sales report | OPEN / INCONSISTENT | Dashboard returned zero sales with `completeness=complete`; forced refresh queued (202), but task poll returned 401. Data freshness/reconciliation was not established. |
+| Runtime rerun after report change deployment | PASS (identity + discrepancy flag) | SKR and Demo now report `7617e3ce`; SKR Dashboard still showed zero versus direct Sales `$3,760.72`, and now reports `sourceReconciliation=mismatch` / `completeness=incomplete`. The comparison fix is included; data mismatch remains OPEN. |
 | Odoo data reconciliation, CSV completeness, print parity | NOT RUN | Requires authenticated Odoo/report access; no business writes were attempted. |
 
 ## Follow-up
