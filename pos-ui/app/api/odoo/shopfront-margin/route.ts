@@ -7,6 +7,7 @@ import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 import { loadSourceMarginSnapshot } from "@/lib/cost-reconciliation-source";
 import { shopfrontSourceMargin } from "@/lib/shopfront-source-margin";
+import { verifiedShopfrontSourceStore } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,14 +20,15 @@ export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, "reports.dashboard");
     const scope = await scopedOdoo(request);
-    if (scope.companyIds.length !== 1 || !scope.database || scope.binding?.subdomain !== "skr" || scope.binding.r2Prefix !== "shopfront/skr/" || scope.binding.odooProvisionStatus !== "ready") throw new OdooScopeError("Verified Shopfront store scope is required.", 403);
+    const sourceStore = verifiedShopfrontSourceStore(scope.binding);
+    if (scope.companyIds.length !== 1 || !scope.database || !sourceStore) throw new OdooScopeError("Verified Shopfront store scope is required.", 403);
     const body = await request.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || Array.isArray(body) || Object.keys(body).some(k => !["fromDay", "toDay"].includes(k))) return json({ message: "Invalid margin request" }, 400);
     for (const field of ["fromDay", "toDay"]) if (body[field] !== undefined && (typeof body[field] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body[field] as string))) return json({ message: "Invalid business date" }, 400);
     key = createHash("sha256").update(`${process.env.ODOO_BASE_URL}|${scope.database}|${scope.companyIds[0]}`).digest("hex");
     if (pending.has(key)) { key = undefined; return json({ message: "A source margin capture is already running. Please wait." }, 409); }
     pending.add(key);
-    const snapshot = await loadSourceMarginSnapshot(scope.rpc, { companyId: scope.companyIds[0], store: scope.binding.subdomain,
+    const snapshot = await loadSourceMarginSnapshot(scope.rpc, { companyId: scope.companyIds[0], store: scope.binding.subdomain, sourceStore,
       fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined });
     const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"), batchId = randomUUID();
     const report = { batchId, sourceHash, companyId: snapshot.companyId, store: snapshot.store, timezone: snapshot.timezone, from: snapshot.from, to: snapshot.to, capturedAt: snapshot.capturedAt,

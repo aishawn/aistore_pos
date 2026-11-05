@@ -8,6 +8,7 @@ import { isSameOrigin } from "@/lib/server-auth";
 import { reconcileCosts, type CostAudit } from "@/lib/cost-reconciliation";
 import { loadCostSnapshot } from "@/lib/cost-reconciliation-source";
 import { shopfrontSourceMargin } from "@/lib/shopfront-source-margin";
+import { verifiedShopfrontSourceStore } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ async function context(request: NextRequest) {
   const scope = await scopedOdoo(request);
   if (scope.companyIds.length !== 1 || !scope.binding || !scope.database) throw new OdooScopeError("A single store company and database are required.", 403);
   const { binding } = scope;
-  if (binding.subdomain !== "skr" || binding.r2Prefix !== "shopfront/skr/" || binding.odooProvisionStatus !== "ready") throw new OdooScopeError("Verified receipt evidence is not configured for this store.", 422);
+  if (!verifiedShopfrontSourceStore(binding)) throw new OdooScopeError("Verified receipt evidence is not configured for this store.", 422);
   return scope;
 }
 function directory(database: string | undefined, companyId: number) {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     for (const key of ["fromDay", "toDay"]) if (body[key] !== undefined && (typeof body[key] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body[key] as string))) return json({ message: "Invalid business date" }, 400);
     if (pending.has(companyId)) return json({ message: "An audit is already being captured for this store. Please wait." }, 409);
     pending.add(companyId); locked = companyId;
-    const snapshot = await loadCostSnapshot(scope.rpc, { companyId, store: scope.binding!.subdomain, fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined, limit: body.limit === 0 ? 0 : 20 });
+    const snapshot = await loadCostSnapshot(scope.rpc, { companyId, store: scope.binding!.subdomain, sourceStore: verifiedShopfrontSourceStore(scope.binding)!, fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined, limit: body.limit === 0 ? 0 : 20 });
     const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"), id = randomUUID();
     const audit = reconcileCosts(snapshot, id, sourceHash), dir = directory(scope.database, companyId);
     audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
