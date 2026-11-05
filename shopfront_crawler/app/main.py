@@ -15,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
-from sqlalchemy import case, desc, func, or_, select, update
+from sqlalchemy import String, case, cast, desc, func, or_, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -1459,12 +1459,38 @@ def list_suppliers(store: str, page: int = Query(1, ge=1), size: int = Query(100
 
 
 @app.get("/api/purchase-orders")
-def list_purchase_orders(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+def list_purchase_orders(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), status: str | None = None, q: str | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
-    query = select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store).order_by(ShopfrontPurchaseOrder.source_id)
-    rows = db.scalars(query.offset((page - 1) * size).limit(size)).all()
-    total = db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(ShopfrontPurchaseOrder.store_key == store)) or 0
-    return {"data": [{"source_id": row.source_id, "supplier_source_id": row.supplier_source_id, "status": row.status, "order_date": row.order_date, "total_cost": row.total_cost, "raw_payload": row.raw_payload, "synced_at": row.synced_at} for row in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_purchase_orders"}
+    if q is not None and len(q) > 120:
+        raise HTTPException(400, "q must be at most 120 characters")
+    filters: list[Any] = [ShopfrontPurchaseOrder.store_key == store]
+    if status:
+        filters.append(func.upper(ShopfrontPurchaseOrder.status) == status.strip().upper())
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        filters.append(or_(
+            ShopfrontPurchaseOrder.source_id.ilike(pattern),
+            ShopfrontPurchaseOrder.supplier_source_id.ilike(pattern),
+            cast(ShopfrontPurchaseOrder.raw_payload, String).ilike(pattern),
+        ))
+    statement = select(ShopfrontPurchaseOrder, ShopfrontSupplier.name).outerjoin(
+        ShopfrontSupplier,
+        (ShopfrontSupplier.store_key == ShopfrontPurchaseOrder.store_key)
+        & (ShopfrontSupplier.source_id == ShopfrontPurchaseOrder.supplier_source_id),
+    ).where(*filters).order_by(desc(ShopfrontPurchaseOrder.order_date), ShopfrontPurchaseOrder.source_id)
+    rows = db.execute(statement.offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(ShopfrontPurchaseOrder.id)).where(*filters)) or 0
+    return {"data": [{
+        "source_id": row.source_id,
+        "supplier_source_id": row.supplier_source_id,
+        "supplier_name": supplier_name,
+        "status": row.status,
+        "order_date": row.order_date,
+        "total_cost": row.total_cost,
+        "line_count": (row.raw_payload or {}).get("lineCount") if isinstance(row.raw_payload, dict) else None,
+        "raw_payload": row.raw_payload,
+        "synced_at": row.synced_at,
+    } for row, supplier_name in rows], "pagination": {"page": page, "size": size, "total": total}, "source": "shopfront_purchase_orders"}
 
 
 @app.get("/api/customers")
@@ -3373,7 +3399,7 @@ def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date
     rows = db.scalars(select(DailySalesSummary).where(DailySalesSummary.store_key == store, DailySalesSummary.business_date >= from_date.isoformat(), DailySalesSummary.business_date <= to_date.isoformat()).order_by(DailySalesSummary.business_date)).all()
     rows = preferred_summary_rows(rows)
     return {
-        "data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "transaction_count": x.transaction_count} for x in rows],
+        "data": [{"date": x.business_date, "outlet": x.outlet, "revenue": x.revenue, "cost": x.cost, "profit": x.profit, "tax": x.tax, "discount": x.discount, "transaction_count": x.transaction_count} for x in rows],
         "source": "shopfront_reporting",
         "coverage": {
             "requested_from": from_date.isoformat(),
@@ -3414,8 +3440,10 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 
 
 @app.get("/api/products")
-def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, db: Session = Depends(get_db)) -> dict:
+def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, q: str | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
+    if q is not None and len(q) > 120:
+        raise HTTPException(400, "q must be at most 120 characters")
     if status and status.strip().upper() not in {"ACTIVE", "NOT_ACTIVE"}:
         raise HTTPException(400, "status must be ACTIVE or NOT_ACTIVE")
     filters: list[Any] = [Product.store_key == store]
@@ -3423,6 +3451,14 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
         filters.append(Product.catalog_last_seen_at.is_not(None))
     if status:
         filters.append(func.upper(func.coalesce(Product.raw_payload["status"].as_string(), "UNKNOWN")) == status.strip().upper())
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        filters.append(or_(
+            Product.name.ilike(pattern),
+            Product.sku.ilike(pattern),
+            Product.barcode.ilike(pattern),
+            cast(Product.raw_payload, String).ilike(pattern),
+        ))
     rows = db.scalars(select(Product).where(*filters).order_by(Product.name, Product.id).offset((page - 1) * size).limit(size)).all()
     total = db.scalar(select(func.count(Product.id)).where(*filters)) or 0
     def product_data(x: Product) -> dict:
@@ -3463,18 +3499,62 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
 
 
 @app.get("/api/inventory")
-def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), outlet_id: str | None = None, db: Session = Depends(get_db)) -> dict:
+def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), outlet_id: str | None = None, q: str | None = None, negative_only: bool = False, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
+    if q is not None and len(q) > 120:
+        raise HTTPException(400, "q must be at most 120 characters")
     filters: list[Any] = [InventorySnapshot.store_key == store]
     if outlet_id:
         filters.append(InventorySnapshot.outlet_id == outlet_id)
-    rows = db.scalars(select(InventorySnapshot).where(*filters).order_by(InventorySnapshot.shopfront_product_id, InventorySnapshot.outlet_id, InventorySnapshot.id).offset((page - 1) * size).limit(size)).all()
-    total = db.scalar(select(func.count(InventorySnapshot.id)).where(*filters)) or 0
+    if negative_only:
+        filters.append(InventorySnapshot.quantity < 0)
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        filters.append(or_(
+            InventorySnapshot.shopfront_product_id.ilike(pattern),
+            Product.name.ilike(pattern),
+            Product.sku.ilike(pattern),
+            Product.barcode.ilike(pattern),
+        ))
+    statement = select(InventorySnapshot, Product).outerjoin(
+        Product,
+        (Product.store_key == InventorySnapshot.store_key)
+        & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
+    ).where(*filters).order_by(InventorySnapshot.shopfront_product_id, InventorySnapshot.outlet_id, InventorySnapshot.id)
+    rows = db.execute(statement.offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(InventorySnapshot.id)).select_from(InventorySnapshot).outerjoin(
+        Product,
+        (Product.store_key == InventorySnapshot.store_key)
+        & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
+    ).where(*filters)) or 0
     manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    source_product_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.shopfront_product_id))).where(InventorySnapshot.store_key == store)) or 0
+    manifest_product_ids = {str(product_id) for product_id in (manifest.source_product_ids or [])} if manifest else set()
+    source_product_ids = {str(product_id) for product_id in db.scalars(select(InventorySnapshot.shopfront_product_id).where(InventorySnapshot.store_key == store).distinct()).all()}
+    products_match_manifest = source_product_ids == manifest_product_ids
     return {
-        "data": [{"shopfront_product_id": x.shopfront_product_id, "outlet_id": x.outlet_id, "outlet_name": x.outlet_name, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows],
+        "data": [{
+            "shopfront_product_id": row.shopfront_product_id,
+            "product_name": product.name if product else None,
+            "sku": product.sku if product else None,
+            "category": product.category if product else None,
+            "cost": product.cost if product else None,
+            "price": product.price if product else None,
+            "outlet_id": row.outlet_id,
+            "outlet_name": row.outlet_name,
+            "quantity": row.quantity,
+            "inventory_timestamp": row.inventory_timestamp,
+            "raw_payload": row.raw_payload,
+        } for row, product in rows],
         "pagination": {"page": page, "size": size, "returned": len(rows), "total": int(total)},
-        "snapshot": {"complete": bool(manifest and manifest.complete), "snapshot_at": manifest.snapshot_at if manifest else None, "products": len(manifest.source_product_ids or []) if manifest else 0},
+        "snapshot": {
+            "complete": bool(manifest and manifest.complete and products_match_manifest),
+            "manifest_complete": bool(manifest and manifest.complete),
+            "products_match_manifest": products_match_manifest,
+            "snapshot_at": manifest.snapshot_at if manifest else None,
+            "products": len(manifest_product_ids),
+            "source_products": int(source_product_count),
+        },
         "source": "shopfront_inventory",
     }
 

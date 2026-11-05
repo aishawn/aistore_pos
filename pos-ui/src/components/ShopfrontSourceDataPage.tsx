@@ -1,0 +1,332 @@
+"use client";
+
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, RefreshCw, Search } from "lucide-react";
+
+export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
+type SourceRow = Record<string, unknown>;
+type SourceSnapshot = { complete?: unknown; snapshot_at?: unknown; products?: unknown; source_products?: unknown; [key: string]: unknown };
+type SourceCoverage = { inventory?: SourceSnapshot; catalog?: Record<string, unknown>; [key: string]: unknown };
+type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string };
+type CoveragePayload = { data?: SourceCoverage };
+
+const PAGE_SIZE = 50;
+const MODE_META: Record<Mode, { title: string; odooHref: string; odooLabel: string }> = {
+  dashboard: { title: "Shopfront dashboard", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
+  sales: { title: "Shopfront sales", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
+  inventory: { title: "Shopfront inventory", odooHref: "/reports/inventory/odoo", odooLabel: "Orithos inventory" },
+  products: { title: "Shopfront products", odooHref: "/products/odoo", odooLabel: "Orithos products" },
+  purchase: { title: "Shopfront purchase orders", odooHref: "/reports/purchase/odoo", odooLabel: "Orithos purchasing" },
+};
+const MODE_HREF: Record<Mode, string> = {
+  dashboard: "/reports/shopfront/dashboard",
+  sales: "/reports/shopfront/sales",
+  inventory: "/reports/shopfront/inventory",
+  products: "/products/shopfront",
+  purchase: "/reports/shopfront/purchase",
+};
+const MODE_LABEL: Record<Mode, string> = {
+  dashboard: "Dashboard",
+  sales: "Sales",
+  inventory: "Inventory",
+  products: "Products",
+  purchase: "Purchase",
+};
+
+function adelaideDay(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function shiftDay(value: string, amount: number) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+function money(value: unknown) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(number) : "—";
+}
+
+function quantity(value: unknown) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? new Intl.NumberFormat("en-AU", { maximumFractionDigits: 3 }).format(number) : "—";
+}
+
+function dateLabel(value: unknown) {
+  if (typeof value !== "string" || !value) return "—";
+  const date = new Date(value.includes("T") ? value : `${value}T12:00:00Z`);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Adelaide", day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
+function statusTone(status: unknown) {
+  const value = String(status ?? "").toUpperCase();
+  if (value === "ACTIVE" || value === "COMPLETED" || value === "RECEIVED") return "text-emerald-800 bg-emerald-50";
+  if (value === "CANCELLED" || value === "NOT_ACTIVE") return "text-slate-700 bg-slate-100";
+  return "text-amber-900 bg-amber-50";
+}
+
+function readSourceProductInventory(product: SourceRow) {
+  const raw = product.raw_payload && typeof product.raw_payload === "object" ? product.raw_payload as SourceRow : {};
+  const value = raw.inventory;
+  return Array.isArray(value) ? value[0] as SourceRow | undefined : value && typeof value === "object" ? value as SourceRow : undefined;
+}
+
+function TableFrame({ children, empty }: { children: React.ReactNode; empty: boolean }) {
+  return (
+    <div className="overflow-x-auto border-y border-[var(--oh-border)] bg-white">
+      {empty ? <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No source records found.</div> : children}
+    </div>
+  );
+}
+
+function Cell({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <td className={`px-3 py-3 align-middle text-sm text-[var(--oh-text)] ${className}`}>{children}</td>;
+}
+
+export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
+  const today = useMemo(() => adelaideDay(new Date()), []);
+  const initialTo = shiftDay(today, -1);
+  const initialFrom = shiftDay(initialTo, -6);
+  const [fromInput, setFromInput] = useState(initialFrom);
+  const [toInput, setToInput] = useState(initialTo);
+  const [range, setRange] = useState({ from: initialFrom, to: initialTo });
+  const [queryInput, setQueryInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [negativeOnly, setNegativeOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<SourceRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [coverage, setCoverage] = useState<SourceCoverage | null>(null);
+  const [rangeCoverage, setRangeCoverage] = useState<Record<string, unknown> | null>(null);
+  const [snapshot, setSnapshot] = useState<SourceSnapshot | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resource = mode === "dashboard" || mode === "sales" ? "sales-trend" : mode === "products" ? "products" : mode === "inventory" ? "inventory" : "purchase-orders";
+      const params = new URLSearchParams({ resource });
+      if (mode === "dashboard" || mode === "sales") {
+        params.set("from", range.from);
+        params.set("to", range.to);
+      } else {
+        params.set("page", String(page));
+        params.set("size", String(PAGE_SIZE));
+        if (query) params.set("q", query);
+        if (mode === "products") {
+          params.set("catalog_only", "true");
+          params.set("status", status === "all" ? "ACTIVE" : status);
+        }
+        if (mode === "inventory" && negativeOnly) params.set("negative_only", "true");
+        if (mode === "purchase" && status !== "all") params.set("status", status);
+      }
+      const response = await fetch(`/api/shopfront-source?${params}`, { cache: "no-store", credentials: "same-origin" });
+      const payload = await response.json().catch(() => null) as PagePayload | { message?: string } | null;
+      if (!response.ok || !payload || !Array.isArray((payload as PagePayload).data)) {
+        throw new Error(payload && "message" in payload ? payload.message : `Shopfront source request failed (${response.status}).`);
+      }
+      const result = payload as PagePayload;
+      setRows(result.data ?? []);
+      setTotal(Number(result.pagination?.total ?? result.data?.length ?? 0));
+      setRangeCoverage(result.coverage ?? null);
+      setSnapshot(result.snapshot ?? null);
+      setGeneratedAt(new Date().toISOString());
+
+      if (mode === "dashboard" || mode === "inventory") {
+        const coverageResponse = await fetch("/api/shopfront-source?resource=coverage", { cache: "no-store", credentials: "same-origin" });
+        const coveragePayload = await coverageResponse.json().catch(() => null) as CoveragePayload | null;
+        if (!coverageResponse.ok) throw new Error("Shopfront coverage could not be loaded.");
+        setCoverage(coveragePayload?.data ?? null);
+      } else {
+        setCoverage(null);
+      }
+    } catch (cause) {
+      setRows([]);
+      setError(cause instanceof Error ? cause.message : "Shopfront source data is unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }, [mode, negativeOnly, page, query, range, refreshKey, status]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const sums = useMemo(() => rows.reduce<{ revenue: number; cost: number; profit: number; tax: number; discount: number; transactions: number }>((acc, row) => ({
+    revenue: acc.revenue + Number(row.revenue ?? 0),
+    cost: acc.cost + Number(row.cost ?? 0),
+    profit: acc.profit + Number(row.profit ?? 0),
+    tax: acc.tax + Number(row.tax ?? 0),
+    discount: acc.discount + Number(row.discount ?? 0),
+    transactions: acc.transactions + Number(row.transaction_count ?? 0),
+  }), { revenue: 0, cost: 0, profit: 0, tax: 0, discount: 0, transactions: 0 }), [rows]);
+  const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
+  const inventory = coverage?.inventory ?? {};
+  const catalog = coverage?.catalog ?? {};
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const meta = MODE_META[mode];
+
+  function applyRange() {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromInput) || !/^\d{4}-\d{2}-\d{2}$/.test(toInput) || fromInput > toInput) {
+      setError("Choose a valid date range.");
+      return;
+    }
+    setRange({ from: fromInput, to: toInput });
+  }
+
+  function applyQuery() {
+    setPage(1);
+    setQuery(queryInput.trim());
+  }
+
+  return (
+    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Source: Shopfront · SKR</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{meta.title}</h1>
+          {generatedAt && <p className="mt-1 text-xs text-[var(--oh-muted)]">Loaded {dateLabel(generatedAt)} · Adelaide business dates</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href={meta.odooHref} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+            <ExternalLink size={15} aria-hidden="true" /> {meta.odooLabel}
+          </Link>
+          <button type="button" onClick={() => setRefreshKey(value => value + 1)} disabled={loading} aria-label="Refresh Shopfront data" title="Refresh Shopfront data" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] bg-white text-[var(--oh-text)] disabled:opacity-50">
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      <nav aria-label="Shopfront source views" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--oh-border)] bg-white px-4 md:px-6">
+        {(Object.keys(MODE_HREF) as Mode[]).map(view => <Link key={view} href={MODE_HREF[view]} aria-current={view === mode ? "page" : undefined} className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${view === mode ? "border-[var(--oh-primary)] text-[var(--oh-primary)]" : "border-transparent text-[var(--oh-muted)] hover:text-[var(--oh-text)]"}`}>
+          {MODE_LABEL[view]}
+        </Link>)}
+      </nav>
+
+      {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 md:mx-6"><AlertCircle size={16} />{error}</div>}
+
+      {(mode === "sales" || mode === "dashboard") && <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+        <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={fromInput} onChange={event => setFromInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
+        <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">To<input type="date" value={toInput} onChange={event => setToInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
+        <button type="button" onClick={applyRange} className="h-9 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Apply</button>
+      </div>}
+
+      {(mode === "products" || mode === "inventory" || mode === "purchase") && <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+        <label className="grid min-w-60 flex-1 gap-1 text-xs font-medium text-[var(--oh-muted)]">Search<input value={queryInput} onChange={event => setQueryInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter") applyQuery(); }} placeholder="Name, SKU or source ID" className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)]" /></label>
+        {(mode === "products" || mode === "purchase") && <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="h-9 min-w-36 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]">
+          <option value="all">{mode === "products" ? "Active products" : "All statuses"}</option>
+          {mode === "products" ? <option value="NOT_ACTIVE">Not active</option> : <><option value="OPEN">Open</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></>}
+        </select></label>}
+        {mode === "inventory" && <label className="flex h-9 items-center gap-2 px-2 text-sm text-[var(--oh-text)]"><input type="checkbox" checked={negativeOnly} onChange={event => { setNegativeOnly(event.target.checked); setPage(1); }} />Negative stock only</label>}
+        <button type="button" onClick={applyQuery} className="inline-flex h-9 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white"><Search size={15} aria-hidden="true" /> Search</button>
+      </div>}
+
+      {mode === "dashboard" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <Metric label="Revenue" value={money(sums.revenue)} />
+        <Metric label="Cost of goods sold" value={money(sums.cost)} />
+        <Metric label="Shopfront Profit" value={money(sums.profit)} emphasis />
+        <Metric label="Transactions" value={quantity(sums.transactions)} />
+        <Metric label="Active products" value={quantity(catalog.active_records)} />
+        <Metric label="Inventory records" value={quantity(inventory.records)} />
+        <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
+      </div>}
+
+      {mode === "sales" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <Metric label="Revenue" value={money(sums.revenue)} />
+        <Metric label="Cost of goods sold" value={money(sums.cost)} />
+        <Metric label="Shopfront Profit" value={money(sums.profit)} emphasis />
+        <Metric label="Tax" value={money(sums.tax)} />
+        <Metric label="Discount" value={money(sums.discount)} />
+        <Metric label="Transactions" value={quantity(sums.transactions)} />
+      </div>}
+
+      {(mode === "sales" || mode === "dashboard") && missingDates.length > 0 && <div role="status" className="mx-4 mt-3 flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} className="mt-0.5 shrink-0" />Report coverage is incomplete for {missingDates.length} date(s): {missingDates.slice(0, 8).join(", ")}{missingDates.length > 8 ? "…" : ""}.</div>}
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        {mode === "sales" || mode === "dashboard" ? <SalesTable rows={rows} loading={loading} />
+          : mode === "products" ? <ProductsTable rows={rows} loading={loading} />
+            : mode === "inventory" ? <InventoryTable rows={rows} loading={loading} snapshot={snapshot} />
+              : <PurchaseTable rows={rows} loading={loading} />}
+        {!(mode === "sales" || mode === "dashboard") && <div className="flex items-center justify-between border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+          <span className="text-sm text-[var(--oh-muted)]">{total.toLocaleString("en-AU")} records · Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1 || loading} aria-label="Previous page" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] disabled:opacity-40"><ArrowLeft size={16} /></button>
+            <button type="button" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages || loading} aria-label="Next page" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] disabled:opacity-40"><ArrowRight size={16} /></button>
+          </div>
+        </div>}
+      </div>
+    </main>
+  );
+}
+
+function Metric({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+  return <div className="min-w-28"><p className="text-xs font-medium text-[var(--oh-muted)]">{label}</p><p className={`mt-1 text-lg font-semibold ${emphasis ? "text-[var(--oh-primary)]" : "text-[var(--oh-text)]"}`}>{value}</p></div>;
+}
+
+function SalesTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[860px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Business date", "Outlet", "Revenue", "Cost", "Profit", "Tax", "Discount", "Transactions"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+    <tbody className="divide-y divide-[var(--oh-border)]">{rows.map((row, index) => <tr key={`${row.date}-${row.outlet}-${index}`} className="hover:bg-[var(--oh-surface)]">
+      <Cell>{dateLabel(row.date)}</Cell><Cell>{String(row.outlet ?? "—")}</Cell><Cell>{money(row.revenue)}</Cell><Cell>{money(row.cost)}</Cell><Cell className="font-semibold">{money(row.profit)}</Cell><Cell>{money(row.tax)}</Cell><Cell>{money(row.discount)}</Cell><Cell>{quantity(row.transaction_count)}</Cell>
+    </tr>)}</tbody>
+    {loading && <tfoot><tr><td colSpan={8} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront report…</td></tr></tfoot>}
+  </table></TableFrame>;
+}
+
+function ProductsTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[920px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Status", "Product", "SKU / Barcode", "Category", "Cost", "Inventory", "Price"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+    <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
+      const stock = readSourceProductInventory(row);
+      const caseLevel = stock?.caseLevel;
+      const singleLevel = stock?.singleLevel;
+      const inventoryText = stock ? `${quantity(caseLevel)} Cases · ${quantity(singleLevel)} Items` : "—";
+      return <tr key={String(row.shopfront_product_id)} className="hover:bg-[var(--oh-surface)]">
+        <Cell><span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>{String(row.status ?? "UNKNOWN")}</span></Cell>
+        <Cell><span className="font-medium">{String(row.name ?? "—")}</span></Cell>
+        <Cell>{String(row.sku || row.barcode || "—")}</Cell><Cell>{String(row.category ?? "—")}</Cell><Cell>{money(row.cost)}</Cell><Cell>{inventoryText}</Cell><Cell>{money(row.price)}</Cell>
+      </tr>;
+    })}</tbody>
+    {loading && <tfoot><tr><td colSpan={7} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront products…</td></tr></tfoot>}
+  </table></TableFrame>;
+}
+
+function InventoryTable({ rows, loading, snapshot }: { rows: SourceRow[]; loading: boolean; snapshot: SourceSnapshot | null }) {
+  const complete = snapshot?.complete === true;
+  return <>
+    <div className={`flex flex-wrap gap-x-5 gap-y-1 px-4 py-2 text-xs ${complete ? "text-emerald-800" : "text-amber-900"}`}>
+      <span>{complete ? "Snapshot complete" : "Snapshot needs reconciliation"}</span><span>{quantity(snapshot?.source_products)} source products</span><span>Manifest {quantity(snapshot?.products)}</span><span>Captured {dateLabel(snapshot?.snapshot_at)}</span>
+    </div>
+    <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[960px] border-collapse text-left">
+      <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Product", "SKU", "Category", "Outlet", "Quantity", "Cases", "Items", "On order", "Cost"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+      <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
+        const raw = row.raw_payload && typeof row.raw_payload === "object" ? row.raw_payload as SourceRow : {};
+        const qty = Number(row.quantity ?? 0);
+        return <tr key={`${row.shopfront_product_id}-${row.outlet_id}`} className="hover:bg-[var(--oh-surface)]">
+          <Cell><span className="font-medium">{String(row.product_name ?? row.shopfront_product_id ?? "—")}</span></Cell><Cell>{String(row.sku ?? "—")}</Cell><Cell>{String(row.category ?? "—")}</Cell><Cell>{String(row.outlet_name ?? "—")}</Cell>
+          <Cell className={qty < 0 ? "font-semibold text-red-700" : ""}>{quantity(qty)}</Cell><Cell>{quantity(raw.caseLevel)}</Cell><Cell>{quantity(raw.singleLevel)}</Cell><Cell>{quantity(raw.onOrder)}</Cell><Cell>{money(row.cost)}</Cell>
+        </tr>;
+      })}</tbody>
+      {loading && <tfoot><tr><td colSpan={9} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront inventory…</td></tr></tfoot>}
+    </table></TableFrame>
+  </>;
+}
+
+function PurchaseTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[860px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Order date", "Source ID", "Supplier", "Status", "Lines", "Total cost", "Invoice / reference"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+    <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
+      const raw = row.raw_payload && typeof row.raw_payload === "object" ? row.raw_payload as SourceRow : {};
+      return <tr key={String(row.source_id)} className="hover:bg-[var(--oh-surface)]">
+        <Cell>{dateLabel(row.order_date)}</Cell><Cell className="font-mono text-xs">{String(row.source_id ?? "—")}</Cell><Cell>{String(row.supplier_name ?? row.supplier_source_id ?? "—")}</Cell>
+        <Cell><span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>{String(row.status ?? "UNKNOWN")}</span></Cell><Cell>{quantity(row.line_count)}</Cell><Cell>{money(row.total_cost)}</Cell><Cell>{String(raw.invoiceNumber || raw.reference || "—")}</Cell>
+      </tr>;
+    })}</tbody>
+    {loading && <tfoot><tr><td colSpan={7} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront purchase orders…</td></tr></tfoot>}
+  </table></TableFrame>;
+}
