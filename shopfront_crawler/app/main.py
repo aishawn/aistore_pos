@@ -26,7 +26,7 @@ from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManif
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .odoo import OdooSyncClient, receipt_count
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -293,6 +293,15 @@ async def startup() -> None:
         "interval",
         seconds=2,
         id="shopfront-durable-worker",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        scheduled_incremental_sync,
+        "interval",
+        minutes=max(1, int(settings.sync_interval_minutes)),
+        id="shopfront-sync-interval",
         replace_existing=True,
         max_instances=1,
         coalesce=True,
@@ -1689,6 +1698,11 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
             result["pos_staged"] = {"suppliers": len(supplier_rows), "purchase_orders": len(order_rows)}
         finally:
             await pos_client.close()
+    try:
+        result["odoo_purchase_mirror"] = await push_purchase_mirror(db, store)
+    except Exception as exc:
+        logger.warning("Shopfront purchase mirror failed: store=%s error=%r", store.store_key, exc)
+        result["odoo_purchase_mirror"] = {"status": "failed"}
     return result
 
 
@@ -2547,8 +2561,8 @@ async def push_pos_snapshot(
         barcodes = source.get("barcodes") if isinstance(source.get("barcodes"), list) else []
         prices = source.get("prices") if isinstance(source.get("prices"), list) else []
         price = item.unit_price
-        if price is None and prices and isinstance(prices[0], dict):
-            price = prices[0].get("price")
+        if price is None:
+            price = shelf_unit_price(source)
         cost = item.cost if item.cost is not None else source.get("cost")
         return {
             "source_id": source_id,
@@ -2999,6 +3013,77 @@ async def push_pos_snapshot(
     return result
 
 
+def _purchase_scope_denied(message: str) -> bool:
+    text = message.lower()
+    return any(token in text for token in ("permission", "scope", "unauthor", "forbidden", "see_suppliers", "see_stock"))
+
+
+async def push_purchase_mirror(db: Session, store: Store) -> dict:
+    """Read Shopfront purchase orders into the Odoo mirror. Never receive stock."""
+    fallback_token = settings.shopfront_integration_token or settings.pos_api_token
+    if not (settings.odoo_import_enabled and settings.odoo_api_base_url and (settings.odoo_api_token or fallback_token)):
+        return {"status": "skipped"}
+    odoo = OdooSyncClient(settings.odoo_api_base_url, settings.odoo_api_token, settings.odoo_api_database, True, False, fallback_token)
+    client = get_client(settings, store)
+    try:
+        token = await access_token(db, settings, store)
+        try:
+            rows = await client.fetch_purchase_orders(token)
+        except ShopfrontError as exc:
+            if _purchase_scope_denied(str(exc)):
+                await odoo.sync("purchase_orders", store.store_key, [], extra={"purchase_scope": "unauthorized"})
+            logger.warning("Shopfront purchase mirror skipped: store=%s error=%s", store.store_key, str(exc)[:300])
+            return {"status": "skipped"}
+        items = []
+        for row in rows:
+            source_id = str(row.get("id") or "").strip()
+            total = row.get("totalCost")
+            if not source_id or total is None or total == "":
+                continue
+            supplier = row.get("supplier") if isinstance(row.get("supplier"), dict) else {}
+            items.append({
+                "source_id": source_id,
+                "status": row.get("status"),
+                "order_date": row.get("orderDate"),
+                "total_cost": total,
+                "supplier_source_id": supplier.get("id"),
+                "raw_payload": row,
+            })
+        if not items:
+            await odoo.sync("purchase_orders", store.store_key, [], extra={"mirror_only": True})
+        for offset in range(0, len(items), 100):
+            await odoo.sync("purchase_orders", store.store_key, jsonable_encoder(items[offset:offset + 100]), extra={"mirror_only": True})
+        await notify_pos_ui_sync(store.store_key)
+        return {"status": "completed", "purchase_orders": len(items)}
+    finally:
+        await client.close()
+        await odoo.close()
+
+
+async def scheduled_incremental_sync() -> None:
+    """Refresh today's open business day and yesterday's late edits."""
+    local_now = datetime.now(ZoneInfo(settings.sync_timezone))
+    today = local_now.date()
+    start = today - timedelta(days=1)
+    db = next(get_db())
+    try:
+        for store_key in settings.stores():
+            if active_job(db, store_key):
+                continue
+            db.add(SyncJob(
+                store_key=store_key,
+                job_type="daily_sync",
+                status="queued",
+                from_date=start.isoformat(),
+                to_date=today.isoformat(),
+                cursor_date=start.isoformat(),
+                payload={"include_supply_chain": False, "purchase_mirror": True, "full_inventory_snapshot": False},
+            ))
+        db.commit()
+    finally:
+        db.close()
+
+
 def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date, date]:
     today = local_now.date()
     # The late evening run captures today's business day; the overnight run closes yesterday.
@@ -3107,6 +3192,15 @@ async def run_daily_sync_job(job_id: int) -> None:
                         f"{item.get('entity')}: {item.get('message')}"
                         for item in supply_chain.get("errors", [])
                     )[:2000]
+        if (job.payload or {}).get("purchase_mirror"):
+            store = db.scalar(select(Store).where(Store.store_key == job.store_key))
+            if store:
+                try:
+                    mirrored = await push_purchase_mirror(db, store)
+                    job.payload = {**(job.payload or {}), "purchase_mirror_result": mirrored}
+                    db.commit()
+                except Exception as exc:
+                    logger.warning("Shopfront purchase mirror failed: store=%s error=%r", job.store_key, exc)
         db.refresh(job)
         if job.status == "running":
             job.status = "completed"
@@ -3570,7 +3664,7 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
             "source_created_at": raw.get("createdAt"),
             "source_updated_at": raw.get("updatedAt"),
             "cost": p.cost,
-            "price": p.price if p.price is not None else (prices[0].get("price") if prices and isinstance(prices[0], dict) else None),
+            "price": p.price if p.price is not None else shelf_unit_price(raw),
             "prices": prices,
             "raw_payload": raw,
         }

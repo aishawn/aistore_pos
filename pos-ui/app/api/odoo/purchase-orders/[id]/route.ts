@@ -83,6 +83,38 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   try {
     const companyIds = await getCompanyIds(request, sessionId);
+    const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").split(",")[0].trim().toLowerCase().split(":")[0];
+    if (host === "skr.orithos.com.au" || host === "demo.orithos.com.au") {
+      const mirrored = await rpc<Array<Record<string, unknown>>>(sessionId, "shopfront.sync.purchase.order", "search_read", [[
+        ["id", "=", purchaseId], ["store_key", "=", "skr"], ["company_id", "in", companyIds],
+      ]], { fields: ["id", "source_id", "source_status", "order_date", "source_total", "company_id", "raw_payload"], limit: 1 }).catch(() => null);
+      const row = mirrored?.[0];
+      if (row) {
+        const raw = row.raw_payload && typeof row.raw_payload === "object" ? row.raw_payload as Record<string, unknown> : {};
+        const supplier = raw.supplier && typeof raw.supplier === "object" ? raw.supplier as Record<string, unknown> : {};
+        const products = Array.isArray(raw.products) ? raw.products : [];
+        return NextResponse.json({
+          order: {
+            id: row.id, name: String(row.source_id || row.id),
+            partner_id: [0, String(supplier.name || "Shopfront supplier")],
+            date_order: row.order_date || false, state: String(row.source_status || "purchase"),
+            amount_total: Number(row.source_total || 0), amount_untaxed: Number(row.source_total || 0), amount_tax: 0,
+            currency_id: [0, "AUD"], company_id: row.company_id, user_id: false, origin: false, order_line: [],
+          },
+          lines: products.map((line, index) => {
+            const item = line && typeof line === "object" ? line as Record<string, unknown> : {};
+            const product = item.item && typeof item.item === "object" ? item.item as Record<string, unknown> : {};
+            return {
+              id: index + 1, product_id: [0, String(product.name || "Shopfront product")], name: String(product.name || "Shopfront product"),
+              product_qty: Number(item.orderedQuantity || 0), price_unit: Number(item.orderedCost || 0), price_subtotal: Number(item.orderedCost || 0),
+              qty_received: 0, date_planned: false,
+            };
+          }),
+          receipts: [],
+          url: "https://skr.onshopfront.com/reports/purchase",
+        });
+      }
+    }
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
     const orderFields = await rpc<Record<string, { type?: string }>>(sessionId, "purchase.order", "fields_get", [["picking_ids", "receipt_status"]], { attributes: ["type"] });
     const availableOrderFields = ["picking_ids", "receipt_status"].filter((field) => Object.hasOwn(orderFields ?? {}, field));

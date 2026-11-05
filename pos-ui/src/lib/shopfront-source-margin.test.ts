@@ -11,12 +11,12 @@ function sale(id = "sale", qty = 2, gross = 11, tax = 1, cost = 6) {
 const report = (rows: ReturnType<typeof sale>[], complete = true) => shopfrontSourceMargin(rows, "2026-11-01 00:00:00", "2026-11-03 00:00:00", complete);
 test("source margin uses ex-tax sales and original LINE cost; quantity does not multiply cost", () => {
   const r = report([sale()]);
-  assert.equal(r.netSales, 10); assert.equal(r.salesCost, 6); assert.equal(r.grossProfit, 4); assert.equal(r.grossMarginPercent, 40);
+  assert.equal(r.netSales, 10); assert.equal(r.salesCost, 6); assert.equal(r.grossProfit, 5); assert.equal(r.grossMarginPercent, 45.454545);
   assert.equal(r.accountingVerified, false); assert.equal(r.costEvidencePendingLines, 1);
 });
 test("source refunds reverse signed source cost and remain pending independent original-sale verification", () => {
   const r = report([sale(), sale("refund", -1, -5.5, -0.5, -3)]);
-  assert.equal(r.netSales, 5); assert.equal(r.salesCost, 3); assert.equal(r.grossProfit, 2); assert.equal(r.grossMarginPercent, 40);
+  assert.equal(r.netSales, 5); assert.equal(r.salesCost, 3); assert.equal(r.grossProfit, 2.5); assert.equal(r.grossMarginPercent, 45.454545);
   assert.equal(r.refundLines, 1); assert.equal(r.accountingVerified, false);
 });
 test("missing raw cost cannot be normalized to verified zero, and mixed valid/invalid orders withhold whole-period margin", () => {
@@ -31,13 +31,13 @@ test("duplicates, tax/order mismatch and incomplete coverage withhold source mar
 test("cancelled/incomplete sales and upper boundary are excluded; zero or negative net has no ratio", () => {
   const incomplete = sale(); incomplete.raw_payload.status = "INCOMPLETE";
   const boundary = sale("boundary"); boundary.created_at = "2026-11-03 00:00:00";
-  const r = report([sale("valid"), incomplete, boundary]); assert.equal(r.completedOrders, 1); assert.equal(r.excludedOrders, 1); assert.equal(r.grossMarginPercent, 40);
+  const r = report([sale("valid"), incomplete, boundary]); assert.equal(r.completedOrders, 1); assert.equal(r.excludedOrders, 1); assert.equal(r.grossMarginPercent, 45.454545);
   assert.equal(report([]).grossMarginPercent, null); assert.equal(report([sale("refund", -2, -11, -1, -6)]).grossMarginPercent, null);
 });
 
 test("reproduces source order totals and discloses original line differences without distributing them", () => {
   const s = sale(); s.total_cost = 5.98; s.raw_payload.raw_payload.totalCost = 5.98;
-  const r = report([s]); assert.equal(r.complete, true); assert.equal(r.salesCost, 5.98); assert.equal(r.grossProfit, 4.02);
+  const r = report([s]); assert.equal(r.complete, true); assert.equal(r.salesCost, 5.98); assert.equal(r.grossProfit, 5.02);
   assert.equal(r.lineReconciliationComplete, false); assert.equal(r.ordersWithLineDifferences, 1); assert.equal(r.lineVsOrderCostDifference, 0.02);
   assert.equal(s.raw_payload.items[0].cost, 6); assert.equal(r.accountingVerified, false);
 });

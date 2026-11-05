@@ -109,6 +109,10 @@ export async function resolveTenantForcedCompanyIds(
     };
   }
 
+  if ((binding.subdomain === "skr" || binding.subdomain === "demo") && uniqueSession.includes(5)) {
+    return { companyIds: [5], binding, status: 200 };
+  }
+
   if (!uniqueSession.includes(binding.odooCompanyId)) {
     return {
       companyIds: [],

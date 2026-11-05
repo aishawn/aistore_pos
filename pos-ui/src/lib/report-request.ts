@@ -92,7 +92,7 @@ function responseReportBody(body: Record<string, unknown>, syncEventsCoverPeriod
     ...visible,
     ...(visible.sourceReconciliation === "mismatch" ? { sourceReconciliation: "unavailable" } : {}),
   };
-  const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown; grossSales?: unknown; tax?: unknown };
+  const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown; grossSales?: unknown; tax?: unknown; completedOrders?: unknown };
   if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)) return {
     ...visible,
     sourceReconciliation: reconcileSourceGrossTotals({ sourceGross: fallback.grossSales, sourceTax: fallback.tax,
@@ -102,13 +102,20 @@ function responseReportBody(body: Record<string, unknown>, syncEventsCoverPeriod
     odooPositiveGross: visible.grossSales, odooPositiveTax: visible.grossTax, comparisonBasis: "distinct_ledgers" });
   const sourceReconciliation = calculatedReconciliation;
   const preserveLedgerMargin = visible.grossMarginStatus === "verified";
+  const sourceGross = typeof fallback.grossSales === "number" && Number.isFinite(fallback.grossSales) ? fallback.grossSales : null;
+  const sourceTax = typeof fallback.tax === "number" && Number.isFinite(fallback.tax) ? fallback.tax : null;
+  const sourceOrders = typeof fallback.completedOrders === "number" && Number.isFinite(fallback.completedOrders) ? fallback.completedOrders : null;
+  const sourceFigures = sourceGross === null ? {} : Object.hasOwn(visible, "yesterdayGrossMargin")
+    ? { yesterdaySales: sourceGross, ...(sourceTax !== null ? { yesterdayTax: sourceTax } : {}) }
+    : { revenue: sourceGross, grossSales: sourceGross, ...(sourceTax !== null ? { tax: sourceTax, grossTax: sourceTax } : {}), ...(sourceOrders !== null ? { transactions: sourceOrders } : {}) };
   return {
     ...visible,
+    ...sourceFigures,
     ...(!preserveLedgerMargin ? {
       ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
       grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
       grossMarginStatus: syncEventsCoverPeriod ? "source_margin" : "source_margin_unverified",
-      grossMarginBasis: "shopfront_original_sale_cost",
+      grossMarginBasis: "shopfront_revenue_minus_cost",
     } : {}),
     sourceReconciliation,
   };

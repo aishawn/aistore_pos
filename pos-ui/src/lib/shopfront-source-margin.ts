@@ -91,8 +91,8 @@ export function shopfrontSourceMargin(rows: AuditRecord[], from: string, to: str
   if (!coverageComplete) result.issues.push({ saleId: "", reasons: ["SOURCE_COVERAGE_NOT_VERIFIED"] });
   if (result.complete) {
     result.grossSales = sum(gross); result.tax = sum(taxes); result.netSales = sum([result.grossSales, -result.tax]); result.salesCost = sum(costs);
-    result.grossProfit = sum([result.netSales, -result.salesCost]);
-    result.grossMarginPercent = result.netSales > 0 ? divideCost(multiplyCost(result.grossProfit, 100), result.netSales) : null;
+    result.grossProfit = sum([result.grossSales, -result.salesCost]);
+    result.grossMarginPercent = result.grossSales > 0 ? divideCost(multiplyCost(result.grossProfit, 100), result.grossSales) : null;
   }
   return result;
 }

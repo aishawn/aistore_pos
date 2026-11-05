@@ -95,6 +95,45 @@ export async function GET(request: NextRequest) {
   try {
     const correlationId = request.headers.get("x-correlation-id");
     const companyIds = await getCompanies(request, sessionId);
+    const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").split(",")[0].trim().toLowerCase().split(":")[0];
+    if (host === "skr.orithos.com.au" || host === "demo.orithos.com.au") {
+      const runs = await rpc<Array<{ status?: string; error?: string }>>(sessionId, "shopfront.sync.import.run", "search_read", [[
+        ["store_key", "=", "skr"], ["import_type", "=", "purchase_orders"],
+      ]], { fields: ["status", "error"], limit: 1, order: "id desc" }, correlationId).catch(() => null);
+      if (runs?.[0]?.status === "failed" && /not authorized/i.test(String(runs[0].error || ""))) {
+        return NextResponse.json({ message: "Shopfront purchasing is not authorized for this store." }, { status: 403 });
+      }
+      const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "shopfront.sync.purchase.order", "search_read", [[
+        ["store_key", "=", "skr"], ["company_id", "in", companyIds],
+      ]], {
+        fields: ["id", "source_id", "supplier_source_id", "source_status", "order_date", "source_total", "company_id", "raw_payload"],
+        limit: limit + 1, offset, order: "id desc",
+      }, correlationId).catch(() => null);
+      if (rows) {
+        const filtered = rows.filter((row) => {
+          const status = String(row.source_status || "");
+          const sourceId = String(row.source_id || "");
+          const raw = row.raw_payload && typeof row.raw_payload === "object" ? row.raw_payload as Record<string, unknown> : {};
+          const supplier = raw.supplier && typeof raw.supplier === "object" ? raw.supplier as Record<string, unknown> : {};
+          const supplierName = String(supplier.name || "");
+          if (requestedState !== "all" && status.toLowerCase() !== requestedState) return false;
+          if (query && !`${sourceId} ${supplierName}`.toLowerCase().includes(query.toLowerCase())) return false;
+          return true;
+        });
+        const hasNext = filtered.length > limit;
+        const items = filtered.slice(0, limit).map((row) => {
+          const raw = row.raw_payload && typeof row.raw_payload === "object" ? row.raw_payload as Record<string, unknown> : {};
+          const supplier = raw.supplier && typeof raw.supplier === "object" ? raw.supplier as Record<string, unknown> : {};
+          return {
+            id: row.id, name: String(row.source_id || row.id),
+            partner_id: [0, String(supplier.name || row.supplier_source_id || "Shopfront supplier")],
+            date_order: row.order_date || false, state: String(row.source_status || "purchase"),
+            amount_total: Number(row.source_total || 0), currency_id: [0, "AUD"], company_id: row.company_id, order_line: [],
+          };
+        });
+        return NextResponse.json({ items, limit, offset, hasNext, generatedAt: new Date().toISOString(), scope: ["SKR"] }, { headers: { "Cache-Control": "no-store" } });
+      }
+    }
     const companies = await rpc<Array<{ id: number; name: string }>>(sessionId, "res.company", "read", [companyIds], {
       fields: ["id", "name"],
       context: { allowed_company_ids: companyIds },

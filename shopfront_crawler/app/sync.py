@@ -148,6 +148,17 @@ def business_date(value: Any, fallback: date, timezone_name: str = "Australia/Ad
     return parsed.astimezone(local_zone).date().isoformat()
 
 
+def shelf_unit_price(item: dict[str, Any]) -> Decimal | None:
+    """Use the quantity-1 price tier. The first tier can be a case price."""
+    prices = item.get("prices") if isinstance(item.get("prices"), list) else []
+    for row in prices:
+        if isinstance(row, dict) and parse_decimal(row.get("quantity")) == Decimal("1"):
+            price = parse_decimal(first(row, "price", "Price"))
+            if price is not None:
+                return price
+    return parse_decimal(first(item, "price", "Price", "retailPrice"))
+
+
 def _non_empty(value: Any) -> bool:
     return value is not None and value != "" and value != [] and value != {}
 
@@ -342,9 +353,7 @@ def _upsert_sale_product(
         product.cost = incoming_cost
     incoming_price = parse_decimal(first(incoming, "price", "Price", "retailPrice", "basePrice"))
     if incoming_price is None:
-        prices = incoming.get("prices") if isinstance(incoming.get("prices"), list) else []
-        if prices and isinstance(prices[0], dict):
-            incoming_price = parse_decimal(first(prices[0], "price", "Price"))
+        incoming_price = shelf_unit_price(incoming)
     if incoming_price is None:
         incoming_price = parse_decimal(first(sale_item, "basePrice", "unitPrice"))
     if incoming_price is not None and product.price is None:
@@ -1011,7 +1020,7 @@ async def sync_store(
             product.category = first(item, "categoryName") or category.get("name")
             product.brand = first(item, "brandName") or brand.get("name")
             product.cost = parse_decimal(first(item, "cost", "Cost"))
-            product.price = parse_decimal(first(item, "price", "Price", "retailPrice")) or (parse_decimal(prices[0].get("price")) if prices and isinstance(prices[0], dict) else None)
+            product.price = parse_decimal(first(item, "price", "Price", "retailPrice")) or shelf_unit_price(item)
             product.raw_payload = item
             product.synced_at = datetime.now(timezone.utc)
             product.catalog_last_seen_at = product.synced_at

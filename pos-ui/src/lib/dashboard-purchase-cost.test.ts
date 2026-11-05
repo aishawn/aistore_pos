@@ -56,7 +56,7 @@ test('complete Shopfront source evidence is retained as a separate margin fallba
  }) as ReportRpc;
  const r=await calculateReport(rpc,{...options,sourceStore:'skr'});
  assert.equal(r.grossMarginStatus,'sales_mismatch');
- assert.equal(r.sourceMarginFallback?.grossMarginPercent,0.4);
+ assert.equal(r.sourceMarginFallback?.grossMarginPercent,0.45454545);
  assert.equal(r.sourceMarginFallback?.coverage,1);
  assert.equal(r.sourceMarginFallback?.grossSales,11);
  assert.equal(r.sourceMarginFallback?.tax,1);
