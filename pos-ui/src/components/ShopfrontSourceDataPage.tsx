@@ -376,20 +376,21 @@ function SalesTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) 
 }
 
 function ProductsTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
-  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[1420px] border-collapse text-left">
-    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Status", "Product", "SKU / Barcode", "Category", "Brand", "Family", "Supplier", "Type", "Retail Tax", "Purchase Tax", "Cost", "Inventory", "Price"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[860px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Status", "Product", "Category", "Cost", "Inventory", "Price"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
     <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
       const stock = readSourceProductInventory(row);
       const caseLevel = stock?.caseLevel;
       const singleLevel = stock?.singleLevel;
-      const inventoryText = stock ? `${quantity(caseLevel)} Cases · ${quantity(singleLevel)} Items` : "—";
+      const caseQuantity = sourceNumber(row, "case_quantity", "caseQuantity");
+      const inventoryText = stock ? caseQuantity > 1 ? `${quantity(caseLevel)} Cases · ${quantity(singleLevel)} Items` : `${quantity(singleLevel)} Items` : "—";
       return <tr key={String(row.shopfront_product_id)} className="hover:bg-[var(--oh-surface)]">
         <Cell><span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>{String(row.status ?? "UNKNOWN")}</span></Cell>
         <Cell><span className="font-medium">{String(row.name ?? "—")}</span></Cell>
-        <Cell>{String(row.sku || row.barcode || "—")}</Cell><Cell>{String(row.category ?? "—")}</Cell><Cell>{String(row.brand ?? "—")}</Cell><Cell>{String(row.family ?? "—")}</Cell><Cell>{String(row.supplier ?? "—")}</Cell><Cell>{String(row.type ?? "—")}</Cell><Cell>{String(row.tax_rate ?? "—")}</Cell><Cell>{String(row.cost_tax_rate ?? "—")}</Cell><Cell>{money(row.cost)}</Cell><Cell>{inventoryText}</Cell><Cell>{money(row.price)}</Cell>
+        <Cell>{String(row.category ?? "—")}</Cell><Cell>{money(row.cost)}</Cell><Cell>{inventoryText}</Cell><Cell>{money(row.price)}</Cell>
       </tr>;
     })}</tbody>
-    {loading && <tfoot><tr><td colSpan={13} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront products…</td></tr></tfoot>}
+    {loading && <tfoot><tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront products…</td></tr></tfoot>}
   </table></TableFrame>;
 }
 
