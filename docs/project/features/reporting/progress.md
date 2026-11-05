@@ -7,7 +7,8 @@ Updated: 2026-11-05. Owner: TBD.
 - Rechecked current `main` (`9b4c8510`) and both public version endpoints. SKR and Demo return frontend/backend runtime `9b4c8510`; this runtime includes the report route and coverage corrections. The purchase comparison state fix recorded below is a follow-up patch and awaits deployment.
 - Rechecked the staged workflow surfaces: report navigation separates Sales report from Sales History, Purchase analysis from Purchase Orders, and exposes Register Closures directly. Sales and purchase pages support Today, custom date ranges, previous-period/year comparison, and URL-backed grouping/columns; inventory keeps stock filters, sort, progressive loading, and full-snapshot CSV/print.
 - Fixed a stale comparison display in Purchase report: changing the date/group/comparison now clears the previous comparison result and error while the new requests load.
-- Online report data reconciliation, CSV/print parity, and authenticated interaction remain unverified in this follow-up. See [validation](validation.md) and [runtime review session](../../../test-sessions/2026-11-05-report-optimization-runtime-review.md).
+- SKR authenticated read-only check on runtime `9b4c8510`: Sales for the Adelaide business day 2026-11-04 returned 141 orders and `$3,760.72`; order gross and date-group amount reconciled to `$0.00`. Purchase and closure queries returned zero rows for that day. Dashboard `period=yesterday` returned a cached zero-sales result while claiming `completeness=complete`; forced refresh queued asynchronously, but the follow-up poll returned 401. This is an OPEN dashboard snapshot/auth continuity discrepancy, not evidence that the sales orders are absent.
+- Online CSV/print parity and the new purchase comparison behavior remain unverified. See [validation](validation.md) and [runtime review session](../../../test-sessions/2026-11-05-report-optimization-runtime-review.md).
 
 ## Current worktree
 

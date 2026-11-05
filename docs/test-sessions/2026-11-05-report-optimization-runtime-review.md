@@ -23,6 +23,9 @@
 | `git diff --check` | PASS | No whitespace errors. |
 | Runtime identity | PASS | Both public version endpoints returned `9b4c8510`, matching current `main` before the purchase comparison state fix. |
 | Unauthenticated report route response | INFO | `/reports` and `/reports/dashboard` redirect to login; no authenticated page behavior was asserted. |
+| SKR direct sales report | PASS (read-only) | On `9b4c8510`, business date 2026-11-04 in `Australia/Adelaide`: 141 orders, `$3,760.72` order gross, `$3,760.72` date-group total, `$0.00` difference. |
+| SKR purchase and closure report | INFO (read-only) | Both returned zero matching rows for 2026-11-04. |
+| Dashboard versus sales report | OPEN / INCONSISTENT | Dashboard returned zero sales with `completeness=complete`; forced refresh queued (202), but task poll returned 401. Data freshness/reconciliation was not established. |
 | Odoo data reconciliation, CSV completeness, print parity | NOT RUN | Requires authenticated Odoo/report access; no business writes were attempted. |
 
 ## Follow-up

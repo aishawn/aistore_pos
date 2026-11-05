@@ -12,6 +12,7 @@ type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: nu
 type CoveragePayload = { data?: SourceCoverage };
 
 const PAGE_SIZE = 50;
+const PRODUCTS_PAGE_SIZE = 600;
 const MODE_META: Record<Mode, { title: string; odooHref: string; odooLabel: string }> = {
   dashboard: { title: "Shopfront dashboard", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
   sales: { title: "Shopfront sales", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
@@ -136,6 +137,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const pageSize = mode === "products" ? PRODUCTS_PAGE_SIZE : PAGE_SIZE;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -153,7 +155,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         if (query) params.set("q", query);
       } else {
         params.set("page", String(page));
-        params.set("size", String(PAGE_SIZE));
+        params.set("size", String(pageSize));
         if (query) params.set("q", query);
         if (mode === "products") {
           params.set("status", status === "all" ? "ACTIVE" : status);
@@ -197,7 +199,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false);
     }
-  }, [mode, negativeOnly, page, productFilters, query, range, refreshKey, status]);
+  }, [mode, negativeOnly, page, pageSize, productFilters, query, range, refreshKey, status]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -214,7 +216,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
   const inventory = coverage?.inventory ?? {};
   const catalog = coverage?.catalog ?? {};
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const meta = MODE_META[mode];
 
   function applyRange() {

@@ -441,7 +441,7 @@ async def shopfront_source_report(
     from_date: date | None = Query(None, alias="from"),
     to_date: date | None = Query(None, alias="to"),
     page: int = Query(1, ge=1),
-    size: int = Query(100, ge=1, le=500),
+    size: int = Query(100, ge=1, le=600),
     q: str | None = None,
     negative_only: bool = False,
     dashboard: bool = False,
