@@ -35,7 +35,6 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
   const marginNote = pulseMarginNote(data);
   const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";
   const marginHref = `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
-  const netUnits = data.inventoryNetUnits;
   const negativeStockHref = "/products?view=negative-stock";
 
   return (
@@ -60,16 +59,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           note={marginNote} />
         <Metric label="Sellable units" href="/products"
           title={stockAvailable ? "Sum of positive on-hand balances by product across internal locations." : undefined}
-          value={stockAvailable ? (
-            <div className="flex flex-col gap-0.5">
-              <span>{data.inventoryUnits!.toLocaleString("en-AU")}</span>
-              {netUnits != null && Number.isFinite(netUnits) && (
-                <span className={netUnits < 0 ? "text-sm font-medium text-amber-800" : "text-sm text-[var(--oh-muted)]"}>
-                  Net {netUnits.toLocaleString("en-AU")}
-                </span>
-              )}
-            </div>
-          ) : "—"}
+          value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
           note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : !stockAvailable ? "Temporarily unavailable"
             : data.inventoryStatus === "negative_stock" ? `${data.negativeStockProducts ?? 0} SKUs below zero · review list` : "Positive on-hand only"}
           noteHref={data.inventoryStatus === "negative_stock" ? negativeStockHref : undefined} />
