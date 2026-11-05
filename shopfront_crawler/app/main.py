@@ -3725,6 +3725,7 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
             "brand": x.brand or (raw.get("brand") or {}).get("name"),
             "brand_id": (raw.get("brand") or {}).get("id"),
             "family": (raw.get("family") or {}).get("name"),
+            "supplier": ((raw.get("coreSupplier") or raw.get("lastSupplier") or ((raw.get("suppliers") or [None])[0] if isinstance(raw.get("suppliers"), list) else None)) or {}).get("name") if isinstance(((raw.get("coreSupplier") or raw.get("lastSupplier") or ((raw.get("suppliers") or [None])[0] if isinstance(raw.get("suppliers"), list) else None)) or {}), dict) else None,
             "family_id": (raw.get("family") or {}).get("id"),
             "description": raw.get("description"),
             "image": raw.get("image"),
