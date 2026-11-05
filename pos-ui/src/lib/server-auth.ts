@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const REFRESH_COOKIE = "orithos_refresh_token";
 export const ACCESS_COOKIE = "orithos_access_token";
-const REFRESH_MAX_AGE = 14 * 24 * 60 * 60;
+const REFRESH_MAX_AGE = 365 * 24 * 60 * 60;
 
 export function isSameOrigin(request: NextRequest) {
   const originHeader = request.headers.get("origin");
