@@ -522,11 +522,14 @@ async def shopfront_source_report(
                     except (TypeError, ValueError):
                         pass
         transaction_count = len(sales_rows)
+        user_rows = sorted(users.values(), key=lambda row: (-int(row["transactions"]), str(row["name"])))
+        for user_row in user_rows:
+            user_row["average_sale"] = round(float(user_row["revenue"]) / int(user_row["transactions"]), 2) if user_row["transactions"] else 0
         metrics = {
             "customer_count": len(customer_ids),
             "basket_size": round(quantity_total / transaction_count, 2) if transaction_count else 0,
             "top_products": sorted(top_products.values(), key=lambda row: (-float(row["quantity"]), str(row["name"])))[:20],
-            "users": sorted(users.values(), key=lambda row: (-int(row["transactions"]), str(row["name"]))),
+            "users": user_rows,
         }
     if q and q.strip():
         needle = q.strip().casefold()
