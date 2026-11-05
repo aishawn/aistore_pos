@@ -116,8 +116,14 @@ class OdooSyncClient:
                     break
                 if import_type == "sales":
                     skipped = business.get("skipped")
-                    imported = receipt_count(business.get("imported"))
-                    updated = receipt_count(business.get("updated_orders"))
+                    imported_value = business.get("imported")
+                    if imported_value is None:
+                        imported_value = business.get("created")
+                    updated_value = business.get("updated_orders")
+                    if updated_value is None:
+                        updated_value = business.get("updated")
+                    imported = receipt_count(imported_value)
+                    updated = receipt_count(updated_value)
                     if imported is None or updated is None:
                         last_error = "Odoo sales receipt has invalid imported/updated counts"
                         break

@@ -71,8 +71,14 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
     if not isinstance(business, dict):
         raise RuntimeError("Odoo did not confirm formal Shopfront sales business writes")
 
-    imported = receipt_count(business.get("imported", 0))
-    updated = receipt_count(business.get("updated_orders", 0))
+    imported_value = business.get("imported")
+    if imported_value is None:
+        imported_value = business.get("created", 0)
+    updated_value = business.get("updated_orders")
+    if updated_value is None:
+        updated_value = business.get("updated", 0)
+    imported = receipt_count(imported_value)
+    updated = receipt_count(updated_value)
     if imported is None or updated is None:
         raise RuntimeError("Odoo sales response contains invalid imported/updated counts")
     skipped = business.get("skipped")

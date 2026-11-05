@@ -42,6 +42,14 @@ def test_audit_odoo_sales_batch_accepts_legacy_receipt_when_counts_cover_every_i
     assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0}
 
 
+def test_audit_odoo_sales_batch_normalizes_legacy_created_updated_fields():
+    audit = main.audit_odoo_sales_batch(
+        {"result": {"ok": True, "business": {"created": "2", "updated": 1.0}}},
+        expected_count=3,
+    )
+    assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0}
+
+
 @pytest.mark.parametrize(
     "business, expected_error",
     [

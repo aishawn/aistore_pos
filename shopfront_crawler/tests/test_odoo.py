@@ -102,6 +102,21 @@ def test_sales_business_write_accepts_legacy_complete_receipt_without_skipped_li
     asyncio.run(run())
 
 
+def test_sales_business_write_accepts_legacy_created_updated_count_names():
+    async def run():
+        body = {"jsonrpc": "2.0", "result": {"ok": True, "item_count": 2, "business": {
+            "created": 1, "updated": 1,
+        }}}
+        http = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+        client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, business_write=True, http=http)
+        try:
+            await client.sync("sales", "skr", [{"id": "sale-1"}, {"id": "sale-2"}])
+        finally:
+            await client.close()
+
+    asyncio.run(run())
+
+
 def test_sales_business_write_does_not_infer_missing_skips_from_partial_counts():
     async def run():
         body = {"jsonrpc": "2.0", "result": {"ok": True, "item_count": 2, "business": {
