@@ -53,3 +53,5 @@ The harness was corrected to use `ODOO_USER`/`ODOO_PASS` (or service-account equ
 ## Dokploy Read-Only Check
 
 The Odoo compose was queried through Dokploy without changing it: `composeStatus=done`, Git source is the `main` branch, `composePath=./docker-compose.yml`, and `autoDeploy=true`. The newest listed Odoo deployment finished on 2026-11-04; there was no newer Odoo deployment during this check. This rules out a pending deployment as the immediate explanation, but does not prove the `web` container is healthy. Owner action is to inspect the Odoo compose/container health and logs in Dokploy, then rerun the direct Odoo health and POS AI probes.
+
+The compose record has no `serverId` or embedded `server` object, and Dokploy `server.all` returned an empty list for this account. The Dokploy API therefore cannot provide container-level health/log evidence in this session. This is an observability limitation, not evidence that the Odoo container is stopped or healthy.
