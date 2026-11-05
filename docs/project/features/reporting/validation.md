@@ -6,7 +6,7 @@ Updated: 2026-11-05. Owner: TBD.
 
 | Check | Status | Evidence and limits |
 |---|---|---|
-| TypeScript typecheck | PASS | Full `npm run typecheck` exited 0 with Node 24.22.1 on the current working tree; see [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
+| TypeScript typecheck | PASS ON PRE-FAST-FORWARD CANDIDATE | Full `npm run typecheck` exited 0 with Node 24.22.1 before `main` advanced to `cf022f55`; the rerun on the updated base was interrupted after prolonged silence. Report changes were unchanged; rerun before the next code change or release. |
 | Targeted ESLint | NOT RUN (FINAL RERUN INTERRUPTED) | The previous candidate run reported 0 errors / 16 React effect warnings; this final rerun produced no diagnostics and was interrupted after more than two minutes. Re-run before the next code change or release. |
 | Focused report/date/inventory tests | PASS | 39/39 across report date presets, DST boundaries, inventory totals/snapshots, cache scoping, cash variance summary, purchase report dates, and sales reconciliation; see [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
 | Project fact-library checker | PASS | Follow-up checker result and Markdown count are recorded in [session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md); required structure, local links/headings and evidence assertions verified |
