@@ -1,4 +1,6 @@
 import asyncio
+import math
+import re
 from typing import Any
 
 import httpx
@@ -6,6 +8,19 @@ import httpx
 
 class OdooIntegrationError(RuntimeError):
     pass
+
+
+def receipt_count(value: Any) -> int | None:
+    """Normalize integer counts from Odoo JSON-RPC without accepting fractions."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer() and value >= 0:
+        return int(value)
+    if isinstance(value, str) and re.fullmatch(r"\d+", value.strip()):
+        return int(value.strip())
+    return None
 
 
 class OdooSyncClient:
@@ -101,9 +116,9 @@ class OdooSyncClient:
                     break
                 if import_type == "sales":
                     skipped = business.get("skipped")
-                    imported = business.get("imported")
-                    updated = business.get("updated_orders")
-                    if not isinstance(imported, int) or not isinstance(updated, int) or imported < 0 or updated < 0:
+                    imported = receipt_count(business.get("imported"))
+                    updated = receipt_count(business.get("updated_orders"))
+                    if imported is None or updated is None:
                         last_error = "Odoo sales receipt has invalid imported/updated counts"
                         break
                     if skipped is None and imported + updated == len(items):

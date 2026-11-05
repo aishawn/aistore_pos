@@ -116,3 +116,36 @@ def test_sales_business_write_does_not_infer_missing_skips_from_partial_counts()
             await client.close()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("count", [2.0, "2"])
+def test_sales_business_write_accepts_integer_valued_legacy_counts(count):
+    async def run():
+        body = {"jsonrpc": "2.0", "result": {"ok": True, "item_count": 2, "business": {
+            "imported": count, "updated_orders": 0,
+        }}}
+        http = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+        client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, business_write=True, http=http)
+        try:
+            await client.sync("sales", "skr", [{"id": "sale-1"}, {"id": "sale-2"}])
+        finally:
+            await client.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("count", [2.5, True, "2.5", -1])
+def test_sales_business_write_rejects_non_integer_legacy_counts(count):
+    async def run():
+        body = {"jsonrpc": "2.0", "result": {"ok": True, "item_count": 2, "business": {
+            "imported": count, "updated_orders": 0,
+        }}}
+        http = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
+        client = OdooSyncClient("https://odoo.example", "token", "aipos_uat", True, business_write=True, http=http)
+        try:
+            with pytest.raises(OdooIntegrationError, match="invalid imported/updated counts"):
+                await client.sync("sales", "skr", [{"id": "sale-1"}, {"id": "sale-2"}])
+        finally:
+            await client.close()
+
+    asyncio.run(run())

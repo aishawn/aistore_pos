@@ -24,7 +24,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .odoo import OdooSyncClient
+from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
@@ -71,8 +71,10 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
     if not isinstance(business, dict):
         raise RuntimeError("Odoo did not confirm formal Shopfront sales business writes")
 
-    imported = int(business.get("imported") or 0)
-    updated = int(business.get("updated_orders") or 0)
+    imported = receipt_count(business.get("imported", 0))
+    updated = receipt_count(business.get("updated_orders", 0))
+    if imported is None or updated is None:
+        raise RuntimeError("Odoo sales response contains invalid imported/updated counts")
     skipped = business.get("skipped")
     if skipped is None and imported + updated == expected_count:
         skipped = []
