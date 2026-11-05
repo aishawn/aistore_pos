@@ -228,7 +228,14 @@ export function useOverview() {
       setData(cached.data);
       setLoading(false);
       const freshFor = cached.data.cacheStatus === "STALE" ? 15_000 : PULSE_FRESH_MS;
-      if (Date.now() - cached.at < freshFor) return;
+      // A cached Odoo-only summary can contain zero inventory while the
+      // Shopfront source snapshot is healthy. Keep the fast paint, but force
+      // a revalidation until the source inventory metric has been confirmed.
+      const sourceInventoryConfirmed = cached.data.shopfrontReportsMode === "source"
+        && cached.data.sourceInventoryAvailable === true
+        && cached.data.inventoryAvailable === true
+        && Number.isFinite(cached.data.inventoryUnits);
+      if (Date.now() - cached.at < freshFor && sourceInventoryConfirmed) return;
     } else {
       setLoading(true);
     }
