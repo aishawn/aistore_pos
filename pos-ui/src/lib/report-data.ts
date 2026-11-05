@@ -71,12 +71,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
   const yesterdaySales = marginMetrics.salesTotal;
   const yesterdayTax = marginMetrics.tax;
   const netSales = marginMetrics.netSales;
-  const reconciled = marginMetrics.reconciled && (!sourceMarginFallback
-    || (Math.abs(sourceMarginFallback.grossSales - marginMetrics.salesTotal) < 0.011
-      && marginMetrics.tax !== null && Math.abs(sourceMarginFallback.tax - marginMetrics.tax) < 0.011));
-  const sourceReconciliation = sourceMarginFallback
-    ? reconciled ? "matched" : "mismatch"
-    : "unavailable";
+  const sourceReconciliation = sourceMarginFallback ? "not_comparable" : "unavailable";
   const stockAvailable = Array.isArray(stockRows) && stockRows.every(row => numeric(row.quantity) && row.product_uom_id !== false);
   const mixedUnits = stockAvailable && new Set(stockRows.map(row => row.product_uom_id && row.product_uom_id[0])).size > 1;
   // Negative quants are shortage adjustments, not sellable units. Aggregate by
@@ -91,7 +86,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     yesterdayGrossMargin: marginMetrics.margin, grossMarginCoverage: marginMetrics.coverage, grossMarginStatus: marginMetrics.status,
     sourceReconciliation,
     sourceMarginFallback,
-    salesReconciled: reconciled, salesReconciliationDifference: netSales !== null && marginMetrics.lineNet !== null ? Math.round((marginMetrics.lineNet - netSales) * 100) / 100 : null,
+    salesReconciled: marginMetrics.reconciled, salesReconciliationDifference: netSales !== null && marginMetrics.lineNet !== null ? Math.round((marginMetrics.lineNet - netSales) * 100) / 100 : null,
     costBasis: "odoo_recorded_cost", yesterdayFrom: from, yesterdayTo: to,
   };
 }
@@ -214,10 +209,10 @@ export async function calculateReport(rpc: ReportRpc, options: {
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
     }
 
-    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, marginMetrics, sourceMarginFallback] = await Promise.all([
+  const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, marginMetrics, sourceMarginFallback] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
-      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
+    rpc<Array<{ amount_total?: number; amount_tax?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
       rpc<number>(sessionId, "pos.order", "search_count", [refundDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []], {}, correlationId),
       readSalesTrend(rpc, sessionId, salesDomain, rangeHours, timezone, correlationId, calendarPeriod?.trendGranularity ?? (customRange ? "day" : undefined)),
@@ -265,6 +260,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       trendGranularity: trendData.granularity,
       revenue,
       grossSales,
+      grossTax: Number(grossSummary.amount_tax ?? 0),
       refunds,
       refundTransactions,
       grossMarginPercent: marginMetrics.margin,

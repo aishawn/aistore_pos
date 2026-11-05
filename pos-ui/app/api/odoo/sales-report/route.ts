@@ -3,6 +3,7 @@ import { companyReportRpc } from "@/lib/report-odoo";
 import { reportAccess } from "@/lib/report-request";
 import { readShopfrontSyncState } from "@/lib/report-snapshots";
 import { reconcileSalesAmounts } from "@/lib/sales-report-reconciliation";
+import { summarizeSalesTotals } from "@/lib/sales-report-totals";
 import { isValidBusinessDay, localMidnightUtc, shiftDay } from "@/lib/replenishment-safety";
 
 export const runtime = "nodejs";
@@ -83,7 +84,14 @@ export async function GET(request: NextRequest) {
       const orderById = new Map((orders ?? []).map((order) => [order.id, order]));
       return NextResponse.json({ detailType: "lines", total: Number(count ?? 0), totalAmount: Number(totals?.[0]?.price_subtotal_incl ?? 0), offset: detailOffset, hasNext: detailOffset + (items?.length ?? 0) < Number(count ?? 0), rows: (items ?? []).map((item) => { const orderId = Array.isArray(item.order_id) ? Number(item.order_id[0]) : 0; const order = orderById.get(orderId); return { id: Number(item.id), order: Array.isArray(item.order_id) ? String(item.order_id[1]) : "", date: order?.date_order ?? "", product: Array.isArray(item.product_id) ? String(item.product_id[1]) : "", quantity: Number(item.qty ?? 0), amount: Number(item.price_subtotal_incl ?? 0) }; }) }, { headers: { "Cache-Control": "no-store" } });
     }
-    const orderTotals = await rpc<Array<{ amount_total?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []]);
+    const refundDomain = [...orderDomain.filter((item) => !(Array.isArray(item) && item[0] === "amount_total")), ["amount_total", "<", 0]];
+    const [orderTotals, refundTotals, refundCount] = await Promise.all([
+      rpc<Array<{ amount_total?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []]),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []]),
+      rpc<number>(sessionId, "pos.order", "search_count", [refundDomain]),
+    ]);
+    const refundOrderTotal = Number(refundTotals?.[0]?.amount_total ?? 0);
+    const salesTotals = summarizeSalesTotals(Number(orderTotals?.[0]?.amount_total ?? 0), refundOrderTotal);
     let rows: Row[];
     if (group === "day") {
       const grouped = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: scope.timezone } });
@@ -129,6 +137,8 @@ export async function GET(request: NextRequest) {
         csvRows.push([], exportColumns.map((column) => column === "label" ? "Order gross total" : column === "amount" ? reconciliation.orderGrossAmount.toFixed(2) : ""));
         csvRows.push(exportColumns.map((column) => column === "label" ? "Grouped total" : column === "amount" ? reconciliation.groupedAmount.toFixed(2) : ""));
         csvRows.push(exportColumns.map((column) => column === "label" ? "Grouped minus order total" : column === "amount" ? reconciliation.difference.toFixed(2) : ""));
+        csvRows.push(exportColumns.map((column) => column === "label" ? "Negative-total refund orders" : column === "count" ? Number(refundCount ?? 0) : column === "amount" ? salesTotals.refunds.toFixed(2) : ""));
+        csvRows.push(exportColumns.map((column) => column === "label" ? "Net sales after refund orders" : column === "amount" ? salesTotals.netSales.toFixed(2) : ""));
       }
       const csv = `\uFEFF${csvRows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
       return new NextResponse(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="sales-report-${from}-${to}.csv"`, "Cache-Control": "no-store" } });
@@ -136,7 +146,7 @@ export async function GET(request: NextRequest) {
     const pageSize = 100;
     const shopfrontSync = scope.shopfrontStore ? await readShopfrontSyncState(scope, from, to) : null;
     const reconciliation = reconcileSalesAmounts(Number(orderTotals?.[0]?.amount_total ?? 0), totalAmount);
-    const result = { company: company.name, currency: company.currency, timezone: scope.timezone, source: "Odoo completed POS orders with positive order totals", shopfrontSync, from, to, generatedAt: new Date().toISOString(), group, totalRows: rows.length, totalAmount: reconciliation.groupedAmount, orderGrossAmount: reconciliation.orderGrossAmount, reconciliationDifference: reconciliation.difference, reconcilesToCent: reconciliation.reconcilesToCent, orderCount: Number(orderTotals?.[0]?.__count ?? 0), totalCount, totalQuantity, offset: printAll ? 0 : offset, hasNext: printAll ? false : offset + pageSize < rows.length, rows: printAll ? rows : rows.slice(offset, offset + pageSize) };
+    const result = { company: company.name, currency: company.currency, timezone: scope.timezone, source: "Odoo completed POS orders; groups use positive-total orders, net sales also subtract negative-total refund orders", shopfrontSync, from, to, generatedAt: new Date().toISOString(), group, totalRows: rows.length, totalAmount: reconciliation.groupedAmount, orderGrossAmount: reconciliation.orderGrossAmount, refundOrderTotal, refundAmount: salesTotals.refunds, refundOrderCount: Number(refundCount ?? 0), netSalesAmount: salesTotals.netSales, reconciliationDifference: reconciliation.difference, reconcilesToCent: reconciliation.reconcilesToCent, orderCount: Number(orderTotals?.[0]?.__count ?? 0), totalCount, totalQuantity, offset: printAll ? 0 : offset, hasNext: printAll ? false : offset + pageSize < rows.length, rows: printAll ? rows : rows.slice(offset, offset + pageSize) };
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;

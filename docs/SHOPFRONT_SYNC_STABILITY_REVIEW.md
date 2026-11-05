@@ -23,6 +23,7 @@ R2 曾经位于这条链路旁边：独立 worker 从对象存储下载 SQLite/C
 - 产品/库存首次同步会拉完整目录；后续通过 catalog checkpoint 增量更新。销售按 14 天窗口切片，写入本地事实库后再分页推送。
 - 供应链默认关闭；开启后按 `SHOPFRONT_SUPPLY_CHAIN_INTERVAL_DAYS`（默认 7 天）运行。客户同步也不是每次 daily sync 自动运行，而是在历史任务完成后按配置排队。
 - `POS_IMPORT_ENABLED` 控制 POS 镜像写入；`ODOO_IMPORT_ENABLED` 控制 Odoo 同步客户端；`ODOO_BUSINESS_WRITE_ENABLED` 再控制 Odoo 业务写入。三者必须分别观测，不能用一个“同步成功”替代。
+- 销售历史在 Odoo 的 `shopfront.sync.sale` / `shopfront.sync.sale.line` 中作为独立镜像保存。当前 Odoo 代码不会把历史 Shopfront 销售建成原生 `pos.order`，因为这样可能触发库存出库/入库；所以 Shopfront 汇总与 Odoo POS 原生销售报表是不同账本，不能用两边金额不相等判定漏单。需分别核验 Shopfront 镜像的源 ID/明细完整性，以及 Odoo 原生订单与自身订单行的一致性。
 
 因此，当前系统可以稳定地做“产品、库存、最近 3 天销售”的重复补偿同步；若“所有数据”包含客户、供应商、采购单和全量历史，当前默认配置还没有做到每日全量，需要在真实门店授权后单独开启并验证。
 

@@ -6,6 +6,7 @@ import { isSameOrigin } from "./server-auth";
 import { calculateReport } from "./report-data";
 import { calculateDeadStock } from "./dead-stock-data";
 import { getReportPeriodBounds } from "./report-period.ts";
+import { reconcileSourceGrossTotals } from "./report-source-reconciliation.ts";
 import { isValidBusinessDay, salesDate } from "./replenishment-safety.ts";
 import { companyReportRpc, readReportCompany } from "./report-odoo";
 import { verifiedShopfrontSourceStore, verifiedShopfrontSourceStoreFromHost } from "./shopfront-store-scope";
@@ -85,43 +86,31 @@ function response(body: unknown, status = 200, timing?: string) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...(timing ? { "Server-Timing": timing } : {}) } });
 }
 
-function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean, periodThrough?: string | null) {
+function responseReportBody(body: Record<string, unknown>, syncEventsCoverPeriod: boolean) {
   const { sourceMarginFallback, ...visible } = body;
-  if (!sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
+  if (!sourceMarginFallback || typeof sourceMarginFallback !== "object") return {
+    ...visible,
+    ...(visible.sourceReconciliation === "mismatch" ? { sourceReconciliation: "unavailable" } : {}),
+  };
   const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown; grossSales?: unknown; tax?: unknown };
-  if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)) return visible;
-  const expectedSales = Object.hasOwn(visible, "yesterdaySales") ? visible.yesterdaySales : visible.revenue;
-  const expectedTax = Object.hasOwn(visible, "yesterdayTax") ? visible.yesterdayTax : visible.tax;
-  const calculatedReconciliation = typeof fallback.grossSales === "number" && Number.isFinite(fallback.grossSales)
-    && typeof expectedSales === "number" && Number.isFinite(expectedSales)
-    && typeof fallback.tax === "number" && Number.isFinite(fallback.tax)
-    && typeof expectedTax === "number" && Number.isFinite(expectedTax)
-    ? Math.abs(fallback.grossSales - expectedSales) < 0.011 && Math.abs(fallback.tax - expectedTax) < 0.011 ? "matched" : "mismatch"
-    : "unavailable";
-  const sourceReconciliation = visible.sourceReconciliation === "matched" || visible.sourceReconciliation === "mismatch"
-    ? visible.sourceReconciliation : calculatedReconciliation;
-  const mismatch = sourceReconciliation === "mismatch";
-  // A complete, paginated Shopfront mirror is itself coverage evidence. The
-  // Redis sync event is an operational signal and can be missing after a
-  // restart or deployment; it must not hide a reconciled margin that was just
-  // verified from the source rows.
-  const mirrorComplete = calculatedReconciliation === "matched";
+  if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)) return {
+    ...visible,
+    sourceReconciliation: reconcileSourceGrossTotals({ sourceGross: fallback.grossSales, sourceTax: fallback.tax,
+      odooPositiveGross: visible.grossSales, odooPositiveTax: visible.grossTax, comparisonBasis: "distinct_ledgers" }),
+  };
+  const calculatedReconciliation = reconcileSourceGrossTotals({ sourceGross: fallback.grossSales, sourceTax: fallback.tax,
+    odooPositiveGross: visible.grossSales, odooPositiveTax: visible.grossTax, comparisonBasis: "distinct_ledgers" });
+  const sourceReconciliation = calculatedReconciliation;
   const preserveLedgerMargin = visible.grossMarginStatus === "verified";
   return {
     ...visible,
-    ...(mirrorComplete && !mismatch && visible.completeness !== "complete" ? { completeness: "complete" } : {}),
-    ...(mirrorComplete && !mismatch && periodThrough && !visible.sourceSyncedThrough ? {
-      sourceSyncedThrough: periodThrough,
-      sourceSyncStatus: "completed",
-    } : {}),
     ...(!preserveLedgerMargin ? {
       ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
       grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
-      grossMarginStatus: sourceComplete ? "source_margin" : "source_margin_unverified",
+      grossMarginStatus: syncEventsCoverPeriod ? "source_margin" : "source_margin_unverified",
       grossMarginBasis: "shopfront_original_sale_cost",
     } : {}),
     sourceReconciliation,
-    ...(mismatch ? { completeness: "incomplete", salesReconciled: false } : {}),
   };
 }
 
@@ -146,14 +135,15 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const periodFrom = bounds ? salesDate(bounds.start.toISOString(), access.scope.timezone) : customBounds ? fromDay : null;
     const periodThrough = bounds ? salesDate(new Date(bounds.end.getTime() - 1).toISOString(), access.scope.timezone) : customBounds ? toDay : null;
     const sourceState = await readShopfrontSyncState(access.scope, periodFrom, periodThrough);
-    const sourceComplete = Boolean(sourceState && sourceState.status === "completed" && periodFrom && periodThrough
+    const sourceSyncEventsCoverPeriod = Boolean(sourceState && sourceState.status === "completed" && periodFrom && periodThrough
       && sourceState.fromDay <= periodFrom && sourceState.toDay >= periodThrough);
     const sourceMetadata = {
       sourceSyncedThrough: sourceState?.toDay ?? null,
       sourceSyncUpdatedAt: sourceState?.updatedAt ?? null,
       syncRunId: sourceState?.runId ?? null,
       dataRevision: await snapshotRevision(access.scope),
-      completeness: sourceComplete ? "complete" : sourceState?.status === "partial" || sourceState?.status === "failed" ? "incomplete" : "unverified",
+      completeness: sourceState?.status === "partial" || sourceState?.status === "failed" ? "incomplete" : "unverified",
+      sourceSyncEventsCoverPeriod,
       sourceSyncStatus: sourceState?.status ?? "unknown",
     };
     const force = request.nextUrl.searchParams.get("refresh") === "true";
@@ -181,7 +171,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         nextTask = job.id;
         if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
       }
-      if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete, periodThrough), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
+      if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceSyncEventsCoverPeriod), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
       `auth;dur=${authMs.toFixed(1)}, cache;dur=${(performance.now() - started - authMs).toFixed(1)}, odoo;desc="0 aggregate calls"`);
     }
@@ -214,7 +204,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       }
       snapshot = await flight;
     }
-    return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete, periodThrough), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
+    return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceSyncEventsCoverPeriod), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
       `auth;dur=${authMs.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`);
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;

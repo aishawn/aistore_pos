@@ -38,6 +38,8 @@ Latest report optimization: [2026-11-05 report optimization](test-sessions/2026-
 
 Latest report live acceptance: [2026-11-05 report live acceptance](test-sessions/2026-11-05-report-live-acceptance.md): runtime `756a42e9` on both stores contains the report implementation; SKR report pages returned HTTP 200 except `/reports` (redirect fix pending). Odoo session establishment failed and report APIs returned 401. Local full unit suite 175/175 and TypeScript PASS. Data reconciliation, CSV/print, and browser interactions remain NOT RUN.
 
+Latest report ledger/refund candidate: [2026-11-05 report ledger and refund metrics](test-sessions/2026-11-05-report-ledger-and-refunds.md): full frontend suite 182/182, focused reporting checks 19/19, Node 24 TypeScript and docs checks PASS. Shopfront historical mirror and native Odoo POS totals are separate ledgers (`not_comparable`); candidate runtime, authenticated UI, CSV/print and same-ledger online reconciliation remain NOT RUN.
+
 
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
@@ -58,7 +60,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 |---|---|---|---|---|---|---|
 | `SHP-001` (formal sale receipt mode) | 2026-11-04-shopfront-business-write-receipt | PASS: 27 crawler tests; online state BLOCKED | `007064cc` plus candidate diff | Not verified | [Session](test-sessions/2026-11-04-shopfront-business-write-receipt.md) | Deploy exact candidate; read run 173; separately authorize and verify formal sale backfill |
 | `RPT-001` (reporting workflows, filters, totals, exports) | 2026-11-05-report-live-acceptance | Code deployed `756a42e9`; Odoo session BLOCKED; report data reconciliation/CSV/print NOT RUN | Report implementation `71a715a7` | SKR/Demo runtime `756a42e9` | [Session](test-sessions/2026-11-05-report-live-acceptance.md) | Deploy `/reports` redirect; restore Odoo session; reconcile Overview, groups, source details, exports and print read-only |
-| `RPT-001` (report optimization runtime review) | 2026-11-05-report-optimization-runtime-review | PASS: frontend unit 175/175, typecheck and docs checker; direct sales PASS; Dashboard mismatch flagged incomplete; CSV/print NOT RUN | `9b4c8510` plus fix | SKR/Demo runtime `7617e3ce` | [Session](test-sessions/2026-11-05-report-optimization-runtime-review.md) | Investigate Dashboard snapshot/data mismatch and auth poll; reconcile groups, details, CSV and print |
+| `RPT-001` (report ledger and refund metrics candidate) | 2026-11-05-report-ledger-and-refunds | PASS: full frontend 182/182, focused 19/19, typecheck and docs checks; deployment/UI/CSV/print NOT RUN | `809ef630` plus working-tree changes | POS runtime `809ef630`; crawler/Odoo SHA unavailable | [Session](test-sessions/2026-11-05-report-ledger-and-refunds.md) | Deploy through main, verify runtime SHA/build, then reconcile Odoo-native orders, details, CSV and print; audit Shopfront mirror independently |
 | `UI-001` (inventory navigation static subset) | 2026-11-04-inventory-navigation | PASS: TypeScript; ESLint 0 errors / 14 warnings | Candidate pending commit | Not deployed | [Session](test-sessions/2026-11-04-inventory-navigation.md) | Deploy main; verify route access, permissions and SHA |
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
@@ -119,6 +121,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-05-report-columns | 2026-11-05 | Shared report column selection, CSV schema, and print visibility | Scoped report/API TypeScript PASS; reconciliation tests 3/3 PASS; browser and live checks NOT RUN | [Report](test-sessions/2026-11-05-report-columns.md) |
 | 2026-11-05-report-optimization | 2026-11-05 | Report source drill-down, inventory URL/column behavior, and metadata | Report tests 10/10; full/scoped TypeScript PASS; ESLint 0 errors / 19 warnings; browser/live checks NOT RUN | [Report](test-sessions/2026-11-05-report-optimization.md) |
 | 2026-11-05-report-optimization-runtime-review | 2026-11-05 | Current-main workflow review, purchase comparison state, deployment identity | 175/175 frontend unit tests, typecheck and docs checker PASS; direct sales PASS, Dashboard mismatch flagged incomplete, unresolved; CSV/print NOT RUN | [Report](test-sessions/2026-11-05-report-optimization-runtime-review.md) |
+| 2026-11-05-report-ledger-and-refunds | 2026-11-05 | Distinct sales ledgers, negative-total refunds, net sales and focused checks | 10/10 focused tests and typecheck PASS; docs checker, deployment, authenticated UI, CSV/print NOT RUN | [Report](test-sessions/2026-11-05-report-ledger-and-refunds.md) |
 
 ## Classification rule
 

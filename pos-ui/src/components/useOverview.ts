@@ -16,7 +16,7 @@ export type OverviewPulse = {
   cacheStatus?: string;
   updateStatus?: string;
   completeness?: "complete" | "incomplete" | "unverified";
-  sourceReconciliation?: "matched" | "mismatch" | "unavailable";
+  sourceReconciliation?: "matched" | "mismatch" | "unavailable" | "not_comparable";
   sourceSyncedThrough?: string | null;
   dataRevision?: string;
   taskId?: string;
