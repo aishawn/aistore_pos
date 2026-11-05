@@ -6,8 +6,8 @@ Updated: 2026-11-05. Owner: TBD.
 
 | Check | Status | Evidence and limits |
 |---|---|---|
-| TypeScript typecheck | PASS ON PRE-FAST-FORWARD CANDIDATE | Full `npm run typecheck` exited 0 with Node 24.22.1 before `main` advanced to `cf022f55`; the rerun on the updated base was interrupted after prolonged silence. Report changes were unchanged; rerun before the next code change or release. |
-| Targeted ESLint | NOT RUN (FINAL RERUN INTERRUPTED) | The previous candidate run reported 0 errors / 16 React effect warnings; this final rerun produced no diagnostics and was interrupted after more than two minutes. Re-run before the next code change or release. |
+| TypeScript typecheck | PASS | Full `npm run typecheck` exited 0 with Node 24.22.1 on the current worktree, including the `/reports` redirect route. |
+| Targeted ESLint | NOT RUN (RERUN INTERRUPTED) | ESLint on `app/reports/page.tsx` produced no diagnostics but was interrupted after more than five minutes; the prior candidate run reported 0 errors / 16 React effect warnings. |
 | Focused report/date/inventory tests | PASS | 39/39 across report date presets, DST boundaries, inventory totals/snapshots, cache scoping, cash variance summary, purchase report dates, and sales reconciliation; see [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
 | Full frontend unit suite | PASS | `npm run test:unit`: 175/175 on Node 24.22.1; all frontend library suites passed, including reporting, inventory, date/DST, source scoping, and reconciliation helpers. |
 | Project fact-library checker | PASS | Follow-up checker result and Markdown count are recorded in [session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md); required structure, local links/headings and evidence assertions verified |
@@ -20,16 +20,20 @@ Updated: 2026-11-05. Owner: TBD.
 | Inventory column/filter URL implementation | INFO | Source inspection confirms query/category/stock/sort/columns are URL-backed and inventory CSV/print reuse the snapshot; refresh/back behavior and full export parity still require browser verification |
 | Sales and purchase source drill-down implementation | INFO | Scoped API domains and amount summaries are implemented; browser interaction and source-to-group reconciliation remain NOT RUN |
 | Source inspection of report routes and UI | INFO | Current working-tree source reviewed; this does not identify the deployed SHA |
+| Runtime identity | PASS (report code deployed) | SKR and Demo public version endpoints both return frontend/backend SHA `756a42e9958f5fc232f6b4a800ab07723e7838b8`, built 2026-11-05 13:35 UTC; this runtime contains report implementation commit `71a715a7`. |
+| SKR report route access | PARTIAL | On runtime `756a42e9`, `/reports/dashboard`, `/reports/sales`, `/reports/purchase`, `/reports/closures`, `/reports/inventory`, and `/products?view=inventory` returned HTTP 200 after POS login. `/reports` returned 404; a redirect to `/reports/dashboard` is added locally and awaits deployment. No rendered browser interaction was verified. |
+| POS/Odoo session | BLOCKED | On runtime `756a42e9`, SKR POS login returned 200. `GET /api/odoo/session` returned HTTP 200 with `user: null` and `autoRecoverConfigured: true`; manual Odoo session connect previously returned 502. Direct GETs to Odoo `/` and `/web/login?db=aipos_uat` timed out from this environment. |
+| Live report API | BLOCKED | Authenticated requests to Overview, sales groups, purchase groups, closures, and inventory metadata returned 401 because no `orithos_odoo_session` could be established. No report data was returned. |
 | Date boundary, store timezone, and company scope | NOT RUN | Requires fixtures or authenticated read-only environment checks |
 | Sales totals reconciled to Odoo source orders and lines | NOT RUN | Must separately compare orders vs sale lines; refunds and zero-total orders are excluded |
 | Purchase count/amount reconciled to Odoo | NOT RUN | Must confirm `purchase` and `done` state semantics for target Odoo configuration |
 | Register cash difference reconciled to closed sessions | NOT RUN | Validate null values, rounding, and expected/count cash fields |
 | Register closure list, visible columns, and full print result | NOT RUN | Source now renders the rows and requests all matching print rows; browser and Odoo read-only confirmation remain required |
 | Shopfront coverage and Odoo reconciliation | PARTIAL | Read-only live checks on runtime SHA `1e7f3a1e`: both hosts reported sync event `completed`; SKR yesterday Odoo revenue `$3,760.72` versus source gross `$4,068.63` (144 source orders, tax `$334.36`); demo Odoo revenue `$0` versus the same source. Candidate now flags this mismatch, but it awaits deployment and repeat validation |
-| Deployment identity | BLOCKED | At the latest runtime check, main app-source SHA was `6121dba2b99fea9689b1082d7a83e496fa3b6e83`; SKR and Demo public version endpoints return frontend/backend SHA `cf022f55a6a9a793c78941597e269ca610fd467a` (built 2026-11-05 12:50 UTC). Supplied Dokploy webhook returned `Branch Not Match`; no retry was made. Verify Dokploy repository/ref/root/Compose settings before deployment. |
+| Deployment identity | PASS (report implementation) | Runtime `00b81626c8ff09be7a965eddd4f3a0f6d7288425` on SKR and Demo contains report implementation `71a715a7`; main pushes auto-deployed even though a manual webhook attempt had returned `Branch Not Match`. |
 | Inventory scope reconciliation | PARTIAL | Before the candidate fix, SKR product inventory reported `0` across 2,263 products while dashboard sellable units were `52,026`; demo reported 49,498 vs dashboard 49,504 across 12,986 products. Product routes lacked warehouse context and dashboard stock lacked a bound-location filter; candidate fix awaits live confirmation |
 | CSV formula injection, export completeness, print layout | NOT RUN | Column selection is wired to sales, purchase, closure, and inventory exports/print rendering, but no browser/export runtime check has been performed |
-| Report page, Odoo source reconciliation, CSV/print parity | NOT RUN | Current runtime SHA does not contain the report changes; complete read-only browser/data acceptance only after the correct main SHA is deployed |
+| Report data reconciliation, CSV/print parity | NOT RUN | Odoo session is unavailable, so matching-range totals, source drill-down, exports, and print output could not be requested. Retry after Odoo connectivity/session recovery. |
 
 ## Required evidence for a PASS
 

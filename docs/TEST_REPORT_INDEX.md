@@ -36,7 +36,7 @@ Latest report column selection: [2026-11-05 report columns](test-sessions/2026-1
 
 Latest report optimization: [2026-11-05 report optimization](test-sessions/2026-11-05-report-optimization.md): local report tests 10/10, full and scoped TypeScript PASS, targeted ESLint 0 errors / 19 warnings, project docs checker PASS. Browser, Odoo source reconciliation, and deployment identity remain NOT RUN.
 
-Latest report optimization follow-up: [2026-11-05 report optimization follow-up](test-sessions/2026-11-05-report-optimization-follow-up.md): full frontend unit suite 175/175, including report tests 39/39; TypeScript passed on the pre-fast-forward candidate and final reruns were interrupted. SKR and Demo run `cf022f55` while report code is on main at `71a715a7`; the Dokploy webhook returned `Branch Not Match`. Browser/Odoo report reconciliation remains NOT RUN.
+Latest report live acceptance: [2026-11-05 report live acceptance](test-sessions/2026-11-05-report-live-acceptance.md): runtime `756a42e9` on both stores contains the report implementation; SKR report pages returned HTTP 200 except `/reports` (redirect fix pending). Odoo session establishment failed and report APIs returned 401. Local full unit suite 175/175 and TypeScript PASS. Data reconciliation, CSV/print, and browser interactions remain NOT RUN.
 
 
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
@@ -57,7 +57,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | Suite ID | Latest session | Result | Source SHA | Runtime SHA | Evidence | Next action |
 |---|---|---|---|---|---|---|
 | `SHP-001` (formal sale receipt mode) | 2026-11-04-shopfront-business-write-receipt | PASS: 27 crawler tests; online state BLOCKED | `007064cc` plus candidate diff | Not verified | [Session](test-sessions/2026-11-04-shopfront-business-write-receipt.md) | Deploy exact candidate; read run 173; separately authorize and verify formal sale backfill |
-| `RPT-001` (reporting workflows, filters, totals, exports) | 2026-11-05-report-optimization-follow-up | Full local unit suite 175/175; deployment BLOCKED (`Branch Not Match`); browser/Odoo reconciliation NOT RUN | Report implementation `71a715a7`; app-source SHA at runtime check `6121dba2` | SKR/Demo runtime `cf022f55` | [Session](test-sessions/2026-11-05-report-optimization-follow-up.md) | Verify Dokploy repository/ref/root/Compose settings; deploy matching main SHA; then run read-only page/export/source reconciliation |
+| `RPT-001` (reporting workflows, filters, totals, exports) | 2026-11-05-report-live-acceptance | Code deployed `756a42e9`; Odoo session BLOCKED; report data reconciliation/CSV/print NOT RUN | Report implementation `71a715a7` | SKR/Demo runtime `756a42e9` | [Session](test-sessions/2026-11-05-report-live-acceptance.md) | Deploy `/reports` redirect; restore Odoo session; reconcile Overview, groups, source details, exports and print read-only |
 | `UI-001` (inventory navigation static subset) | 2026-11-04-inventory-navigation | PASS: TypeScript; ESLint 0 errors / 14 warnings | Candidate pending commit | Not deployed | [Session](test-sessions/2026-11-04-inventory-navigation.md) | Deploy main; verify route access, permissions and SHA |
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
