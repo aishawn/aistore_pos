@@ -3338,8 +3338,18 @@ async def run_daily_sync_job(job_id: int) -> None:
             store = db.scalar(select(Store).where(Store.store_key == job.store_key))
             if store:
                 try:
-                    mirrored = await push_purchase_mirror(db, store)
+                    # Purchase mirroring is a secondary enrichment step. An
+                    # unavailable POS endpoint must not leave the completed
+                    # sales job running forever and block the next cycle.
+                    mirrored = await asyncio.wait_for(
+                        push_purchase_mirror(db, store),
+                        timeout=120,
+                    )
                     job.payload = {**(job.payload or {}), "purchase_mirror_result": mirrored}
+                    db.commit()
+                except asyncio.TimeoutError:
+                    logger.warning("Shopfront purchase mirror timed out: store=%s", job.store_key)
+                    job.payload = {**(job.payload or {}), "purchase_mirror_result": {"status": "timeout"}}
                     db.commit()
                 except Exception as exc:
                     logger.warning("Shopfront purchase mirror failed: store=%s error=%r", job.store_key, exc)
