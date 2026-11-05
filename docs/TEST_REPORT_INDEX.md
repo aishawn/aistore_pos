@@ -30,6 +30,8 @@ Latest Shopfront page refresh follow-up: [2026-11-05 page refresh](test-sessions
 
 Latest Shopfront page refresh deployment follow-up: [2026-11-05 page refresh deployment](test-sessions/2026-11-05-shopfront-page-refresh-deploy.md): filled the remaining stock-list and Inventory-dialog stamp refresh gaps. Auto-deploy is enabled, but the only running job is for pre-candidate SHA `1511804b`; the pushed candidate has no deployment record and both public runtime SHAs remain stale. Online acceptance is BLOCKED pending a normal Deploy after the old job terminates.
 
+Latest Shopfront exact schedule candidate: [2026-11-06 exact schedule](test-sessions/2026-11-06-shopfront-exact-schedule.md): Adelaide `23:00` / `02:30` durable jobs with full inventory intent persisted at enqueue; schedule tests 6/6 and inventory import regression subset 45/45 passed, compile/docs checks pass. Not deployed; Shopfront-to-crawler/POS numeric parity and Sales Profit source parity remain open.
+
 Latest report reconciliation: [2026-11-05 sales report reconciliation](test-sessions/2026-11-05-report-reconciliation.md): focused reconciliation helper tests 3/3 PASS and scoped report TypeScript PASS; full project typecheck remains blocked by a separate Shopfront source page error; no Odoo reads/writes or deployment checks.
 
 Latest report column selection: [2026-11-05 report columns](test-sessions/2026-11-05-report-columns.md): scoped report/API TypeScript PASS and reconciliation tests 3/3 PASS; latest ESLint and browser export/print checks NOT RUN; online data reconciliation pending.

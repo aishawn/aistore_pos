@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     # Routine runs cover only today and yesterday. Historical repair is queued
     # explicitly so a missed day cannot expand every scheduled run.
     sync_lookback_days: int = 2
+    sync_daily_times: str = "23:00,02:30"
+    sync_full_inventory_times: str = "23:00,02:30"
+    # Legacy hour/minute settings remain available for existing deployments.
     sync_daily_hours: str = "6,23"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
@@ -171,6 +174,37 @@ class Settings(BaseSettings):
         if not hours or any(hour < 0 or hour > 23 for hour in hours):
             raise ValueError("SYNC_DAILY_HOURS must contain one or more hours from 0 to 23")
         return hours
+
+    @staticmethod
+    def _parse_sync_times(value: str, setting_name: str, *, allow_empty: bool = False) -> list[str]:
+        times: set[str] = set()
+        try:
+            for item in value.split(","):
+                item = item.strip()
+                if not item:
+                    continue
+                hour_text, separator, minute_text = item.partition(":")
+                if not separator or len(hour_text) != 2 or len(minute_text) != 2:
+                    raise ValueError
+                hour, minute = int(hour_text), int(minute_text)
+                if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+                    raise ValueError
+                times.add(f"{hour:02d}:{minute:02d}")
+        except ValueError as exc:
+            raise ValueError(f"{setting_name} must be comma-separated HH:MM values") from exc
+        if not times and not allow_empty:
+            raise ValueError(f"{setting_name} must contain at least one HH:MM value")
+        return sorted(times)
+
+    def daily_sync_times(self) -> list[str]:
+        if self.sync_daily_times.strip():
+            return self._parse_sync_times(self.sync_daily_times, "SYNC_DAILY_TIMES")
+        return [f"{hour:02d}:{self.sync_daily_minute:02d}" for hour in self.daily_sync_hours()]
+
+    def full_inventory_times(self) -> list[str]:
+        if self.sync_full_inventory_times.strip():
+            return self._parse_sync_times(self.sync_full_inventory_times, "SYNC_FULL_INVENTORY_TIMES")
+        return [f"{hour:02d}:00" for hour in self.full_inventory_hours()]
 
     def full_inventory_hours(self) -> list[int]:
         try:

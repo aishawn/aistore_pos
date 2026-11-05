@@ -277,12 +277,17 @@ async def startup() -> None:
         db.commit()
     finally:
         db.close()
-    scheduler.add_job(
-        scheduled_sync,
-        CronTrigger(hour=",".join(str(hour) for hour in settings.daily_sync_hours()), minute=settings.sync_daily_minute, timezone=settings.sync_timezone),
-        id="shopfront-sync",
-        replace_existing=True,
-    )
+    for sync_time in settings.daily_sync_times():
+        hour, minute = (int(part) for part in sync_time.split(":"))
+        scheduler.add_job(
+            scheduled_sync,
+            CronTrigger(hour=hour, minute=minute, timezone=settings.sync_timezone),
+            id=f"shopfront-sync-{hour:02d}{minute:02d}",
+            args=[sync_time],
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
     scheduler.add_job(
         process_next_job,
         "interval",
@@ -1955,9 +1960,8 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         include_catalog,
                         force_full_catalog,
                         refresh_inventory=bool(
-                            job and job.job_type == "daily_sync"
-                            and cursor == date.fromisoformat(job.from_date)
-                            and datetime.now(ZoneInfo(settings.sync_timezone)).hour in settings.full_inventory_hours()
+                            job and cursor == date.fromisoformat(job.from_date)
+                            and (job.payload or {}).get("full_inventory_snapshot") is True
                         ),
                         replay_sales_window=bool(job and (job.payload or {}).get("replay_sales_window")),
                     )
@@ -2997,7 +3001,7 @@ async def push_pos_snapshot(
 
 def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date, date]:
     today = local_now.date()
-    # The 23:00 run captures today's business day; the 06:00 run closes yesterday.
+    # The late evening run captures today's business day; the overnight run closes yesterday.
     end = today if local_now.hour >= 23 else today - timedelta(days=1)
     # Routine sync is deliberately a short incremental window. Historical
     # backfills must use the durable history endpoint so a missed/failed day
@@ -3007,27 +3011,51 @@ def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date,
     return start, end
 
 
-async def scheduled_sync() -> None:
+def scheduled_occurrence(local_now: datetime, scheduled_time: str) -> datetime:
+    hour, minute = (int(part) for part in scheduled_time.split(":"))
+    occurrence = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if occurrence > local_now:
+        occurrence -= timedelta(days=1)
+    return occurrence
+
+
+async def scheduled_sync(scheduled_time: str | None = None) -> None:
     local_now = datetime.now(ZoneInfo(settings.sync_timezone))
-    start, end = scheduled_sync_range(local_now, settings.sync_lookback_days)
+    supplied_schedule_time = scheduled_time is not None
+    scheduled_time = scheduled_time or local_now.strftime("%H:%M")
+    if scheduled_time not in settings.daily_sync_times():
+        if not supplied_schedule_time:
+            logger.info("Skipping manual scheduled sync outside configured times: %s", scheduled_time)
+            return
+        raise ValueError(f"Unsupported scheduled sync time: {scheduled_time}")
+    occurrence = scheduled_occurrence(local_now, scheduled_time)
+    start, end = scheduled_sync_range(occurrence, settings.sync_lookback_days)
+    schedule_key = f"{occurrence.date().isoformat()}T{scheduled_time}"
+    require_full_inventory = scheduled_time in settings.full_inventory_times()
     db = next(get_db())
     try:
         for store_key in settings.stores():
-            pending_daily = db.scalar(select(SyncJob).where(
+            recent_daily_jobs = db.scalars(select(SyncJob).where(
                 SyncJob.store_key == store_key,
                 SyncJob.job_type == "daily_sync",
-                SyncJob.status == "queued",
-            ).order_by(SyncJob.id.desc()).limit(1))
-            if pending_daily:
-                pending_daily.from_date = min(pending_daily.from_date or start.isoformat(), start.isoformat())
-                pending_daily.cursor_date = min(pending_daily.cursor_date or start.isoformat(), start.isoformat())
-                pending_daily.to_date = max(pending_daily.to_date or end.isoformat(), end.isoformat())
-                pending_daily.payload = {**(pending_daily.payload or {}), "scheduled_hours": settings.daily_sync_hours()}
+            ).order_by(SyncJob.id.desc()).limit(32)).all()
+            same_schedule_job = next((
+                item for item in recent_daily_jobs
+                if (item.payload or {}).get("schedule_key") == schedule_key
+            ), None)
+            if same_schedule_job and same_schedule_job.status not in {"failed", "cancelled"}:
+                if same_schedule_job.status == "queued":
+                    same_schedule_job.from_date = min(same_schedule_job.from_date or start.isoformat(), start.isoformat())
+                    same_schedule_job.cursor_date = min(same_schedule_job.cursor_date or start.isoformat(), start.isoformat())
+                    same_schedule_job.to_date = max(same_schedule_job.to_date or end.isoformat(), end.isoformat())
+                    same_schedule_job.payload = {
+                        **(same_schedule_job.payload or {}),
+                        "full_inventory_snapshot": require_full_inventory or (same_schedule_job.payload or {}).get("full_inventory_snapshot") is True,
+                    }
                 continue
             active = active_job(db, store_key)
             if active and active.job_type == "daily_sync":
-                logger.info("Scheduled sync already running for store=%s job=%s", store_key, active.id)
-                continue
+                logger.info("Queueing scheduled sync behind active job: store=%s active_job=%s schedule=%s", store_key, active.id, schedule_key)
             db.add(SyncJob(
                 store_key=store_key,
                 job_type="daily_sync",
@@ -3035,7 +3063,12 @@ async def scheduled_sync() -> None:
                 from_date=start.isoformat(),
                 to_date=end.isoformat(),
                 cursor_date=start.isoformat(),
-                payload={"include_supply_chain": should_include_supply_chain(db, store_key)},
+                payload={
+                    "include_supply_chain": should_include_supply_chain(db, store_key),
+                    "schedule_key": schedule_key,
+                    "scheduled_time": scheduled_time,
+                    "full_inventory_snapshot": require_full_inventory,
+                },
             ))
         db.commit()
     finally:
