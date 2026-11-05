@@ -4,7 +4,7 @@ Date: 2026-11-05
 Suite: `RPT-001`
 Environment: local source and deterministic unit fixtures; no Odoo reads or business writes
 Base source SHA: `cf022f55a6a9a793c78941597e269ca610fd467a`
-Candidate source SHA: `71a715a7e970a0abaf0d8c2c7f18a3a2fcb4fa62` (report implementation); latest main `d59a00cc5e2b0052e8af06ebc3e0b31d0ec95c19`
+Candidate source SHA: `71a715a7e970a0abaf0d8c2c7f18a3a2fcb4fa62` (report implementation); main app-source SHA at the latest runtime check `6121dba2b99fea9689b1082d7a83e496fa3b6e83`
 Runtime SHA: SKR and Demo frontend/backend `cf022f55a6a9a793c78941597e269ca610fd467a`; report changes are not deployed
 Model/prompt/config/snapshot versions: not applicable
 
