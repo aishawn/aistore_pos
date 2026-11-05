@@ -85,7 +85,7 @@ function response(body: unknown, status = 200, timing?: string) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...(timing ? { "Server-Timing": timing } : {}) } });
 }
 
-function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean) {
+function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean, periodThrough?: string | null) {
   const { sourceMarginFallback, ...visible } = body;
   if (!sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
   const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown; grossSales?: unknown; tax?: unknown };
@@ -101,9 +101,19 @@ function responseReportBody(body: Record<string, unknown>, sourceComplete: boole
   const sourceReconciliation = visible.sourceReconciliation === "matched" || visible.sourceReconciliation === "mismatch"
     ? visible.sourceReconciliation : calculatedReconciliation;
   const mismatch = sourceReconciliation === "mismatch";
+  // A complete, paginated Shopfront mirror is itself coverage evidence. The
+  // Redis sync event is an operational signal and can be missing after a
+  // restart or deployment; it must not hide a reconciled margin that was just
+  // verified from the source rows.
+  const mirrorComplete = calculatedReconciliation === "matched";
   const preserveLedgerMargin = visible.grossMarginStatus === "verified";
   return {
     ...visible,
+    ...(mirrorComplete && !mismatch && visible.completeness !== "complete" ? { completeness: "complete" } : {}),
+    ...(mirrorComplete && !mismatch && periodThrough && !visible.sourceSyncedThrough ? {
+      sourceSyncedThrough: periodThrough,
+      sourceSyncStatus: "completed",
+    } : {}),
     ...(!preserveLedgerMargin ? {
       ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
       grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
@@ -171,7 +181,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         nextTask = job.id;
         if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
       }
-      if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
+      if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete, periodThrough), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
       `auth;dur=${authMs.toFixed(1)}, cache;dur=${(performance.now() - started - authMs).toFixed(1)}, odoo;desc="0 aggregate calls"`);
     }
@@ -204,7 +214,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       }
       snapshot = await flight;
     }
-    return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
+    return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete, periodThrough), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
       `auth;dur=${authMs.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`);
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;
