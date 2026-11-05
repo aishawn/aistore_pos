@@ -1439,7 +1439,11 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         job_id,
                         include_catalog,
                         force_full_catalog,
-                        refresh_inventory=bool(job and job.job_type == "daily_sync" and cursor == date.fromisoformat(job.from_date)),
+                        refresh_inventory=bool(
+                            job and job.job_type == "daily_sync"
+                            and cursor == date.fromisoformat(job.from_date)
+                            and datetime.now(ZoneInfo(settings.sync_timezone)).hour in settings.full_inventory_hours()
+                        ),
                         replay_sales_window=bool(job and (job.payload or {}).get("replay_sales_window")),
                     )
                     # Never advance a durable history cursor past a chunk that

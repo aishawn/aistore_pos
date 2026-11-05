@@ -47,6 +47,7 @@ def test_nightly_sync_uses_a_short_incremental_window():
 
     zone = ZoneInfo("Australia/Adelaide")
     assert Settings().daily_sync_hours() == [6, 23]
+    assert Settings().full_inventory_hours() == [6]
     assert scheduled_sync_range(datetime(2026, 11, 4, 23, 0, tzinfo=zone), 3) == (datetime(2026, 11, 3).date(), datetime(2026, 11, 4).date())
     assert scheduled_sync_range(datetime(2026, 11, 5, 6, 0, tzinfo=zone), 10) == (
         datetime(2026, 11, 3).date(), datetime(2026, 11, 4).date()

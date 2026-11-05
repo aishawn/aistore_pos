@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     sync_daily_hours: str = "6,23"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0
+    sync_full_inventory_hours: str = "6"
     worker_poll_seconds: int = 2
     worker_stale_after_seconds: int = 900
     # Commit historical Sale writes in bounded batches. A value of 1 keeps
@@ -169,6 +170,15 @@ class Settings(BaseSettings):
             raise ValueError("SYNC_DAILY_HOURS must be comma-separated hours from 0 to 23") from exc
         if not hours or any(hour < 0 or hour > 23 for hour in hours):
             raise ValueError("SYNC_DAILY_HOURS must contain one or more hours from 0 to 23")
+        return hours
+
+    def full_inventory_hours(self) -> list[int]:
+        try:
+            hours = sorted({int(item.strip()) for item in self.sync_full_inventory_hours.split(",") if item.strip()})
+        except ValueError as exc:
+            raise ValueError("SYNC_FULL_INVENTORY_HOURS must be comma-separated hours from 0 to 23") from exc
+        if any(hour < 0 or hour > 23 for hour in hours):
+            raise ValueError("SYNC_FULL_INVENTORY_HOURS must contain hours from 0 to 23")
         return hours
 
 
