@@ -42,29 +42,23 @@ def test_startup_constructs_valid_daily_cron_for_all_configured_hours(monkeypatc
         assert (following.day, following.hour, following.minute) == (next_day, next_hour, 0)
 
 
-def test_nightly_sync_includes_current_day_and_early_morning_repeats_closed_day():
+def test_nightly_sync_uses_a_short_incremental_window():
     from app.main import scheduled_sync_range
 
     zone = ZoneInfo("Australia/Adelaide")
     assert Settings().daily_sync_hours() == [6, 23]
-    assert scheduled_sync_range(datetime(2026, 11, 4, 23, 0, tzinfo=zone), 3) == (
-        datetime(2026, 10, 26).date(), datetime(2026, 11, 4).date()
-    )
+    assert scheduled_sync_range(datetime(2026, 11, 4, 23, 0, tzinfo=zone), 3) == (datetime(2026, 11, 3).date(), datetime(2026, 11, 4).date())
     assert scheduled_sync_range(datetime(2026, 11, 5, 6, 0, tzinfo=zone), 10) == (
-        datetime(2026, 10, 26).date(), datetime(2026, 11, 4).date()
+        datetime(2026, 11, 3).date(), datetime(2026, 11, 4).date()
     )
 
 
-def test_monday_morning_and_sunday_night_preserve_previous_week_boundaries():
+def test_daily_sync_does_not_expand_to_previous_week_on_monday():
     from app.main import scheduled_sync_range
 
     zone = ZoneInfo("Australia/Adelaide")
-    assert scheduled_sync_range(datetime(2026, 11, 9, 6, 0, tzinfo=zone), 10) == (
-        datetime(2026, 11, 2).date(), datetime(2026, 11, 8).date()
-    )
-    assert scheduled_sync_range(datetime(2026, 11, 8, 23, 0, tzinfo=zone), 10) == (
-        datetime(2026, 10, 26).date(), datetime(2026, 11, 8).date()
-    )
+    assert scheduled_sync_range(datetime(2026, 11, 9, 6, 0, tzinfo=zone), 10) == (datetime(2026, 11, 7).date(), datetime(2026, 11, 8).date())
+    assert scheduled_sync_range(datetime(2026, 11, 8, 23, 0, tzinfo=zone), 10) == (datetime(2026, 11, 7).date(), datetime(2026, 11, 8).date())
 
 
 def test_shopfront_sync_notifies_both_mapped_store_hosts():

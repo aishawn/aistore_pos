@@ -56,7 +56,9 @@ class Settings(BaseSettings):
     token_encryption_key: str = ""
     sync_timezone: str = "Australia/Adelaide"
     sync_interval_minutes: int = 30
-    sync_lookback_days: int = 10
+    # Routine runs cover only today and yesterday. Historical repair is queued
+    # explicitly so a missed day cannot expand every scheduled run.
+    sync_lookback_days: int = 2
     sync_daily_hours: str = "6,23"
     sync_daily_hour: int = 2
     sync_daily_minute: int = 0

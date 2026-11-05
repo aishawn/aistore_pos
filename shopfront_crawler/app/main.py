@@ -2480,7 +2480,11 @@ def scheduled_sync_range(local_now: datetime, lookback_days: int) -> tuple[date,
     today = local_now.date()
     # The 23:00 run captures today's business day; the 06:00 run closes yesterday.
     end = today if local_now.hour >= 23 else today - timedelta(days=1)
-    start = today - timedelta(days=today.weekday() + 7)
+    # Routine sync is deliberately a short incremental window. Historical
+    # backfills must use the durable history endpoint so a missed/failed day
+    # cannot make every normal run replay the entire previous week.
+    routine_days = max(1, min(int(lookback_days), 2))
+    start = end - timedelta(days=routine_days - 1)
     return start, end
 
 
