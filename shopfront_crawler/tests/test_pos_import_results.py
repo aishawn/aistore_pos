@@ -12,7 +12,7 @@ from app import main
 from app import sync
 from app.db import Base
 from app.config import Settings
-from app.models import InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, Store, SyncJob, SyncRun
+from app.models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
@@ -524,6 +524,141 @@ async def test_product_reconcile_separates_historical_references_from_unexplaine
     assert data["pos_only_classification"]["historical_sale_references"]["source_ids"] == ["archived-1"]
     assert data["pos_only_classification"]["unexplained"]["source_ids"] == ["extra-1"]
     assert data["automatic_deletion_performed"] is False
+
+
+@pytest.mark.asyncio
+async def test_inventory_reconcile_compares_signed_source_quantities_by_product_and_outlet(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        InventorySnapshotManifest(
+            store_key="skr", source_product_ids=["negative", "different", "missing"],
+            snapshot_at=datetime(2026, 11, 5), complete=True,
+        ),
+        InventorySnapshot(store_key="skr", shopfront_product_id="negative", outlet_id="outlet-1", quantity=Decimal("-2")),
+        InventorySnapshot(store_key="skr", shopfront_product_id="different", outlet_id="outlet-1", quantity=Decimal("5")),
+        InventorySnapshot(store_key="skr", shopfront_product_id="missing", outlet_id="outlet-1", quantity=Decimal("0")),
+    ])
+    db_session.commit()
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def data(self, store, data_type, page=1, size=500):
+            assert data_type == "inventory"
+            return {"data": {"total": 2, "data": [
+                {"source_product_id": "negative", "outlet_id": "outlet-1", "quantity": -2},
+                {"source_product_id": "different", "outlet_id": "outlet-1", "quantity": 4},
+            ]}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    result = await main.reconcile_pos_inventory(store="skr", preview=20, db=db_session)
+    data = result["data"]
+    assert data["source"]["manifest_complete"] is True
+    assert data["missing_in_pos"] == {"count": 1, "keys": [("missing", "outlet-1")]}
+    assert data["quantity_mismatches"]["rows"] == [{
+        "source_product_id": "different", "outlet_id": "outlet-1",
+        "source_quantity": Decimal("5.0000"), "pos_quantity": Decimal("4"),
+    }]
+    assert data["complete_match"] is False
+    assert data["automatic_write_performed"] is False
+
+
+@pytest.mark.asyncio
+async def test_inventory_reconcile_compares_manifest_product_ids_not_inventory_row_count(db_session, monkeypatch):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        InventorySnapshotManifest(
+            store_key="skr", source_product_ids=["multi-outlet"],
+            snapshot_at=datetime(2026, 11, 5), complete=True,
+        ),
+        InventorySnapshot(store_key="skr", shopfront_product_id="multi-outlet", outlet_id="outlet-1", quantity=Decimal("2")),
+        InventorySnapshot(store_key="skr", shopfront_product_id="multi-outlet", outlet_id="outlet-2", quantity=Decimal("3")),
+    ])
+    db_session.commit()
+
+    class FakePosClient:
+        def __init__(self, *args):
+            pass
+
+        async def data(self, store, data_type, page=1, size=500):
+            return {"data": {"total": 2, "data": [
+                {"source_product_id": "multi-outlet", "outlet_id": "outlet-1", "quantity": 2},
+                {"source_product_id": "multi-outlet", "outlet_id": "outlet-2", "quantity": 3},
+            ]}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+    monkeypatch.setattr(main.settings, "pos_import_enabled", True)
+    result = await main.reconcile_pos_inventory(store="skr", preview=20, db=db_session)
+    data = result["data"]
+    assert data["source"]["records"] == 2
+    assert data["source"]["products"] == data["source"]["manifest_products"] == 1
+    assert data["source"]["products_match_manifest"] is True
+    assert data["complete_match"] is True
+
+
+def test_products_endpoint_reports_current_catalog_status_without_dropping_history(db_session):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        Product(store_key="skr", shopfront_product_id="active", name="Active", raw_payload={"status": "ACTIVE"}, catalog_last_seen_at=datetime(2026, 11, 5)),
+        Product(store_key="skr", shopfront_product_id="inactive", name="Inactive", raw_payload={"status": "NOT_ACTIVE"}, catalog_last_seen_at=datetime(2026, 11, 5)),
+        Product(store_key="skr", shopfront_product_id="historical", name="Historical", raw_payload={"status": "ACTIVE"}),
+    ])
+    db_session.commit()
+
+    current = main.products(store="skr", page=1, size=20, catalog_only=True, status=None, db=db_session)
+    active = main.products(store="skr", page=1, size=20, catalog_only=True, status="ACTIVE", db=db_session)
+    all_rows = main.products(store="skr", page=1, size=20, catalog_only=False, status=None, db=db_session)
+    assert current["pagination"]["total"] == 2
+    assert active["pagination"]["total"] == 1
+    assert all_rows["pagination"]["total"] == 3
+    assert {row["shopfront_product_id"] for row in all_rows["data"] if not row["catalog_seen"]} == {"historical"}
+
+
+def test_sync_coverage_distinguishes_active_catalog_from_history_and_preserves_negative_stock(db_session):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr"),
+        Product(store_key="skr", shopfront_product_id="active", name="Active", raw_payload={"status": "ACTIVE"}, catalog_last_seen_at=datetime(2026, 11, 5)),
+        Product(store_key="skr", shopfront_product_id="inactive", name="Inactive", raw_payload={"status": "NOT_ACTIVE"}, catalog_last_seen_at=datetime(2026, 11, 5)),
+        Product(store_key="skr", shopfront_product_id="historical", name="Historical", raw_payload={"status": "ACTIVE"}),
+        InventorySnapshotManifest(store_key="skr", source_product_ids=["active", "inactive"], snapshot_at=datetime(2026, 11, 5), complete=True),
+        InventorySnapshot(store_key="skr", shopfront_product_id="active", outlet_id="outlet-1", quantity=Decimal("-3")),
+        InventorySnapshot(store_key="skr", shopfront_product_id="inactive", outlet_id="outlet-1", quantity=Decimal("5")),
+    ])
+    db_session.commit()
+
+    result = main.sync_coverage(store="skr", db=db_session)["data"]
+    assert result["catalog"] == {
+        "current_records": 2,
+        "active_records": 1,
+        "status_counts": {"ACTIVE": 1, "NOT_ACTIVE": 1},
+        "historical_or_unconfirmed_records": 1,
+    }
+    assert result["inventory"]["negative_records"] == 1
+    assert result["inventory"]["signed_quantity_total"] == Decimal("2.0000")
+    assert result["inventory"]["snapshot_complete"] is True
+
+
+def test_sales_endpoint_uses_store_local_date_bounds_and_stable_snapshot(db_session):
+    db_session.add_all([
+        Store(store_key="skr", vendor="skr", timezone="Australia/Adelaide"),
+        Sale(store_key="skr", shopfront_sale_id="before", created_at=datetime(2026, 11, 1, 12, 29)),
+        Sale(store_key="skr", shopfront_sale_id="inside", created_at=datetime(2026, 11, 1, 12, 30)),
+        Sale(store_key="skr", shopfront_sale_id="after", created_at=datetime(2026, 11, 2, 12, 30)),
+    ])
+    db_session.commit()
+
+    first = main.sales(store="skr", from_date=date(2026, 11, 1), to_date=date(2026, 11, 1), page=1, size=1, snapshot_id=None, db=db_session)
+    later = main.sales(store="skr", from_date=date(2026, 11, 1), to_date=date(2026, 11, 1), page=2, size=1, snapshot_id=first["pagination"]["snapshot_id"], db=db_session)
+    assert first["pagination"]["total"] == 2
+    assert {row["shopfront_sale_id"] for row in first["data"] + later["data"]} == {"before", "inside"}
 
 
 @pytest.mark.asyncio

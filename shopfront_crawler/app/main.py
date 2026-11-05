@@ -937,8 +937,23 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
     """Return read-only source coverage metrics for verification and handoff."""
     require_store(store, db)
     products = db.scalars(select(Product).where(Product.store_key == store)).all()
+    catalog_products = [product for product in products if product.catalog_last_seen_at is not None]
+    catalog_status_counts: dict[str, int] = {}
+    for product in catalog_products:
+        raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+        status = str(raw.get("status") or "UNKNOWN").strip().upper()
+        catalog_status_counts[status] = catalog_status_counts.get(status, 0) + 1
     inventory_count = db.scalar(select(func.count(InventorySnapshot.id)).where(InventorySnapshot.store_key == store)) or 0
     outlet_count = db.scalar(select(func.count(func.distinct(InventorySnapshot.outlet_id))).where(InventorySnapshot.store_key == store, InventorySnapshot.outlet_id.is_not(None))) or 0
+    inventory_quantity = InventorySnapshot.quantity
+    inventory_stats = db.execute(select(
+        func.sum(case((inventory_quantity < 0, 1), else_=0)),
+        func.sum(case((inventory_quantity > 0, inventory_quantity), else_=0)),
+        func.sum(inventory_quantity),
+        func.min(inventory_quantity),
+        func.max(inventory_quantity),
+    ).where(InventorySnapshot.store_key == store)).one()
+    inventory_manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
     sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
     customer_count = db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0
@@ -1005,7 +1020,24 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
         "data": {
             "store": store,
             "products": {"total": len(products), "fields": fields},
-            "inventory": {"records": int(inventory_count), "outlets": int(outlet_count)},
+            "catalog": {
+                "current_records": len(catalog_products),
+                "active_records": catalog_status_counts.get("ACTIVE", 0),
+                "status_counts": catalog_status_counts,
+                "historical_or_unconfirmed_records": len(products) - len(catalog_products),
+            },
+            "inventory": {
+                "records": int(inventory_count),
+                "outlets": int(outlet_count),
+                "negative_records": int(inventory_stats[0] or 0),
+                "positive_quantity_total": inventory_stats[1] or 0,
+                "signed_quantity_total": inventory_stats[2] or 0,
+                "minimum_quantity": inventory_stats[3],
+                "maximum_quantity": inventory_stats[4],
+                "snapshot_complete": bool(inventory_manifest and inventory_manifest.complete),
+                "snapshot_at": inventory_manifest.snapshot_at if inventory_manifest else None,
+                "manifest_products": len(inventory_manifest.source_product_ids or []) if inventory_manifest else 0,
+            },
             "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
             "customers": {"total": int(customer_count)},
             "extended_data": extended_counts,
@@ -1068,6 +1100,12 @@ async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=
         .join(Sale, SaleItem.sale_id == Sale.id)
         .where(Sale.store_key == store, SaleItem.shopfront_product_id.is_not(None))
     ).all() if source_id}
+    catalog_rows = [row for row in crawler_rows if row.catalog_last_seen_at is not None]
+    catalog_status_counts: dict[str, int] = {}
+    for row in catalog_rows:
+        raw = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+        status = str(raw.get("status") or "UNKNOWN").strip().upper()
+        catalog_status_counts[status] = catalog_status_counts.get(status, 0) + 1
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         pos_by_id: dict[str, dict] = {}
@@ -1101,7 +1139,9 @@ async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=
                 "store": store,
                 "crawler": {
                     "total": len(crawler_ids),
-                    "catalog_seen_since_tracking": sum(1 for row in crawler_rows if row.catalog_last_seen_at is not None),
+                    "catalog_seen_since_tracking": len(catalog_rows),
+                    "catalog_active": catalog_status_counts.get("ACTIVE", 0),
+                    "catalog_status_counts": catalog_status_counts,
                     "catalog_unconfirmed_with_sales_reference": sum(1 for row in crawler_rows if row.catalog_last_seen_at is None and row.shopfront_product_id in referenced),
                     "unclassified": sum(1 for row in crawler_rows if row.catalog_last_seen_at is None and row.shopfront_product_id not in referenced),
                     "historical_sale_reference_ids": len(referenced),
@@ -1117,6 +1157,101 @@ async def reconcile_pos_products(store: str, preview: int = Query(200, ge=1, le=
                     "unexplained": {"count": len(unexplained), "source_ids": unexplained[:preview]},
                 },
                 "automatic_deletion_performed": False,
+            },
+            "source": "shopfront_crawler_vs_orithos_staging",
+        }
+    except PosIntegrationError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    finally:
+        await client.close()
+
+
+@app.get("/api/pos/inventory/reconcile")
+async def reconcile_pos_inventory(store: str, preview: int = Query(200, ge=1, le=1000), db: Session = Depends(get_db)) -> dict:
+    """Compare the complete signed source snapshot with POS staging by product and outlet."""
+    require_store(store, db)
+    manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    source_rows = db.scalars(
+        select(InventorySnapshot).where(InventorySnapshot.store_key == store)
+    ).all()
+    source_by_key = {
+        (str(row.shopfront_product_id), str(row.outlet_id or "")): row
+        for row in source_rows
+    }
+    if len(source_by_key) != len(source_rows):
+        raise HTTPException(502, "Crawler inventory contains duplicate product/outlet keys")
+
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        pos_by_key: dict[tuple[str, str], dict[str, Any]] = {}
+        total: int | None = None
+        page = 1
+        while True:
+            response = await client.data(store, "inventory", page=page, size=500)
+            payload = response.get("data", response)
+            rows = payload.get("data", []) if isinstance(payload, dict) else []
+            if total is None:
+                total = int(payload.get("total", 0))
+            for row in rows:
+                source_id = row.get("source_product_id")
+                if source_id is None:
+                    continue
+                key = (str(source_id), str(row.get("outlet_id") or ""))
+                if key in pos_by_key:
+                    raise PosIntegrationError("POS inventory pagination contains duplicate product/outlet keys")
+                pos_by_key[key] = row
+            if len(rows) < 500:
+                break
+            page += 1
+        if len(pos_by_key) != (total or 0):
+            raise PosIntegrationError(
+                f"POS inventory pagination is incomplete: {len(pos_by_key)} unique keys for {total} rows"
+            )
+
+        source_keys = set(source_by_key)
+        pos_keys = set(pos_by_key)
+        source_product_ids = {product_id for product_id, _ in source_keys}
+        manifest_product_ids = {
+            str(product_id) for product_id in (manifest.source_product_ids or [])
+        } if manifest else set()
+        source_products_match_manifest = source_product_ids == manifest_product_ids
+        source_missing = sorted(source_keys - pos_keys)
+        pos_only = sorted(pos_keys - source_keys)
+        quantity_mismatches = []
+        for key in sorted(source_keys & pos_keys):
+            source_quantity = source_by_key[key].quantity
+            pos_quantity = parse_decimal(pos_by_key[key].get("quantity"))
+            if source_quantity is None or pos_quantity is None or source_quantity != pos_quantity:
+                quantity_mismatches.append({
+                    "source_product_id": key[0],
+                    "outlet_id": key[1],
+                    "source_quantity": source_quantity,
+                    "pos_quantity": pos_quantity,
+                })
+
+        return {
+            "data": {
+                "store": store,
+                "source": {
+                    "records": len(source_keys),
+                    "manifest_complete": bool(manifest and manifest.complete),
+                    "products": len(source_product_ids),
+                    "manifest_products": len(manifest_product_ids),
+                    "products_match_manifest": source_products_match_manifest,
+                    "snapshot_at": manifest.snapshot_at if manifest else None,
+                },
+                "pos_total": len(pos_keys),
+                "missing_in_pos": {"count": len(source_missing), "keys": source_missing[:preview]},
+                "pos_only": {"count": len(pos_only), "keys": pos_only[:preview]},
+                "quantity_mismatches": {
+                    "count": len(quantity_mismatches),
+                    "rows": quantity_mismatches[:preview],
+                },
+                "complete_match": bool(manifest and manifest.complete)
+                    and source_products_match_manifest
+                    and len(pos_keys) == len(source_keys)
+                    and not source_missing and not pos_only and not quantity_mismatches,
+                "automatic_write_performed": False,
             },
             "source": "shopfront_crawler_vs_orithos_staging",
         }
@@ -3242,15 +3377,22 @@ def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date
 
 
 @app.get("/api/sales")
-def sales(store: str, from_date: date | None = Query(None, alias="from"), to_date: date | None = Query(None, alias="to"), page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)) -> dict:
-    require_store(store, db)
-    query = select(Sale).where(Sale.store_key == store).order_by(desc(Sale.created_at)).offset((page - 1) * size).limit(size)
+def sales(store: str, from_date: date | None = Query(None, alias="from"), to_date: date | None = Query(None, alias="to"), page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=200), snapshot_id: int | None = Query(None, ge=1), db: Session = Depends(get_db)) -> dict:
+    store_row = require_store(store, db)
+    local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
+    filters: list[Any] = [Sale.store_key == store]
     if from_date:
-        query = query.where(Sale.created_at >= datetime.combine(from_date, datetime.min.time()))
+        start_utc = datetime.combine(from_date, datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        filters.append(Sale.created_at >= start_utc)
     if to_date:
-        query = query.where(Sale.created_at < datetime.combine(to_date + timedelta(days=1), datetime.min.time()))
+        end_utc = datetime.combine(to_date + timedelta(days=1), datetime.min.time(), tzinfo=local_zone).astimezone(timezone.utc).replace(tzinfo=None)
+        filters.append(Sale.created_at < end_utc)
+    resolved_snapshot_id = snapshot_id or db.scalar(select(func.max(Sale.id)).where(*filters)) or 0
+    filters.append(Sale.id <= resolved_snapshot_id)
+    query = select(Sale).where(*filters).order_by(desc(Sale.created_at), desc(Sale.id)).offset((page - 1) * size).limit(size)
     rows = db.scalars(query).all()
-    return {"data": [{"shopfront_sale_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "total_discount": x.total_discount, "total_cost": x.total_cost, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_sales"}
+    total = db.scalar(select(func.count(Sale.id)).where(*filters)) or 0
+    return {"data": [{"shopfront_sale_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "total_discount": x.total_discount, "total_cost": x.total_cost, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows), "total": int(total), "snapshot_id": int(resolved_snapshot_id)}, "source": "shopfront_sales"}
 
 
 @app.get("/api/sales/{sale_id}")
@@ -3262,9 +3404,17 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 
 
 @app.get("/api/products")
-def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
-    rows = db.scalars(select(Product).where(Product.store_key == store).order_by(Product.name).offset((page - 1) * size).limit(size)).all()
+    if status and status.strip().upper() not in {"ACTIVE", "NOT_ACTIVE"}:
+        raise HTTPException(400, "status must be ACTIVE or NOT_ACTIVE")
+    filters: list[Any] = [Product.store_key == store]
+    if catalog_only:
+        filters.append(Product.catalog_last_seen_at.is_not(None))
+    if status:
+        filters.append(func.upper(func.coalesce(Product.raw_payload["status"].as_string(), "UNKNOWN")) == status.strip().upper())
+    rows = db.scalars(select(Product).where(*filters).order_by(Product.name, Product.id).offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(Product.id)).where(*filters)) or 0
     def product_data(x: Product) -> dict:
         raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
         return {
@@ -3294,17 +3444,29 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
             "type": raw.get("type"),
             "source_created_at": raw.get("createdAt"),
             "source_updated_at": raw.get("updatedAt"),
+            "catalog_seen": x.catalog_last_seen_at is not None,
+            "catalog_last_seen_at": x.catalog_last_seen_at,
             "raw_payload": raw,
             "synced_at": x.synced_at,
         }
-    return {"data": [product_data(x) for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_products"}
+    return {"data": [product_data(x) for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows), "total": int(total)}, "source": "shopfront_products"}
 
 
 @app.get("/api/inventory")
-def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+def inventory(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), outlet_id: str | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
-    rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store).order_by(desc(InventorySnapshot.inventory_timestamp)).offset((page - 1) * size).limit(size)).all()
-    return {"data": [{"shopfront_product_id": x.shopfront_product_id, "outlet_id": x.outlet_id, "outlet_name": x.outlet_name, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows], "pagination": {"page": page, "size": size, "returned": len(rows)}, "source": "shopfront_inventory"}
+    filters: list[Any] = [InventorySnapshot.store_key == store]
+    if outlet_id:
+        filters.append(InventorySnapshot.outlet_id == outlet_id)
+    rows = db.scalars(select(InventorySnapshot).where(*filters).order_by(InventorySnapshot.shopfront_product_id, InventorySnapshot.outlet_id, InventorySnapshot.id).offset((page - 1) * size).limit(size)).all()
+    total = db.scalar(select(func.count(InventorySnapshot.id)).where(*filters)) or 0
+    manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    return {
+        "data": [{"shopfront_product_id": x.shopfront_product_id, "outlet_id": x.outlet_id, "outlet_name": x.outlet_name, "quantity": x.quantity, "inventory_timestamp": x.inventory_timestamp, "raw_payload": x.raw_payload} for x in rows],
+        "pagination": {"page": page, "size": size, "returned": len(rows), "total": int(total)},
+        "snapshot": {"complete": bool(manifest and manifest.complete), "snapshot_at": manifest.snapshot_at if manifest else None, "products": len(manifest.source_product_ids or []) if manifest else 0},
+        "source": "shopfront_inventory",
+    }
 
 
 @app.post("/webhooks/shopfront/{store_key}")
