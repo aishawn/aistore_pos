@@ -33,6 +33,17 @@ export type ShopfrontInventoryMetrics = {
   fetchedAt: string | null;
 };
 
+export function reconcileShopfrontSales(
+  source: ShopfrontSalesMetrics | null,
+  odooRevenue: number,
+  odooTransactions: number,
+): "matched" | "mismatch" | "unavailable" {
+  if (!source || !Number.isFinite(odooRevenue) || !Number.isFinite(odooTransactions)) return "unavailable";
+  return Math.abs(source.revenue - odooRevenue) <= 0.01 && source.transactionCount === odooTransactions
+    ? "matched"
+    : "mismatch";
+}
+
 function fetchedAt(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;

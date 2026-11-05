@@ -250,10 +250,15 @@ export function OverviewPageContent({
                   <dd>{data.transactions ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt>Open registers</dt>
+                  <dt>Open registers · Orithos</dt>
                   <dd>{data.openRegisters ?? "—"}</dd>
                 </div>
               </dl>
+              {data.shopfrontReportsMode === "source" && <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">
+                {data.todayShopfrontSalesAvailable
+                  ? `Sales and transactions from Shopfront · ${data.todaySalesReconciliation === "matched" ? "matches Orithos" : data.todaySalesReconciliation === "mismatch" ? "differs from Orithos" : "Orithos comparison unavailable"}${data.todaySourceFetchedAt ? ` · ${new Intl.DateTimeFormat("en-AU", { timeZone: data.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(data.todaySourceFetchedAt))}` : ""}`
+                  : "Shopfront sales report unavailable · showing Orithos totals"}
+              </p>}
               {canReport ? (
                 <Link className="ov-report-link" href="/reports/dashboard">
                   View insights <ArrowRight size={16} aria-hidden="true" />

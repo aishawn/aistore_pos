@@ -1,4 +1,4 @@
-from app.source_reporting import completed_dashboard_sales, dashboard_report_transaction_count, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
+from app.source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
 
 
 def test_inventory_totals_convert_cases_and_items_and_exclude_negative_units():
@@ -123,20 +123,20 @@ def test_persisted_inventory_snapshot_fails_closed_without_pack_data():
     ]) is None
 
 
-def test_dashboard_metrics_use_completed_sales_only_when_report_count_matches():
+def test_dashboard_metrics_include_reported_sales_statuses_when_count_matches():
     sales = [
         {"id": "s1", "status": "COMPLETED"},
-        {"id": "s2", "status": "VOIDED"},
+        {"id": "s2", "status": "INCOMPLETE"},
     ]
-    report = [{"Transaction Count": 1}]
-    assert dashboard_report_transaction_count(report) == 1
-    assert completed_dashboard_sales(sales, report) == [sales[0]]
+    report = [{"Transaction Count": 2}]
+    assert dashboard_report_transaction_count(report) == 2
+    assert dashboard_sales_matching_report(sales, report) == sales
 
 
-def test_dashboard_metrics_fail_closed_when_completed_sales_count_differs():
-    sales = [{"id": "s1", "status": "COMPLETED"}, {"id": "s2", "status": "COMPLETED"}]
-    assert completed_dashboard_sales(sales, [{"Transaction Count": 1}]) is None
+def test_dashboard_metrics_fail_closed_when_source_sales_count_differs():
+    sales = [{"id": "s1", "status": "COMPLETED"}, {"id": "s2", "status": "INCOMPLETE"}]
+    assert dashboard_sales_matching_report(sales, [{"Transaction Count": 1}]) is None
 
 
 def test_dashboard_metrics_fail_closed_when_source_sale_status_is_missing():
-    assert completed_dashboard_sales([{"id": "s1"}], [{"Transaction Count": 1}]) is None
+    assert dashboard_sales_matching_report([{"id": "s1"}], [{"Transaction Count": 1}]) is None

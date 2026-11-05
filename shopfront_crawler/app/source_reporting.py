@@ -147,19 +147,18 @@ def dashboard_report_transaction_count(report_rows: list[dict[str, Any]]) -> int
     return source_count
 
 
-def completed_dashboard_sales(
+def dashboard_sales_matching_report(
     sales_rows: list[dict[str, Any]], report_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]] | None:
-    """Use completed GraphQL sales only when their count agrees with the report."""
+    """Use Shopfront sales rows only when their count agrees with the report."""
     source_count = dashboard_report_transaction_count(report_rows)
     if source_count is None:
         return None
 
-    completed: list[dict[str, Any]] = []
+    available: list[dict[str, Any]] = []
     for row in sales_rows:
         status = str(row.get("status") or "").strip().upper()
         if not status:
             return None
-        if status == "COMPLETED":
-            completed.append(row)
-    return completed if len(completed) == source_count else None
+        available.append(row)
+    return available if len(available) == source_count else None

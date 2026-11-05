@@ -401,7 +401,7 @@ function DashboardBreakdown({ metrics }: { metrics: SourceRow }) {
   if (metrics.available === false) {
     const sourceCount = metrics.source_transaction_count === null || metrics.source_transaction_count === undefined ? "—" : quantity(metrics.source_transaction_count);
     return <p role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 md:px-6">
-      Dashboard detail metrics are unavailable: Shopfront reports {sourceCount} transactions, but {quantity(metrics.completed_transaction_count)} completed sales were loaded.
+      Dashboard detail metrics are unavailable: Shopfront reports {sourceCount} transactions, but {quantity(metrics.graphql_transaction_count)} sales records were loaded.
     </p>;
   }
   if (!products.length && !users.length) return null;

@@ -26,7 +26,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import completed_dashboard_sales, dashboard_report_transaction_count, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
+from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -596,28 +596,25 @@ async def shopfront_source_report(
             raise HTTPException(502, f"Shopfront dashboard metrics failed: {exc}") from exc
         finally:
             await client.close()
-        completed_rows = completed_dashboard_sales(sales_rows, normalized_rows)
-        if completed_rows is None:
+        matched_sales_rows = dashboard_sales_matching_report(sales_rows, normalized_rows)
+        if matched_sales_rows is None:
             source_transaction_count = dashboard_report_transaction_count(normalized_rows)
-            completed_transaction_count = sum(
-                1 for row in sales_rows if str(row.get("status") or "").strip().upper() == "COMPLETED"
-            )
             metrics = {
                 "available": False,
-                "reason": "completed_sales_count_mismatch",
+                "reason": "source_sales_count_mismatch",
                 "source_transaction_count": source_transaction_count,
-                "completed_transaction_count": completed_transaction_count,
+                "graphql_transaction_count": len(sales_rows),
                 "customer_count": None,
                 "basket_size": None,
                 "top_products": [],
                 "users": [],
             }
         else:
-            customer_ids = {str(row.get("customer", {}).get("id")) for row in completed_rows if isinstance(row.get("customer"), dict) and row.get("customer", {}).get("id")}
+            customer_ids = {str(row.get("customer", {}).get("id")) for row in matched_sales_rows if isinstance(row.get("customer"), dict) and row.get("customer", {}).get("id")}
             quantity_total = 0.0
             top_products: dict[str, dict[str, Any]] = {}
             users: dict[str, dict[str, Any]] = {}
-            for sale in completed_rows:
+            for sale in matched_sales_rows:
                 user = sale.get("user") if isinstance(sale.get("user"), dict) else {}
                 user_id = str(user.get("id") or "unknown")
                 user_name = str(user.get("name") or "Unknown")
@@ -646,7 +643,7 @@ async def shopfront_source_report(
                             product_row["revenue"] += float(item.get("totalPrice") or 0)
                         except (TypeError, ValueError):
                             pass
-            transaction_count = len(completed_rows)
+            transaction_count = len(matched_sales_rows)
             user_rows = sorted(users.values(), key=lambda row: (-int(row["transactions"]), str(row["name"])))
             for user_row in user_rows:
                 user_row["average_sale"] = round(float(user_row["revenue"]) / int(user_row["transactions"]), 2) if user_row["transactions"] else 0

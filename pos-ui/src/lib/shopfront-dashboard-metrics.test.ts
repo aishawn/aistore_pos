@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseShopfrontInventoryReport, parseShopfrontSalesReport } from "./shopfront-dashboard-metrics.ts";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales } from "./shopfront-dashboard-metrics.ts";
 
 test("Shopfront sales KPI validates and uses source Profit / Revenue", () => {
   const result = parseShopfrontSalesReport({
@@ -26,4 +26,14 @@ test("inventory KPI uses the durable single-outlet snapshot summary", () => {
     record_count: 10849, outlet_count: 1, snapshot_at: "2026-11-05T14:00:00Z",
   });
   assert.deepEqual(result, { sellableUnits: 49993, negativeStockProducts: 7076, recordCount: 10849, fetchedAt: "2026-11-05T14:00:00Z" });
+});
+
+test("dashboard reconciliation compares Shopfront sales with Odoo gross totals and transactions", () => {
+  const source = parseShopfrontSalesReport({
+    data: [{ Revenue: 100, "Cost of Goods Sold": 60, Profit: 40, "Profit Percentage": "40.00%", "Transaction Count": 2 }],
+    pagination: { total: 1, returned: 1 },
+  });
+  assert.equal(reconcileShopfrontSales(source, 100, 2), "matched");
+  assert.equal(reconcileShopfrontSales(source, 100, 1), "mismatch");
+  assert.equal(reconcileShopfrontSales(null, 100, 2), "unavailable");
 });

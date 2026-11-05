@@ -9,7 +9,7 @@ import {
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
-import { parseShopfrontInventoryReport, parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales } from "@/lib/shopfront-dashboard-metrics";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -49,6 +49,9 @@ export type OverviewPulse = {
   sourceReportsFetchedAt?: string | null;
   sourceSalesAvailable?: boolean;
   sourceInventoryAvailable?: boolean;
+  todayShopfrontSalesAvailable?: boolean;
+  todaySalesReconciliation?: "matched" | "mismatch" | "unavailable";
+  todaySourceFetchedAt?: string | null;
   shopfrontReportsMode?: "source" | "odoo";
 };
 const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-v2";
@@ -153,9 +156,11 @@ function businessDay(value: unknown, timezone: string): string | null {
 
 async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
   const timezone = typeof payload.timezone === "string" ? payload.timezone : "Australia/Adelaide";
-  const day = businessDay(payload.yesterdayFrom, timezone);
-  if (!day) return { mapped: true as const, sales: null, inventory: null };
-  const salesPath = `/api/shopfront-source?resource=report-sales&from=${day}&to=${day}&size=600`;
+  const today = businessDay(payload.from, timezone);
+  const yesterday = businessDay(payload.yesterdayFrom, timezone);
+  if (!today) return { mapped: true as const, salesToday: null, salesYesterday: null, inventory: null };
+  const todaySalesPath = `/api/shopfront-source?resource=report-sales&from=${today}&to=${today}&size=600`;
+  const yesterdaySalesPath = yesterday ? `/api/shopfront-source?resource=report-sales&from=${yesterday}&to=${yesterday}&size=600` : null;
   const inventoryPath = "/api/shopfront-source?resource=dashboard-inventory";
   const read = async (path: string) => {
     try {
@@ -167,35 +172,48 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
       return { mapped: true as const, report: null };
     }
   };
-  const [salesResponse, inventoryResponse] = await Promise.all([read(salesPath), read(inventoryPath)]);
-  if (!salesResponse.mapped || !inventoryResponse.mapped) return { mapped: false as const, sales: null, inventory: null };
+  const [todaySalesResponse, yesterdaySalesResponse, inventoryResponse] = await Promise.all([
+    read(todaySalesPath),
+    yesterdaySalesPath ? read(yesterdaySalesPath) : Promise.resolve({ mapped: true as const, report: null }),
+    read(inventoryPath),
+  ]);
+  if (!todaySalesResponse.mapped || !yesterdaySalesResponse.mapped || !inventoryResponse.mapped) {
+    return { mapped: false as const, salesToday: null, salesYesterday: null, inventory: null };
+  }
   return {
     mapped: true as const,
-    sales: parseShopfrontSalesReport(salesResponse.report),
+    salesToday: parseShopfrontSalesReport(todaySalesResponse.report),
+    salesYesterday: parseShopfrontSalesReport(yesterdaySalesResponse.report),
     inventory: parseShopfrontInventoryReport(inventoryResponse.report),
   };
 }
 
 function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<ReturnType<typeof loadShopfrontDashboardMetrics>>): OverviewPulse {
   if (!source.mapped) return data;
-  const sales = source.sales;
+  const salesToday = source.salesToday;
+  const salesYesterday = source.salesYesterday;
   const inventory = source.inventory;
-  const fetchedTimes = [sales?.fetchedAt, inventory?.fetchedAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
+  const fetchedTimes = [salesToday?.fetchedAt, salesYesterday?.fetchedAt, inventory?.fetchedAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
   const sourceReportsFetchedAt = fetchedTimes.length ? new Date(Math.min(...fetchedTimes)).toISOString() : null;
   return {
     ...data,
-    yesterdaySales: sales?.revenue ?? 0,
-    yesterdaySalesAvailable: sales !== null,
-    yesterdayGrossMargin: sales?.grossMargin ?? null,
-    grossMarginCoverage: sales ? 1 : 0,
-    grossMarginStatus: sales ? sales.grossMargin === null ? "no_sales" : "shopfront_source_report" : "unavailable",
+    revenue: salesToday?.revenue ?? data.revenue,
+    transactions: salesToday?.transactionCount ?? data.transactions,
+    todayShopfrontSalesAvailable: salesToday !== null,
+    todaySalesReconciliation: reconcileShopfrontSales(salesToday, data.revenue, data.transactions ?? Number.NaN),
+    todaySourceFetchedAt: salesToday?.fetchedAt ?? null,
+    yesterdaySales: salesYesterday?.revenue ?? 0,
+    yesterdaySalesAvailable: salesYesterday !== null,
+    yesterdayGrossMargin: salesYesterday?.grossMargin ?? null,
+    grossMarginCoverage: salesYesterday ? 1 : 0,
+    grossMarginStatus: salesYesterday ? salesYesterday.grossMargin === null ? "no_sales" : "shopfront_source_report" : "unavailable",
     grossMarginBasis: "shopfront_sales_report_profit_percentage",
     inventoryUnits: inventory?.sellableUnits ?? null,
     inventoryAvailable: inventory !== null,
     inventoryStatus: !inventory ? "unavailable" : inventory.negativeStockProducts ? "negative_stock" : "verified",
     negativeStockProducts: inventory?.negativeStockProducts ?? null,
     sourceReportsFetchedAt,
-    sourceSalesAvailable: sales !== null,
+    sourceSalesAvailable: salesYesterday !== null,
     sourceInventoryAvailable: inventory !== null,
     shopfrontReportsMode: "source",
   };
