@@ -72,11 +72,6 @@ services:
         build_metadata: ./build-metadata
     image: orithos-backend:latest
     restart: unless-stopped
-    # The R2 worker owns the shared archive volume as UID 10001 / GID 1001.
-    # Add the archive group so the admin API can create REQUEST_SYNC without
-    # making the snapshot world-writable.
-    group_add:
-      - "1001"
     depends_on:
       redis:
         condition: service_healthy
@@ -154,18 +149,11 @@ services:
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set ISOLATION_ODOO_DATABASE in Dokploy}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
-      R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront
-      R2_SYNC_SCHEDULE_ENABLED: ${R2_SYNC_SCHEDULE_ENABLED:-false}
-      R2_SYNC_TIMEZONE: ${R2_SYNC_TIMEZONE:-Australia/Adelaide}
-      R2_SYNC_HOUR: ${R2_SYNC_HOUR:-3}
-      R2_SYNC_MINUTE: ${R2_SYNC_MINUTE:-30}
       SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
       SHOPFRONT_BUSINESS_WRITE_ENABLED: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:-true}
       APP_SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       APP_SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
-    volumes:
-      - shopfront-archive:/var/lib/orithos/shopfront
 
   # Independent Shopfront synchronization worker. Its database and OAuth
   # credentials are isolated from the POS application and persist across
@@ -273,9 +261,6 @@ services:
         BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
     image: orithos-frontend:latest
     restart: unless-stopped
-    # Read-only access to the worker-owned snapshot volume for admin archive UI.
-    group_add:
-      - "1001"
     depends_on:
       - backend
     expose:
@@ -330,9 +315,7 @@ services:
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
       ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET: ${ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET:-${SHOPFRONT_INTEGRATION_TOKEN:-}}
-      R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront
     volumes:
-      - shopfront-archive:/var/lib/orithos/shopfront:ro
       - rfq-requests:/var/lib/orithos/rfq
       - inventory-snapshots:/var/lib/orithos/inventory-snapshots:ro
 
@@ -340,5 +323,4 @@ volumes:
   inventory-snapshots:
   rfq-requests:
   redis-data:
-  shopfront-archive:
   shopfront-crawler-data:

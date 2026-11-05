@@ -8,7 +8,6 @@ services:
       POSTGRESQL_URL: ${POSTGRESQL_URL:?Set a dedicated UAT PostgreSQL URL}
       ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
-      R2_SYNC_SCHEDULE_ENABLED: "false"
       AI_ENABLED: "true"
       AI_COMMANDS_ENABLED: "true"
       AI_COMMANDS_EXECUTION_ENABLED: "false"
@@ -34,5 +33,3 @@ services:
       # requires the explicit host allow-list and never confirms or sends POs.
       AI_PURCHASE_DRAFT_ENABLED: "true"
       AI_PURCHASE_DRAFT_ALLOWED_HOSTS: "demo.orithos.com.au"
-  r2-sync:
-    profiles: ["archive-disabled-for-uat"]
