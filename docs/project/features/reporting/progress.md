@@ -2,6 +2,13 @@
 
 Updated: 2026-11-05. Owner: TBD.
 
+## Follow-up review (2026-11-05)
+
+- Rechecked current `main` (`9b4c8510`) and both public version endpoints. SKR and Demo return frontend/backend runtime `9b4c8510`; this runtime includes the report route and coverage corrections. The purchase comparison state fix recorded below is a follow-up patch and awaits deployment.
+- Rechecked the staged workflow surfaces: report navigation separates Sales report from Sales History, Purchase analysis from Purchase Orders, and exposes Register Closures directly. Sales and purchase pages support Today, custom date ranges, previous-period/year comparison, and URL-backed grouping/columns; inventory keeps stock filters, sort, progressive loading, and full-snapshot CSV/print.
+- Fixed a stale comparison display in Purchase report: changing the date/group/comparison now clears the previous comparison result and error while the new requests load.
+- Online report data reconciliation, CSV/print parity, and authenticated interaction remain unverified in this follow-up. See [validation](validation.md) and [runtime review session](../../../test-sessions/2026-11-05-report-optimization-runtime-review.md).
+
 ## Current worktree
 
 - Added direct sales reporting grouped by date, product, or POS category, with full-result CSV export and progressive loading.

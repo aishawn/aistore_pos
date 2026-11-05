@@ -73,6 +73,8 @@ export function PurchaseReportPage() {
     const revision = ++requestRevision.current;
     setLoading(true); setError(null);
     setReport(null);
+    setComparisonReport(null);
+    setComparisonError(null);
     try {
       const params = new URLSearchParams({ from: dates.from, to: dates.to, group });
       const response = await fetchOdooRoute(`/api/odoo/purchase-report?${params}`, { credentials: "same-origin", cache: "no-store" });

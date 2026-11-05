@@ -2,6 +2,14 @@
 
 Updated: 2026-11-05. Owner: TBD.
 
+## Follow-up review (2026-11-05)
+
+- Source revision reviewed: `9b4c8510db5ede2c4a60ec688fe9e3b2304eb311` on `main`, plus the purchase comparison state fix in this follow-up.
+- Runtime identity: both `https://skr.orithos.com.au/api/public/version` and `https://demo.orithos.com.au/api/public/version` returned frontend/backend `9b4c8510db5ede2c4a60ec688fe9e3b2304eb311` in read-only HTTP checks. This includes the report-root redirect and report reconciliation corrections; it does not include the purchase comparison state fix in this follow-up.
+- Unauthenticated GET requests to `/reports` and `/reports/dashboard` redirected to `/login`; no authenticated UI interaction or business data was accessed in this follow-up.
+- Source review found and fixed stale purchase comparison state when a new query starts. Local regression/type checks are recorded in [the runtime review session](../../../test-sessions/2026-11-05-report-optimization-runtime-review.md).
+- Same-store/same-period Overview, groups, details, purchase, closures, CSV and print parity remain NOT RUN because authenticated Odoo/report access is unavailable in this execution context.
+
 ## Current status
 
 | Check | Status | Evidence and limits |
