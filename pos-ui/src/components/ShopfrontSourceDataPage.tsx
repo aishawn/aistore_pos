@@ -106,8 +106,9 @@ function Cell({ children, className = "" }: { children: React.ReactNode; classNa
 
 export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const today = useMemo(() => adelaideDay(new Date()), []);
-  const initialTo = today;
-  const initialFrom = today;
+  const initialDay = mode === "dashboard" ? shiftDay(today, -1) : today;
+  const initialTo = initialDay;
+  const initialFrom = initialDay;
   const [fromInput, setFromInput] = useState(initialFrom);
   const [toInput, setToInput] = useState(initialTo);
   const [range, setRange] = useState({ from: initialFrom, to: initialTo });
@@ -129,6 +130,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [rows, setRows] = useState<SourceRow[]>([]);
   const [total, setTotal] = useState(0);
   const [liveActiveProducts, setLiveActiveProducts] = useState<number | null>(null);
+  const [sellableUnits, setSellableUnits] = useState<number | null>(null);
   const [liveCatalogFetchedAt, setLiveCatalogFetchedAt] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SourceCoverage | null>(null);
   const [rangeCoverage, setRangeCoverage] = useState<Record<string, unknown> | null>(null);
@@ -183,6 +185,14 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       setGeneratedAt(typeof result.fetched_at === "string" ? result.fetched_at : new Date().toISOString());
 
       if (mode === "dashboard") {
+        void fetch("/api/shopfront-source?resource=dashboard-inventory", { cache: "no-store", credentials: "same-origin" })
+          .then(async response => ({ response, payload: await response.json().catch(() => null) as { available?: unknown; sellable_units?: unknown } | null }))
+          .then(({ response: inventoryResponse, payload: inventoryPayload }) => {
+            setSellableUnits(inventoryResponse.ok && inventoryPayload?.available === true && Number.isFinite(Number(inventoryPayload.sellable_units))
+              ? Number(inventoryPayload.sellable_units)
+              : null);
+          })
+          .catch(() => setSellableUnits(null));
         const catalogParams = new URLSearchParams({ resource: "report-products", page: "1", size: "1", status: "ACTIVE" });
         void fetch(`/api/shopfront-source?${catalogParams}`, { cache: "no-store", credentials: "same-origin" })
           .then(async catalogResponse => ({ catalogResponse, catalogResult: await catalogResponse.json().catch(() => null) as PagePayload | null }))
@@ -202,6 +212,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       } else {
         setLiveActiveProducts(null);
         setLiveCatalogFetchedAt(null);
+        setSellableUnits(null);
       }
 
       if (mode === "dashboard" || mode === "inventory" || mode === "products") {
@@ -326,6 +337,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Basket size" value={quantity(reportMetrics.basket_size)} />
         <Metric label="Discount amount" value={money(sums.discount)} />
         <Metric label="Active products" value={liveActiveProducts === null ? "—" : quantity(liveActiveProducts)} detail={liveCatalogFetchedAt ? `Live Shopfront catalog · ${dateLabel(liveCatalogFetchedAt)}` : "Live Shopfront catalog unavailable"} />
+        <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail="Shopfront case and item levels" />
         <Metric label="Inventory records" value={quantity(inventory.records)} />
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}

@@ -1,4 +1,4 @@
-from app.source_reporting import inventory_report_totals
+from app.source_reporting import inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
 
 
 def test_inventory_totals_convert_cases_and_items_and_exclude_negative_units():
@@ -44,3 +44,30 @@ def test_inventory_snapshot_totals_fail_closed_without_pack_size():
         {"inventory": {"caseLevel": 1, "singleLevel": 2}, "product": {}}
     ])
     assert totals["inventory_metrics_complete"] == 0
+
+
+def test_incremental_inventory_manifest_adds_only_products_with_inventory_evidence():
+    merged = merge_incremental_inventory_manifest(
+        ["old-a", "old-b"],
+        [{"id": "new-a", "inventory": []}, {"ID": "new-b", "inventory": None}],
+    )
+    assert merged == ["new-a", "new-b", "old-a", "old-b"]
+
+
+def test_incremental_inventory_manifest_fails_closed_if_inventory_field_is_missing():
+    assert merge_incremental_inventory_manifest(["old"], [{"id": "new"}]) is None
+
+
+def test_persisted_inventory_snapshot_maps_to_report_rows_and_case_units():
+    rows = inventory_snapshot_report_rows([
+        {"product": {"id": "p1", "name": "Beer", "caseQuantity": 6},
+         "inventory": [{"caseLevel": 2, "singleLevel": 3, "value": 100}]},
+    ])
+    assert rows == [{"ID": "p1", "Name": "Beer", "Case Quantity": 6, "Case Level": 2, "Item Level": 3, "Value (Inc) (Last)": 100}]
+    assert inventory_report_totals(rows or [])['sellable_units'] == 15
+
+
+def test_persisted_inventory_snapshot_fails_closed_without_pack_data():
+    assert inventory_snapshot_report_rows([
+        {"product": {"id": "p1"}, "inventory": [{"caseLevel": 2, "singleLevel": 3}]},
+    ]) is None

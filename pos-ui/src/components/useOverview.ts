@@ -156,7 +156,7 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
   const day = businessDay(payload.yesterdayFrom, timezone);
   if (!day) return { mapped: true as const, sales: null, inventory: null };
   const salesPath = `/api/shopfront-source?resource=report-sales&from=${day}&to=${day}&size=600`;
-  const inventoryPath = "/api/shopfront-source?resource=report-inventory";
+  const inventoryPath = "/api/shopfront-source?resource=dashboard-inventory";
   const read = async (path: string) => {
     try {
       const response = await fetchPreparedReport(path);

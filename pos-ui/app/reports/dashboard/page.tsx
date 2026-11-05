@@ -1,7 +1,7 @@
-import { OrithosReportsDashboardPage } from "@/components/OrithosReportsDashboardPage";
+import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
 
 export const dynamic = "force-dynamic";
 
 export default function ReportingDashboardPage() {
-  return <OrithosReportsDashboardPage />;
+  return <ShopfrontSourceDataPage mode="dashboard" />;
 }

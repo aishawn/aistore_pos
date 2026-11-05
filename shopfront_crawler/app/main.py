@@ -25,7 +25,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import inventory_report_totals, inventory_snapshot_totals
+from .source_reporting import inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -501,7 +501,39 @@ async def shopfront_source_report(
     ))
     now = datetime.now(timezone.utc)
     fetched = cached.fetched_at.replace(tzinfo=timezone.utc) if cached and cached.fetched_at.tzinfo is None else (cached.fetched_at if cached else None)
-    if cached and fetched and now - fetched < timedelta(seconds=60):
+    if report_type == "inventory":
+        manifest = db.scalar(select(InventorySnapshotManifest).where(
+            InventorySnapshotManifest.store_key == store,
+        ))
+        if manifest is None or not manifest.complete:
+            raise HTTPException(503, "Shopfront inventory snapshot is incomplete")
+        persisted = db.execute(select(InventorySnapshot, Product).outerjoin(
+            Product,
+            (Product.store_key == InventorySnapshot.store_key)
+            & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
+        ).where(InventorySnapshot.store_key == store)).all()
+        mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
+        if mapping and mapping.shopfront_outlet:
+            persisted = [(inventory, product) for inventory, product in persisted if inventory.outlet_name == mapping.shopfront_outlet]
+        elif len({inventory.outlet_id for inventory, _ in persisted if inventory.outlet_id}) > 1:
+            raise HTTPException(503, "Shopfront inventory outlet mapping is required")
+        if any(str(inventory.shopfront_product_id) not in {str(value) for value in (manifest.source_product_ids or [])} for inventory, _ in persisted):
+            raise HTTPException(503, "Shopfront inventory snapshot manifest is inconsistent")
+        inventory_data = []
+        for inventory_row, product_row in persisted:
+            raw = inventory_row.raw_payload if isinstance(inventory_row.raw_payload, dict) else {}
+            inventory_data.append({"inventory": raw, "product": product_row.raw_payload if product_row and isinstance(product_row.raw_payload, dict) else {}})
+        rows = inventory_snapshot_report_rows(inventory_data)
+        if rows is None:
+            raise HTTPException(503, "Shopfront inventory snapshot units are incomplete")
+        if q and q.strip():
+            needle = q.strip().casefold()
+            rows = [row for row in rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]
+        if negative_only:
+            rows = [row for row in rows if float(row["Case Level"]) * float(row["Case Quantity"]) + float(row["Item Level"]) < 0]
+        source_fetched_at = manifest.snapshot_at
+        cache_status = "snapshot"
+    elif cached and fetched and now - fetched < timedelta(seconds=60):
         rows = cached.rows if isinstance(cached.rows, list) else []
         source_fetched_at = cached.fetched_at
         cache_status = "hit"
@@ -826,18 +858,43 @@ def save_pos_mapping(store_key: str, payload: dict, db: Session = Depends(get_db
 
 
 @app.post("/api/stores/{store_key}/sync")
-async def trigger_sync(store_key: str, from_date: date | None = None, to_date: date | None = None, db: Session = Depends(get_db)) -> dict:
+async def trigger_sync(
+    store_key: str,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    full_inventory_snapshot: bool = False,
+    db: Session = Depends(get_db),
+) -> dict:
     store = require_store(store_key, db)
     active = active_job(db, store.store_key)
     if active:
         raise HTTPException(409, f"A {active.job_type} job is already active for this store")
     end = to_date or (datetime.now(ZoneInfo(store.timezone)).date() - timedelta(days=1))
     start = from_date or (end - timedelta(days=settings.sync_lookback_days - 1))
-    job = SyncJob(store_key=store.store_key, job_type="daily_sync", status="queued", from_date=start.isoformat(), to_date=end.isoformat(), cursor_date=start.isoformat(), payload={"include_supply_chain": should_include_supply_chain(db, store.store_key)})
+    if start > end:
+        raise HTTPException(400, "from_date must be on or before to_date")
+    if full_inventory_snapshot and start != end:
+        raise HTTPException(400, "A full inventory refresh must target one business date")
+    job = SyncJob(
+        store_key=store.store_key,
+        job_type="daily_sync",
+        status="queued",
+        from_date=start.isoformat(),
+        to_date=end.isoformat(),
+        cursor_date=start.isoformat(),
+        payload={
+            "include_supply_chain": False if full_inventory_snapshot else should_include_supply_chain(db, store.store_key),
+            "full_inventory_snapshot": full_inventory_snapshot,
+            "manual_repair": True,
+        },
+    )
     db.add(job)
     db.commit()
     wake_durable_worker()
-    return {"status": "queued", "job_id": job.id, "store": store.store_key, "from": start, "to": end}
+    return {
+        "status": "queued", "job_id": job.id, "store": store.store_key,
+        "from": start, "to": end, "full_inventory_snapshot": full_inventory_snapshot,
+    }
 
 
 async def run_full_snapshot_job(job_id: int) -> None:

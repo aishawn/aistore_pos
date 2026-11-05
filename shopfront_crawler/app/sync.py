@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .config import Settings
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontSupplier, ShopfrontToken, Store, SyncRun
 from .pos import OrithosClient, PosIntegrationError
+from .source_reporting import merge_incremental_inventory_manifest
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -1054,6 +1055,23 @@ async def sync_store(
                     existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
                     existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
+        if include_catalog and catalog_sync_complete and products_updated_after and not refresh_inventory:
+            manifest = db.scalar(select(InventorySnapshotManifest).where(
+                InventorySnapshotManifest.store_key == store.store_key,
+                InventorySnapshotManifest.complete.is_(True),
+            ))
+            if manifest is not None:
+                merged_ids = merge_incremental_inventory_manifest(
+                    [str(value) for value in (manifest.source_product_ids or [])],
+                    products,
+                )
+                if merged_ids is not None:
+                    previous_count = len(set(str(value) for value in (manifest.source_product_ids or [])))
+                    manifest.source_product_ids = merged_ids
+                    counts["inventory_manifest_delta_products"] = len(merged_ids) - previous_count
+                    counts["inventory_manifest_extended"] = True
+                else:
+                    counts["inventory_manifest_extended"] = False
         if refresh_inventory:
             # The full product snapshot can dirty thousands of SQLite rows.
             # Persist that batch before waiting on the paginated inventory API
