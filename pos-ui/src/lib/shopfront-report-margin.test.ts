@@ -25,7 +25,7 @@ test("reads a stable complete source mirror and computes its original sale margi
     return [sourceSale];
   }) as ReportRpc;
   const result = await readShopfrontReportMargin(rpc, "session", "skr", "2026-11-02 00:00:00", "2026-11-03 00:00:00");
-  assert.deepEqual(result, { grossMarginPercent: 0.4, coverage: 1 });
+  assert.deepEqual(result, { grossMarginPercent: 0.4, grossSales: 11, tax: 1, netSales: 10, salesCost: 6, completedOrders: 1, coverage: 1 });
 });
 
 test("does not publish a margin when the source mirror changes during pagination", async () => {

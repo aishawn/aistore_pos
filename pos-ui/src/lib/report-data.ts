@@ -53,24 +53,30 @@ async function calculateOdooGrossMargin(rpc: ReportRpc, sessionId: string, compa
     tax: salesAvailable ? salesRows[0]?.amount_tax ?? null : null, salesAvailable, reconciled, lineNet };
 }
 
-async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, sourceStore?: string, correlationId?: string | null) {
+async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId: number, timezone: string, now: Date, sampleDataClearedAt: string | null, sourceStore?: string, stockLocationId?: number | null, correlationId?: string | null) {
   const bounds = getReportPeriodBounds("yesterday", now, timezone);
   const from = bounds.start.toISOString().slice(0, 19).replace("T", " ");
   const to = bounds.end.toISOString().slice(0, 19).replace("T", " ");
   const orderDomain: unknown[] = [["company_id", "=", companyId], ["date_order", ">=", from], ["date_order", "<", to], ["state", "in", ["paid", "done", "invoiced"]]];
   const lineDomain: unknown[] = [["order_id.company_id", "=", companyId], ["order_id.date_order", ">=", from], ["order_id.date_order", "<", to], ["order_id.state", "in", ["paid", "done", "invoiced"]]];
   if (sampleDataClearedAt) { orderDomain.push("!", ["uuid", "=like", `demo-seed-${companyId}-%`]); lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${companyId}-%`]); }
-  const stockDomain = [["company_id", "=", companyId], ["location_id.usage", "=", "internal"]];
+  const stockDomain: unknown[] = [["company_id", "=", companyId], ["location_id.usage", "=", "internal"], ["product_id.available_in_pos", "=", true]];
+  if (stockLocationId && Number.isSafeInteger(stockLocationId) && stockLocationId > 0) stockDomain.push(["location_id", "child_of", stockLocationId]);
   const [stockRows, negativeRows, marginMetrics, sourceMarginFallback] = await Promise.all([
     rpc<Array<{ quantity: number; product_id: [number, string] | false; product_uom_id: [number, string] | false }>>(sessionId, "stock.quant", "read_group", [stockDomain, ["quantity:sum"], ["product_id", "product_uom_id"]], { lazy: false }, correlationId).catch(() => null),
     rpc<Array<{ product_id: [number, string]; quantity: number }>>(sessionId, "stock.quant", "read_group", [[...stockDomain, ["quantity", "<", 0]], ["quantity:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => null),
     calculateOdooGrossMargin(rpc, sessionId, companyId, orderDomain, lineDomain, correlationId),
     readShopfrontReportMargin(rpc, sessionId, sourceStore, from, to, correlationId).catch(() => null),
   ]);
-  const yesterdaySales = marginMetrics.salesTotal;
-  const yesterdayTax = marginMetrics.tax;
-  const netSales = marginMetrics.netSales;
-  const reconciled = marginMetrics.reconciled;
+  const yesterdaySales = sourceMarginFallback?.grossSales ?? marginMetrics.salesTotal;
+  const yesterdayTax = sourceMarginFallback?.tax ?? marginMetrics.tax;
+  const netSales = sourceMarginFallback?.netSales ?? marginMetrics.netSales;
+  const reconciled = marginMetrics.reconciled && (!sourceMarginFallback
+    || (Math.abs(sourceMarginFallback.grossSales - marginMetrics.salesTotal) < 0.011
+      && marginMetrics.tax !== null && Math.abs(sourceMarginFallback.tax - marginMetrics.tax) < 0.011));
+  const sourceReconciliation = sourceMarginFallback
+    ? reconciled ? "matched" : "mismatch"
+    : "unavailable";
   const stockAvailable = Array.isArray(stockRows) && stockRows.every(row => numeric(row.quantity) && row.product_uom_id !== false);
   const mixedUnits = stockAvailable && new Set(stockRows.map(row => row.product_uom_id && row.product_uom_id[0])).size > 1;
   // Negative quants are shortage adjustments, not sellable units. Aggregate by
@@ -81,9 +87,10 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     inventoryUnits, inventoryNetUnits, inventoryAvailable: stockAvailable && !mixedUnits,
     inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
     negativeStockProducts: negativeRows?.length ?? null,
-    yesterdaySales, yesterdaySalesAvailable: marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
+    yesterdaySales, yesterdaySalesAvailable: sourceMarginFallback !== null || marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
     yesterdayGrossMargin: marginMetrics.margin, grossMarginCoverage: marginMetrics.coverage, grossMarginStatus: marginMetrics.status,
-    sourceMarginFallback: marginMetrics.status === "sales_mismatch" || marginMetrics.status === "unavailable" ? sourceMarginFallback : null,
+    sourceReconciliation,
+    sourceMarginFallback,
     salesReconciled: reconciled, salesReconciliationDifference: netSales !== null && marginMetrics.lineNet !== null ? Math.round((marginMetrics.lineNet - netSales) * 100) / 100 : null,
     costBasis: "odoo_recorded_cost", yesterdayFrom: from, yesterdayTo: to,
   };
@@ -129,7 +136,7 @@ async function readSalesTrend(rpc: ReportRpc, sessionId: string, domain: unknown
 
 export async function calculateReport(rpc: ReportRpc, options: {
   sessionId: string; companyId: number; company: ReportCompany; period?: string | null; fromDay?: string | null; toDay?: string | null;
-  hours?: number; summaryOnly?: boolean; sampleDataClearedAt?: string | null; sourceStore?: string; now?: Date; correlationId?: string | null;
+  hours?: number; summaryOnly?: boolean; sampleDataClearedAt?: string | null; sourceStore?: string; stockLocationId?: number | null; now?: Date; correlationId?: string | null;
 }) {
   const { sessionId, companyId, company, period, summaryOnly = false, sampleDataClearedAt = null, sourceStore, correlationId } = options;
   const timezone = company.timezone;
@@ -201,7 +208,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
         rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], []], {}, correlationId),
         rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
         rpc<number>(sessionId, "pos.session", "search_count", [[["company_id", "=", companyId], ["state", "=", "opened"]]], {}, correlationId),
-        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, sourceStore, correlationId),
+        loadBusinessMetrics(rpc, sessionId, companyId, timezone, options.now ?? new Date(), sampleDataClearedAt, sourceStore, options.stockLocationId, correlationId),
       ]);
       return { period: "today", from, to, timezone, company: company.name, currency: company.currency,
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
@@ -264,7 +271,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       grossMarginCoverage: marginMetrics.coverage,
       grossMarginStatus: marginMetrics.status,
       grossMarginBasis: "odoo_recorded_cost",
-      sourceMarginFallback: marginMetrics.status === "sales_mismatch" || marginMetrics.status === "unavailable" ? sourceMarginFallback : null,
+      sourceMarginFallback,
       tax: Number(summary.amount_tax ?? 0),
       transactions,
       itemsSold: lineExtras.itemsSold,

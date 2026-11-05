@@ -83,6 +83,7 @@ type OverviewData = {
   grossMarginCoverage?: number;
   grossMarginStatus?: string;
   grossMarginBasis?: string;
+  sourceReconciliation?: "matched" | "mismatch" | "unavailable";
 };
 
 function storeDay(value: string, timezone: string) {
@@ -516,7 +517,7 @@ export function OrithosReportsDashboardPage() {
           </header>
           {data ? (
             <section role="status" className={`flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${data.completeness === "complete" ? "border-[var(--oh-border)] bg-white text-[var(--oh-text)]" : "border-amber-300 bg-amber-50 text-amber-950"}`}>
-              <span>Shopfront source coverage: {data.completeness === "complete" ? "complete" : data.completeness === "incomplete" ? "incomplete" : "not confirmed"} · {data.from} to {data.to}</span>
+              <span>{data.sourceReconciliation === "mismatch" ? "Shopfront sales do not reconcile with this store's Odoo sales" : `Shopfront source coverage: ${data.completeness === "complete" ? "complete" : data.completeness === "incomplete" ? "incomplete" : "not confirmed"}`} · {data.from} to {data.to}</span>
               <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"} · Sync updated {data.sourceSyncUpdatedAt ? formatStoreEpoch(Date.parse(data.sourceSyncUpdatedAt), data.timezone) : "—"} · Report prepared {data.generatedAt ? formatStoreEpoch(Date.parse(data.generatedAt), data.timezone) : "—"}</span>
             </section>
           ) : null}

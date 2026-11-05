@@ -359,7 +359,10 @@ export async function POST(request: NextRequest) {
     if (!companyIds.length) {
       return NextResponse.json({ message: "No accessible Orithos company is mapped to this store." }, { status: 403 });
     }
-    const context = odooCompanyContext(companyIds);
+    const companyContext = odooCompanyContext(companyIds);
+    const context = type === "products" && forced.binding?.odooWarehouseId
+      ? { ...companyContext, warehouse: forced.binding.odooWarehouseId }
+      : companyContext;
 
     // Scope every dataset to the store's company. Shared company_id=False products
     // are excluded so a new empty company cannot inherit the demo catalog.

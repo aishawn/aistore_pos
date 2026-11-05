@@ -2,7 +2,15 @@ import { shopfrontSourceMargin } from "./shopfront-source-margin.ts";
 import type { AuditRecord } from "./cost-reconciliation.ts";
 import type { ReportRpc } from "./report-data.ts";
 
-export type ShopfrontReportMargin = { grossMarginPercent: number; coverage: 1 } | null;
+export type ShopfrontReportMargin = {
+  grossMarginPercent: number;
+  grossSales: number;
+  tax: number;
+  netSales: number;
+  salesCost: number;
+  completedOrders: number;
+  coverage: 1;
+} | null;
 
 export async function readShopfrontReportMargin(
   rpc: ReportRpc,
@@ -33,6 +41,7 @@ export async function readShopfrontReportMargin(
   if (rows.length !== count || await rpc<number>(sessionId, "shopfront.sync.sale", "search_count", [domain], {}, correlationId) !== count) return null;
   const margin = shopfrontSourceMargin(rows, from, to, true);
   return margin.complete && margin.grossMarginPercent !== null
-    ? { grossMarginPercent: margin.grossMarginPercent / 100, coverage: 1 }
+    ? { grossMarginPercent: margin.grossMarginPercent / 100, grossSales: margin.grossSales!, tax: margin.tax!,
+      netSales: margin.netSales!, salesCost: margin.salesCost!, completedOrders: margin.completedOrders, coverage: 1 }
     : null;
 }

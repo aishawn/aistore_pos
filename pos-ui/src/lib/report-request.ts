@@ -86,15 +86,30 @@ function response(body: unknown, status = 200, timing?: string) {
 function responseReportBody(body: Record<string, unknown>, sourceComplete: boolean) {
   const { sourceMarginFallback, ...visible } = body;
   if (!sourceMarginFallback || typeof sourceMarginFallback !== "object") return visible;
-  const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown };
-  if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)
-    || visible.grossMarginStatus === "verified" || visible.grossMarginStatus === "no_sales") return visible;
+  const fallback = sourceMarginFallback as { grossMarginPercent?: unknown; coverage?: unknown; grossSales?: unknown; tax?: unknown };
+  if (typeof fallback.grossMarginPercent !== "number" || !Number.isFinite(fallback.grossMarginPercent)) return visible;
+  const expectedSales = Object.hasOwn(visible, "yesterdaySales") ? visible.yesterdaySales : visible.revenue;
+  const expectedTax = Object.hasOwn(visible, "yesterdayTax") ? visible.yesterdayTax : visible.tax;
+  const calculatedReconciliation = typeof fallback.grossSales === "number" && Number.isFinite(fallback.grossSales)
+    && typeof expectedSales === "number" && Number.isFinite(expectedSales)
+    && typeof fallback.tax === "number" && Number.isFinite(fallback.tax)
+    && typeof expectedTax === "number" && Number.isFinite(expectedTax)
+    ? Math.abs(fallback.grossSales - expectedSales) < 0.011 && Math.abs(fallback.tax - expectedTax) < 0.011 ? "matched" : "mismatch"
+    : "unavailable";
+  const sourceReconciliation = visible.sourceReconciliation === "matched" || visible.sourceReconciliation === "mismatch"
+    ? visible.sourceReconciliation : calculatedReconciliation;
+  const mismatch = sourceReconciliation === "mismatch";
+  const preserveLedgerMargin = visible.grossMarginStatus === "verified";
   return {
     ...visible,
-    ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
-    grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
-    grossMarginStatus: sourceComplete ? "source_margin" : "source_margin_unverified",
-    grossMarginBasis: "shopfront_original_sale_cost",
+    ...(!preserveLedgerMargin ? {
+      ...(Object.hasOwn(visible, "yesterdayGrossMargin") ? { yesterdayGrossMargin: fallback.grossMarginPercent } : { grossMarginPercent: fallback.grossMarginPercent }),
+      grossMarginCoverage: typeof fallback.coverage === "number" ? fallback.coverage : 1,
+      grossMarginStatus: sourceComplete ? "source_margin" : "source_margin_unverified",
+      grossMarginBasis: "shopfront_original_sale_cost",
+    } : {}),
+    sourceReconciliation,
+    ...(mismatch ? { completeness: "incomplete", salesReconciled: false } : {}),
   };
 }
 
@@ -154,7 +169,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         nextTask = job.id;
         if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
       }
-      if (snapshot) return response({ ...responseReportBody(snapshot.body, sourceComplete), ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
+      if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
       `auth;dur=${authMs.toFixed(1)}, cache;dur=${(performance.now() - started - authMs).toFixed(1)}, odoo;desc="0 aggregate calls"`);
     }
@@ -174,7 +189,8 @@ export async function serveReport(request: NextRequest, deadStock = false) {
           const body = deadStock
             ? await calculateDeadStock(rpc, access.sessionId, access.scope.companyId, undefined, new Date(), access.scope.sampleDataClearedAt)
             : await calculateReport(rpc, { sessionId: access.sessionId, companyId: access.scope.companyId, company: access.company,
-              period, fromDay, toDay, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt, sourceStore: access.scope.shopfrontStore });
+              period, fromDay, toDay, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt,
+              sourceStore: access.scope.shopfrontStore, stockLocationId: access.binding?.odooStockLocationId });
           const result: ReportSnapshot = { key: localKey, generatedAt: new Date().toISOString(), queryThrough: String("to" in body ? body.to : new Date().toISOString()),
             body: { ...body, queryMetrics: { rpcCalls, durationMs: Math.round(performance.now() - queryStarted) } }, scope: access.scope,
             period: (calendar ? period : "today") as SnapshotPeriod, revision };
@@ -186,7 +202,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       }
       snapshot = await flight;
     }
-    return response({ ...responseReportBody(snapshot.body, sourceComplete), ...sourceMetadata, generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
+    return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceComplete), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough, cacheStatus: snapshot === old ? "HIT" : "LIVE", updateStatus: "complete" }, 200,
       `auth;dur=${authMs.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`);
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;

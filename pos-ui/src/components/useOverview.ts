@@ -16,6 +16,7 @@ export type OverviewPulse = {
   cacheStatus?: string;
   updateStatus?: string;
   completeness?: "complete" | "incomplete" | "unverified";
+  sourceReconciliation?: "matched" | "mismatch" | "unavailable";
   sourceSyncedThrough?: string | null;
   dataRevision?: string;
   taskId?: string;
@@ -99,6 +100,7 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     cacheStatus: payload.cacheStatus as string | undefined,
     updateStatus: payload.updateStatus as string | undefined,
     completeness: payload.completeness as OverviewPulse["completeness"],
+    sourceReconciliation: payload.sourceReconciliation as OverviewPulse["sourceReconciliation"],
     sourceSyncedThrough: payload.sourceSyncedThrough as string | null | undefined,
     dataRevision: payload.dataRevision as string | undefined,
     taskId: payload.taskId as string | undefined,
