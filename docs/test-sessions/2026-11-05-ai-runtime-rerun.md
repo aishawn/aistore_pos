@@ -49,3 +49,7 @@ This confirms a shared runtime/session failure on a fixed deployment SHA. Online
 ## Root-Cause Probe
 
 The harness was corrected to use `ODOO_USER`/`ODOO_PASS` (or service-account equivalents) for an explicit read-only `POST /api/odoo/session` when the initial GET has no Odoo user. The explicit POS session POST still returned Cloudflare HTTP 502. A direct read-only JSON-RPC login to `https://odoo.orithos.com.au/web/session/authenticate` timed out after 30 seconds, and the Odoo database selector GET also timed out. This points to the Odoo upstream being unavailable or unreachable at this check time; it is stronger evidence than an assumed cookie failure. No business write was attempted.
+
+## Dokploy Read-Only Check
+
+The Odoo compose was queried through Dokploy without changing it: `composeStatus=done`, Git source is the `main` branch, `composePath=./docker-compose.yml`, and `autoDeploy=true`. The newest listed Odoo deployment finished on 2026-11-04; there was no newer Odoo deployment during this check. This rules out a pending deployment as the immediate explanation, but does not prove the `web` container is healthy. Owner action is to inspect the Odoo compose/container health and logs in Dokploy, then rerun the direct Odoo health and POS AI probes.
