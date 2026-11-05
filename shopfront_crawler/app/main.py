@@ -494,7 +494,7 @@ async def shopfront_source_report(
         raise HTTPException(400, "status must be ACTIVE or NOT_ACTIVE")
 
     period_key = f"{from_date.isoformat()}:{to_date.isoformat()}" if from_date and to_date else "all"
-    cached = db.scalar(select(ShopfrontReportSnapshot).where(
+    cached = None if report_type == "inventory" else db.scalar(select(ShopfrontReportSnapshot).where(
         ShopfrontReportSnapshot.store_key == store,
         ShopfrontReportSnapshot.report_type == report_type,
         ShopfrontReportSnapshot.period_key == period_key,
@@ -528,9 +528,10 @@ async def shopfront_source_report(
         for inventory_row, product_row in persisted:
             raw = inventory_row.raw_payload if isinstance(inventory_row.raw_payload, dict) else {}
             inventory_data.append({"inventory": raw, "product": product_row.raw_payload if product_row and isinstance(product_row.raw_payload, dict) else {}})
-        rows = inventory_snapshot_report_rows(inventory_data)
-        if rows is None:
+        snapshot_rows = inventory_snapshot_report_rows(inventory_data)
+        if snapshot_rows is None:
             raise HTTPException(503, "Shopfront inventory snapshot units are incomplete")
+        rows = snapshot_rows
         if q and q.strip():
             needle = q.strip().casefold()
             rows = [row for row in rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]
