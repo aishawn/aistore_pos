@@ -125,7 +125,12 @@ class OdooSyncClient:
                     imported = receipt_count(imported_value)
                     updated = receipt_count(updated_value)
                     if imported is None or updated is None:
-                        last_error = "Odoo sales receipt has invalid imported/updated counts"
+                        count_types = {
+                            key: type(business.get(key)).__name__
+                            for key in ("imported", "created", "updated_orders", "updated")
+                            if key in business
+                        }
+                        last_error = f"Odoo sales receipt has invalid imported/updated counts (fields={sorted(business)}, count_types={count_types})"
                         break
                     if skipped is None and imported + updated == len(items):
                         # Older Odoo builds omit skipped=[] when every order
