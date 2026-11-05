@@ -487,6 +487,12 @@ export function OrithosReportsDashboardPage() {
               </Link>
             </div>
           </header>
+          {data && data.completeness !== "complete" ? (
+            <section role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <span>{data.completeness === "incomplete" ? "Shopfront data is incomplete for this period." : "Shopfront coverage has not been confirmed for this period."}</span>
+              <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"}</span>
+            </section>
+          ) : null}
           {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
           {data?.cacheStatus === "STALE" && <p role="status" className="text-xs text-amber-800">Showing the last prepared report. An updated report is being prepared.</p>}
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--oh-muted)]">

@@ -17,7 +17,10 @@ function equalToken(value: string, expected: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const expected = process.env.APP_SHOPFRONT_INTEGRATION_TOKEN?.trim() ?? process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim() ?? "";
+  const expected = process.env.ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET?.trim()
+    || process.env.APP_SHOPFRONT_INTEGRATION_TOKEN?.trim()
+    || process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim()
+    || "";
   const supplied = request.headers.get("x-shopfront-integration-token") ?? "";
   if (!expected || !equalToken(supplied, expected)) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
