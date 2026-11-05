@@ -23,6 +23,8 @@ query ShopfrontCatalog($after: Cursor) {
       tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
       orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
       category { id name } brand { id name } family { id name } tags { name }
+      suppliers { id name } coreSupplier { id name } lastSupplier { id name }
+      additionalFields { safeName value }
       trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost
       replacementCost costPercentage
       prices { quantity price priceEx decimalPlaceLength priceSet { id name } }

@@ -1,4 +1,4 @@
-from app.shopfront import ShopfrontClient
+from app.shopfront import CATALOG_QUERY, ShopfrontClient
 from app.main import sales_trend_missing_dates, source_product_row, source_sale_snapshot_is_complete
 from app.sync import _dedupe_sales, parse_decimal, verify_webhook
 
@@ -82,6 +82,11 @@ def test_source_product_gift_card_uses_shopfront_additional_field_safe_name():
 
     assert gift_card["is_gift_card"] is True
     assert regular_product["is_gift_card"] is False
+
+
+def test_live_catalog_query_includes_supplier_and_additional_fields_in_single_pass():
+    assert "suppliers { id name } coreSupplier { id name } lastSupplier { id name }" in CATALOG_QUERY
+    assert "additionalFields { safeName value }" in CATALOG_QUERY
 
 
 def test_duplicate_sale_edges_are_collapsed_and_merged():
@@ -206,18 +211,18 @@ def test_product_catalog_fetch_follows_cursor_pages():
 
     async def run():
         client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
-        products = await client.fetch_products("token", "{ products(first: 100) { edges { node { id name } } } }")
+        products = await client.fetch_products("token", CATALOG_QUERY)
         await client.close()
         return products
 
     products = asyncio.run(run())
     assert [product["id"] for product in products] == ["p1", "p2"]
     assert all("additionalFields { safeName value }" in call["query"] for call in calls if "additionalFields" in call["query"])
-    assert len(calls) == 26
+    assert len(calls) == 2
     assert products[0]["additionalFields"][0]["safeName"] == "vii_is_gift_card"
     assert "pageInfo { hasNextPage endCursor }" in calls[0]["query"]
+    assert calls[0]["variables"]["after"] is None
     assert calls[1]["variables"]["after"] == "cursor-2"
-    assert calls[2]["variables"]["after"] is None
 
 
 def test_sales_query_keeps_line_product_identity_and_falls_back_for_tenant_schema():
