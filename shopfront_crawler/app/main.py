@@ -25,7 +25,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
+from .source_reporting import inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -517,7 +517,12 @@ async def shopfront_source_report(
             persisted = [(inventory, product) for inventory, product in persisted if inventory.outlet_name == mapping.shopfront_outlet]
         elif len({inventory.outlet_id for inventory, _ in persisted if inventory.outlet_id}) > 1:
             raise HTTPException(503, "Shopfront inventory outlet mapping is required")
-        if any(str(inventory.shopfront_product_id) not in {str(value) for value in (manifest.source_product_ids or [])} for inventory, _ in persisted):
+        manifest_state = inventory_manifest_status(
+            manifest.source_product_ids,
+            [inventory.shopfront_product_id for inventory, _ in persisted],
+            manifest.complete,
+        )
+        if not manifest_state["complete"]:
             raise HTTPException(503, "Shopfront inventory snapshot manifest is inconsistent")
         inventory_data = []
         for inventory_row, product_row in persisted:
@@ -728,11 +733,16 @@ def dashboard_inventory(store: str, db: Session = Depends(get_db)) -> dict:
 
     mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
     snapshot_ids = {str(value) for value in (manifest.source_product_ids or [])}
-    present_ids = {str(value) for value in db.scalars(
+    present_ids = db.scalars(
         select(InventorySnapshot.shopfront_product_id).where(InventorySnapshot.store_key == store).distinct()
-    ).all()}
+    ).all()
+    manifest_state = inventory_manifest_status(
+        manifest.source_product_ids,
+        present_ids,
+        manifest.complete,
+    )
     # Zero-stock products may have no inventory row; all persisted rows must still belong to the manifest.
-    if not present_ids.issubset(snapshot_ids):
+    if not manifest_state["complete"]:
         return {"available": False, "reason": "snapshot_manifest_mismatch", "source": "shopfront_inventory_snapshot"}
 
     query = select(InventorySnapshot, Product).outerjoin(
@@ -1397,6 +1407,16 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
         func.max(inventory_quantity),
     ).where(InventorySnapshot.store_key == store)).one()
     inventory_manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
+    inventory_product_ids = db.scalars(
+        select(InventorySnapshot.shopfront_product_id)
+        .where(InventorySnapshot.store_key == store)
+        .distinct()
+    ).all()
+    inventory_manifest_state = inventory_manifest_status(
+        inventory_manifest.source_product_ids if inventory_manifest else None,
+        inventory_product_ids,
+        bool(inventory_manifest and inventory_manifest.complete),
+    )
     sale_count = db.scalar(select(func.count(Sale.id)).where(Sale.store_key == store)) or 0
     sale_item_count = db.scalar(select(func.count(SaleItem.id)).join(Sale, SaleItem.sale_id == Sale.id).where(Sale.store_key == store)) or 0
     customer_count = db.scalar(select(func.count(ShopfrontCustomer.id)).where(ShopfrontCustomer.store_key == store)) or 0
@@ -1477,9 +1497,9 @@ def sync_coverage(store: str, db: Session = Depends(get_db)) -> dict:
                 "signed_quantity_total": inventory_stats[2] or 0,
                 "minimum_quantity": inventory_stats[3],
                 "maximum_quantity": inventory_stats[4],
-                "snapshot_complete": bool(inventory_manifest and inventory_manifest.complete),
+                "snapshot_complete": inventory_manifest_state["complete"],
                 "snapshot_at": inventory_manifest.snapshot_at if inventory_manifest else None,
-                "manifest_products": len(inventory_manifest.source_product_ids or []) if inventory_manifest else 0,
+                **inventory_manifest_state,
             },
             "sales": {"total": int(sale_count), "sale_items": int(sale_item_count), "sale_items_missing_name": int(missing_sale_item_names)},
             "customers": {"total": int(customer_count)},

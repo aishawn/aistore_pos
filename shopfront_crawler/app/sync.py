@@ -1086,7 +1086,11 @@ async def sync_store(
                 # stock moves made while Shopfront paginates the snapshot are
                 # preserved by the Odoo reconciliation guard.
                 snapshot_time = datetime.now(timezone.utc)
-                inventory_products = await client.fetch_inventory(token, settings.shopfront_inventory_query)
+                inventory_products = await client.fetch_inventory(
+                    token,
+                    settings.shopfront_inventory_query,
+                    progress_callback,
+                )
                 snapshot_keys: set[tuple[str, str]] = set()
                 inventory_rows: list[tuple[str, str, str | None, Decimal, dict[str, Any]]] = []
                 inventory_product_ids: set[str] = set()

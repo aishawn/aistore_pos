@@ -74,6 +74,24 @@ def merge_incremental_inventory_manifest(
     return sorted(merged)
 
 
+def inventory_manifest_status(
+    manifest_product_ids: list[Any] | None,
+    inventory_product_ids: list[Any],
+    manifest_complete: bool,
+) -> dict[str, Any]:
+    manifest_ids = {str(value).strip() for value in (manifest_product_ids or []) if str(value).strip()}
+    inventory_ids = {str(value).strip() for value in inventory_product_ids if str(value).strip()}
+    products_match_manifest = inventory_ids.issubset(manifest_ids)
+    return {
+        "complete": bool(manifest_complete) and products_match_manifest,
+        "manifest_complete": bool(manifest_complete),
+        "products_match_manifest": products_match_manifest,
+        "manifest_products": len(manifest_ids),
+        "products_with_inventory_rows": len(inventory_ids),
+        "products_not_in_manifest": len(inventory_ids - manifest_ids),
+    }
+
+
 def inventory_snapshot_report_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
     """Convert persisted GraphQL product/inventory pairs to report rows."""
     result: list[dict[str, Any]] = []

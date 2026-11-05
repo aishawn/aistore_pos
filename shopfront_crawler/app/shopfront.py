@@ -23,7 +23,6 @@ query ShopfrontCatalog($after: Cursor) {
       tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
       orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
       category { id name } brand { id name } family { id name } tags { name }
-      suppliers { id name } coreSupplier { id name } lastSupplier { id name }
       additionalFields { safeName value }
       trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost
       replacementCost costPercentage
@@ -441,7 +440,6 @@ UNCONSOLIDATED'''
             "{ products(first: 100) { edges { node { id cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage } } } }",
             "{ products(first: 100) { edges { node { id prices { quantity price priceEx decimalPlaceLength priceSet { id name } } } } } }",
             "{ products(first: 100) { edges { node { id barcodes { code quantity } taxRate { id name } costTaxRate { id name } } } } }",
-            "{ products(first: 100) { edges { node { id suppliers { id name } coreSupplier { id name } lastSupplier { id name } } } } }",
             "{ products(first: 100) { edges { node { id additionalFields { safeName value } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity singleLevel caseLevel outlet { id name } } } } } }",
             "{ products(first: 100) { edges { node { id inventory { quantity reorderLevel outlet { id name } } } } } }",
@@ -462,7 +460,6 @@ UNCONSOLIDATED'''
             ("cost", "lastCost", "averageCost", "globalCost", "globalLastCost", "globalAverageCost", "replacementCost", "costPercentage"),
             ("prices", "quantity", "price", "priceEx", "decimalPlaceLength", "priceSet"),
             ("barcodes", "code", "quantity", "taxRate", "costTaxRate"),
-            ("suppliers", "coreSupplier", "lastSupplier"),
             ("additionalFields", "safeName", "value"),
             ("inventory", "singleLevel", "caseLevel", "outlet"),
             ("inventory", "reorderLevel"),
@@ -574,7 +571,6 @@ UNCONSOLIDATED'''
           tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
           orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
           category { id name } brand { id name } family { id name } tags { name }
-          suppliers { id name } coreSupplier { id name } lastSupplier { id name }
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
@@ -622,7 +618,6 @@ UNCONSOLIDATED'''
           tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
           orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
           category { id name } brand { id name } family { id name } tags { name }
-          suppliers { id name } coreSupplier { id name } lastSupplier { id name }
           trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
           prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
           barcodes { code quantity } taxRate { id name } costTaxRate { id name }
@@ -723,8 +718,8 @@ UNCONSOLIDATED'''
             errors["customer_payments"] = str(exc)[:500]
         return entities, errors
 
-    async def fetch_inventory(self, access_token: str, query: str) -> list[dict[str, Any]]:
-        return await self._fetch_connection_nodes(access_token, query, "products")
+    async def fetch_inventory(self, access_token: str, query: str, progress_callback: Any | None = None) -> list[dict[str, Any]]:
+        return await self._fetch_connection_nodes(access_token, query, "products", progress_callback=progress_callback)
 
     async def fetch_sale_detail(self, access_token: str, sale_id: str, query: str) -> dict[str, Any]:
         data = await self.graphql(access_token, query, {"id": sale_id})

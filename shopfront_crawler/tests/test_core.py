@@ -84,8 +84,9 @@ def test_source_product_gift_card_uses_shopfront_additional_field_safe_name():
     assert regular_product["is_gift_card"] is False
 
 
-def test_live_catalog_query_includes_supplier_and_additional_fields_in_single_pass():
-    assert "suppliers { id name } coreSupplier { id name } lastSupplier { id name }" in CATALOG_QUERY
+def test_live_catalog_query_avoids_unsupported_product_supplier_fields():
+    assert "coreSupplier { id name }" not in CATALOG_QUERY
+    assert "lastSupplier { id name }" not in CATALOG_QUERY
     assert "additionalFields { safeName value }" in CATALOG_QUERY
 
 
@@ -223,6 +224,94 @@ def test_product_catalog_fetch_follows_cursor_pages():
     assert "pageInfo { hasNextPage endCursor }" in calls[0]["query"]
     assert calls[0]["variables"]["after"] is None
     assert calls[1]["variables"]["after"] == "cursor-2"
+
+
+def test_incremental_product_query_avoids_unsupported_supplier_fields_and_keeps_stock_units():
+    import asyncio
+    import json
+    import httpx
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read())
+        calls.append(payload["query"])
+        connection = {
+            "edges": [{"node": {"id": "p1", "caseQuantity": 6, "inventory": []}}],
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+        }
+        return httpx.Response(200, json={"data": {"products": connection}})
+
+    async def run():
+        client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        products = await client.fetch_products_incremental("token", "2026-11-05T00:00:00Z")
+        await client.close()
+        return products
+
+    products = asyncio.run(run())
+    assert [product["id"] for product in products] == ["p1"]
+    assert len(calls) == 2
+    assert all("coreSupplier { id name }" not in query for query in calls)
+    assert all("lastSupplier { id name }" not in query for query in calls)
+    assert all("caseQuantity" in query and "singleLevel" in query and "caseLevel" in query for query in calls)
+
+
+def test_product_id_query_avoids_unsupported_supplier_fields():
+    import asyncio
+    import json
+    import httpx
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read())
+        calls.append(payload["query"])
+        return httpx.Response(200, json={"data": {"products": {
+            "edges": [{"node": {"id": "p1", "name": "Product"}}],
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+        }}})
+
+    async def run():
+        client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        products = await client.fetch_products_by_ids("token", ["p1"])
+        await client.close()
+        return products
+
+    assert asyncio.run(run()) == [{"id": "p1", "name": "Product"}]
+    assert len(calls) == 1
+    assert "coreSupplier { id name }" not in calls[0]
+    assert "lastSupplier { id name }" not in calls[0]
+
+
+def test_inventory_fetch_reports_paged_product_progress():
+    import asyncio
+    import json
+    import httpx
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read())
+        calls.append(payload)
+        next_page = payload["variables"]["after"] is not None
+        connection = {
+            "edges": [{"node": {"id": "p2" if next_page else "p1"}}],
+            "pageInfo": {"hasNextPage": not next_page, "endCursor": "cursor-2" if not next_page else None},
+        }
+        return httpx.Response(200, json={"data": {"products": connection}})
+
+    async def run():
+        progress = []
+        async def on_progress(field: str, count: int) -> None:
+            progress.append((field, count))
+        client = ShopfrontClient("skr", "client", "secret", "http://localhost/callback", "scope", http=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        products = await client.fetch_inventory("token", "query Products($after: Cursor) { products(first: 100, after: $after) { edges { node { id } } pageInfo { hasNextPage endCursor } } }", on_progress)
+        await client.close()
+        return products, progress
+
+    products, progress = asyncio.run(run())
+    assert [product["id"] for product in products] == ["p1", "p2"]
+    assert progress == [("products", 1), ("products", 2)]
 
 
 def test_sales_query_keeps_line_product_identity_and_falls_back_for_tenant_schema():

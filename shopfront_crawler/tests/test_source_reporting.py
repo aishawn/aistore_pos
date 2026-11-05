@@ -1,4 +1,4 @@
-from app.source_reporting import inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
+from app.source_reporting import inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
 
 
 def test_inventory_totals_convert_cases_and_items_and_exclude_negative_units():
@@ -56,6 +56,23 @@ def test_incremental_inventory_manifest_adds_only_products_with_inventory_eviden
 
 def test_incremental_inventory_manifest_fails_closed_if_inventory_field_is_missing():
     assert merge_incremental_inventory_manifest(["old"], [{"id": "new"}]) is None
+
+
+def test_inventory_manifest_status_fails_closed_on_unlisted_inventory_product():
+    status = inventory_manifest_status(["p1"], ["p1", "p2"], True)
+    assert status["complete"] is False
+    assert status["products_match_manifest"] is False
+    assert status["products_not_in_manifest"] == 1
+
+
+def test_inventory_manifest_status_allows_zero_stock_products_without_rows():
+    status = inventory_manifest_status(["p1", "p2"], ["p1"], True)
+    assert status["complete"] is True
+    assert status["products_with_inventory_rows"] == 1
+
+
+def test_inventory_manifest_status_requires_declared_complete_snapshot():
+    assert inventory_manifest_status(["p1"], ["p1"], False)["complete"] is False
 
 
 def test_persisted_inventory_snapshot_maps_to_report_rows_and_case_units():
