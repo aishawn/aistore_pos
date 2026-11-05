@@ -8,7 +8,7 @@ import { calculateDeadStock } from "./dead-stock-data";
 import { getReportPeriodBounds } from "./report-period.ts";
 import { isValidBusinessDay, salesDate } from "./replenishment-safety.ts";
 import { companyReportRpc, readReportCompany } from "./report-odoo";
-import { verifiedShopfrontSourceStore } from "./shopfront-store-scope";
+import { verifiedShopfrontSourceStore, verifiedShopfrontSourceStoreFromHost } from "./shopfront-store-scope";
 import {
   REPORT_PREFIX, digest, enqueueReport, readSnapshot, readShopfrontSyncState, reportRedis, reportTargets, snapshotFresh,
   snapshotKey, snapshotRevision, targetId, type ReportJob, type ReportScope, type ReportSnapshot, type SnapshotPeriod,
@@ -58,7 +58,9 @@ export async function reportAccess(request: NextRequest, summary = false) {
   const reportScope: ReportScope = {
     database: process.env.ODOO_DATABASE || "unconfigured", vendorId: binding.vendorId, companyId, host,
     timezone: company.timezone, sampleDataClearedAt: binding.sampleDataClearedAt ?? null,
-    shopfrontStore: verifiedShopfrontSourceStore(binding) ?? undefined,
+    // Keep source reporting available for the two verified production hosts when
+    // tenant provisioning metadata is temporarily stale or incomplete.
+    shopfrontStore: verifiedShopfrontSourceStore(binding) ?? verifiedShopfrontSourceStoreFromHost(host) ?? undefined,
     uid: scope.uid, permissionScope: `user:${userKey}`,
   };
   let shared = false;
