@@ -46,7 +46,7 @@ export async function reportAccess(request: NextRequest, summary = false) {
   const sessionId = request.cookies.get("orithos_odoo_session")!.value;
   const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host).split(",")[0].trim().toLowerCase();
   const userKey = createHash("sha256").update(JSON.stringify([sessionId, request.cookies.get("orithos_access_token")?.value, scope.uid, companyId, binding.vendorId, host])).digest("hex");
-  const rpc = companyReportRpc(companyId);
+  const rpc = companyReportRpc(companyId, undefined, binding.odooWarehouseId);
   const cachedCompany = metadata.get(userKey);
   let company = cachedCompany && cachedCompany.expires > Date.now() ? cachedCompany.company : null;
   if (!company) {
@@ -74,7 +74,7 @@ export async function reportAccess(request: NextRequest, summary = false) {
     }
     } catch { shared = false; reportScope.permissionScope = `user:${userKey}`; }
   }
-  return { scope: reportScope, company, sessionId, shared };
+  return { scope: reportScope, company, sessionId, shared, binding };
 }
 
 function response(body: unknown, status = 200, timing?: string) {
@@ -145,7 +145,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
       if (!flight) {
         flight = limited(targetId(access.scope), async () => {
           const queryStarted = performance.now(); let rpcCalls = 0;
-          const rpc = companyReportRpc(access.scope.companyId, () => { rpcCalls++; });
+          const rpc = companyReportRpc(access.scope.companyId, () => { rpcCalls++; }, access.binding?.odooWarehouseId);
           const body = deadStock
             ? await calculateDeadStock(rpc, access.sessionId, access.scope.companyId, undefined, new Date(), access.scope.sampleDataClearedAt)
             : await calculateReport(rpc, { sessionId: access.sessionId, companyId: access.scope.companyId, company: access.company,

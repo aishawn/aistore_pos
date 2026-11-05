@@ -35,10 +35,12 @@ export async function reportEnvelope<T>(path: string, sessionId: string | null, 
 export const reportRpc: ReportRpc = async <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) =>
   (await reportEnvelope<T>("/web/dataset/call_kw", sessionId, { model, method, args, kwargs }, correlationId)).result;
 
-export function companyReportRpc(companyId: number, onCall?: () => void): ReportRpc {
+export function companyReportRpc(companyId: number, onCall?: () => void, warehouseId?: number | null): ReportRpc {
   return <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) => {
     onCall?.();
-    return reportRpc<T>(sessionId, model, method, args, { ...kwargs, context: { ...(kwargs.context as object), allowed_company_ids: [companyId], force_company: companyId } }, correlationId);
+    const context = { ...(kwargs.context as object), allowed_company_ids: [companyId], force_company: companyId,
+      ...(warehouseId && warehouseId > 0 ? { warehouse: warehouseId } : {}) };
+    return reportRpc<T>(sessionId, model, method, args, { ...kwargs, context }, correlationId);
   };
 }
 
