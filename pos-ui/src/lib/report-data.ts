@@ -68,9 +68,9 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     calculateOdooGrossMargin(rpc, sessionId, companyId, orderDomain, lineDomain, correlationId),
     readShopfrontReportMargin(rpc, sessionId, sourceStore, from, to, correlationId).catch(() => null),
   ]);
-  const yesterdaySales = sourceMarginFallback?.grossSales ?? marginMetrics.salesTotal;
-  const yesterdayTax = sourceMarginFallback?.tax ?? marginMetrics.tax;
-  const netSales = sourceMarginFallback?.netSales ?? marginMetrics.netSales;
+  const yesterdaySales = marginMetrics.salesTotal;
+  const yesterdayTax = marginMetrics.tax;
+  const netSales = marginMetrics.netSales;
   const reconciled = marginMetrics.reconciled && (!sourceMarginFallback
     || (Math.abs(sourceMarginFallback.grossSales - marginMetrics.salesTotal) < 0.011
       && marginMetrics.tax !== null && Math.abs(sourceMarginFallback.tax - marginMetrics.tax) < 0.011));
@@ -87,7 +87,7 @@ async function loadBusinessMetrics(rpc: ReportRpc, sessionId: string, companyId:
     inventoryUnits, inventoryNetUnits, inventoryAvailable: stockAvailable && !mixedUnits,
     inventoryStatus: !stockAvailable || !negativeRows ? "unavailable" : mixedUnits ? "mixed_units" : negativeRows.length ? "negative_stock" : "verified",
     negativeStockProducts: negativeRows?.length ?? null,
-    yesterdaySales, yesterdaySalesAvailable: sourceMarginFallback !== null || marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
+    yesterdaySales, yesterdaySalesAvailable: marginMetrics.salesAvailable, yesterdayTax, yesterdayNetSales: netSales,
     yesterdayGrossMargin: marginMetrics.margin, grossMarginCoverage: marginMetrics.coverage, grossMarginStatus: marginMetrics.status,
     sourceReconciliation,
     sourceMarginFallback,
