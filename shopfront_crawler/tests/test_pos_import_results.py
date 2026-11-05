@@ -531,7 +531,7 @@ async def test_inventory_reconcile_compares_signed_source_quantities_by_product_
     db_session.add_all([
         Store(store_key="skr", vendor="skr"),
         InventorySnapshotManifest(
-            store_key="skr", source_product_ids=["negative", "different", "missing"],
+            store_key="skr", source_product_ids=["negative", "different"],
             snapshot_at=datetime(2026, 11, 5), complete=True,
         ),
         InventorySnapshot(store_key="skr", shopfront_product_id="negative", outlet_id="outlet-1", quantity=Decimal("-2")),
@@ -559,6 +559,9 @@ async def test_inventory_reconcile_compares_signed_source_quantities_by_product_
     result = await main.reconcile_pos_inventory(store="skr", preview=20, db=db_session)
     data = result["data"]
     assert data["source"]["manifest_complete"] is True
+    assert data["source"]["products_match_manifest"] is False
+    assert data["source"]["products_not_in_manifest"] == ["missing"]
+    assert data["source"]["manifest_only_products"] == []
     assert data["missing_in_pos"] == {"count": 1, "keys": [("missing", "outlet-1")]}
     assert data["quantity_mismatches"]["rows"] == [{
         "source_product_id": "different", "outlet_id": "outlet-1",

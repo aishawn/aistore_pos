@@ -1215,6 +1215,8 @@ async def reconcile_pos_inventory(store: str, preview: int = Query(200, ge=1, le
             str(product_id) for product_id in (manifest.source_product_ids or [])
         } if manifest else set()
         source_products_match_manifest = source_product_ids == manifest_product_ids
+        products_not_in_manifest = sorted(source_product_ids - manifest_product_ids)
+        manifest_only_products = sorted(manifest_product_ids - source_product_ids)
         source_missing = sorted(source_keys - pos_keys)
         pos_only = sorted(pos_keys - source_keys)
         quantity_mismatches = []
@@ -1238,6 +1240,8 @@ async def reconcile_pos_inventory(store: str, preview: int = Query(200, ge=1, le
                     "products": len(source_product_ids),
                     "manifest_products": len(manifest_product_ids),
                     "products_match_manifest": source_products_match_manifest,
+                    "products_not_in_manifest": products_not_in_manifest[:preview],
+                    "manifest_only_products": manifest_only_products[:preview],
                     "snapshot_at": manifest.snapshot_at if manifest else None,
                 },
                 "pos_total": len(pos_keys),
