@@ -40,7 +40,10 @@ def require_native_inventory_event_times(history: dict) -> None:
     timezone = ZoneInfo(timezone_name)
     for product in history.get("products", []):
         for observation in product.get("observations", []):
-            if observation.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS":
+            if observation.get("dataQuality") not in {
+                "NATIVE_ODOO_DAILY_SNAPSHOTS",
+                "NATIVE_ODOO_CURRENT_QUANTITIES",
+            }:
                 raise ValueError("every stockout observation must come from a native Odoo snapshot")
             captured_at = observation.get("capturedAt")
             try:

@@ -13,8 +13,8 @@ from statistics import mean, pstdev
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "forecast-service"))
 
-from app.forecast_engine import MODEL_NAMES, WAPE_BASELINE_MODEL, _normalise
-from app.schemas import Series
+from app.forecast_engine import MODEL_NAMES, WAPE_BASELINE_MODEL, forecast
+from app.schemas import ForecastRequest, Series
 
 
 def demand_segment(units: list[float], dates: list[date], origin: int,
@@ -64,26 +64,10 @@ def open_holdout_offsets(dates: list[date], origin: int, horizon: int,
             if day not in closed_dates]
 
 
-def explicit_model_forecast(units: list[float], closed_prefix: list[bool], horizon: int,
-                            model: str) -> tuple[list[tuple[float, float, float]], str]:
-    """Mirror the forecast engine's explicit-model path without rebuilding API models."""
-    p50_values, quality, _ = _normalise(units, horizon, closed_prefix, model)
-    usable_tail = [
-        float(value)
-        for index, value in enumerate(units[-28:], start=max(0, len(units) - 28))
-        if index >= len(closed_prefix) or not closed_prefix[index]
-    ]
-    spread = pstdev(usable_tail) if len(usable_tail) > 1 else 0.0
-    points = [
-        (p50, max(p50, p50 + 0.84 * spread), max(p50, p50 + 1.28 * spread))
-        for p50 in p50_values
-    ]
-    return points, quality
-
-
 def new_metrics() -> dict:
     return {
-        "products": set(), "productWindows": 0, "observedDays": 0,
+        "products": set(), "expectedProducts": set(),
+        "productWindows": 0, "observedDays": 0,
         "actualUnits": 0.0, "absoluteError": 0.0, "signedError": 0.0,
         "maseNumerator": 0.0, "maseDenominator": 0.0,
         "p80CoveredDays": 0, "p90CoveredDays": 0,
@@ -97,18 +81,18 @@ def add_window(metrics: dict, product_id: int, train: list[float], actual: list[
     metrics["products"].add(product_id)
     metrics["productWindows"] += 1
     errors = []
-    for value, (p50, p80, p90) in zip(actual, points):
+    for value, point in zip(actual, points):
         demand = max(0.0, float(value))
-        error = float(p50) - demand
+        error = float(point.p50) - demand
         errors.append(error)
         metrics["actualUnits"] += demand
         metrics["absoluteError"] += abs(error)
         metrics["signedError"] += error
-        metrics["p80CoveredDays"] += int(demand <= float(p80))
-        metrics["p90CoveredDays"] += int(demand <= float(p90))
+        metrics["p80CoveredDays"] += int(demand <= float(point.p80))
+        metrics["p90CoveredDays"] += int(demand <= float(point.p90))
         metrics["observedDays"] += 1
-        if not all(isfinite(float(q)) and float(q) >= 0 for q in (p50, p80, p90)) \
-                or p50 > p80 or p80 > p90:
+        if not all(isfinite(float(q)) and float(q) >= 0 for q in (point.p50, point.p80, point.p90)) \
+                or point.p50 > point.p80 or point.p80 > point.p90:
             metrics["safetyViolations"] += 1
     scale = mean(abs(right - left) for left, right in zip(train, train[1:])) if len(train) > 1 else 0.0
     if scale > 0:
@@ -122,8 +106,11 @@ def summarize(metrics: dict | None, expected_product_windows: int | None = None)
         return None
     days = metrics["observedDays"]
     actual = metrics["actualUnits"]
+    expected_skus = len(metrics["expectedProducts"])
     return {
         "productCount": len(metrics["products"]),
+        "expectedSkuCount": expected_skus,
+        "skuCoverage": len(metrics["products"]) / expected_skus if expected_skus else None,
         "productWindows": metrics["productWindows"],
         "expectedProductWindows": expected_product_windows if expected_product_windows is not None
         else metrics["expectedProductWindows"],
@@ -241,23 +228,35 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
             for segment, product_id in ((segments[item.productId], item.productId) for item in series):
                 segment_counts[f"{split}:{segment}"] += 1
                 for model in MODEL_NAMES:
-                    metrics.setdefault((split, segment, model), new_metrics())["expectedProductWindows"] += 1
+                    metric_bucket = metrics.setdefault((split, segment, model), new_metrics())
+                    metric_bucket["expectedProducts"].add(product_id)
+                    metric_bucket["expectedProductWindows"] += 1
                     fold_bucket = fold_metrics.setdefault((split, segment, model), new_metrics())
+                    fold_bucket["expectedProducts"].add(product_id)
                     fold_bucket["expectedProductWindows"] += 1
                 if split == "validation":
                     segment_validation_products[segment].add(product_id)
 
-            closed_prefix = [day in closed_dates for day in dates[:origin]]
             for model in MODEL_NAMES:
-                predictions = {
-                    item.productId: explicit_model_forecast(
-                        item.units[:origin], closed_prefix, horizon, model,
-                    )[0]
-                    for item in series
-                }
+                training = [Series(
+                    productId=item.productId,
+                    dates=item.dates[:origin],
+                    units=item.units[:origin],
+                    stockoutFlags=[day in closed_dates for day in item.dates[:origin]],
+                    selectedModel=model,
+                ) for item in series]
+                response = forecast(ForecastRequest(
+                    vendorId=max(1, int(snapshot.get("companyId") or 1)),
+                    outletId=max(1, int(snapshot.get("outletId") or snapshot.get("companyId") or 1)),
+                    horizonDays=horizon,
+                    sourceVersion="sales_only_segment_walk_forward_research_v1",
+                    forecastStartDate=dates[origin],
+                    series=training,
+                ))
+                predictions = {item.productId: item for item in response.items}
                 for item in series:
                     prediction = predictions.get(item.productId)
-                    if prediction is None or len(prediction) != horizon:
+                    if prediction is None or len(prediction.forecast) != horizon:
                         continue
                     key = (split, segments[item.productId], model)
                     bucket = metrics.setdefault(key, new_metrics())
@@ -265,7 +264,7 @@ def evaluate(snapshot: dict, horizons: list[int], minimum_train_days: int,
                     open_train = open_training_values(item.units, item.dates, origin, closed_dates)
                     open_offsets = open_holdout_offsets(dates, origin, horizon, closed_dates)
                     open_actual = [item.units[origin + offset] for offset in open_offsets]
-                    open_forecast = [prediction[offset] for offset in open_offsets]
+                    open_forecast = [prediction.forecast[offset] for offset in open_offsets]
                     confidence = "HIGH" if len(open_train) >= 56 else "MEDIUM" if len(open_train) >= 14 else "LOW"
                     add_window(bucket, item.productId, open_train, open_actual,
                                open_forecast, confidence)

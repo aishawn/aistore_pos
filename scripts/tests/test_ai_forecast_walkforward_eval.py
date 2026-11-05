@@ -55,6 +55,27 @@ class WalkForwardForecastTests(unittest.TestCase):
         _, inventory = snapshots(1.0)
         require_native_inventory_event_times(inventory)
 
+        current_quantity_observations = {
+            **inventory,
+            "products": [{
+                **inventory["products"][0],
+                "observations": [{**row, "dataQuality": "NATIVE_ODOO_CURRENT_QUANTITIES"}
+                                 for row in inventory["products"][0]["observations"]],
+            }],
+        }
+        require_native_inventory_event_times(current_quantity_observations)
+
+        unknown_quality = {
+            **inventory,
+            "products": [{
+                **inventory["products"][0],
+                "observations": [{**row, "dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"}
+                                 for row in inventory["products"][0]["observations"]],
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "native Odoo snapshot"):
+            require_native_inventory_event_times(unknown_quality)
+
         reconstructed = {**inventory, "dataQuality": "ODOO_HISTORICAL_QTY_AVAILABLE_TO_DATE"}
         with self.assertRaisesRegex(ValueError, "native Odoo daily inventory snapshots"):
             evaluate(snapshots(1.0)[0], reconstructed, [7])
@@ -90,6 +111,21 @@ class WalkForwardForecastTests(unittest.TestCase):
         self.assertEqual("2026-01-29", low["horizons"][0]["foldScheduleSample"][0]["evaluationStart"])
         self.assertEqual([], low["writeRequests"])
         self.assertEqual("PASS", low["status"])
+        horizon_result = low["horizons"][0]
+        selected = horizon_result["metrics"]["selected"]
+        self.assertEqual(2, selected["expectedSkuCount"])
+        self.assertEqual(1.0, selected["skuCoverage"])
+        self.assertEqual(0.0, selected["biasRatio"])
+        self.assertEqual(1, selected["foldStability"]["scoredFolds"])
+        self.assertEqual(selected["p80Coverage"], selected["foldStability"]["p80CoverageMean"])
+        self.assertEqual(selected["p90Coverage"], selected["foldStability"]["p90CoverageMean"])
+        self.assertEqual(1, len(horizon_result["foldMetrics"]))
+        fold_selected = horizon_result["foldMetrics"][0]["metrics"]["selected"]
+        self.assertEqual(2, fold_selected["expectedSkuCount"])
+        self.assertEqual(1.0, fold_selected["skuCoverage"])
+        self.assertIn("foldStability", horizon_result["metricsByTrainingDemandSegment"]["REGULAR"]["selected"])
+        self.assertIn("winsVsSeasonalNaive",
+                      horizon_result["metrics"]["seasonal_naive_v1"]["foldStability"])
         self.assertEqual("historical_stockout_labels_applied_to_sales_series_before_each_fold",
                          low["inventoryLabelMethod"])
         self.assertEqual(
@@ -143,6 +179,25 @@ class WalkForwardForecastTests(unittest.TestCase):
         self.assertEqual("BLOCKED", report["horizons"][0]["qualityGate"])
         self.assertEqual("BLOCKED_INSUFFICIENT_EVALUATION_DATA",
                          report["horizons"][0]["evaluationStatus"])
+
+    def test_incomplete_inventory_labels_return_structured_blocked_report(self):
+        sales, inventory = snapshots(1.0)
+        inventory["products"] = [{
+            **product,
+            "observations": product["observations"][:-1],
+        } for product in inventory["products"]]
+
+        report = evaluate(sales, inventory, [7, 14])
+
+        self.assertEqual("BLOCKED", report["status"])
+        self.assertEqual(2, report["productCount"])
+        self.assertEqual(0, report["inventoryLabelledProducts"])
+        self.assertEqual(2, report["excludedUnknownInventoryProducts"])
+        self.assertEqual("NO_PRODUCTS_WITH_COMPLETE_NATIVE_INVENTORY_LABELS", report["blockedReason"])
+        self.assertEqual(["BLOCKED_INSUFFICIENT_INVENTORY_LABELS"] * 2,
+                         [row["evaluationStatus"] for row in report["horizons"]])
+        self.assertIsNone(report["horizons"][0]["metrics"]["seasonal_naive_v1"]["weightedWape"])
+        self.assertEqual([], report["writeRequests"])
 
     def test_demand_segment_uses_only_training_prefix(self):
         dates = [date(2026, 1, 1) + timedelta(days=index) for index in range(35)]

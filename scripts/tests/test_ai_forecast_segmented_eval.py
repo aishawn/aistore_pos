@@ -50,7 +50,8 @@ class SegmentedForecastStabilityTests(unittest.TestCase):
 
     def test_summary_keeps_prediction_coverage_distinct_from_unique_products(self):
         metrics = {
-            "products": {1, 2}, "productWindows": 3, "observedDays": 21,
+            "products": {1, 2}, "expectedProducts": {1, 2, 3, 4},
+            "productWindows": 3, "observedDays": 21,
             "actualUnits": 42.0, "absoluteError": 10.5, "signedError": -2.0,
             "maseNumerator": 7.0, "maseDenominator": 14.0,
             "p80CoveredDays": 17, "p90CoveredDays": 20,
@@ -61,6 +62,8 @@ class SegmentedForecastStabilityTests(unittest.TestCase):
         result = summarize(metrics, expected_product_windows=4)
 
         self.assertEqual(2, result["productCount"])
+        self.assertEqual(4, result["expectedSkuCount"])
+        self.assertEqual(0.5, result["skuCoverage"])
         self.assertEqual(3, result["productWindows"])
         self.assertEqual(0.75, result["predictionCoverage"])
         self.assertEqual(0.25, result["weightedWape"])

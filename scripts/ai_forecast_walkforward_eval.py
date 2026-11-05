@@ -94,17 +94,22 @@ def _score_fold(metrics: dict, scored_product_ids: set[int], actual_series: Seri
         metrics["zeroDemandHorizonWindows"] += int(actual_total == 0)
 
 
-def _metric_summary(metrics: dict, scored_product_ids: set[int]) -> dict:
+def _metric_summary(metrics: dict, scored_product_ids: set[int],
+                    expected_product_ids: set[int] | None = None) -> dict:
     actual = metrics["actualUnits"]
     days = metrics["observedDays"]
     return {
         "status": "PASS" if days and actual > 0 else "BLOCKED_NO_SCORABLE_DEMAND",
+        "expectedSkuCount": (len(expected_product_ids) if expected_product_ids is not None else None),
         "scoredProducts": len(scored_product_ids),
+        "skuCoverage": (len(scored_product_ids) / len(expected_product_ids)
+                        if expected_product_ids else None),
         "observedDays": days,
         "censoredDaysExcluded": metrics["censoredDays"],
         "actualUnits": round(actual, 4),
         "absoluteErrorUnits": round(metrics["absoluteError"], 4),
         "weightedWape": metrics["absoluteError"] / actual if actual > 0 else None,
+        "biasRatio": metrics["signedError"] / actual if actual > 0 else None,
         "horizonTotalWape": (metrics["horizonAbsoluteError"] / metrics["horizonActualUnits"]
                              if metrics["horizonActualUnits"] > 0 else None),
         "evaluatedProductWindows": metrics["horizonWindows"],
@@ -166,7 +171,10 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
         else:
             known_series.append(item)
     if not known_series:
-        raise ValueError("no product series has complete, usable inventory labels")
+        return _blocked_inventory_report(
+            sales, inventory, raw_series, horizons, excluded_warning_count,
+            excluded_unknown_count,
+        )
 
     vendor_id = int(sales.get("companyId") or 1)
     outlet_id = int(sales.get("outletId") or vendor_id)
@@ -175,7 +183,9 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
         methods = {"selected": {"metrics": Counter(), "products": set(), "models": Counter()},
                    **{model: {"metrics": Counter(), "products": set()} for model in BASELINE_MODELS}}
         segment_methods = {}
+        segment_expected_products = {}
         folds = []
+        fold_metrics = []
         origins = walk_forward_origins(len(shared_dates), horizon, minimum_train_days)
         for origin in origins:
             train_series = [series.model_copy(update={
@@ -194,9 +204,19 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
                 explicit = [item.model_copy(update={"selectedModel": model}) for item in train_series]
                 response = run_forecast(_forecast_request(explicit, vendor_id, outlet_id, horizon, start_date))
                 baseline_predictions[model] = {item.productId: item for item in response.items}
+            fold_methods = {method: {"metrics": Counter(), "products": set(), "models": Counter()}
+                            for method in methods}
+            fold_segments = {}
+            fold_segment_expected = {}
             for series in known_series:
                 segment = _demand_segment(series, origin)
+                fold_segment_expected.setdefault(segment, set()).add(series.productId)
+                segment_expected_products.setdefault(segment, set()).add(series.productId)
                 segment_methods.setdefault(segment, {
+                    method: {"metrics": Counter(), "products": set(), "models": Counter()}
+                    for method in methods
+                })
+                fold_segments.setdefault(segment, {
                     method: {"metrics": Counter(), "products": set(), "models": Counter()}
                     for method in methods
                 })
@@ -204,16 +224,46 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
                 methods["selected"]["models"][selected.model] += 1
                 _score_fold(methods["selected"]["metrics"], methods["selected"]["products"],
                             series, selected, origin, horizon)
+                fold_methods["selected"]["models"][selected.model] += 1
+                _score_fold(fold_methods["selected"]["metrics"], fold_methods["selected"]["products"],
+                            series, selected, origin, horizon)
                 segment_methods[segment]["selected"]["models"][selected.model] += 1
                 _score_fold(segment_methods[segment]["selected"]["metrics"],
                             segment_methods[segment]["selected"]["products"],
                             series, selected, origin, horizon)
+                fold_segments[segment]["selected"]["models"][selected.model] += 1
+                _score_fold(fold_segments[segment]["selected"]["metrics"],
+                            fold_segments[segment]["selected"]["products"],
+                            series, selected, origin, horizon)
                 for model in BASELINE_MODELS:
                     _score_fold(methods[model]["metrics"], methods[model]["products"],
+                                series, baseline_predictions[model][series.productId], origin, horizon)
+                    _score_fold(fold_methods[model]["metrics"], fold_methods[model]["products"],
                                 series, baseline_predictions[model][series.productId], origin, horizon)
                     _score_fold(segment_methods[segment][model]["metrics"],
                                 segment_methods[segment][model]["products"],
                                 series, baseline_predictions[model][series.productId], origin, horizon)
+                    _score_fold(fold_segments[segment][model]["metrics"],
+                                fold_segments[segment][model]["products"],
+                                series, baseline_predictions[model][series.productId], origin, horizon)
+            fold_summary = {
+                method: _metric_summary(row["metrics"], row["products"],
+                                        {series.productId for series in known_series})
+                for method, row in fold_methods.items()
+            }
+            fold_summary["selected"]["selectedModelCounts"] = dict(fold_methods["selected"]["models"])
+            fold_segment_summary = {}
+            for segment, rows in fold_segments.items():
+                fold_segment_summary[segment] = {
+                    method: _metric_summary(row["metrics"], row["products"],
+                                             fold_segment_expected[segment])
+                    for method, row in rows.items()
+                }
+                fold_segment_summary[segment]["selected"]["selectedModelCounts"] = dict(
+                    rows["selected"]["models"]
+                )
+            fold_metrics.append({"metrics": fold_summary,
+                                 "metricsByTrainingDemandSegment": fold_segment_summary})
             folds.append({
                 "trainEnd": shared_dates[origin - 1].isoformat(),
                 "evaluationStart": test_start.isoformat(),
@@ -221,16 +271,48 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
                 "trainingDays": origin,
             })
         summaries = {
-            method: _metric_summary(row["metrics"], row["products"])
+            method: _metric_summary(row["metrics"], row["products"],
+                                    {series.productId for series in known_series})
             for method, row in methods.items()
         }
+        for method in methods:
+            summaries[method]["foldStability"] = _fold_stability([
+                fold["metrics"][method] for fold in fold_metrics
+            ])
+        for method in BASELINE_MODELS:
+            comparable = [fold for fold in fold_metrics
+                          if fold["metrics"][method]["weightedWape"] is not None
+                          and fold["metrics"]["seasonal_naive_v1"]["weightedWape"] is not None]
+            stability = summaries[method]["foldStability"]
+            stability["winsVsSeasonalNaive"] = (
+                sum(fold["metrics"][method]["weightedWape"] <
+                    fold["metrics"]["seasonal_naive_v1"]["weightedWape"] for fold in comparable)
+                / len(comparable) if comparable else None
+            )
         summaries["selected"]["selectedModelCounts"] = dict(methods["selected"]["models"])
         segment_summaries = {}
         for segment, segment_rows in segment_methods.items():
+            expected_ids = segment_expected_products[segment]
             segment_summaries[segment] = {
-                method: _metric_summary(row["metrics"], row["products"])
+                method: _metric_summary(row["metrics"], row["products"], expected_ids)
                 for method, row in segment_rows.items()
             }
+            segment_fold_rows = [fold["metricsByTrainingDemandSegment"][segment]
+                                 for fold in fold_metrics
+                                 if segment in fold["metricsByTrainingDemandSegment"]]
+            for method in segment_rows:
+                segment_summaries[segment][method]["foldStability"] = _fold_stability([
+                    fold[method] for fold in segment_fold_rows
+                ])
+                if method in BASELINE_MODELS:
+                    comparable = [fold for fold in segment_fold_rows
+                                  if fold[method]["weightedWape"] is not None
+                                  and fold["seasonal_naive_v1"]["weightedWape"] is not None]
+                    segment_summaries[segment][method]["foldStability"]["winsVsSeasonalNaive"] = (
+                        sum(fold[method]["weightedWape"] <
+                            fold["seasonal_naive_v1"]["weightedWape"] for fold in comparable)
+                        / len(comparable) if comparable else None
+                    )
             segment_summaries[segment]["selected"]["selectedModelCounts"] = dict(
                 segment_rows["selected"]["models"]
             )
@@ -243,6 +325,7 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
             "evaluationStatus": evaluation_status,
             "walkForwardFoldCount": len(origins),
             "foldScheduleSample": folds,
+            "foldMetrics": fold_metrics,
             "modelSelection": "reselect_using_only_each_fold_training_prefix",
             "metrics": summaries,
             "metricsByTrainingDemandSegment": segment_summaries,
@@ -271,6 +354,88 @@ def evaluate(sales: dict, inventory: dict, horizons: list[int],
         "excludedUnknownInventoryProducts": excluded_unknown_count,
         "horizons": results,
         "writeRequests": [],
+    }
+
+
+def _blocked_inventory_report(sales: dict, inventory: dict, raw_series: list[Series],
+                              horizons: list[int], excluded_warning_count: int,
+                              excluded_unknown_count: int) -> dict:
+    metric_names = ("selected", *BASELINE_MODELS)
+    blocked_horizons = []
+    for horizon in horizons:
+        metrics = {
+            name: _metric_summary(Counter(), set(), set())
+            for name in metric_names
+        }
+        metrics["selected"]["selectedModelCounts"] = {}
+        for row in metrics.values():
+            row["foldStability"] = _fold_stability([])
+        blocked_horizons.append({
+            "horizonDays": horizon,
+            "evaluationStatus": "BLOCKED_INSUFFICIENT_INVENTORY_LABELS",
+            "blockedReason": "NO_PRODUCTS_WITH_COMPLETE_NATIVE_INVENTORY_LABELS",
+            "walkForwardFoldCount": 0,
+            "foldScheduleSample": [],
+            "foldMetrics": [],
+            "modelSelection": "reselect_using_only_each_fold_training_prefix",
+            "metrics": metrics,
+            "metricsByTrainingDemandSegment": {},
+            "qualityGate": "BLOCKED",
+            "qualityGateRule": "selected-model horizon-total weighted WAPE <= 0.30; exploratory target only",
+            "dailyWeightedWapeDiagnostic": None,
+        })
+    dates = raw_series[0].dates
+    return {
+        "status": "BLOCKED",
+        "evaluationMode": "expanding_window_walk_forward_no_future_features",
+        "blockedReason": "NO_PRODUCTS_WITH_COMPLETE_NATIVE_INVENTORY_LABELS",
+        "salesSnapshotVersion": sales.get("snapshotVersion"),
+        "inventoryHistoryVersion": inventory.get("historyVersion"),
+        "inventoryDataQuality": inventory.get("dataQuality"),
+        "inventoryLabelMethod": "historical_stockout_labels_applied_to_sales_series_before_each_fold",
+        "inventoryLabelUse": "training_labels_through_cutoff; holdout_stockout_labels_only_mask_censored_actuals_during_scoring",
+        "holdoutInventoryLabelsUsedAsForecastFeatures": False,
+        "requiresFutureNativeInventoryObservations": False,
+        "inventoryResearchOnly": bool(inventory.get("researchOnly") or inventory.get("dataQuality") != "NATIVE_ODOO_DAILY_SNAPSHOTS"),
+        "salesDateRange": [min(dates).isoformat(), max(dates).isoformat()],
+        "productCount": len(raw_series),
+        "inventoryLabelledProducts": 0,
+        "excludedSuspectInventoryProducts": excluded_warning_count,
+        "excludedUnknownInventoryProducts": excluded_unknown_count,
+        "horizons": blocked_horizons,
+        "writeRequests": [],
+    }
+
+
+def _fold_stability(fold_metrics: list[dict]) -> dict:
+    values = [row["weightedWape"] for row in fold_metrics if row["weightedWape"] is not None]
+    if not values:
+        return {"scoredFolds": 0, "meanWape": None, "medianWape": None,
+                "wapeStdDev": None, "wapeCv": None, "wapeMin": None, "wapeMax": None,
+                "biasRatioMean": None, "p80CoverageMean": None, "p80CoverageMin": None,
+                "p80CoverageMax": None, "p90CoverageMean": None, "p90CoverageMin": None,
+                "p90CoverageMax": None, "winsVsSeasonalNaive": None}
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    median = ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    def coverage_stats(key: str) -> dict:
+        observed = [row[key] for row in fold_metrics if row[key] is not None]
+        return {
+            f"{key}Mean": (sum(observed) / len(observed) if observed else None),
+            f"{key}Min": (min(observed) if observed else None),
+            f"{key}Max": (max(observed) if observed else None),
+        }
+
+    bias_ratios = [row["biasRatio"] for row in fold_metrics if row["biasRatio"] is not None]
+    return {
+        "scoredFolds": len(values), "meanWape": mean, "medianWape": median,
+        "wapeStdDev": variance ** 0.5, "wapeCv": (variance ** 0.5 / mean if mean else None),
+        "wapeMin": min(values), "wapeMax": max(values),
+        "biasRatioMean": sum(bias_ratios) / len(bias_ratios) if bias_ratios else None,
+        **coverage_stats("p80Coverage"), **coverage_stats("p90Coverage"),
+        "winsVsSeasonalNaive": None,
     }
 
 
