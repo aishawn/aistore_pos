@@ -22,6 +22,7 @@ Model/prompt/config/snapshot versions: not applicable
 | Check | Result | Evidence / limitation |
 |---|---|---|
 | Focused unit suites | PASS, 39/39 | Report date periods, Adelaide DST boundaries, register cash summary, inventory totals/sorting/snapshots, report cache and Odoo scoping, period presets, and sales reconciliation helpers. |
+| Full frontend unit suite | PASS, 175/175 | `npm run test:unit`, Node 24.22.1; all library suites passed. |
 | Full frontend TypeScript | PASS ON PRE-FAST-FORWARD CANDIDATE | `npm run typecheck`, Node 24.22.1, exit code 0. A rerun after `main` advanced to `cf022f55` was interrupted after prolonged silence; report source files were unchanged. |
 | Targeted ESLint | NOT RUN (FINAL RERUN INTERRUPTED) | The prior candidate run reported 0 errors / 16 React effect warnings. The final rerun produced no diagnostics and was interrupted after more than two minutes; rerun before the next code change or release. |
 | Project documentation checker | PASS | 66 Markdown files; verifies local project documentation links and required structure only. |
