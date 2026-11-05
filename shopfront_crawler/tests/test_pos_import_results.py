@@ -16,6 +16,30 @@ from app.models import InventorySnapshot, InventorySnapshotManifest, Product, Sa
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
+def test_report_sync_notification_url_defaults_to_frontend_completion_endpoint(monkeypatch):
+    monkeypatch.setattr(main.settings, "report_sync_notification_url", "")
+    monkeypatch.setattr(
+        main.settings,
+        "pos_ui_notify_url",
+        "http://frontend:3000/api/internal/shopfront-sync-notify",
+    )
+
+    assert main.report_sync_notification_url() == "http://frontend:3000/api/internal/shopfront-sync-complete"
+
+
+def test_report_sync_notification_url_respects_explicit_override(monkeypatch):
+    monkeypatch.setattr(main.settings, "report_sync_notification_url", "https://reports.example/sync-done")
+
+    assert main.report_sync_notification_url() == "https://reports.example/sync-done"
+
+
+def test_report_sync_notification_url_uses_custom_frontend_origin(monkeypatch):
+    monkeypatch.setattr(main.settings, "report_sync_notification_url", "")
+    monkeypatch.setattr(main.settings, "pos_ui_notify_url", "https://pos.example/custom/notify")
+
+    assert main.report_sync_notification_url() == "https://pos.example/api/internal/shopfront-sync-complete"
+
+
 def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
     audit = main.audit_odoo_sales_batch(
         {

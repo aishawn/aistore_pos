@@ -162,7 +162,7 @@ def wake_durable_worker() -> None:
 
 
 async def notify_report_refresh(store_key: str, start: date, end: date, run_id: int | None, status: str) -> None:
-    url = settings.report_sync_notification_url.strip()
+    url = report_sync_notification_url()
     token = settings.shopfront_integration_token or settings.pos_api_token
     if not url or not token:
         return
@@ -174,6 +174,23 @@ async def notify_report_refresh(store_key: str, start: date, end: date, run_id: 
             response.raise_for_status()
     except Exception as exc:
         logger.warning("Report refresh notification failed: store=%s run=%s error=%s", store_key, run_id, type(exc).__name__)
+
+
+def report_sync_notification_url() -> str:
+    configured = settings.report_sync_notification_url.strip()
+    if configured:
+        return configured
+    notify_url = settings.pos_ui_notify_url.strip()
+    suffix = "/api/internal/shopfront-sync-notify"
+    if notify_url.endswith(suffix):
+        return notify_url[:-len(suffix)] + "/api/internal/shopfront-sync-complete"
+    if notify_url:
+        from urllib.parse import urlsplit, urlunsplit
+
+        parsed = urlsplit(notify_url)
+        if parsed.scheme and parsed.netloc:
+            return urlunsplit((parsed.scheme, parsed.netloc, "/api/internal/shopfront-sync-complete", "", ""))
+    return "http://frontend:3000/api/internal/shopfront-sync-complete"
 
 
 @app.on_event("startup")
