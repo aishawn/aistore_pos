@@ -172,7 +172,7 @@ export function RadialPie({
           className="ov-ring-center ov-ring-center-link"
           aria-label={`${centerCaption}. Open dashboard`}
           title="Open dashboard"
-          style={listMode ? undefined : { left: originX }}
+          style={listMode || size.width === 0 ? undefined : { left: originX }}
           href={centerHref}
           onClick={(event) => {
             onNavigate?.();
@@ -184,7 +184,7 @@ export function RadialPie({
       ) : (
         <div
           className="ov-ring-center"
-          style={listMode ? undefined : { left: originX }}
+          style={listMode || size.width === 0 ? undefined : { left: originX }}
         >
           {center}
         </div>
@@ -214,7 +214,7 @@ export function RadialPie({
         </svg>
       ) : null}
       <ul className="ov-ring-nodes" aria-label="Store modules">
-        {destinations.map((item, index) => {
+        {(listMode || size.width > 0 ? destinations : []).map((item, index) => {
           const Icon = item.id.includes("ai")
             ? Sparkles
             : ICONS[item.icon as SidebarIcon];
@@ -242,7 +242,7 @@ export function RadialPie({
               key={item.id}
               className={cn("ov-ring-node", `ov-ring-node-${item.id}`, selected && "ov-node-active")}
               style={
-                listMode
+                listMode || size.width === 0
                   ? undefined
                   : {
                       left: originX,

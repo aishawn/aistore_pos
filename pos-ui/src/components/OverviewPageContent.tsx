@@ -343,18 +343,27 @@ export function OverviewPageContent({
                 </div>
               </div>
               <aside className="ov-radial-side" aria-label="Store summary">
-                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} sandboxNote={demoSandbox} /> : (
-                  <section className="ov-pulse-panel" aria-busy="true" aria-label="Loading store pulse">
-                    <p className="ov-pulse-pending" role="status">Preparing yesterday&apos;s numbers…</p>
+                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} sandboxNote={demoSandbox} /> : loading ? (
+                  <section className="ov-pulse-panel ov-pulse-loading" aria-busy="true" aria-label="Loading store pulse">
+                    <div className="ov-pulse-heading">
+                      <div>
+                        <div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2>Store pulse</h2></div>
+                        <p className="ov-pulse-updated" role="status">Preparing your latest store numbers</p>
+                      </div>
+                      <span className="ov-skeleton ov-pulse-refresh-skeleton" aria-hidden="true" />
+                    </div>
+                    <div className="ov-pulse-loading-stats" aria-hidden="true">
+                      {[0, 1, 2].map((item) => <div key={item}><span className="ov-skeleton" /><span className="ov-skeleton" /><span className="ov-skeleton" /></div>)}
+                    </div>
                   </section>
-                )}
+                ) : <section className="ov-pulse-panel" aria-label="Store pulse unavailable"><div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2>Store pulse</h2></div><p className="ov-pulse-pending" role="status">Store numbers are unavailable. Retry loading the dashboard.</p></section>}
                 <section className="ov-insights-panel">
                   <div className="ov-panel-heading">
                     <span className="ov-panel-icon ov-panel-icon-green"><Lightbulb size={18} /></span>
                     <h2>Quick insights</h2>
                     {insights.length ? <span className="ov-panel-period">{insights.length} ready</span> : null}
                   </div>
-                  {insights.length ? <ul>{insights.map((insight) => <li key={insight.href} className={`ov-insight-${insight.tone}`}><Link href={insight.href}><span className="ov-insight-bullet"><ArrowUpRight size={15} /></span><span><strong>{insight.title}</strong><small>{insight.description}</small></span><ArrowRight size={16} /></Link></li>)}</ul> : <div className="ov-insights-empty"><CheckCircle2 size={18} /><span>No new insights yet.</span></div>}
+                  {loading && !data ? <div className="ov-insights-loading" aria-busy="true" aria-label="Loading quick insights">{[0, 1].map((item) => <div key={item}><span className="ov-skeleton" /><span><i className="ov-skeleton" /><i className="ov-skeleton" /></span></div>)}</div> : !data && error ? <p className="ov-pulse-pending" role="status">Insights will appear when store data is available.</p> : insights.length ? <ul>{insights.map((insight) => <li key={insight.href} className={`ov-insight-${insight.tone}`}><Link href={insight.href}><span className="ov-insight-bullet"><ArrowUpRight size={15} /></span><span><strong>{insight.title}</strong><small>{insight.description}</small></span><ArrowRight size={16} /></Link></li>)}</ul> : <div className="ov-insights-empty"><CheckCircle2 size={18} /><span>No new insights yet.</span></div>}
                 </section>
               </aside>
             </div>
