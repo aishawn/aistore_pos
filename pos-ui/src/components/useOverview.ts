@@ -285,12 +285,19 @@ export function useOverview() {
     const controller = new AbortController(); const current = revision.current;
     void fetchPreparedReport(`/api/odoo/reporting-dashboard?period=today&view=summary&task=${data.taskId}`, { signal: controller.signal })
       .then(async response => {
-        const next = await response.json();
-        if (!response.ok || !Number.isFinite(next.revenue)) throw new Error("Summary update failed. Please retry.");
-        if (!controller.signal.aborted && current === revision.current) setData(next);
+        const payload = await response.json() as Record<string, unknown>;
+        if (!response.ok || !Number.isFinite(payload.revenue)) throw new Error("Summary update failed. Please retry.");
+        let next = mapPayload(payload);
+        const source = await loadShopfrontDashboardMetrics(payload);
+        next = applyShopfrontDashboardMetrics(next, source);
+        if (!controller.signal.aborted && current === revision.current) {
+          setData(next);
+          writePulse(pulseScope(user?.vendorId), next);
+          lastFetchAt.current = Date.now();
+        }
       }).catch(cause => { if (!controller.signal.aborted && current === revision.current) setError(cause instanceof Error ? cause.message : "Summary update failed."); });
     return () => controller.abort();
-  }, [data?.taskId, data?.cacheStatus]);
+  }, [data?.taskId, data?.cacheStatus, user?.vendorId]);
   useEffect(() => {
     if (!ready || !user) return;
     void load();

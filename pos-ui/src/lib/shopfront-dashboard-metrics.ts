@@ -46,7 +46,7 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
     || pagination.returned !== rows.length || pagination.total !== rows.length) return null;
 
   let revenue = 0;
-  let cost = 0;
+  let profit = 0;
   let transactions = 0;
   for (const value of rows) {
     const row = object(value);
@@ -60,10 +60,9 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
       || Math.abs(rowProfit - (rowRevenue - rowCost)) > 0.021
       || (rowRevenue !== 0 && Math.abs(rowProfitPercent - (rowProfit / rowRevenue * 100)) > 0.021)) return null;
     revenue += rowRevenue;
-    cost += rowCost;
+    profit += rowProfit;
     transactions += rowTransactions;
   }
-  const profit = revenue - cost;
   return {
     revenue: Math.round(revenue * 100) / 100,
     grossMargin: revenue > 0 ? profit / revenue : null,

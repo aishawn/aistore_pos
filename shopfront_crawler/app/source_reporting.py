@@ -80,6 +80,8 @@ def inventory_snapshot_report_rows(rows: list[dict[str, Any]]) -> list[dict[str,
     for row in rows:
         product = row.get("product") if isinstance(row.get("product"), dict) else {}
         inventory_rows = row.get("inventory")
+        if isinstance(inventory_rows, dict):
+            inventory_rows = [inventory_rows]
         if not isinstance(inventory_rows, list):
             return None
         case_quantity = _number(product, "caseQuantity", "case_quantity")

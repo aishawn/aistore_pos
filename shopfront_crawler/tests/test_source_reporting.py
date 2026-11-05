@@ -67,6 +67,16 @@ def test_persisted_inventory_snapshot_maps_to_report_rows_and_case_units():
     assert inventory_report_totals(rows or [])['sellable_units'] == 15
 
 
+def test_persisted_inventory_snapshot_accepts_one_database_inventory_row():
+    rows = inventory_snapshot_report_rows([
+        {"product": {"id": "p1", "name": "Beer", "caseQuantity": 6},
+         "inventory": {"caseLevel": 2, "singleLevel": 3, "value": 100}},
+    ])
+    assert rows is not None
+    assert len(rows) == 1
+    assert inventory_report_totals(rows)["sellable_units"] == 15
+
+
 def test_persisted_inventory_snapshot_fails_closed_without_pack_data():
     assert inventory_snapshot_report_rows([
         {"product": {"id": "p1"}, "inventory": [{"caseLevel": 2, "singleLevel": 3}]},
