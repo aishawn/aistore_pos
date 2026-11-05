@@ -7,8 +7,10 @@ Updated: 2026-11-05. Owner: TBD.
 | Check | Status | Evidence and limits |
 |---|---|---|
 | TypeScript typecheck | BLOCKED | `tsc --noEmit` reports two ReactNode errors in the separate untracked `src/components/ShopfrontSourceDataPage.tsx:280`; no diagnostics point to the reporting files. Node 22.22.2 is below the declared Node >=24 engine, so repeat after the workspace issue is resolved under the supported runtime |
-| Targeted ESLint | PASS with warnings | 0 errors, 20 warnings across changed report and inventory UI files; warnings are mainly React state-in-effect and ref cleanup rules; no lint errors |
+| Targeted ESLint | INFO | Earlier changed-report/inventory lint returned 0 errors and 20 warnings; the latest narrow sales-only lint process stalled and was interrupted, so rerun on the final candidate before release |
 | Project fact-library checker | PASS | 66 Markdown files; required structure, local links/headings and evidence assertions verified |
+| Sales amount reconciliation helper | PASS | 3/3 local cases for cent rounding, detectable variance, and non-finite totals; [session](../../../test-sessions/2026-11-05-report-reconciliation.md) |
+| Scoped sales report TypeScript check | PASS | Changed sales report API/page and reconciliation helper; temporary scoped tsconfig removed after checking |
 | `git diff --check` | PASS | No whitespace errors; Git emitted line-ending normalization notices for three route wrappers |
 | Source inspection of report routes and UI | INFO | Current working-tree source reviewed; this does not identify the deployed SHA |
 | Date boundary, store timezone, and company scope | NOT RUN | Requires fixtures or authenticated read-only environment checks |

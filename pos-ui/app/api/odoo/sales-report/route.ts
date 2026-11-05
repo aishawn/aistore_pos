@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { companyReportRpc } from "@/lib/report-odoo";
 import { reportAccess } from "@/lib/report-request";
 import { readShopfrontSyncState } from "@/lib/report-snapshots";
+import { reconcileSalesAmounts } from "@/lib/sales-report-reconciliation";
 import { isValidBusinessDay, localMidnightUtc, shiftDay } from "@/lib/replenishment-safety";
 
 export const runtime = "nodejs";
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
       lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${scope.companyId}-%`]);
     }
     const rpc = companyReportRpc(scope.companyId);
+    const orderTotals = await rpc<Array<{ amount_total?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], []]);
     let rows: Row[];
     if (group === "day") {
       const grouped = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: scope.timezone } });
@@ -67,13 +69,15 @@ export async function GET(request: NextRequest) {
     const totalCount = rows.reduce((sum, row) => sum + row.count, 0);
     const totalQuantity = rows.some((row) => row.quantity === null) ? null : rows.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
     if (exportCsv) {
-      const csvRows = [["Group", "Transactions or lines", "Quantity", `Gross sales (${company.currency})`], ...rows.map((row) => [row.label, row.count, row.quantity ?? "", row.amount.toFixed(2)])];
+      const reconciliation = reconcileSalesAmounts(Number(orderTotals?.[0]?.amount_total ?? 0), totalAmount);
+      const csvRows = [["Group", "Transactions or lines", "Quantity", `Grouped amount (${company.currency})`], ...rows.map((row) => [row.label, row.count, row.quantity ?? "", row.amount.toFixed(2)]), [], ["Order gross total", "", "", reconciliation.orderGrossAmount.toFixed(2)], ["Grouped total", "", "", reconciliation.groupedAmount.toFixed(2)], ["Grouped minus order total", "", "", reconciliation.difference.toFixed(2)]];
       const csv = `\uFEFF${csvRows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
       return new NextResponse(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="sales-report-${from}-${to}.csv"`, "Cache-Control": "no-store" } });
     }
     const pageSize = 100;
     const shopfrontSync = scope.shopfrontStore ? await readShopfrontSyncState(scope, from, to) : null;
-    return NextResponse.json({ company: company.name, currency: company.currency, timezone: scope.timezone, source: "Odoo completed POS sales, excluding refunds", shopfrontSync, from, to, generatedAt: new Date().toISOString(), group, totalRows: rows.length, totalAmount, totalCount, totalQuantity, offset, hasNext: offset + pageSize < rows.length, rows: rows.slice(offset, offset + pageSize) }, { headers: { "Cache-Control": "no-store" } });
+    const reconciliation = reconcileSalesAmounts(Number(orderTotals?.[0]?.amount_total ?? 0), totalAmount);
+    return NextResponse.json({ company: company.name, currency: company.currency, timezone: scope.timezone, source: "Odoo completed POS orders with positive order totals", shopfrontSync, from, to, generatedAt: new Date().toISOString(), group, totalRows: rows.length, totalAmount: reconciliation.groupedAmount, orderGrossAmount: reconciliation.orderGrossAmount, reconciliationDifference: reconciliation.difference, reconcilesToCent: reconciliation.reconcilesToCent, orderCount: Number(orderTotals?.[0]?.__count ?? 0), totalCount, totalQuantity, offset, hasNext: offset + pageSize < rows.length, rows: rows.slice(offset, offset + pageSize) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 502;
     return NextResponse.json({ message: error instanceof Error ? error.message : "Sales report is unavailable." }, { status });

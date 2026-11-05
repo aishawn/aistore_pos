@@ -10,7 +10,7 @@ Every report should expose store/company, period, source, timezone, generation t
 
 ## Metrics and boundaries
 
-- Sales: completed POS orders (`paid`, `done`, `invoiced`) with positive order total; refunds and non-positive orders are excluded. Date grouping counts orders and sums order totals. Product/category grouping reads sale lines, sums `qty` and `price_subtotal_incl`, and counts lines. Date grouping quantity is unknown and must display as `—`, never zero.
+- Sales: completed POS orders (`paid`, `done`, `invoiced`) with positive order total. Negative-total refund orders are excluded; refund lines inside an otherwise positive order may remain. Date grouping counts orders and sums order totals. Product/category grouping reads sale lines, sums `qty` and `price_subtotal_incl`, and counts lines. Date grouping quantity is unknown and must display as `—`, never zero. The order gross total and grouped line amount are shown separately with their difference; line allocation is not represented as an accounting reconciliation.
 - Sales category grouping uses the first POS category attached to a product; uncategorised products are explicit. Products with multiple POS categories are not fractionally attributed.
 - Purchases: `purchase.order` records in `purchase` or `done`, grouped by supplier/status/month. `amount_total` is the confirmed order amount, not proof of invoice payment, goods received, or final accounting cost.
 - Register closures: closed `pos.session` records, expected ending cash compared with counted ending cash. The difference is cash reconciliation only; it does not represent card settlement or total drawer variance. Exception filtering is evaluated across the selected range, capped at 10,000 rows.
