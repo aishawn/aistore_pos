@@ -6,7 +6,7 @@ import Link from "next/link";
 import { groupCategories } from "@/lib/category-groups";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Boxes, Check, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, Tag, X } from "lucide-react";
 import {
   createOdooProduct,
   fetchOdooRoute,
@@ -541,7 +541,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         </div>
         {tab === "catalogue" && (
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          {hasPermission("stock.products.view") && <Link href="/reports/inventory" className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Boxes size={16} /> Inventory</Link>}
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
           <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
@@ -559,7 +558,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         )}
       </header>
 
-      {(dialog === "catalogue" || dialog === "inventory") && hasPermission("stock.products.view") && <StockWorkspaceDialog title={dialog === "catalogue" ? "Catalogue" : "Inventory"} variant="records" busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type={dialog} fillHeight refreshKey={refreshKey} /></StockWorkspaceDialog>}
+      {dialog === "catalogue" && hasPermission("stock.products.view") && <StockWorkspaceDialog title="Catalogue" variant="records" busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type="catalogue" fillHeight refreshKey={refreshKey} /></StockWorkspaceDialog>}
       {dialog === "stock-list" && hasPermission("stock.products.view") && <StockWorkspaceDialog title="Stock list" variant="records" busy={false} onClose={() => setDialog(null)}><StockListPage /></StockWorkspaceDialog>}
       {dialog === "cost-reconciliation" && canAuditCosts && <StockWorkspaceDialog title="Cost Reconciliation" busy={false} onClose={() => setDialog(null)} actions={<Link href="/products/cost-reconciliation" className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm">Expand to full page</Link>}><CostReconciliationPanel /></StockWorkspaceDialog>}
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Manage Categories" busy={categoryBusy} onClose={() => setDialog(null)}><OdooCategoriesPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
@@ -605,7 +604,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
           <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by
             <select aria-label="Sort inventory" value={`${sortBy}:${sortDirection}`} onChange={(event) => { const [field, direction] = event.target.value.split(":"); changeSort(field as InventorySort, direction as InventoryDirection); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm">
-              {([ ["name", "Product"], ["category", "Category"], ["qty_available", "On hand"], ["price_included", "Sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
+              {([ ["name", "Product"], ["category", "Category"], ["qty_available", "Inventory"], ["price_included", "Sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
             </select>
           </label>
 
@@ -621,7 +620,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {(query || categoryId || catalogueView !== "all") && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
-            Totals cover all matching products in the active inventory context. Stock value = on hand × current unit cost (AUD).
+            Totals cover all matching products in the active inventory context.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
           {shopfrontSyncBanner && (
@@ -637,7 +636,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   {sortHeader("name", "Product")}
                   {sortHeader("category", "Category")}
                   <th scope="col" className="px-4 py-3">Barcode / SKU</th>
-                  {sortHeader("qty_available", "On hand")}
+                  {sortHeader("qty_available", "Inventory")}
                   {sortHeader("price_included", "Sale price · AUD")}
                   <th scope="col" className="px-4 py-3">POS</th>
                   <th scope="col" className="px-4 py-3 text-right">Actions</th>
@@ -699,7 +698,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                     <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1.5 text-xs min-[360px]:grid-cols-2">
                       <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</dd></div>
                       <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>
-                      <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">On hand</dt><dd className={`tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</dd></div>
+                      <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Inventory</dt><dd className={`tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</dd></div>
                     </dl>
                     <CatalogueIssues product={product} /><footer className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--oh-border)] pt-2">
                       {product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available in POS</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden from POS</span>}
@@ -727,8 +726,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
               <span>Products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
               <span>Available units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
               {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} products have negative stock; their balances remain visible in the list.</span>}
-              <span>Stock value · AUD <strong className="ml-2 tabular-nums">{totals.totalStockValue === null ? "Unavailable" : money(totals.totalStockValue)}</strong></span>
-              {totals.missingCostItems > 0 && <span className="basis-full text-xs text-amber-800">Cost unavailable for {totals.missingCostItems} stocked products; value cannot be calculated.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
           </footer>

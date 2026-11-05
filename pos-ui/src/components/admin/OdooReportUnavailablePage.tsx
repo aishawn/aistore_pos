@@ -25,8 +25,8 @@ export function OdooReportUnavailablePage({
                 <Link href="/reports/dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
                   Open live overview <ArrowRight size={15} aria-hidden="true" />
                 </Link>
-                <Link href="/reports/inventory" className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
-                  Open inventory
+                <Link href="/products" className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+                  Open products
                 </Link>
               </div>
             </div>

@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import { OdooProductCataloguePage } from "@/components/OdooProductCataloguePage";
+import { redirect } from "next/navigation";
 
 export default function InventoryReportsPage() {
-  return (
-    <Suspense fallback={<div className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading inventory…</div>}>
-      <OdooProductCataloguePage inventoryReport />
-    </Suspense>
-  );
+  redirect("/products");
 }
