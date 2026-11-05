@@ -408,6 +408,10 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
     first_supplier = suppliers[0] if suppliers and isinstance(suppliers[0], dict) else None
     supplier = raw.get("coreSupplier") or raw.get("lastSupplier") or first_supplier
     first_barcode = raw.get("barcodes")[0] if isinstance(raw.get("barcodes"), list) and raw.get("barcodes") and isinstance(raw.get("barcodes")[0], dict) else {}
+    additional_fields = raw.get("additionalFields") if isinstance(raw.get("additionalFields"), list) else []
+    gift_card_field = next((field for field in additional_fields if isinstance(field, dict) and str(field.get("safeName") or "").casefold() == "vii_is_gift_card"), None)
+    gift_card_value = str(gift_card_field.get("value") or "").strip().casefold() if isinstance(gift_card_field, dict) else ""
+    is_gift_card = gift_card_value in {"true", "1", "yes", "on"} if gift_card_value else bool(raw.get("giftCard") or raw.get("gift_card") or "gift" in str(raw.get("type") or "").casefold())
     return {
         "shopfront_product_id": raw.get("id"),
         "sku": raw.get("mdbId"),
@@ -429,6 +433,7 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
         "cost": raw.get("cost"),
         "price": first_price.get("price"),
         "status": raw.get("status"),
+        "is_gift_card": is_gift_card,
         "raw_payload": raw,
     }
 
@@ -608,9 +613,7 @@ async def shopfront_source_report(
             if not product_has(row, product_type, "type") or not product_has(row, tax_rate, "tax_rate", "taxRate") or not product_has(row, cost_tax_rate, "cost_tax_rate", "costTaxRate"):
                 continue
             if gift_card is not None:
-                raw_text = product_text(raw).casefold()
-                is_gift_card = bool(raw.get("giftCard") or raw.get("gift_card")) or "gift" in str(row.get("type") or "").casefold()
-                if is_gift_card != gift_card:
+                if bool(row.get("is_gift_card")) != gift_card:
                     continue
             filtered_products.append(row)
         normalized_rows = filtered_products

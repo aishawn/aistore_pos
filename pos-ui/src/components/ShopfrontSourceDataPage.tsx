@@ -128,6 +128,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<SourceRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [liveActiveProducts, setLiveActiveProducts] = useState<number | null>(null);
+  const [liveCatalogFetchedAt, setLiveCatalogFetchedAt] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SourceCoverage | null>(null);
   const [rangeCoverage, setRangeCoverage] = useState<Record<string, unknown> | null>(null);
   const [snapshot, setSnapshot] = useState<SourceSnapshot | null>(null);
@@ -179,6 +181,28 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       setRangeCoverage(result.coverage ?? null);
       setSnapshot(result.snapshot ?? null);
       setGeneratedAt(typeof result.fetched_at === "string" ? result.fetched_at : new Date().toISOString());
+
+      if (mode === "dashboard") {
+        const catalogParams = new URLSearchParams({ resource: "report-products", page: "1", size: "1", status: "ACTIVE" });
+        void fetch(`/api/shopfront-source?${catalogParams}`, { cache: "no-store", credentials: "same-origin" })
+          .then(async catalogResponse => ({ catalogResponse, catalogResult: await catalogResponse.json().catch(() => null) as PagePayload | null }))
+          .then(({ catalogResponse, catalogResult }) => {
+            if (catalogResponse.ok && Array.isArray(catalogResult?.data) && Number.isFinite(Number(catalogResult.pagination?.total))) {
+              setLiveActiveProducts(Number(catalogResult.pagination?.total));
+              setLiveCatalogFetchedAt(typeof catalogResult.fetched_at === "string" ? catalogResult.fetched_at : null);
+            } else {
+              setLiveActiveProducts(null);
+              setLiveCatalogFetchedAt(null);
+            }
+          })
+          .catch(() => {
+            setLiveActiveProducts(null);
+            setLiveCatalogFetchedAt(null);
+          });
+      } else {
+        setLiveActiveProducts(null);
+        setLiveCatalogFetchedAt(null);
+      }
 
       if (mode === "dashboard" || mode === "inventory" || mode === "products") {
         const coverageResponse = await fetch("/api/shopfront-source?resource=coverage", { cache: "no-store", credentials: "same-origin" });
@@ -301,7 +325,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Customers" value={quantity(reportMetrics.customer_count)} />
         <Metric label="Basket size" value={quantity(reportMetrics.basket_size)} />
         <Metric label="Discount amount" value={money(sums.discount)} />
-        <Metric label="Active products" value={quantity(catalog.active_records)} detail="Shopfront ACTIVE catalog" />
+        <Metric label="Active products" value={liveActiveProducts === null ? "—" : quantity(liveActiveProducts)} detail={liveCatalogFetchedAt ? `Live Shopfront catalog · ${dateLabel(liveCatalogFetchedAt)}` : "Live Shopfront catalog unavailable"} />
         <Metric label="Inventory records" value={quantity(inventory.records)} />
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}

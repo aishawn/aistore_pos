@@ -1,5 +1,5 @@
 from app.shopfront import ShopfrontClient
-from app.main import sales_trend_missing_dates, source_sale_snapshot_is_complete
+from app.main import sales_trend_missing_dates, source_product_row, source_sale_snapshot_is_complete
 from app.sync import _dedupe_sales, parse_decimal, verify_webhook
 
 
@@ -62,6 +62,26 @@ def test_saved_reports_query_uses_only_schema_stable_fields():
     assert "... on FavouriteReport" not in SAVED_REPORTS_QUERY
     assert "... on SpecialFavouriteReport" not in SAVED_REPORTS_QUERY
     assert "id name layers" in SAVED_REPORTS_QUERY
+
+
+def test_source_product_gift_card_uses_shopfront_additional_field_safe_name():
+    gift_card = source_product_row({
+        "id": "product-1",
+        "name": "Gift card",
+        "status": "ACTIVE",
+        "type": "PRODUCT",
+        "additionalFields": [{"safeName": "vii_is_gift_card", "value": "true"}],
+    })
+    regular_product = source_product_row({
+        "id": "product-2",
+        "name": "Regular item",
+        "status": "ACTIVE",
+        "type": "PRODUCT",
+        "additionalFields": [{"safeName": "vii_is_gift_card", "value": "false"}],
+    })
+
+    assert gift_card["is_gift_card"] is True
+    assert regular_product["is_gift_card"] is False
 
 
 def test_duplicate_sale_edges_are_collapsed_and_merged():
@@ -179,9 +199,9 @@ def test_product_catalog_fetch_follows_cursor_pages():
         payload = json.loads(request.read())
         calls.append(payload)
         if payload["variables"]["after"] is None:
-            connection = {"edges": [{"node": {"id": "p1", "name": "First"}}], "pageInfo": {"hasNextPage": True, "endCursor": "cursor-2"}}
+            connection = {"edges": [{"node": {"id": "p1", "name": "First", "additionalFields": [{"safeName": "vii_is_gift_card", "value": "true"}]}}], "pageInfo": {"hasNextPage": True, "endCursor": "cursor-2"}}
         else:
-            connection = {"edges": [{"node": {"id": "p2", "name": "Second"}}], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+            connection = {"edges": [{"node": {"id": "p2", "name": "Second", "additionalFields": [{"safeName": "vii_is_gift_card", "value": "false"}]}}], "pageInfo": {"hasNextPage": False, "endCursor": None}}
         return httpx.Response(200, json={"data": {"products": connection}})
 
     async def run():
@@ -192,7 +212,9 @@ def test_product_catalog_fetch_follows_cursor_pages():
 
     products = asyncio.run(run())
     assert [product["id"] for product in products] == ["p1", "p2"]
-    assert len(calls) == 24
+    assert all("additionalFields { safeName value }" in call["query"] for call in calls if "additionalFields" in call["query"])
+    assert len(calls) == 26
+    assert products[0]["additionalFields"][0]["safeName"] == "vii_is_gift_card"
     assert "pageInfo { hasNextPage endCursor }" in calls[0]["query"]
     assert calls[1]["variables"]["after"] == "cursor-2"
     assert calls[2]["variables"]["after"] is None
