@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     key = createHash("sha256").update(`${process.env.ODOO_BASE_URL}|${scope.database}|${scope.companyIds[0]}`).digest("hex");
     if (pending.has(key)) { key = undefined; return json({ message: "A source margin capture is already running. Please wait." }, 409); }
     pending.add(key);
-    const snapshot = await loadSourceMarginSnapshot(scope.rpc, { companyId: scope.companyIds[0], store: scope.binding.subdomain, sourceStore,
+    const snapshot = await loadSourceMarginSnapshot(scope.rpc, { companyId: scope.companyIds[0], store: scope.binding!.subdomain, sourceStore,
       fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined });
     const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"), batchId = randomUUID();
     const report = { batchId, sourceHash, companyId: snapshot.companyId, store: snapshot.store, timezone: snapshot.timezone, from: snapshot.from, to: snapshot.to, capturedAt: snapshot.capturedAt,
