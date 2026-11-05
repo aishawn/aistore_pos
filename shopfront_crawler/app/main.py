@@ -176,9 +176,15 @@ def wake_durable_worker() -> None:
         logger.warning("Could not wake durable worker: no running event loop")
 
 
+def report_sync_notification_token() -> str:
+    return (settings.orithos_shopfront_sync_notify_secret.strip()
+            or settings.shopfront_integration_token.strip()
+            or settings.pos_api_token.strip())
+
+
 async def notify_report_refresh(store_key: str, start: date, end: date, run_id: int | None, status: str) -> None:
     url = report_sync_notification_url()
-    token = settings.shopfront_integration_token or settings.pos_api_token
+    token = report_sync_notification_token()
     if not url or not token:
         return
     payload = {"storeKey": store_key, "fromDay": start.isoformat(), "toDay": end.isoformat(),

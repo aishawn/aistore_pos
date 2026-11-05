@@ -40,6 +40,22 @@ def test_report_sync_notification_url_uses_custom_frontend_origin(monkeypatch):
     assert main.report_sync_notification_url() == "https://pos.example/api/internal/shopfront-sync-complete"
 
 
+def test_report_sync_notification_uses_dedicated_secret_before_integration_tokens(monkeypatch):
+    monkeypatch.setattr(main.settings, "orithos_shopfront_sync_notify_secret", "  completion-secret  ")
+    monkeypatch.setattr(main.settings, "shopfront_integration_token", "integration-token")
+    monkeypatch.setattr(main.settings, "pos_api_token", "legacy-token")
+
+    assert main.report_sync_notification_token() == "completion-secret"
+
+
+def test_report_sync_notification_falls_back_when_dedicated_secret_is_missing(monkeypatch):
+    monkeypatch.setattr(main.settings, "orithos_shopfront_sync_notify_secret", " ")
+    monkeypatch.setattr(main.settings, "shopfront_integration_token", " integration-token ")
+    monkeypatch.setattr(main.settings, "pos_api_token", "legacy-token")
+
+    assert main.report_sync_notification_token() == "integration-token"
+
+
 def test_audit_odoo_sales_batch_counts_formal_orders_and_allowed_skips():
     audit = main.audit_odoo_sales_batch(
         {
