@@ -55,3 +55,9 @@ The harness was corrected to use `ODOO_USER`/`ODOO_PASS` (or service-account equ
 The Odoo compose was queried through Dokploy without changing it: `composeStatus=done`, Git source is the `main` branch, `composePath=./docker-compose.yml`, and `autoDeploy=true`. The newest listed Odoo deployment finished on 2026-11-04; there was no newer Odoo deployment during this check. This rules out a pending deployment as the immediate explanation, but does not prove the `web` container is healthy. Owner action is to inspect the Odoo compose/container health and logs in Dokploy, then rerun the direct Odoo health and POS AI probes.
 
 The compose record has no `serverId` or embedded `server` object, and Dokploy `server.all` returned an empty list for this account. The Dokploy API therefore cannot provide container-level health/log evidence in this session. This is an observability limitation, not evidence that the Odoo container is stopped or healthy.
+
+## Latest Refresh
+
+At the subsequent refresh, both POS version endpoints returned HTTP 200 with frontend/backend `14128dd2`; the Odoo database selector still timed out after 12 seconds. The native inventory freshness check remains `NOT_READY`: latest business date `2026-11-05`, five contiguous observed days, no date gap, and insufficient history for the 28-day gate.
+
+The sales-only CSV remains 84 rows across `INTERMITTENT`, `NO_DEMAND_TRAIN`, `REGULAR`, and `SPARSE`, with SKU coverage `1.0` in every selected-model row. Selected-model WAPE remains high: approximately 1.63-1.75 for 7 days, 1.64-1.81 for 14 days, and 1.65-1.87 for 28 days across the main selling segments; `NO_DEMAND_TRAIN` remains Bias `-1`. No production policy change is justified.
