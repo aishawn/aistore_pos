@@ -579,8 +579,13 @@ public class OdooReportQueryService {
                 MAX_DEAD_STOCK_PRODUCTS, "id asc");
         if (products.size() > MAX_DEAD_STOCK_PRODUCTS) return null;
 
+        List<Object> soldDomain = lineDomain(companyId, vendor, window, null, timezone(context));
+        // Keep the dead-stock sales definition identical to the UI report:
+        // completed positive orders only, excluding refunds and zero-value rows.
+        soldDomain.add(List.of("order_id.amount_total", ">", BigDecimal.ZERO));
+        soldDomain.add(List.of("order_id.is_refund", "=", false));
         List<Map<String, Object>> sold = readGroup(session, "pos.order.line",
-                lineDomain(companyId, vendor, window, null, timezone(context)), List.of("qty:sum"),
+                soldDomain, List.of("qty:sum"),
                 List.of("product_id"), context, MAX_DEAD_STOCK_PRODUCTS + 1);
         if (sold.size() > MAX_DEAD_STOCK_PRODUCTS) return null;
         Map<Long, BigDecimal> soldByProduct = new LinkedHashMap<>();

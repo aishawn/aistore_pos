@@ -502,6 +502,13 @@ class OdooReportQueryServiceTest {
         assertTrue(productDomain.contains("company_id"));
         assertTrue(productDomain.contains("active"));
         assertFalse(productDomain.contains("available_in_pos"));
+        JsonNode salesRequest = requests.stream()
+                .filter(request -> "pos.order.line".equals(request.path("params").path("model").asText())
+                        && "read_group".equals(request.path("params").path("method").asText()))
+                .findFirst().orElseThrow();
+        String salesDomain = salesRequest.path("params").path("args").get(0).toString();
+        assertTrue(salesDomain.contains("amount_total"));
+        assertTrue(salesDomain.contains("is_refund"));
         assertFalse(requests.stream().anyMatch(node -> {
             String method = node.path("params").path("method").asText();
             return Set.of("create", "write", "unlink").contains(method);
