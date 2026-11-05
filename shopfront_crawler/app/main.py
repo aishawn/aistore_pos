@@ -8,7 +8,7 @@ import os
 import re
 import httpx
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -26,7 +26,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, inventory_snapshot_totals
+from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh, inventory_snapshot_report_rows, inventory_snapshot_totals
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -418,8 +418,6 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
     def name(value: Any) -> str | None:
         return value.get("name") if isinstance(value, dict) else None
 
-    prices = raw.get("prices") if isinstance(raw.get("prices"), list) else []
-    first_price = prices[0] if prices and isinstance(prices[0], dict) else {}
     suppliers = raw.get("suppliers") if isinstance(raw.get("suppliers"), list) else []
     first_supplier = suppliers[0] if suppliers and isinstance(suppliers[0], dict) else None
     supplier = raw.get("coreSupplier") or raw.get("lastSupplier") or first_supplier
@@ -428,6 +426,7 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
     gift_card_field = next((field for field in additional_fields if isinstance(field, dict) and str(field.get("safeName") or "").casefold() == "vii_is_gift_card"), None)
     gift_card_value = str(gift_card_field.get("value") or "").strip().casefold() if isinstance(gift_card_field, dict) else ""
     is_gift_card = gift_card_value in {"true", "1", "yes", "on"} if gift_card_value else bool(raw.get("giftCard") or raw.get("gift_card") or "gift" in str(raw.get("type") or "").casefold())
+    retail_price = shelf_unit_price(raw)
     return {
         "shopfront_product_id": raw.get("id"),
         "sku": raw.get("mdbId"),
@@ -447,7 +446,7 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
         "track_inventory": raw.get("trackInventory"),
         "case_quantity": raw.get("caseQuantity"),
         "cost": raw.get("cost"),
-        "price": first_price.get("price"),
+        "price": float(retail_price) if retail_price is not None else None,
         "status": raw.get("status"),
         "is_gift_card": is_gift_card,
         "raw_payload": raw,
@@ -746,6 +745,13 @@ def dashboard_inventory(store: str, db: Session = Depends(get_db)) -> dict:
     manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
     if manifest is None or not manifest.complete:
         return {"available": False, "reason": "snapshot_incomplete", "source": "shopfront_inventory_snapshot"}
+    if not inventory_snapshot_is_fresh(manifest.snapshot_at):
+        return {
+            "available": False,
+            "reason": "snapshot_stale",
+            "snapshot_at": manifest.snapshot_at,
+            "source": "shopfront_inventory_snapshot",
+        }
 
     mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
     snapshot_ids = {str(value) for value in (manifest.source_product_ids or [])}
@@ -946,15 +952,14 @@ def _inventory_snapshot_evidence(db: Session, store_key: str) -> dict[str, Any] 
     ))
     if manifest is None or not manifest.snapshot_at:
         return None
+    if not inventory_snapshot_is_fresh(manifest.snapshot_at):
+        return None
     source_ids = sorted({str(value).strip() for value in (manifest.source_product_ids or []) if str(value).strip()})
     if not source_ids:
         return None
     snapshot_at = manifest.snapshot_at
     if snapshot_at.tzinfo is None:
         snapshot_at = snapshot_at.replace(tzinfo=timezone.utc)
-    snapshot_age = datetime.now(timezone.utc) - snapshot_at
-    if snapshot_age < timedelta(minutes=-5) or snapshot_age > timedelta(hours=24):
-        return None
     return {"source_product_ids": source_ids, "snapshot_at": snapshot_at.isoformat()}
 
 
@@ -4036,7 +4041,7 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 
 
 @app.get("/api/products")
-def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, q: str | None = None, brand: str | None = None, category: str | None = None, family: str | None = None, tag: str | None = None, supplier: str | None = None, product_type: str | None = Query(None, alias="type"), tax_rate: str | None = None, cost_tax_rate: str | None = None, gift_card: bool | None = None, db: Session = Depends(get_db)) -> dict:
+def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, q: str | None = None, brand: str | None = None, category: str | None = None, family: str | None = None, tag: str | None = None, supplier: str | None = None, product_type: Annotated[str | None, Query(alias="type")] = None, tax_rate: str | None = None, cost_tax_rate: str | None = None, gift_card: bool | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
     for name, value in (("q", q), ("brand", brand), ("category", category), ("family", family), ("tag", tag), ("supplier", supplier), ("type", product_type), ("tax_rate", tax_rate), ("cost_tax_rate", cost_tax_rate)):
         if value is not None and len(value) > 120:

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, RefreshCw, Search } from "lucide-react";
+import { parseShopfrontSalesReport, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
 
 export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
 type SourceRow = Record<string, unknown>;
 type SourceSnapshot = { complete?: unknown; snapshot_at?: unknown; products?: unknown; source_products?: unknown; [key: string]: unknown };
 type SourceCoverage = { inventory?: SourceSnapshot; catalog?: Record<string, unknown>; products?: Record<string, unknown>; [key: string]: unknown };
-type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
+type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
 type CoveragePayload = { data?: SourceCoverage };
 
 const PAGE_SIZE = 50;
@@ -86,6 +87,15 @@ function dateLabel(value: unknown) {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Adelaide", day: "2-digit", month: "short", year: "numeric" }).format(date);
 }
 
+function dateTimeLabel(value: unknown) {
+  if (typeof value !== "string" || !value) return "—";
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Adelaide", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(date);
+}
+
 function statusTone(status: unknown) {
   const value = String(status ?? "").toUpperCase();
   if (value === "ACTIVE" || value === "COMPLETED" || value === "RECEIVED") return "text-emerald-800 bg-emerald-50";
@@ -138,6 +148,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [total, setTotal] = useState(0);
   const [liveActiveProducts, setLiveActiveProducts] = useState<number | null>(null);
   const [sellableUnits, setSellableUnits] = useState<number | null>(null);
+  const [sellableUnitsState, setSellableUnitsState] = useState<"available" | "stale" | "unavailable">("unavailable");
   const [liveCatalogFetchedAt, setLiveCatalogFetchedAt] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SourceCoverage | null>(null);
   const [rangeCoverage, setRangeCoverage] = useState<Record<string, unknown> | null>(null);
@@ -153,16 +164,31 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setRows([]);
+    setTotal(0);
+    setReportTotals({});
+    setReportMetrics({ available: false });
+    setRangeCoverage(null);
+    setSnapshot(null);
+    setGeneratedAt(null);
+    setCoverage(null);
+    setLiveActiveProducts(null);
+    setLiveCatalogFetchedAt(null);
+    setSellableUnits(null);
+    setSellableUnitsState("unavailable");
     try {
       const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "report-products" : mode === "inventory" ? "report-inventory" : "report-purchase";
       const params = new URLSearchParams({ resource });
       if (mode === "dashboard" || mode === "sales") {
         params.set("from", range.from);
         params.set("to", range.to);
+        params.set("size", "600");
         if (mode === "dashboard") params.set("dashboard", "true");
       } else if (mode === "purchase") {
         params.set("from", range.from);
         params.set("to", range.to);
+        params.set("page", String(page));
+        params.set("size", String(pageSize));
         if (query) params.set("q", query);
       } else {
         params.set("page", String(page));
@@ -183,6 +209,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         throw new Error(payload && "message" in payload ? payload.message : `Shopfront source request failed (${response.status}).`);
       }
       const result = payload as PagePayload;
+      if ((mode === "sales" || mode === "dashboard") && !parseShopfrontSalesReport(result)) {
+        throw new Error("Shopfront returned an incomplete or inconsistent sales report. No partial totals are shown.");
+      }
       setRows(result.data ?? []);
       setTotal(Number(result.pagination?.total ?? result.data?.length ?? 0));
       setReportTotals(result.totals ?? {});
@@ -193,13 +222,14 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
 
       if (mode === "dashboard") {
         void fetch("/api/shopfront-source?resource=dashboard-inventory", { cache: "no-store", credentials: "same-origin" })
-          .then(async response => ({ response, payload: await response.json().catch(() => null) as { available?: unknown; sellable_units?: unknown } | null }))
+          .then(async response => ({ response, payload: await response.json().catch(() => null) as { available?: unknown; sellable_units?: unknown; reason?: unknown } | null }))
           .then(({ response: inventoryResponse, payload: inventoryPayload }) => {
-            setSellableUnits(inventoryResponse.ok && inventoryPayload?.available === true && Number.isFinite(Number(inventoryPayload.sellable_units))
-              ? Number(inventoryPayload.sellable_units)
-              : null);
+            const value = inventoryResponse.ok && inventoryPayload?.available === true && Number.isFinite(Number(inventoryPayload.sellable_units))
+              ? Number(inventoryPayload.sellable_units) : null;
+            setSellableUnits(value);
+            setSellableUnitsState(value !== null ? "available" : inventoryPayload?.reason === "snapshot_stale" ? "stale" : "unavailable");
           })
-          .catch(() => setSellableUnits(null));
+          .catch(() => { setSellableUnits(null); setSellableUnitsState("unavailable"); });
         const catalogParams = new URLSearchParams({ resource: "report-products", page: "1", size: "1", status: "ACTIVE" });
         void fetch(`/api/shopfront-source?${catalogParams}`, { cache: "no-store", credentials: "same-origin" })
           .then(async catalogResponse => ({ catalogResponse, catalogResult: await catalogResponse.json().catch(() => null) as PagePayload | null }))
@@ -220,6 +250,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         setLiveActiveProducts(null);
         setLiveCatalogFetchedAt(null);
         setSellableUnits(null);
+        setSellableUnitsState("unavailable");
       }
 
       if (mode === "dashboard" || mode === "inventory" || mode === "products") {
@@ -237,6 +268,12 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       }
     } catch (cause) {
       setRows([]);
+      setTotal(0);
+      setReportTotals({});
+      setReportMetrics({ available: false });
+      setRangeCoverage(null);
+      setSnapshot(null);
+      setGeneratedAt(null);
       setError(cause instanceof Error ? cause.message : "Shopfront source data is unavailable.");
     } finally {
       setLoading(false);
@@ -259,6 +296,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const inventory = coverage?.inventory ?? {};
   const catalog = coverage?.catalog ?? {};
   const dashboardMetricsAvailable = reportMetrics.available !== false;
+  const salesReportAvailable = !loading && error === null;
+  const inventorySnapshotStale = mode === "inventory" && generatedAt !== null && !shopfrontInventorySnapshotIsFresh(generatedAt);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const meta = MODE_META[mode];
 
@@ -290,7 +329,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <div>
           <p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Source: Shopfront · SKR</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{meta.title}</h1>
-          {generatedAt && <p className="mt-1 text-xs text-[var(--oh-muted)]">Loaded {dateLabel(generatedAt)} · Adelaide business dates</p>}
+          {generatedAt && <p className="mt-1 text-xs text-[var(--oh-muted)]">{mode === "inventory" ? `Snapshot ${dateTimeLabel(generatedAt)} Adelaide` : `Loaded ${dateLabel(generatedAt)} · Adelaide business dates`}</p>}
         </div>
         <div className="flex items-center gap-2">
           <Link href={meta.odooHref} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
@@ -309,6 +348,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       </nav>
 
       {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 md:mx-6"><AlertCircle size={16} />{error}</div>}
+      {inventorySnapshotStale && <div role="status" className="mx-4 mt-3 flex items-center gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} />This Shopfront inventory snapshot is over 24 hours old. The listed rows are historical until a fresh complete snapshot arrives.</div>}
 
       {(mode === "sales" || mode === "dashboard" || mode === "purchase") && <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={fromInput} onChange={event => setFromInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
@@ -335,17 +375,17 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       </details>}
 
       {mode === "dashboard" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <Metric label="Revenue" value={money(sums.revenue)} />
-        <Metric label="Cost of goods sold" value={money(sums.cost)} />
-        <Metric label="Gross profit" value={money(sums.profit)} emphasis />
-        <Metric label="Average sale" value={money(averageSale)} />
-        <Metric label="Profit percentage" value={`${quantity(profitPercentage)}%`} />
-        <Metric label="Sale count" value={quantity(sums.transactions)} />
+        <Metric label="Revenue" value={salesReportAvailable ? money(sums.revenue) : "—"} />
+        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(sums.cost) : "—"} />
+        <Metric label="Gross profit" value={salesReportAvailable ? money(sums.profit) : "—"} emphasis />
+        <Metric label="Average sale" value={salesReportAvailable ? money(averageSale) : "—"} />
+        <Metric label="Profit percentage" value={salesReportAvailable ? `${quantity(profitPercentage)}%` : "—"} />
+        <Metric label="Sale count" value={salesReportAvailable ? quantity(sums.transactions) : "—"} />
         <Metric label="Customers" value={dashboardMetricsAvailable ? quantity(reportMetrics.customer_count) : "—"} />
         <Metric label="Basket size" value={dashboardMetricsAvailable ? quantity(reportMetrics.basket_size) : "—"} />
         <Metric label="Discount amount" value={money(sums.discount)} />
         <Metric label="Active products" value={liveActiveProducts === null ? "—" : quantity(liveActiveProducts)} detail={liveCatalogFetchedAt ? `Live Shopfront catalog · ${dateLabel(liveCatalogFetchedAt)}` : "Live Shopfront catalog unavailable"} />
-        <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail="Shopfront case and item levels" />
+        <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail={sellableUnitsState === "stale" ? "Shopfront inventory snapshot is stale" : sellableUnitsState === "unavailable" ? "Shopfront inventory report unavailable" : "Shopfront case and item levels"} />
         <Metric label="Inventory records" value={quantity(inventory.records)} />
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}
@@ -353,14 +393,14 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {mode === "dashboard" && <DashboardBreakdown metrics={reportMetrics} />}
 
       {mode === "sales" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <Metric label="Revenue" value={money(sums.revenue)} />
-        <Metric label="Cost of goods sold" value={money(sums.cost)} />
-        <Metric label="Profit" value={money(sums.profit)} emphasis />
-        <Metric label="Average sale" value={money(averageSale)} />
-        <Metric label="Profit percentage" value={`${quantity(profitPercentage)}%`} />
-        <Metric label="Tax" value={money(sums.tax)} />
-        <Metric label="Discount" value={money(sums.discount)} />
-        <Metric label="Transactions" value={quantity(sums.transactions)} />
+        <Metric label="Revenue" value={salesReportAvailable ? money(sums.revenue) : "—"} />
+        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(sums.cost) : "—"} />
+        <Metric label="Profit" value={salesReportAvailable ? money(sums.profit) : "—"} emphasis />
+        <Metric label="Average sale" value={salesReportAvailable ? money(averageSale) : "—"} />
+        <Metric label="Profit percentage" value={salesReportAvailable ? `${quantity(profitPercentage)}%` : "—"} />
+        <Metric label="Tax" value={salesReportAvailable ? money(sums.tax) : "—"} />
+        <Metric label="Discount" value={salesReportAvailable ? money(sums.discount) : "—"} />
+        <Metric label="Transactions" value={salesReportAvailable ? quantity(sums.transactions) : "—"} />
       </div>}
 
       {(mode === "sales" || mode === "dashboard") && missingDates.length > 0 && <div role="status" className="mx-4 mt-3 flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} className="mt-0.5 shrink-0" />Report coverage is incomplete for {missingDates.length} date(s): {missingDates.slice(0, 8).join(", ")}{missingDates.length > 8 ? "…" : ""}.</div>}

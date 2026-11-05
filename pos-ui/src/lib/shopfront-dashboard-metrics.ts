@@ -33,6 +33,16 @@ export type ShopfrontInventoryMetrics = {
   fetchedAt: string | null;
 };
 
+export const SHOPFRONT_INVENTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export function shopfrontInventorySnapshotIsFresh(value: unknown, nowMs = Date.now()): boolean {
+  const timestamp = fetchedAt(value);
+  if (!timestamp) return false;
+  const snapshotMs = Date.parse(timestamp);
+  const ageMs = nowMs - snapshotMs;
+  return Number.isFinite(snapshotMs) && ageMs >= -5 * 60 * 1000 && ageMs <= SHOPFRONT_INVENTORY_MAX_AGE_MS;
+}
+
 export function reconcileShopfrontSales(
   source: ShopfrontSalesMetrics | null,
   odooRevenue: number,
@@ -82,9 +92,10 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
   };
 }
 
-export function parseShopfrontInventoryReport(payload: unknown): ShopfrontInventoryMetrics | null {
+export function parseShopfrontInventoryReport(payload: unknown, nowMs = Date.now()): ShopfrontInventoryMetrics | null {
   const report = object(payload);
   if (report?.available !== true) return null;
+  if (!shopfrontInventorySnapshotIsFresh(report.snapshot_at, nowMs)) return null;
   const sellableUnits = numeric(report.sellable_units);
   const negativeStockProducts = numeric(report.negative_stock_products);
   const recordCount = numeric(report.record_count);

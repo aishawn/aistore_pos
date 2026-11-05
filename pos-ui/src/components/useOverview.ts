@@ -9,7 +9,7 @@ import {
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
-import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales } from "@/lib/shopfront-dashboard-metrics";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -38,6 +38,7 @@ export type OverviewPulse = {
   grossMarginCoverage?: number;
   inventoryAvailable?: boolean;
   inventoryStatus?: string;
+  inventorySnapshotAt?: string | null;
   negativeStockProducts?: number | null;
   grossMarginStatus?: string;
   yesterdayNetSales?: number | null;
@@ -131,6 +132,7 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     grossMarginCoverage: Number.isFinite(payload.grossMarginCoverage) ? Number(payload.grossMarginCoverage) : 0,
     inventoryAvailable: payload.inventoryAvailable === true,
     inventoryStatus: payload.inventoryStatus as string | undefined,
+    inventorySnapshotAt: payload.inventorySnapshotAt as string | null | undefined,
     negativeStockProducts: payload.negativeStockProducts as number | null | undefined,
     grossMarginStatus: payload.grossMarginStatus as string | undefined,
     yesterdayNetSales: payload.yesterdayNetSales as number | null | undefined,
@@ -158,7 +160,7 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
   const timezone = typeof payload.timezone === "string" ? payload.timezone : "Australia/Adelaide";
   const today = businessDay(payload.from, timezone);
   const yesterday = businessDay(payload.yesterdayFrom, timezone);
-  if (!today) return { mapped: true as const, salesToday: null, salesYesterday: null, inventory: null };
+  if (!today) return { mapped: true as const, salesToday: null, salesYesterday: null, inventory: null, inventoryStale: false, inventorySnapshotAt: null };
   const todaySalesPath = `/api/shopfront-source?resource=report-sales&from=${today}&to=${today}&size=600`;
   const yesterdaySalesPath = yesterday ? `/api/shopfront-source?resource=report-sales&from=${yesterday}&to=${yesterday}&size=600` : null;
   const inventoryPath = "/api/shopfront-source?resource=dashboard-inventory";
@@ -178,13 +180,19 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
     read(inventoryPath),
   ]);
   if (!todaySalesResponse.mapped || !yesterdaySalesResponse.mapped || !inventoryResponse.mapped) {
-    return { mapped: false as const, salesToday: null, salesYesterday: null, inventory: null };
+    return { mapped: false as const, salesToday: null, salesYesterday: null, inventory: null, inventoryStale: false, inventorySnapshotAt: null };
   }
+  const inventoryPayload = inventoryResponse.report;
+  const inventorySnapshotAt = typeof inventoryPayload?.snapshot_at === "string" ? inventoryPayload.snapshot_at : null;
+  const inventoryStale = inventoryPayload?.reason === "snapshot_stale"
+    || Boolean(inventorySnapshotAt && !shopfrontInventorySnapshotIsFresh(inventorySnapshotAt));
   return {
     mapped: true as const,
     salesToday: parseShopfrontSalesReport(todaySalesResponse.report),
     salesYesterday: parseShopfrontSalesReport(yesterdaySalesResponse.report),
     inventory: parseShopfrontInventoryReport(inventoryResponse.report),
+    inventoryStale,
+    inventorySnapshotAt,
   };
 }
 
@@ -193,7 +201,7 @@ function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<Ret
   const salesToday = source.salesToday;
   const salesYesterday = source.salesYesterday;
   const inventory = source.inventory;
-  const fetchedTimes = [salesToday?.fetchedAt, salesYesterday?.fetchedAt, inventory?.fetchedAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
+  const fetchedTimes = [salesToday?.fetchedAt, salesYesterday?.fetchedAt, inventory?.fetchedAt, source.inventorySnapshotAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
   const sourceReportsFetchedAt = fetchedTimes.length ? new Date(Math.min(...fetchedTimes)).toISOString() : null;
   return {
     ...data,
@@ -210,7 +218,8 @@ function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<Ret
     grossMarginBasis: "shopfront_sales_report_profit_percentage",
     inventoryUnits: inventory?.sellableUnits ?? null,
     inventoryAvailable: inventory !== null,
-    inventoryStatus: !inventory ? "unavailable" : inventory.negativeStockProducts ? "negative_stock" : "verified",
+    inventoryStatus: source.inventoryStale ? "stale" : !inventory ? "unavailable" : inventory.negativeStockProducts ? "negative_stock" : "verified",
+    inventorySnapshotAt: source.inventorySnapshotAt,
     negativeStockProducts: inventory?.negativeStockProducts ?? null,
     sourceReportsFetchedAt,
     sourceSalesAvailable: salesYesterday !== null,
@@ -243,16 +252,26 @@ export function useOverview() {
     const scope = pulseScope(user?.vendorId);
     const cached = refresh || revalidate ? null : readPulse(scope);
     if (cached) {
-      setData(cached.data);
+      const cachedData = { ...cached.data };
+      if (cachedData.shopfrontReportsMode === "source" && !shopfrontInventorySnapshotIsFresh(cachedData.inventorySnapshotAt)) {
+        cachedData.inventoryUnits = null;
+        cachedData.negativeStockProducts = null;
+        cachedData.inventoryAvailable = false;
+        cachedData.sourceInventoryAvailable = false;
+        cachedData.inventoryStatus = cachedData.inventorySnapshotAt ? "stale" : "unavailable";
+        writePulse(scope, cachedData);
+      }
+      setData(cachedData);
       setLoading(false);
       const freshFor = cached.data.cacheStatus === "STALE" ? 15_000 : PULSE_FRESH_MS;
       // A cached Odoo-only summary can contain zero inventory while the
       // Shopfront source snapshot is healthy. Keep the fast paint, but force
       // a revalidation until the source inventory metric has been confirmed.
-      const sourceInventoryConfirmed = cached.data.shopfrontReportsMode === "source"
-        && cached.data.sourceInventoryAvailable === true
-        && cached.data.inventoryAvailable === true
-        && Number.isFinite(cached.data.inventoryUnits);
+      const sourceInventoryConfirmed = cachedData.shopfrontReportsMode === "source"
+        && cachedData.sourceInventoryAvailable === true
+        && cachedData.inventoryAvailable === true
+        && Number.isFinite(cachedData.inventoryUnits)
+        && shopfrontInventorySnapshotIsFresh(cachedData.inventorySnapshotAt);
       if (Date.now() - cached.at < freshFor && sourceInventoryConfirmed) return;
     } else {
       setLoading(true);

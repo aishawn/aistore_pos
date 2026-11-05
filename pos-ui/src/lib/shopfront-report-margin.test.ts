@@ -18,14 +18,14 @@ const sourceSale = {
   },
 };
 
-test("reads a stable complete source mirror and computes its original sale margin", async () => {
+test("reads a stable source mirror and computes Shopfront profit over gross revenue", async () => {
   const rpc = (async (_session, model, method) => {
     assert.equal(model, "shopfront.sync.sale");
     if (method === "search_count") return 1;
     return [sourceSale];
   }) as ReportRpc;
   const result = await readShopfrontReportMargin(rpc, "session", "skr", "2026-11-02 00:00:00", "2026-11-03 00:00:00");
-  assert.deepEqual(result, { grossMarginPercent: 0.4, grossSales: 11, tax: 1, netSales: 10, salesCost: 6, completedOrders: 1, coverage: 1 });
+  assert.deepEqual(result, { grossMarginPercent: 0.45454545, grossSales: 11, tax: 1, netSales: 10, salesCost: 6, completedOrders: 1, coverage: 1 });
 });
 
 test("does not publish a margin when the source mirror changes during pagination", async () => {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -12,6 +13,29 @@ def _number(row: dict[str, Any], *keys: str) -> float | None:
         return float(re.sub(r"[^0-9.\-]", "", str(value)))
     except (TypeError, ValueError):
         return None
+
+
+def inventory_snapshot_is_fresh(
+    snapshot_at: datetime | str | None,
+    *,
+    now: datetime | None = None,
+    max_age: timedelta = timedelta(hours=24),
+) -> bool:
+    if not snapshot_at:
+        return False
+    try:
+        parsed = datetime.fromisoformat(snapshot_at) if isinstance(snapshot_at, str) else snapshot_at
+        if not isinstance(parsed, datetime):
+            return False
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        age = current.astimezone(timezone.utc) - parsed.astimezone(timezone.utc)
+        return timedelta(minutes=-5) <= age <= max_age
+    except (TypeError, ValueError, OverflowError):
+        return False
 
 
 def inventory_report_totals(rows: list[dict[str, Any]]) -> dict[str, float]:

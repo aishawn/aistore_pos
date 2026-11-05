@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales } from "./shopfront-dashboard-metrics.ts";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
 
 test("Shopfront sales KPI validates and uses source Profit / Revenue", () => {
   const result = parseShopfrontSalesReport({
@@ -21,11 +21,23 @@ test("incomplete and internally inconsistent Shopfront reports are not displayed
 });
 
 test("inventory KPI uses the durable single-outlet snapshot summary", () => {
+  const now = Date.parse("2026-11-06T12:00:00Z");
   const result = parseShopfrontInventoryReport({
     available: true, sellable_units: 49993, negative_stock_products: 7076,
     record_count: 10849, outlet_count: 1, snapshot_at: "2026-11-05T14:00:00Z",
-  });
+  }, now);
   assert.deepEqual(result, { sellableUnits: 49993, negativeStockProducts: 7076, recordCount: 10849, fetchedAt: "2026-11-05T14:00:00Z" });
+});
+
+test("inventory KPI rejects a stale or future snapshot", () => {
+  const now = Date.parse("2026-11-06T12:00:00Z");
+  assert.equal(shopfrontInventorySnapshotIsFresh("2026-11-05T11:59:59Z", now), false);
+  assert.equal(shopfrontInventorySnapshotIsFresh("2026-11-06T12:04:00Z", now), true);
+  assert.equal(shopfrontInventorySnapshotIsFresh("2026-11-06T12:06:00Z", now), false);
+  assert.equal(parseShopfrontInventoryReport({
+    available: true, sellable_units: 100, negative_stock_products: 0,
+    record_count: 1, outlet_count: 1, snapshot_at: "2026-11-05T11:59:59Z",
+  }, now), null);
 });
 
 test("dashboard reconciliation compares Shopfront sales with Odoo gross totals and transactions", () => {

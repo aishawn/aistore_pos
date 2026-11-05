@@ -1,4 +1,15 @@
-from app.source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
+from datetime import datetime, timedelta, timezone
+
+from app.source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh, inventory_snapshot_report_rows, merge_incremental_inventory_manifest
+
+
+def test_inventory_snapshot_freshness_uses_utc_age_and_rejects_stale_or_future_data():
+    now = datetime(2026, 11, 6, 12, 0, tzinfo=timezone.utc)
+    assert inventory_snapshot_is_fresh(now - timedelta(hours=23, minutes=59), now=now)
+    assert not inventory_snapshot_is_fresh(now - timedelta(hours=24, seconds=1), now=now)
+    assert inventory_snapshot_is_fresh(now + timedelta(minutes=4), now=now)
+    assert not inventory_snapshot_is_fresh(now + timedelta(minutes=6), now=now)
+    assert not inventory_snapshot_is_fresh("not-a-timestamp", now=now)
 
 
 def test_inventory_totals_convert_cases_and_items_and_exclude_negative_units():

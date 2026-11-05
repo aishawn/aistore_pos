@@ -89,6 +89,21 @@ def test_source_product_gift_card_uses_shopfront_additional_field_safe_name():
     assert regular_product["is_gift_card"] is False
 
 
+def test_source_product_uses_quantity_one_retail_price_not_first_case_tier():
+    product = source_product_row({
+        "id": "product-price-tier",
+        "name": "Case priced product",
+        "status": "ACTIVE",
+        "prices": [
+            {"quantity": 6, "price": 24.00},
+            {"quantity": 1, "price": 4.50},
+        ],
+    })
+
+    assert product["price"] == 4.50
+    assert isinstance(product["price"], float)
+
+
 def test_live_catalog_query_avoids_unsupported_product_supplier_fields():
     assert "coreSupplier { id name }" not in CATALOG_QUERY
     assert "lastSupplier { id name }" not in CATALOG_QUERY
