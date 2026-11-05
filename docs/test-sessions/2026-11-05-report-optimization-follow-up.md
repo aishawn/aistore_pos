@@ -4,8 +4,8 @@ Date: 2026-11-05
 Suite: `RPT-001`
 Environment: local source and deterministic unit fixtures; no Odoo reads or business writes
 Base source SHA: `cf022f55a6a9a793c78941597e269ca610fd467a`
-Candidate source SHA: uncommitted worktree based on the base SHA
-Runtime SHA: not applicable; candidate is not deployed
+Candidate source SHA: `71a715a7e970a0abaf0d8c2c7f18a3a2fcb4fa62` (report implementation); latest main `d59a00cc5e2b0052e8af06ebc3e0b31d0ec95c19`
+Runtime SHA: SKR and Demo frontend/backend `cf022f55a6a9a793c78941597e269ca610fd467a`; report changes are not deployed
 Model/prompt/config/snapshot versions: not applicable
 
 ## Scope
@@ -28,6 +28,8 @@ Model/prompt/config/snapshot versions: not applicable
 | `git diff --check` | PASS | No whitespace errors. |
 | Browser interaction / print / downloaded CSV parity | NOT RUN | Requires the candidate to be deployed or a configured local authenticated UI. |
 | Odoo order, purchase, closure, and inventory source reconciliation | NOT RUN | No service calls were made in this session. |
+| Public runtime version endpoints | PASS (identity check only) | SKR and Demo both returned frontend/backend SHA `cf022f55a6a9a793c78941597e269ca610fd467a`, built 2026-11-05 12:50 UTC; this predates the report implementation. |
+| Dokploy deploy webhook | BLOCKED | Supplied webhook returned `Branch Not Match`; no retry. Dokploy Source/Git repository, branch/ref, repository root, and Compose file remain unverified. |
 | Production business writes | 0 | No sales, receipts, stock, register, or other Odoo mutations. |
 
 ## Findings and limits

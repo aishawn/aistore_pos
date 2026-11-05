@@ -25,9 +25,10 @@ Updated: 2026-11-05. Owner: TBD.
 | Register cash difference reconciled to closed sessions | NOT RUN | Validate null values, rounding, and expected/count cash fields |
 | Register closure list, visible columns, and full print result | NOT RUN | Source now renders the rows and requests all matching print rows; browser and Odoo read-only confirmation remain required |
 | Shopfront coverage and Odoo reconciliation | PARTIAL | Read-only live checks on runtime SHA `1e7f3a1e`: both hosts reported sync event `completed`; SKR yesterday Odoo revenue `$3,760.72` versus source gross `$4,068.63` (144 source orders, tax `$334.36`); demo Odoo revenue `$0` versus the same source. Candidate now flags this mismatch, but it awaits deployment and repeat validation |
+| Deployment identity | BLOCKED | Source is on main at `d59a00cc5e2b0052e8af06ebc3e0b31d0ec95c19`; SKR and Demo public version endpoints return frontend/backend SHA `cf022f55a6a9a793c78941597e269ca610fd467a` (built 2026-11-05 12:50 UTC). Supplied Dokploy webhook returned `Branch Not Match`; no retry was made. Verify Dokploy repository/ref/root/Compose settings before deployment. |
 | Inventory scope reconciliation | PARTIAL | Before the candidate fix, SKR product inventory reported `0` across 2,263 products while dashboard sellable units were `52,026`; demo reported 49,498 vs dashboard 49,504 across 12,986 products. Product routes lacked warehouse context and dashboard stock lacked a bound-location filter; candidate fix awaits live confirmation |
 | CSV formula injection, export completeness, print layout | NOT RUN | Column selection is wired to sales, purchase, closure, and inventory exports/print rendering, but no browser/export runtime check has been performed |
-| Deployment and online acceptance | NOT RUN | This candidate is uncommitted and has no runtime SHA; complete read-only acceptance after the main deployment |
+| Report page, Odoo source reconciliation, CSV/print parity | NOT RUN | Current runtime SHA does not contain the report changes; complete read-only browser/data acceptance only after the correct main SHA is deployed |
 
 ## Required evidence for a PASS
 
