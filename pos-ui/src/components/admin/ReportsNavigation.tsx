@@ -27,7 +27,7 @@ const TABS: ReportTab[] = [
     match: ["/reports/dashboard#ai-insights"],
   },
   {
-    label: "Sales",
+    label: "Sales report",
     href: "/reports/sales",
     icon: ReceiptText,
     match: ["/reports/sales"],
@@ -45,10 +45,22 @@ const TABS: ReportTab[] = [
     match: ["/reports/inventory"],
   },
   {
-    label: "Purchasing & Transfers",
+    label: "Purchase analysis",
     href: "/reports/purchase",
     icon: PackageSearch,
-    match: ["/reports/purchase", "/reports/transfer"],
+    match: ["/reports/purchase"],
+  },
+  {
+    label: "Purchase Orders",
+    href: "/purchases",
+    icon: PackageSearch,
+    match: ["/purchases"],
+  },
+  {
+    label: "Transfers",
+    href: "/reports/transfer",
+    icon: PackageSearch,
+    match: ["/reports/transfer"],
   },
   {
     label: "Register Closures",
@@ -92,7 +104,7 @@ export function ReportsNavigation() {
   if (pathname === "/reports/ai/metrics") return null;
 
   return (
-    <div className="shrink-0 border-b border-[var(--oh-border)] bg-white">
+    <div className="print:hidden shrink-0 border-b border-[var(--oh-border)] bg-white">
       <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5 [scrollbar-width:thin]">
         <div className="flex min-w-max items-center gap-1">
           {TABS.map((tab) => {

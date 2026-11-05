@@ -24,11 +24,12 @@ export function CatalogueIssues({ product }: { product: OdooProductRecord }) {
   return <span className="mt-1.5 flex flex-wrap gap-1">{issues.map((issue) => <span key={issue} className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">{issue}</span>)}</span>;
 }
 
-export function CatalogueProductDetails({ product, categories, onClose, onEdit }: {
+export function CatalogueProductDetails({ product, categories, onClose, onEdit, canEdit = true }: {
   product: OdooProductRecord;
   categories: Map<number, string>;
   onClose: () => void;
   onEdit: () => void;
+  canEdit?: boolean;
 }) {
   useDialogFocus(true, onClose);
   const name = friendlyProductName(product.display_name || product.name);
@@ -55,7 +56,7 @@ export function CatalogueProductDetails({ product, categories, onClose, onEdit }
       <p className="mt-4 rounded-lg bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-muted)]">Stock uses the active inventory context. Count stock to review physical quantities. Customer price lists and promotions may change the final checkout price.</p>
       <footer className="mt-5 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
         <button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Close</button>
-        <button type="button" onClick={onEdit} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={15} /> Edit product</button>
+        {canEdit && <button type="button" onClick={onEdit} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={15} /> Edit product</button>}
       </footer>
     </section>
   </div>, document.body);

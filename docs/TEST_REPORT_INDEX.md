@@ -32,6 +32,12 @@ Latest Shopfront page refresh deployment follow-up: [2026-11-05 page refresh dep
 
 Latest report reconciliation: [2026-11-05 sales report reconciliation](test-sessions/2026-11-05-report-reconciliation.md): focused reconciliation helper tests 3/3 PASS and scoped report TypeScript PASS; full project typecheck remains blocked by a separate Shopfront source page error; no Odoo reads/writes or deployment checks.
 
+Latest report column selection: [2026-11-05 report columns](test-sessions/2026-11-05-report-columns.md): scoped report/API TypeScript PASS and reconciliation tests 3/3 PASS; latest ESLint and browser export/print checks NOT RUN; online data reconciliation pending.
+
+Latest report optimization: [2026-11-05 report optimization](test-sessions/2026-11-05-report-optimization.md): local report tests 10/10, full and scoped TypeScript PASS, targeted ESLint 0 errors / 19 warnings, project docs checker PASS. Browser, Odoo source reconciliation, and deployment identity remain NOT RUN.
+
+Latest report optimization follow-up: [2026-11-05 report optimization follow-up](test-sessions/2026-11-05-report-optimization-follow-up.md): register closure table/print gap and inventory clear-filter behavior fixed in source; focused tests, supported-runtime TypeScript and lint results recorded. Browser/Odoo reconciliation and deployment identity remain separate acceptance gates.
+
 
 This index is the cross-session view. The detailed report for each session lives under `docs/test-sessions/`; raw machine-readable evidence remains in `docs/UAT_*.json`.
 
@@ -51,6 +57,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | Suite ID | Latest session | Result | Source SHA | Runtime SHA | Evidence | Next action |
 |---|---|---|---|---|---|---|
 | `SHP-001` (formal sale receipt mode) | 2026-11-04-shopfront-business-write-receipt | PASS: 27 crawler tests; online state BLOCKED | `007064cc` plus candidate diff | Not verified | [Session](test-sessions/2026-11-04-shopfront-business-write-receipt.md) | Deploy exact candidate; read run 173; separately authorize and verify formal sale backfill |
+| `RPT-001` (reporting workflows, filters, totals, exports) | 2026-11-05-report-optimization-follow-up | Local static/unit checks PASS; browser and Odoo reconciliation NOT RUN | `cf022f55` + report candidate | Not deployed | [Session](test-sessions/2026-11-05-report-optimization-follow-up.md) | Deploy reviewed main candidate; read-only verify table, full exports, report source totals and date boundaries |
 | `UI-001` (inventory navigation static subset) | 2026-11-04-inventory-navigation | PASS: TypeScript; ESLint 0 errors / 14 warnings | Candidate pending commit | Not deployed | [Session](test-sessions/2026-11-04-inventory-navigation.md) | Deploy main; verify route access, permissions and SHA |
 | `REL-001` |  | NOT RUN |  |  |  |  |
 | `UI-001` |  | NOT RUN |  |  |  |  |
@@ -74,6 +81,8 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `AI-003` |  | NOT RUN |  |  |  |  |
 | `AI-004` (SKR open-day sales backtest) | 2026-11-04-forecast-open-day-backtest | BLOCKED for release: champion WAPE 103.6%-172.1%; safety violations 0; 2,000 SKU, 60 folds, 7/14/28-day horizons | `a680e220` + evaluator SHA-256 `f2f3d8e4` | Offline only; no runtime | [Session](test-sessions/2026-11-04-forecast-open-day-backtest.md), [Report](UAT_AI_FORECAST_SEGMENTED_2000SKU_2026-11-04.md), [JSON](UAT_FORECAST_ROLLING_BACKTEST_2026-11-04.json), [CSV](UAT_AI_FORECAST_SEGMENTED_OPEN_DAYS_ALL_MODELS_2026-11-04.csv) | Keep production model and manual review gates; native stock, lead-time, and cost labels remain unavailable |
 | `AI-004` (SKR open-day sales backtest, SKU coverage) | 2026-11-05-forecast-open-day-sku-coverage | BLOCKED for release: champion WAPE 103.6%-172.1%; SKU/window coverage reported; inventory-aware run has no complete 365-day native labels; safety violations 0 | `main` worktree + evaluator SHA-256 `9c7518ba`; event validator `6dc13ddf` | Offline only; no runtime | [Session](test-sessions/2026-11-05-forecast-open-day-sku-coverage.md), [Report](UAT_AI_FORECAST_SEGMENTED_2000SKU_2026-11-05.md), [CSV](UAT_AI_FORECAST_SEGMENTED_OPEN_DAYS_ALL_MODELS_2026-11-05.csv) | Keep production model and manual review gates; collect native inventory and verified lead-time/cost labels |
+| `AI-004` (SKR sales-only walk-forward) | 2026-11-05-forecast-sales-only-segments | BLOCKED for release: engine-selected horizon-total WAPE 0.806/0.665/0.577; 2,000 SKUs, 84 folds; fill rate/cost unavailable | `a3ea493e`; evaluator SHA-256 `64082c0e` | Offline evaluation; deployment version confirmed on SKR/Demo; online AI rerun not performed | [Session](test-sessions/2026-11-05-forecast-sales-only-segments.md) | Keep production model and procurement review gates; improve sparse/new-item forecast quality and collect native inventory labels |
+| `AI-001` (current runtime read-only rerun) | 2026-11-05-ai-runtime-rerun | BLOCKED: both stores login/Odoo session PASS, AI questions 502, report/forecast probes 401; navigation safe and writes 0 | Runtime SHA differs per store; raw evidence SHA in session | Online read-only only; no business writes | [Session](test-sessions/2026-11-05-ai-runtime-rerun.md) | Repair shared runtime auth/report route contract, then rerun SKR and Demo |
 | `AI-004` (SKR open-day evaluator fast-path rerun) | 2026-11-04-forecast-evaluator-fast-path | PASS: 18/18 explicit forecast parity cases; full 2,000-SKU rerun completed with all metrics identical; release remains BLOCKED by accuracy and native inventory evidence | Evaluator SHA-256 `a05b6e94`; snapshot SHA-256 `1db83438`; calendar SHA-256 `1f2962af` | Offline only; no runtime | [Session](test-sessions/2026-11-04-forecast-evaluator-fast-path.md), [versioned closed-date list](AI_SKR_CONFIRMED_CLOSED_DATES_2026-11-04.json), [report](UAT_AI_FORECAST_SEGMENTED_2000SKU_2026-11-04.md) | No production model/policy change; full inventory-aware evaluation still requires reliable native daily inventory labels |
 | `DOC-001` | 2026-11-03-project-fact-library | PASS: 56 Markdown files / 19 evidence entries; 12 checker regressions | Inventory baseline `d2020745`; integrated on `b7249014`; doc commit in Git | Not applicable: static documentation | [Session](test-sessions/2026-11-03-project-fact-library.md) | Maintain with behavior/evidence changes; no new business acceptance claimed |
 | `OPS-001` |  | NOT RUN |  |  |  |  |
@@ -106,6 +115,8 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 
 | 2026-11-04-source-tax-pricing | 2026-11-04 | Local planner v2 / demo rollback / readonly history captures | 33 units/51 crawler PASS;64 demo rehearsed98review;155142-order native capture done;56 direct-source days and online margin totals match;385-page source capture remains partial | [Report](test-sessions/2026-11-04-source-tax-pricing.md) |
 | 2026-11-05-report-reconciliation | 2026-11-05 | Sales order gross vs grouped line amount behavior | 3/3 helper tests and scoped TypeScript PASS; live Odoo reconciliation NOT RUN | [Report](test-sessions/2026-11-05-report-reconciliation.md) |
+| 2026-11-05-report-columns | 2026-11-05 | Shared report column selection, CSV schema, and print visibility | Scoped report/API TypeScript PASS; reconciliation tests 3/3 PASS; browser and live checks NOT RUN | [Report](test-sessions/2026-11-05-report-columns.md) |
+| 2026-11-05-report-optimization | 2026-11-05 | Report source drill-down, inventory URL/column behavior, and metadata | Report tests 10/10; full/scoped TypeScript PASS; ESLint 0 errors / 19 warnings; browser/live checks NOT RUN | [Report](test-sessions/2026-11-05-report-optimization.md) |
 
 ## Classification rule
 

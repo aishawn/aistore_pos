@@ -3653,10 +3653,11 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
 
 
 @app.get("/api/products")
-def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, q: str | None = None, db: Session = Depends(get_db)) -> dict:
+def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1, le=500), catalog_only: bool = False, status: str | None = None, q: str | None = None, brand: str | None = None, category: str | None = None, family: str | None = None, tag: str | None = None, supplier: str | None = None, product_type: str | None = Query(None, alias="type"), tax_rate: str | None = None, cost_tax_rate: str | None = None, gift_card: bool | None = None, db: Session = Depends(get_db)) -> dict:
     require_store(store, db)
-    if q is not None and len(q) > 120:
-        raise HTTPException(400, "q must be at most 120 characters")
+    for name, value in (("q", q), ("brand", brand), ("category", category), ("family", family), ("tag", tag), ("supplier", supplier), ("type", product_type), ("tax_rate", tax_rate), ("cost_tax_rate", cost_tax_rate)):
+        if value is not None and len(value) > 120:
+            raise HTTPException(400, f"{name} must be at most 120 characters")
     if status and status.strip().upper() not in {"ACTIVE", "NOT_ACTIVE"}:
         raise HTTPException(400, "status must be ACTIVE or NOT_ACTIVE")
     filters: list[Any] = [Product.store_key == store]
@@ -3672,8 +3673,45 @@ def products(store: str, page: int = Query(1, ge=1), size: int = Query(100, ge=1
             Product.barcode.ilike(pattern),
             cast(Product.raw_payload, String).ilike(pattern),
         ))
-    rows = db.scalars(select(Product).where(*filters).order_by(Product.name, Product.id).offset((page - 1) * size).limit(size)).all()
-    total = db.scalar(select(func.count(Product.id)).where(*filters)) or 0
+    advanced = (brand, category, family, tag, supplier, product_type, tax_rate, cost_tax_rate, gift_card)
+    if any(value is not None for value in advanced):
+        candidates = db.scalars(select(Product).where(*filters).order_by(Product.name, Product.id)).all()
+
+        def text(value: Any) -> str:
+            if isinstance(value, dict):
+                return " ".join(text(item) for item in value.values())
+            if isinstance(value, list):
+                return " ".join(text(item) for item in value)
+            return str(value or "")
+
+        def has_value(raw: dict[str, Any], needle: str | None, *keys: str) -> bool:
+            if needle is None:
+                return True
+            target = needle.casefold().strip()
+            return target in " ".join(text(raw.get(key)) for key in keys).casefold()
+
+        def matches(product: Product) -> bool:
+            raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
+            if not has_value(raw, brand, "brand") or not has_value(raw, category, "category") or not has_value(raw, family, "family"):
+                return False
+            if not has_value(raw, tag, "tags") or not has_value(raw, supplier, "suppliers", "coreSupplier", "lastSupplier"):
+                return False
+            if not has_value(raw, product_type, "type") or not has_value(raw, tax_rate, "taxRate") or not has_value(raw, cost_tax_rate, "costTaxRate"):
+                return False
+            if gift_card is not None:
+                raw_type = text(raw.get("type")).casefold()
+                raw_gift = raw.get("giftCard") or raw.get("gift_card")
+                is_gift_card = bool(raw_gift) or "gift" in raw_type
+                if is_gift_card != gift_card:
+                    return False
+            return True
+
+        matched = [product for product in candidates if matches(product)]
+        total = len(matched)
+        rows = matched[(page - 1) * size:page * size]
+    else:
+        rows = db.scalars(select(Product).where(*filters).order_by(Product.name, Product.id).offset((page - 1) * size).limit(size)).all()
+        total = db.scalar(select(func.count(Product.id)).where(*filters)) or 0
     def product_data(x: Product) -> dict:
         raw = x.raw_payload if isinstance(x.raw_payload, dict) else {}
         return {

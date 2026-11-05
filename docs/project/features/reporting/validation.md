@@ -6,20 +6,28 @@ Updated: 2026-11-05. Owner: TBD.
 
 | Check | Status | Evidence and limits |
 |---|---|---|
-| TypeScript typecheck | BLOCKED | `tsc --noEmit` reports two ReactNode errors in the separate untracked `src/components/ShopfrontSourceDataPage.tsx:280`; no diagnostics point to the reporting files. Node 22.22.2 is below the declared Node >=24 engine, so repeat after the workspace issue is resolved under the supported runtime |
-| Targeted ESLint | INFO | Earlier changed-report/inventory lint returned 0 errors and 20 warnings; the latest narrow sales-only lint process stalled and was interrupted, so rerun on the final candidate before release |
-| Project fact-library checker | PASS | 66 Markdown files; required structure, local links/headings and evidence assertions verified |
+| TypeScript typecheck | PASS | Full `npm run typecheck` exited 0 with Node 24.22.1 on the current working tree; see [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
+| Targeted ESLint | NOT RUN (FINAL RERUN INTERRUPTED) | The previous candidate run reported 0 errors / 16 React effect warnings; this final rerun produced no diagnostics and was interrupted after more than two minutes. Re-run before the next code change or release. |
+| Focused report/date/inventory tests | PASS | 39/39 across report date presets, DST boundaries, inventory totals/snapshots, cache scoping, cash variance summary, purchase report dates, and sales reconciliation; see [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
+| Project fact-library checker | PASS | Follow-up checker result and Markdown count are recorded in [session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md); required structure, local links/headings and evidence assertions verified |
 | Sales amount reconciliation helper | PASS | 3/3 local cases for cent rounding, detectable variance, and non-finite totals; [session](../../../test-sessions/2026-11-05-report-reconciliation.md) |
 | Scoped sales report TypeScript check | PASS | Changed sales report API/page and reconciliation helper; temporary scoped tsconfig removed after checking |
+| Scoped report table/column TypeScript check | PASS | Sales, purchase, closure API/page, and shared column chooser; [session](../../../test-sessions/2026-11-05-report-columns.md) |
+| Shopfront margin, inventory totals, report cache, source margin tests | PASS | 25/25 focused unit tests; [session](../../../test-sessions/2026-11-05-store-data-scope.md) |
 | `git diff --check` | PASS | No whitespace errors; Git emitted line-ending normalization notices for three route wrappers |
+| Report date, closure summary, sales reconciliation unit tests | PASS | 10/10 local tests; no Odoo data; [session](../../../test-sessions/2026-11-05-report-optimization.md) |
+| Inventory column/filter URL implementation | INFO | Source inspection confirms query/category/stock/sort/columns are URL-backed and inventory CSV/print reuse the snapshot; refresh/back behavior and full export parity still require browser verification |
+| Sales and purchase source drill-down implementation | INFO | Scoped API domains and amount summaries are implemented; browser interaction and source-to-group reconciliation remain NOT RUN |
 | Source inspection of report routes and UI | INFO | Current working-tree source reviewed; this does not identify the deployed SHA |
 | Date boundary, store timezone, and company scope | NOT RUN | Requires fixtures or authenticated read-only environment checks |
 | Sales totals reconciled to Odoo source orders and lines | NOT RUN | Must separately compare orders vs sale lines; refunds and zero-total orders are excluded |
 | Purchase count/amount reconciled to Odoo | NOT RUN | Must confirm `purchase` and `done` state semantics for target Odoo configuration |
 | Register cash difference reconciled to closed sessions | NOT RUN | Validate null values, rounding, and expected/count cash fields |
-| Shopfront coverage indicator | NOT RUN | Sync state is scoped by target/date, but it records sync events rather than proving row-level source completeness |
-| CSV formula injection, export completeness, print layout | NOT RUN | No browser or export verification performed in this change |
-| Deployment and online acceptance | NOT RUN | No deployment identity or live verification recorded |
+| Register closure list, visible columns, and full print result | NOT RUN | Source now renders the rows and requests all matching print rows; browser and Odoo read-only confirmation remain required |
+| Shopfront coverage and Odoo reconciliation | PARTIAL | Read-only live checks on runtime SHA `1e7f3a1e`: both hosts reported sync event `completed`; SKR yesterday Odoo revenue `$3,760.72` versus source gross `$4,068.63` (144 source orders, tax `$334.36`); demo Odoo revenue `$0` versus the same source. Candidate now flags this mismatch, but it awaits deployment and repeat validation |
+| Inventory scope reconciliation | PARTIAL | Before the candidate fix, SKR product inventory reported `0` across 2,263 products while dashboard sellable units were `52,026`; demo reported 49,498 vs dashboard 49,504 across 12,986 products. Product routes lacked warehouse context and dashboard stock lacked a bound-location filter; candidate fix awaits live confirmation |
+| CSV formula injection, export completeness, print layout | NOT RUN | Column selection is wired to sales, purchase, closure, and inventory exports/print rendering, but no browser/export runtime check has been performed |
+| Deployment and online acceptance | NOT RUN | This candidate is uncommitted and has no runtime SHA; complete read-only acceptance after the main deployment |
 
 ## Required evidence for a PASS
 

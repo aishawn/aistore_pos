@@ -113,6 +113,16 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [queryInput, setQueryInput] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+  const [brandInput, setBrandInput] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
+  const [familyInput, setFamilyInput] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [supplierInput, setSupplierInput] = useState("");
+  const [typeInput, setTypeInput] = useState("");
+  const [taxRateInput, setTaxRateInput] = useState("");
+  const [costTaxRateInput, setCostTaxRateInput] = useState("");
+  const [giftCardInput, setGiftCardInput] = useState("all");
+  const [productFilters, setProductFilters] = useState({ brand: "", category: "", family: "", tag: "", supplier: "", type: "", taxRate: "", costTaxRate: "", giftCard: "all" });
   const [negativeOnly, setNegativeOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<SourceRow[]>([]);
@@ -148,6 +158,10 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         if (mode === "products") {
           params.set("catalog_only", "true");
           params.set("status", status === "all" ? "ACTIVE" : status);
+          for (const [key, value] of [["brand", productFilters.brand], ["category", productFilters.category], ["family", productFilters.family], ["tag", productFilters.tag], ["supplier", productFilters.supplier], ["type", productFilters.type], ["tax_rate", productFilters.taxRate], ["cost_tax_rate", productFilters.costTaxRate]] as const) {
+            if (value) params.set(key, value);
+          }
+          if (productFilters.giftCard !== "all") params.set("gift_card", productFilters.giftCard);
         }
         if (mode === "inventory" && negativeOnly) params.set("negative_only", "true");
       }
@@ -184,7 +198,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false);
     }
-  }, [mode, negativeOnly, page, query, range, refreshKey, status]);
+  }, [mode, negativeOnly, page, productFilters, query, range, refreshKey, status]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -215,6 +229,11 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   function applyQuery() {
     setPage(1);
     setQuery(queryInput.trim());
+  }
+
+  function applyProductFilters() {
+    setPage(1);
+    setProductFilters({ brand: brandInput.trim(), category: categoryInput.trim(), family: familyInput.trim(), tag: tagInput.trim(), supplier: supplierInput.trim(), type: typeInput.trim(), taxRate: taxRateInput.trim(), costTaxRate: costTaxRateInput.trim(), giftCard: giftCardInput });
   }
 
   return (
@@ -257,6 +276,15 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         {mode === "inventory" && <label className="flex h-9 items-center gap-2 px-2 text-sm text-[var(--oh-text)]"><input type="checkbox" checked={negativeOnly} onChange={event => { setNegativeOnly(event.target.checked); setPage(1); }} />Negative stock only</label>}
         <button type="button" onClick={applyQuery} className="inline-flex h-9 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white"><Search size={15} aria-hidden="true" /> Search</button>
       </div>}
+
+      {mode === "products" && <details className="border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--oh-text)]">Advanced product filters</summary>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[["Brand", brandInput, setBrandInput], ["Category", categoryInput, setCategoryInput], ["Family", familyInput, setFamilyInput], ["Tag", tagInput, setTagInput], ["Supplier", supplierInput, setSupplierInput], ["Type", typeInput, setTypeInput], ["Retail tax rate", taxRateInput, setTaxRateInput], ["Purchase tax rate", costTaxRateInput, setCostTaxRateInput]].map(([label, value, setter]) => <label key={String(label)} className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">{label}<input value={String(value)} onChange={event => (setter as (value: string) => void)(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)]" /></label>)}
+          <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Gift card<select value={giftCardInput} onChange={event => setGiftCardInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]"><option value="all">All</option><option value="true">Gift cards</option><option value="false">Not gift cards</option></select></label>
+          <button type="button" onClick={applyProductFilters} className="h-9 self-end rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Apply filters</button>
+        </div>
+      </details>}
 
       {mode === "dashboard" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <Metric label="Revenue" value={money(sums.revenue)} />
