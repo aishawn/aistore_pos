@@ -490,7 +490,18 @@ async def shopfront_source_report(
             await client.close()
         customer_ids = {str(row.get("customer", {}).get("id")) for row in sales_rows if isinstance(row.get("customer"), dict) and row.get("customer", {}).get("id")}
         quantity_total = 0.0
+        top_products: dict[str, dict[str, Any]] = {}
+        users: dict[str, dict[str, Any]] = {}
         for sale in sales_rows:
+            user = sale.get("user") if isinstance(sale.get("user"), dict) else {}
+            user_id = str(user.get("id") or "unknown")
+            user_name = str(user.get("name") or "Unknown")
+            user_row = users.setdefault(user_id, {"id": user_id, "name": user_name, "transactions": 0, "revenue": 0.0})
+            user_row["transactions"] += 1
+            try:
+                user_row["revenue"] += float(sale.get("totalPrice") or 0)
+            except (TypeError, ValueError):
+                pass
             for item in sale.get("items", []) if isinstance(sale.get("items"), list) else []:
                 if isinstance(item, dict):
                     raw_quantity = item.get("quantity")
@@ -498,8 +509,25 @@ async def shopfront_source_report(
                         quantity_total += float(raw_quantity or 0)
                     except (TypeError, ValueError):
                         pass
+                    item_info = item.get("item") if isinstance(item.get("item"), dict) else {}
+                    product_id = str(item_info.get("id") or "unknown")
+                    product_name = str(item_info.get("name") or product_id)
+                    product_row = top_products.setdefault(product_id, {"id": product_id, "name": product_name, "quantity": 0.0, "revenue": 0.0})
+                    try:
+                        product_row["quantity"] += float(item.get("quantity") or 0)
+                    except (TypeError, ValueError):
+                        pass
+                    try:
+                        product_row["revenue"] += float(item.get("totalPrice") or 0)
+                    except (TypeError, ValueError):
+                        pass
         transaction_count = len(sales_rows)
-        metrics = {"customer_count": len(customer_ids), "basket_size": round(quantity_total / transaction_count, 2) if transaction_count else 0}
+        metrics = {
+            "customer_count": len(customer_ids),
+            "basket_size": round(quantity_total / transaction_count, 2) if transaction_count else 0,
+            "top_products": sorted(top_products.values(), key=lambda row: (-float(row["quantity"]), str(row["name"])))[:20],
+            "users": sorted(users.values(), key=lambda row: (-int(row["transactions"]), str(row["name"]))),
+        }
     if q and q.strip():
         needle = q.strip().casefold()
         normalized_rows = [row for row in normalized_rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]

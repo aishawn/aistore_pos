@@ -363,6 +363,7 @@ UNCONSOLIDATED'''
               id clientId status invoiceId totalCost totalDiscount totalTax totalPrice totalRounding createdAt updatedAt customer { id clientId name }
               linkedSale { id }
               register { id outlet { id name } }
+              user { id name }
               items { id quantity caseQuantity cost basePrice tax totalPrice metaData item { id ... on Product { name barcodes { code quantity } } } }
               payments { id amount status subtype }
             } }
@@ -392,6 +393,7 @@ UNCONSOLIDATED'''
                 edges { node {
                   id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt customer { id clientId name }
                   register { id outlet { id name } }
+                  user { id name }
                   items { id quantity cost basePrice tax totalPrice item { id ... on Product { name description image alternateImages barcodes { code quantity } } } }
                   payments { id amount status subtype }
                 } }

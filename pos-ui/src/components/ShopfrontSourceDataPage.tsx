@@ -272,6 +272,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}
 
+      {mode === "dashboard" && <DashboardBreakdown metrics={reportMetrics} />}
+
       {mode === "sales" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <Metric label="Revenue" value={money(sums.revenue)} />
         <Metric label="Cost of goods sold" value={money(sums.cost)} />
@@ -312,6 +314,22 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
 
 function Metric({ label, value, emphasis = false, detail }: { label: string; value: string; emphasis?: boolean; detail?: string }) {
   return <div className="min-w-28"><p className="text-xs font-medium text-[var(--oh-muted)]">{label}</p><p className={`mt-1 text-lg font-semibold ${emphasis ? "text-[var(--oh-primary)]" : "text-[var(--oh-text)]"}`}>{value}</p>{detail && <p className="mt-0.5 text-[11px] text-[var(--oh-muted)]">{detail}</p>}</div>;
+}
+
+function DashboardBreakdown({ metrics }: { metrics: SourceRow }) {
+  const products = Array.isArray(metrics.top_products) ? metrics.top_products as SourceRow[] : [];
+  const users = Array.isArray(metrics.users) ? metrics.users as SourceRow[] : [];
+  if (!products.length && !users.length) return null;
+  return <div className="grid gap-4 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-4 md:grid-cols-2 md:px-6">
+    <section className="overflow-x-auto border border-[var(--oh-border)] bg-white">
+      <h2 className="border-b border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)]">Top 20 Products</h2>
+      <table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr><th className="px-3 py-2">Product</th><th className="px-3 py-2">Quantity</th><th className="px-3 py-2">Revenue</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{products.map((row, index) => <tr key={`${String(row.id)}-${index}`}><Cell>{sourceText(row, "name")}</Cell><Cell>{quantity(row.quantity)}</Cell><Cell>{money(row.revenue)}</Cell></tr>)}</tbody></table>
+    </section>
+    <section className="overflow-x-auto border border-[var(--oh-border)] bg-white">
+      <h2 className="border-b border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)]">Users</h2>
+      <table className="w-full min-w-[360px] text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr><th className="px-3 py-2">User</th><th className="px-3 py-2">Transactions</th><th className="px-3 py-2">Revenue</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{users.map((row, index) => <tr key={`${String(row.id)}-${index}`}><Cell>{sourceText(row, "name")}</Cell><Cell>{quantity(row.transactions)}</Cell><Cell>{money(row.revenue)}</Cell></tr>)}</tbody></table>
+    </section>
+  </div>;
 }
 
 function SalesTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
