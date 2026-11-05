@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BarChart3, Boxes, Lightbulb, PackageSearch, ReceiptText } from "lucide-react";
+import { BarChart3, Boxes, Lightbulb, PackageSearch, ReceiptText, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReportTab = {
@@ -27,6 +27,12 @@ const TABS: ReportTab[] = [
     match: ["/reports/dashboard#ai-insights"],
   },
   {
+    label: "Sales",
+    href: "/reports/sales",
+    icon: ReceiptText,
+    match: ["/reports/sales"],
+  },
+  {
     label: "Sales History",
     href: "/history",
     icon: ReceiptText,
@@ -43,6 +49,12 @@ const TABS: ReportTab[] = [
     href: "/reports/purchase",
     icon: PackageSearch,
     match: ["/reports/purchase", "/reports/transfer"],
+  },
+  {
+    label: "Register Closures",
+    href: "/reports/closures",
+    icon: WalletCards,
+    match: ["/reports/closures"],
   },
 ];
 

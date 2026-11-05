@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { salesDate, shiftDay, localMidnightUtc, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention } from "./replenishment-safety.ts";
+import { salesDate, shiftDay, localMidnightUtc, isValidBusinessDay, replenishmentIssues, replenishmentDemandIssues, stockoutProjection, replenishmentAttention } from "./replenishment-safety.ts";
 
 test("Odoo UTC orders cross into the Australian business day", () => {
   assert.equal(salesDate("2026-10-30 14:00:00", "Australia/Adelaide"), "2026-10-31");
@@ -12,6 +12,16 @@ test("complete-day boundaries respect daylight savings", () => {
   assert.equal(localMidnightUtc("2026-10-05", "Australia/Adelaide"), "2026-10-04 13:30:00");
   assert.equal(localMidnightUtc("2026-10-04", "Australia/Adelaide"), "2026-10-03 14:30:00");
   assert.equal(shiftDay("2026-03-01", -1), "2026-02-28");
+  assert.equal((Date.parse(`${localMidnightUtc("2026-10-05", "Australia/Adelaide")}Z`) - Date.parse(`${localMidnightUtc("2026-10-04", "Australia/Adelaide")}Z`)) / 3_600_000, 23);
+  assert.equal(localMidnightUtc("2026-04-05", "Australia/Adelaide"), "2026-04-04 13:30:00");
+  assert.equal(localMidnightUtc("2026-04-06", "Australia/Adelaide"), "2026-04-05 14:30:00");
+  assert.equal((Date.parse(`${localMidnightUtc("2026-04-06", "Australia/Adelaide")}Z`) - Date.parse(`${localMidnightUtc("2026-04-05", "Australia/Adelaide")}Z`)) / 3_600_000, 25);
+});
+
+test("business day validation rejects normalized or impossible dates", () => {
+  assert.equal(isValidBusinessDay("2026-11-05"), true);
+  assert.equal(isValidBusinessDay("2026-02-30"), false);
+  assert.equal(isValidBusinessDay("11/05/2026"), false);
 });
 
 test("negative stock, cost anomalies and purchase unit conversions block suggestions", () => {

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { SalesReportPage } from "@/components/admin/SalesReportPage";
 
 export default function SalesReportsPage() {
-  redirect("/reports/dashboard");
+  return <SalesReportPage />;
 }

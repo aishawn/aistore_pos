@@ -1,4 +1,5 @@
 import { getReportPeriodBounds, type ReportQueryPeriod } from "./report-period.ts";
+import { localMidnightUtc, shiftDay } from "./replenishment-safety.ts";
 import { type CostSale } from "./dashboard-purchase-cost.ts";
 import { verifiedLedgerCosts } from "./dashboard-ledger-cost.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
@@ -127,7 +128,7 @@ async function readSalesTrend(rpc: ReportRpc, sessionId: string, domain: unknown
 
 
 export async function calculateReport(rpc: ReportRpc, options: {
-  sessionId: string; companyId: number; company: ReportCompany; period?: string | null;
+  sessionId: string; companyId: number; company: ReportCompany; period?: string | null; fromDay?: string | null; toDay?: string | null;
   hours?: number; summaryOnly?: boolean; sampleDataClearedAt?: string | null; sourceStore?: string; now?: Date; correlationId?: string | null;
 }) {
   const { sessionId, companyId, company, period, summaryOnly = false, sampleDataClearedAt = null, sourceStore, correlationId } = options;
@@ -136,6 +137,16 @@ export async function calculateReport(rpc: ReportRpc, options: {
   let end = options.now ?? new Date();
   let start = new Date(end.getTime() - rangeHours * 3_600_000);
   if (period === "this_week") start = storeWeekStart(end, timezone);
+  const customRange = period === "custom" && options.fromDay && options.toDay
+    ? { start: new Date(`${localMidnightUtc(options.fromDay, timezone).replace(" ", "T")}Z`), end: new Date(`${localMidnightUtc(shiftDay(options.toDay, 1), timezone).replace(" ", "T")}Z`) }
+    : null;
+  if (customRange) {
+    if (!Number.isFinite(customRange.start.getTime()) || !Number.isFinite(customRange.end.getTime()) || customRange.end <= customRange.start) throw new Error("Choose a valid report date range.");
+    const days = (customRange.end.getTime() - customRange.start.getTime()) / 86_400_000;
+    if (days > 366) throw new Error("Custom report ranges are limited to 366 days.");
+    start = customRange.start;
+    end = customRange.end;
+  }
   const calendarPeriod = ["today", "yesterday", "last_7_days", "last_week", "last_month"].includes(period ?? "")
     ? getReportPeriodBounds(period as ReportQueryPeriod, end, timezone) : null;
   if (calendarPeriod) { start = calendarPeriod.start; end = calendarPeriod.end; }
@@ -154,8 +165,8 @@ export async function calculateReport(rpc: ReportRpc, options: {
       ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
     // Calendar periods supply aligned comparison bounds; legacy windows shift back seven days.
-    const compareStart = calendarPeriod?.compareStart ?? new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const compareEnd = calendarPeriod?.compareEnd ?? new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const compareStart = calendarPeriod?.compareStart ?? new Date(start.getTime() - (customRange ? end.getTime() - start.getTime() : 7 * 24 * 60 * 60 * 1000));
+    const compareEnd = calendarPeriod?.compareEnd ?? new Date(end.getTime() - (customRange ? end.getTime() - start.getTime() : 7 * 24 * 60 * 60 * 1000));
     const compareFromAligned = compareStart.toISOString().slice(0, 19).replace("T", " ");
     const compareToAligned = compareEnd.toISOString().slice(0, 19).replace("T", " ");
     const compareDomain = [
@@ -202,7 +213,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
       rpc<number>(sessionId, "pos.order", "search_count", [refundDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []], {}, correlationId),
-      readSalesTrend(rpc, sessionId, salesDomain, rangeHours, timezone, correlationId, calendarPeriod?.trendGranularity),
+      readSalesTrend(rpc, sessionId, salesDomain, rangeHours, timezone, correlationId, calendarPeriod?.trendGranularity ?? (customRange ? "day" : undefined)),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [domain], {
         fields: ["id", "name", "pos_reference", "date_order", "amount_total", "partner_id", "session_id"],
         order: "date_order desc, id desc",
@@ -235,8 +246,8 @@ export async function calculateReport(rpc: ReportRpc, options: {
 
     return {
       rangeHours: calendarPeriod ? (end.getTime() - start.getTime()) / 3_600_000 : rangeHours,
-      period: calendarPeriod?.period ?? (period === "this_week" ? "this_week" : "rolling"),
-      comparisonLabel: calendarPeriod?.comparisonLabel ?? "vs last week",
+      period: calendarPeriod?.period ?? (customRange ? "custom" : period === "this_week" ? "this_week" : "rolling"),
+      comparisonLabel: calendarPeriod?.comparisonLabel ?? (customRange ? "vs previous period" : "vs last week"),
       from,
       to,
       company: company.name,

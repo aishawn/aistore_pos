@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { RegisterClosureHistoryPage } from "@/components/admin/RegisterClosureHistoryPage";
 
 export default function RegisterClosuresPage() {
-  redirect("/close");
+  return <RegisterClosureHistoryPage />;
 }

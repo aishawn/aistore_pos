@@ -6,7 +6,7 @@ import { isSameOrigin } from "./server-auth";
 import { calculateReport } from "./report-data";
 import { calculateDeadStock } from "./dead-stock-data";
 import { getReportPeriodBounds } from "./report-period.ts";
-import { salesDate } from "./replenishment-safety.ts";
+import { isValidBusinessDay, salesDate } from "./replenishment-safety.ts";
 import { companyReportRpc, readReportCompany } from "./report-odoo";
 import { verifiedShopfrontSourceStore } from "./shopfront-store-scope";
 import {
@@ -106,17 +106,24 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const authMs = performance.now() - started;
     const requested = request.nextUrl.searchParams.get("period");
     const period = deadStock ? "dead_stock" : summary ? "today" : requested;
-    if (!summary && requested === "today") return response({ message: "Today requires view=summary" }, 400);
+    const fromDay = request.nextUrl.searchParams.get("from");
+    const toDay = request.nextUrl.searchParams.get("to");
+    if ((fromDay || toDay) && (!fromDay || !toDay || !isValidBusinessDay(fromDay) || !isValidBusinessDay(toDay) || fromDay > toDay || period !== "custom")) {
+      return response({ message: "Choose a valid custom report date range." }, 400);
+    }
+    if (period === "custom" && (!fromDay || !toDay)) return response({ message: "Choose both dates for a custom report." }, 400);
     const calendar = ["today", "yesterday", "last_7_days", "last_week", "last_month", "dead_stock"].includes(period || "");
     const coveragePeriod = summary ? "yesterday" : period;
     const bounds = calendar && coveragePeriod && coveragePeriod !== "dead_stock" ? getReportPeriodBounds(coveragePeriod as Exclude<SnapshotPeriod, "dead_stock">, new Date(), access.scope.timezone) : null;
-    const periodFrom = bounds ? salesDate(bounds.start.toISOString(), access.scope.timezone) : null;
-    const periodThrough = bounds ? salesDate(new Date(bounds.end.getTime() - 1).toISOString(), access.scope.timezone) : null;
+    const customBounds = period === "custom" && fromDay && toDay ? { start: new Date(`${fromDay}T12:00:00Z`), end: new Date(`${toDay}T12:00:00Z`) } : null;
+    const periodFrom = bounds ? salesDate(bounds.start.toISOString(), access.scope.timezone) : customBounds ? fromDay : null;
+    const periodThrough = bounds ? salesDate(new Date(bounds.end.getTime() - 1).toISOString(), access.scope.timezone) : customBounds ? toDay : null;
     const sourceState = await readShopfrontSyncState(access.scope, periodFrom, periodThrough);
     const sourceComplete = Boolean(sourceState && sourceState.status === "completed" && periodFrom && periodThrough
       && sourceState.fromDay <= periodFrom && sourceState.toDay >= periodThrough);
     const sourceMetadata = {
       sourceSyncedThrough: sourceState?.toDay ?? null,
+      sourceSyncUpdatedAt: sourceState?.updatedAt ?? null,
       syncRunId: sourceState?.runId ?? null,
       dataRevision: await snapshotRevision(access.scope),
       completeness: sourceComplete ? "complete" : sourceState?.status === "partial" || sourceState?.status === "failed" ? "incomplete" : "unverified",
@@ -155,7 +162,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     // Restricted users and Redis outages use their own Odoo session and bounded local cache.
     const parsedHours = Number(request.nextUrl.searchParams.get("hours") || 720);
     const hours = [8, 24, 168, 720, 2160, 4320].includes(parsedHours) ? parsedHours : 720;
-    const localKey = digest([access.scope, calendar ? snapshotKey(access.scope, period as SnapshotPeriod) : [period, hours], revision, summary]);
+    const localKey = digest([access.scope, calendar ? snapshotKey(access.scope, period as SnapshotPeriod) : [period, hours, fromDay, toDay], revision, summary]);
     const old = fallback.get(localKey);
     if (!force && old && (calendar ? snapshotFresh(old, revision) : Date.now() - Date.parse(old.generatedAt) < 30_000)) snapshot = old;
     else {
@@ -167,7 +174,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
           const body = deadStock
             ? await calculateDeadStock(rpc, access.sessionId, access.scope.companyId, undefined, new Date(), access.scope.sampleDataClearedAt)
             : await calculateReport(rpc, { sessionId: access.sessionId, companyId: access.scope.companyId, company: access.company,
-              period, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt, sourceStore: access.scope.shopfrontStore });
+              period, fromDay, toDay, hours, summaryOnly: summary, sampleDataClearedAt: access.scope.sampleDataClearedAt, sourceStore: access.scope.shopfrontStore });
           const result: ReportSnapshot = { key: localKey, generatedAt: new Date().toISOString(), queryThrough: String("to" in body ? body.to : new Date().toISOString()),
             body: { ...body, queryMetrics: { rpcCalls, durationMs: Math.round(performance.now() - queryStarted) } }, scope: access.scope,
             period: (calendar ? period : "today") as SnapshotPeriod, revision };

@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown>; inventoryReport?: boolean; sortBy?: InventorySort; sortDirection?: InventoryDirection; snapshotId?: string; refresh?: boolean };
+  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown>; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: InventorySort; sortDirection?: InventoryDirection; snapshotId?: string; refresh?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -209,6 +209,7 @@ export async function POST(request: NextRequest) {
     if (type !== "products" || body.inventoryReport !== true
       || (body.sortBy !== undefined && !INVENTORY_SORTS.includes(body.sortBy))
       || (body.sortDirection !== undefined && !["asc", "desc"].includes(body.sortDirection))
+      || (body.inventoryFilter !== undefined && !["all", "zero", "negative"].includes(body.inventoryFilter))
       || (body.snapshotId !== undefined && (typeof body.snapshotId !== "string" || body.snapshotId.length > 64))
       || (body.refresh !== undefined && typeof body.refresh !== "boolean")) {
       return NextResponse.json({ message: "Invalid inventory report options" }, { status: 400 });
@@ -294,6 +295,8 @@ export async function POST(request: NextRequest) {
     }
     if (body.stockOnly) domain.push(["qty_available", ">", 0]);
   }
+  if (type === "products" && body.inventoryReport && body.inventoryFilter === "zero") domain.push(["qty_available", "=", 0]);
+  if (type === "products" && body.inventoryReport && body.inventoryFilter === "negative") domain.push(["qty_available", "<", 0]);
   if (query) {
     const clauses = config.searchFields.map((field) => [field, "ilike", query]);
     if (clauses.length === 1) domain.push(clauses[0]);

@@ -83,6 +83,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [viewingProduct, setViewingProduct] = useState<OdooProductRecord | null>(null);
   const [sortBy, setSortBy] = useState<InventorySort>("name");
   const [sortDirection, setSortDirection] = useState<InventoryDirection>("asc");
+  const [inventoryFilter, setInventoryFilter] = useState<"all" | "zero" | "negative">(() => {
+    const value = searchParams.get("stock");
+    return value === "zero" || value === "negative" ? value : "all";
+  });
   const [totals, setTotals] = useState<InventoryTotals | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expired, setExpired] = useState(false);
@@ -137,6 +141,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setCatalogueView(requestedView as CatalogueView);
     }
   }, [requestedView]);
+  useEffect(() => {
+    const value = searchParams.get("stock");
+    setInventoryFilter(value === "zero" || value === "negative" ? value : "all");
+  }, [searchParams]);
   useShopfrontSyncRefresh(() => {
     setShopfrontSyncBanner(true);
     setRefreshKey((value) => value + 1);
@@ -290,6 +298,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           refresh: forceRefresh,
           sortBy,
           sortDirection,
+          inventoryFilter,
           snapshotId: append ? snapshotId.current : undefined,
         } : {}),
       });
@@ -315,11 +324,11 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, dialog, inventoryReport, sortBy, sortDirection, refreshKey]);
+  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, dialog, inventoryFilter, inventoryReport, sortBy, sortDirection, refreshKey]);
 
   useEffect(() => {
     if (dialog === "cost-reconciliation") { setLoading(false); return; }
-    const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection]);
+    const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter]);
     if (loadedQuery.current !== key) {
       setItems([]);
       loadedQuery.current = key;
@@ -327,7 +336,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadProducts();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, dialog]);
+  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter, dialog]);
 
   useEffect(() => {
     if (!hasNext || resultsPending || loadingMore || error || !sentinel.current) return;
@@ -601,6 +610,17 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 <option value="">All categories</option>
                 {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
             </select>
+            {inventoryReport && <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Stock status
+              <select aria-label="Filter inventory by stock status" value={inventoryFilter} onChange={(event) => {
+                const value = event.target.value as "all" | "zero" | "negative";
+                setInventoryFilter(value);
+                const params = new URLSearchParams(searchParams.toString());
+                if (value === "all") params.delete("stock"); else params.set("stock", value);
+                router.replace(`/reports/inventory${params.size ? `?${params}` : ""}`, { scroll: false });
+              }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                <option value="all">All stock</option><option value="zero">Zero stock</option><option value="negative">Negative stock</option>
+              </select>
+            </label>}
           </div>
 
           <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by

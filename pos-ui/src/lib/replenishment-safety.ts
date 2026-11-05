@@ -9,6 +9,12 @@ export function shiftDay(day: string, offset: number): string {
   return new Date(Date.parse(`${day}T12:00:00Z`) + offset * 86400000).toISOString().slice(0, 10);
 }
 
+export function isValidBusinessDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const timestamp = Date.parse(`${day}T12:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === day;
+}
+
 export function localMidnightUtc(day: string, timezone: string): string {
   const target = Date.parse(`${day}T00:00:00Z`);
   let instant = target;

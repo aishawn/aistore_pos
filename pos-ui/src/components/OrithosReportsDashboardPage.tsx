@@ -21,7 +21,7 @@ import { fetchPreparedReport } from "@/lib/report-client";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
-import type { ReportPeriod } from "@/lib/report-period";
+import type { ReportPeriod, ReportQueryPeriod } from "@/lib/report-period";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { DashboardInsightsPanel } from "@/components/admin/DashboardInsightsPanel";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
@@ -44,6 +44,7 @@ type OverviewData = {
   updateStatus?: string;
   completeness?: "complete" | "incomplete" | "unverified";
   sourceSyncedThrough?: string | null;
+  sourceSyncUpdatedAt?: string | null;
   dataRevision?: string;
   period?: ReportPeriod;
   comparisonLabel?: string;
@@ -101,11 +102,13 @@ type DeadStockData = {
 };
 
 const OVERVIEW_RANGES = [
+  { period: "today", label: "Today" },
   { period: "yesterday", label: "Yesterday" },
   { period: "last_7_days", label: "Last 7 days" },
   { period: "last_week", label: "Last week" },
   { period: "last_month", label: "Last month" },
 ] as const;
+type DashboardPeriod = ReportQueryPeriod | "custom";
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 
@@ -180,13 +183,16 @@ export function OrithosReportsDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
-  const [period, setPeriod] = useState<ReportPeriod>("yesterday");
+  const [period, setPeriod] = useState<DashboardPeriod>("yesterday");
+  const [fromDay, setFromDay] = useState("");
+  const [toDay, setToDay] = useState("");
   const [sampleDataActive, setSampleDataActive] = useState(false);
   const [slowLoading, setSlowLoading] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [deadStock, setDeadStock] = useState<DeadStockData | null>(null);
   const requestRevision = useRef(0);
-  const periodCache = useRef(new Map<ReportPeriod, { data: OverviewData; expires: number; businessDay: string }>());
+  const periodCache = useRef(new Map<string, { data: OverviewData; expires: number; businessDay: string }>());
+  const customRangeRef = useRef({ from: "", to: "" });
   const reportAbort = useRef<AbortController | null>(null);
   const deadAbort = useRef<AbortController | null>(null);
   const [deadStockError, setDeadStockError] = useState<string | null>(null);
@@ -204,7 +210,7 @@ export function OrithosReportsDashboardPage() {
     } catch (cause) { if (!controller.signal.aborted) setDeadStockError(cause instanceof Error ? cause.message : "Dead-stock analysis is unavailable."); }
     finally { if (!controller.signal.aborted) setDeadStockRefreshing(false); }
   }, []);
-  const periodRef = useRef<ReportPeriod>("yesterday");
+  const periodRef = useRef<DashboardPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
   useEffect(() => {
@@ -223,7 +229,9 @@ export function OrithosReportsDashboardPage() {
     const revision = ++requestRevision.current;
     reportAbort.current?.abort();
     const controller = new AbortController(); reportAbort.current = controller;
-    const cached = periodCache.current.get(selectedPeriod);
+    const range = customRangeRef.current;
+    const cacheKey = selectedPeriod === "custom" ? `custom:${range.from}:${range.to}` : selectedPeriod;
+    const cached = periodCache.current.get(cacheKey);
     if (!refresh && cached && cached.expires > Date.now() && cached.businessDay === new Intl.DateTimeFormat("en-CA", { timeZone: cached.data.timezone }).format(new Date())) {
       setData(cached.data); setLastLoadedAt(cached.data.generatedAt ? Date.parse(cached.data.generatedAt) : null);
       setError(null); setLoading(false); setRefreshing(false); return;
@@ -235,7 +243,9 @@ export function OrithosReportsDashboardPage() {
     try {
       const correlationId = crypto.randomUUID();
       setRequestId(correlationId);
-      const response = await fetchPreparedReport(`/api/odoo/reporting-dashboard?period=${selectedPeriod}`, { refresh, signal: controller.signal, correlationId });
+      const params = new URLSearchParams({ period: selectedPeriod });
+      if (selectedPeriod === "custom") { params.set("from", customRangeRef.current.from); params.set("to", customRangeRef.current.to); }
+      const response = await fetchPreparedReport(`/api/odoo/reporting-dashboard?${params}`, { refresh, signal: controller.signal, correlationId });
       if (revision !== requestRevision.current) return;
       setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as OverviewData | { message?: string } | null;
@@ -252,7 +262,7 @@ export function OrithosReportsDashboardPage() {
       }
       setNeedsConnection(false);
       setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : null);
-      if (payload.cacheStatus !== "STALE") periodCache.current.set(selectedPeriod, { data: payload, expires: Date.now() + 30_000,
+      if (payload.cacheStatus !== "STALE") periodCache.current.set(cacheKey, { data: payload, expires: Date.now() + 30_000,
         businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) });
       setData({
         ...payload,
@@ -289,9 +299,13 @@ export function OrithosReportsDashboardPage() {
   });
 
   useEffect(() => {
-    const saved = new URLSearchParams(location.search).get("period");
+    const search = new URLSearchParams(location.search);
+    const saved = search.get("period");
     if (saved && OVERVIEW_RANGES.some(range => range.period === saved)) {
-      periodRef.current = saved as ReportPeriod; setPeriod(saved as ReportPeriod);
+      periodRef.current = saved as ReportPeriod | "today"; setPeriod(saved as ReportPeriod | "today");
+    } else if (saved === "custom" && search.get("from") && search.get("to")) {
+      const from = search.get("from")!; const to = search.get("to")!;
+      customRangeRef.current = { from, to }; setFromDay(from); setToDay(to); periodRef.current = "custom"; setPeriod("custom");
     }
     void load();
     return () => { requestRevision.current++; reportAbort.current?.abort(); };
@@ -356,7 +370,7 @@ export function OrithosReportsDashboardPage() {
     trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" };
   const trendLabelInterval = Math.max(1, Math.ceil(trendData.length / 6));
   const currency = data?.currency ?? "AUD";
-  const rangeLabel = OVERVIEW_RANGES.find((range) => range.period === (data?.period ?? period))?.label ?? "Yesterday";
+  const rangeLabel = period === "custom" ? "Custom dates" : OVERVIEW_RANGES.find((range) => range.period === (data?.period ?? period))?.label ?? "Yesterday";
   const comparisonLabel = data?.comparisonLabel ?? "vs same day last week";
   const trendSummary = useMemo(() => {
     if (!data?.trend.length) return "No sales in this period.";
@@ -473,6 +487,19 @@ export function OrithosReportsDashboardPage() {
                   </button>
                 ))}
               </div>
+              <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-[var(--oh-border)] bg-white p-1">
+                <label className="sr-only" htmlFor="report-from">From date</label>
+                <input id="report-from" type="date" value={fromDay} onChange={(event) => setFromDay(event.target.value)} className="min-h-9 rounded border border-[var(--oh-border)] px-2 text-xs" />
+                <span aria-hidden="true" className="text-xs text-[var(--oh-muted)]">to</span>
+                <label className="sr-only" htmlFor="report-to">To date</label>
+                <input id="report-to" type="date" value={toDay} onChange={(event) => setToDay(event.target.value)} className="min-h-9 rounded border border-[var(--oh-border)] px-2 text-xs" />
+                <button type="button" disabled={!fromDay || !toDay || fromDay > toDay} onClick={() => {
+                  customRangeRef.current = { from: fromDay, to: toDay };
+                  periodRef.current = "custom"; setPeriod("custom");
+                  const url = new URL(location.href); url.searchParams.set("period", "custom"); url.searchParams.set("from", fromDay); url.searchParams.set("to", toDay); history.replaceState(null, "", url);
+                  void load(false, "custom");
+                }} className="min-h-9 rounded-md bg-[var(--oh-primary)] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Apply</button>
+              </div>
               <button
                 type="button"
                 onClick={() => void load(true)}
@@ -487,10 +514,10 @@ export function OrithosReportsDashboardPage() {
               </Link>
             </div>
           </header>
-          {data && data.completeness !== "complete" ? (
-            <section role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              <span>{data.completeness === "incomplete" ? "Shopfront data is incomplete for this period." : "Shopfront coverage has not been confirmed for this period."}</span>
-              <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"}</span>
+          {data ? (
+            <section role="status" className={`flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${data.completeness === "complete" ? "border-[var(--oh-border)] bg-white text-[var(--oh-text)]" : "border-amber-300 bg-amber-50 text-amber-950"}`}>
+              <span>Shopfront source coverage: {data.completeness === "complete" ? "complete" : data.completeness === "incomplete" ? "incomplete" : "not confirmed"} · {data.from} to {data.to}</span>
+              <span>{data.sourceSyncedThrough ? `Synced through ${data.sourceSyncedThrough}` : "Source sync status unavailable"} · Sync updated {data.sourceSyncUpdatedAt ? formatStoreEpoch(Date.parse(data.sourceSyncUpdatedAt), data.timezone) : "—"} · Report prepared {data.generatedAt ? formatStoreEpoch(Date.parse(data.generatedAt), data.timezone) : "—"}</span>
             </section>
           ) : null}
           {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
