@@ -31,3 +31,7 @@ The same failure pattern in both stores points to a shared current-runtime authe
 ## Decision
 
 Keep production forecast policy, manual review gates, and procurement automation unchanged. Continue native inventory capture and offline model work; do not submit RFQs or purchase orders from this result.
+
+## Deployment Follow-Up
+
+After the record was pushed, both `https://demo.orithos.com.au/api/public/version` and `https://skr.orithos.com.au/api/public/version` returned HTTP 200 with frontend and backend commit `3602173f649e426cf067e4e751f3ef36ca45dde7` (`2026-11-05T12:08:11Z`). This confirms deployment identity only; the failed AI/runtime checks above were not silently reclassified as passing.
