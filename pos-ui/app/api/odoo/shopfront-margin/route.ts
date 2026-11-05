@@ -7,7 +7,7 @@ import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 import { loadSourceMarginSnapshot } from "@/lib/cost-reconciliation-source";
 import { shopfrontSourceMargin } from "@/lib/shopfront-source-margin";
-import { verifiedShopfrontSourceStore } from "@/lib/shopfront-store-scope";
+import { verifiedShopfrontSourceStore, verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
   try {
     await requirePermission(request, "reports.dashboard");
     const scope = await scopedOdoo(request);
-    const sourceStore = verifiedShopfrontSourceStore(scope.binding);
+    const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").split(",")[0].trim().toLowerCase();
+    const sourceStore = verifiedShopfrontSourceStore(scope.binding) ?? verifiedShopfrontSourceStoreFromHost(host);
     if (scope.companyIds.length !== 1 || !scope.database || !sourceStore) throw new OdooScopeError("Verified Shopfront store scope is required.", 403);
     const body = await request.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || Array.isArray(body) || Object.keys(body).some(k => !["fromDay", "toDay"].includes(k))) return json({ message: "Invalid margin request" }, 400);
