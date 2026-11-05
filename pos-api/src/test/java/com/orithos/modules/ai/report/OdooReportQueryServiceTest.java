@@ -475,6 +475,40 @@ class OdooReportQueryServiceTest {
     }
 
     @Test
+    void deadStockUsesOnHandQuantityAndIncludesSharedCompanyProducts() throws Exception {
+        List<JsonNode> requests = startStockServer(
+                "[{\"id\":501,\"display_name\":\"VB Cans\",\"free_qty\":4.0,\"qty_available\":12.0}]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        OdooReportQueryService.Result result = service.query(tenant, "report_dead_stock", Map.of(), window);
+
+        assertNull(result.error());
+        assertEquals(1, result.rows().size());
+        assertEquals(0, new BigDecimal("12.0").compareTo((BigDecimal) result.rows().get(0).get("on_hand")));
+        JsonNode productRequest = requests.stream()
+                .filter(request -> "product.product".equals(request.path("params").path("model").asText())
+                        && "search_read".equals(request.path("params").path("method").asText()))
+                .findFirst().orElseThrow();
+        assertEquals(List.of("id", "display_name", "qty_available"),
+                MAPPER.convertValue(productRequest.path("params").path("kwargs").path("fields"),
+                        MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+        String productDomain = productRequest.path("params").path("args").get(0).toString();
+        assertTrue(productDomain.contains("company_id"));
+        assertTrue(productDomain.contains("active"));
+        assertFalse(productDomain.contains("available_in_pos"));
+        assertFalse(requests.stream().anyMatch(node -> {
+            String method = node.path("params").path("method").asText();
+            return Set.of("create", "write", "unlink").contains(method);
+        }));
+    }
+
+    @Test
     void stockValueAggregatesAllPagedProductsBeforeReturningTopRows() throws Exception {
         List<JsonNode> requests = startStockValueServer(1005);
         VendorMapper vendors = mock(VendorMapper.class);

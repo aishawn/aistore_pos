@@ -575,7 +575,7 @@ public class OdooReportQueryService {
                                                  ReportPeriodResolver.Window window,
                                                  Map<String, Object> context) throws Exception {
         List<Map<String, Object>> products = searchReadPages(session, "product.product", stockProductDomain(companyId),
-                List.of("id", "display_name", "free_qty", "qty_available"), context,
+                List.of("id", "display_name", "qty_available"), context,
                 MAX_DEAD_STOCK_PRODUCTS, "id asc");
         if (products.size() > MAX_DEAD_STOCK_PRODUCTS) return null;
 
@@ -594,8 +594,7 @@ public class OdooReportQueryService {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> product : products) {
             long id = ((Number) product.getOrDefault("id", 0)).longValue();
-            BigDecimal quantity = decimal(product.containsKey("free_qty")
-                    ? product.get("free_qty") : product.get("qty_available"));
+            BigDecimal quantity = decimal(product.get("qty_available"));
             if (quantity.signum() > 0 && soldByProduct.getOrDefault(id, BigDecimal.ZERO).compareTo(BigDecimal.ONE) < 0) {
                 rows.add(Map.of("id", id, "name", product.getOrDefault("display_name", ""),
                         "on_hand", quantity, "sold_qty", soldByProduct.getOrDefault(id, BigDecimal.ZERO)));
