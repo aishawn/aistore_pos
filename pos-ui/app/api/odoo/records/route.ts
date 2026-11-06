@@ -11,6 +11,7 @@ import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
 import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
+import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ const MAX_LIMIT = 100;
 const RECORD_TYPES = {
   products: {
     model: "product.product",
-    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "taxes_id", "qty_available", "free_qty", "uom_id", "pos_categ_ids", "available_in_pos"],
+    fields: ["id", "name", "display_name", "product_tmpl_id", "active", "barcode", "default_code", "list_price", "taxes_id", "qty_available", "free_qty", "uom_id", "pos_categ_ids", "available_in_pos"],
     order: "name asc, id asc",
     searchFields: ["name", "barcode", "default_code"],
     baseDomain: [["available_in_pos", "=", true]],
@@ -169,6 +170,19 @@ async function withTaxInclusivePrices(sessionId: string, items: unknown[], corre
   return items;
 }
 
+async function odooRpc<T>(sessionId: string, request: NextRequest, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, timeoutMs = 12_000): Promise<T> {
+  const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
+    method: "POST",
+    headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
+    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const payload = await response.json() as { result?: T; error?: unknown };
+  if (!response.ok || payload.error || payload.result === undefined) throw new Error(`Odoo ${model}.${method} is unavailable`);
+  return payload.result;
+}
+
 function correlationHeaders(sessionId: string, correlationId?: string | null) {
   const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
   if (correlationId) headers.set("X-Correlation-ID", correlationId);
@@ -205,6 +219,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Unsupported Orithos record type" }, { status: 400 });
   }
   const config = RECORD_TYPES[type];
+  let canReadProductCost = false;
+  if (type === "products") {
+    try {
+      canReadProductCost = canReadBalances(await requirePermission(request, "stock.products.view"));
+    } catch (error) {
+      return NextResponse.json({ message: "Could not access this store's catalogue" }, { status: error instanceof StoreAccessError ? error.status : 503 });
+    }
+  }
   if (body.inventoryReport !== undefined || body.sortBy !== undefined || body.sortDirection !== undefined || body.snapshotId !== undefined) {
     if (type !== "products" || body.inventoryReport !== true
       || (body.sortBy !== undefined && !INVENTORY_SORTS.includes(body.sortBy))
@@ -458,7 +480,7 @@ export async function POST(request: NextRequest) {
           model: config.model,
           method: "search_read",
           args: [domain],
-          kwargs: { fields: [...config.fields], limit: limit + 1, offset, order: config.order, context },
+          kwargs: { fields: [...config.fields, ...(type === "products" && canReadProductCost ? ["standard_price"] : [])], limit: limit + 1, offset, order: config.order, context },
         },
         id: Date.now(),
       }),
@@ -481,7 +503,62 @@ export async function POST(request: NextRequest) {
     const rawItems = payload.result ?? [];
     const hasNext = rawItems.length > limit;
     let items = rawItems.slice(0, limit);
-    if (type === "products") items = await withTaxInclusivePrices(sessionId, items, correlationId);
+    if (type === "products") {
+      items = await withTaxInclusivePrices(sessionId, items, correlationId);
+      if (!body.inventoryReport && Array.isArray(items) && items.length) {
+        const productRows = items as Array<Record<string, unknown>>;
+        const productIds = productRows.map((item) => Number(item.id)).filter(Number.isSafeInteger);
+        const sourceStore = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
+        if (canReadProductCost && sourceStore) {
+          try {
+            const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
+            const templates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
+            const sourceIds = templates.flatMap((template) => {
+              const ref = typeof template.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
+              return ref.startsWith(`${sourceStore}:`) ? [ref.slice(sourceStore.length + 1)] : [];
+            });
+            if (sourceIds.length) {
+              const sourceCosts = await odooRpc<Array<{ source_id: string; cost?: number | false; case_quantity?: number; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "cost", "case_quantity", "synced_at"], limit: sourceIds.length, context: companyContext });
+              const bySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
+              const sourceByTemplate = new Map(templates.map((template) => [template.id, typeof template.shopfront_source_ref === "string" ? bySource.get(template.shopfront_source_ref.slice(sourceStore.length + 1)) : undefined]));
+              for (const product of productRows) {
+                const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+                const source = sourceByTemplate.get(templateId);
+                product.shopfront_cost = typeof source?.cost === "number" && Number.isFinite(source.cost) ? source.cost : null;
+                product.shopfront_case_quantity = typeof source?.case_quantity === "number" && Number.isFinite(source.case_quantity) && source.case_quantity > 0 ? source.case_quantity : null;
+                product.shopfront_cost_synced_at = source?.synced_at ?? null;
+              }
+            }
+          } catch {
+            for (const product of productRows) {
+              product.shopfront_cost = null;
+              product.shopfront_case_quantity = null;
+              product.shopfront_cost_synced_at = null;
+            }
+          }
+        }
+        try {
+          const from = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+          const performance = await odooRpc<Array<Record<string, unknown>>>(sessionId, request, "pos.order.line", "read_group", [[
+            ["product_id", "in", productIds], ["order_id.company_id", "in", companyIds], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.date_order", ">=", from],
+          ], ["qty:sum"], ["product_id", "order_id.date_order:day"]], { lazy: false, limit: 5000, context: { ...companyContext, ...(forced.binding?.odooWarehouseId ? { warehouse: forced.binding.odooWarehouseId } : {}) } }, 20_000);
+          const byProduct = new Map<number, number[]>();
+          for (const row of performance) {
+            const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
+            const day = String(row["order_id.date_order:day"] ?? row["order_id.date_order"] ?? "").slice(0, 10);
+            const point = Number(row.qty);
+            if (!productId || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(point)) continue;
+            let points = byProduct.get(productId);
+            if (!points) { points = Array.from({ length: 30 }, () => 0); byProduct.set(productId, points); }
+            const ageDays = Math.floor((Date.now() - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
+            if (ageDays >= 0 && ageDays < 30) points[29 - ageDays] += point;
+          }
+          for (const product of productRows) product.performance_30d = byProduct.get(Number(product.id)) ?? Array.from({ length: 30 }, () => 0);
+        } catch {
+          for (const product of productRows) product.performance_30d = null;
+        }
+      }
+    }
 
     let total: number | undefined;
     if (type === "products") {

@@ -60,9 +60,16 @@ export interface OdooProductRecord {
   id: number;
   name: string;
   display_name: string;
+  product_tmpl_id?: [number, string] | false;
+  active?: boolean;
   barcode: string | false;
   default_code: string | false;
   list_price: number;
+  standard_price?: number | false;
+  shopfront_cost?: number | null;
+  shopfront_case_quantity?: number | null;
+  shopfront_cost_synced_at?: string | null;
+  performance_30d?: number[] | null;
   taxes_id: number[];
   price_included: number | null;
   price_tax: number | null;

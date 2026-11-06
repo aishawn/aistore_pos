@@ -1,6 +1,6 @@
 /** Tiny inline area sparkline matching the blue performance charts in lists. */
 export function Sparkline({
-  points = [2, 2, 2, 3, 8, 4, 9, 3, 2, 2],
+  points = [],
   width = 160,
   height = 60,
 }: {
@@ -10,6 +10,7 @@ export function Sparkline({
 }) {
   const w = width;
   const h = height;
+  if (points.length < 2) return <span className="block h-1 w-full bg-[var(--oh-border)]" aria-hidden="true" />;
   const max = Math.max(...points, 1);
   const step = w / (points.length - 1);
   const coords = points.map((p, i) => [i * step, h - (p / max) * (h - 6) - 3]);

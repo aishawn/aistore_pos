@@ -6,7 +6,7 @@ import Link from "next/link";
 import { groupCategories } from "@/lib/category-groups";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, FileUp, LoaderCircle, Pencil, Plus, Printer, RefreshCw, Search, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, FileUp, LoaderCircle, Pencil, Plus, Printer, RefreshCw, Search, Tag, X } from "lucide-react";
 import {
   createOdooProduct,
   fetchOdooRoute,
@@ -34,6 +34,7 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 import { ShopfrontInventorySummary, ShopfrontProductHistorySection } from "@/components/ShopfrontSourceSections";
 import { ProductImage } from "@/components/ProductImage";
+import { Sparkline } from "@/components/admin/Sparkline";
 import { prepareProductImage } from "@/lib/product-image";
 import { CATALOGUE_VIEWS, type CatalogueView } from "@/lib/product-catalogue";
 import { CatalogueIssues, CataloguePrice, CatalogueProductDetails } from "@/components/admin/CatalogueProductDetails";
@@ -787,23 +788,25 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && items.length > 0 && (!inventoryReport || Boolean(snapshotId.current)))} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
 
           <section aria-busy={resultsPending} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[1080px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
+                  {!inventoryReport && <th scope="col" className="px-4 py-3">Status</th>}
                   {inventoryColumns.includes("product") && sortHeader("name", "Product")}
                   {inventoryColumns.includes("category") && sortHeader("category", "Category")}
-                  {inventoryColumns.includes("barcode") && <th scope="col" className="px-4 py-3">Barcode</th>}
-                  {inventoryColumns.includes("sku") && <th scope="col" className="px-4 py-3">SKU</th>}
+                  {inventoryReport && inventoryColumns.includes("barcode") && <th scope="col" className="px-4 py-3">Barcode</th>}
+                  {inventoryReport && inventoryColumns.includes("sku") && <th scope="col" className="px-4 py-3">SKU</th>}
+                  {!inventoryReport && <th scope="col" className="px-4 py-3">Cost</th>}
                   {inventoryColumns.includes("quantity") && sortHeader("qty_available", "Inventory")}
-                  {inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
+                  {inventoryReport && inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
                   {inventoryColumns.includes("price") && sortHeader("price_included", "Sale price · AUD")}
-                  {inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}
-                  {!inventoryReport && <th scope="col" className="px-4 py-3 text-right">Actions</th>}
+                  {inventoryReport && inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}
+                  {!inventoryReport && <><th scope="col" className="px-4 py-3">Performance</th><th scope="col" className="px-4 py-3 text-right">Actions</th></>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
                 {resultsPending ? Array.from({ length: 6 }, (_, index) => <tr key={`product-skeleton-${index}`} aria-hidden="true">
-                  <td colSpan={inventoryColumns.length + (inventoryReport ? 0 : 1)} className="px-4 py-3"><div className="grid grid-cols-[1.3fr_1fr_1fr_.7fr_.7fr_.65fr_.55fr] items-center gap-4">
+                  <td colSpan={inventoryReport ? inventoryColumns.length : 8} className="px-4 py-3"><div className="grid grid-cols-[1.3fr_1fr_1fr_.7fr_.7fr_.65fr_.55fr] items-center gap-4">
                     <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 animate-pulse rounded-full bg-[var(--oh-border)]" /><span className="ml-auto h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" />
                   </div></td>
                 </tr>) : items.length === 0 ? (
@@ -815,15 +818,18 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
                   return (
                     <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
+                      {!inventoryReport && <td className="px-4 py-3">{product.active !== false ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Active</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Archived</span>}</td>}
                       {inventoryColumns.includes("product") && <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ProductImage productId={product.id} name={label} refreshToken={refreshKey} className="h-10 w-10 border border-[var(--oh-border)] bg-white" /><span className="min-w-0"><button type="button" onClick={() => setViewingProduct(product)} title={fullName} className="min-h-11 text-left font-semibold text-[var(--oh-text)] hover:text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}</button><CatalogueIssues product={product} /></span></span></td>}
                       {inventoryColumns.includes("category") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</td>}
-                      {inventoryColumns.includes("barcode") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.barcode || "—"}</td>}
-                      {inventoryColumns.includes("sku") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{skuShort || "—"}</td>}
+                      {inventoryReport && inventoryColumns.includes("barcode") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.barcode || "—"}</td>}
+                      {inventoryReport && inventoryColumns.includes("sku") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{skuShort || "—"}</td>}
+                      {!inventoryReport && <td className="px-4 py-3 tabular-nums"><span className="block font-medium text-[var(--oh-text)]">{unitCost === null ? "—" : money(unitCost)}</span><span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">{unitCost === null ? "Odoo cost unavailable" : "Odoo unit cost"}</span>{typeof product.shopfront_cost === "number" && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]" title={product.shopfront_cost_synced_at ? `Shopfront mirror updated ${product.shopfront_cost_synced_at}; unit basis not verified` : "Shopfront mirror cost; unit basis not verified"}>Source {money(product.shopfront_cost)}{product.shopfront_case_quantity ? ` · case ${quantity(product.shopfront_case_quantity)}` : ""}</span>}</td>}
                       {inventoryColumns.includes("quantity") && <td className={`px-4 py-3 text-right tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}</td>}
-                      {inventoryColumns.includes("unit") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</td>}
+                      {inventoryReport && inventoryColumns.includes("unit") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</td>}
                       {inventoryColumns.includes("price") && <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]"><CataloguePrice product={product} /></td>}
-                      {inventoryColumns.includes("pos") && <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>}
-                      {!inventoryReport && <td className="px-4 py-3 text-right"><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${label}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-xs font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button></td>}
+                      {inventoryReport && inventoryColumns.includes("pos") && <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>}
+                      {!inventoryReport && <td className="px-4 py-3"><div className="flex min-w-[140px] flex-col items-center gap-1" title="Odoo units sold per day over the past 30 days"><Sparkline points={product.performance_30d ?? []} width={132} height={36} /><span className="text-[11px] tabular-nums text-[var(--oh-muted)]">{product.performance_30d ? `${quantity(product.performance_30d.reduce((sum, point) => sum + point, 0))} units · 30d` : "Performance unavailable"}</span></div></td>}
+                      {!inventoryReport && <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><button type="button" onClick={() => setViewingProduct(product)} aria-label={`View ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-sky-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Eye size={15} /> View</button><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button></div></td>}
                     </tr>
                   );
                 })}
@@ -850,6 +856,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 const fullName = typeof product.display_name === "string" ? product.display_name : product.name;
                 const label = friendlyProductName(fullName);
                 const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
+                const unitCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
                 return (
                   <article key={product.id} className="px-4 py-3.5">
                     <header className="flex items-start justify-between gap-3">
