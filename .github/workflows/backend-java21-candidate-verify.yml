@@ -1,0 +1,70 @@
+name: Backend Java 21 Candidate Verify
+
+'on':
+  workflow_dispatch:
+    inputs:
+      parent_sha:
+        description: Exact main commit the candidate is based on
+        required: true
+        type: string
+      candidate_sha:
+        description: Exact local candidate commit SHA
+        required: true
+        type: string
+      candidate_bundle_base64:
+        description: Base64 Git bundle containing only the candidate commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-java21-candidate-${{ inputs.candidate_sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    container: maven:3.9-eclipse-temurin-21
+    steps:
+      - name: Checkout candidate parent from main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.parent_sha }}
+          fetch-depth: 0
+
+      - name: Validate and check out exact candidate commit
+        env:
+          PARENT_SHA: ${{ inputs.parent_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          CANDIDATE_BUNDLE_BASE64: ${{ inputs.candidate_bundle_base64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PARENT_SHA"
+          printf '%s' "$CANDIDATE_BUNDLE_BASE64" | base64 --decode > "$RUNNER_TEMP/candidate.bundle"
+          git bundle verify "$RUNNER_TEMP/candidate.bundle"
+          git bundle unbundle "$RUNNER_TEMP/candidate.bundle" > "$RUNNER_TEMP/unbundle.log"
+          test "$(git cat-file -t "$CANDIDATE_SHA")" = commit
+          test "$(git show -s --format=%P "$CANDIDATE_SHA")" = "$PARENT_SHA"
+          git checkout --detach "$CANDIDATE_SHA"
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          printf 'Verified candidate SHA: %s\nParent SHA: %s\n' "$CANDIDATE_SHA" "$PARENT_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify backend
+        working-directory: pos-api
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B clean verify 2>&1 | tee "$RUNNER_TEMP/maven-verify.log"
+
+      - name: Upload complete Maven log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-java21-candidate-${{ inputs.candidate_sha }}
+          path: ${{ runner.temp }}/maven-verify.log
+          if-no-files-found: warn
+          retention-days: 14
