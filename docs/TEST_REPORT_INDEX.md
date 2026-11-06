@@ -1,6 +1,8 @@
 # Test Report Index
 
-Latest inventory-label and legacy receipt-link follow-up: [2026-11-06 purchase URL compatibility](test-sessions/2026-11-06-purchase-url-compatibility.md): runtime `43fb774d` confirms the prior receipt-tab/inventory-label changes are deployed; screenshot scopes and positive-stock arithmetic reviewed. Incomplete local dependencies block TypeScript/ESLint checks, the docs checker reports pre-existing missing files, and legacy-link browser check/post-follow-up deployment are pending.
+Latest inventory-label follow-up: [2026-11-06 inventory count and unit scope](test-sessions/2026-11-06-inventory-count-scope.md): confirms runtime `2c3784a7`, explains the Odoo/Shopfront count scopes and positive-stock formula, and records that live Shopfront coverage timed out so row-level parity is unverified. Inventory helper tests 7/7 PASS; typecheck is unavailable in this worktree; UI label deployment pending.
+
+Latest purchasing navigation follow-up: [2026-11-06 purchase URL compatibility](test-sessions/2026-11-06-purchase-url-compatibility.md): historical runtime `43fb774d` confirms receipt-tab removal; the newer runtime `2c3784a7` also contains the legacy redirect. Browser navigation was not repeated.
 
 Latest API candidate (`2026-11-06`): Java compile PASS; Python CLI syntax and project-doc checks pending. API tests, Dokploy exact-SHA gate and deployed/online acceptance NOT RUN. Writes remain disabled. Details: [CAP-API validation](project/features/pos-api/validation.md).
 

@@ -106,7 +106,7 @@ export function ShopfrontProductHistorySection() {
   return <SectionFrame title="Shopfront product history" expanded={state.expanded} setExpanded={state.setExpanded}>
     <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
       {state.data && <>
-        <p className="mb-3 text-xs text-[var(--oh-muted)]">{number(state.data.pagination?.total)} source records · archived catalog snapshots · {state.data.fetched_at || "source timestamp unavailable"}</p>
+        <p className="mb-3 text-xs text-[var(--oh-muted)]">{number(state.data.pagination?.total)} active Shopfront products · archived catalog snapshots · {state.data.fetched_at || "source timestamp unavailable"}. This catalog count is not directly comparable to Odoo saleable product variants.</p>
         {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="text-xs text-[var(--oh-muted)]"><th className="border-b px-2 py-2">Product</th><th className="border-b px-2 py-2">Category</th><th className="border-b px-2 py-2">Status</th><th className="border-b px-2 py-2 text-right">Source price</th></tr></thead><tbody>{rows.map((row, index) => <tr key={`${String(row.shopfront_product_id ?? row.id ?? "source")}-${index}`}><td className="border-b px-2 py-2">{String(row.name ?? "Unnamed product")}</td><td className="border-b px-2 py-2">{String(row.category ?? "—")}</td><td className="border-b px-2 py-2">{String(row.status ?? "Unknown")}</td><td className="border-b px-2 py-2 text-right">{money(row.price)}</td></tr>)}</tbody></table></div> : <p role="status" className="text-sm text-[var(--oh-muted)]">No matching Shopfront product records are available.</p>}
       </>}
     </SourceState>

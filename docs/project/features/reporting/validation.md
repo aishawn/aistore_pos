@@ -1,6 +1,16 @@
 # Reporting Validation
 
-Updated: 2026-11-05. Owner: TBD.
+Updated: 2026-11-06. Owner: TBD.
+
+## Inventory count and unit scope follow-up (2026-11-06)
+
+- Runtime identity: read-only `GET /api/public/version` on SKR and Demo returned frontend/backend SHA `2c3784a71484472f70ec0d1faea7e20a0df9b9e6` (built 2026-11-06 08:25 UTC). The purchasing tab removal and legacy URL redirect are on this deployed SHA.
+- Source comparison: the attached Shopfront page reports 10,849 active catalog results; the attached POS inventory page reports 13,292 Odoo `product.product` rows matching the configured saleable-product/company scope. They are different source models and scopes; the 2,443-row difference does not identify missing or duplicate products. The product route's catalogue count is a server `search_count` over its domain; the inventory report count is the complete matching snapshot row count.
+- Quantity definition: `inventoryTotals` sums `max(qty_available, 0)` across the matching Odoo rows. It separately counts negative-stock variants and returns `Mixed units` if multiple UOMs occur. Thus the screenshot's 50,992 represents positive Odoo quantity in the captured snapshot, not net stock and not Shopfront inventory. The displayed 5,379 negative-stock variants are not subtracted from that figure.
+- Follow-up UI change labels the footer `Odoo saleable variants` and `Odoo positive stock units`, states the active Shopfront catalog source count is not directly comparable, and shows negative stock independently on product and inventory views.
+- Focused inventory helper tests: 7/7 PASS (`node --experimental-strip-types --test src/lib/inventory-report.test.ts`); `git diff --check` PASS. `npm run typecheck` could not start because this clean main worktree has no local `tsc` executable. No local app build was run.
+- Live Shopfront `/api/sync/coverage?store=skr` timed out on this run. The latest available archived read-only audit recorded 10,849 active products and 10,852 inventory snapshot rows with `snapshot_complete=true`, but those figures are not a fresh live check and do not prove per-product POS/Odoo parity. Current Shopfront quantity reconciliation, matched source IDs, and the current live 50,992 value remain NOT VERIFIED. No business writes were performed.
+- `Receipts · To receive` removal and old-link redirect are present in the deployed source/runtime above; browser navigation was not repeated in this follow-up.
 
 ## Inventory labels and legacy purchase URL (2026-11-06)
 
