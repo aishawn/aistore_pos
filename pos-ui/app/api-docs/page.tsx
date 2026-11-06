@@ -14,16 +14,62 @@ const resources = [
   { name: "Orders", path: "orders", read: true, write: "Read only" },
 ];
 
+const requestExamples = {
+  "Read products": {
+    method: "GET",
+    path: "/products?limit=50",
+    body: null,
+  },
+  "Quote a sale": {
+    method: "POST",
+    path: "/sales:quote",
+    body: { configId: 171, customerId: null, lines: [{ productId: 671846, quantity: 1, discountPercent: 0 }] },
+  },
+  "Create a sale": {
+    method: "POST",
+    path: "/sales:batch",
+    body: [{ sourceId: "a6c19363-01af-49c8-a8c1-5a35cc130a7d", orderUuid: "a6c19363-01af-49c8-a8c1-5a35cc130a7d", configId: 171, sessionId: 141, paymentMethodId: 312, customerId: null, tendered: 21.99, expectedQuote: "QUOTE_SIGNATURE", lines: [{ productId: 671846, quantity: 1, discountPercent: 0 }] }],
+  },
+  Refund: {
+    method: "POST",
+    path: "/sales:batch",
+    body: [{ sourceId: "b9f5ee23-6541-4871-8be9-09203727f148", orderUuid: "b9f5ee23-6541-4871-8be9-09203727f148", refundOfOrderId: 9001, configId: 171, sessionId: 141, paymentMethodId: 312, customerId: null, tendered: 21.99, expectedQuote: "REFUND_QUOTE_SIGNATURE", lines: [{ productId: 671846, quantity: 1 }] }],
+  },
+  "Count inventory": {
+    method: "POST",
+    path: "/inventory:batch",
+    body: [{ sourceId: "stocktake-2026-11-06-line-1", productId: 671846, locationId: 1609, expectedQty: 8, countedQty: 7 }],
+  },
+  "Draft purchase": {
+    method: "POST",
+    path: "/purchases:batch",
+    body: [{ sourceId: "supplier-order-2026-11-06-001", supplierId: 450, lines: [{ productId: 671846, quantity: 12 }] }],
+  },
+  "Poll operation": {
+    method: "GET",
+    path: "/operations/OPERATION_ID",
+    body: null,
+  },
+  Webhook: {
+    method: "POST",
+    path: "/webhooks",
+    body: { url: "https://your-integration.example/webhooks/orithos", events: ["sale.created", "refund.created", "inventory.adjusted", "purchase.created", "operation.completed", "operation.failed"] },
+  },
+} as const;
+
 export default function ApiDocsPage() {
   const [query, setQuery] = useState("");
   const [token, setToken] = useState("");
+  const [exampleName, setExampleName] = useState<keyof typeof requestExamples>("Read products");
   const [copied, setCopied] = useState(false);
   const origin = typeof window === "undefined" ? "https://your-store.orithos.com.au" : window.location.origin;
   const filtered = useMemo(() => resources.filter((item) => `${item.name} ${item.path}`.toLowerCase().includes(query.toLowerCase())), [query]);
+  const selectedExample = requestExamples[exampleName];
   const example = [
-    `curl "${origin}/api/pos/v1/products?limit=50"`,
+    `curl -X ${selectedExample.method} "${origin}/api/pos/v1${selectedExample.path}"`,
     `-H "Authorization: Bearer ${token || "<API_TOKEN>"}"`,
-    `-H "Accept: application/json"`,
+    ...(selectedExample.method === "POST" && selectedExample.path.endsWith(":batch") ? ['-H "Idempotency-Key: your-unique-request-id"'] : []),
+    ...(selectedExample.body ? ['-H "Content-Type: application/json"', `--data '${JSON.stringify(selectedExample.body, null, 2)}'`] : []),
   ].join(" \\\n  ");
   async function copyExample() {
     await navigator.clipboard.writeText(example);
@@ -78,14 +124,19 @@ export default function ApiDocsPage() {
             <h2 className="text-lg font-semibold">Batch operations</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Batch requests accept sales, full-sale refunds, inventory counts, and draft purchase orders when the corresponding server-side feature gate is enabled. Every record needs a stable sourceId. Accepted writes return an operation ID for status polling, and repeating the same Idempotency-Key replays the original result without creating another Odoo document.</p>
             <div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[var(--oh-muted)]"><Terminal size={14} /> Example request</div>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs leading-5">{example}</pre>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs font-medium text-[var(--oh-muted)]"><Terminal size={14} /> Request example</div><select aria-label="Request example" value={exampleName} onChange={(event) => setExampleName(event.target.value as keyof typeof requestExamples)} className="h-9 max-w-full rounded border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-2 text-xs">{Object.keys(requestExamples).map((name) => <option key={name}>{name}</option>)}</select></div>
+              <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--oh-muted)]"><span className="rounded bg-[var(--oh-surface-elevated)] px-2 py-1 font-semibold text-emerald-700">{selectedExample.method}</span><code className="break-all">{selectedExample.path}</code></div>
+              {exampleName === "Create a sale" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">First call <code>/sales:quote</code> with the same config and lines, then replace the example signature. The POS validates current Odoo prices and tax before creating the order.</p>}
+              {exampleName === "Refund" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">Refunds must reference an eligible original sale and include its complete refundable line set. Partial refunds are rejected.</p>}
+              {exampleName === "Count inventory" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">Use the bound internal location and the latest expected quantity. A changed stock balance fails for reconciliation instead of overwriting newer stock.</p>}
+              {exampleName === "Draft purchase" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">This creates a draft purchase order. Receiving inventory remains a separate Odoo workflow.</p>}
+              <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 font-mono text-xs leading-5">{example}</pre>
               <div className="mt-3 flex items-center gap-2"><input aria-label="API token for example" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Optional: preview with your token" className="h-9 min-w-0 flex-1 rounded border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-2 text-xs" /><button onClick={copyExample} type="button" title="Copy curl example" className="grid size-9 shrink-0 place-items-center rounded border border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface-elevated)]">{copied ? <Check size={15} /> : <Copy size={15} />}</button></div>
-              <p className="mt-2 text-xs text-[var(--oh-muted)]">The token is used only in this page session to prepare the example; it is not saved.</p>
+              <p className="mt-2 text-xs text-[var(--oh-muted)]">Replace example IDs with records from this store. A write response includes an operationId; poll it with GET /operations/{`{id}`} until it is completed or failed. The token is used only in this page session and is not saved.</p>
             </div>
           </section>
 
-          <section id="webhooks" className="scroll-mt-5"><h2 className="text-lg font-semibold">Webhooks</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Subscriptions can be created and revoked with the `api.webhook` scope. Delivery attempts use an HMAC signature and retry transient failures for up to eight attempts. Configure `POS_API_WEBHOOK_ENCRYPTION_KEY` before registering an endpoint. Delivery history is retained for retry and audit.</p></section>
+          <section id="webhooks" className="scroll-mt-5"><h2 className="text-lg font-semibold">Webhooks</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Subscriptions can be created and revoked with the `api.webhook` scope. Delivery attempts use an HMAC SHA-256 signature in `X-Orithos-Signature` over the exact raw request body. Compare signatures in constant time, deduplicate using the event `id`, and respond with a 2xx status. Failed deliveries retry with backoff for up to eight attempts. HTTPS endpoints on public hosts are required; local and private network addresses are rejected. The signing secret is returned once when the subscription is created.</p><div className="mt-3 flex flex-wrap gap-2">{["sale.created", "refund.created", "inventory.adjusted", "purchase.created", "operation.completed", "operation.failed"].map((event) => <code key={event} className="rounded border border-[var(--oh-border)] px-2 py-1 text-xs">{event}</code>)}</div><p className="mt-3 text-xs text-[var(--oh-muted)]">Webhook secret encryption uses the configured POS API key or the existing token encryption key.</p></section>
           <section id="errors" className="scroll-mt-5"><h2 className="text-lg font-semibold">Errors</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{[["401", "Token missing, expired, or revoked"], ["403", "Scope or store boundary mismatch"], ["404", "Resource not found in this store"], ["409", "Idempotency key conflict or resource state changed"], ["429", "Rate limit exceeded"], ["5xx", "Temporary API or Odoo service failure"]].map(([code, label]) => <div key={code} className="flex gap-3 rounded border border-[var(--oh-border)] px-3 py-2 text-sm"><code className="font-semibold">{code}</code><span className="text-[var(--oh-muted)]">{label}</span></div>)}</div></section>
         </div>
       </div>
