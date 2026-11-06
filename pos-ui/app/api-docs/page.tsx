@@ -6,7 +6,7 @@ import { BookOpen, Check, Copy, ExternalLink, KeyRound, Search, Shield, Terminal
 const resources = [
   { name: "Products", path: "products", read: true, write: "Read only" },
   { name: "Sales", path: "sales", read: true, write: "Feature gated" },
-  { name: "Refunds", path: "sales:batch", read: false, write: "Full-sale refund supported" },
+  { name: "Refunds", path: "sales/{id} + sales:batch", read: true, write: "Full-sale refund" },
   { name: "Inventory", path: "inventory", read: true, write: "Count adjustment" },
   { name: "Purchases", path: "purchases", read: true, write: "Draft purchase orders" },
   { name: "Customers", path: "customers", read: true, write: "Read only" },
@@ -84,7 +84,7 @@ export default function ApiDocsPage() {
           <h1 className="mt-2 text-2xl font-semibold">Orithos POS API</h1>
             <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">Versioned REST API for store integrations. Odoo remains the source of truth, with each request scoped to its store.</p>
         </div>
-        <a href="/openapi.yaml" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-medium hover:bg-[var(--oh-surface-muted)]" download><ExternalLink size={15} /> OpenAPI spec</a>
+        <a href="/api/pos/v1/openapi.yaml" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-medium hover:bg-[var(--oh-surface-muted)]" download><ExternalLink size={15} /> OpenAPI spec</a>
       </header>
 
       <div className="grid gap-8 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
