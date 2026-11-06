@@ -881,13 +881,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       {connected === true && tab !== "stocktake" && (inventoryReport ? <ShopfrontInventorySummary /> : tab === "catalogue" ? <ShopfrontProductHistorySection /> : null)}
       </div>
       {connected === true && tab !== "stocktake" && (
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label="Totals for all matching products">
-            <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading inventory…" : totals ? `Loaded ${renderedProductCount} / ${totals.totalItems} products` : "Totals unavailable"}</span>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label={inventoryReport ? "Totals for all matching Odoo inventory variants" : "Totals for all matching products"}>
+            <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading inventory…" : totals ? `Loaded ${renderedProductCount} / ${totals.totalItems} ${inventoryReport ? "Odoo variants" : "products"}` : "Totals unavailable"}</span>
             {hasNext && !resultsPending && !error && <button type="button" onClick={() => void loadProducts(true)} disabled={loadingMore} className="print:hidden min-h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
             {totals && !resultsPending && <>
-              <span>Products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
-              <span>Available units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
-              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} products have negative stock; their balances remain visible in the list.</span>}
+              <span>{inventoryReport ? "Odoo product variants" : "Products"} <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>{inventoryReport ? "Positive stock units" : "Available units"} <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              {inventoryReport && totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} variants have negative stock. Positive stock units exclude negative balances; review those variants in the list.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
           </footer>

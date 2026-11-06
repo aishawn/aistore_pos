@@ -22,7 +22,6 @@ export function PurchasingWorkspace() {
   const params = useSearchParams();
   const router = useRouter();
   const requested = params.get("tab") || "orders";
-  const receiptsActive = requested === "orders" && params.get("state") === "purchase";
   const transfers = requested === "transfers" || requested === "transfer-new";
   const available = views.filter((view) => hasPermission(view.permission));
   const permitted = transfers ? hasPermission("stock.purchases") : available.some((view) => view.key === requested);
@@ -41,7 +40,6 @@ export function PurchasingWorkspace() {
         </div>
         <nav aria-label="Purchasing views" className="flex flex-wrap gap-2">
           {available.map((view) => <Link key={view.key} href={view.key === "orders" ? "/purchases" : `/purchases?tab=${view.key}`} aria-current={active === view.key ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${active === view.key ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]"}`}>{view.label}</Link>)}
-          {hasPermission("stock.purchases") && <Link href="/purchases?state=purchase" aria-current={receiptsActive ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] ${receiptsActive ? "bg-[var(--oh-primary)] text-white" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]"}`}>Receipts · To receive</Link>}
         </nav>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
