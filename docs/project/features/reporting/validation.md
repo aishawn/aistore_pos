@@ -1,6 +1,13 @@
 # Reporting Validation
 
-Updated: 2026-11-06. Owner: TBD.
+Updated: 2026-11-07. Owner: TBD.
+
+## Odoo inventory scope label follow-up (2026-11-07)
+
+- Read-only `GET /api/public/version` on SKR, Demo, and App returned frontend/backend SHA `358c0b7527489389e54847b6e7b799d8d61f2986`, built at `2026-11-06T17:51:59Z`; this is the runtime before this label clarification and includes the purchase tab removal and legacy URL redirect. The attached screenshots were written at `2026-11-06T06:19Z`–`06:22Z`, before that runtime build.
+- The inventory route reads `product.product` under the store company scope and `available_in_pos = true`. `10,849` Shopfront active source products and `13,292` Odoo POS-enabled variants count different records, so their 2,443 difference is not evidence of duplicate or missing products. The visible inventory label now matches the actual Odoo filter.
+- `inventoryTotals` sums `max(qty_available, 0)` for matching Odoo variants and returns `Mixed units` when multiple UOMs are present. The screenshot's `50,992` follows that positive-only definition for its captured Odoo snapshot; the current value and row-level equality with Shopfront are NOT VERIFIED. The latest available Shopfront positive sum (`51,526`) is from a stale snapshot and is not a current comparison.
+- Focused inventory helper tests: 7/7 PASS under Node `22.22.2`; this local runtime is below the project's declared Node 24 engine. `git diff --check` PASS. No app build or business writes. Current row-level source reconciliation remains unavailable.
 
 ## Inventory count and unit scope follow-up (2026-11-06)
 
