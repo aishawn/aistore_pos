@@ -70,7 +70,7 @@ paths:
         '502': { description: Odoo read failed }
   /{resource}/{id}:
     get:
-      summary: Get a supported Odoo record
+      summary: Get a supported Odoo record; sale details include refund line data
       parameters:
         - in: path
           name: resource
@@ -167,6 +167,25 @@ paths:
         '200': { description: Subscription created; signing secret returned once }
         '400': { description: Invalid or non-public HTTPS endpoint }
         '503': { description: Webhook encryption is not configured }
+  /webhooks/{id}/deliveries:
+    get:
+      summary: List paginated webhook delivery attempts without payloads
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+      responses:
+        '200': { description: Tenant-scoped webhook delivery status and retry times }
+        '404': { description: Webhook not found in this vendor }
+        '401': { description: Missing, expired, or revoked API token }
+        '403': { description: Missing webhook scope or tenant mismatch }
   /webhooks/{id}:
     delete:
       summary: Revoke a webhook subscription

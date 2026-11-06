@@ -1,6 +1,7 @@
 package com.orithos.posapi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,5 +38,14 @@ class PosApiControllerErrorCategoryTest {
         assertEquals(0, line.path("refundableQuantity").decimalValue().compareTo(java.math.BigDecimal.ONE));
         assertEquals(0, line.path("unitPrice").decimalValue().compareTo(new java.math.BigDecimal("2.99")));
         assertEquals(1, line.path("uomFactor").asInt());
+    }
+
+    @Test
+    void syncFromUiTaxIdsAreFlatIntegersRatherThanManyToManyCommands() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        assertEquals("[4,9]", PosApiController.posUiTaxIds(mapper, mapper.readTree("[4,9]")).toString());
+        assertThrows(IllegalArgumentException.class,
+                () -> PosApiController.posUiTaxIds(mapper, mapper.readTree("[[6,0,[4,9]]]")));
     }
 }
