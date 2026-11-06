@@ -22,7 +22,7 @@ Read-only review of the supplied Shopfront and POS screenshots, inventory aggreg
 - `node --experimental-strip-types --test src/lib/inventory-report.test.ts`: PASS, 7/7.
 - `npm run typecheck`: NOT RUN successfully; this worktree has no `tsc` executable (`tsc is not recognized`). No local app build was run, consistent with the project preference.
 - `git diff --check`: PASS.
-- Post-push runtime verification is pending.
+- Post-push read-only runtime check: SKR and Demo both report frontend/backend SHA `0a5b067876934fc009237dcadb1bb4fc158b4872`, confirming the UI label candidate deployed. A later documentation-only commit does not change the runtime code.
 
 ## Limits
 
