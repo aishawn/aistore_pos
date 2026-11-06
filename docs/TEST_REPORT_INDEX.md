@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest inventory scope follow-up (`2026-11-07`): [Odoo inventory scope label check](test-sessions/2026-11-07-inventory-scope-label.md): screenshot counts come from different record sources; helper tests confirm positive-only stock arithmetic and mixed-UOM protection, but current Shopfront-to-Odoo row parity remains unverified.
+Latest inventory scope follow-up (`2026-11-07`): [Odoo inventory scope label check](test-sessions/2026-11-07-inventory-scope-label.md): change auto-deployed to SKR/Demo/App at `2aead338`; helper tests confirm positive-only stock arithmetic and mixed-UOM protection, but current Shopfront-to-Odoo row parity remains unverified.
 
 Latest POS API UAT smoke (`2026-11-07`): GitHub `main`, SKR, and Demo report exact SHA `18bf164e`; both stores attest `aipos_uat`. Temporary API token create/read/revoke PASS; sales, inventory, and purchase feature gates respond as enabled to empty idempotent batch probes. No business records were written. Full sale/refund, stock adjustment, purchase, replay, and webhook delivery acceptance remain open. Details: [POS API UAT smoke](test-sessions/2026-11-07-pos-api-uat-smoke.md).
 
