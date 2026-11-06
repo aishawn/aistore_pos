@@ -1,11 +1,9 @@
 package com.orithos.modules.ai.invoice;
 
-import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.gateway.AiGateway;
 import com.orithos.modules.ai.gateway.AiTask;
 import com.orithos.modules.ai.gateway.AiTenantContext;
@@ -13,14 +11,10 @@ import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.apache.pdfbox.Loader;
@@ -39,14 +33,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
- * Reads a supplier tax-invoice photo via DashScope Qwen-VL.
+ * Reads a supplier tax-invoice photo via the remote AI Gateway.
  */
 @Service
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
@@ -106,9 +98,6 @@ public class InvoiceVisionService {
 
     private final AiProperties properties;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
-    private final String baseUrl;
-    private final RestClient restClient;
     private final AiGateway aiGateway;
     private final TenantContextFactory tenantContextFactory;
 
@@ -116,21 +105,11 @@ public class InvoiceVisionService {
             AiProperties properties,
             ObjectMapper objectMapper,
             AiGateway aiGateway,
-            TenantContextFactory tenantContextFactory,
-            @Value("${spring.ai.dashscope.api-key:}") String apiKey,
-            @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
+            TenantContextFactory tenantContextFactory) {
         this.properties = properties;
         this.objectMapper = objectMapper;
         this.aiGateway = aiGateway;
         this.tenantContextFactory = tenantContextFactory;
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
-                ? "https://dashscope.aliyuncs.com"
-                : baseUrl.trim());
-        this.restClient = RestClient.builder()
-                .baseUrl(this.baseUrl)
-                .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
-                .build();
     }
 
     public TaxInvoiceRead read(MultipartFile file) {
@@ -138,9 +117,7 @@ public class InvoiceVisionService {
     }
 
     PreparedInvoiceImage prepare(MultipartFile file) {
-        if (aiGateway == null && !StringUtils.hasText(apiKey)) {
-            throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
-        }
+        if (aiGateway == null) throw new BusinessException(50301, "Remote AI service is not configured.");
         if (file == null || file.isEmpty()) {
             throw new BusinessException(40010, "Photo is required.");
         }
@@ -170,48 +147,13 @@ public class InvoiceVisionService {
         if (prepared == null) throw new BusinessException(40010, "Photo is required.");
         String mime = prepared.mime();
         byte[] bytes = prepared.bytes();
-        String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
-
-        boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(properties.visionModel());
-        List<Map<String, Object>> content = multimodal
-                ? List.of(Map.of("image", dataUri), Map.of("text", PROMPT))
-                : List.of(
-                Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
-                Map.of("type", "text", "text", PROMPT)
-        );
-        Map<String, Object> message = Map.of("role", "user", "content", content);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", properties.visionModel());
-        if (multimodal) {
-            body.put("input", Map.of("messages", List.of(message)));
-            body.put("parameters", Map.of("result_format", "message"));
-            body.put("multiModel", true);
-        } else {
-            body.put("messages", List.of(message));
-        }
-        body.put("stream", false);
-
         try {
-            String text;
-            if (aiGateway != null) {
-                TenantContext scope = tenantContextFactory.fromSecurity();
-                Long outlet = scope.requireOutletId();
-                if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
-                text = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
-                                com.orithos.config.CorrelationIdContext.current()),
-                        AiTask.VISION, PROMPT, mime, bytes, null).value();
-            } else {
-            JsonNode root = restClient.post()
-                    .uri(multimodal
-                            ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
-                            : "/compatible-mode/v1/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-            text = extractText(root);
-            }
+            TenantContext scope = tenantContextFactory.fromSecurity();
+            Long outlet = scope.requireOutletId();
+            if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
+            String text = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
+                            com.orithos.config.CorrelationIdContext.current()),
+                    AiTask.VISION, PROMPT, mime, bytes, null).value();
             TaxInvoiceRead read = parse(text, objectMapper);
             if (read == null || (!StringUtils.hasText(read.invoiceNumber())
                     && !StringUtils.hasText(read.supplierName())
@@ -221,12 +163,9 @@ public class InvoiceVisionService {
             return read;
         } catch (BusinessException e) {
             throw e;
-        } catch (RestClientResponseException e) {
-            log.warn("DashScope invoice vision HTTP {}", e.getStatusCode().value());
-            throw new BusinessException(50213, visionFailureMessage(
-                    "Invoice recognition failed", properties.visionModel(), providerErrorCode(e)));
         } catch (Exception e) {
-            log.warn("DashScope invoice vision failed: {}", e.getClass().getSimpleName());
+            if (e instanceof BusinessException business) throw business;
+            log.warn("Remote AI invoice vision failed: {}", e.getClass().getSimpleName());
             throw new BusinessException(50213, "Invoice recognition failed. Check the AI configuration and try again.");
         }
     }
@@ -400,38 +339,4 @@ public class InvoiceVisionService {
         }
     }
 
-    private static String trimTrailingSlash(String url) {
-        while (url.endsWith("/")) url = url.substring(0, url.length() - 1);
-        return url;
-    }
-
-    private String providerErrorCode(RestClientResponseException error) {
-        try {
-            return providerErrorCode(objectMapper.readTree(error.getResponseBodyAsByteArray()));
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
-    static String providerErrorCode(JsonNode root) {
-        if (root == null) return "";
-        JsonNode error = root.path("error");
-        String code = root.path("code").asText("");
-        if (!StringUtils.hasText(code)) code = error.path("code").asText("");
-        if (!StringUtils.hasText(code)) code = root.path("type").asText("");
-        if (!StringUtils.hasText(code)) code = error.path("type").asText("");
-        return code;
-    }
-
-    static String visionFailureMessage(String prefix, String model, String providerCode) {
-        String normalized = providerCode == null ? "" : providerCode.toLowerCase(Locale.ROOT);
-        if (normalized.equals("model_not_found") || normalized.equals("modelnotexist")) {
-            return prefix + ": vision model \"" + model + "\" is not available for this DashScope key/region. "
-                    + "Set AI_VISION_MODEL (for example qwen-vl-max or qwen3-vl-plus) and confirm AI_DASHSCOPE_BASE_URL matches the key region.";
-        }
-        if (normalized.equals("invalidparameter") || normalized.equals("invalid_parameter")) {
-            return prefix + ": AI provider configuration is invalid. Check the AI configuration and try again.";
-        }
-        return prefix + ": The AI provider could not process this image. Try again or contact your administrator.";
-    }
 }

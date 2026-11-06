@@ -1,12 +1,10 @@
 package com.orithos.modules.ai.node;
 
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.AssistantFastPathRouter;
 import com.orithos.modules.ai.AssistantTenantContext;
-import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.configstore.AiIntent;
 import com.orithos.modules.ai.configstore.AiSlot;
@@ -31,6 +29,7 @@ import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.HashMap;
@@ -765,20 +764,18 @@ public class ClassifyQueryNode implements NodeAction {
         return out;
     }
 
-    DashScopeChatOptions classifyOptions() {
+    OpenAiChatOptions classifyOptions() {
         return classifyOptions(properties);
     }
 
-    static DashScopeChatOptions classifyOptions(AiProperties properties) {
-        var builder = DashScopeChatOptions.builder()
+    static OpenAiChatOptions classifyOptions(AiProperties properties) {
+        var builder = OpenAiChatOptions.builder()
                 .temperature(properties.temperature())
-                .maxToken(Math.min(512, properties.maxTokens()));
+                .maxTokens(Math.min(512, properties.maxTokens()));
         String classifyModel = properties.classifyModel();
         if (classifyModel != null && !classifyModel.isBlank()) {
             String model = classifyModel.trim();
-            // DashScope selects its endpoint from this request option, not only the global model config.
-            builder.model(model)
-                    .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model));
+            builder.model(model);
         }
         return builder.build();
     }
@@ -794,7 +791,7 @@ public class ClassifyQueryNode implements NodeAction {
             }
             throw new IllegalStateException("AI gateway returned invalid classify output");
         }
-        // Prefer plain JSON text: more reliable across DashScope models than BeanOutputConverter/entity().
+            // Prefer plain JSON text for consistent structured output across remote models.
         try {
             String raw = chatClient.prompt()
                     .system(system)

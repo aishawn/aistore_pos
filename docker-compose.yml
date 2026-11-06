@@ -103,24 +103,19 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@orithos.com.au}
       # AI assistant. Defaults off; remote mode uses AI_SERVICE_TOKEN.
       AI_ENABLED: ${AI_ENABLED:-false}
-      AI_PROVIDER: ${AI_PROVIDER:-dashscope}
+      AI_PROVIDER: ${AI_PROVIDER:-remote}
       AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       # AI command parsing/preview is safe to expose for manual testing; execution remains off by default.
       AI_COMMANDS_ENABLED: ${AI_COMMANDS_ENABLED:-true}
       AI_COMMANDS_EXECUTION_ENABLED: ${AI_COMMANDS_EXECUTION_ENABLED:-false}
-      AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
-      AI_DASHSCOPE_MODEL: ${AI_DASHSCOPE_MODEL:-qwen-plus}
-      AI_DASHSCOPE_CLASSIFY_MODEL: ${AI_DASHSCOPE_CLASSIFY_MODEL:-qwen-flash}
-      AI_DASHSCOPE_TEMPERATURE: ${AI_DASHSCOPE_TEMPERATURE:-0.1}
-      AI_DASHSCOPE_MAX_TOKENS: ${AI_DASHSCOPE_MAX_TOKENS:-1024}
-      AI_DASHSCOPE_TIMEOUT_SECONDS: ${AI_DASHSCOPE_TIMEOUT_SECONDS:-40}
-      # Host only (no /api/v1). qwen3.8-flash sets multi-model=true; text remains the fallback path.
-      AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
-      AI_DASHSCOPE_MULTI_MODEL: ${AI_DASHSCOPE_MULTI_MODEL:-}
-      AI_DASHSCOPE_COMPLETIONS_PATH: ${AI_DASHSCOPE_COMPLETIONS_PATH:-}
-      AI_TRANSCRIPTION_MODEL: ${AI_TRANSCRIPTION_MODEL:-qwen3-asr-flash}
-      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen-vl-plus}
+      AI_GATEWAY_PRIMARY_MODEL: ${AI_GATEWAY_PRIMARY_MODEL:-qwen-plus}
+      AI_GATEWAY_FALLBACK_MODEL: ${AI_GATEWAY_FALLBACK_MODEL:-qwen-flash}
+      AI_GATEWAY_TRANSCRIPTION_MODEL: ${AI_GATEWAY_TRANSCRIPTION_MODEL:-qwen3-asr-flash}
+      AI_GATEWAY_VISION_MODEL: ${AI_GATEWAY_VISION_MODEL:-qwen-vl-plus}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.1}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-1024}
+      # The model endpoint and provider credentials are owned by the remote AI service.
       AI_CONVERSATION_MEMORY_TURNS: ${AI_CONVERSATION_MEMORY_TURNS:-6}
       AI_CONVERSATION_MEMORY_TTL_MINUTES: ${AI_CONVERSATION_MEMORY_TTL_MINUTES:-120}
       # Keep the read-only Odoo snapshot pipeline explicit and reproducible.

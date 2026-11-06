@@ -33,10 +33,10 @@ public class AiConfigController {
     private final ObjectProvider<WineLabelVisionService> labelVisionService;
     private final ObjectProvider<InvoiceVisionService> invoiceVisionService;
     private final boolean aiEnabled;
-    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
-    private String dashScopeBaseUrl;
-    @Value("${spring.ai.dashscope.api-key:}")
-    private String dashScopeApiKey;
+    @Value("${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}")
+    private String aiServiceBaseUrl;
+    @Value("${AI_SERVICE_TOKEN:}")
+    private String aiServiceToken;
 
     public AiConfigController(AiIntentMapper intentMapper,
                               AiSlotMapper slotMapper,
@@ -80,9 +80,8 @@ public class AiConfigController {
         data.put("enabled", aiEnabled);
         // A bean can exist while the provider key is absent. Do not advertise
         // a capability that will fail on the first request.
-        boolean providerReady = AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)
-                && dashScopeApiKey != null
-                && !dashScopeApiKey.isBlank();
+        boolean providerReady = AiProviderConfig.isValidBaseUrl(aiServiceBaseUrl)
+                && aiServiceToken != null && !aiServiceToken.isBlank();
         data.put("assistantAvailable", aiEnabled && providerReady && graphService.getIfAvailable() != null);
         data.put("transcriptionAvailable", aiEnabled && providerReady && transcriptionService.getIfAvailable() != null);
         data.put("labelVisionAvailable", aiEnabled && providerReady && labelVisionService.getIfAvailable() != null);

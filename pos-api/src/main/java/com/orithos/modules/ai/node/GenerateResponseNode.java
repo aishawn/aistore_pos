@@ -1,10 +1,8 @@
 package com.orithos.modules.ai.node;
 
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.gateway.AiGateway;
@@ -12,6 +10,7 @@ import com.orithos.modules.ai.gateway.AiTask;
 import com.orithos.modules.ai.gateway.AiTenantContext;
 import com.orithos.modules.ai.gateway.PromptVersion;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,11 +112,10 @@ public class GenerateResponseNode implements NodeAction {
         var prompt = chatClient.prompt()
                 .system(system)
                 .user(userPrompt)
-                .options(DashScopeChatOptions.builder()
+                .options(OpenAiChatOptions.builder()
                         .model(primaryModel)
-                        .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(primaryModel))
                         .temperature(properties.temperature())
-                        .maxToken(properties.maxTokens())
+                        .maxTokens(properties.maxTokens())
                         .build());
         if (tools != null) {
             prompt = prompt.tools(tools);

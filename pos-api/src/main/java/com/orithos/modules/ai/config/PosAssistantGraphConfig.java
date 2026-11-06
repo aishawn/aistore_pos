@@ -1,7 +1,5 @@
 package com.orithos.modules.ai.config;
 
-import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAsyncToolCallingManagerAutoConfiguration;
-import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration;
 import org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration;
 import com.alibaba.cloud.ai.graph.CompileConfig;
 import com.alibaba.cloud.ai.graph.CompiledGraph;
@@ -56,12 +54,7 @@ import static com.alibaba.cloud.ai.graph.action.AsyncNodeAction.node_async;
 public class PosAssistantGraphConfig {
 
     @Configuration
-    @ConditionalOnProperty(name = "app.ai.gateway.provider", havingValue = "dashscope", matchIfMissing = true)
-    @Import({DashScopeChatAutoConfiguration.class, DashScopeAsyncToolCallingManagerAutoConfiguration.class})
-    static class DashScopeProviderConfiguration { }
-
-    @Configuration
-    @ConditionalOnProperty(name = "app.ai.gateway.provider", havingValue = "remote")
+    @ConditionalOnProperty(name = "app.ai.gateway.provider", havingValue = "remote", matchIfMissing = true)
     @Import(OpenAiChatAutoConfiguration.class)
     static class RemoteProviderConfiguration { }
 
@@ -140,7 +133,7 @@ public class PosAssistantGraphConfig {
             ObjectProvider<PricingChatBrief> pricingChatBriefProvider,
             ObjectProvider<GroceryChatBrief> groceryChatBriefProvider,
             AiGateway aiGateway,
-            @Value("${spring.ai.dashscope.chat.options.model:qwen-plus}") String primaryModel) throws GraphStateException {
+            @Value("${spring.ai.openai.chat.options.model:qwen-plus}") String primaryModel) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,

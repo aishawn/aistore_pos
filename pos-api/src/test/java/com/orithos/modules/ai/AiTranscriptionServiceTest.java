@@ -1,29 +1,17 @@
 package com.orithos.modules.ai;
 
 import com.orithos.common.BusinessException;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.web.client.MockRestServiceServer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class AiTranscriptionServiceTest {
 
     private final AiTranscriptionService service = new AiTranscriptionService(
             new AiProperties(true, null, null, null, null, 0.1, 1024, 40, 6, 120),
-            "test-key", "https://dashscope.aliyuncs.com");
+            null, null);
 
     @Test
     void rejectsEmptyAudioBeforeCallingProvider() {
@@ -62,40 +50,4 @@ class AiTranscriptionServiceTest {
         assertEquals("audio/webm", AiTranscriptionService.resolveMime(null));
     }
 
-    @Test
-    void providerErrorDetailsAreNotReturnedOrLogged() {
-        String providerDetail = "private-provider-diagnostic";
-        org.springframework.web.client.RestClient.Builder builder =
-                org.springframework.web.client.RestClient.builder();
-        MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
-        mockServer.expect(requestTo("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body("{\"error\":\"" + providerDetail + "\"}"));
-        AiTranscriptionService testService = new AiTranscriptionService(
-                new AiProperties(true, null, null, null, null, 0.1, 1024, 40, 6, 120),
-                "test-key", "https://dashscope.aliyuncs.com", builder);
-        MockMultipartFile file = new MockMultipartFile("file", "voice.webm", "audio/webm", new byte[] {1, 2, 3});
-
-        Logger logger = (Logger) LoggerFactory.getLogger(AiTranscriptionService.class);
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        logger.addAppender(appender);
-        try {
-            BusinessException error = assertThrows(BusinessException.class,
-                    () -> testService.transcribe(file, null));
-
-            assertEquals(50211, error.getCode());
-            assertFalse(error.getMessage().contains(providerDetail));
-            mockServer.verify();
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-        }
-
-        assertFalse(appender.list.stream()
-                .map(ILoggingEvent::getFormattedMessage)
-                .anyMatch(message -> message.contains(providerDetail)));
-    }
 }

@@ -75,8 +75,7 @@ class WineLabelVisionServiceTest {
         String message = WineLabelVisionService.visionFailureMessage(
                 "Label recognition failed", "qwen-vl-plus", "model_not_found");
 
-        assertTrue(message.contains("qwen-vl-plus"));
-        assertTrue(message.contains("AI_DASHSCOPE_BASE_URL"));
+        assertTrue(message.contains("remote AI service"));
     }
 
     @Test

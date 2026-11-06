@@ -45,7 +45,7 @@ public class AiInvoicePreviewController {
         InvoiceVisionService vision = visionService.getIfAvailable();
         if (vision == null) {
             throw new BusinessException(50301,
-                    "Invoice preview is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "Invoice preview is disabled. Configure app.ai.enabled and the remote AI service.");
         }
         InvoiceVisionService.PreparedInvoiceImage prepared = vision.prepare(file);
         if (providerQuota != null) {

@@ -35,7 +35,7 @@ final class AiFailureDiagnostics {
             if (type.contains("timeout")) return "timeout";
             if (type.contains("sql") || type.contains("dataaccess") || type.contains("jdbc")) category = "data_access";
             else if ("workflow".equals(category) && (type.contains("configuration") || type.contains("beancreation"))) category = "configuration";
-            else if ("workflow".equals(category) && (type.contains("dashscope") || type.contains("webclient") || type.contains("httpclient") || type.contains("spring.ai"))) category = "provider";
+        else if ("workflow".equals(category) && (type.contains("webclient") || type.contains("httpclient") || type.contains("spring.ai"))) category = "provider";
         }
         return category;
     }

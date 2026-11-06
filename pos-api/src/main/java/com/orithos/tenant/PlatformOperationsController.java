@@ -39,7 +39,7 @@ public class PlatformOperationsController {
             StringRedisTemplate redisTemplate,
             BuildIdentityController buildIdentity,
             @Value("${app.ai.enabled:false}") boolean aiEnabled,
-            @Value("${AI_DASHSCOPE_API_KEY:}") String aiApiKey,
+            @Value("${AI_SERVICE_TOKEN:}") String aiApiKey,
             @Value("${ODOO_BASE_URL:}") String odooBaseUrl,
             @Value("${RUNTIME_ENVIRONMENT:unknown}") String environment) {
         this.platformAccess = platformAccess;

@@ -47,8 +47,10 @@ public class AiAssistantController {
     private final AiChatHistoryService chatHistoryService;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
-    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
-    private String dashScopeBaseUrl;
+    @Value("${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}")
+    private String aiServiceBaseUrl;
+    @Value("${AI_SERVICE_TOKEN:}")
+    private String aiServiceToken;
     @Value("${SOURCE_COMMIT:unknown}")
     private String sourceCommit;
 
@@ -76,10 +78,10 @@ public class AiAssistantController {
         TenantContext tenant = tenantContextFactory.fromSecurity();
         long startedAt = System.nanoTime();
         PosAssistantGraphService service = graphService.getIfAvailable();
-        if (service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
+        if (service == null || !AiProviderConfig.isValidBaseUrl(aiServiceBaseUrl) || aiServiceToken.isBlank()) {
             auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             throw new BusinessException(50301,
-                    "AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "AI assistant is disabled. Configure app.ai.enabled and the remote AI service.");
         }
 
         PosAssistantGraphService.AssistantResult result;
@@ -182,7 +184,7 @@ public class AiAssistantController {
     }
 
     /**
-     * Cloud speech-to-text (DashScope Qwen-ASR). Frontend falls back to Web Speech API on 503/error.
+     * Cloud speech-to-text through the remote AI service. Frontend falls back to Web Speech API on error.
      *
      * @param file audio from MediaRecorder
      * @param lang optional hint: {@code en}, {@code zh}, {@code en-AU}, {@code zh-CN}, or {@code auto}
@@ -192,9 +194,9 @@ public class AiAssistantController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "lang", required = false) String lang) {
         AiTranscriptionService service = transcriptionService.getIfAvailable();
-        if (!aiEnabled || service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
+        if (!aiEnabled || service == null || !AiProviderConfig.isValidBaseUrl(aiServiceBaseUrl) || aiServiceToken.isBlank()) {
             throw new BusinessException(50301,
-                    "AI transcription is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "AI transcription is disabled. Configure app.ai.enabled and the remote AI service.");
         }
         String text = service.transcribe(file, lang);
         String normalized = AiTranscriptionService.normalizeLang(lang);

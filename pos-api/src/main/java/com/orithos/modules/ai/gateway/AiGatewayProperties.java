@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.ai.gateway")
 public class AiGatewayProperties {
-    private String provider = "dashscope";
+    private String provider = "remote";
     private String serviceBaseUrl = "https://ai.orithos.com.au";
     private String serviceToken = "";
     private boolean enabled = true;

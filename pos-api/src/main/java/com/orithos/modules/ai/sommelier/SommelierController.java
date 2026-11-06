@@ -41,8 +41,10 @@ public class SommelierController {
     private final AiProviderQuotaService providerQuota;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
-    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
-    private String dashScopeBaseUrl;
+    @Value("${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}")
+    private String aiServiceBaseUrl;
+    @Value("${AI_SERVICE_TOKEN:}")
+    private String aiServiceToken;
 
     @Autowired
     public SommelierController(
@@ -79,14 +81,14 @@ public class SommelierController {
     public ApiResult<IdentifyImageResponse> identifyImage(@RequestParam("file") MultipartFile file) {
         // Fail closed before resolving the vision bean — disabled AI must not
         // touch provider wiring or tenant-scoped catalogue data.
-        if (!aiEnabled || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
+        if (!aiEnabled || !AiProviderConfig.isValidBaseUrl(aiServiceBaseUrl) || aiServiceToken.isBlank()) {
             throw new BusinessException(50301,
-                    "Label recognition is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "Label recognition is disabled. Configure app.ai.enabled and the remote AI service.");
         }
         WineLabelVisionService vision = visionService.getIfAvailable();
         if (vision == null) {
             throw new BusinessException(50301,
-                    "Label recognition is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "Label recognition is disabled. Configure app.ai.enabled and the remote AI service.");
         }
         var tenant = tenantContextFactory.fromSecurity();
         if (providerQuota != null) {

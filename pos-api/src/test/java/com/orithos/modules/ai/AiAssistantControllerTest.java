@@ -65,7 +65,8 @@ class AiAssistantControllerTest {
         when(tenants.fromSecurity()).thenReturn(tenant);
         AiReportAuditService audit = mock(AiReportAuditService.class);
         AiAssistantController controller = controller(graph, mock(ObjectProvider.class), tenants, audit);
-        ReflectionTestUtils.setField(controller, "dashScopeBaseUrl", "https://dashscope.aliyuncs.com");
+        ReflectionTestUtils.setField(controller, "aiServiceBaseUrl", "https://ai.orithos.com.au");
+        ReflectionTestUtils.setField(controller, "aiServiceToken", "test-token");
 
         BusinessException error = assertThrows(BusinessException.class,
                 () -> controller.assistant(new AssistantRequest("What should I reorder?", null)));

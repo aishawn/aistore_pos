@@ -58,7 +58,7 @@ public class InvoiceScanService {
         InvoiceVisionService vision = visionService.getIfAvailable();
         if (vision == null) {
             throw new BusinessException(50301,
-                    "Invoice scan is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
+                    "Invoice scan is disabled. Configure app.ai.enabled and the remote AI service.");
         }
         return toResponse(vision.read(file));
     }

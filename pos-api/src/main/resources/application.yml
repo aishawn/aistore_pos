@@ -15,18 +15,9 @@ spring:
   # Docker：由 compose 注入 POSTGRESQL_URL、REDIS_HOST=redis 等环境变量
   config:
     import: optional:file:.env[.properties]
-  # DashScope starter 会无条件注册全部 AI Bean；默认排除，仅在 app.ai.enabled=true 时由 PosAssistantGraphConfig 按需导入
+  # The remote OpenAI-compatible model is imported only when the POS AI graph is enabled.
   autoconfigure:
     exclude:
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
-      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAsyncToolCallingManagerAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
   # PostgreSQL 数据源。POSTGRESQL_URL 可使用 postgresql:// 或 jdbc:postgresql:// 格式。
   datasource:
@@ -58,11 +49,7 @@ spring:
     init:
       mode: ${SQL_INIT_MODE:never}
       schema-locations: classpath:db/schema.sql
-  # 阿里云百炼 DashScope（Spring AI 模型）
-  # AI_DASHSCOPE_BASE_URL = host only（https://dashscope.aliyuncs.com）。不要加 /api/v1 或 /compatible-mode/v1。
-  # 国际区 Key：https://dashscope-intl.aliyuncs.com
-  # qwen3.8-flash 等模型需按请求走 multimodal-generation（multi-model=true）；
-  # DashScopeEnvironmentPostProcessor 设置模型默认标志，分类器也按其覆盖模型设置请求标志。
+  # Remote AI Gateway (OpenAI-compatible)
   ai:
     openai:
       api-key: ${AI_SERVICE_TOKEN:}
@@ -70,23 +57,9 @@ spring:
       chat:
         completions-path: /chat/completions
         options:
-          model: ${AI_GATEWAY_PRIMARY_MODEL:${AI_DASHSCOPE_MODEL:qwen-plus}}
-          temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
-    dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY:}
-      base-url: ${AI_DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com}
-      chat:
-        options:
-          # qwen-plus / qwen-flash = text-generation；qwen3.8-flash uses multi-model=true
-          # completions-path stays text as fallback; multi-model requests force multimodal-generation
-          # (override with AI_DASHSCOPE_MULTI_MODEL / AI_DASHSCOPE_COMPLETIONS_PATH if needed)
-          model: ${AI_DASHSCOPE_MODEL:qwen-plus}
-          temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
-          max-tokens: ${AI_DASHSCOPE_MAX_TOKENS:1024}
-      audio:
-        transcription:
-          options:
-            model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
+          model: ${AI_GATEWAY_PRIMARY_MODEL:qwen-plus}
+          temperature: ${AI_TEMPERATURE:0.1}
+          max-tokens: ${AI_MAX_TOKENS:1024}
 
 # MyBatis 映射与命名转换
 mybatis:
@@ -128,7 +101,7 @@ app:
     platform-operator-slug: ${APP_PLATFORM_OPERATOR_SLUG:demo}
   initial-admin-password: ${INITIAL_ADMIN_PASSWORD:123456}
   ai:
-    # 设为 true 并配置 AI_DASHSCOPE_API_KEY 后启用 Graph 智能助手 + 语音转写 + 酒标识别
+    # Set true and configure AI_SERVICE_TOKEN to enable the remote AI features.
     enabled: ${AI_ENABLED:false}
     commands:
       enabled: ${AI_COMMANDS_ENABLED:true}
@@ -136,15 +109,12 @@ app:
       # tenant scoping and readback checks are complete.
       execution-enabled: ${AI_COMMANDS_EXECUTION_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
-    transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
-    # Use the configured primary DashScope model when it supports native multimodal
-    # requests; operators can still override this explicitly with AI_VISION_MODEL.
-    vision-model: ${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}
-    # Faster classify-only model (default qwen-flash). Set empty to use chat model.
-    classify-model: ${AI_DASHSCOPE_CLASSIFY_MODEL:qwen-flash}
-    temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
-    max-tokens: ${AI_DASHSCOPE_MAX_TOKENS:1024}
-    timeout-seconds: ${AI_DASHSCOPE_TIMEOUT_SECONDS:40}
+    transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:qwen3-asr-flash}
+    vision-model: ${AI_GATEWAY_VISION_MODEL:qwen-vl-plus}
+    classify-model: ${AI_GATEWAY_CLASSIFY_MODEL:qwen-flash}
+    temperature: ${AI_TEMPERATURE:0.1}
+    max-tokens: ${AI_MAX_TOKENS:1024}
+    timeout-seconds: ${AI_GATEWAY_TIMEOUT_SECONDS:40}
     conversation-memory-turns: ${AI_CONVERSATION_MEMORY_TURNS:6}
     conversation-memory-ttl-minutes: ${AI_CONVERSATION_MEMORY_TTL_MINUTES:120}
     report:
@@ -160,7 +130,7 @@ app:
       requests-per-hour: ${AI_PROVIDER_QUOTA_REQUESTS:120}
       tokens-per-hour: ${AI_PROVIDER_QUOTA_TOKENS:200000}
     gateway:
-      provider: ${AI_PROVIDER:dashscope}
+      provider: remote
       service-base-url: ${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}
       service-token: ${AI_SERVICE_TOKEN:}
       # The provider adapter cannot bypass the product-wide AI switch.
@@ -170,10 +140,10 @@ app:
       timeout-seconds: ${AI_GATEWAY_TIMEOUT_SECONDS:40}
       requests-per-minute: ${AI_GATEWAY_REQUESTS_PER_MINUTE:60}
       tokens-per-hour: ${AI_GATEWAY_TOKENS_PER_HOUR:200000}
-      primary-model: ${AI_GATEWAY_PRIMARY_MODEL:${AI_DASHSCOPE_MODEL:qwen-plus}}
+      primary-model: ${AI_GATEWAY_PRIMARY_MODEL:qwen-plus}
       fallback-model: ${AI_GATEWAY_FALLBACK_MODEL:qwen-flash}
-      transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}}
-      vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}}
+      transcription-model: ${AI_GATEWAY_TRANSCRIPTION_MODEL:qwen3-asr-flash}
+      vision-model: ${AI_GATEWAY_VISION_MODEL:${AI_VISION_MODEL:qwen-vl-plus}}
       fallback-vision-model: ${AI_GATEWAY_FALLBACK_VISION_MODEL:qwen-vl-plus}
     snapshot:
       sync-enabled: ${APP_AI_SNAPSHOT_SYNC_ENABLED:false}

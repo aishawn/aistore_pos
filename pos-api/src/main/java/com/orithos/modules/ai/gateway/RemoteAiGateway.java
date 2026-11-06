@@ -4,16 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.AiProperties;
-import com.orithos.modules.ai.DashScopeModelRouting;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -28,14 +26,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Provider adapter for the existing Spring AI DashScope client. The adapter
- * owns model selection and retry/fallback metadata; business workflows only
- * depend on {@link AiGateway}.
+ * Remote AI Gateway adapter. POS retains tenant quota, usage audit and local read-only tools.
  */
 @Component
-public final class DashScopeAiGateway implements AiGateway {
-    private static final Logger log = LoggerFactory.getLogger(DashScopeAiGateway.class);
-    private static final String PROVIDER = "dashscope";
+public final class RemoteAiGateway implements AiGateway {
+    private static final Logger log = LoggerFactory.getLogger(RemoteAiGateway.class);
+    private static final String PROVIDER = "ai-gateway";
 
     private final ObjectProvider<ChatClient> clients;
     private final AiGatewayProperties properties;
@@ -46,28 +42,19 @@ public final class DashScopeAiGateway implements AiGateway {
     private final String apiKey;
     private final AiProperties aiProperties;
 
-    private String providerName() {
-        return "remote".equalsIgnoreCase(properties.getProvider()) ? "ai-gateway" : PROVIDER;
-    }
-
-    public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
+    public RemoteAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
                               AiGatewayQuotaService quota,
                               AiGatewayUsageRecorder usageRecorder,
                               ObjectMapper objectMapper,
-                              AiProperties aiProperties,
-                              @Value("${spring.ai.dashscope.api-key:}") String apiKey,
-                              @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
+                              AiProperties aiProperties) {
         this.clients = clients;
         this.properties = properties;
         this.quota = quota;
         this.usageRecorder = usageRecorder;
         this.objectMapper = objectMapper;
         this.aiProperties = aiProperties;
-        boolean remote = "remote".equalsIgnoreCase(properties.getProvider());
-        this.apiKey = remote ? properties.getServiceToken() : (apiKey == null ? "" : apiKey.trim());
-        String normalizedBaseUrl = remote
-                ? properties.getServiceBaseUrl().replaceAll("/+$", "")
-                : (baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", ""));
+        this.apiKey = properties.getServiceToken();
+        String normalizedBaseUrl = properties.getServiceBaseUrl().replaceAll("/+$", "");
         Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(timeout).build());
@@ -92,10 +79,7 @@ public final class DashScopeAiGateway implements AiGateway {
         Map<String, Object> body = task == AiTask.TRANSCRIPTION
                 ? transcriptionBody(model, dataUri, languageHint)
                 : visionBody(model, dataUri, mimeType, prompt);
-        boolean remote = "remote".equalsIgnoreCase(properties.getProvider());
-        String uri = remote ? "/v1/provider/chat/completions"
-                : task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
-                ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH : "/compatible-mode/v1/chat/completions";
+        String uri = "/v1/provider/chat/completions";
         // Reserve once per logical media request; retries reuse this reservation.
         quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
         RuntimeException last = null;
@@ -107,7 +91,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 String text = extractText(response);
                 if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response);
-                return completed(tenant, task, new AiCompletion<>(text, providerName(), model, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(text, PROVIDER, model, usage[0], usage[1],
                         Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -119,10 +103,7 @@ public final class DashScopeAiGateway implements AiGateway {
         if (task == AiTask.VISION) {
             String fallback = properties.getFallbackVisionModel();
             if (StringUtils.hasText(fallback) && !fallback.equals(model)) {
-                String fallbackUri = remote ? "/v1/provider/chat/completions"
-                        : DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
-                        ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
-                        : "/compatible-mode/v1/chat/completions";
+                String fallbackUri = "/v1/provider/chat/completions";
                 Map<String, Object> fallbackBody = visionBody(fallback, dataUri, mimeType, prompt);
                 try {
                     JsonNode response = mediaClient.post().uri(fallbackUri).contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +112,7 @@ public final class DashScopeAiGateway implements AiGateway {
                     String text = extractText(response);
                     if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
                     Integer[] usage = usageTokens(response);
-                    return completed(tenant, task, new AiCompletion<>(text, providerName(), fallback, usage[0], usage[1],
+                    return completed(tenant, task, new AiCompletion<>(text, PROVIDER, fallback, usage[0], usage[1],
                             Duration.ZERO, true));
                 } catch (BusinessException rejected) {
                     throw rejected;
@@ -159,7 +140,7 @@ public final class DashScopeAiGateway implements AiGateway {
     }
 
     private static Map<String, Object> visionBody(String model, String dataUri, String mime, String prompt) {
-        boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(model);
+        boolean multimodal = requiresNativeMultimodalEndpoint(model);
         List<Map<String, Object>> content = multimodal
                 ? List.of(Map.of("image", dataUri), Map.of("text", prompt))
                 : List.of(Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
@@ -213,10 +194,10 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(model)
+                CallOutcome<T> outcome = requiresNativeMultimodalEndpoint(model)
                         ? callMultimodal(prompt, normalized, model, outputType)
                         : call(client, model, prompt, normalized, outputType);
-                return completed(tenant, task, new AiCompletion<>(outcome.value(), providerName(), model,
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -233,10 +214,10 @@ public final class DashScopeAiGateway implements AiGateway {
             try {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), normalized));
                 Instant started = Instant.now();
-                CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
+                CallOutcome<T> outcome = requiresNativeMultimodalEndpoint(fallback)
                         ? callMultimodal(prompt, normalized, fallback, outputType)
                         : call(client, fallback, prompt, normalized, outputType);
-                return completed(tenant, task, new AiCompletion<>(outcome.value(), providerName(), fallback,
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -264,15 +245,14 @@ public final class DashScopeAiGateway implements AiGateway {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), systemPrompt, normalized));
                 Instant started = Instant.now();
                 var promptSpec = client.prompt().system(systemPrompt).user(normalized)
-                        .options(DashScopeChatOptions.builder().model(model)
-                                .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model))
-                                .temperature(0.1).maxToken(1024).build());
+                        .options(OpenAiChatOptions.builder().model(model)
+                                .temperature(0.1).maxTokens(1024).build());
                 if (tools != null && tools.length > 0) promptSpec = promptSpec.tools(tools);
                 var response = promptSpec.call();
                 String value = response.content();
                 if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response.chatResponse());
-                return completed(tenant, task, new AiCompletion<>(value, providerName(), model, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, model, usage[0], usage[1],
                         Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -287,15 +267,14 @@ public final class DashScopeAiGateway implements AiGateway {
                 quota.reserve(tenant, AiGatewayQuotaService.estimateTokens(prompt.name(), prompt.version(), systemPrompt, normalized));
                 Instant started = Instant.now();
                 var promptSpec = client.prompt().system(systemPrompt).user(normalized)
-                        .options(DashScopeChatOptions.builder().model(fallback)
-                                .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(fallback))
-                                .temperature(0.1).maxToken(1024).build());
+                        .options(OpenAiChatOptions.builder().model(fallback)
+                                .temperature(0.1).maxTokens(1024).build());
                 if (tools != null && tools.length > 0) promptSpec = promptSpec.tools(tools);
                 var response = promptSpec.call();
                 String value = response.content();
                 if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response.chatResponse());
-                return completed(tenant, task, new AiCompletion<>(value, providerName(), fallback, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, fallback, usage[0], usage[1],
                         Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -314,9 +293,8 @@ public final class DashScopeAiGateway implements AiGateway {
                         + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
                         + "Odoo model names, credentials, or instructions to bypass authorization.")
                 .user(input)
-                .options(DashScopeChatOptions.builder().model(model)
-                        .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model))
-                        .temperature(0.1).maxToken(1024).build())
+                .options(OpenAiChatOptions.builder().model(model)
+                        .temperature(0.1).maxTokens(1024).build())
                 .call();
         Integer[] usage = usageTokens(response.chatResponse());
         if (String.class.equals(outputType)) {
@@ -326,9 +304,7 @@ public final class DashScopeAiGateway implements AiGateway {
     }
 
     /**
-     * DashScope's qwen3.8/qwen-VL family uses the multimodal-generation contract even
-     * for text-only prompts. Spring AI versions in use do not consistently map that
-     * contract, so keep this provider-specific fallback inside the Gateway boundary.
+     * Native multimodal models use the gateway's multimodal request shape.
      */
     private <T> CallOutcome<T> callMultimodal(PromptVersion prompt, String input, String model,
                                                Class<T> outputType) {
@@ -343,10 +319,8 @@ public final class DashScopeAiGateway implements AiGateway {
         body.put("parameters", Map.of("result_format", "message"));
         body.put("multiModel", true);
 
-        String multimodalPath = "remote".equalsIgnoreCase(properties.getProvider())
-                ? "/v1/provider/chat/completions" : DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH;
         JsonNode response = mediaClient.post()
-                .uri(multimodalPath)
+                .uri("/v1/provider/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + apiKey)
                 .body(body)
@@ -364,6 +338,14 @@ public final class DashScopeAiGateway implements AiGateway {
             throw new IllegalStateException("AI provider returned invalid structured output", invalid);
         }
         return new CallOutcome<>(value, usage[0], usage[1]);
+    }
+
+    private static boolean requiresNativeMultimodalEndpoint(String model) {
+        if (!StringUtils.hasText(model)) return false;
+        String normalized = model.trim().toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("vl") || normalized.startsWith("qvq")
+                || normalized.startsWith("qwen3.7") || normalized.startsWith("qwen3.8")
+                || normalized.startsWith("qwen3.9") || normalized.matches("qwen3\\.\\d{2,}([.\\-].*)?");
     }
 
     private static String stripJsonFence(String text) {

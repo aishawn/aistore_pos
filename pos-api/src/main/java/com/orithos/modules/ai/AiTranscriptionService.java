@@ -1,6 +1,5 @@
 package com.orithos.modules.ai;
 
-import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.gateway.AiGateway;
@@ -10,28 +9,20 @@ import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Cloud STT via DashScope Qwen-ASR OpenAI-compatible API (base64 — no public URL).
- * Calls the HTTP API directly to avoid Spring AI response-mapping quirks that yield empty text.
+ * Speech-to-text through the independently deployed AI Gateway.
  */
 @Service
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
@@ -50,9 +41,6 @@ public class AiTranscriptionService {
             "hi", "id", "th", "tr", "uk", "vi", "cs", "da", "fil", "fi", "is", "ms", "no", "pl", "sv");
 
     private final AiProperties properties;
-    private final String apiKey;
-    private final String baseUrl;
-    private final RestClient restClient;
     private final AiGateway aiGateway;
     private final TenantContextFactory tenantContextFactory;
 
@@ -61,35 +49,9 @@ public class AiTranscriptionService {
      * without {@code @Autowired} Spring cannot choose between them and fails with
      * "No default constructor found" (backend crash-loop → login 502).
      */
-    @Autowired
     public AiTranscriptionService(AiProperties properties, AiGateway aiGateway,
-                                  TenantContextFactory tenantContextFactory,
-                                  @Value("${spring.ai.dashscope.api-key:}") String apiKey,
-                                  @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
-        this(properties, apiKey, baseUrl, RestClient.builder(), aiGateway, tenantContextFactory);
-    }
-
-    /** Test-only: inject a mockable {@link RestClient.Builder}. */
-    AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl) {
-        this(properties, apiKey, baseUrl, RestClient.builder());
-    }
-
-    /** Test-only: inject a mockable {@link RestClient.Builder}. */
-    AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder) {
-        this(properties, apiKey, baseUrl, builder, null, null);
-    }
-
-    private AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder,
-                                   AiGateway aiGateway, TenantContextFactory tenantContextFactory) {
+                                  TenantContextFactory tenantContextFactory) {
         this.properties = properties;
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
-                ? "https://dashscope.aliyuncs.com"
-                : baseUrl.trim());
-        this.restClient = builder
-                .baseUrl(this.baseUrl)
-                .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
-                .build();
         this.aiGateway = aiGateway;
         this.tenantContextFactory = tenantContextFactory;
     }
@@ -99,9 +61,6 @@ public class AiTranscriptionService {
      * @param lang optional ASR language hint: {@code en}, {@code zh}, or blank for auto-detect
      */
     public String transcribe(MultipartFile file, String lang) {
-        if (aiGateway == null && !StringUtils.hasText(apiKey)) {
-            throw new BusinessException(50301, "AI_DASHSCOPE_API_KEY is not configured.");
-        }
         if (file == null || file.isEmpty()) {
             throw new BusinessException(40010, "Audio file is required.");
         }
@@ -121,57 +80,17 @@ public class AiTranscriptionService {
         }
 
         String asrLang = normalizeLang(lang);
+        if (aiGateway == null || tenantContextFactory == null) {
+            throw new BusinessException(50301, "Remote AI service is not configured.");
+        }
 
-        if (aiGateway != null) {
+        try {
             TenantContext scope = tenantContextFactory.fromSecurity();
             Long outlet = scope.requireOutletId();
             if (outlet == null) throw new BusinessException(40100, "Store outlet is required");
-            try {
-                String transcript = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
-                                com.orithos.config.CorrelationIdContext.current()),
-                        AiTask.TRANSCRIPTION, "", mime, bytes, asrLang).value();
-                if (!StringUtils.hasText(transcript)) throw new BusinessException(50210,
-                        "Transcription returned empty text. Speak clearly and try again.");
-                return transcript.trim();
-            } catch (BusinessException e) { throw e; }
-            catch (Exception e) {
-                log.warn("Gateway transcription failed: {}", e.getClass().getSimpleName());
-                throw providerFailure();
-            }
-        }
-
-        String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
-
-        Map<String, Object> inputAudio = Map.of("data", dataUri);
-        Map<String, Object> contentItem = Map.of(
-                "type", "input_audio",
-                "input_audio", inputAudio);
-        Map<String, Object> message = Map.of(
-                "role", "user",
-                "content", List.of(contentItem));
-
-        Map<String, Object> asrOptions = new LinkedHashMap<>();
-        asrOptions.put("enable_itn", true);
-        if (asrLang != null) {
-            asrOptions.put("language", asrLang);
-        }
-
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("model", properties.transcriptionModel());
-        body.put("messages", List.of(message));
-        body.put("stream", false);
-        body.put("asr_options", asrOptions);
-
-        try {
-            JsonNode root = restClient.post()
-                    .uri("/compatible-mode/v1/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .body(body)
-                    .retrieve()
-                    .body(JsonNode.class);
-
-            String text = extractText(root);
+            String text = aiGateway.completeMedia(new AiTenantContext(scope.vendorId(), outlet, scope.userId(),
+                            com.orithos.config.CorrelationIdContext.current()),
+                    AiTask.TRANSCRIPTION, "", mime, bytes, asrLang).value();
             if (!StringUtils.hasText(text)) {
                 log.warn("Qwen-ASR empty text; bytes={} mime={} lang={}", bytes.length, mime, asrLang);
                 throw new BusinessException(50210,
@@ -180,11 +99,9 @@ public class AiTranscriptionService {
             return text.trim();
         } catch (BusinessException e) {
             throw e;
-        } catch (RestClientResponseException e) {
-            log.warn("DashScope ASR HTTP {}", e.getStatusCode().value());
-            throw providerFailure();
         } catch (Exception e) {
-            log.warn("DashScope transcription failed: {}", e.getClass().getSimpleName());
+            if (e instanceof BusinessException business) throw business;
+            log.warn("Remote AI transcription failed: {}", e.getClass().getSimpleName());
             throw providerFailure();
         }
     }
@@ -193,7 +110,7 @@ public class AiTranscriptionService {
         return new BusinessException(50211, "Cloud transcription failed. Please try again.");
     }
 
-    /** Pull transcript from OpenAI-compatible or DashScope-native response shapes. */
+    /** Map transcript language codes used by the POS UI. */
     static String extractText(JsonNode root) {
         if (root == null) {
             return null;
@@ -289,13 +206,6 @@ public class AiTranscriptionService {
             throw new BusinessException(40013, "Unsupported audio format.");
         }
         return mime;
-    }
-
-    private static String trimTrailingSlash(String url) {
-        while (url.endsWith("/")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
     }
 
 }

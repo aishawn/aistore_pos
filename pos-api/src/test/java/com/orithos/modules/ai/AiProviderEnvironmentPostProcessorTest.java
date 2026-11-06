@@ -29,10 +29,10 @@ class AiProviderEnvironmentPostProcessorTest {
     }
 
     @Test
-    void dashscopeRemainsTheDefaultProvider() {
+    void remoteIsTheDefaultProvider() {
         var environment = environment(Map.of());
         processor.postProcessEnvironment(environment, new SpringApplication());
-        assertEquals("dashscope", environment.getProperty("spring.ai.model.chat"));
+        assertEquals("openai", environment.getProperty("spring.ai.model.chat"));
     }
 
     @Test

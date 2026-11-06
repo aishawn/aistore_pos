@@ -1,7 +1,6 @@
 package com.orithos.modules.ai.node;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
@@ -13,6 +12,7 @@ import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
@@ -37,14 +37,9 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void classifierRequestUsesEndpointForItsSelectedModel() {
-        DashScopeChatOptions textOptions = ClassifyQueryNode.classifyOptions(aiProperties("qwen-flash"));
-        assertEquals("qwen-flash", textOptions.getModel());
-        assertFalse(textOptions.getMultiModel());
-
-        DashScopeChatOptions multimodalOptions = ClassifyQueryNode.classifyOptions(aiProperties("qwen3.8-flash"));
-        assertEquals("qwen3.8-flash", multimodalOptions.getModel());
-        assertTrue(multimodalOptions.getMultiModel());
+    void classifierUsesConfiguredModelThroughRemoteOpenAiCompatibleClient() {
+        OpenAiChatOptions options = ClassifyQueryNode.classifyOptions(aiProperties("qwen-flash"));
+        assertEquals("qwen-flash", options.getModel());
     }
 
     @Test

@@ -74,7 +74,7 @@ public class AiCommandParser {
     }
 
     /**
-     * DashScope text generation can return structured output as a JSON object,
+     * The remote model can return structured output as a JSON object,
      * a JSON string, or a provider envelope containing one of those forms.
      * Unwrap only the known transport fields; the command DTO remains strict
      * so model-controlled fields still cannot bypass validation.

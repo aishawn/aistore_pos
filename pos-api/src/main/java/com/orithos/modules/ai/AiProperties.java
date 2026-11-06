@@ -6,13 +6,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AiProperties(
         boolean enabled,
         String graphName,
-        /** DashScope ASR model for Voice → text (default qwen3-asr-flash). */
+/** Remote ASR model for Voice → text (default qwen3-asr-flash). */
         String transcriptionModel,
-        /** DashScope vision model for wine-label OCR (default qwen-vl-plus). */
+/** Remote vision model for wine-label OCR (default qwen-vl-plus). */
         String visionModel,
         /**
          * Optional lighter model for intent classify only. Empty = use the primary
-         * {@code spring.ai.dashscope.chat.options.model} (usually qwen-plus).
+* The remote AI Gateway chat model (usually qwen-plus).
          */
         String classifyModel,
         double temperature,

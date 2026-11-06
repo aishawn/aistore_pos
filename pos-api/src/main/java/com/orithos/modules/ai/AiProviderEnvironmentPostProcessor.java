@@ -15,13 +15,11 @@ public class AiProviderEnvironmentPostProcessor implements EnvironmentPostProces
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String provider = environment.getProperty("AI_PROVIDER", "dashscope").trim().toLowerCase();
-        String modelProvider = switch (provider) {
-            case "remote" -> "openai";
-            case "dashscope" -> "dashscope";
-            default -> throw new IllegalStateException("AI_PROVIDER must be 'remote' or 'dashscope'");
-        };
+        String provider = environment.getProperty("AI_PROVIDER", "remote").trim().toLowerCase();
+        if (!"remote".equals(provider)) {
+            throw new IllegalStateException("AI_PROVIDER must be 'remote'; local providers are not supported");
+        }
         environment.getPropertySources().addFirst(new MapPropertySource(PROPERTY_SOURCE,
-                Map.of(CHAT_MODEL_PROPERTY, modelProvider)));
+                Map.of(CHAT_MODEL_PROPERTY, "openai")));
     }
 }
