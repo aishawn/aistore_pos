@@ -33,7 +33,7 @@ const requestExamples = {
   Refund: {
     method: "POST",
     path: "/sales:batch",
-    body: [{ sourceId: "b9f5ee23-6541-4871-8be9-09203727f148", orderUuid: "b9f5ee23-6541-4871-8be9-09203727f148", refundOfOrderId: 9001, configId: 171, sessionId: 141, paymentMethodId: 312, customerId: null, tendered: 21.99, expectedQuote: "REFUND_QUOTE_SIGNATURE", lines: [{ productId: 671846, quantity: 1 }] }],
+    body: [{ sourceId: "b9f5ee23-6541-4871-8be9-09203727f148", orderUuid: "b9f5ee23-6541-4871-8be9-09203727f148", refundOfOrderId: 9001, configId: 171, sessionId: 141, paymentMethodId: 312, customerId: null, tendered: 21.99, lines: [{ productId: 671846, quantity: -1, refundedOrderLineId: 9876 }] }],
   },
   "Count inventory": {
     method: "POST",
