@@ -574,6 +574,7 @@ export async function POST(request: NextRequest) {
         const productRows = items as ShopfrontProductRow[];
         const productIds = productRows.map((item) => Number(item.id)).filter(Number.isSafeInteger);
         if (sourceStore) {
+          let enrichmentStep = "page templates";
           try {
             const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
             const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
@@ -585,6 +586,7 @@ export async function POST(request: NextRequest) {
               return ref.startsWith(`${sourceStore}:`) ? [ref.slice(sourceStore.length + 1)] : [];
             });
             if (sourceIds.length) {
+              enrichmentStep = "source products";
               const sourceProducts = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id"], limit: sourceIds.length, context: companyContext });
               const sourceDetails = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               const sourcePricing = await odooRpc<Array<{ source_id: string; case_quantity?: number; price?: number | false; prices?: unknown }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "case_quantity", "price", "prices"], limit: sourceIds.length, context: companyContext }).catch(() => []);
@@ -600,6 +602,7 @@ export async function POST(request: NextRequest) {
               const costsBySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
               const levelsBySource = new Map(inventoryLevels.map((row) => [row.source_product_id, row]));
               const inventoryBySource = new Map(sourceInventory.map((row) => [row.source_product_id, { ...row, ...levelsBySource.get(row.source_product_id) }]));
+              enrichmentStep = "source mappings";
               const matchingTemplates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceIds.map((id) => `${sourceStore}:${id}`)], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref"], limit: Math.max(sourceIds.length * 2, 100), context: companyContext }) : [];
               const templateCountByRef = new Map<string, number>();
               for (const template of matchingTemplates) {
@@ -677,7 +680,12 @@ export async function POST(request: NextRequest) {
                 }
               }
             }
-          } catch {
+          } catch (error) {
+            console.error("Shopfront product enrichment failed", {
+              store: sourceStore,
+              step: enrichmentStep,
+              error: error instanceof Error ? error.name : "unknown error",
+            });
             for (const product of productRows) {
               product.shopfront_source_name = null;
               product.shopfront_source_sku = null;
@@ -693,6 +701,7 @@ export async function POST(request: NextRequest) {
               product.shopfront_case_quantity = null;
               product.shopfront_cost_synced_at = null;
               product.shopfront_data_status = "unavailable";
+              product.shopfront_enrichment_failure_stage = enrichmentStep;
               product.performance_30d = null;
             }
           }
