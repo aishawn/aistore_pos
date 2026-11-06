@@ -15,7 +15,7 @@ export function setStoredVoiceLang(lang: VoiceLang) {
   localStorage.setItem(VOICE_LANG_KEY, lang);
 }
 
-/** Map UI BCP-47 to DashScope ASR language (omit auto on server with "auto"). */
+/** Map UI BCP-47 to the remote ASR language codes (omit auto on server). */
 export function toAsrLang(lang: VoiceLang): string {
   return lang.startsWith("zh") ? "zh" : "en";
 }

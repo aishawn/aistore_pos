@@ -30,11 +30,11 @@ const runtimePassword = process.env.INITIAL_ADMIN_PASSWORD;
 const checks = [];
 const record = (name, status, evidence = "") => checks.push({ name, status, evidence });
 const hasPassword = Boolean(runtimePassword || env.INITIAL_ADMIN_PASSWORD);
-const hasDashScopeKey = Boolean(env.AI_DASHSCOPE_API_KEY);
+const hasRemoteAiToken = Boolean(env.AI_SERVICE_TOKEN);
 const localAiEnabled = String(env.AI_ENABLED ?? "false").toLowerCase() === "true";
 
 record("local env AI_ENABLED", localAiEnabled ? "INFO" : "INFO", localAiEnabled ? "true" : "false");
-record("local env DashScope key present", hasDashScopeKey ? "PASS" : "BLOCKED", hasDashScopeKey ? "set" : "missing — do not enable production AI");
+record("remote AI gateway token present", hasRemoteAiToken ? "PASS" : "BLOCKED", hasRemoteAiToken ? "set" : "missing — do not enable production AI");
 record("checklist doc", fs.existsSync(path.join(root, "docs", "AI_PRODUCTION_ENABLEMENT.md")) ? "PASS" : "FAIL", "docs/AI_PRODUCTION_ENABLEMENT.md");
 
 const browser = await chromium.launch({ headless: true });
@@ -129,7 +129,7 @@ try {
             record(
               "enabled NLQ API",
               "FAIL",
-              "AI_ENABLED=true but graph assistant unavailable (50301) — check DashScope key and PosAssistantGraphService registration",
+              "AI_ENABLED=true but graph assistant unavailable (50301) — check AI_SERVICE_TOKEN and remote gateway configuration",
             );
             record(
               "provider readiness guard",
@@ -188,9 +188,9 @@ const output = {
   scope: "AI enablement gate + price suggestions surface; production AI flip still requires Dokploy secrets",
   status: hardFails === 0 ? "PASS" : "FAIL",
   checks,
-  nextStep: hasDashScopeKey
+  nextStep: hasRemoteAiToken
     ? "Run isolation model UAT with AI_ENABLED=true on a non-production stack, then Dokploy flip per AI_PRODUCTION_ENABLEMENT.md"
-    : "Set AI_DASHSCOPE_API_KEY in Dokploy/.env (never commit), then re-run this gate",
+    : "Set AI_SERVICE_TOKEN in Dokploy/.env to the AI Gateway token (never commit), then re-run this gate",
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)

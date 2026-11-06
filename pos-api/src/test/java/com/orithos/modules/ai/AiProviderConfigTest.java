@@ -9,15 +9,15 @@ class AiProviderConfigTest {
 
     @Test
     void acceptsHttpsProviderHostWithoutPath() {
-        assertTrue(AiProviderConfig.isValidBaseUrl("https://dashscope.aliyuncs.com"));
-        assertTrue(AiProviderConfig.isValidBaseUrl("https://dashscope.aliyuncs.com/"));
+        assertTrue(AiProviderConfig.isValidBaseUrl("https://ai.orithos.com.au"));
+        assertTrue(AiProviderConfig.isValidBaseUrl("https://ai.orithos.com.au/"));
     }
 
     @Test
     void rejectsProviderApiPathsAndUnsafeHosts() {
-        assertFalse(AiProviderConfig.isValidBaseUrl("https://dashscope.aliyuncs.com/api/v1"));
-        assertFalse(AiProviderConfig.isValidBaseUrl("http://dashscope.aliyuncs.com"));
-        assertFalse(AiProviderConfig.isValidBaseUrl("https://dashscope.aliyuncs.com?key=secret"));
+        assertFalse(AiProviderConfig.isValidBaseUrl("https://ai.orithos.com.au/api/v1"));
+        assertFalse(AiProviderConfig.isValidBaseUrl("http://ai.orithos.com.au"));
+        assertFalse(AiProviderConfig.isValidBaseUrl("https://ai.orithos.com.au?key=secret"));
         assertFalse(AiProviderConfig.isValidBaseUrl("not a url"));
     }
 }

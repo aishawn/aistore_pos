@@ -1023,7 +1023,7 @@ export interface TranscriptionResponse {
   lang: string;
 }
 
-/** Cloud STT via DashScope (POST multipart). The caller shows a retry/type message on failure. */
+/** Cloud STT via the POS backend's remote AI Gateway (POST multipart). */
 export async function transcribeAudio(
   blob: Blob,
   lang?: string | null,

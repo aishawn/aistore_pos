@@ -2,6 +2,8 @@
 
 本文档说明 Orithos POS 后端（`pos-api`）中 **Spring AI Alibaba Graph** 的集成方式、配置方法与使用示例。
 
+> 模型供应商说明已更新：POS 只使用 Spring AI OpenAI-compatible client 调用独立 `orithos-ai-services`。POS 不再配置或持有 DashScope key；下方旧 DashScope 示例仅用于理解历史迁移背景，当前部署配置以 `pos-api/.env.example` 和 `application.yml` 为准。
+
 ## 概述
 
 [Spring AI Alibaba Graph](https://github.com/alibaba/spring-ai-alibaba/tree/main/spring-ai-alibaba-graph-core) 是阿里巴巴开源的 Graph 工作流引擎，用于编排多步骤、有状态的 AI 应用。与单次问答不同，Graph 将流程拆分为多个**节点（Node）**，通过**边（Edge）**连接，并在**共享状态（State）**中传递数据。
@@ -23,7 +25,7 @@ START → classify（意图分类）→ respond（生成回答）→ END
 | Java | 21 |
 | spring-ai-bom | 1.1.2 |
 | spring-ai-alibaba-bom | 1.1.2.2 |
-| 模型提供商 | 阿里云百炼 DashScope |
+| 模型调用入口 | 独立 Orithos AI Gateway（OpenAI-compatible） |
 
 ## Maven 依赖
 
@@ -52,8 +54,8 @@ START → classify（意图分类）→ respond（生成回答）→ END
   <artifactId>spring-ai-alibaba-graph-core</artifactId>
 </dependency>
 <dependency>
-  <groupId>com.alibaba.cloud.ai</groupId>
-  <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+  <groupId>org.springframework.ai</groupId>
+  <artifactId>spring-ai-starter-model-openai</artifactId>
 </dependency>
 ```
 
@@ -102,14 +104,11 @@ Graph 运行时维护以下状态键：
 复制 `pos-api/.env.example` 为 `pos-api/.env`，按需添加：
 
 ```env
-# 启用 AI 助手（默认 false，不影响 POS 主功能）
+# 启用 POS AI 功能
 AI_ENABLED=true
-
-# 阿里云百炼 API Key（在百炼控制台获取）
-AI_DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxx
-
-# 可选，默认 qwen-plus
-AI_DASHSCOPE_MODEL=qwen-plus
+AI_PROVIDER=remote
+AI_SERVICE_BASE_URL=https://ai.orithos.com.au
+AI_SERVICE_TOKEN=<与 AI Gateway 配置一致>
 ```
 
 ### application.yml
@@ -119,11 +118,13 @@ AI_DASHSCOPE_MODEL=qwen-plus
 ```yaml
 spring:
   ai:
-    dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY:}
+    openai:
+      api-key: ${AI_SERVICE_TOKEN:}
+      base-url: ${AI_SERVICE_BASE_URL:https://ai.orithos.com.au}/v1/provider
       chat:
+        completions-path: /chat/completions
         options:
-          model: ${AI_DASHSCOPE_MODEL:qwen-plus}
+          model: ${AI_GATEWAY_PRIMARY_MODEL:qwen-plus}
 
 app:
   ai:
@@ -135,13 +136,13 @@ app:
 
 为避免未配置 API Key 时应用无法启动：
 
-1. 主应用 `OrithosApplication` **排除**了 DashScope 全部自动配置
-2. 仅当 `app.ai.enabled=true` 时，`PosAssistantGraphConfig` 通过 `@ImportAutoConfiguration` 加载 Chat 相关配置
+1. Spring AI OpenAI-compatible client 只连接远程 AI Gateway
+2. `AI_PROVIDER` 固定为 `remote`，不支持 POS 直连模型供应商
 
 因此：
 
 - **未启用 AI**：POS 后端正常启动，AI 接口返回 503 提示
-- **启用 AI**：需同时设置 `AI_ENABLED=true` 和有效的 `AI_DASHSCOPE_API_KEY`
+- **启用 AI**：设置 `AI_ENABLED=true`、`AI_PROVIDER=remote` 和有效的 `AI_SERVICE_TOKEN`
 
 ## API 使用
 
