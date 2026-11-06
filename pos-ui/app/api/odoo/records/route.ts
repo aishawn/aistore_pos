@@ -576,48 +576,64 @@ export async function POST(request: NextRequest) {
         if (sourceStore) {
           try {
             const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
-            const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "name", "shopfront_source_ref", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }) : [];
+            const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
+            const templateDetails = templateIds.length
+              ? await odooRpc<Array<{ id: number; name?: string; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "name", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }).catch(() => [])
+              : [];
             const sourceIds = templates.flatMap((template) => {
               const ref = typeof template.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
               return ref.startsWith(`${sourceStore}:`) ? [ref.slice(sourceStore.length + 1)] : [];
             });
             if (sourceIds.length) {
-              const sourceFields = ["source_id", "name", "sku", "category", ...(canReadProductCost ? ["cost"] : []), "case_quantity", "price", "prices", "source_status", "synced_at"];
-              const sourceProducts = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; cost?: number | false; case_quantity?: number; price?: number | false; prices?: unknown; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: sourceFields, limit: sourceIds.length, context: companyContext });
-              const sourceInventory = await odooRpc<Array<{ source_product_id: string; quantity?: number; single_level?: number; case_level?: number; snapshot_at?: string }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "single_level", "case_level", "snapshot_at"], limit: sourceIds.length, context: companyContext });
+              const sourceProducts = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id"], limit: sourceIds.length, context: companyContext });
+              const sourceDetails = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
+              const sourcePricing = await odooRpc<Array<{ source_id: string; case_quantity?: number; price?: number | false; prices?: unknown }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "case_quantity", "price", "prices"], limit: sourceIds.length, context: companyContext }).catch(() => []);
+              const sourceCosts = canReadProductCost
+                ? await odooRpc<Array<{ source_id: string; cost?: number | false }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "cost"], limit: sourceIds.length, context: companyContext }).catch(() => [])
+                : [];
+              const sourceInventory = await odooRpc<Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
+              const inventoryLevels = await odooRpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               const bySource = new Map(sourceProducts.map((row) => [row.source_id, row]));
-              const inventoryBySource = new Map(sourceInventory.map((row) => [row.source_product_id, row]));
+              const detailsBySource = new Map(sourceDetails.map((row) => [row.source_id, row]));
+              const pricingBySource = new Map(sourcePricing.map((row) => [row.source_id, row]));
+              const templateDetailsById = new Map(templateDetails.map((row) => [row.id, row]));
+              const costsBySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
+              const levelsBySource = new Map(inventoryLevels.map((row) => [row.source_product_id, row]));
+              const inventoryBySource = new Map(sourceInventory.map((row) => [row.source_product_id, { ...row, ...levelsBySource.get(row.source_product_id) }]));
               const matchingTemplates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceIds.map((id) => `${sourceStore}:${id}`)], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref"], limit: Math.max(sourceIds.length * 2, 100), context: companyContext }) : [];
               const templateCountByRef = new Map<string, number>();
               for (const template of matchingTemplates) {
                 if (typeof template.shopfront_source_ref === "string") templateCountByRef.set(template.shopfront_source_ref, (templateCountByRef.get(template.shopfront_source_ref) ?? 0) + 1);
               }
-              const sourceByTemplate = new Map(templates.map((template) => [template.id, typeof template.shopfront_source_ref === "string" ? bySource.get(template.shopfront_source_ref.slice(sourceStore.length + 1)) : undefined]));
               for (const template of templates) {
+                const detail = templateDetailsById.get(template.id);
+                if (detail) Object.assign(template, detail);
                 if (Array.isArray(template.pos_categ_ids)) template.pos_categ_ids = template.pos_categ_ids.filter((id) => Number.isSafeInteger(id));
               }
               for (const product of productRows) {
                 const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
                 const template = templates.find((item) => item.id === templateId);
-                const source = sourceByTemplate.get(templateId);
                 const sourceRef = typeof template?.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
                 const sourceId = sourceRef.startsWith(`${sourceStore}:`) ? sourceRef.slice(sourceStore.length + 1) : "";
                 const sourceProduct = sourceId ? bySource.get(sourceId) : undefined;
+                const sourceDetail = sourceId ? detailsBySource.get(sourceId) : undefined;
+                const sourcePrice = sourceId ? pricingBySource.get(sourceId) : undefined;
+                const sourceCost = sourceId ? costsBySource.get(sourceId) : undefined;
                 const sourceStock = sourceId ? inventoryBySource.get(sourceId) : undefined;
                 product.shopfront_source_ref = sourceRef || null;
                 product.shopfront_data_status = sourceProduct ? "available" : "missing";
                 const duplicateCount = sourceRef ? templateCountByRef.get(sourceRef) ?? 0 : 0;
                 product.shopfront_source_duplicate_count = duplicateCount;
                 product.shopfront_source_canonical = Boolean(sourceRef) && duplicateCount <= 1;
-                product.shopfront_cost = canReadProductCost && typeof source?.cost === "number" && Number.isFinite(source.cost) ? source.cost : null;
-                product.shopfront_case_quantity = typeof sourceProduct?.case_quantity === "number" && Number.isFinite(sourceProduct.case_quantity) && sourceProduct.case_quantity > 0 ? sourceProduct.case_quantity : null;
-                product.shopfront_cost_synced_at = sourceProduct?.synced_at ?? null;
-                product.shopfront_source_name = sourceProduct?.name ?? null;
-                product.shopfront_source_sku = sourceProduct?.sku ?? null;
-                product.shopfront_source_category = sourceProduct?.category ?? null;
-                product.shopfront_source_status = sourceProduct?.source_status ?? null;
-                product.shopfront_price = typeof sourceProduct?.price === "number" && Number.isFinite(sourceProduct.price) ? sourceProduct.price : null;
-                product.shopfront_price_tiers = Array.isArray(sourceProduct?.prices) ? sourceProduct.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
+                product.shopfront_cost = canReadProductCost && typeof sourceCost?.cost === "number" && Number.isFinite(sourceCost.cost) ? sourceCost.cost : null;
+                product.shopfront_case_quantity = typeof sourcePrice?.case_quantity === "number" && Number.isFinite(sourcePrice.case_quantity) && sourcePrice.case_quantity > 0 ? sourcePrice.case_quantity : null;
+                product.shopfront_cost_synced_at = sourceDetail?.synced_at ?? null;
+                product.shopfront_source_name = sourceDetail?.name ?? null;
+                product.shopfront_source_sku = sourceDetail?.sku ?? null;
+                product.shopfront_source_category = sourceDetail?.category ?? null;
+                product.shopfront_source_status = sourceDetail?.source_status ?? null;
+                product.shopfront_price = typeof sourcePrice?.price === "number" && Number.isFinite(sourcePrice.price) ? sourcePrice.price : null;
+                product.shopfront_price_tiers = Array.isArray(sourcePrice?.prices) ? sourcePrice.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
                 product.shopfront_quantity = typeof sourceStock?.quantity === "number" && Number.isFinite(sourceStock.quantity) ? sourceStock.quantity : null;
                 product.shopfront_single_level = typeof sourceStock?.single_level === "number" && Number.isFinite(sourceStock.single_level) ? sourceStock.single_level : null;
                 product.shopfront_case_level = typeof sourceStock?.case_level === "number" && Number.isFinite(sourceStock.case_level) ? sourceStock.case_level : null;
