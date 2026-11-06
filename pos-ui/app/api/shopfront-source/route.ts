@@ -38,11 +38,10 @@ export async function GET(request: NextRequest) {
     const store = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
-    const base = (process.env.SHOPFRONT_CRAWLER_URL || "http://shopfront-crawler:8000").trim().replace(/\/+$/, "");
-    const usesSourceReport = resource.startsWith("report-") || resource === "dashboard-inventory";
+    const base = (process.env.SHOPFRONT_CRAWLER_BASE_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
     const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim();
-    if (usesSourceReport && !integrationToken) {
-      return NextResponse.json({ message: "Shopfront source reporting is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    if (!integrationToken) {
+      return NextResponse.json({ message: "Shopfront source access is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
     const target = new URL(endpoint.path, `${base}/`);
     target.searchParams.set("store", store);
@@ -53,8 +52,8 @@ export async function GET(request: NextRequest) {
 
     const upstream = await fetch(target, {
       cache: "no-store",
-      headers: usesSourceReport ? { Authorization: `Bearer ${integrationToken}` } : undefined,
-      signal: AbortSignal.timeout(usesSourceReport ? 90_000 : 15_000),
+      headers: { Authorization: `Bearer ${integrationToken}` },
+      signal: AbortSignal.timeout(resource.startsWith("report-") || resource === "dashboard-inventory" ? 90_000 : 15_000),
     });
     if (!upstream.ok) {
       return NextResponse.json({ message: upstream.status >= 500 ? "Shopfront source service is temporarily unavailable." : "Shopfront source request was rejected." }, { status: upstream.status >= 500 ? 503 : upstream.status, headers: { "Cache-Control": "no-store" } });

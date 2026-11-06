@@ -1,4 +1,4 @@
-# Orithos POS — full stack: PostgreSQL + Redis + Backend + Frontend
+# Orithos POS — full stack: PostgreSQL + Backend + Frontend
 #
 # Quick start (from repo root):
 #   copy .env.example .env   # edit JWT_SECRET etc. for production
@@ -29,39 +29,14 @@ services:
       context: .
       dockerfile: report-worker/Dockerfile
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
     environment:
       ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
       ODOO_DATABASE: ${ODOO_DATABASE:?Set ODOO_DATABASE in Dokploy}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
       REPORT_SNAPSHOT_TARGETS: ${REPORT_SNAPSHOT_TARGETS:-[]}
-      REPORT_REDIS_HOST: redis
+      REPORT_REDIS_URL: ${POS_REDIS_URL:?Set POS_REDIS_URL in Dokploy}
       REPORT_REDIS_DB: "1"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
-
-  forecast-service:
-    build:
-      context: ./forecast-service
-      dockerfile: Dockerfile
-    image: orithos-forecast-service:latest
-    restart: unless-stopped
-    expose:
-      - "8000"
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy} --appendonly yes --appendfsync everysec
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   backend:
     build:
@@ -72,19 +47,12 @@ services:
         build_metadata: ./build-metadata
     image: orithos-backend:latest
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
-      forecast-service:
-        condition: service_started
     environment:
       RUNTIME_ENVIRONMENT: ${RUNTIME_ENVIRONMENT:-production}
       POSTGRESQL_URL: ${POSTGRESQL_URL:?Set POSTGRESQL_URL in Dokploy}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
+      SPRING_DATA_REDIS_URL: ${POS_REDIS_URL:?Set POS_REDIS_URL in Dokploy}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dokploy}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in Dokploy}
       SQL_INIT_MODE: never
@@ -92,7 +60,7 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in Dokploy}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
       APP_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
-      APP_TENANT_RESERVED_SLUGS: ${APP_TENANT_RESERVED_SLUGS:-www,app,api,odoo,cdn,support,mail,status}
+      APP_TENANT_RESERVED_SLUGS: ${APP_TENANT_RESERVED_SLUGS:-www,app,api,odoo,cdn,support,mail,status,shopfront,crawler}
       APP_TRIAL_DAYS: ${APP_TRIAL_DAYS:-14}
       APP_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
       APP_PLATFORM_OPERATOR_SLUG: ${APP_PLATFORM_OPERATOR_SLUG:-demo}
@@ -106,6 +74,7 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-remote}
       AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
       AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+      AI_FORECAST_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       # AI command parsing/preview is safe to expose for manual testing; execution remains off by default.
       AI_COMMANDS_ENABLED: ${AI_COMMANDS_ENABLED:-true}
       AI_COMMANDS_EXECUTION_ENABLED: ${AI_COMMANDS_EXECUTION_ENABLED:-false}
@@ -127,13 +96,13 @@ services:
       AI_REPLENISHMENT_SERVICE_FACTOR: ${AI_REPLENISHMENT_SERVICE_FACTOR:-1.65}
       AI_REPLENISHMENT_CASE_PACK: ${AI_REPLENISHMENT_CASE_PACK:-1}
       AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
-      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-http://forecast-service:8000}
+      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-https://ai.orithos.com.au}
       # Draft RFQs are a separate write gate from AI command execution.
       # Controlled Demo-only draft RFQs are enabled by default; the route still
       # requires the explicit host allowlist, so SKR remains read-only.
       AI_PURCHASE_DRAFT_ENABLED: "true"
       AI_PURCHASE_CONFIRM_ENABLED: ${AI_PURCHASE_CONFIRM_ENABLED:-false}
-      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-10000}
+      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-190000}
       AI_FORECAST_MAX_HISTORY_DAYS: ${AI_FORECAST_MAX_HISTORY_DAYS:-365}
       AI_FORECAST_MAX_PRODUCTS: ${AI_FORECAST_MAX_PRODUCTS:-2000}
       AI_REPORT_RO_USER: ${AI_REPORT_RO_USER:-orithos_ai_ro}
@@ -153,77 +122,9 @@ services:
       POS_API_WEBHOOK_ENCRYPTION_KEY: ${POS_API_WEBHOOK_ENCRYPTION_KEY:-}
       SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
-      SHOPFRONT_BUSINESS_WRITE_ENABLED: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:-true}
+      SHOPFRONT_BUSINESS_WRITE_ENABLED: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:-false}
       APP_SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       APP_SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
-
-  # Independent Shopfront synchronization worker. Its database and OAuth
-  # credentials are isolated from the POS application and persist across
-  # redeployments.
-  shopfront-crawler:
-    build:
-      context: ./shopfront_crawler
-      dockerfile: Dockerfile
-    image: orithos-shopfront-crawler:latest
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_started
-    expose:
-      - "8000"
-    environment:
-      SHOPFRONT_CLIENT_ID: ${SHOPFRONT_CLIENT_ID:-}
-      SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
-      SHOPFRONT_REDIRECT_URI: ${SHOPFRONT_REDIRECT_URI:-https://shopfront.orithos.com.au/oauth/shopfront/callback}
-      SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_sales_reports see_products see_history}
-      SHOPFRONT_ENABLE_ADVANCED_REPORTS: ${SHOPFRONT_ENABLE_ADVANCED_REPORTS:-false}
-      SHOPFRONT_ENABLE_SUPPLY_CHAIN: ${SHOPFRONT_ENABLE_SUPPLY_CHAIN:-false}
-      SHOPFRONT_ENABLE_CUSTOMERS: ${SHOPFRONT_ENABLE_CUSTOMERS:-false}
-      SHOPFRONT_STORES: ${SHOPFRONT_STORES:-skr:skr}
-      DATABASE_URL: ${SHOPFRONT_DATABASE_URL:-sqlite:////data/shopfront_crawler.db}
-      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
-      SYNC_TIMEZONE: ${SYNC_TIMEZONE:-Australia/Adelaide}
-      SYNC_DAILY_TIMES: ${SYNC_DAILY_TIMES:-23:00,02:30}
-      SYNC_FULL_INVENTORY_TIMES: ${SYNC_FULL_INVENTORY_TIMES:-23:00,02:30}
-      SYNC_DAILY_HOURS: ${SYNC_DAILY_HOURS:-6,23}
-      SYNC_DAILY_MINUTE: ${SYNC_DAILY_MINUTE:-0}
-      SYNC_FULL_INVENTORY_HOURS: ${SYNC_FULL_INVENTORY_HOURS:-6}
-      SYNC_LOOKBACK_DAYS: ${SYNC_LOOKBACK_DAYS:-2}
-      HISTORY_CHUNK_DAYS: ${HISTORY_CHUNK_DAYS:-14}
-      SHOPFRONT_HISTORY_START_YEAR: ${SHOPFRONT_HISTORY_START_YEAR:-2010}
-      POS_API_BASE_URL: ${SHOPFRONT_POS_API_BASE_URL:-http://backend:8080}
-      POS_API_TOKEN: ${SHOPFRONT_POS_API_TOKEN:-}
-      SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
-      POS_IMPORT_ENABLED: ${SHOPFRONT_POS_IMPORT_ENABLED:-true}
-      # Keep the crawler's formal-write flag explicit. Older deployments only
-      # exposed ODOO_BUSINESS_WRITE_ENABLED, while the crawler reads the
-      # POS_BUSINESS_WRITE_ENABLED setting directly.
-      POS_BUSINESS_WRITE_ENABLED: ${POS_BUSINESS_WRITE_ENABLED:-${ODOO_BUSINESS_WRITE_ENABLED:-false}}
-      ODOO_API_BASE_URL: ${ODOO_API_BASE_URL:-https://odoo.orithos.com.au}
-      ODOO_API_TOKEN: ${ODOO_API_TOKEN:-}
-      ODOO_API_DATABASE: ${ODOO_API_DATABASE:-aipos_uat}
-      ODOO_IMPORT_ENABLED: ${ODOO_IMPORT_ENABLED:-true}
-      ODOO_BUSINESS_WRITE_ENABLED: ${ODOO_BUSINESS_WRITE_ENABLED:-false}
-      POS_UI_NOTIFY_URL: ${POS_UI_NOTIFY_URL:-http://frontend:3000/api/internal/shopfront-sync-notify}
-      ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET: ${ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET:-${SHOPFRONT_INTEGRATION_TOKEN:-}}
-      REPORT_SYNC_NOTIFICATION_URL: ${REPORT_SYNC_NOTIFICATION_URL:-http://frontend:3000/api/internal/shopfront-sync-complete}
-      SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR: ${SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR:-}
-    volumes:
-      - shopfront-crawler-data:/data
-    labels:
-      - traefik.enable=true
-      # Keep an explicit router for the crawler host. The frontend wildcard
-      # router intentionally excludes this host, so the crawler must own both
-      # entrypoints independently of Dokploy's generated domain labels.
-      - traefik.http.routers.shopfront-crawler.rule=Host(`shopfront.orithos.com.au`)
-      - traefik.http.routers.shopfront-crawler.entrypoints=web
-      - traefik.http.routers.shopfront-crawler.service=shopfront-crawler-svc
-      - traefik.http.routers.shopfront-crawler-secure.rule=Host(`shopfront.orithos.com.au`)
-      - traefik.http.routers.shopfront-crawler-secure.entrypoints=websecure
-      - traefik.http.routers.shopfront-crawler-secure.priority=100
-      - traefik.http.routers.shopfront-crawler-secure.tls=true
-      - traefik.http.routers.shopfront-crawler-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.shopfront-crawler-svc.loadbalancer.server.port=8000
 
   frontend:
     build:
@@ -249,7 +150,7 @@ services:
     # In Compose, escape regex end-anchors as $$ so they survive interpolation.
     labels:
       - traefik.enable=true
-      - traefik.http.routers.aistorepos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`) && !Host(`shopfront.orithos.com.au`)
+      - traefik.http.routers.aistorepos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`) && !Host(`shopfront.orithos.com.au`) && !Host(`crawler.orithos.com.au`)
       - traefik.http.routers.aistorepos-tenant-secure.entrypoints=websecure
       - traefik.http.routers.aistorepos-tenant-secure.priority=1
       - traefik.http.routers.aistorepos-tenant-secure.tls=true
@@ -263,16 +164,15 @@ services:
       - traefik.http.services.aistorepos-tenant-svc.loadbalancer.passhostheader=true
     environment:
       REPORT_SNAPSHOT_TARGETS: ${REPORT_SNAPSHOT_TARGETS:-[]}
-      REPORT_REDIS_HOST: redis
+      REPORT_REDIS_URL: ${POS_REDIS_URL:?Set POS_REDIS_URL in Dokploy}
       REPORT_REDIS_DB: "1"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in Dokploy}
       RFQ_IDEMPOTENCY_DB: /var/lib/orithos/rfq/requests.sqlite
       INVENTORY_SNAPSHOT_ROOT: /var/lib/orithos/inventory-snapshots
       NODE_ENV: production
       RUNTIME_ENVIRONMENT: ${RUNTIME_ENVIRONMENT:-production}
       NEXT_TELEMETRY_DISABLED: "1"
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
-      SHOPFRONT_CRAWLER_URL: ${SHOPFRONT_CRAWLER_URL:-http://shopfront-crawler:8000}
+      SHOPFRONT_CRAWLER_BASE_URL: ${SHOPFRONT_CRAWLER_BASE_URL:-https://crawler.orithos.com.au}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
       NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
       NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
@@ -282,8 +182,9 @@ services:
       AI_PURCHASE_DRAFT_ENABLED: "true"
       AI_PURCHASE_DRAFT_ALLOWED_HOSTS: "demo.orithos.com.au"
       AI_FORECAST_ENABLED: ${AI_FORECAST_ENABLED:-false}
-      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-http://forecast-service:8000}
-      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-10000}
+      AI_FORECAST_BASE_URL: ${AI_FORECAST_BASE_URL:-https://ai.orithos.com.au}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+      AI_FORECAST_READ_TIMEOUT_MS: ${AI_FORECAST_READ_TIMEOUT_MS:-190000}
       # Used by the server-side Odoo session/data bridge. Keep credentials out
       # of the browser bundle. Staff may sign in with their own Odoo users, or
       # an optional least-privilege service account can restore sessions.
@@ -303,5 +204,5 @@ services:
 volumes:
   inventory-snapshots:
   rfq-requests:
-  redis-data:
+  # Legacy crawler volume retained until the standalone database is reconciled and backed up.
   shopfront-crawler-data:

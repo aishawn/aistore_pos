@@ -11,13 +11,13 @@ RBAC, and Redis for token state + report caching.
 - Spring Boot 3.3 / Java 21
 - MyBatis (annotation mappers + one XML mapper for dynamic product filtering)
 - PostgreSQL 16+
-- Redis 7.0 (JWT refresh whitelist + access-token denylist, report cache)
+- External Redis 7.0 (JWT refresh whitelist + access-token denylist, report cache)
 - JWT (HS256, jjwt) + Spring Security (stateless)
 
 ## Prerequisites
 - JDK 21, Maven 3.9+
 - PostgreSQL database configured through `POSTGRESQL_URL`
-- Redis 7.0
+- Redis 7.0 reachable through `POS_REDIS_URL`
 
 ## Setup
 ```bash
@@ -28,7 +28,7 @@ psql "$POSTGRESQL_URL" -f src/main/resources/db/seed.sql
 
 # 2. Configure (env vars override application.yml)
 export DB_HOST=localhost DB_PORT=3306 DB_NAME=orithos DB_USER=root DB_PASSWORD=root
-export REDIS_HOST=localhost REDIS_PORT=6379
+export POS_REDIS_URL=redis://localhost:6379/0
 export JWT_SECRET="please-change-this-to-a-32-byte-plus-secret"
 
 # 3. Run

@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 const cache = new Map<PurchasingKind, { expires: number; rows: ShopfrontPurchasingRecord[] }>();
 const pending = new Map<PurchasingKind, Promise<ShopfrontPurchasingRecord[]>>();
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
+const crawlerBase = (process.env.SHOPFRONT_CRAWLER_BASE_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim() ?? "";
 
 async function loadRows(kind: PurchasingKind) {
   const cached = cache.get(kind);
@@ -21,8 +23,9 @@ async function loadRows(kind: PurchasingKind) {
   const loading = (async () => {
     const page = async (number: number) => {
       // Fixed internal destination and store: neither can be supplied by the caller.
-      const response = await fetch(`http://shopfront-crawler:8000/api/${kind}?store=skr&page=${number}&size=500`, {
+      const response = await fetch(`${crawlerBase}/api/${kind}?store=skr&page=${number}&size=500`, {
         cache: "no-store", signal: AbortSignal.timeout(25_000),
+        headers: { Authorization: `Bearer ${integrationToken}` },
       });
       if (!response.ok) throw new Error("Source unavailable");
       const body = await response.json();

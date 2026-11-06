@@ -46,7 +46,7 @@ orithopos/
 └── scripts/          Pilot / UAT / R2 helpers
 ```
 
-Local IDE: `pos-api/.env` from `pos-api/.env.example`; `pos-ui/.env.local` from `pos-ui/.env.local.example`; MySQL/Redis via `docker compose up -d mysql redis`.
+Local IDE: `pos-api/.env` from `pos-api/.env.example`; `pos-ui/.env.local` from `pos-ui/.env.local.example`; provide PostgreSQL and Redis externally.
 
 Toolchain: Node **24+** (the UI package declares `engines.node >=24`) and Java **21**. **Owner preference: do not run local builds.** Use narrow static checks such as `npm run typecheck`, targeted ESLint, and script syntax checks when relevant. Run application builds and full backend verification through Dokploy; report the exact source/deployment SHA and build evidence. The default live read-only UAT target is `https://demo.orithos.com.au`.
 
@@ -81,7 +81,7 @@ When resuming work, read this file, then the current handoff and the task-specif
 ## Deploy
 
 1. Confirm the intended commit is on `main`, then use the configured Dokploy deployment path (auto-deploy or the owner-provided webhook). Never deploy unrelated dirty working-tree files.
-2. Required Compose secrets (Dokploy): `DB_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS`, plus tenant vars as in `.env.example`.
+2. Required Compose secrets (Dokploy): `DB_PASSWORD`, `POS_REDIS_URL`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS`, plus tenant vars as in `.env.example`.
 3. Odoo auto-recover needs **both** frontend and backend: `ODOO_SERVICE_USERNAME`, `ODOO_SERVICE_PASSWORD`. Normal **Deploy** only — never **Fresh Volumes** to “fix” login.
 4. Build and verify in Dokploy; then run the read-only smoke checklist in [DEPLOYMENT.md](DEPLOYMENT.md) against the demo store and Integrations Connected. Verify the running/source SHA before calling a change deployed.
 5. If the webhook returns `Branch Not Match`, stop retries; verify the Dokploy repo, branch (`main`), repository root and Compose file in Source/Git settings before trying again.

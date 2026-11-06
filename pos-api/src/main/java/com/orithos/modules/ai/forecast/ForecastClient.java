@@ -24,13 +24,16 @@ public class ForecastClient {
     private final ObjectMapper mapper;
     private final HttpClient http;
     private final String baseUrl;
+    private final String serviceToken;
     private final Duration timeout;
 
     public ForecastClient(ObjectMapper mapper,
-                          @Value("${app.ai.forecast.base-url:http://forecast-service:8000}") String baseUrl,
-                          @Value("${app.ai.forecast.read-timeout-ms:10000}") long timeoutMs) {
+                          @Value("${app.ai.forecast.base-url:https://ai.orithos.com.au}") String baseUrl,
+                          @Value("${app.ai.forecast.service-token:}") String serviceToken,
+                          @Value("${app.ai.forecast.read-timeout-ms:190000}") long timeoutMs) {
         this.mapper = mapper;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
+        this.serviceToken = serviceToken == null ? "" : serviceToken.trim();
         this.timeout = Duration.ofMillis(Math.max(500, timeoutMs));
         this.http = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
@@ -46,12 +49,13 @@ public class ForecastClient {
             Duration requestTimeout = bodyBytes.length > LARGE_REQUEST_BYTES
                     ? timeout.compareTo(LARGE_REQUEST_TIMEOUT) > 0 ? timeout : LARGE_REQUEST_TIMEOUT
                     : timeout;
-            HttpRequest httpRequest = HttpRequest.newBuilder()
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/v1/forecast/sales"))
                     .timeout(requestTimeout)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(bodyBytes));
+            if (!serviceToken.isBlank()) requestBuilder.header("Authorization", "Bearer " + serviceToken);
+            HttpRequest httpRequest = requestBuilder.build();
             HttpResponse<String> response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 if (response.statusCode() == 422) {

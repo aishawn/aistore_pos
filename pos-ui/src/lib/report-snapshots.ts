@@ -57,12 +57,14 @@ const localRevisions = new Map<string, string>();
 let connection: Promise<ReturnType<typeof createClient> | null> | null = null;
 let unavailableUntil = 0;
 export async function reportRedis() {
-  if (!process.env.REPORT_REDIS_HOST || Date.now() < unavailableUntil) return null;
+  const redisUrl = process.env.REPORT_REDIS_URL?.trim();
+  if (!redisUrl || Date.now() < unavailableUntil) return null;
   if (!connection) {
     connection = (async () => {
       const client = createClient({
-        socket: { host: process.env.REPORT_REDIS_HOST, port: Number(process.env.REPORT_REDIS_PORT || 6379), connectTimeout: 1200, reconnectStrategy: false },
-        password: process.env.REDIS_PASSWORD, database: Number(process.env.REPORT_REDIS_DB || 1),
+        url: redisUrl,
+        database: Number(process.env.REPORT_REDIS_DB || 1),
+        socket: { connectTimeout: 1200, reconnectStrategy: false },
         disableOfflineQueue: true,
       });
       client.on("error", () => { connection = null; unavailableUntil = Date.now() + 5000; });

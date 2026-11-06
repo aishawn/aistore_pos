@@ -103,18 +103,21 @@ function purchaseDraftEnabled() {
 }
 
 function forecastBaseUrl() {
-  return (process.env.AI_FORECAST_BASE_URL?.trim() || "http://forecast-service:8000").replace(/\/+$/, "");
+  return (process.env.AI_FORECAST_BASE_URL?.trim() || "https://ai.orithos.com.au").replace(/\/+$/, "");
 }
 
 async function callForecastService(payload: unknown): Promise<ForecastServiceResponse> {
   try {
-    const timeout = Number(process.env.AI_FORECAST_READ_TIMEOUT_MS ?? 10_000);
+    const timeout = Number(process.env.AI_FORECAST_READ_TIMEOUT_MS ?? 190_000);
     const response = await fetch(`${forecastBaseUrl()}/v1/forecast/sales`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.AI_SERVICE_TOKEN ? { Authorization: `Bearer ${process.env.AI_SERVICE_TOKEN}` } : {}),
+      },
       body: JSON.stringify(payload),
       cache: "no-store",
-      signal: AbortSignal.timeout(Number.isFinite(timeout) ? timeout : 10_000),
+      signal: AbortSignal.timeout(Number.isFinite(timeout) ? timeout : 190_000),
     });
     if (!response.ok) throw new Error(`forecast service returned ${response.status}`);
     const result = await response.json() as ForecastServiceResponse;

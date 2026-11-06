@@ -2,6 +2,9 @@
 
 ## 2026-11-06
 
+- Removed POS Compose's local Redis and forecast-service containers. POS runtime now uses external `POS_REDIS_URL` (API database 0, report cache database 1) and routes forecast requests through the authenticated remote AI gateway. The AI repository adds a private upstream proxy for `/v1/forecast/sales`.
+- Local validation: POS UI typecheck passed; POS and AI Compose/Spring YAML parsed; AI gateway Python syntax, health/auth, and mocked authenticated-forwarding smoke checks passed; report cache worker integration passed 16 checks. Remote AI proxy deployment and exact-SHA Java 21 `mvn -B clean verify` remain pending; no live Redis/forecast call was made.
+
 - Added token schema/service with one-time plaintext creation, revoke, expiry and last-use tracking.
 - Added `/api/pos/v1` token management and Odoo-backed read endpoints for six resource families.
 - Added scope and vendor/company checks, allow-listed Odoo models/fields, pagination and fail-closed errors.

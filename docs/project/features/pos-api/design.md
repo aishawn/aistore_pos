@@ -8,6 +8,10 @@ Spring `pos-api` is the versioned REST facade. Browser JWT remains unchanged. CL
 
 The facade resolves the vendor's ready `odoo_company_id`, authenticates the configured service account, and issues `search_read` with `allowed_company_ids`. Resource models and returned fields are allow-listed. A missing binding or incomplete Odoo configuration fails closed.
 
+## External runtime services
+
+POS Compose does not run Redis or the forecast service. Backend, frontend report cache, and report worker receive the externally managed `POS_REDIS_URL`; Spring uses database 0 and report snapshots use database 1. Forecast requests from the frontend and the optional backend forecast client target `AI_FORECAST_BASE_URL` and authenticate through `AI_SERVICE_TOKEN`. The AI gateway exposes the forecast endpoint and forwards it privately to its `forecast-service`; provider and forecast containers remain owned by the AI deployment.
+
 ## Writes and asynchronous operations
 
 Batch POST accepts 1-500 records and requires `api.write`, `api.batch`, a unique `sourceId` per row, and an `Idempotency-Key`. A unique `(vendor, token, key)` row is reserved before the operation is queued. An identical retry returns the recorded response; a changed request returns 409. Expired keys may be reused. Partial results stay attached to a durable operation record. A service restart changes unfinished operations to `unknown`; callers must reconcile Odoo before retrying.

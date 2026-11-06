@@ -47,6 +47,7 @@ GEMINI.md
 # Docs / research (large, not needed at runtime)
 docs
 scripts
+!scripts/sync-pos-api-openapi.mjs
 
 # Docker files themselves (no need to copy into image)
 Dockerfile

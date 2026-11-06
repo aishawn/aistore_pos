@@ -12,7 +12,7 @@ spring:
       max-file-size: 8MB
       max-request-size: 8MB
   # 本地 IDE：复制 pos-api/.env.example → .env，启动时自动加载
-  # Docker：由 compose 注入 POSTGRESQL_URL、REDIS_HOST=redis 等环境变量
+  # Docker：由 compose 注入 POSTGRESQL_URL 与 SPRING_DATA_REDIS_URL
   config:
     import: optional:file:.env[.properties]
   # The remote OpenAI-compatible model is imported only when the POS AI graph is enabled.
@@ -28,10 +28,8 @@ spring:
   # Redis（JWT 黑名单、刷新令牌、报表缓存等）
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:6379}
-      password: "${REDIS_PASSWORD:orithos-redis}"
-      database: 0
+      url: ${SPRING_DATA_REDIS_URL:${POS_REDIS_URL:redis://127.0.0.1:6379/0}}
+      database: ${REDIS_DATABASE:0}
   # Optional SMTP for invite / password-reset emails (leave MAIL_HOST empty to disable)
   mail:
     host: ${MAIL_HOST:}
@@ -151,8 +149,9 @@ app:
       sync-initial-delay-ms: ${APP_AI_SNAPSHOT_SYNC_INITIAL_DELAY_MS:60000}
     forecast:
       enabled: ${AI_FORECAST_ENABLED:false}
-      base-url: ${AI_FORECAST_BASE_URL:http://forecast-service:8000}
-      read-timeout-ms: ${AI_FORECAST_READ_TIMEOUT_MS:10000}
+      base-url: ${AI_FORECAST_BASE_URL:https://ai.orithos.com.au}
+      service-token: ${AI_FORECAST_SERVICE_TOKEN:}
+      read-timeout-ms: ${AI_FORECAST_READ_TIMEOUT_MS:190000}
       max-history-days: ${AI_FORECAST_MAX_HISTORY_DAYS:365}
       max-products: ${AI_FORECAST_MAX_PRODUCTS:2000}
     decision:

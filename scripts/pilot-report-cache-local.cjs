@@ -69,12 +69,18 @@ const request = (params, cookie = 'orithos_odoo_session=fixture; orithos_access_
     });
     await new Promise(resolve => backend.listen(0, '127.0.0.1', resolve));
     const base = `http://localhost:${backend.address().port}`;
-    Object.assign(process.env, { REPORT_REDIS_HOST: '127.0.0.1', REPORT_REDIS_PORT: String(port), REPORT_REDIS_DB: '1', REDIS_PASSWORD: '',
+    Object.assign(process.env, { REPORT_REDIS_URL: `redis://127.0.0.1:${port}`, REPORT_REDIS_DB: '1',
       ODOO_BASE_URL: base, BACKEND_URL: base, ODOO_DATABASE: target.database, REPORT_SNAPSHOT_TARGETS: JSON.stringify([target]),
       ODOO_SERVICE_USERNAME: 'fixture', ODOO_SERVICE_PASSWORD: 'fixture-not-a-real-password' });
-    redisProcess = redisStart(); await pause(600);
-    client = createClient({ socket: { host: '127.0.0.1', port, reconnectStrategy: false }, database: 1 });
-    client.on('error', () => undefined); await client.connect();
+    redisProcess = redisStart();
+    let redisReady = false, redisStartError;
+    for (let attempt = 0; attempt < 40 && !redisReady; attempt++) {
+      const candidate = createClient({ socket: { host: '127.0.0.1', port, connectTimeout: 500, reconnectStrategy: false }, database: 1 });
+      candidate.on('error', () => undefined);
+      try { await candidate.connect(); client = candidate; redisReady = true; }
+      catch (error) { redisStartError = error; try { candidate.destroy(); } catch { /* Failed connection already closed the client. */ } await pause(250); }
+    }
+    if (!redisReady) throw redisStartError || new Error('Fixture Redis did not start');
     const lib = load(path.join(ui, 'src/lib/report-snapshots.ts'));
     const scope = { ...target, uid: 17, permissionScope: 'company-admin' };
     const prefix = lib.REPORT_PREFIX;

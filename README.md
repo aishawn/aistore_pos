@@ -6,7 +6,7 @@ Orithos POS REST API 与 Python CLI 状态见 [API feature 文档](docs/project/
 
 面向澳洲瓶装酒与精品零售的收银与进销存系统。收银员在同一套界面完成开单、结账、库存、采购和报表；店员还可以用自然语言问数、按酒标推荐在售葡萄酒，以及把供应商税票扫成收货单。
 
-前后端没有共享代码，只通过 HTTP 连接：浏览器访问 Next.js，业务与权限在 Spring Boot 里完成，数据落在 PostgreSQL，会话与缓存落在 Redis。
+前后端没有共享代码，只通过 HTTP 连接：浏览器访问 Next.js，业务与权限在 Spring Boot 里完成，数据落在 PostgreSQL；会话与缓存使用外部 Redis URI，由 Dokploy Secret 注入。
 
 ## 项目背景
 
@@ -65,7 +65,7 @@ orithopos/
 │       ├── config/      安全、启动迁移、种子数据
 │       ├── security/    JWT、当前用户
 │       └── modules/     按业务划分的模块
-├── docker-compose.yml   PostgreSQL + Redis + 后端 + 前端
+├── docker-compose.yml   PostgreSQL + 后端 + 前端（Redis 外部托管）
 ├── .env.example
 └── DEPLOYMENT.md
 ```

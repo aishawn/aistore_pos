@@ -22,6 +22,7 @@
 - No refund was attempted after the failed sale. Inventory, purchase, and webhook writes were not run. The operation reported zero created rows.
 - A follow-up code candidate now validates and sends flat integer tax IDs for sale and refund lines, with a regression test rejecting nested command lists. It remains unpushed pending the exact-candidate Java 21 remote gate.
 - The canonical OpenAPI spec is now stored in `pos-ui/openapi.yaml`, inside the frontend image build context. Its `prebuild` sync script refreshes both public copies; the documentation copy has the same SHA256 (`22b862e1…`).
+- Candidate `c696ae5dcfcba28020c27faf43e026f6c87ec11f` passed the exact-SHA GitHub Java 21 workflow (514 tests), then reached Dokploy. The Compose build failed only in the frontend stage because `pos-ui/.dockerignore` excluded `scripts/sync-pos-api-openapi.mjs`; the file is now explicitly allow-listed. This follow-up still needs a fresh exact-SHA Java 21 run and redeployment.
 
 ## Result
 

@@ -57,7 +57,7 @@ const route = compile("pos-ui/app/api/shopfront/purchasing/route.ts", {
   assert.equal(options?.method, undefined, "source requests must only read");
   assert.equal(new URL(url).searchParams.get("store"), "skr");
   if (sourceMode === "failed") return new Response("unavailable", { status: 503 });
-  if (sourceMode === "live") return fetch(url.replace("http://shopfront-crawler:8000", "https://shopfront.orithos.com.au"), options);
+  if (sourceMode === "live") return fetch(url.replace("http://shopfront-crawler:8000", "https://crawler.orithos.com.au"), options);
   const page = Number(new URL(url).searchParams.get("page"));
   const rows = Array.from({ length: page === 1 ? 500 : 1 }, (_, i) => ({ source_id: String((page - 1) * 500 + i), name: "Supplier", status: "ACTIVE" }));
   return Response.json({ data: rows, pagination: { total: 501 } });
