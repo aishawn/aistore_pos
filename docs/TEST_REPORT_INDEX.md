@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest POS API docs publish-source correction (`2026-11-07`): [OpenAPI runtime-source correction](test-sessions/2026-11-07-pos-api-openapi-build-source.md). All four OpenAPI copies enumerate 12 read resources and three write resources; Node 24 ESLint/typecheck pass; runtime verification is pending.
+
 Latest POS API bounded queue and purchase cost follow-up: [test session](test-sessions/2026-11-07-pos-api-bounded-queue-and-purchase-cost.md). Exact-SHA Java 21 verification and runtime acceptance are pending.
 
 POS API progress and validation are maintained in [feature progress](project/features/pos-api/progress.md) and [validation](project/features/pos-api/validation.md).

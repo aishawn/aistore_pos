@@ -93,7 +93,7 @@ paths:
   /{resource}:batch:
     post:
       summary: Submit a feature-gated batch operation
-      description: Sales (including validated full-sale refunds), inventory counts, and draft purchase orders. Server flags control writes per deployment. Purchase writes create drafts and do not receive stock.
+      description: Sales (including validated full-sale refunds), inventory counts, and draft purchase orders. Server flags control writes per deployment. Every purchase line requires numeric, non-negative unitCost mapped to Odoo price_unit; costs are never inferred. Purchase writes create drafts and do not receive stock.
       parameters:
         - in: path
           name: resource
@@ -112,7 +112,7 @@ paths:
                 - type: array
                   minItems: 1
                   maxItems: 500
-                  items: { type: object }
+                  items: { $ref: '#/components/schemas/BatchRecord' }
                 - type: object
                   required: [records]
                   properties:
@@ -120,7 +120,7 @@ paths:
                       type: array
                       minItems: 1
                       maxItems: 500
-                      items: { type: object }
+                      items: { $ref: '#/components/schemas/BatchRecord' }
       responses:
         '202': { description: Operation accepted; poll the returned operationId }
         '401': { description: Missing, expired, or revoked API token }
@@ -137,7 +137,16 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '200': { description: Operation status and item results }
+        '200':
+          description: Operation status and item results. Reconcile an unknown outcome in Odoo before retrying; completed_with_errors means some records failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [queued, running, completed, completed_with_errors, failed, unknown]
         '404': { description: Operation not found in this vendor }
   /webhooks:
     get:
@@ -197,6 +206,20 @@ paths:
       responses:
         '200': { description: Subscription revoked }
 components:
+  schemas:
+    BatchRecord:
+      type: object
+      properties:
+        sourceId: { type: string, minLength: 1, maxLength: 200 }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              unitCost:
+                type: number
+                minimum: 0
+                description: Required for every purchase line; maps to Odoo purchase.order.line.price_unit.
   securitySchemes:
     bearerAuth:
       type: http

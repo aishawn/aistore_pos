@@ -8,13 +8,12 @@ Require explicit purchase line cost, bound asynchronous operation queue capacity
 
 ## Evidence
 
-- Candidate SHA: pending.
-- Java 21 exact-candidate `mvn -B clean verify`: pending.
+- Candidate SHA: `325c40a622ad11f99a4ed0ba923b02098905a44c`.
+- Java 21 exact-candidate `mvn -B clean verify`: not verified; the candidate was pushed to `main` at the owner's direction before the workflow result was available.
 - `python -m unittest discover -s tools/tests -v`: 4/4 PASS.
 - OpenAPI YAML schema checks and hash equality across the feature source and both published assets: PASS.
 - `git diff --check`: PASS. Project docs checker: BLOCKED by 65 missing-file/link/evidence errors in the checkout.
-- Runtime deployment and UAT checks: pending.
-- Java 21 exact-candidate `mvn -B clean verify`: pending.
+- Runtime SHA on SKR and Demo: `325c40a622ad11f99a4ed0ba923b02098905a44c` for both frontend and backend. Authenticated UAT and business-write checks remain pending.
 - No business writes or webhook deliveries were performed. Webhook signature and DNS endpoint validation regression tests are included but await the Java 21 gate.
 
 ## Limitations

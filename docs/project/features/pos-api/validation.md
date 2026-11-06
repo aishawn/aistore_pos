@@ -2,11 +2,12 @@
 
 ## Bounded operations and purchase price validation (2026-11-07)
 
-- Candidate source: pending local `main` commit. Scope: purchase unit price validation and Odoo mapping, bounded async queue, idempotency replay HTTP status consistency, regression tests, API/CLI/OpenAPI documentation.
+- Candidate source: `325c40a622ad11f99a4ed0ba923b02098905a44c`. Scope: purchase unit price validation and Odoo mapping, bounded async queue, idempotency replay HTTP status consistency, regression tests, webhook signature/endpoint tests, API/CLI/OpenAPI documentation.
 - `python -m unittest discover -s tools/tests -v`: 4/4 PASS. OpenAPI YAML/schema validation and generated asset hash equality: PASS. `git diff --check`: PASS.
 - `python scripts/check-project-docs.py`: BLOCKED by 65 pre-existing missing-file/link/evidence errors in this checkout, including the project fact-library README/evidence sources; no unrelated files were fabricated to silence it.
-- Java 21 `mvn -B clean verify` on the exact candidate SHA: pending. `AGENTS.md` requires the remote pre-push gate; no local build is permitted.
-- Deployment/runtime SHA and authenticated UAT acceptance: pending. No sales, refunds, inventory adjustments, purchase orders, or webhook deliveries were performed for this change.
+- The candidate was pushed to `main` at the owner's explicit direction before the Java 21 workflow result was available. The exact-SHA GitHub Actions result remains unverified; no local Java build was run.
+- Dokploy runtime `/api/public/version` on SKR and Demo reports frontend/backend SHA `325c40a622ad11f99a4ed0ba923b02098905a44c`. The public OpenAPI response was still the older schema; the UI build-source correction is tracked in the next section and is awaiting deployment.
+- Authenticated UAT attestation and sales, refunds, inventory adjustments, draft purchases, idempotent replays, and webhook delivery were not run. No business records were written.
 - The checkout omits several files referenced by `AGENTS.md`, including `docs/project/maintenance.md`, `docs/project/README.md`, and the isolation runbook. The sibling maintenance checkout's runbook requires both Odoo `aipos_uat` and a dedicated POS PostgreSQL database; no missing isolation policy is inferred.
 
 ## Resource coverage and idempotency (2026-11-07)

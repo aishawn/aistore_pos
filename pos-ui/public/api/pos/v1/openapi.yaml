@@ -56,7 +56,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [products, inventory, customers, suppliers, sales, orders, purchases]
+            enum: [products, inventory, customers, suppliers, sales, orders, purchases, pricing, classifications, payment-methods, outlets, registers]
         - in: query
           name: offset
           schema: { type: integer, minimum: 0, default: 0 }
@@ -75,7 +75,7 @@ paths:
         - in: path
           name: resource
           required: true
-          schema: { type: string, enum: [products, inventory, customers, suppliers, sales, orders, purchases] }
+          schema: { type: string, enum: [products, inventory, customers, suppliers, sales, orders, purchases, pricing, classifications, payment-methods, outlets, registers] }
         - in: path
           name: id
           required: true

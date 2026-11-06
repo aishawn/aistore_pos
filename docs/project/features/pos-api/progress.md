@@ -6,7 +6,14 @@
 - Replaced the unbounded API operation executor queue with a 100-entry bounded queue and explicit rejection. Queue saturation follows the existing failed-operation response path.
 - Unified idempotency replay responses for normal lookup and concurrent reservation conflict: accepted work returns HTTP 202, stored terminal results return HTTP 200.
 - Added regression tests for purchase cost validation, replay status mapping, bounded executor saturation, exact-body webhook signatures, and resolved-address URL rejection. Updated API, CLI, OpenAPI assets, README, and design documentation. DNS-to-connect rebinding still requires outbound egress controls.
-- Exact-SHA Java 21 pre-push verification and deployment are pending. No business writes or webhook deliveries were performed for this follow-up.
+- Candidate `325c40a622ad11f99a4ed0ba923b02098905a44c` was pushed to `main` at the owner's direction and is deployed on SKR and Demo. The exact Java 21 workflow result is not available from this environment; no business writes or webhook deliveries were performed for this follow-up.
+
+## OpenAPI publish-source correction (2026-11-07)
+
+- Runtime `325c40a6` deployed on SKR and Demo, but `/api/pos/v1/openapi.yaml` still served the older schema because Next.js prebuild synchronizes from `pos-ui/openapi.yaml`; only the generated `public/` copies had changed.
+- Updated the canonical UI OpenAPI source and corrected the API-docs purchase example to include required `unitCost`; the operation-status text now includes partial and unknown outcomes.
+- OpenAPI now enumerates all 12 read resources and the three writable batch resources; the source and both generated public assets are byte-identical to the feature spec.
+- Node 24 targeted ESLint and TypeScript checks passed. Runtime confirmation of the updated downloadable schema awaits this UI-only follow-up deployment.
 
 ## 2026-11-06
 

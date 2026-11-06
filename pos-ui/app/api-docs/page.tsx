@@ -48,7 +48,7 @@ const requestExamples = {
   "Draft purchase": {
     method: "POST",
     path: "/purchases:batch",
-    body: [{ sourceId: "supplier-order-2026-11-06-001", supplierId: 450, lines: [{ productId: 671846, quantity: 12 }] }],
+    body: [{ sourceId: "supplier-order-2026-11-06-001", supplierId: 450, lines: [{ productId: 671846, quantity: 12, unitCost: 12.5 }] }],
   },
   "Poll operation": {
     method: "GET",
@@ -127,17 +127,17 @@ export default function ApiDocsPage() {
 
           <section id="batch-operations" className="scroll-mt-5">
             <h2 className="text-lg font-semibold">Batch operations</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Batch requests accept sales, full-sale refunds, inventory counts, and draft purchase orders when the corresponding server-side feature gate is enabled. Every record needs a stable sourceId. Accepted writes return an operation ID for status polling. Reuse the same Idempotency-Key and identical payload within 24 hours to replay the original result; changing the payload with that key returns 409.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Batch requests accept sales, full-sale refunds, inventory counts, and draft purchase orders when the corresponding server-side feature gate is enabled. Every record needs a stable sourceId. Each purchase line requires an explicit numeric unitCost. Accepted writes return an operation ID; states include queued, running, completed, completed_with_errors, failed, and unknown. Reconcile an unknown Odoo outcome before retrying. Reuse the same Idempotency-Key and identical payload within 24 hours to replay the original result; changing the payload with that key returns 409.</p>
             <div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 text-xs font-medium text-[var(--oh-muted)]"><Terminal size={14} /> Request example</div><select aria-label="Request example" value={exampleName} onChange={(event) => setExampleName(event.target.value as keyof typeof requestExamples)} className="h-9 max-w-full rounded border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-2 text-xs">{Object.keys(requestExamples).map((name) => <option key={name}>{name}</option>)}</select></div>
               <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--oh-muted)]"><span className="rounded bg-[var(--oh-surface-elevated)] px-2 py-1 font-semibold text-emerald-700">{selectedExample.method}</span><code className="break-all">{selectedExample.path}</code></div>
               {exampleName === "Create a sale" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">First call <code>/sales:quote</code> with the same config and lines, then replace the example signature. The POS validates current Odoo prices and tax before creating the order.</p>}
               {exampleName === "Refund" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">Refunds must reference an eligible original sale and include its complete refundable line set. Partial refunds are rejected.</p>}
               {exampleName === "Count inventory" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">Use the bound internal location and the latest expected quantity. A changed stock balance fails for reconciliation instead of overwriting newer stock.</p>}
-              {exampleName === "Draft purchase" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">This creates a draft purchase order. Receiving inventory remains a separate Odoo workflow.</p>}
+              {exampleName === "Draft purchase" && <p className="mb-2 text-xs leading-5 text-[var(--oh-muted)]">Provide the agreed supplier unit cost on every line. This creates a draft purchase order; receiving inventory remains a separate Odoo workflow.</p>}
               <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 font-mono text-xs leading-5">{example}</pre>
               <div className="mt-3 flex items-center gap-2"><input aria-label="API token for example" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Optional: preview with your token" className="h-9 min-w-0 flex-1 rounded border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-2 text-xs" /><button onClick={copyExample} type="button" title="Copy curl example" className="grid size-9 shrink-0 place-items-center rounded border border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface-elevated)]">{copied ? <Check size={15} /> : <Copy size={15} />}</button></div>
-              <p className="mt-2 text-xs text-[var(--oh-muted)]">Replace example IDs with records from this store. A write response includes an operationId; poll it with GET /operations/{`{id}`} until it is completed or failed. The token is used only in this page session and is not saved.</p>
+              <p className="mt-2 text-xs text-[var(--oh-muted)]">Replace example IDs with records from this store. Poll write status with GET /operations/{`{id}`}. The token is used only in this page session and is not saved.</p>
             </div>
           </section>
 
