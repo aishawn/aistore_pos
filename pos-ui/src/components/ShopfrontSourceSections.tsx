@@ -3,13 +3,22 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, RefreshCw } from "lucide-react";
 import { parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
+import { formatStoreEpoch } from "@/lib/odoo-date";
 
 type SourceRow = Record<string, unknown>;
 type SourceResponse = {
   data?: SourceRow[];
   pagination?: { total?: number };
   totals?: SourceRow;
-  coverage?: { inventory?: { complete?: boolean; snapshot_at?: string } };
+  coverage?: {
+    catalog?: { active_records?: number; current_records?: number };
+    inventory?: {
+      complete?: boolean;
+      snapshot_at?: string;
+      positive_quantity_total?: number | string;
+      negative_records?: number;
+    };
+  };
   fetched_at?: string;
   source?: string;
   source_version?: string;
@@ -82,18 +91,27 @@ function SourceState({ loading, error, onRetry, children }: { loading: boolean; 
   return <>{children}</>;
 }
 
-export function ShopfrontInventorySummary() {
-  const state = useSourceSection("report-inventory");
+export function ShopfrontInventorySummary({ odooProductCount }: { odooProductCount?: number }) {
+  const state = useSourceSection("report-inventory", "", true);
   const inventory = state.data?.coverage?.inventory;
+  const catalog = state.data?.coverage?.catalog;
   const totals = state.data?.totals ?? {};
+  const snapshotTime = inventory?.snapshot_at || state.data?.fetched_at;
+  const snapshotEpoch = snapshotTime ? Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(snapshotTime) ? snapshotTime : `${snapshotTime}Z`) : Number.NaN;
+  const snapshotAgeMs = Number.isFinite(snapshotEpoch) ? Date.now() - snapshotEpoch : null;
+  const snapshotIsStale = snapshotAgeMs !== null && snapshotAgeMs > 24 * 60 * 60 * 1000;
   return <SectionFrame title="Shopfront inventory snapshot" expanded={state.expanded} setExpanded={state.setExpanded}>
     <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
       {state.data && <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront active products</span><strong>{number(catalog?.active_records)}</strong></p>
+        {typeof odooProductCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Odoo saleable variants</span><strong>{number(odooProductCount)}</strong></p>}
+        <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront positive units</span><strong>{number(inventory?.positive_quantity_total)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Source rows</span><strong>{number(state.data.pagination?.total)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Item level</span><strong>{number(totals.item_level)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Case level</span><strong>{number(totals.case_level)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Last cost value</span><strong>{totals.value_last_cost_complete === 1 ? money(totals.value_last_cost) : "—"}</strong></p>
-        <p className="basis-full text-xs text-[var(--oh-muted)]">Snapshot {inventory?.complete === true ? "complete" : "coverage unverified"} · {inventory?.snapshot_at || state.data.fetched_at || "timestamp unavailable"} · excluded from Odoo inventory balances.</p>
+        <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront catalog products and Odoo variants use different scopes and are not a one-to-one count. Snapshot {inventory?.complete === true ? "complete" : "coverage unverified"} · {snapshotTime && Number.isFinite(snapshotEpoch) ? formatStoreEpoch(snapshotEpoch, "Australia/Adelaide") : "timestamp unavailable"}{inventory?.negative_records ? ` · ${number(inventory.negative_records)} negative source balances` : ""} · excluded from Odoo inventory balances.</p>
+        {snapshotIsStale && <p role="status" className="basis-full text-xs text-amber-800">This Shopfront inventory snapshot is over 24 hours old; it cannot confirm current Odoo stock.</p>}
       </div>}
       {state.data?.pagination?.total === 0 && <p role="status" className="mt-2 text-sm text-[var(--oh-muted)]">No Shopfront inventory records are available for this store.</p>}
     </SourceState>

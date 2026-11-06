@@ -878,7 +878,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
         </>
       )}
-      {connected === true && tab !== "stocktake" && (inventoryReport ? <ShopfrontInventorySummary /> : tab === "catalogue" ? <ShopfrontProductHistorySection /> : null)}
+      {connected === true && tab !== "stocktake" && (inventoryReport ? <ShopfrontInventorySummary odooProductCount={totals?.totalItems} /> : tab === "catalogue" ? <ShopfrontProductHistorySection /> : null)}
       </div>
       {connected === true && tab !== "stocktake" && (
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label={inventoryReport ? "Totals for all matching Odoo inventory variants" : "Totals for all matching products"}>
