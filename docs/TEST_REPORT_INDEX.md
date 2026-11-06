@@ -4,11 +4,11 @@ Latest inventory-label follow-up: [2026-11-06 inventory count and unit scope](te
 
 Latest purchasing navigation follow-up: [2026-11-06 purchase URL compatibility](test-sessions/2026-11-06-purchase-url-compatibility.md): historical runtime `43fb774d` confirms receipt-tab removal; the newer runtime `2c3784a7` also contains the legacy redirect. Browser navigation was not repeated.
 
-Latest API release (`2026-11-06`): Java 21 `mvn -B clean verify` PASS and Dokploy deployed exact SHA `cce3cb77` to Demo/SKR; UAT database and all three write flags confirmed. Authenticated business write/idempotency/webhook acceptance and test-sale cleanup remain pending. Project fact-library CI failed on 65 missing baseline files outside CAP-API. Details: [CAP-API validation](project/features/pos-api/validation.md).
+Latest API release status (`2026-11-06`): SKR and Demo report runtime SHA `4d99cae9`; API OpenAPI returns 200. Dokploy uses `aipos_uat` and all three write flags are enabled, but authenticated isolation preflight returned 409 because `RUNTIME_ENVIRONMENT=uat` was absent. That setting is now configured for the next deployment. Webhook exact-event matching fix is awaiting the exact-SHA Java 21 gate; no business write was attempted while the gate was closed. Details: [CAP-API validation](project/features/pos-api/validation.md).
 
 Latest POS API CLI follow-up (`2026-11-06`): REST fixture coverage 2/2 PASS on pushed commit `e9a01aad` (reads, operations, confirmation gate, idempotency header, token redaction). SKR/Demo runtime still reported `9265c7df` immediately after push; deployment not yet confirmed. Authenticated UAT writes and cleanup remain pending. Details: [CAP-API validation](project/features/pos-api/validation.md).
 
-Latest POS API CLI idempotency follow-up (`2026-11-06`): CLI fixture coverage 3/3 PASS, including reuse of an explicit idempotency key across separate invocations. Backend single-event webhook matching fix is an unverified local candidate and is not deployed. Authenticated Odoo writes remain NOT RUN.
+Latest POS API CLI idempotency follow-up (`2026-11-06`): CLI fixture coverage 3/3 PASS, including reuse of an explicit idempotency key across separate invocations. Webhook exact-event matching coverage is in the current backend candidate; authenticated Odoo writes remain NOT RUN pending deployment and a passing isolation preflight.
 
 Latest Shopfront reliability candidate: [feature validation](project/features/shopfront-sync/validation.md): crawler 129/129 and Odoo supply fixture 7/7 PASS; inventory page resume and daily mirror timeout regressions pass. POS UI typecheck/lint are blocked by absent dependencies; two UI tests cannot import `redis`. Not deployed; Shopfront-to-POS parity remains NOT RUN.
 
