@@ -577,9 +577,10 @@ export async function POST(request: NextRequest) {
           let enrichmentStep = "page templates";
           try {
             const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
-            const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
+            const templateDomain: unknown[] = [["id", "in", templateIds]];
+            const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [templateDomain], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
             const templateDetails = templateIds.length
-              ? await odooRpc<Array<{ id: number; name?: string; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "name", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }).catch(() => [])
+              ? await odooRpc<Array<{ id: number; name?: string; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [templateDomain], { fields: ["id", "name", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }).catch(() => [])
               : [];
             const sourceIds = templates.flatMap((template) => {
               const ref = typeof template.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
@@ -701,7 +702,6 @@ export async function POST(request: NextRequest) {
               product.shopfront_case_quantity = null;
               product.shopfront_cost_synced_at = null;
               product.shopfront_data_status = "unavailable";
-              product.shopfront_enrichment_failure_stage = enrichmentStep;
               product.performance_30d = null;
             }
           }
