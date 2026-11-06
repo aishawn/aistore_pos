@@ -23,12 +23,12 @@ public class PosApiTokenService {
     }
     public Optional<PosApiToken> authenticate(String raw) {
         if (raw == null || raw.isBlank()) return Optional.empty();
-        raw=raw.trim();
-        if(!raw.startsWith("op_")||raw.indexOf('_',3)<0)return Optional.empty();
-        String prefix=raw.substring(3,raw.indexOf('_',3));
+        String normalizedRaw = raw.trim();
+        if(!normalizedRaw.startsWith("op_")||normalizedRaw.indexOf('_',3)<0)return Optional.empty();
+        String prefix=normalizedRaw.substring(3,normalizedRaw.indexOf('_',3));
         if(prefix.length()!=16||!prefix.chars().allMatch(ch->Character.digit(ch,16)>=0))return Optional.empty();
         return jdbc.query("SELECT id,vendor_id,name,scopes,expires_at,revoked_at,token_hash FROM pos_api_token WHERE token_prefix=? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)", rs -> {
-            if (!rs.next() || !encoder.matches(raw, rs.getString("token_hash"))) return Optional.empty();
+            if (!rs.next() || !encoder.matches(normalizedRaw, rs.getString("token_hash"))) return Optional.empty();
             jdbc.update("UPDATE pos_api_token SET last_used_at=CURRENT_TIMESTAMP WHERE id=?", rs.getLong("id"));
             return Optional.of(new PosApiToken(rs.getLong("id"), rs.getLong("vendor_id"), rs.getString("name"),
                     Set.of(rs.getString("scopes").split(" ")), rs.getTimestamp("expires_at") == null ? null : rs.getTimestamp("expires_at").toLocalDateTime(), null));
