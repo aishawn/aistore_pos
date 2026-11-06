@@ -17,7 +17,7 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
-      SHOPFRONT_CRAWLER_BASE_URL: ${SHOPFRONT_CRAWLER_BASE_URL:-https://crawler.orithos.com.au}
+      SHOPFRONT_CRAWLER_URL: ${SHOPFRONT_CRAWLER_URL:-https://crawler.orithos.com.au}
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
       REPORT_REDIS_URL: ${POS_REDIS_URL:?Set POS_REDIS_URL}
       REPORT_REDIS_DB: "1"

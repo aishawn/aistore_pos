@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const store = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
-    const base = (process.env.SHOPFRONT_CRAWLER_BASE_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+    const base = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
     const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim();
     if (!integrationToken) {
       return NextResponse.json({ message: "Shopfront source access is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });

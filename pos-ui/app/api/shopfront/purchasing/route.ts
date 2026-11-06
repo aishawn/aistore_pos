@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const cache = new Map<PurchasingKind, { expires: number; rows: ShopfrontPurchasingRecord[] }>();
 const pending = new Map<PurchasingKind, Promise<ShopfrontPurchasingRecord[]>>();
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
-const crawlerBase = (process.env.SHOPFRONT_CRAWLER_BASE_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+const crawlerBase = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
 const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim() ?? "";
 
 async function loadRows(kind: PurchasingKind) {
