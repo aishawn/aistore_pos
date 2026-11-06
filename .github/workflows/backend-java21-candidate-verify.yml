@@ -43,6 +43,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           test "$(git rev-parse HEAD)" = "$PARENT_SHA"
           printf '%s' "$CANDIDATE_BUNDLE_BASE64" | base64 --decode > "$RUNNER_TEMP/candidate.bundle"
           git bundle verify "$RUNNER_TEMP/candidate.bundle"
