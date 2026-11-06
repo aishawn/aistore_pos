@@ -149,6 +149,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-05-report-ledger-and-refunds | 2026-11-05 | Distinct sales ledgers, negative-total refunds, net sales and focused checks | 10/10 focused tests and typecheck PASS; docs checker, deployment, authenticated UI, CSV/print NOT RUN | [Report](test-sessions/2026-11-05-report-ledger-and-refunds.md) |
 | 2026-11-06-shopfront-refresh-reliability | 2026-11-06 | Report refresh/cache semantics and stale snapshot handling | Crawler 69/69, compileall, POS typecheck PASS; live health/coverage read-only PASS; source page parity and deployment NOT RUN | [Report](test-sessions/2026-11-06-shopfront-refresh-reliability.md) |
 | 2026-11-06-shopfront-live-inventory-coverage-followup | 2026-11-06 | Fresh source inventory coverage, staging ID parity and stale snapshot disclosure | Shopfront 10,849 active / 10,852 complete inventory rows / 51,526 positive units; staging IDs exact; 7/7 inventory tests; deployment pending | [Report](test-sessions/2026-11-06-shopfront-live-inventory-coverage-followup.md) |
+| 2026-11-07-shopfront-catalogue-reconciliation | 2026-11-07 | SKR Shopfront active product count vs Odoo variants and stock total | Read-only UAT: 10,849 active / 51,512 positive units; 11,005 exact stock comparisons / 0 mismatches; frontend helper tests 4/4 and typecheck PASS; Dokploy deployment pending | [Report](test-sessions/2026-11-07-shopfront-catalogue-reconciliation.md) |
 
 ## Classification rule
 

@@ -1,5 +1,14 @@
 # Shopfront Sync Validation
 
+## Product catalogue count reconciliation (2026-11-07)
+
+- Read-only `aipos_uat` audit, SKR company 5, location `UATPI/Stock`: 10,849 ACTIVE Shopfront products, 10,852 inventory rows, and 51,512 positive units. Positive units exclude negative balances; 5,373 inventory rows are negative. Latest inventory snapshot: `2026-11-06T16:22:09.877859`.
+- 11,005 uniquely mapped product stock rows matched exactly; 25 source references are ambiguous and 2 ACTIVE products have no canonical template. 281 mapped products have positive source cost but zero Odoo recorded cost. No data was changed.
+- Frontend change separates Shopfront source counts from Odoo product variant totals, includes shared company templates, labels source unavailability, and retains Odoo inventory-report values as a distinct source.
+- Local verification: Shopfront mapping/stock helper tests 4/4 PASS; `npm run typecheck` PASS; focused ESLint 0 errors / 9 existing `react-hooks/set-state-in-effect` warnings; `git diff --check` PASS.
+- The legacy `/purchases?state=purchase` URL is redirected to `/purchases` by the existing PurchasingWorkspace compatibility handler.
+- Dokploy Compose is bound to GitHub `main` with `autoDeploy=true`. Online deployment for this candidate is pending; the public version endpoint reported `7d824a2665c616d7463fec72cb3dd8f7a7d9afad` before push.
+
 ## Inventory report source alignment candidate (2026-11-06)
 
 - Inventory page and Dashboard KPI now consume one shared Shopfront Reporting API report result. A versioned cache rejects prior GraphQL-reconstructed rows; old cached values are refreshed before they can be shown as aligned. Dashboard and report pagination totals use the same case/item conversion and signed negative-stock rule.
