@@ -1,6 +1,6 @@
 # CAP-API Orithos POS API
 
-状态：已实现并部署到两个 POS 环境。API 位于 Spring `pos-api`，业务读取和写入只经过 Odoo JSON-RPC；旧 PostgreSQL Classic service 不在调用链中。
+状态：API、CLI 和文档代码已部署到两个 POS 环境；销售、退款、库存、采购写入以及批量幂等、webhook、异步操作的完整线上验收尚未完成。API 位于 Spring `pos-api`，业务读取和写入只经过 Odoo JSON-RPC；旧 PostgreSQL Classic service 不在调用链中。
 
 入口：`/api/pos/v1`。CLI：`tools/orithos-pos`。
 

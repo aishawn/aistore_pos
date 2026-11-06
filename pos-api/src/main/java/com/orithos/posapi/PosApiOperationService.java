@@ -41,9 +41,10 @@ public class PosApiOperationService {
         var errorDetails=mapper.createArrayNode();
         if(result.path("records").isArray())result.path("records").forEach(item->{if("failed".equals(item.path("status").asText()))errorDetails.add(item);});
         jdbc.update("UPDATE pos_api_operation SET status=?,result_json=?,created_count=?,updated_count=?,skipped_count=?,error_count=?,error_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",errors>0?"completed_with_errors":"completed",result.toString(),created,updated,skipped,errors,errorDetails.toString(),id);
-        webhooks.publish(jdbc.queryForObject("SELECT vendor_id FROM pos_api_operation WHERE id=?",Long.class,id),"operation.completed",Map.of("operationId",id.toString(),"created",created,"updated",updated,"skipped",skipped,"errors",errors));
+        publishSafely(id,"operation.completed",Map.of("operationId",id.toString(),"created",created,"updated",updated,"skipped",skipped,"errors",errors));
     }
-    public void fail(UUID id,String message) { jdbc.update("UPDATE pos_api_operation SET status='failed',error_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",mapper.createObjectNode().put("message",message==null?"operation failed":message).toString(),id);webhooks.publish(jdbc.queryForObject("SELECT vendor_id FROM pos_api_operation WHERE id=?",Long.class,id),"operation.failed",Map.of("operationId",id.toString(),"message",message==null?"operation failed":message)); }
+    public void fail(UUID id,String message) { jdbc.update("UPDATE pos_api_operation SET status='failed',error_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",mapper.createObjectNode().put("message",message==null?"operation failed":message).toString(),id);publishSafely(id,"operation.failed",Map.of("operationId",id.toString(),"message",message==null?"operation failed":message)); }
+    private void publishSafely(UUID id,String event,Map<String,Object> payload){try{Long vendor=jdbc.queryForObject("SELECT vendor_id FROM pos_api_operation WHERE id=?",Long.class,id);if(vendor!=null)webhooks.publish(vendor,event,payload);}catch(RuntimeException ignored){}}
     public Map<String,Object> get(UUID id,long vendorId) {
         return jdbc.query("SELECT id,resource,status,accepted,created_count,updated_count,skipped_count,error_count,result_json,error_json,created_at,updated_at FROM pos_api_operation WHERE id=? AND vendor_id=?",rs->{
             if(!rs.next()) return Map.of("operationId",id.toString(),"status","not_found");
