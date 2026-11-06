@@ -4001,7 +4001,7 @@ def sales_trend(store: str, from_date: date = Query(alias="from"), to_date: date
 
 
 @app.get("/api/sales")
-def sales(store: str, from_date: date | None = Query(None, alias="from"), to_date: date | None = Query(None, alias="to"), page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=200), snapshot_id: int | None = Query(None, ge=1), db: Session = Depends(get_db)) -> dict:
+def sales(store: str, from_date: date | None = Query(None, alias="from"), to_date: date | None = Query(None, alias="to"), page: int = Query(1, ge=1), size: int = Query(50, ge=1, le=500), snapshot_id: int | None = Query(None, ge=1), db: Session = Depends(get_db)) -> dict:
     store_row = require_store(store, db)
     local_zone = ZoneInfo(store_row.timezone or settings.sync_timezone)
     filters: list[Any] = [Sale.store_key == store]

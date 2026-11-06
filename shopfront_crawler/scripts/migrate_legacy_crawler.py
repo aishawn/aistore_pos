@@ -374,7 +374,7 @@ def main() -> int:
         sale_count = 0
         sale_item_count = 0
         sale_ids: set[str] = set()
-        for rows, _ in page_rows(client, source, "/api/sales", source_headers, size=200):
+        for rows, _ in page_rows(client, source, "/api/sales", source_headers, size=500):
             sale_count += len(rows)
             for row in rows:
                 source_id = str(row.get("shopfront_sale_id") or "")
@@ -386,7 +386,7 @@ def main() -> int:
                     raise RuntimeError(f"Duplicate legacy sale ID: {source_id}")
                 sale_ids.add(source_id)
                 sale_item_count += len(items)
-            post_batches(client, target, target_headers, job_id, "sales", rows, batch_size=200)
+            post_batches(client, target, target_headers, job_id, "sales", rows, batch_size=500)
             print(f"sales: {sale_count}", flush=True)
         source_counts["sales"] = sale_count
         source_counts["sale_items"] = sale_item_count
