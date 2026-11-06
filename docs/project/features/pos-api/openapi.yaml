@@ -70,7 +70,7 @@ paths:
         '502': { description: Odoo read failed }
   /{resource}/{id}:
     get:
-      summary: Get a supported Odoo record
+      summary: Get a supported Odoo record; sale details include refund line data
       parameters:
         - in: path
           name: resource
