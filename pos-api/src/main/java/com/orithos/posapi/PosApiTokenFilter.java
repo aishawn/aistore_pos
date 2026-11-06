@@ -25,7 +25,11 @@ public class PosApiTokenFilter extends OncePerRequestFilter {
     }
     @Override protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
         String header=req.getHeader("Authorization");
-        String raw=header != null && header.startsWith("Bearer op_") ? header.substring(7) : null;
+        String raw=null;
+        if(header!=null){
+            String normalized=header.trim();
+            if(normalized.regionMatches(true,0,"Bearer ",0,7)) raw=normalized.substring(7).trim();
+        }
         var token=tokens.authenticate(raw);
         var tenant=TenantHolder.get();
         if(token.isEmpty()) { fail(res,401,"invalid_api_token"); return; }
