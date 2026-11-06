@@ -46,8 +46,13 @@ async function proxy(request: NextRequest, context: RouteContext) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  // Preserve machine-to-machine API tokens. Browser requests do not expose
+  // the HttpOnly access token, so fall back to the session cookie only when
+  // the caller did not supply an Authorization header.
+  const clientAuthorization = request.headers.get("authorization");
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
+  if (clientAuthorization) headers.set("authorization", clientAuthorization);
+  else if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
 
   // Shopfront is a service-token boundary and must not inherit a tenant Host.
   // Tenant-aware POS requests still forward the original host below.
