@@ -16,7 +16,7 @@ This repository deploys the Spring Boot + PostgreSQL + Redis services and the Ne
 6. Keep `APP_ODOO_ONLY_MODE=true` in the backend environment. This retires the unscoped Classic MySQL API surface with HTTP 410; the Odoo BFF routes, tenant lifecycle, platform admin and AI endpoints remain available. Do not disable it for a pilot tenant unless every retained Classic controller has a recorded tenant-scope review.
 
   6. Deploy and sign into Orithos. When service-account variables are configured, **Setup → Integrations** and **Register → Sell** should establish the Odoo session automatically; manual staff sign-in remains available as a fallback. Confirm that the expected POS configuration, open session, payment methods and products appear. Classic MySQL routes are hidden unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true` (debug only). Do not pilot dual-write.
-7. Optional AI: leave `AI_ENABLED=false` until DashScope is budgeted. Then set `AI_ENABLED=true`, `AI_DASHSCOPE_API_KEY`, and model URLs from `.env.example`. Invoice OCR save into Classic MySQL is disabled; use Odoo Purchases / Replenishment for draft RFQs.
+7. Optional AI: leave `AI_ENABLED=false` until the AI gateway is deployed and its token is configured. To use the remote service, set `AI_ENABLED=true`, `AI_PROVIDER=remote`, `AI_SERVICE_BASE_URL`, and `AI_SERVICE_TOKEN` (matching `AI_GATEWAY_API_TOKEN` in `orithos-ai-services`). POS does not need the model provider key. Invoice OCR save into Classic MySQL is disabled; use Odoo Purchases / Replenishment for draft RFQs.
 
 ## Orithos administrator account
 

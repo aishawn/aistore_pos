@@ -101,7 +101,7 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-noreply@orithos.com.au}
-      # AI assistant (DashScope). Defaults off; set AI_ENABLED=true + key in root .env
+      # AI assistant. Defaults off; remote mode uses AI_SERVICE_TOKEN.
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_PROVIDER: ${AI_PROVIDER:-dashscope}
       AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
