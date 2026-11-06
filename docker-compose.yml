@@ -126,6 +126,66 @@ services:
       APP_SHOPFRONT_INTEGRATION_ENABLED: ${SHOPFRONT_INTEGRATION_ENABLED:-false}
       APP_SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
 
+  # Temporary legacy source; remove after the standalone crawler is verified.
+  shopfront-crawler:
+    build:
+      context: ./shopfront_crawler
+      dockerfile: Dockerfile
+    image: orithos-shopfront-crawler:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    expose:
+      - "8000"
+    environment:
+      SHOPFRONT_CLIENT_ID: ${SHOPFRONT_CLIENT_ID:-}
+      SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
+      SHOPFRONT_REDIRECT_URI: ${SHOPFRONT_REDIRECT_URI:-https://shopfront.orithos.com.au/oauth/shopfront/callback}
+      SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_sales_reports see_products see_history}
+      SHOPFRONT_ENABLE_ADVANCED_REPORTS: ${SHOPFRONT_ENABLE_ADVANCED_REPORTS:-false}
+      SHOPFRONT_ENABLE_SUPPLY_CHAIN: ${SHOPFRONT_ENABLE_SUPPLY_CHAIN:-false}
+      SHOPFRONT_ENABLE_CUSTOMERS: ${SHOPFRONT_ENABLE_CUSTOMERS:-false}
+      SHOPFRONT_STORES: ${SHOPFRONT_STORES:-skr:skr}
+      DATABASE_URL: ${SHOPFRONT_DATABASE_URL:-sqlite:////data/shopfront_crawler.db}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      SYNC_TIMEZONE: ${SYNC_TIMEZONE:-Australia/Adelaide}
+      SYNC_DAILY_TIMES: ${SYNC_DAILY_TIMES:-23:00,02:30}
+      SYNC_FULL_INVENTORY_TIMES: ${SYNC_FULL_INVENTORY_TIMES:-23:00,02:30}
+      SYNC_DAILY_HOURS: ${SYNC_DAILY_HOURS:-6,23}
+      SYNC_DAILY_MINUTE: ${SYNC_DAILY_MINUTE:-0}
+      SYNC_FULL_INVENTORY_HOURS: ${SYNC_FULL_INVENTORY_HOURS:-6}
+      SYNC_LOOKBACK_DAYS: ${SYNC_LOOKBACK_DAYS:-2}
+      HISTORY_CHUNK_DAYS: ${HISTORY_CHUNK_DAYS:-14}
+      SHOPFRONT_HISTORY_START_YEAR: ${SHOPFRONT_HISTORY_START_YEAR:-2010}
+      POS_API_BASE_URL: ${SHOPFRONT_POS_API_BASE_URL:-http://backend:8080}
+      POS_API_TOKEN: ${SHOPFRONT_POS_API_TOKEN:-}
+      SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
+      POS_IMPORT_ENABLED: ${SHOPFRONT_POS_IMPORT_ENABLED:-true}
+      POS_BUSINESS_WRITE_ENABLED: ${POS_BUSINESS_WRITE_ENABLED:-${ODOO_BUSINESS_WRITE_ENABLED:-false}}
+      ODOO_API_BASE_URL: ${ODOO_API_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_API_TOKEN: ${ODOO_API_TOKEN:-}
+      ODOO_API_DATABASE: ${ODOO_API_DATABASE:-aipos_uat}
+      ODOO_IMPORT_ENABLED: ${ODOO_IMPORT_ENABLED:-true}
+      ODOO_BUSINESS_WRITE_ENABLED: ${ODOO_BUSINESS_WRITE_ENABLED:-false}
+      POS_UI_NOTIFY_URL: ${POS_UI_NOTIFY_URL:-http://frontend:3000/api/internal/shopfront-sync-notify}
+      ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET: ${ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET:-${SHOPFRONT_INTEGRATION_TOKEN:-}}
+      REPORT_SYNC_NOTIFICATION_URL: ${REPORT_SYNC_NOTIFICATION_URL:-http://frontend:3000/api/internal/shopfront-sync-complete}
+      SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR: ${SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR:-}
+    volumes:
+      - shopfront-crawler-data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.shopfront-crawler.rule=Host(`shopfront.orithos.com.au`)
+      - traefik.http.routers.shopfront-crawler.entrypoints=web
+      - traefik.http.routers.shopfront-crawler.service=shopfront-crawler-svc
+      - traefik.http.routers.shopfront-crawler-secure.rule=Host(`shopfront.orithos.com.au`)
+      - traefik.http.routers.shopfront-crawler-secure.entrypoints=websecure
+      - traefik.http.routers.shopfront-crawler-secure.priority=100
+      - traefik.http.routers.shopfront-crawler-secure.tls=true
+      - traefik.http.routers.shopfront-crawler-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.shopfront-crawler-svc.loadbalancer.server.port=8000
+
   frontend:
     build:
       context: ./pos-ui
