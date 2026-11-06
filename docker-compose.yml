@@ -186,6 +186,30 @@ services:
       - traefik.http.routers.shopfront-crawler-secure.tls.certresolver=letsencrypt
       - traefik.http.services.shopfront-crawler-svc.loadbalancer.server.port=8000
 
+  shopfront-legacy-migration:
+    image: python:3.12-slim
+    restart: "no"
+    depends_on:
+      shopfront-crawler:
+        condition: service_started
+    environment:
+      LEGACY_CRAWLER_URL: http://shopfront-crawler:8000
+      NEW_CRAWLER_URL: ${SHOPFRONT_CRAWLER_URL:-https://crawler.orithos.com.au}
+      SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
+      LEGACY_MIGRATION_TOKEN: ${LEGACY_MIGRATION_TOKEN:-}
+      LEGACY_MIGRATION_RUN: ${LEGACY_MIGRATION_RUN:-false}
+    volumes:
+      - ./shopfront_crawler/scripts/migrate_legacy_crawler.py:/migration/migrate_legacy_crawler.py:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        if [ "$${LEGACY_MIGRATION_RUN:-false}" != "true" ]; then
+          echo "LEGACY_MIGRATION_RUN is not true; migration runner is idle."
+          exit 0
+        fi
+        python -m pip install --no-cache-dir httpx==0.28.1
+        exec python /migration/migrate_legacy_crawler.py
+
   frontend:
     build:
       context: ./pos-ui
