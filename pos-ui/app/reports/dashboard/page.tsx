@@ -1,7 +1,7 @@
-import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default function ReportingDashboardPage() {
-  return <ShopfrontSourceDataPage mode="dashboard" />;
+  redirect("/reports/dashboard/odoo");
 }

@@ -8,6 +8,7 @@ import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
 import { OdooReplenishmentPage } from "@/components/OdooReplenishmentPage";
 import { InvoiceScansListPage } from "@/components/admin/InvoiceScansListPage";
 import { OdooSupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
+import { ShopfrontPurchasingSection } from "@/components/ShopfrontPurchasingDirectory";
 
 const views = [
   { key: "orders", label: "Purchase Orders", permission: "stock.purchases" },
@@ -44,10 +45,11 @@ export function PurchasingWorkspace() {
         </nav>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
-        {permitted && (active === "orders" || transfers) && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
+        {permitted && active === "orders" && <><OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded /><ShopfrontPurchasingSection kind="purchase-orders" /></>}
+        {permitted && transfers && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
-        {permitted && active === "suppliers" && <OdooSupplierDirectoryPage />}
+        {permitted && active === "suppliers" && <><OdooSupplierDirectoryPage /><ShopfrontPurchasingSection kind="suppliers" /></>}
       </div>
     </div>
   );

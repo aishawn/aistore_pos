@@ -35,8 +35,8 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
   const marginNote = pulseMarginNote(data);
   const datePart = (value?: string) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: data.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`)) : "";
   const sourceMode = data.shopfrontReportsMode === "source";
-  const marginHref = sourceMode ? "/reports/shopfront/sales" : `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
-  const negativeStockHref = sourceMode ? "/reports/shopfront/inventory" : "/products?view=negative-stock";
+  const marginHref = sourceMode ? "/reports/dashboard/odoo" : `/products?dialog=cost-reconciliation&fromDay=${datePart(data.yesterdayFrom)}&toDay=${datePart(data.yesterdayTo)}`;
+  const negativeStockHref = sourceMode ? "/reports/inventory" : "/products?view=negative-stock";
 
   return (
     <section className="ov-pulse-panel" aria-labelledby="ov-pulse-title">
@@ -53,13 +53,13 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
       </header>
       {data.cacheStatus === "STALE" && <p className="ov-pulse-updating" role="status">Updating · Showing saved summary</p>}
       <dl className="ov-pulse-stats" aria-label="Store metrics">
-        <Metric label="Yesterday sales" href={sourceMode ? "/reports/shopfront/sales" : "/reports/daily-sales"}
+        <Metric label="Yesterday sales" href={sourceMode ? "/reports/sales" : "/reports/daily-sales"}
           value={data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}
           note={data.yesterdaySalesAvailable === false ? sourceMode ? "Shopfront report unavailable" : "Temporarily unavailable" : sourceMode ? "Shopfront Sales report" : "Including tax"} />
         <Metric label={sourceMode ? "Profit percentage" : "Gross margin"} href={marginHref}
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(sourceMode ? 2 : 1)}%` : "—"}
           note={marginNote} />
-        <Metric label="Sellable units" href={sourceMode ? "/reports/shopfront/inventory" : "/products"}
+        <Metric label="Sellable units" href={sourceMode ? "/reports/inventory" : "/products"}
           title={stockAvailable ? sourceMode ? "Positive on-hand quantity converted from Shopfront case and item levels." : "Sum of positive on-hand balances by product across internal locations." : undefined}
           value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
           note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : data.inventoryStatus === "stale" ? "Shopfront inventory report is stale" : !stockAvailable ? sourceMode ? "Shopfront inventory report unavailable" : "Temporarily unavailable"

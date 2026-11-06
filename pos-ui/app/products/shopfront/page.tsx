@@ -1,8 +1,8 @@
-import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default function ShopfrontProductsPage() {
-  return <ShopfrontSourceDataPage mode="products" />;
+  redirect("/products");
 }

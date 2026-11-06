@@ -9,6 +9,7 @@ import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
 import { ReportDateControls } from "@/components/admin/ReportDateControls";
 import { comparisonDateRange, type ReportComparison } from "@/lib/report-date-selection";
 import { ReportSourceDetails } from "@/components/admin/ReportSourceDetails";
+import { ShopfrontSalesSummary } from "@/components/ShopfrontSourceSections";
 
 type Group = "day" | "product" | "category";
 const REPORT_COLUMNS = [{ key: "label", label: "Group" }, { key: "count", label: "Transactions or lines" }, { key: "quantity", label: "Quantity" }, { key: "amount", label: "Grouped amount" }] as const;
@@ -144,6 +145,7 @@ export function SalesReportPage() {
       <ReportColumnChooser columns={[...REPORT_COLUMNS]} selected={selectedColumns} onChange={toggleColumn} />
     </section>
     <p className="text-xs text-[var(--oh-muted)]">Company scope: {report?.company ?? "—"} · Period: {dates.from} to {dates.to} · Timezone: {report?.timezone ?? "—"} · Source: {report?.source ?? "Odoo completed POS sales"} · Shopfront archive sync (separate; excluded from Odoo totals): {report?.shopfrontSync ? `${report.shopfrontSync.status}, through ${report.shopfrontSync.toDay}, updated ${formatStoreEpoch(Date.parse(report.shopfrontSync.updatedAt), report.timezone)}` : "unknown (no sync coverage evidence)"} · Report prepared {report?.generatedAt ? formatStoreEpoch(Date.parse(report.generatedAt), report.timezone) : "—"}</p>
+    {report?.shopfrontSync && <ShopfrontSalesSummary from={dates.from} to={dates.to} />}
     {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
     <section aria-label="Sales report totals" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <div className="border-l-2 border-[var(--oh-primary)] bg-white px-4 py-3"><p className="text-sm text-[var(--oh-muted)]">{group === "day" ? "Positive-order amount · incl. tax" : "Grouped line amount · incl. tax"}</p><p className="mt-1 text-xl font-semibold tabular-nums">{report ? new Intl.NumberFormat("en-AU", { style: "currency", currency: report.currency }).format(report.totalAmount) : "—"}</p></div>

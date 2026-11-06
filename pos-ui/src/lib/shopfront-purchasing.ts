@@ -44,5 +44,5 @@ export function normalizePurchasingRow(row: SourceRow, kind: PurchasingKind): Sh
 export function filterPurchasingRows(rows: ShopfrontPurchasingRecord[], query: string, status: string) {
   const needle = query.trim().toLocaleLowerCase();
   return rows.filter((row) => (status === "all" || row.status === status)
-    && (!needle || [row.id, row.name, row.phone, row.email, row.taxId, row.supplier].some((value) => value.toLocaleLowerCase().includes(needle))));
+    && (!needle || [row.id, row.name, row.phone, row.email, row.taxId, row.supplier, ...row.lines.map((line) => line.name)].some((value) => value.toLocaleLowerCase().includes(needle))));
 }

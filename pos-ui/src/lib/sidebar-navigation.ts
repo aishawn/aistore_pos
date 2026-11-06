@@ -99,17 +99,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     permission: "reports.dashboard",
   },
   {
-    label: "Shopfront Source",
-    icon: "reporting",
-    items: [
-      { label: "Dashboard", href: "/reports/shopfront/dashboard", permission: "reports.dashboard" },
-      { label: "Sales", href: "/reports/shopfront/sales", permission: "reports.dashboard" },
-      { label: "Inventory", href: "/reports/shopfront/inventory", anyPermissions: ["reports.dashboard", "stock.inventory.view"] },
-      { label: "Products", href: "/products/shopfront", anyPermissions: ["stock.products.view", "reports.dashboard"] },
-      { label: "Purchase", href: "/reports/shopfront/purchase", anyPermissions: ["purchase.orders.view", "stock.purchases.view", "reports.dashboard"] },
-    ],
-  },
-  {
     label: "Dashboard",
     href: "/dashboard",
     icon: "overview",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import type { PurchasingKind, ShopfrontPurchasingRecord } from "@/lib/shopfront-purchasing";
@@ -13,13 +13,15 @@ type DirectoryPage = {
   items: ShopfrontPurchasingRecord[]; total: number; sourceTotal: number; hasNext: boolean; statuses: string[];
 };
 
-/** Choose the verified store source before mounting an Odoo directory. Errors
- * stay visible; they must never expose unrelated test data as a fallback. */
-export function ShopfrontPurchasingGate({ kind, children }: { kind: PurchasingKind; children: ReactNode }) {
+/** Historical source records are shown inline on the canonical purchasing pages. */
+export function ShopfrontPurchasingSection({ kind }: { kind: PurchasingKind }) {
+  const suppliers = kind === "suppliers";
+  const [expanded, setExpanded] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (!expanded) return;
     const controller = new AbortController();
     void fetch(`/api/shopfront/purchasing?type=${kind}&config=1`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
       const body = await response.json();
@@ -27,10 +29,19 @@ export function ShopfrontPurchasingGate({ kind, children }: { kind: PurchasingKi
       setEnabled(body.enabled); setError("");
     }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not load the store data source."); });
     return () => controller.abort();
-  }, [kind, retry]);
-  if (error) return <div role="alert" className="p-6"><p>{error}</p><button className={`${buttonClass} mt-3`} onClick={() => setRetry((value) => value + 1)}>Retry</button></div>;
-  if (enabled === null) return <p role="status" className="p-6 text-sm text-[var(--oh-muted)]">Loading store data…</p>;
-  return enabled ? <ShopfrontPurchasingDirectory kind={kind} /> : children;
+  }, [expanded, kind, retry]);
+  return <section className="shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{suppliers ? "Archived supplier directory" : "Historical purchase orders"}</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Shopfront · read-only source records</p></div>
+      <button type="button" aria-expanded={expanded} onClick={() => { const open = !expanded; if (open) { setEnabled(null); setError(""); setRetry((current) => current + 1); } setExpanded(open); }} className={buttonClass}>{expanded ? "Hide history" : "View history"} <ChevronDown size={15} aria-hidden="true" /></button>
+    </header>
+    {expanded && <div className="border-t border-[var(--oh-border)]">
+      {error ? <div role="alert" className="p-4 text-sm"><p>{error}</p><button className={`${buttonClass} mt-3`} onClick={() => { setError(""); setRetry((value) => value + 1); }}>Retry</button></div>
+        : enabled === null ? <p role="status" className="flex items-center gap-2 p-4 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" /> Checking source availability…</p>
+          : enabled ? <ShopfrontPurchasingDirectory kind={kind} />
+            : <p role="status" className="p-4 text-sm text-[var(--oh-muted)]">No archived Shopfront records are configured for this store.</p>}
+    </div>}
+  </section>;
 }
 
 function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
@@ -40,10 +51,13 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
   const [status, setStatus] = useState("all");
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<DirectoryPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [detail, setDetail] = useState<ShopfrontPurchasingRecord | null>(null);
+  const requestKey = JSON.stringify([kind, search, status, offset, refresh]);
+  const [loadedKey, setLoadedKey] = useState("");
+  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
+  const error = failed?.key === requestKey ? failed.message : "";
+  const loading = loadedKey !== requestKey && !error;
   useDialogFocus(detail !== null, () => setDetail(null));
 
   useEffect(() => {
@@ -52,23 +66,20 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
   }, [query]);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError("");
     const params = new URLSearchParams({ type: kind, query: search, status, offset: String(offset) });
     void fetchOdooRoute(`/api/shopfront/purchasing?${params}`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
       const body = await response.json();
       if (!response.ok || !Array.isArray(body.items)) throw new Error(body.message || "Could not load Shopfront data.");
-      if (!controller.signal.aborted) setPage(body);
-    }).catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Could not load Shopfront data."); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+      if (!controller.signal.aborted) { setPage(body); setLoadedKey(requestKey); }
+    }).catch((cause) => { if (!controller.signal.aborted) setFailed({ key: requestKey, message: cause instanceof Error ? cause.message : "Could not load Shopfront data." }); });
     return () => controller.abort();
-  }, [kind, search, status, offset, refresh]);
+  }, [kind, search, status, offset, refresh, requestKey]);
 
-  return <section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 md:pb-8">
+  return <div className="flex flex-col gap-4 p-4">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="oh-type-title">{suppliers ? "Suppliers" : "Purchase orders"}{page && <span className="ml-2 text-[var(--oh-muted)]">{page.sourceTotal.toLocaleString("en-AU")}</span>}</h2>
-        <p className="mt-1 text-sm text-[var(--oh-muted)]">SKR · Shopfront · Read-only</p>
-        <p className="mt-1 text-sm text-[var(--oh-muted)]">{suppliers ? "Supplier contacts synced from Shopfront." : "Historical orders from Shopfront. Receiving and editing are unavailable here."}</p></div>
-      <button className={buttonClass} disabled={loading} onClick={() => setRefresh((value) => value + 1)}><RefreshCw size={16} /> Refresh</button>
+      <div><h3 className="text-sm font-semibold text-[var(--oh-text)]">{page ? `${page.sourceTotal.toLocaleString("en-AU")} source records` : "Shopfront · Read-only"}</h3>
+        <p className="mt-0.5 text-xs text-[var(--oh-muted)]">{suppliers ? "Historical supplier details. Edit current supplier records in Orithos." : "Historical orders only. Receiving and editing are unavailable."}</p></div>
+      <button className={buttonClass} disabled={loading} onClick={() => { setFailed(null); setRefresh((value) => value + 1); }}><RefreshCw size={16} /> Refresh</button>
     </header>
     <div className="flex flex-wrap gap-3">
       <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3"><Search size={17} aria-hidden="true" /><input className="min-w-0 flex-1 bg-transparent text-sm outline-none" aria-label={suppliers ? "Search suppliers" : "Search purchase orders"} placeholder={suppliers ? "Search name, phone, email or ABN" : "Search reference, invoice or supplier"} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
@@ -85,7 +96,7 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
           </tr>)}</tbody></table>
         {page?.items.length === 0 && <p role="status" className="p-8 text-center text-sm text-[var(--oh-muted)]">No matching {suppliers ? "suppliers" : "purchase orders"}.</p>}
       </div>
-      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm"><p>{page?.total ? `${offset + 1}–${Math.min(offset + 40, page.total)} of ${page.total.toLocaleString("en-AU")}` : "0 results"}</p><div className="flex gap-2"><button className={buttonClass} disabled={offset === 0} onClick={() => setOffset((value) => Math.max(0, value - 40))}><ChevronLeft size={16} /> Previous</button><button className={buttonClass} disabled={!page?.hasNext} onClick={() => setOffset((value) => value + 40)}>Next <ChevronRight size={16} /></button></div></footer>
+      <footer className="flex flex-wrap items-center justify-between gap-3 text-sm"><p>{page?.total ? `${offset + 1}–${Math.min(offset + 40, page.total)} of ${page.total.toLocaleString("en-AU")}` : "0 results"}</p><div className="flex gap-2"><button className={buttonClass} disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - 40))}><ChevronLeft size={16} /> Previous</button><button className={buttonClass} disabled={!page?.hasNext || loading} onClick={() => setOffset((value) => value + 40)}>Next <ChevronRight size={16} /></button></div></footer>
     </>}
     {detail && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="dialog" aria-modal="true" aria-labelledby="shopfront-order-title" className="max-h-[90dvh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
       <div className="flex items-start justify-between gap-3"><div><h2 id="shopfront-order-title" className="text-lg font-semibold">{detail.name}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Shopfront · Read-only · {detail.status}</p></div><button className={buttonClass} aria-label="Close order details" onClick={() => setDetail(null)}><X size={18} /></button></div>
@@ -93,5 +104,5 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
       <p className="mt-2 break-all text-xs text-[var(--oh-muted)]">Shopfront #{detail.id}</p>
       <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[480px] text-left text-sm"><thead><tr>{["Product", "Ordered", "Received", "Ordered cost (AUD)"].map((label) => <th key={label} className="border-b px-2 py-3">{label}</th>)}</tr></thead><tbody>{detail.lines.map((line, index) => <tr key={index}><td className="border-b px-2 py-3">{line.name}</td><td className="border-b px-2 py-3">{line.ordered ?? "—"}</td><td className="border-b px-2 py-3">{line.received ?? "—"}</td><td className="border-b px-2 py-3">{money(line.cost)}</td></tr>)}</tbody></table></div>
     </div></div>}
-  </section>;
+  </div>;
 }
