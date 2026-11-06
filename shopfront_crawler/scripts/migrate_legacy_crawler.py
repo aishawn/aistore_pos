@@ -386,7 +386,7 @@ def main() -> int:
                     raise RuntimeError(f"Duplicate legacy sale ID: {source_id}")
                 sale_ids.add(source_id)
                 sale_item_count += len(items)
-            post_batches(client, target, target_headers, job_id, "sales", rows, batch_size=50)
+            post_batches(client, target, target_headers, job_id, "sales", rows, batch_size=200)
             print(f"sales: {sale_count}", flush=True)
         source_counts["sales"] = sale_count
         source_counts["sale_items"] = sale_item_count
