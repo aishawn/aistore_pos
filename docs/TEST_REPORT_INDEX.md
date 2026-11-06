@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest POS API UAT smoke (`2026-11-07`): SKR and Demo isolation attestation PASS on `aipos_uat`; current runtime `336f98bc` serves the API, while GitHub `main` is `81c33ad8`. Temporary API token create/read/revoke PASS; sales, inventory, and purchase feature gates respond as enabled to empty idempotent batch probes. No business records were written. Full sale/refund, stock adjustment, purchase, replay, and webhook delivery acceptance remain open. Details: [POS API UAT smoke](test-sessions/2026-11-07-pos-api-uat-smoke.md).
+Latest POS API UAT smoke (`2026-11-07`): GitHub `main`, SKR, and Demo report exact SHA `18bf164e`; both stores attest `aipos_uat`. Temporary API token create/read/revoke PASS; sales, inventory, and purchase feature gates respond as enabled to empty idempotent batch probes. No business records were written. Full sale/refund, stock adjustment, purchase, replay, and webhook delivery acceptance remain open. Details: [POS API UAT smoke](test-sessions/2026-11-07-pos-api-uat-smoke.md).
 
 Latest POS external runtime services candidate (`2026-11-06`): forecast moved behind the authenticated AI gateway and POS Compose no longer starts local forecast/Redis containers. Redis URL integration passed 16 report-cache checks; UI typecheck, YAML parsing, and gateway health/auth smoke passed. Java 21 exact-SHA verification, AI gateway deployment, and online forecast acceptance remain pending. See [CAP-API validation](project/features/pos-api/validation.md).
 
