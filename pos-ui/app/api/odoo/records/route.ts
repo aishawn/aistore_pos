@@ -18,6 +18,13 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LIMIT = 100;
+const shopfrontDuplicateSkuCache = new Map<string, { skuIds: string[]; expiresAt: number }>();
+
+type ShopfrontProductRow = Record<string, unknown> & {
+  product_tmpl_id?: [number, string] | false;
+  default_code?: string | false;
+  shopfront_legacy_duplicate?: boolean;
+};
 
 const RECORD_TYPES = {
   products: {
@@ -293,6 +300,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Could not access this store's catalogue" }, { status: error instanceof StoreAccessError ? error.status : 503 });
     }
   }
+  const sourceStore = type === "products"
+    ? verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"))
+    : null;
+  const includeSourceProducts = type === "products" && !body.inventoryReport && Boolean(sourceStore);
+  let duplicateSourceSkuIds: string[] = [];
+  if (includeSourceProducts && (body.catalogueView === undefined || body.catalogueView === "all")) {
+    domain.splice(0, domain.length, ["sale_ok", "=", true], "|", ["available_in_pos", "=", true], ["product_tmpl_id.shopfront_source_ref", "=like", `${sourceStore}:%`]);
+    try {
+      const cacheKey = createHash("sha256").update(JSON.stringify([sourceStore, companyIds])).digest("hex");
+      const cached = shopfrontDuplicateSkuCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        duplicateSourceSkuIds = cached.skuIds;
+      } else {
+        const sourceRows = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: ["source_id"], limit: 15000, context: companyContext });
+        const sourceRefs = [...new Set(sourceRows.map((row) => `${sourceStore}:${row.source_id}`).filter((ref) => /^.{2}:[0-9a-f]{24,64}$/i.test(ref)))];
+        const canonicalRows = sourceRefs.length ? await odooRpc<Array<{ shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["shopfront_source_ref", "in", sourceRefs]], { fields: ["shopfront_source_ref"], limit: sourceRefs.length * 2, context: companyContext }) : [];
+        const refCounts = new Map<string, number>();
+        for (const row of canonicalRows) if (typeof row.shopfront_source_ref === "string") refCounts.set(row.shopfront_source_ref, (refCounts.get(row.shopfront_source_ref) ?? 0) + 1);
+        duplicateSourceSkuIds = sourceRefs.filter((ref) => refCounts.get(ref) === 1).map((ref) => ref.slice(sourceStore.length + 1));
+        if (shopfrontDuplicateSkuCache.size > 1000) shopfrontDuplicateSkuCache.clear();
+        shopfrontDuplicateSkuCache.set(cacheKey, { skuIds: duplicateSourceSkuIds, expiresAt: Date.now() + 5 * 60_000 });
+      }
+    } catch {
+      duplicateSourceSkuIds = [];
+    }
+    if (duplicateSourceSkuIds.length) {
+      domain.push("|", ["default_code", "not in", duplicateSourceSkuIds], ["product_tmpl_id.shopfront_source_ref", "!=", false]);
+    }
+  }
   if (type === "products" && body.categoryId !== undefined) {
     if (!Number.isInteger(body.categoryId) || body.categoryId <= 0) {
       return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });
@@ -506,28 +542,56 @@ export async function POST(request: NextRequest) {
     if (type === "products") {
       items = await withTaxInclusivePrices(sessionId, items, correlationId);
       if (!body.inventoryReport && Array.isArray(items) && items.length) {
-        const productRows = items as Array<Record<string, unknown>>;
+        const productRows = items as ShopfrontProductRow[];
         const productIds = productRows.map((item) => Number(item.id)).filter(Number.isSafeInteger);
-        const sourceStore = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
         if (canReadProductCost && sourceStore) {
           try {
             const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
-            const templates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "shopfront_source_ref"], limit: templateIds.length, context: companyContext }) : [];
+            const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "name", "shopfront_source_ref", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }) : [];
             const sourceIds = templates.flatMap((template) => {
               const ref = typeof template.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
               return ref.startsWith(`${sourceStore}:`) ? [ref.slice(sourceStore.length + 1)] : [];
             });
+            const legacySourceSet = new Set(duplicateSourceSkuIds);
+            for (const product of productRows) {
+              const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+              const template = templates.find((item) => item.id === templateId);
+              const defaultCode = typeof product.default_code === "string" ? product.default_code.trim() : "";
+              product.shopfront_legacy_duplicate = !template?.shopfront_source_ref && legacySourceSet.has(defaultCode);
+            }
             if (sourceIds.length) {
-              const sourceCosts = await odooRpc<Array<{ source_id: string; cost?: number | false; case_quantity?: number; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "cost", "case_quantity", "synced_at"], limit: sourceIds.length, context: companyContext });
+              const sourceCosts = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; cost?: number | false; case_quantity?: number; prices?: unknown; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "cost", "case_quantity", "prices", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext });
               const bySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
+              const matchingTemplates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["shopfront_source_ref", "in", sourceIds.map((id) => `${sourceStore}:${id}`)]], { fields: ["id", "shopfront_source_ref"], limit: Math.max(sourceIds.length * 2, 100), context: companyContext }) : [];
+              const templateCountByRef = new Map<string, number>();
+              for (const template of matchingTemplates) {
+                if (typeof template.shopfront_source_ref === "string") templateCountByRef.set(template.shopfront_source_ref, (templateCountByRef.get(template.shopfront_source_ref) ?? 0) + 1);
+              }
               const sourceByTemplate = new Map(templates.map((template) => [template.id, typeof template.shopfront_source_ref === "string" ? bySource.get(template.shopfront_source_ref.slice(sourceStore.length + 1)) : undefined]));
+              for (const template of templates) {
+                if (Array.isArray(template.pos_categ_ids)) template.pos_categ_ids = template.pos_categ_ids.filter((id) => Number.isSafeInteger(id));
+              }
               for (const product of productRows) {
                 const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+                const template = templates.find((item) => item.id === templateId);
                 const source = sourceByTemplate.get(templateId);
+                const sourceRef = typeof template?.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
+                product.shopfront_source_ref = sourceRef || null;
+                const duplicateCount = sourceRef ? templateCountByRef.get(sourceRef) ?? 0 : 0;
+                product.shopfront_source_duplicate_count = duplicateCount;
+                product.shopfront_source_canonical = Boolean(sourceRef) && duplicateCount <= 1;
                 product.shopfront_cost = typeof source?.cost === "number" && Number.isFinite(source.cost) ? source.cost : null;
                 product.shopfront_case_quantity = typeof source?.case_quantity === "number" && Number.isFinite(source.case_quantity) && source.case_quantity > 0 ? source.case_quantity : null;
                 product.shopfront_cost_synced_at = source?.synced_at ?? null;
+                product.shopfront_source_name = source?.name ?? null;
+                product.shopfront_source_sku = source?.sku ?? null;
+                product.shopfront_source_category = source?.category ?? null;
+                product.shopfront_source_status = source?.source_status ?? null;
+                product.shopfront_price_tiers = Array.isArray(source?.prices) ? source.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
+                if (Array.isArray(template?.pos_categ_ids) && template.pos_categ_ids.length) product.pos_categ_ids = template.pos_categ_ids;
+                if (typeof template?.name === "string" && template.name) product.shopfront_source_name = template.name;
               }
+              if (includeSourceProducts) items = productRows.filter((product) => product.shopfront_legacy_duplicate !== true);
             }
           } catch {
             for (const product of productRows) {

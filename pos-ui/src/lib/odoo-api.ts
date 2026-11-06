@@ -69,6 +69,15 @@ export interface OdooProductRecord {
   shopfront_cost?: number | null;
   shopfront_case_quantity?: number | null;
   shopfront_cost_synced_at?: string | null;
+  shopfront_source_ref?: string | null;
+  shopfront_source_duplicate_count?: number;
+  shopfront_source_canonical?: boolean;
+  shopfront_source_name?: string | null;
+  shopfront_source_sku?: string | false | null;
+  shopfront_source_category?: string | false | null;
+  shopfront_source_status?: string | false | null;
+  shopfront_price_tiers?: Array<{ quantity?: number; price?: number }>;
+  shopfront_legacy_duplicate?: boolean;
   performance_30d?: number[] | null;
   taxes_id: number[];
   price_included: number | null;
