@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
     const base = (process.env.SHOPFRONT_CRAWLER_URL || "http://shopfront-crawler:8000").trim().replace(/\/+$/, "");
-    const usesSourceReport = resource.startsWith("report-");
+    const usesSourceReport = resource.startsWith("report-") || resource === "dashboard-inventory";
     const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim();
     if (usesSourceReport && !integrationToken) {
       return NextResponse.json({ message: "Shopfront source reporting is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });

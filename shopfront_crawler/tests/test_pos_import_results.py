@@ -12,7 +12,7 @@ from app import main
 from app import sync
 from app.db import Base
 from app.config import Settings
-from app.models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, Store, SyncJob, SyncRun
+from app.models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, Product, Sale, SaleItem, ShopfrontReportSnapshot, Store, SyncJob, SyncRun
 from app.sync import _upsert_sale_product, merge_sale_detail
 
 
@@ -1141,6 +1141,72 @@ def test_inventory_snapshot_evidence_requires_complete_manifest(db_session):
     manifest.snapshot_at = datetime.now(timezone.utc) - timedelta(hours=25)
     db_session.commit()
     assert main._inventory_snapshot_evidence(db_session, "skr") is None
+
+
+@pytest.mark.asyncio
+async def test_inventory_report_and_dashboard_share_shopfront_reporting_rows(db_session, monkeypatch):
+    from starlette.requests import Request
+
+    class FakeClient:
+        def __init__(self):
+            self.calls = []
+
+        async def run_report(self, token, query):
+            self.calls.append((token, query))
+            return [
+                {"Name": "Negative product", "Case Quantity": 6, "Case Level": -1, "Item Level": 2, "Value (Inc) (Last)": "$12.00"},
+                {"Name": "Positive product", "Case Quantity": 6, "Case Level": 2, "Item Level": 3, "Value (Inc) (Last)": "$75.00"},
+            ]
+
+        async def close(self):
+            return None
+
+    fake = FakeClient()
+    async def fake_access_token(*_args):
+        return "shopfront-token"
+
+    db_session.add(Store(store_key="skr", vendor="skr", timezone="Australia/Adelaide", active=True))
+    db_session.add(ShopfrontReportSnapshot(
+        store_key="skr", report_type="inventory", period_key="all",
+        rows=[{"Name": "legacy GraphQL reconstruction"}], fetched_at=datetime.now(timezone.utc).replace(tzinfo=None),
+    ))
+    db_session.commit()
+    monkeypatch.setattr(main, "require_store", lambda *_args: db_session.query(Store).filter_by(store_key="skr").one())
+    monkeypatch.setattr(main, "get_client", lambda *_args: fake)
+    monkeypatch.setattr(main, "access_token", fake_access_token)
+    monkeypatch.setattr(main.settings, "shopfront_integration_token", "integration-token")
+    request = Request({
+        "type": "http", "method": "GET", "path": "/api/source-reports/inventory",
+        "headers": [(b"authorization", b"Bearer integration-token")],
+        "query_string": b"", "server": ("test", 80), "scheme": "http", "client": ("test", 1),
+    })
+
+    report = await main.shopfront_source_report(
+        "inventory", request, store="skr", from_date=None, to_date=None,
+        page=1, size=50, q=None, negative_only=False, dashboard=False,
+        status=None, brand=None, category=None, family=None, tag=None, supplier=None,
+        product_type=None, tax_rate=None, cost_tax_rate=None, gift_card=None, db=db_session,
+    )
+    dashboard = await main.dashboard_inventory(request, store="skr", db=db_session)
+    negative_report = await main.shopfront_source_report(
+        "inventory", request, store="skr", from_date=None, to_date=None,
+        page=1, size=50, q=None, negative_only=True, dashboard=False,
+        status=None, brand=None, category=None, family=None, tag=None, supplier=None,
+        product_type=None, tax_rate=None, cost_tax_rate=None, gift_card=None, db=db_session,
+    )
+
+    assert report["source"] == "shopfront_reporting_api"
+    assert report["data"][0]["Name"] == "Negative product"
+    assert report["totals"]["sellable_units"] == 15
+    assert dashboard["source"] == "shopfront_reporting_api"
+    assert dashboard["sellable_units"] == report["totals"]["sellable_units"]
+    assert dashboard["negative_stock_products"] == 1
+    assert dashboard["record_count"] == report["pagination"]["total"] == 2
+    assert dashboard["snapshot_at"] == report["fetched_at"]
+    assert negative_report["pagination"]["total"] == 1
+    assert negative_report["data"][0]["Name"] == "Negative product"
+    assert len(fake.calls) == 1
+    assert "FROM products BY product" in fake.calls[0][1]
 
 
 @pytest.mark.asyncio

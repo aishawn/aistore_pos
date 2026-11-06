@@ -94,7 +94,8 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
 
 export function parseShopfrontInventoryReport(payload: unknown, nowMs = Date.now()): ShopfrontInventoryMetrics | null {
   const report = object(payload);
-  if (report?.available !== true) return null;
+  if (report?.available !== true || report.source !== "shopfront_reporting_api"
+    || report.source_version !== "shopfront_reporting_api_v1") return null;
   if (!shopfrontInventorySnapshotIsFresh(report.snapshot_at, nowMs)) return null;
   const sellableUnits = numeric(report.sellable_units);
   const negativeStockProducts = numeric(report.negative_stock_products);

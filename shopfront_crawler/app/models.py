@@ -139,7 +139,7 @@ class ShopfrontReportSnapshot(Base):
     store_key: Mapped[str] = mapped_column(String(64), index=True)
     report_type: Mapped[str] = mapped_column(String(32))
     period_key: Mapped[str] = mapped_column(String(64), default="all")
-    rows: Mapped[list] = mapped_column(JSONType, default=list)
+    rows: Mapped[list | dict] = mapped_column(JSONType, default=list)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     __table_args__ = (UniqueConstraint("store_key", "report_type", "period_key", name="uq_shopfront_report_snapshot"),)
 

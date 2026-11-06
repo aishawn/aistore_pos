@@ -5,7 +5,7 @@ Updated: 2026-11-05. Owner: TBD.
 ## Shopfront parity reliability follow-up (2026-11-06)
 
 - Shopfront-mode Overview now displays an unavailable marker for current sales and transaction counts when the source report is missing; it no longer presents the Odoo fallback as if it were a Shopfront total. Yesterday sales, source Profit/Revenue, and sellable inventory already have source availability/freshness guards.
-- Source calculation contract and the local reliability candidate are recorded in [Shopfront sync](../shopfront-sync/README.md) and the [2026-11-06 test session](../../../test-sessions/2026-11-06-shopfront-sync-reliability.md).
+- Source calculation contract and the local reliability candidate are recorded in [Shopfront sync](../shopfront-sync/README.md) and the [2026-11-06 test session](../../../test-sessions/2026-11-06-shopfront-dashboard-parity.md).
 - Typecheck/lint and live Shopfront page parity remain unverified. Do not treat the candidate as deployed or fully aligned.
 
 ## Follow-up review (2026-11-05)

@@ -16,7 +16,7 @@ Shopfront GraphQL and Reporting APIs are read-only source interfaces. The crawle
 
 ## Dashboard source rules
 
-The SKR Store Pulse uses Shopfront source sales report for yesterday sales and profit percentage, plus the verified current inventory snapshot for sellable units. It fails closed to an unavailable marker if those Shopfront sources are unavailable, stale, or incomplete. Orithos/Odoo values remain available on their explicitly labeled operational report surfaces and may be used for same-ledger reconciliation only.
+The SKR Store Pulse uses Shopfront source sales report for yesterday sales and profit percentage, plus the same Shopfront Inventory Reporting API rows used by the Inventory page for sellable units. The GraphQL inventory snapshot remains the sync/POS import source, not the source for Shopfront report parity. Inventory API responses carry a version marker so an older crawler cannot present GraphQL-reconstructed data as an aligned report. The UI fails closed to an unavailable marker if the source report is unavailable, stale, incomplete, or from an older contract. Orithos/Odoo values remain available on their explicitly labeled operational report surfaces and may be used for same-ledger reconciliation only.
 
 ## Completion evidence
 

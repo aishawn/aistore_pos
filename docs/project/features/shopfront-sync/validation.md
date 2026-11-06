@@ -1,5 +1,11 @@
 # Shopfront Sync Validation
 
+## Inventory report source alignment candidate (2026-11-06)
+
+- Inventory page and Dashboard KPI now consume one shared Shopfront Reporting API report result. A versioned cache rejects prior GraphQL-reconstructed rows; old cached values are refreshed before they can be shown as aligned. Dashboard and report pagination totals use the same case/item conversion and signed negative-stock rule.
+- Local evidence: crawler focused suite 67/67 PASS; full crawler suite 130/130 PASS; frontend unit suite 188/188 PASS; POS TypeScript typecheck PASS; focused ESLint 0 errors / 3 warnings. The two old Odoo receipt tests now assert that a mirror-only response is rejected as incomplete formal sales import.
+- Deployment, runtime SHA, and direct Shopfront Inventory/Dashboard UI comparison are NOT RUN. This change must not be described as fully aligned until a live source response confirms query filters, row count, case/item totals, valuation, and the deployed POS three metrics on one data revision.
+
 Updated: 2026-11-06. Candidate based on POS repository `efb1434f05c9b8faeaa171dcf940890f64371c0d`; no deployment or online parity acceptance is recorded in this file.
 
 ## Local candidate checks

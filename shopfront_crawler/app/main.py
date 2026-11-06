@@ -26,7 +26,7 @@ from .db import SessionLocal, get_db, init_db
 from .models import DailySalesSummary, InventorySnapshot, InventorySnapshotManifest, InventorySnapshotScan, OAuthState, Product, PosImportRun, Sale, SaleItem, ShopfrontCustomer, ShopfrontExtendedRecord, ShopfrontPurchaseOrder, ShopfrontReportSnapshot, ShopfrontSupplier, ShopfrontSyncCheckpoint, ShopfrontToken, Store, StoreMapping, SyncJob, SyncRun, WebhookEvent
 from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
-from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh, inventory_snapshot_report_rows, inventory_snapshot_totals
+from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh
 from .odoo import OdooSyncClient, receipt_count
 from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
@@ -408,6 +408,54 @@ ORDER "Name" asc CONSOLIDATED'''
     raise ValueError("Unsupported Shopfront source report")
 
 
+INVENTORY_REPORT_CACHE_SOURCE = "shopfront_reporting_api_v1"
+
+
+def inventory_report_cache_rows(snapshot: ShopfrontReportSnapshot | None) -> list[dict[str, Any]] | None:
+    if snapshot is None or not isinstance(snapshot.rows, dict):
+        return None
+    if snapshot.rows.get("source") != INVENTORY_REPORT_CACHE_SOURCE:
+        return None
+    rows = snapshot.rows.get("rows")
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        return None
+    return rows
+
+
+async def load_shopfront_inventory_report(
+    store_key: str, db: Session, *, now: datetime | None = None,
+) -> tuple[list[dict[str, Any]], datetime, str]:
+    current = now or datetime.now(timezone.utc)
+    snapshot = db.scalar(select(ShopfrontReportSnapshot).where(
+        ShopfrontReportSnapshot.store_key == store_key,
+        ShopfrontReportSnapshot.report_type == "inventory",
+        ShopfrontReportSnapshot.period_key == "all",
+    ))
+    fetched = snapshot.fetched_at.replace(tzinfo=timezone.utc) if snapshot and snapshot.fetched_at.tzinfo is None else (snapshot.fetched_at if snapshot else None)
+    cached_rows = inventory_report_cache_rows(snapshot)
+    if cached_rows is not None and fetched and current - fetched < timedelta(seconds=60):
+        return cached_rows, fetched, "hit"
+
+    store = require_store(store_key, db)
+    client = get_client(settings, store)
+    try:
+        token = await access_token(db, settings, store)
+        rows = await client.run_report(token, shopfront_source_report_query("inventory", None, None))
+    finally:
+        await client.close()
+    normalized = [row for row in rows if isinstance(row, dict)]
+    if not normalized:
+        raise ShopfrontError("Shopfront inventory report returned no rows")
+
+    if snapshot is None:
+        snapshot = ShopfrontReportSnapshot(store_key=store_key, report_type="inventory", period_key="all")
+        db.add(snapshot)
+    snapshot.rows = {"source": INVENTORY_REPORT_CACHE_SOURCE, "rows": normalized}
+    snapshot.fetched_at = current.replace(tzinfo=None)
+    db.commit()
+    return normalized, current, "refreshed"
+
+
 def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
     def name(value: Any) -> str | None:
         return value.get("name") if isinstance(value, dict) else None
@@ -496,42 +544,10 @@ async def shopfront_source_report(
     now = datetime.now(timezone.utc)
     fetched = cached.fetched_at.replace(tzinfo=timezone.utc) if cached and cached.fetched_at.tzinfo is None else (cached.fetched_at if cached else None)
     if report_type == "inventory":
-        manifest = db.scalar(select(InventorySnapshotManifest).where(
-            InventorySnapshotManifest.store_key == store,
-        ))
-        if manifest is None or not manifest.complete:
-            raise HTTPException(503, "Shopfront inventory snapshot is incomplete")
-        persisted = db.execute(select(InventorySnapshot, Product).outerjoin(
-            Product,
-            (Product.store_key == InventorySnapshot.store_key)
-            & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
-        ).where(InventorySnapshot.store_key == store)).all()
-        mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
-        if mapping and mapping.shopfront_outlet:
-            persisted = [(inventory, product) for inventory, product in persisted if inventory.outlet_name == mapping.shopfront_outlet]
-        elif len({inventory.outlet_id for inventory, _ in persisted if inventory.outlet_id}) > 1:
-            raise HTTPException(503, "Shopfront inventory outlet mapping is required")
-        manifest_state = inventory_manifest_status(
-            manifest.source_product_ids,
-            [inventory.shopfront_product_id for inventory, _ in persisted],
-            manifest.complete,
-        )
-        if not manifest_state["complete"]:
-            raise HTTPException(503, "Shopfront inventory snapshot manifest is inconsistent")
-        inventory_data = []
-        for inventory_row, product_row in persisted:
-            raw = inventory_row.raw_payload if isinstance(inventory_row.raw_payload, dict) else {}
-            inventory_data.append({"inventory": raw, "product": product_row.raw_payload if product_row and isinstance(product_row.raw_payload, dict) else {}})
-        rows = inventory_snapshot_report_rows(inventory_data)
-        if rows is None:
-            raise HTTPException(503, "Shopfront inventory snapshot units are incomplete")
-        if q and q.strip():
-            needle = q.strip().casefold()
-            rows = [row for row in rows if needle in json.dumps(row, ensure_ascii=False, default=str).casefold()]
-        if negative_only:
-            rows = [row for row in rows if float(row["Case Level"]) * float(row["Case Quantity"]) + float(row["Item Level"]) < 0]
-        source_fetched_at = manifest.snapshot_at
-        cache_status = "snapshot"
+        try:
+            rows, source_fetched_at, cache_status = await load_shopfront_inventory_report(store, db, now=now)
+        except ShopfrontError as exc:
+            raise HTTPException(502, f"Shopfront inventory report failed: {exc}") from exc
     elif cached and fetched and now - fetched < timedelta(seconds=60):
         rows = cached.rows if isinstance(cached.rows, list) else []
         source_fetched_at = cached.fetched_at
@@ -578,6 +594,8 @@ async def shopfront_source_report(
         cache_status = "refreshed"
 
     normalized_rows = [row for row in rows if isinstance(row, dict)]
+    if report_type == "inventory" and inventory_report_totals(normalized_rows)["inventory_metrics_complete"] != 1:
+        raise HTTPException(503, "Shopfront inventory report has incomplete case or item quantities")
     metrics: dict[str, Any] = {}
     if report_type == "sales" and dashboard and from_date and to_date:
         store_row = require_store(store, db)
@@ -696,7 +714,7 @@ async def shopfront_source_report(
             cases = value("Case Level", "case_level")
             items = value("Item Level", "single_level")
             case_quantity = value("Case Quantity", "case_quantity")
-            return cases is not None and items is not None and case_quantity is not None and case_quantity > 0 and cases + items / case_quantity < 0
+            return cases is not None and items is not None and case_quantity is not None and case_quantity > 0 and cases * case_quantity + items < 0
         normalized_rows = [row for row in normalized_rows if negative_row(row)]
     total = len(normalized_rows)
     totals: dict[str, float] = {}
@@ -727,82 +745,38 @@ async def shopfront_source_report(
         "report": report_type,
         "period": period_key,
         "source": "shopfront_reporting_api",
+        "source_version": INVENTORY_REPORT_CACHE_SOURCE if report_type == "inventory" else None,
         "fetched_at": source_fetched_at,
         "cache": cache_status,
     }
 
 
 @app.get("/api/dashboard/inventory")
-def dashboard_inventory(store: str, db: Session = Depends(get_db)) -> dict:
-    """Return Dashboard stock KPIs from the durable GraphQL inventory snapshot."""
+async def dashboard_inventory(request: Request, store: str, db: Session = Depends(get_db)) -> dict:
+    """Return Dashboard stock KPIs from the same report rows as the Inventory page."""
+    expected = settings.shopfront_integration_token.strip()
+    supplied = request.headers.get("authorization", "")
+    if not expected or not hmac.compare_digest(supplied, f"Bearer {expected}"):
+        raise HTTPException(401, "Shopfront source report authorization failed")
     require_store(store, db)
-    manifest = db.scalar(select(InventorySnapshotManifest).where(InventorySnapshotManifest.store_key == store))
-    if manifest is None or not manifest.complete:
-        return {"available": False, "reason": "snapshot_incomplete", "source": "shopfront_inventory_snapshot"}
-    if not inventory_snapshot_is_fresh(manifest.snapshot_at):
-        return {
-            "available": False,
-            "reason": "snapshot_stale",
-            "snapshot_at": manifest.snapshot_at,
-            "source": "shopfront_inventory_snapshot",
-        }
-
-    mapping = db.scalar(select(StoreMapping).where(StoreMapping.store_key == store, StoreMapping.enabled.is_(True)))
-    snapshot_ids = {str(value) for value in (manifest.source_product_ids or [])}
-    present_ids = db.scalars(
-        select(InventorySnapshot.shopfront_product_id).where(InventorySnapshot.store_key == store).distinct()
-    ).all()
-    manifest_state = inventory_manifest_status(
-        manifest.source_product_ids,
-        present_ids,
-        manifest.complete,
-    )
-    # Zero-stock products may have no inventory row; all persisted rows must still belong to the manifest.
-    if not manifest_state["complete"]:
-        return {"available": False, "reason": "snapshot_manifest_mismatch", "source": "shopfront_inventory_snapshot"}
-
-    query = select(InventorySnapshot, Product).outerjoin(
-        Product,
-        (Product.store_key == InventorySnapshot.store_key)
-        & (Product.shopfront_product_id == InventorySnapshot.shopfront_product_id),
-    ).where(InventorySnapshot.store_key == store)
-    if mapping and mapping.shopfront_outlet:
-        query = query.where(InventorySnapshot.outlet_name == mapping.shopfront_outlet)
-    rows = db.execute(query).all()
-    outlet_ids = {row.outlet_id for row, _ in rows if row.outlet_id}
-    if not outlet_ids:
-        # An empty but complete snapshot is a valid zero only when the source manifest is empty.
-        if mapping and mapping.shopfront_outlet and snapshot_ids:
-            return {"available": False, "reason": "mapped_outlet_missing", "source": "shopfront_inventory_snapshot"}
-        if snapshot_ids:
-            return {"available": False, "reason": "inventory_rows_missing", "source": "shopfront_inventory_snapshot"}
-        return {"available": True, "sellable_units": 0, "negative_stock_products": 0, "record_count": 0,
-                "outlet_count": 0, "snapshot_at": manifest.snapshot_at, "source": "shopfront_inventory_snapshot"}
-    if len(outlet_ids) > 1 and not (mapping and mapping.shopfront_outlet):
-        return {"available": False, "reason": "outlet_mapping_required", "source": "shopfront_inventory_snapshot"}
-
-    metrics_rows = []
-    seen_products: set[str] = set()
-    for row, product in rows:
-        product_id = str(row.shopfront_product_id)
-        if product_id in seen_products:
-            return {"available": False, "reason": "duplicate_product_inventory", "source": "shopfront_inventory_snapshot"}
-        seen_products.add(product_id)
-        metrics_rows.append({
-            "inventory": row.raw_payload if isinstance(row.raw_payload, dict) else {},
-            "product": product.raw_payload if product and isinstance(product.raw_payload, dict) else {},
-        })
-    totals = inventory_snapshot_totals(metrics_rows)
+    try:
+        rows, fetched_at, _ = await load_shopfront_inventory_report(store, db)
+    except ShopfrontError:
+        return {"available": False, "reason": "source_report_unavailable", "source": "shopfront_reporting_api"}
+    totals = inventory_report_totals(rows)
     if totals["inventory_metrics_complete"] != 1:
-        return {"available": False, "reason": "inventory_units_incomplete", "source": "shopfront_inventory_snapshot"}
+        return {"available": False, "reason": "report_units_incomplete", "snapshot_at": fetched_at,
+                "source": "shopfront_reporting_api"}
     return {
         "available": True,
         "sellable_units": totals["sellable_units"],
         "negative_stock_products": int(totals["negative_stock_products"]),
         "record_count": len(rows),
-        "outlet_count": len(outlet_ids),
-        "snapshot_at": manifest.snapshot_at,
-        "source": "shopfront_inventory_snapshot",
+        "outlet_count": 1,
+        "snapshot_at": fetched_at,
+        "fetched_at": fetched_at,
+        "source": "shopfront_reporting_api",
+        "source_version": INVENTORY_REPORT_CACHE_SOURCE,
     }
 
 

@@ -9,7 +9,7 @@ export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase"
 type SourceRow = Record<string, unknown>;
 type SourceSnapshot = { complete?: unknown; snapshot_at?: unknown; products?: unknown; source_products?: unknown; [key: string]: unknown };
 type SourceCoverage = { inventory?: SourceSnapshot; catalog?: Record<string, unknown>; products?: Record<string, unknown>; [key: string]: unknown };
-type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
+type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; source_version?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
 type CoveragePayload = { data?: SourceCoverage };
 
 const PAGE_SIZE = 50;
@@ -209,6 +209,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         throw new Error(payload && "message" in payload ? payload.message : `Shopfront source request failed (${response.status}).`);
       }
       const result = payload as PagePayload;
+      if (mode === "inventory" && (result.source !== "shopfront_reporting_api" || result.source_version !== "shopfront_reporting_api_v1")) {
+        throw new Error("The Shopfront inventory report source is outdated. Refresh after the source service has updated.");
+      }
       if ((mode === "sales" || mode === "dashboard") && !parseShopfrontSalesReport(result)) {
         throw new Error("Shopfront returned an incomplete or inconsistent sales report. No partial totals are shown.");
       }
@@ -348,7 +351,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       </nav>
 
       {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 md:mx-6"><AlertCircle size={16} />{error}</div>}
-      {inventorySnapshotStale && <div role="status" className="mx-4 mt-3 flex items-center gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} />This Shopfront inventory snapshot is over 24 hours old. The listed rows are historical until a fresh complete snapshot arrives.</div>}
+      {inventorySnapshotStale && <div role="status" className="mx-4 mt-3 flex items-center gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} />This Shopfront inventory report is over 24 hours old. The listed rows are historical until a fresh report is available.</div>}
 
       {(mode === "sales" || mode === "dashboard" || mode === "purchase") && <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={fromInput} onChange={event => setFromInput(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
@@ -385,7 +388,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Basket size" value={dashboardMetricsAvailable ? quantity(reportMetrics.basket_size) : "—"} />
         <Metric label="Discount amount" value={money(sums.discount)} />
         <Metric label="Active products" value={liveActiveProducts === null ? "—" : quantity(liveActiveProducts)} detail={liveCatalogFetchedAt ? `Live Shopfront catalog · ${dateLabel(liveCatalogFetchedAt)}` : "Live Shopfront catalog unavailable"} />
-        <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail={sellableUnitsState === "stale" ? "Shopfront inventory snapshot is stale" : sellableUnitsState === "unavailable" ? "Shopfront inventory report unavailable" : "Shopfront case and item levels"} />
+        <Metric label="Sellable units" value={sellableUnits === null ? "—" : quantity(sellableUnits)} detail={sellableUnitsState === "stale" ? "Shopfront inventory report is stale" : sellableUnitsState === "unavailable" ? "Shopfront inventory report unavailable" : "Shopfront case and item levels"} />
         <Metric label="Inventory records" value={quantity(inventory.records)} />
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}
