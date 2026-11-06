@@ -36,7 +36,7 @@ const BACKEND_PROXY_TIMEOUT_MS = (() => {
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
   const upstreamUrl = new URL(
-    `/api/${path.map((part) => encodeURIComponent(part)).join("/")}`,
+    `/api/${path.map((part) => encodeURIComponent(part).replace(/%3A/gi, ":")).join("/")}`,
     backendUrl().replace(/\/+$/, "") + "/",
   );
   upstreamUrl.search = new URL(request.url).search;
