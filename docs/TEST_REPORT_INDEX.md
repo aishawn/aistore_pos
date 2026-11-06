@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest POS API write failure root cause (`2026-11-06`): Dokploy Odoo logs show Odoo 20 `sync_from_ui` rejected sale/refund timestamps containing nanoseconds. The affected UAT sale `8064930` remains paid and its original line has `refunded_qty=0`. A shared second-precision timestamp formatter and regression test are pending the exact-SHA remote Java 21 gate; no follow-up refund write has been sent. See [CAP-API validation](project/features/pos-api/validation.md).
+
 Latest inventory-label follow-up: [2026-11-06 inventory count and unit scope](test-sessions/2026-11-06-inventory-count-scope.md): runtime `0a5b0678` on SKR/Demo confirms the UI label change deployed. Explains the Odoo/Shopfront count scopes and positive-stock formula; live Shopfront coverage timed out so row-level parity remains unverified. Inventory helper tests 7/7 PASS; typecheck is unavailable in this worktree.
 
 Latest purchasing navigation follow-up: [2026-11-06 purchase URL compatibility](test-sessions/2026-11-06-purchase-url-compatibility.md): historical runtime `43fb774d` confirms receipt-tab removal; the newer runtime `2c3784a7` also contains the legacy redirect. Browser navigation was not repeated.
