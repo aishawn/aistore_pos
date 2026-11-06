@@ -2,6 +2,7 @@
 
 - Date: 2026-11-07
 - Base: `origin/main` at `f4f3cc21947b6d936532adc7b1466d9023872c69`
+- Implementation: `416d01a9`; pushed `main` head: `b9e7784eed5a39d53301fe8f86f38942f4ea1780`
 - Scope: remove the legacy receipt tab on `/purchases?state=purchase`; make inventory count and stock-total scopes explicit.
 
 ## Findings
@@ -22,5 +23,7 @@
 - `npm run typecheck`: BLOCKED because this clean worktree has no local `tsc` executable / installed frontend dependencies.
 - `python scripts/check-project-docs.py`: FAIL, 65 existing missing-file/link/evidence errors; no new errors were reported for the added session or its index link.
 - `git diff --check`: PASS.
-- Deployment SHA, live runtime identity, and authenticated browser navigation: PENDING.
+- Read-only `GET /api/public/version` on SKR, Demo, and App reports frontend and backend SHA `b9e7784eed5a39d53301fe8f86f38942f4ea1780`; built at `2026-11-06T20:28:35Z` (frontend) and `2026-11-06T20:28:32Z` (backend).
+- Unauthenticated `GET /purchases?state=purchase` is intercepted by the login guard and redirects to `/login`; authenticated browser navigation and rendered-tab confirmation remain NOT RUN.
+- No `pos-api/` files changed and no application build was run locally.
 - Business-data writes: 0.

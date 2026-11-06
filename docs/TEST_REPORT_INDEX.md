@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest inventory count and legacy purchase tab follow-up (`2026-11-07`): [test session](test-sessions/2026-11-07-inventory-count-purchase-tab-followup.md). Corrects the Odoo count scope to saleable variants, documents the historical 50,992 snapshot versus the audited 51,512 Shopfront source quantity, and redirects the legacy receipt URL before rendering. Deployment/runtime and browser acceptance are pending until the candidate is pushed.
+Latest inventory count and legacy purchase tab follow-up (`2026-11-07`): [test session](test-sessions/2026-11-07-inventory-count-purchase-tab-followup.md). Corrects the Odoo count scope to saleable variants and redirects the legacy receipt URL before rendering. Runtime SHA `b9e7784e` is live on SKR, Demo, and App; authenticated browser navigation remains unverified.
 
 Latest POS API UAT gate smoke (`2026-11-07`): [report](test-sessions/2026-11-07-pos-api-uat-gates-61870803.md). Exact runtime `61870803` on main/SKR/Demo, both Odoo contexts attest `aipos_uat`, temporary token read/revoke passes, and all three write gates respond as enabled. No valid business write until Dokploy POS PostgreSQL isolation is confirmed.
 
