@@ -26,6 +26,13 @@ def api_request(
             response = client.request(method, url, headers=headers, **kwargs)
             if response.status_code in {502, 503, 504}:
                 raise httpx.HTTPStatusError("temporary upstream failure", request=response.request, response=response)
+            if response.is_error:
+                detail = response.text[:1000].replace("\r", " ").replace("\n", " ")
+                raise httpx.HTTPStatusError(
+                    f"HTTP {response.status_code}: {detail}",
+                    request=response.request,
+                    response=response,
+                )
             response.raise_for_status()
             return response.json() if response.content else None
         except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as exc:
@@ -156,17 +163,16 @@ def trend_rows(client: httpx.Client, base_url: str, headers: dict[str, str], to_
     return rows
 
 
-def normalized_trend(rows: list[dict[str, Any]], *, date_key: str) -> dict[tuple[str, str], tuple[Any, ...]]:
-    result: dict[tuple[str, str], tuple[Any, ...]] = {}
+def normalized_trend(rows: list[dict[str, Any]], *, date_key: str) -> dict[tuple[str, str | None], tuple[Any, ...]]:
+    result: dict[tuple[str, str | None], tuple[Any, ...]] = {}
     fields = ("revenue", "cost", "profit", "tax", "discount")
     for row in rows:
         business_date = str(row.get(date_key) or "")
-        outlet = str(row.get("outlet") or "")
+        outlet_value = row.get("outlet")
+        outlet = str(outlet_value) if outlet_value is not None else None
         if not business_date:
             raise RuntimeError("Sales trend row has no date")
         key = (business_date, outlet)
-        if key in result:
-            raise RuntimeError(f"Duplicate sales trend date/outlet: {key}")
         values: list[Any] = []
         for field in fields:
             value = row.get(field)
@@ -179,7 +185,24 @@ def normalized_trend(rows: list[dict[str, Any]], *, date_key: str) -> dict[tuple
                 raise RuntimeError(f"Invalid sales trend value for {field}") from exc
         count = row.get("transaction_count")
         values.append(int(count) if count is not None else None)
-        result[key] = tuple(values)
+        normalized = tuple(values)
+        if key in result and result[key] != normalized:
+            raise RuntimeError(f"Conflicting sales trend rows for date/outlet: {key}")
+        result[key] = normalized
+    return result
+
+
+def unique_trend_rows(rows: list[dict[str, Any]], *, date_key: str) -> list[dict[str, Any]]:
+    normalized_trend(rows, date_key=date_key)
+    result: list[dict[str, Any]] = []
+    seen: set[tuple[str, str | None]] = set()
+    for row in rows:
+        business_date = str(row.get(date_key) or "")
+        outlet_value = row.get("outlet")
+        key = (business_date, str(outlet_value) if outlet_value is not None else None)
+        if key not in seen:
+            seen.add(key)
+            result.append(row)
     return result
 
 
@@ -194,6 +217,28 @@ def ensure_source_idle(client: httpx.Client, base_url: str, headers: dict[str, s
         if active:
             jobs = ", ".join(f"{row.get('id')}:{row.get('status')}" for row in active[:10])
             raise RuntimeError(f"Legacy source has active work at {path}: {jobs}")
+
+
+def active_migration_job(client: httpx.Client, base_url: str, headers: dict[str, str]) -> dict[str, Any] | None:
+    payload = api_request(
+        client,
+        "GET",
+        f"{base_url}/api/sync/status",
+        headers=headers,
+        params={"store": "skr"},
+    )
+    rows = payload.get("data", payload) if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        raise RuntimeError("Cannot verify destination migration state")
+    active = [row for row in rows if str(row.get("status", "")).lower() in {"queued", "running"}]
+    migrations = [row for row in active if row.get("type") == "legacy_migration"]
+    other_jobs = [row for row in active if row.get("type") != "legacy_migration"]
+    if other_jobs:
+        jobs = ", ".join(f"{row.get('id')}:{row.get('type')}:{row.get('status')}" for row in other_jobs[:10])
+        raise RuntimeError(f"Destination has other active work: {jobs}")
+    if len(migrations) > 1:
+        raise RuntimeError("Destination has multiple active legacy migration jobs")
+    return migrations[0] if migrations else None
 
 
 def verify_identities(
@@ -244,7 +289,6 @@ def main() -> int:
 
     with httpx.Client(timeout=httpx.Timeout(120, connect=20)) as client:
         ensure_source_idle(client, source, source_headers)
-        ensure_source_idle(client, target, source_headers)
         source_coverage = read_coverage(client, source, source_headers)
         if not source_coverage.get("inventory", {}).get("complete"):
             raise RuntimeError("Legacy source inventory snapshot is not complete")
@@ -253,9 +297,16 @@ def main() -> int:
             for name in ("products", "inventory", "sales", "customers", "extended_data")
         }, flush=True)
 
-        started = api_request(client, "POST", f"{target}/api/legacy-import/skr/start", headers=target_headers)
-        job_id = int(started["job_id"])
-        print(f"destination migration job: {job_id}", flush=True)
+        existing_job = active_migration_job(client, target, source_headers)
+        if existing_job:
+            job_id = int(existing_job["id"])
+            resume_counts = existing_job.get("payload", {}).get("counts", {})
+            print(f"resuming destination migration job: {job_id} at {existing_job.get('phase')}", flush=True)
+        else:
+            started = api_request(client, "POST", f"{target}/api/legacy-import/skr/start", headers=target_headers)
+            job_id = int(started["job_id"])
+            resume_counts = {}
+            print(f"destination migration job: {job_id}", flush=True)
 
         simple_entities = [
             ("products", "/api/products", 500, 250),
@@ -285,6 +336,11 @@ def main() -> int:
                 }
                 if len(inventory_identity_quantity) != len(rows):
                     raise RuntimeError("Legacy inventory contains duplicate product/outlet identities")
+            if int(resume_counts.get(entity, -1)) == len(rows) and (
+                entity != "inventory" or int(resume_counts.get("inventory_snapshot_complete", 0)) == 1
+            ):
+                print(f"{entity}: already imported ({len(rows)} rows)", flush=True)
+                continue
             post_batches(
                 client, target, target_headers, job_id, entity, rows,
                 batch_size=target_batch_size,
@@ -293,7 +349,11 @@ def main() -> int:
             )
 
         summary_to_day = date.today().isoformat()
-        source_trend = trend_rows(client, source, source_headers, summary_to_day)
+        source_trend = unique_trend_rows(
+            trend_rows(client, source, source_headers, summary_to_day),
+            date_key="date",
+        )
+        source_trend_map = normalized_trend(source_trend, date_key="date")
         summary_rows = [{
             "business_date": row.get("date"),
             "outlet": row.get("outlet"),
@@ -362,7 +422,6 @@ def main() -> int:
         }
         results = verify_identities(client, source, target, source_headers, target_headers)
         target_trend = trend_rows(client, target, source_headers, summary_to_day)
-        source_trend_map = normalized_trend(source_trend, date_key="date")
         target_trend_map = normalized_trend(target_trend, date_key="date")
         if source_trend_map != target_trend_map:
             raise RuntimeError(
