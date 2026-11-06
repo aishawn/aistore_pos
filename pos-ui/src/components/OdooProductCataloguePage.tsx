@@ -816,6 +816,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   const fullName = typeof product.display_name === "string" ? product.display_name : product.name;
                   const label = friendlyProductName(fullName);
                   const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
+                  const unitCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
                   return (
                     <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
                       {!inventoryReport && <td className="px-4 py-3">{product.active !== false ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Active</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Archived</span>}</td>}
