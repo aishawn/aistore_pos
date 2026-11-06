@@ -625,33 +625,40 @@ export async function POST(request: NextRequest) {
                 if (Array.isArray(template?.pos_categ_ids) && template.pos_categ_ids.length) product.pos_categ_ids = template.pos_categ_ids;
                 if (!product.shopfront_source_name && typeof template?.name === "string" && template.name) product.shopfront_source_name = template.name;
               }
-              const storeDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide" }).format(new Date());
-              const [year, month, date] = storeDay.split("-").map(Number);
-              const todayUtc = Date.UTC(year, month - 1, date);
-              const from = new Date(todayUtc - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-              const saleLines = await odooRpc<Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }>>(sessionId, request, "shopfront.sync.sale.line", "search_read", [[ ["source_product_id", "in", sourceIds], ["sale_id.store_key", "=", sourceStore], ["sale_id.created_at", ">=", from] ]], { fields: ["source_product_id", "quantity", "sale_id"], limit: 20000, context: companyContext });
-              if (saleLines.length >= 20000) throw new Error("Shopfront product sales exceed the safe per-page summary limit.");
-              const saleIds = [...new Set(saleLines.flatMap((line) => Array.isArray(line.sale_id) ? [Number(line.sale_id[0])] : []).filter((id) => Number.isSafeInteger(id) && id > 0))];
-              const sales = saleIds.length ? await odooRpc<Array<{ id: number; status?: string | false; created_at?: string | false }>>(sessionId, request, "shopfront.sync.sale", "search_read", [[ ["id", "in", saleIds], ["store_key", "=", sourceStore] ]], { fields: ["id", "status", "created_at"], limit: saleIds.length, context: companyContext }) : [];
-              const completedSales = new Map(sales.filter((sale) => String(sale.status || "").toUpperCase() === "COMPLETED").map((sale) => [sale.id, String(sale.created_at || "").slice(0, 10)]));
-              const pointsBySource = new Map<string, number[]>();
-              for (const line of saleLines) {
-                if (typeof line.source_product_id !== "string" || !Array.isArray(line.sale_id)) continue;
-                const day = completedSales.get(Number(line.sale_id[0]));
-                const quantity = Number(line.quantity);
-                if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(quantity)) continue;
-                const ageDays = Math.floor((todayUtc - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
-                if (ageDays < 0 || ageDays >= 30) continue;
-                let points = pointsBySource.get(line.source_product_id);
-                if (!points) { points = Array.from({ length: 30 }, () => 0); pointsBySource.set(line.source_product_id, points); }
-                points[29 - ageDays] += quantity;
-              }
-              for (const product of productRows) {
-                const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
-                const ref = templates.find((item) => item.id === templateId)?.shopfront_source_ref;
-                const sourceId = typeof ref === "string" && ref.startsWith(`${sourceStore}:`) ? ref.slice(sourceStore.length + 1) : "";
-                product.performance_30d = sourceId ? pointsBySource.get(sourceId) ?? Array.from({ length: 30 }, () => 0) : null;
-                product.performance_source = "Shopfront";
+              try {
+                const storeDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide" }).format(new Date());
+                const [year, month, date] = storeDay.split("-").map(Number);
+                const todayUtc = Date.UTC(year, month - 1, date);
+                const from = new Date(todayUtc - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+                const saleLines = await odooRpc<Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }>>(sessionId, request, "shopfront.sync.sale.line", "search_read", [[ ["source_product_id", "in", sourceIds], ["sale_id.store_key", "=", sourceStore], ["sale_id.created_at", ">=", from] ]], { fields: ["source_product_id", "quantity", "sale_id"], limit: 20000, context: companyContext });
+                if (saleLines.length >= 20000) throw new Error("Shopfront product sales exceed the safe per-page summary limit.");
+                const saleIds = [...new Set(saleLines.flatMap((line) => Array.isArray(line.sale_id) ? [Number(line.sale_id[0])] : []).filter((id) => Number.isSafeInteger(id) && id > 0))];
+                const sales = saleIds.length ? await odooRpc<Array<{ id: number; status?: string | false; created_at?: string | false }>>(sessionId, request, "shopfront.sync.sale", "search_read", [[ ["id", "in", saleIds], ["store_key", "=", sourceStore] ]], { fields: ["id", "status", "created_at"], limit: saleIds.length, context: companyContext }) : [];
+                const completedSales = new Map(sales.filter((sale) => String(sale.status || "").toUpperCase() === "COMPLETED").map((sale) => [sale.id, String(sale.created_at || "").slice(0, 10)]));
+                const pointsBySource = new Map<string, number[]>();
+                for (const line of saleLines) {
+                  if (typeof line.source_product_id !== "string" || !Array.isArray(line.sale_id)) continue;
+                  const day = completedSales.get(Number(line.sale_id[0]));
+                  const quantity = Number(line.quantity);
+                  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(quantity)) continue;
+                  const ageDays = Math.floor((todayUtc - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
+                  if (ageDays < 0 || ageDays >= 30) continue;
+                  let points = pointsBySource.get(line.source_product_id);
+                  if (!points) { points = Array.from({ length: 30 }, () => 0); pointsBySource.set(line.source_product_id, points); }
+                  points[29 - ageDays] += quantity;
+                }
+                for (const product of productRows) {
+                  const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+                  const ref = templates.find((item) => item.id === templateId)?.shopfront_source_ref;
+                  const sourceId = typeof ref === "string" && ref.startsWith(`${sourceStore}:`) ? ref.slice(sourceStore.length + 1) : "";
+                  product.performance_30d = sourceId ? pointsBySource.get(sourceId) ?? Array.from({ length: 30 }, () => 0) : null;
+                  product.performance_source = "Shopfront";
+                }
+              } catch {
+                for (const product of productRows) {
+                  product.performance_30d = null;
+                  product.performance_source = "Shopfront";
+                }
               }
             }
           } catch {

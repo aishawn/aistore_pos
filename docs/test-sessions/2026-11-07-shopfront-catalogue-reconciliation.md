@@ -30,4 +30,6 @@ Database: `aipos_uat`; store: `skr`; Odoo company: 5; stock location: `UATPI/Sto
 - Focused ESLint: PASS, 0 errors and 9 existing effect warnings.
 - `git diff --check`: PASS.
 - Read-only audit issued no business-data writes.
-- Deployment: pending push and Dokploy build. Dokploy `main` auto-deploy is enabled; pre-push public runtime SHA was `7d824a2665c616d7463fec72cb3dd8f7a7d9afad`.
+- First deployment `5ba3b317d0bbadbc9e37ef8b0e555aab978f6244`: Dokploy status `done`; frontend and backend runtime SHAs matched. The legacy purchases URL redirected to `/purchases`, which displayed the normal Purchase Orders view. Products showed 10,849 active source products and 51,512 source positive units. Initial row inspection exposed a source-enrichment failure when optional performance data was unavailable.
+- Follow-up fix isolates 30-day performance queries from core Shopfront product and inventory enrichment. Local typecheck, focused ESLint, helper tests 4/4, and diff check passed again. Its deployment is pending.
+- Dokploy `main` auto-deploy is enabled. Pre-first-push public runtime SHA was `7d824a2665c616d7463fec72cb3dd8f7a7d9afad`.

@@ -8,6 +8,7 @@
 - Local verification: Shopfront mapping/stock helper tests 4/4 PASS; `npm run typecheck` PASS; focused ESLint 0 errors / 9 existing `react-hooks/set-state-in-effect` warnings; `git diff --check` PASS.
 - The legacy `/purchases?state=purchase` URL is redirected to `/purchases` by the existing PurchasingWorkspace compatibility handler.
 - Dokploy Compose is bound to GitHub `main` with `autoDeploy=true`. Online deployment for this candidate is pending; the public version endpoint reported `7d824a2665c616d7463fec72cb3dd8f7a7d9afad` before push.
+- First live candidate `5ba3b317` showed the corrected 10,849 source products and 51,512 source units, and redirected `/purchases?state=purchase` to `/purchases`. Product rows exposed an optional performance-query failure clearing other source fields; that failure isolation fix is in the follow-up candidate and awaits deployment verification.
 
 ## Inventory report source alignment candidate (2026-11-06)
 
