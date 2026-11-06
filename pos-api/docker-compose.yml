@@ -42,6 +42,9 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
       # AI assistant (DashScope). Defaults off; set AI_ENABLED=true + key in .env
       AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-dashscope}
+      AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-https://ai.orithos.com.au}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
       AI_DASHSCOPE_MODEL: ${AI_DASHSCOPE_MODEL:-qwen-plus}
       AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}

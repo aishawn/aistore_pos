@@ -46,6 +46,10 @@ public final class DashScopeAiGateway implements AiGateway {
     private final String apiKey;
     private final AiProperties aiProperties;
 
+    private String providerName() {
+        return "remote".equalsIgnoreCase(properties.getProvider()) ? "ai-gateway" : PROVIDER;
+    }
+
     public DashScopeAiGateway(ObjectProvider<ChatClient> clients, AiGatewayProperties properties,
                               AiGatewayQuotaService quota,
                               AiGatewayUsageRecorder usageRecorder,
@@ -59,8 +63,11 @@ public final class DashScopeAiGateway implements AiGateway {
         this.usageRecorder = usageRecorder;
         this.objectMapper = objectMapper;
         this.aiProperties = aiProperties;
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
-        String normalizedBaseUrl = baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", "");
+        boolean remote = "remote".equalsIgnoreCase(properties.getProvider());
+        this.apiKey = remote ? properties.getServiceToken() : (apiKey == null ? "" : apiKey.trim());
+        String normalizedBaseUrl = remote
+                ? properties.getServiceBaseUrl().replaceAll("/+$", "")
+                : (baseUrl == null ? "https://dashscope.aliyuncs.com" : baseUrl.replaceAll("/+$", ""));
         Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(timeout).build());
@@ -85,7 +92,9 @@ public final class DashScopeAiGateway implements AiGateway {
         Map<String, Object> body = task == AiTask.TRANSCRIPTION
                 ? transcriptionBody(model, dataUri, languageHint)
                 : visionBody(model, dataUri, mimeType, prompt);
-        String uri = task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
+        boolean remote = "remote".equalsIgnoreCase(properties.getProvider());
+        String uri = remote ? "/v1/provider/chat/completions"
+                : task == AiTask.VISION && DashScopeModelRouting.requiresMultimodalEndpoint(model)
                 ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH : "/compatible-mode/v1/chat/completions";
         // Reserve once per logical media request; retries reuse this reservation.
         quota.reserve(tenant, AiGatewayQuotaService.estimateMediaTokens(media, prompt));
@@ -98,7 +107,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 String text = extractText(response);
                 if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response);
-                return completed(tenant, task, new AiCompletion<>(text, PROVIDER, model, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(text, providerName(), model, usage[0], usage[1],
                         Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -110,7 +119,8 @@ public final class DashScopeAiGateway implements AiGateway {
         if (task == AiTask.VISION) {
             String fallback = properties.getFallbackVisionModel();
             if (StringUtils.hasText(fallback) && !fallback.equals(model)) {
-                String fallbackUri = DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
+                String fallbackUri = remote ? "/v1/provider/chat/completions"
+                        : DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
                         ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
                         : "/compatible-mode/v1/chat/completions";
                 Map<String, Object> fallbackBody = visionBody(fallback, dataUri, mimeType, prompt);
@@ -121,7 +131,7 @@ public final class DashScopeAiGateway implements AiGateway {
                     String text = extractText(response);
                     if (!StringUtils.hasText(text)) throw new IllegalStateException("AI provider returned empty output");
                     Integer[] usage = usageTokens(response);
-                    return completed(tenant, task, new AiCompletion<>(text, PROVIDER, fallback, usage[0], usage[1],
+                    return completed(tenant, task, new AiCompletion<>(text, providerName(), fallback, usage[0], usage[1],
                             Duration.ZERO, true));
                 } catch (BusinessException rejected) {
                     throw rejected;
@@ -206,7 +216,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(model)
                         ? callMultimodal(prompt, normalized, model, outputType)
                         : call(client, model, prompt, normalized, outputType);
-                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, model,
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), providerName(), model,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -226,7 +236,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 CallOutcome<T> outcome = DashScopeModelRouting.requiresMultimodalEndpoint(fallback)
                         ? callMultimodal(prompt, normalized, fallback, outputType)
                         : call(client, fallback, prompt, normalized, outputType);
-                return completed(tenant, task, new AiCompletion<>(outcome.value(), PROVIDER, fallback,
+                return completed(tenant, task, new AiCompletion<>(outcome.value(), providerName(), fallback,
                         outcome.inputTokens(), outcome.outputTokens(), Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -262,7 +272,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 String value = response.content();
                 if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response.chatResponse());
-                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, model, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(value, providerName(), model, usage[0], usage[1],
                         Duration.between(started, Instant.now()), false));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -285,7 +295,7 @@ public final class DashScopeAiGateway implements AiGateway {
                 String value = response.content();
                 if (value == null || value.isBlank()) throw new IllegalStateException("AI provider returned empty output");
                 Integer[] usage = usageTokens(response.chatResponse());
-                return completed(tenant, task, new AiCompletion<>(value, PROVIDER, fallback, usage[0], usage[1],
+                return completed(tenant, task, new AiCompletion<>(value, providerName(), fallback, usage[0], usage[1],
                         Duration.between(started, Instant.now()), true));
             } catch (BusinessException rejected) {
                 throw rejected;
@@ -333,8 +343,10 @@ public final class DashScopeAiGateway implements AiGateway {
         body.put("parameters", Map.of("result_format", "message"));
         body.put("multiModel", true);
 
+        String multimodalPath = "remote".equalsIgnoreCase(properties.getProvider())
+                ? "/v1/provider/chat/completions" : DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH;
         JsonNode response = mediaClient.post()
-                .uri(DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH)
+                .uri(multimodalPath)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + apiKey)
                 .body(body)

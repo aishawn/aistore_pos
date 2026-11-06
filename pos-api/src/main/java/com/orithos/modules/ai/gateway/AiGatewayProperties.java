@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app.ai.gateway")
 public class AiGatewayProperties {
+    private String provider = "dashscope";
+    private String serviceBaseUrl = "https://ai.orithos.com.au";
+    private String serviceToken = "";
     private boolean enabled = true;
     private int maxInputChars = 12000;
     private int maxRetries = 2;
@@ -18,6 +21,13 @@ public class AiGatewayProperties {
     private String transcriptionModel = "qwen3-asr-flash";
     private String visionModel = "qwen3.8-flash";
     private String fallbackVisionModel = "qwen-vl-plus";
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { if (provider != null && !provider.isBlank()) this.provider = provider.trim(); }
+    public String getServiceBaseUrl() { return serviceBaseUrl; }
+    public void setServiceBaseUrl(String serviceBaseUrl) { if (serviceBaseUrl != null && !serviceBaseUrl.isBlank()) this.serviceBaseUrl = serviceBaseUrl.trim(); }
+    public String getServiceToken() { return serviceToken; }
+    public void setServiceToken(String serviceToken) { this.serviceToken = serviceToken == null ? "" : serviceToken.trim(); }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

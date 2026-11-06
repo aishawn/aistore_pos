@@ -2,6 +2,7 @@ package com.orithos.modules.ai.config;
 
 import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAsyncToolCallingManagerAutoConfiguration;
 import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration;
+import org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration;
 import com.alibaba.cloud.ai.graph.CompileConfig;
 import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.KeyStrategy;
@@ -51,12 +52,18 @@ import static com.alibaba.cloud.ai.graph.action.AsyncNodeAction.node_async;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 // Must use @Import (not @ImportAutoConfiguration): spring.autoconfigure.exclude also
 // blocks ImportAutoConfiguration, so ChatModel would never register.
-@Import({
-        DashScopeChatAutoConfiguration.class,
-        DashScopeAsyncToolCallingManagerAutoConfiguration.class
-})
 @EnableConfigurationProperties(AiProperties.class)
 public class PosAssistantGraphConfig {
+
+    @Configuration
+    @ConditionalOnProperty(name = "app.ai.gateway.provider", havingValue = "dashscope", matchIfMissing = true)
+    @Import({DashScopeChatAutoConfiguration.class, DashScopeAsyncToolCallingManagerAutoConfiguration.class})
+    static class DashScopeProviderConfiguration { }
+
+    @Configuration
+    @ConditionalOnProperty(name = "app.ai.gateway.provider", havingValue = "remote")
+    @Import(OpenAiChatAutoConfiguration.class)
+    static class RemoteProviderConfiguration { }
 
     private static final String CLASSIFY = "classify";
     private static final String RESPOND = "respond";
