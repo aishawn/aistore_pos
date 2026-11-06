@@ -1,1 +1,1 @@
-org.springframework.boot.env.EnvironmentPostProcessor=com.orithos.config.PostgresqlUrlEnvironmentPostProcessor
+org.springframework.boot.env.EnvironmentPostProcessor=com.orithos.config.PostgresqlUrlEnvironmentPostProcessor,com.orithos.modules.ai.AiProviderEnvironmentPostProcessor
