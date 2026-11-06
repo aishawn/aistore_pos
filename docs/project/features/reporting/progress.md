@@ -4,9 +4,9 @@ Updated: 2026-11-06. Owner: TBD.
 
 ## Inventory labels and purchasing navigation (2026-11-06)
 
-- Removed the redundant `Receipts · To receive` tab from the purchasing workspace. Existing `?state=purchase` links remain valid for compatibility and can still filter the purchase-order list.
+- Removed the redundant `Receipts · To receive` tab from the purchasing workspace. Legacy `/purchases?state=purchase` links now replace the URL with `/purchases` and show the canonical Purchase Orders view.
 - Inventory footer now labels its count as Odoo product variants and its quantity as positive stock units. The latter intentionally sums positive balances only; negative-stock variants remain in the list but do not offset the total.
-- The provided screenshots show 10,849 Shopfront product results versus 13,292 Odoo product variants (2,443 more Odoo rows). These are different sources and record scopes; aggregate counts alone cannot identify which products differ. Positive stock units are calculated by summing only positive Odoo balances, so negative balances do not offset the shown total. Public runtime version confirms deployment SHA `21573d8c`; authenticated row-level comparison was unavailable in this review, so neither count nor `50,992` is certified against live source rows.
+- The provided screenshots show 10,849 Shopfront product results versus 13,292 Odoo product variants (2,443 more Odoo rows). These are different sources and record scopes; aggregate counts alone cannot identify which products differ. Positive stock units are calculated by summing only positive Odoo balances, so negative balances do not offset the shown total (the screenshot shows 5,379 negative-stock variants). Public runtime version confirms deployment SHA `43fb774d`, built after the screenshots; the UI labels now expose the Odoo/positive-stock scope. This does not certify the Shopfront-to-Odoo row mapping or stock against an authenticated raw-source comparison.
 
 ## Shopfront parity reliability follow-up (2026-11-06)
 

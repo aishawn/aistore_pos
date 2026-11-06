@@ -2,6 +2,13 @@
 
 Updated: 2026-11-05. Owner: TBD.
 
+## Inventory labels and legacy purchase URL (2026-11-06)
+
+- Source/runtime check: `origin/main` is `43fb774d9c6d7358762e843f0b9a7463d4577958`. Read-only `GET /api/public/version` on SKR, Demo, and App returned that SHA for both frontend and backend, built at `2026-11-06T07:11:37Z` / `07:11:38Z`. It includes the receipt-tab removal, Odoo-variant/positive-stock labels, and Shopfront report merge; the attached screenshots were captured about 50 minutes before this build.
+- Screenshot arithmetic: `13,292` is the Odoo inventory result count, whereas `10,849` is the Shopfront product-results count. They are different source scopes and cannot establish a row-level mismatch. The Odoo inventory footer sums `max(qty_available, 0)` across the matching variants; the screenshot separately reports 5,379 negative-stock variants. Thus `50,992` is positive stock units, not net stock after negative balances and not a Shopfront count. Code returns “Mixed units” if the Odoo result includes multiple UOMs.
+- Legacy-link regression change: `/purchases?state=purchase` now replaces to `/purchases` before rendering the removed receipt filter. The old deployed runtime cannot verify this new follow-up until its commit deploys.
+- Verification limits: Node 24.22.1 is available, but the local dependency install is incomplete: direct `tsc --noEmit` fails on missing Next.js declarations/modules, and ESLint cannot load its package metadata. The project docs checker also fails on 65 pre-existing missing documentation/evidence files. `git diff --check` passes. Browser navigation and post-follow-up runtime checks are NOT RUN. No authenticated row-level product/stock reconciliation or business writes were performed.
+
 ## Follow-up review (2026-11-05)
 
 - Read-only sync root-cause check: POS runtime SHA `809ef6304a50de96f906d2c2c44a3f38552933ae`; live crawler `/shopfront-audit?store=skr` reports 155,976 sales and 822 `INCOMPLETE` rows. Sync run 212 (`skr`, 2026-11-04..05) reports 311 source sales fetched/processed, 311 POS mirror sales acknowledged, and 3 Odoo batches acknowledged as mirrored (`imported=0`, `mirrored=311`). No source-order IDs or customer data were exported, and no writes/replays were triggered.

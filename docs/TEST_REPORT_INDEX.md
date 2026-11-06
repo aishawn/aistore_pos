@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest inventory-label and legacy receipt-link follow-up: [2026-11-06 purchase URL compatibility](test-sessions/2026-11-06-purchase-url-compatibility.md): runtime `43fb774d` confirms the prior receipt-tab/inventory-label changes are deployed; screenshot scopes and positive-stock arithmetic reviewed. Incomplete local dependencies block TypeScript/ESLint checks, the docs checker reports pre-existing missing files, and legacy-link browser check/post-follow-up deployment are pending.
+
 Latest API candidate (`2026-11-06`): Java compile PASS; Python CLI syntax and project-doc checks pending. API tests, Dokploy exact-SHA gate and deployed/online acceptance NOT RUN. Writes remain disabled. Details: [CAP-API validation](project/features/pos-api/validation.md).
 
 Latest Shopfront reliability candidate: [feature validation](project/features/shopfront-sync/validation.md): crawler 129/129 and Odoo supply fixture 7/7 PASS; inventory page resume and daily mirror timeout regressions pass. POS UI typecheck/lint are blocked by absent dependencies; two UI tests cannot import `redis`. Not deployed; Shopfront-to-POS parity remains NOT RUN.
