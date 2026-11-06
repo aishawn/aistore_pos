@@ -12,7 +12,7 @@ The facade resolves the vendor's ready `odoo_company_id`, authenticates the conf
 
 Batch POST accepts 1-500 records and requires `api.write`, `api.batch`, a unique `sourceId` per row, and an `Idempotency-Key`. A unique `(vendor, token, key)` row is reserved before the operation is queued. An identical retry returns the recorded response; a changed request returns 409. Expired keys may be reused. Partial results stay attached to a durable operation record. A service restart changes unfinished operations to `unknown`; callers must reconcile Odoo before retrying.
 
-Current write adapters are limited to ordinary POS sales, physical stock counts, and draft purchase orders. Sales require a fresh server-side quote and Odoo order UUID; inventory counts require a vendor-bound stock location, an expected quantity and Odoo inventory mode; purchase drafts use `sourceId` in `purchase.order.origin`. Server flags default to false. Refunds and purchase receipts are not implemented. Do not enable a write flag until the Java 21 exact-SHA build and `aipos_uat` isolation acceptance pass.
+Current write adapters cover ordinary POS sales, validated full-sale refunds, physical stock counts, and draft purchase orders. Sales require a fresh server-side quote and Odoo order UUID; refunds must reference every unrefunded original line and match the original total; inventory counts require a vendor-bound stock location and an expected quantity; purchase drafts use `sourceId` in `purchase.order.origin`. Server flags default to false in a fresh deployment and are enabled only for the isolated `aipos_uat` acceptance environment. Purchase receipts remain outside this API so writing a purchase cannot silently receive stock.
 
 ## Webhooks
 

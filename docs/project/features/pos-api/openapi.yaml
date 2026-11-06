@@ -3,10 +3,9 @@ info:
   title: Orithos POS API
   version: 1.0.0
   description: >-
-    Odoo-backed, tenant-scoped API. Read operations are available. Batch writes
-    for sales (including full-sale refunds), stock counts, and draft purchase
-    orders are feature-gated and disabled by default. Purchase receipt validation
-    remains in the store workflow and is not exposed as a batch resource.
+    Odoo-backed, tenant-scoped API. Batch writes support sales, validated
+    full-sale refunds, stock counts, and draft purchase orders. Each write is
+    feature-gated, asynchronous, idempotent, and isolated to the vendor company.
 servers:
   - url: https://{storeHost}/api/pos/v1
     variables:
@@ -94,7 +93,7 @@ paths:
   /{resource}:batch:
     post:
       summary: Submit a feature-gated batch operation
-      description: Sales (including full-sale refunds), inventory counts, and draft purchase orders only. Server flags default to false. Purchase receipts are not supported.
+      description: Sales (including validated full-sale refunds), inventory counts, and draft purchase orders. Server flags control writes per deployment. Purchase writes create drafts and do not receive stock.
       parameters:
         - in: path
           name: resource

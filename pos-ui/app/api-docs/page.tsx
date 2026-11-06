@@ -4,14 +4,14 @@ import { useMemo, useState } from "react";
 import { BookOpen, Check, Copy, ExternalLink, KeyRound, Search, Shield, Terminal } from "lucide-react";
 
 const resources = [
-  { name: "Products", path: "products", read: true, write: "Not available" },
-  { name: "Sales", path: "sales", read: true, write: "Disabled by default" },
-  { name: "Refunds", path: "sales:batch", read: false, write: "Not implemented" },
-  { name: "Inventory", path: "inventory", read: true, write: "Count batches disabled by default" },
-  { name: "Purchases", path: "purchases", read: true, write: "Disabled by default" },
-  { name: "Customers", path: "customers", read: true, write: "Not available" },
-  { name: "Suppliers", path: "suppliers", read: true, write: "Not available" },
-  { name: "Orders", path: "orders", read: true, write: "Not available" },
+  { name: "Products", path: "products", read: true, write: "Read only" },
+  { name: "Sales", path: "sales", read: true, write: "Feature gated" },
+  { name: "Refunds", path: "sales:batch", read: false, write: "Full-sale refund supported" },
+  { name: "Inventory", path: "inventory", read: true, write: "Count adjustment" },
+  { name: "Purchases", path: "purchases", read: true, write: "Draft purchase orders" },
+  { name: "Customers", path: "customers", read: true, write: "Read only" },
+  { name: "Suppliers", path: "suppliers", read: true, write: "Read only" },
+  { name: "Orders", path: "orders", read: true, write: "Read only" },
 ];
 
 export default function ApiDocsPage() {
@@ -38,7 +38,7 @@ export default function ApiDocsPage() {
           <h1 className="mt-2 text-2xl font-semibold">Orithos POS API</h1>
             <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">Versioned REST API for store integrations. Odoo remains the source of truth, with each request scoped to its store.</p>
         </div>
-        <a href="/api/pos/v1/openapi.yaml" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-medium hover:bg-[var(--oh-surface-muted)]" download><ExternalLink size={15} /> OpenAPI spec</a>
+        <a href="/openapi.yaml" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-medium hover:bg-[var(--oh-surface-muted)]" download><ExternalLink size={15} /> OpenAPI spec</a>
       </header>
 
       <div className="grid gap-8 py-6 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -71,12 +71,12 @@ export default function ApiDocsPage() {
               {filtered.map((item) => <div key={item.path} className="grid grid-cols-[minmax(100px,1fr)_minmax(140px,2fr)_90px_120px] gap-3 border-t border-[var(--oh-border)] px-3 py-3 text-sm"><span className="font-medium">{item.name}</span><code className="break-all text-xs text-[var(--oh-muted)]">/{item.path}</code><span className={item.read ? "text-emerald-700" : "text-[var(--oh-muted)]"}>{item.read ? "Ready" : "Planned"}</span><span className="text-[var(--oh-muted)]">{item.write}</span></div>)}
               {!filtered.length && <p className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">No matching resources.</p>}
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2"><CodeLine method="GET" path="/products?offset=0&limit=100" /><CodeLine method="GET" path="/products/{id}" /><CodeLine method="POST" path="/sales:quote" /><CodeLine method="POST" path="/{resource}:batch" /><CodeLine method="GET" path="/operations/{id}" /><CodeLine method="POST" path="/webhooks" /></div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2"><CodeLine method="GET" path="/products?offset=0&limit=100" /><CodeLine method="GET" path="/products/{id}" /><CodeLine method="POST" path="/sales:quote" /><CodeLine method="POST" path="/sales:batch" /><CodeLine method="POST" path="/inventory:batch" /><CodeLine method="POST" path="/purchases:batch" /><CodeLine method="GET" path="/operations/{id}" /><CodeLine method="POST" path="/webhooks" /></div>
           </section>
 
           <section id="batch-operations" className="scroll-mt-5">
             <h2 className="text-lg font-semibold">Batch operations</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Batch requests currently accept sales, inventory counts, and draft purchase orders when the corresponding server-side feature flag is enabled. All three flags default to disabled. Refund creation is not implemented. Accepted writes return an operation ID for status polling.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Batch requests accept sales, full-sale refunds, inventory counts, and draft purchase orders when the corresponding server-side feature gate is enabled. Every record needs a stable sourceId. Accepted writes return an operation ID for status polling, and repeating the same Idempotency-Key replays the original result without creating another Odoo document.</p>
             <div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[var(--oh-muted)]"><Terminal size={14} /> Example request</div>
               <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs leading-5">{example}</pre>
@@ -85,7 +85,7 @@ export default function ApiDocsPage() {
             </div>
           </section>
 
-          <section id="webhooks" className="scroll-mt-5"><h2 className="text-lg font-semibold">Webhooks</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Subscriptions can be created and revoked with the `api.webhook` scope. Delivery attempts use an HMAC signature and retry transient failures. Configure `POS_API_WEBHOOK_ENCRYPTION_KEY` before registering an endpoint. Delivery history is not exposed by the current API.</p></section>
+          <section id="webhooks" className="scroll-mt-5"><h2 className="text-lg font-semibold">Webhooks</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Subscriptions can be created and revoked with the `api.webhook` scope. Delivery attempts use an HMAC signature and retry transient failures for up to eight attempts. Configure `POS_API_WEBHOOK_ENCRYPTION_KEY` before registering an endpoint. Delivery history is retained for retry and audit.</p></section>
           <section id="errors" className="scroll-mt-5"><h2 className="text-lg font-semibold">Errors</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{[["401", "Token missing, expired, or revoked"], ["403", "Scope or store boundary mismatch"], ["404", "Resource not found in this store"], ["409", "Idempotency key conflict or resource state changed"], ["429", "Rate limit exceeded"], ["5xx", "Temporary API or Odoo service failure"]].map(([code, label]) => <div key={code} className="flex gap-3 rounded border border-[var(--oh-border)] px-3 py-2 text-sm"><code className="font-semibold">{code}</code><span className="text-[var(--oh-muted)]">{label}</span></div>)}</div></section>
         </div>
       </div>

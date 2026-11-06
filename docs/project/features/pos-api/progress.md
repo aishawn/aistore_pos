@@ -7,4 +7,5 @@
 - Added scope and vendor/company checks, allow-listed Odoo models/fields, pagination and fail-closed errors.
 - Added thin Python CLI with environment/config support, JSON output, retry handling and explicit write confirmation.
 - Added feature-gated sales, inventory-count and draft-purchase batch adapters, persisted operation records, idempotency replay/conflict handling, webhook registration/signatures/retries, and an in-app API docs page with a deployed OpenAPI asset.
-- Pending: purchase-receipt adapter, exact-SHA Java 21 verification, deployment, and online UAT in `aipos_uat`.
+- Sales, validated full-sale refunds, inventory count adjustments, and draft purchase writes are implemented behind deployment feature flags. Batch requests persist an idempotency record, run as asynchronous operations, and publish durable webhook events.
+- The API docs page and downloadable OpenAPI asset describe the current write and replay behavior. Runtime release verification is tracked in `validation.md`.
