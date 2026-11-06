@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Thin Orithos POS REST client. It intentionally contains no business logic."""
+import argparse, getpass, json, os, pathlib, secrets, sys, time
+import urllib.error, urllib.request
+
+def config():
+    path = pathlib.Path(os.environ.get("ORITHOS_POS_CONFIG", pathlib.Path.home()/".orithos-pos.json"))
+    data = json.loads(path.read_text()) if path.exists() else {}
+    return path, data
+def request(method, path, body=None, idem=None):
+    _, cfg = config(); base=cfg.get("api_url") or os.environ.get("ORITHOS_POS_API_URL")
+    token=cfg.get("token") or os.environ.get("ORITHOS_POS_TOKEN")
+    if not base or not token: raise SystemExit("configure ORITHOS_POS_API_URL and ORITHOS_POS_TOKEN first")
+    headers={"Authorization":"Bearer "+token,"Accept":"application/json"}
+    if body is not None: headers["Content-Type"]="application/json"
+    if idem: headers["Idempotency-Key"]=idem
+    req=urllib.request.Request(base.rstrip("/")+path, method=method, headers=headers, data=json.dumps(body).encode() if body is not None else None)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r: return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt<2: time.sleep(2**attempt); continue
+            detail=e.read().decode(errors="replace")
+            raise SystemExit(f"HTTP {e.code}: {detail}")
+        except urllib.error.URLError as e:
+            if attempt<2: time.sleep(2**attempt); continue
+            raise SystemExit(f"network error: {e.reason}")
+def admin_request(method, path, body=None):
+    _, cfg=config(); base=cfg.get("api_url") or os.environ.get("ORITHOS_POS_API_URL")
+    token=os.environ.get("ORITHOS_POS_ADMIN_JWT")
+    if not base or not token: raise SystemExit("set ORITHOS_POS_API_URL and ORITHOS_POS_ADMIN_JWT for token administration")
+    req=urllib.request.Request(base.rstrip("/")+path,method=method,headers={"Authorization":"Bearer "+token,"Content-Type":"application/json","Accept":"application/json"},data=json.dumps(body).encode() if body is not None else None)
+    try:
+        with urllib.request.urlopen(req,timeout=30) as r:return json.load(r)
+    except urllib.error.HTTPError as e: raise SystemExit(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
+def output(value, as_json): print(json.dumps(value,indent=2,ensure_ascii=False) if as_json else ("\n".join("\t".join(map(str,x.values())) for x in value.get("items",[])) if isinstance(value,dict) and "items" in value else value))
+def main():
+    p=argparse.ArgumentParser(prog="orithos-pos");p.add_argument("--json",action="store_true");s=p.add_subparsers(dest="group",required=True)
+    auth=s.add_parser("auth").add_subparsers(dest="action",required=True); login=auth.add_parser("login");login.add_argument("api_url")
+    token=auth.add_parser("token").add_subparsers(dest="token_action",required=True); create=token.add_parser("create");create.add_argument("--name",default="CLI");create.add_argument("--scope",action="append",default=["api.read"]);create.add_argument("--expires-at")
+    revoke=token.add_parser("revoke");revoke.add_argument("id",type=int)
+    for resource in ("products","customers","suppliers","orders","sales","purchases","inventory"):
+        rp=s.add_parser(resource).add_subparsers(dest="action",required=True);rp.add_parser("list");rp.add_parser("get").add_argument("id",type=int)
+    op=s.add_parser("operations").add_parser("get");op.add_argument("id")
+    sync=s.add_parser("sync").add_parser("batch");sync.add_argument("--resource",required=True);sync.add_argument("--file",required=True);sync.add_argument("--confirm",action="store_true")
+    a=p.parse_args()
+    if a.group=="auth" and a.action=="login":
+        path,cfg=config();cfg["api_url"]=a.api_url;cfg["token"]=getpass.getpass("API token: ");path.write_text(json.dumps(cfg));print("saved");return
+    if a.group=="auth" and a.action=="token":
+        result=admin_request("POST","/api/pos/v1/auth/tokens",{"name":a.name,"scopes":a.scope,"expiresAt":a.expires_at} if a.token_action=="create" else None) if a.token_action=="create" else admin_request("DELETE",f"/api/pos/v1/auth/tokens/{a.id}")
+        output(result,a.json);return
+    if a.group=="operations": output(request("GET",f"/api/pos/v1/operations/{a.id}"),a.json);return
+    if a.group=="sync":
+        if not a.confirm: raise SystemExit("writes require --confirm")
+        data=[json.loads(line) for line in pathlib.Path(a.file).read_text().splitlines() if line.strip()] if a.file.endswith(".jsonl") else json.loads(pathlib.Path(a.file).read_text())
+        output(request("POST",f"/api/pos/v1/{a.resource}:batch",data,secrets.token_urlsafe(24)),a.json);return
+    path=f"/api/pos/v1/{a.group}"+(f"/{a.id}" if a.action=="get" else "")
+    output(request("GET",path),a.json)
+if __name__=="__main__": main()

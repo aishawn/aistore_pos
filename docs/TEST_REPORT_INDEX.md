@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest API candidate (`2026-11-06`): Java compile PASS; Python CLI syntax and project-doc checks pending. API tests, Dokploy exact-SHA gate and deployed/online acceptance NOT RUN. Writes remain disabled. Details: [CAP-API validation](project/features/pos-api/validation.md).
+
 Latest Shopfront reliability candidate: [feature validation](project/features/shopfront-sync/validation.md): crawler 129/129 and Odoo supply fixture 7/7 PASS; inventory page resume and daily mirror timeout regressions pass. POS UI typecheck/lint are blocked by absent dependencies; two UI tests cannot import `redis`. Not deployed; Shopfront-to-POS parity remains NOT RUN.
 
 功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。本索引按 session 区分本地候选验证与线上行为，不把本地通过当作部署通过。
@@ -130,6 +132,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-05-report-optimization | 2026-11-05 | Report source drill-down, inventory URL/column behavior, and metadata | Report tests 10/10; full/scoped TypeScript PASS; ESLint 0 errors / 19 warnings; browser/live checks NOT RUN | [Report](test-sessions/2026-11-05-report-optimization.md) |
 | 2026-11-05-report-optimization-runtime-review | 2026-11-05 | Current-main workflow review, purchase comparison state, deployment identity | 175/175 frontend unit tests, typecheck and docs checker PASS; direct sales PASS, Dashboard mismatch flagged incomplete, unresolved; CSV/print NOT RUN | [Report](test-sessions/2026-11-05-report-optimization-runtime-review.md) |
 | 2026-11-05-report-ledger-and-refunds | 2026-11-05 | Distinct sales ledgers, negative-total refunds, net sales and focused checks | 10/10 focused tests and typecheck PASS; docs checker, deployment, authenticated UI, CSV/print NOT RUN | [Report](test-sessions/2026-11-05-report-ledger-and-refunds.md) |
+| 2026-11-06-shopfront-refresh-reliability | 2026-11-06 | Report refresh/cache semantics and stale snapshot handling | Crawler 69/69, compileall, POS typecheck PASS; live health/coverage read-only PASS; source page parity and deployment NOT RUN | [Report](test-sessions/2026-11-06-shopfront-refresh-reliability.md) |
 
 ## Classification rule
 

@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Orithos POS API
+  version: 1.0.0
+  description: Odoo-backed, tenant-scoped POS API. Writes are staged and currently disabled.
+servers:
+  - url: https://{storeHost}/api/pos/v1
+    variables:
+      storeHost:
+        default: demo.orithos.com.au
+security:
+  - bearerAuth: []
+paths:
+  /products:
+    get:
+      summary: List products
+      parameters:
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        '200': { description: Odoo product page }
+        '401': { description: Invalid API token }
+        '403': { description: Missing scope or tenant mismatch }
+  /products/{id}:
+    get:
+      summary: Get product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Odoo product }
+        '404': { description: Product not found }
+  /{resource}:batch:
+    post:
+      summary: Batch write (staged, disabled)
+      parameters:
+        - in: path
+          name: resource
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '501': { description: Writes are disabled pending Odoo isolation validation }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

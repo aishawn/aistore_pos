@@ -2,6 +2,7 @@ package com.orithos.config;
 
 import com.orithos.common.ApiResult;
 import com.orithos.security.JwtAuthenticationFilter;
+import com.orithos.posapi.PosApiTokenFilter;
 import com.orithos.tenant.TenantMatchFilter;
 import com.orithos.tenant.TenantResolverFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +34,7 @@ public class SecurityConfig {
     private final TenantResolverFilter tenantResolverFilter;
     private final TenantMatchFilter tenantMatchFilter;
     private final OdooOnlyModeFilter odooOnlyModeFilter;
+    private final PosApiTokenFilter posApiTokenFilter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -47,11 +49,13 @@ public class SecurityConfig {
     public SecurityConfig(JwtAuthenticationFilter jwtFilter,
                           TenantResolverFilter tenantResolverFilter,
                           TenantMatchFilter tenantMatchFilter,
-                          OdooOnlyModeFilter odooOnlyModeFilter) {
+                          OdooOnlyModeFilter odooOnlyModeFilter,
+                          PosApiTokenFilter posApiTokenFilter) {
         this.jwtFilter = jwtFilter;
         this.tenantResolverFilter = tenantResolverFilter;
         this.tenantMatchFilter = tenantMatchFilter;
         this.odooOnlyModeFilter = odooOnlyModeFilter;
+        this.posApiTokenFilter = posApiTokenFilter;
     }
 
     @Bean
@@ -126,6 +130,7 @@ public class SecurityConfig {
             .addFilterBefore(requestCorrelationFilter, TenantResolverFilter.class)
             .addFilterBefore(odooOnlyModeFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(posApiTokenFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(tenantMatchFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
