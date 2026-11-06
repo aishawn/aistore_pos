@@ -11,3 +11,4 @@
 - The API docs page and downloadable OpenAPI asset describe the current write and replay behavior. Runtime release verification is tracked in `validation.md`.
 - Hardened Odoo RPC error responses to expose only a bounded exception class category, never Odoo's raw error text; added a unit test for category sanitization.
 - Full live UAT write, retry, webhook delivery, and cleanup verification remain open; see `validation.md` for evidence and the test sale needing API refund cleanup.
+- Commit `cce3cb77` passed the GitHub Java 21 verification and deployed through Dokploy; Demo and SKR runtime SHA both match. Current UAT database and three API write gates were confirmed from Dokploy's read-only service configuration.
