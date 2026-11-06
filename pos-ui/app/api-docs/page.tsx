@@ -105,7 +105,7 @@ export default function ApiDocsPage() {
 
           <section id="authentication" className="scroll-mt-5">
             <div className="flex items-center gap-2"><KeyRound size={18} className="text-[var(--oh-primary)]" /><h2 className="text-lg font-semibold">Authentication</h2></div>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Create and revoke tokens from the signed-in store account’s Developer &amp; API settings. The token is shown once. Use a separate token per integration and grant only the required scopes.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Store administrators create and revoke API tokens with the <code>orithos-pos auth token</code> commands. Token creation requires a browser administrator JWT. The API token is shown once; use a separate token per integration and grant only the required scopes.</p>
             <div className="mt-4 flex flex-wrap gap-2">{["api.read", "api.write", "api.batch", "api.webhook", "api.admin"].map((scope) => <span key={scope} className="rounded border border-[var(--oh-border)] px-2 py-1 font-mono text-xs">{scope}</span>)}</div>
             <div className="mt-4 flex items-start gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-3 text-sm"><Shield size={16} className="mt-0.5 shrink-0 text-emerald-700" /><p>Never place API tokens in URLs, browser storage, source control, or shared logs. Rotate a token immediately if it is exposed.</p></div>
           </section>
