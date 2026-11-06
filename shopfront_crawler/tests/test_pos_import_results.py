@@ -82,22 +82,17 @@ def test_audit_odoo_sales_batch_accepts_legacy_receipt_when_counts_cover_every_i
     assert audit == {"imported": 2, "updated_orders": 1, "skipped": 0, "mirrored": 0}
 
 
-def test_audit_odoo_sales_batch_accepts_complete_historical_mirror_without_stock_writes():
-    audit = main.audit_odoo_sales_batch(
-        {"result": {"ok": True, "business": {
+def test_audit_odoo_sales_batch_rejects_mirror_only_acknowledgement():
+    with pytest.raises(RuntimeError, match="mirror-only"):
+        main.audit_odoo_sales_batch({"result": {"ok": True, "business": {
             "imported": 0,
             "mirrored": 129,
             "stock_writes": 0,
-            "disabled_reason": "historical sales are retained in the Shopfront mirror to protect current stock",
-        }}},
-        expected_count=129,
-    )
-
-    assert audit == {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": 129}
+        }}}, expected_count=129)
 
 
 def test_audit_odoo_sales_batch_rejects_partial_historical_mirror():
-    with pytest.raises(RuntimeError, match="mirror acknowledgement mismatch"):
+    with pytest.raises(RuntimeError, match="mirror-only"):
         main.audit_odoo_sales_batch({"result": {"ok": True, "business": {
             "imported": 0,
             "mirrored": 128,

@@ -82,20 +82,9 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
         updated_value = business.get("updated", 0)
     imported = receipt_count(imported_value)
     updated = receipt_count(updated_value)
-    mirrored = receipt_count(business.get("mirrored"))
-    stock_writes = receipt_count(business.get("stock_writes"))
-    if (
-        imported == 0
-        and updated in (None, 0)
-        and mirrored == expected_count
-        and stock_writes == 0
-        and business.get("disabled_reason") == "historical sales are retained in the Shopfront mirror to protect current stock"
-    ):
-        return {"imported": 0, "updated_orders": 0, "skipped": 0, "mirrored": mirrored}
-    if "mirrored" in business and imported == 0 and updated == 0:
+    if "mirrored" in business and imported == 0 and updated in (None, 0):
         raise RuntimeError(
-            "Odoo historical sales mirror acknowledgement mismatch: "
-            f"expected={expected_count}, mirrored={mirrored}, stock_writes={stock_writes}"
+            "Odoo returned a mirror-only sales acknowledgement; formal sales import is required"
         )
     if imported is None or updated is None:
         raise RuntimeError("Odoo sales response contains invalid imported/updated counts")
@@ -110,7 +99,12 @@ def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dic
             f"expected={expected_count}, imported={imported}, updated={updated}, skipped={len(skipped)}"
         )
 
-    expected_skips = {"cancelled source sale", "source sale is not completed"}
+    expected_skips = {
+        "cancelled source sale",
+        "source sale is not completed",
+        "source sale is incomplete",
+        "source financial evidence does not reconcile",
+    }
     unexpected = [
         str(item.get("reason") or "unknown") if isinstance(item, dict) else "malformed skipped-order detail"
         for item in skipped
