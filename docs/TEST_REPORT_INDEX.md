@@ -152,6 +152,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-07-shopfront-catalogue-reconciliation | 2026-11-07 | SKR Shopfront active product count vs Odoo variants and stock total | Read-only UAT: 10,849 active / 51,512 positive units; 11,005 exact stock comparisons / 0 mismatches; frontend helper tests 4/4 and typecheck PASS; Dokploy deployment pending | [Report](test-sessions/2026-11-07-shopfront-catalogue-reconciliation.md) |
 | 2026-11-07-pos-api-docs-idempotency-followup | 2026-11-07 | OpenAPI docs route, runtime SHA, CLI fixtures, cross-resource idempotency regression | CLI 3/3, POS UI typecheck and targeted ESLint PASS; SKR/Demo OpenAPI YAML 200; main ahead of runtime; backend exact-SHA gate and business-write UAT pending | [Report](test-sessions/2026-11-07-pos-api-docs-idempotency-followup.md) |
 | 2026-11-07-pos-api-docs-deployment | 2026-11-07 | Docs UI deployment and OpenAPI link verification | SKR and Demo report deployed SHA `3f7365ca`; browser confirms the fixed link and both OpenAPI endpoints return YAML 200; backend acceptance remains pending | [Report](test-sessions/2026-11-07-pos-api-docs-deployment.md) |
+| 2026-11-07-pos-api-resource-coverage | 2026-11-07 | Candidate read-resource expansion and docs/schema synchronization | CLI fixtures 4/4, docs ESLint PASS, OpenAPI YAML valid with 12 resources and generated copies identical; Java 21 gate and live resource checks pending | [Report](test-sessions/2026-11-07-pos-api-resource-coverage.md) |
 
 ## Classification rule
 

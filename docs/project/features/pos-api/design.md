@@ -6,7 +6,7 @@ Spring `pos-api` is the versioned REST facade. Browser JWT remains unchanged. CL
 
 ## Odoo access
 
-The facade resolves the vendor's ready `odoo_company_id`, authenticates the configured service account, and issues `search_read` with `allowed_company_ids`. Resource models and returned fields are allow-listed. A missing binding or incomplete Odoo configuration fails closed.
+The facade resolves the vendor's ready `odoo_company_id`, authenticates the configured service account, and issues `search_read` with `allowed_company_ids`. Resource models and returned fields are allow-listed. A missing binding or incomplete Odoo configuration fails closed. Company-scoped reads cover products, inventory, customers, suppliers, sales, orders, purchases, pricing, payment methods, outlets, and registers. Product classifications use Odoo's shared product-category dictionary, which is global rather than company-owned; it returns taxonomy only, not other companies' transactions.
 
 ## External runtime services
 
