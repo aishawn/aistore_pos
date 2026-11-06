@@ -13,7 +13,8 @@
 - Runtime `325c40a6` deployed on SKR and Demo, but `/api/pos/v1/openapi.yaml` still served the older schema because Next.js prebuild synchronizes from `pos-ui/openapi.yaml`; only the generated `public/` copies had changed.
 - Updated the canonical UI OpenAPI source and corrected the API-docs purchase example to include required `unitCost`; the operation-status text now includes partial and unknown outcomes.
 - OpenAPI now enumerates all 12 read resources and the three writable batch resources; the source and both generated public assets are byte-identical to the feature spec.
-- Node 24 targeted ESLint and TypeScript checks passed. Runtime confirmation of the updated downloadable schema awaits this UI-only follow-up deployment.
+- Node 24 targeted ESLint and TypeScript checks passed. Commit `90125a3e` is deployed to SKR and Demo; `/api-docs` and the OpenAPI download return HTTP 200, with 12 read resources, purchase `unitCost`, and async status values present.
+- Authenticated SKR and Demo UAT context reads both attest `isolated=true`, Odoo database `aipos_uat`, and matching frontend/backend SHA `90125a3e`. The POS PostgreSQL database identity is not exposed by this attestation; the local ignored environment file points to database `postgres`, so no business write acceptance was attempted.
 
 ## 2026-11-06
 

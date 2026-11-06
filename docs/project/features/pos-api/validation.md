@@ -1,5 +1,14 @@
 # Validation
 
+## Deployed API documentation and UAT read-only smoke (2026-11-07)
+
+- `main` commit `90125a3ea1faaee133f744947f40d15e8d7ee16e`; SKR and Demo both report the same frontend/backend runtime SHA.
+- Node 24 targeted ESLint and `tsc --noEmit`: PASS. OpenAPI source and all public copies are byte-identical; YAML validation confirms 12 read resources, the three writable batch resources, `unitCost`, and operation states `queued`, `running`, `completed`, `completed_with_errors`, `failed`, and `unknown`.
+- SKR and Demo `/api-docs` return HTTP 200. `/api/pos/v1/openapi.yaml` returns HTTP 200 with the updated schema. Unauthenticated product reads return HTTP 401 on both stores.
+- Authenticated SKR and Demo `/api/odoo/uat-context` both return `isolated=true`, database `aipos_uat`, and matching frontend/backend runtime commits.
+- NOT RUN: exact Java 21 GitHub Actions result is not available from this environment; authenticated API-token CRUD; valid sale/refund/inventory/purchase writes; batch replay/conflict/partial failure; webhook delivery/retry.
+- No business writes were performed. The required separate POS PostgreSQL database identity was not attested; the local ignored `.env` resolves `POSTGRESQL_URL` to database `postgres`, which is not sufficient evidence for an isolated UAT write run.
+
 ## Bounded operations and purchase price validation (2026-11-07)
 
 - Candidate source: `325c40a622ad11f99a4ed0ba923b02098905a44c`. Scope: purchase unit price validation and Odoo mapping, bounded async queue, idempotency replay HTTP status consistency, regression tests, webhook signature/endpoint tests, API/CLI/OpenAPI documentation.
