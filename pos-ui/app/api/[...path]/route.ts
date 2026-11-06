@@ -13,6 +13,7 @@ const FORWARDED_REQUEST_HEADERS = [
   "if-match",
   "if-none-match",
   "range",
+  "idempotency-key",
   "x-correlation-id",
   "x-shopfront-integration-token",
 ] as const;
