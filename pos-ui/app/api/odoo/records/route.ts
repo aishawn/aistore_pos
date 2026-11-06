@@ -18,7 +18,18 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LIMIT = 100;
-const shopfrontDuplicateSkuCache = new Map<string, { skuIds: string[]; expiresAt: number }>();
+const shopfrontCatalogueCache = new Map<string, {
+  templateIds: number[];
+  activeProductCount: number;
+  mappedProductCount: number;
+  unmappedProductCount: number;
+  ambiguousReferenceCount: number;
+  positiveInventoryUnits: number;
+  negativeInventoryRows: number;
+  inventoryProductRows: number;
+  inventorySnapshotAt: string | null;
+  expiresAt: number;
+}>();
 
 type ShopfrontProductRow = Record<string, unknown> & {
   product_tmpl_id?: [number, string] | false;
@@ -304,29 +315,84 @@ export async function POST(request: NextRequest) {
     ? verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"))
     : null;
   const includeSourceProducts = type === "products" && !body.inventoryReport && Boolean(sourceStore);
-  let duplicateSourceSkuIds: string[] = [];
-  if (includeSourceProducts && (body.catalogueView === undefined || body.catalogueView === "all")) {
-    domain.splice(0, domain.length, ["sale_ok", "=", true], "|", ["available_in_pos", "=", true], ["product_tmpl_id.shopfront_source_ref", "=like", `${sourceStore}:%`]);
+  let shopfrontCoverage: { activeProducts: number; mappedProducts: number; unmappedProducts: number; ambiguousReferences: number; positiveInventoryUnits: number; negativeInventoryRows: number; inventoryProductRows: number; inventorySnapshotAt: string | null } | undefined;
+  if (includeSourceProducts && sourceStore) {
     try {
+      const sourceScope = await scopedOdoo(request);
+      const companyIds = sourceScope.companyIds;
+      const companyContext = odooCompanyContext(companyIds);
       const cacheKey = createHash("sha256").update(JSON.stringify([sourceStore, companyIds])).digest("hex");
-      const cached = shopfrontDuplicateSkuCache.get(cacheKey);
-      if (cached && cached.expiresAt > Date.now()) {
-        duplicateSourceSkuIds = cached.skuIds;
-      } else {
-        const sourceRows = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: ["source_id"], limit: 15000, context: companyContext });
-        const sourceRefs = [...new Set(sourceRows.map((row) => `${sourceStore}:${row.source_id}`).filter((ref) => /^.{2}:[0-9a-f]{24,64}$/i.test(ref)))];
-        const canonicalRows = sourceRefs.length ? await odooRpc<Array<{ shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["shopfront_source_ref", "in", sourceRefs]], { fields: ["shopfront_source_ref"], limit: sourceRefs.length * 2, context: companyContext }) : [];
-        const refCounts = new Map<string, number>();
-        for (const row of canonicalRows) if (typeof row.shopfront_source_ref === "string") refCounts.set(row.shopfront_source_ref, (refCounts.get(row.shopfront_source_ref) ?? 0) + 1);
-        duplicateSourceSkuIds = sourceRefs.filter((ref) => refCounts.get(ref) === 1).map((ref) => ref.slice(sourceStore.length + 1));
-        if (shopfrontDuplicateSkuCache.size > 1000) shopfrontDuplicateSkuCache.clear();
-        shopfrontDuplicateSkuCache.set(cacheKey, { skuIds: duplicateSourceSkuIds, expiresAt: Date.now() + 5 * 60_000 });
+      const cached = shopfrontCatalogueCache.get(cacheKey);
+      let catalogue = cached && cached.expiresAt > Date.now() ? cached : null;
+      if (!catalogue) {
+        const sourceRows = await odooRpc<Array<{ source_id: string; source_status?: string | false; sku?: string | false }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: ["source_id", "source_status", "sku"], limit: 15000, context: companyContext });
+        const activeRows = sourceRows.filter((row) => String(row.source_status || "").toUpperCase() === "ACTIVE" && /^[0-9a-f]{24,64}$/i.test(row.source_id));
+        const sourceRefByRef = new Map(activeRows.map((row) => [`${sourceStore}:${row.source_id}`, row]));
+        const sourceRefs = [...sourceRefByRef.keys()];
+        const templates = sourceRefs.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false; active?: boolean; sale_ok?: boolean; default_code?: string | false }>>(sessionId, request, "product.template", "search_read", [["shopfront_source_ref", "in", sourceRefs]], { fields: ["id", "shopfront_source_ref", "active", "sale_ok", "default_code"], limit: sourceRefs.length * 2, context: companyContext }) : [];
+        const templatesByRef = new Map<string, typeof templates>();
+        for (const template of templates) {
+          if (typeof template.shopfront_source_ref !== "string") continue;
+          const candidates = templatesByRef.get(template.shopfront_source_ref) ?? [];
+          candidates.push(template);
+          templatesByRef.set(template.shopfront_source_ref, candidates);
+        }
+        const templateIds: number[] = [];
+        let ambiguousReferenceCount = 0;
+        for (const [ref, source] of sourceRefByRef) {
+          const candidates = templatesByRef.get(ref) ?? [];
+          if (!candidates.length) continue;
+          if (candidates.length > 1) ambiguousReferenceCount += 1;
+          const sourceSku = typeof source.sku === "string" ? source.sku.trim().toLowerCase() : "";
+          const exactSku = sourceSku ? candidates.filter((candidate) => typeof candidate.default_code === "string" && candidate.default_code.trim().toLowerCase() === sourceSku) : [];
+          const pool = exactSku.length === 1 ? exactSku : candidates;
+          const activeSaleable = pool.filter((candidate) => candidate.active !== false && candidate.sale_ok === true);
+          const activeCandidates = pool.filter((candidate) => candidate.active !== false);
+          const chosen = (activeSaleable.length ? activeSaleable : activeCandidates.length ? activeCandidates : pool).sort((left, right) => left.id - right.id)[0];
+          if (chosen && Number.isSafeInteger(chosen.id) && chosen.id > 0) templateIds.push(chosen.id);
+        }
+        const inventoryRows = sourceRefByRef.size ? await odooRpc<Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", [...sourceRefByRef.values()].map((row) => row.source_id)] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: sourceRefByRef.size * 2, context: companyContext }) : [];
+        let positiveInventoryUnits = 0;
+        let negativeInventoryRows = 0;
+        let inventorySnapshotAt: string | null = null;
+        const inventoryProducts = new Set<string>();
+        for (const row of inventoryRows) {
+          const quantity = Number(row.quantity ?? 0);
+          if (!Number.isFinite(quantity)) continue;
+          positiveInventoryUnits += Math.max(0, quantity);
+          if (quantity < 0) negativeInventoryRows += 1;
+          inventoryProducts.add(row.source_product_id);
+          if (typeof row.snapshot_at === "string" && row.snapshot_at > (inventorySnapshotAt ?? "")) inventorySnapshotAt = row.snapshot_at;
+        }
+        catalogue = {
+          templateIds,
+          activeProductCount: sourceRefByRef.size,
+          mappedProductCount: new Set(templateIds).size,
+          unmappedProductCount: sourceRefByRef.size - new Set(templateIds).size,
+          ambiguousReferenceCount,
+          positiveInventoryUnits,
+          negativeInventoryRows,
+          inventoryProductRows: inventoryProducts.size,
+          inventorySnapshotAt,
+          expiresAt: Date.now() + 5 * 60_000,
+        };
+        if (shopfrontCatalogueCache.size > 1000) shopfrontCatalogueCache.clear();
+        shopfrontCatalogueCache.set(cacheKey, catalogue);
       }
+      shopfrontCoverage = {
+        activeProducts: catalogue.activeProductCount,
+        mappedProducts: catalogue.mappedProductCount,
+        unmappedProducts: catalogue.unmappedProductCount,
+        ambiguousReferences: catalogue.ambiguousReferenceCount,
+        positiveInventoryUnits: catalogue.positiveInventoryUnits,
+        negativeInventoryRows: catalogue.negativeInventoryRows,
+        inventoryProductRows: catalogue.inventoryProductRows,
+        inventorySnapshotAt: catalogue.inventorySnapshotAt,
+      };
+      const viewDomain = body.catalogueView === undefined ? [] : catalogueDomain(body.catalogueView).slice(1);
+      domain.splice(0, domain.length, ["product_tmpl_id", "in", catalogue.templateIds], ...viewDomain);
     } catch {
-      duplicateSourceSkuIds = [];
-    }
-    if (duplicateSourceSkuIds.length) {
-      domain.push("|", ["default_code", "not in", duplicateSourceSkuIds], ["product_tmpl_id.shopfront_source_ref", "!=", false]);
+      return NextResponse.json({ message: "Shopfront product mapping is unavailable. Refresh and try again." }, { status: 503 });
     }
   }
   if (type === "products" && body.categoryId !== undefined) {
@@ -544,7 +610,7 @@ export async function POST(request: NextRequest) {
       if (!body.inventoryReport && Array.isArray(items) && items.length) {
         const productRows = items as ShopfrontProductRow[];
         const productIds = productRows.map((item) => Number(item.id)).filter(Number.isSafeInteger);
-        if (canReadProductCost && sourceStore) {
+        if (sourceStore) {
           try {
             const templateIds = [...new Set(productRows.map((item) => Array.isArray(item.product_tmpl_id) ? Number(item.product_tmpl_id[0]) : 0).filter((id) => Number.isSafeInteger(id) && id > 0))];
             const templates = templateIds.length ? await odooRpc<Array<{ id: number; name?: string; shopfront_source_ref?: string | false; shopfront_price_tiers?: unknown; pos_categ_ids?: number[]; categ_id?: [number, string] }>>(sessionId, request, "product.template", "search_read", [["id", "in", templateIds]], { fields: ["id", "name", "shopfront_source_ref", "shopfront_price_tiers", "pos_categ_ids", "categ_id"], limit: templateIds.length, context: companyContext }) : [];
@@ -552,16 +618,12 @@ export async function POST(request: NextRequest) {
               const ref = typeof template.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
               return ref.startsWith(`${sourceStore}:`) ? [ref.slice(sourceStore.length + 1)] : [];
             });
-            const legacySourceSet = new Set(duplicateSourceSkuIds);
-            for (const product of productRows) {
-              const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
-              const template = templates.find((item) => item.id === templateId);
-              const defaultCode = typeof product.default_code === "string" ? product.default_code.trim() : "";
-              product.shopfront_legacy_duplicate = !template?.shopfront_source_ref && legacySourceSet.has(defaultCode);
-            }
             if (sourceIds.length) {
-              const sourceCosts = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; cost?: number | false; case_quantity?: number; prices?: unknown; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "cost", "case_quantity", "prices", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext });
-              const bySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
+              const sourceFields = ["source_id", "name", "sku", "category", ...(canReadProductCost ? ["cost"] : []), "case_quantity", "price", "prices", "source_status", "synced_at"];
+              const sourceProducts = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; cost?: number | false; case_quantity?: number; price?: number | false; prices?: unknown; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: sourceFields, limit: sourceIds.length, context: companyContext });
+              const sourceInventory = await odooRpc<Array<{ source_product_id: string; quantity?: number; single_level?: number; case_level?: number; snapshot_at?: string }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "single_level", "case_level", "snapshot_at"], limit: sourceIds.length, context: companyContext });
+              const bySource = new Map(sourceProducts.map((row) => [row.source_id, row]));
+              const inventoryBySource = new Map(sourceInventory.map((row) => [row.source_product_id, row]));
               const matchingTemplates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [["shopfront_source_ref", "in", sourceIds.map((id) => `${sourceStore}:${id}`)]], { fields: ["id", "shopfront_source_ref"], limit: Math.max(sourceIds.length * 2, 100), context: companyContext }) : [];
               const templateCountByRef = new Map<string, number>();
               for (const template of matchingTemplates) {
@@ -576,50 +638,90 @@ export async function POST(request: NextRequest) {
                 const template = templates.find((item) => item.id === templateId);
                 const source = sourceByTemplate.get(templateId);
                 const sourceRef = typeof template?.shopfront_source_ref === "string" ? template.shopfront_source_ref : "";
+                const sourceId = sourceRef.startsWith(`${sourceStore}:`) ? sourceRef.slice(sourceStore.length + 1) : "";
+                const sourceProduct = sourceId ? bySource.get(sourceId) : undefined;
+                const sourceStock = sourceId ? inventoryBySource.get(sourceId) : undefined;
                 product.shopfront_source_ref = sourceRef || null;
                 const duplicateCount = sourceRef ? templateCountByRef.get(sourceRef) ?? 0 : 0;
                 product.shopfront_source_duplicate_count = duplicateCount;
                 product.shopfront_source_canonical = Boolean(sourceRef) && duplicateCount <= 1;
-                product.shopfront_cost = typeof source?.cost === "number" && Number.isFinite(source.cost) ? source.cost : null;
-                product.shopfront_case_quantity = typeof source?.case_quantity === "number" && Number.isFinite(source.case_quantity) && source.case_quantity > 0 ? source.case_quantity : null;
-                product.shopfront_cost_synced_at = source?.synced_at ?? null;
-                product.shopfront_source_name = source?.name ?? null;
-                product.shopfront_source_sku = source?.sku ?? null;
-                product.shopfront_source_category = source?.category ?? null;
-                product.shopfront_source_status = source?.source_status ?? null;
-                product.shopfront_price_tiers = Array.isArray(source?.prices) ? source.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
+                product.shopfront_cost = canReadProductCost && typeof source?.cost === "number" && Number.isFinite(source.cost) ? source.cost : null;
+                product.shopfront_case_quantity = typeof sourceProduct?.case_quantity === "number" && Number.isFinite(sourceProduct.case_quantity) && sourceProduct.case_quantity > 0 ? sourceProduct.case_quantity : null;
+                product.shopfront_cost_synced_at = sourceProduct?.synced_at ?? null;
+                product.shopfront_source_name = sourceProduct?.name ?? null;
+                product.shopfront_source_sku = sourceProduct?.sku ?? null;
+                product.shopfront_source_category = sourceProduct?.category ?? null;
+                product.shopfront_source_status = sourceProduct?.source_status ?? null;
+                product.shopfront_price = typeof sourceProduct?.price === "number" && Number.isFinite(sourceProduct.price) ? sourceProduct.price : null;
+                product.shopfront_price_tiers = Array.isArray(sourceProduct?.prices) ? sourceProduct.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
+                product.shopfront_quantity = typeof sourceStock?.quantity === "number" && Number.isFinite(sourceStock.quantity) ? sourceStock.quantity : null;
+                product.shopfront_single_level = typeof sourceStock?.single_level === "number" && Number.isFinite(sourceStock.single_level) ? sourceStock.single_level : null;
+                product.shopfront_case_level = typeof sourceStock?.case_level === "number" && Number.isFinite(sourceStock.case_level) ? sourceStock.case_level : null;
+                product.shopfront_inventory_snapshot_at = sourceStock?.snapshot_at ?? null;
                 if (Array.isArray(template?.pos_categ_ids) && template.pos_categ_ids.length) product.pos_categ_ids = template.pos_categ_ids;
-                if (typeof template?.name === "string" && template.name) product.shopfront_source_name = template.name;
+                if (!product.shopfront_source_name && typeof template?.name === "string" && template.name) product.shopfront_source_name = template.name;
               }
-              if (includeSourceProducts) items = productRows.filter((product) => product.shopfront_legacy_duplicate !== true);
+              const from = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+              const saleLines = await odooRpc<Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }>>(sessionId, request, "shopfront.sync.sale.line", "search_read", [[ ["source_product_id", "in", sourceIds], ["sale_id.store_key", "=", sourceStore], ["sale_id.created_at", ">=", from] ]], { fields: ["source_product_id", "quantity", "sale_id"], limit: 20000, context: companyContext });
+              const saleIds = [...new Set(saleLines.flatMap((line) => Array.isArray(line.sale_id) ? [Number(line.sale_id[0])] : []).filter((id) => Number.isSafeInteger(id) && id > 0))];
+              const sales = saleIds.length ? await odooRpc<Array<{ id: number; status?: string | false; created_at?: string | false }>>(sessionId, request, "shopfront.sync.sale", "search_read", [[ ["id", "in", saleIds], ["store_key", "=", sourceStore] ]], { fields: ["id", "status", "created_at"], limit: saleIds.length, context: companyContext }) : [];
+              const completedSales = new Map(sales.filter((sale) => String(sale.status || "").toUpperCase() === "COMPLETED").map((sale) => [sale.id, String(sale.created_at || "").slice(0, 10)]));
+              const pointsBySource = new Map<string, number[]>();
+              const today = new Date();
+              today.setUTCHours(0, 0, 0, 0);
+              for (const line of saleLines) {
+                if (typeof line.source_product_id !== "string" || !Array.isArray(line.sale_id)) continue;
+                const day = completedSales.get(Number(line.sale_id[0]));
+                const quantity = Number(line.quantity);
+                if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(quantity)) continue;
+                const ageDays = Math.floor((today.getTime() - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
+                if (ageDays < 0 || ageDays >= 30) continue;
+                let points = pointsBySource.get(line.source_product_id);
+                if (!points) { points = Array.from({ length: 30 }, () => 0); pointsBySource.set(line.source_product_id, points); }
+                points[29 - ageDays] += quantity;
+              }
+              for (const product of productRows) {
+                const templateId = Array.isArray(product.product_tmpl_id) ? Number(product.product_tmpl_id[0]) : 0;
+                const ref = templates.find((item) => item.id === templateId)?.shopfront_source_ref;
+                const sourceId = typeof ref === "string" && ref.startsWith(`${sourceStore}:`) ? ref.slice(sourceStore.length + 1) : "";
+                product.performance_30d = sourceId ? pointsBySource.get(sourceId) ?? Array.from({ length: 30 }, () => 0) : null;
+                product.performance_source = "Shopfront";
+              }
             }
           } catch {
             for (const product of productRows) {
               product.shopfront_cost = null;
               product.shopfront_case_quantity = null;
               product.shopfront_cost_synced_at = null;
+              product.shopfront_data_status = "unavailable";
+              product.performance_30d = null;
             }
           }
         }
-        try {
-          const from = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
-          const performance = await odooRpc<Array<Record<string, unknown>>>(sessionId, request, "pos.order.line", "read_group", [[
-            ["product_id", "in", productIds], ["order_id.company_id", "in", companyIds], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.date_order", ">=", from],
-          ], ["qty:sum"], ["product_id", "order_id.date_order:day"]], { lazy: false, limit: 5000, context: { ...companyContext, ...(forced.binding?.odooWarehouseId ? { warehouse: forced.binding.odooWarehouseId } : {}) } }, 20_000);
-          const byProduct = new Map<number, number[]>();
-          for (const row of performance) {
-            const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
-            const day = String(row["order_id.date_order:day"] ?? row["order_id.date_order"] ?? "").slice(0, 10);
-            const point = Number(row.qty);
-            if (!productId || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(point)) continue;
-            let points = byProduct.get(productId);
-            if (!points) { points = Array.from({ length: 30 }, () => 0); byProduct.set(productId, points); }
-            const ageDays = Math.floor((Date.now() - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
-            if (ageDays >= 0 && ageDays < 30) points[29 - ageDays] += point;
+        if (!sourceStore) {
+          try {
+            const from = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+            const performance = await odooRpc<Array<Record<string, unknown>>>(sessionId, request, "pos.order.line", "read_group", [[
+              ["product_id", "in", productIds], ["order_id.company_id", "in", companyIds], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.date_order", ">=", from],
+            ], ["qty:sum"], ["product_id", "order_id.date_order:day"]], { lazy: false, limit: 5000, context: { ...companyContext, ...(forced.binding?.odooWarehouseId ? { warehouse: forced.binding.odooWarehouseId } : {}) } }, 20_000);
+            const byProduct = new Map<number, number[]>();
+            for (const row of performance) {
+              const productId = Array.isArray(row.product_id) ? Number(row.product_id[0]) : 0;
+              const day = String(row["order_id.date_order:day"] ?? row["order_id.date_order"] ?? "").slice(0, 10);
+              const point = Number(row.qty);
+              if (!productId || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(point)) continue;
+              let points = byProduct.get(productId);
+              if (!points) { points = Array.from({ length: 30 }, () => 0); byProduct.set(productId, points); }
+              const ageDays = Math.floor((Date.now() - Date.parse(`${day}T00:00:00Z`)) / (24 * 60 * 60 * 1000));
+              if (ageDays >= 0 && ageDays < 30) points[29 - ageDays] += point;
+            }
+            for (const product of productRows) {
+              product.performance_30d = byProduct.get(Number(product.id)) ?? Array.from({ length: 30 }, () => 0);
+              product.performance_source = "Odoo";
+            }
+          } catch {
+            for (const product of productRows) product.performance_30d = null;
           }
-          for (const product of productRows) product.performance_30d = byProduct.get(Number(product.id)) ?? Array.from({ length: 30 }, () => 0);
-        } catch {
-          for (const product of productRows) product.performance_30d = null;
         }
       }
     }
@@ -652,7 +754,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ items, limit, offset, hasNext, ...(total === undefined ? {} : { total }) }, { status: 200 });
+    return NextResponse.json({ items, limit, offset, hasNext, ...(total === undefined ? {} : { total }), ...(shopfrontCoverage ? { shopfrontCoverage } : {}) }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;

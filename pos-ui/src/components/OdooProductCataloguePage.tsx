@@ -17,6 +17,7 @@ import {
   searchOdooRecords,
   updateOdooProduct,
   type OdooPosCategoryRecord,
+  type OdooPage,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
@@ -107,6 +108,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     return selected?.length ? selected : INVENTORY_COLUMNS.map((column) => column.key);
   });
   const [totals, setTotals] = useState<InventoryTotals | null>(null);
+  const [shopfrontCoverage, setShopfrontCoverage] = useState<OdooPage<OdooProductRecord>["shopfrontCoverage"] | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expired, setExpired] = useState(false);
   const snapshotId = useRef<string | undefined>(undefined);
@@ -391,6 +393,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setLoadingMore(false);
       setHasNext(false);
       setTotals(null);
+      if (!inventoryReport) setShopfrontCoverage(null);
       snapshotId.current = undefined;
       nextOffset.current = 0;
     }
@@ -420,6 +423,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       snapshotId.current = page.snapshotId;
       nextOffset.current = page.offset + page.items.length;
       setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, negativeStockItems: page.negativeStockItems ?? 0, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
+      if (!inventoryReport) setShopfrontCoverage(page.shopfrontCoverage ?? null);
       setHasNext(page.hasNext === true);
       if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : null);
     } catch (cause) {
@@ -778,12 +782,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {(query || categoryId || catalogueView !== "all" || (inventoryReport && inventoryFilter !== "all")) && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
-            {inventoryReport ? `Store scope: ${inventorySource?.company ?? "signed-in store's mapped Odoo company"}. Source: ${inventorySource?.source ?? "Odoo current inventory snapshot"}.` : "Totals cover all matching products in the active inventory context."}
+            {inventoryReport ? `Store scope: ${inventorySource?.company ?? "signed-in store's mapped Odoo company"}. Source: ${inventorySource?.source ?? "Odoo current inventory snapshot"}.` : "Source: active Shopfront catalogue · inventory, cost, price and performance show their source."}
             {inventoryReport && <span className="ml-2">Store timezone: {inventorySource?.timezone ?? storeTimezone} · Snapshot created {lastLoadedAt !== null ? formatStoreEpoch(lastLoadedAt, storeTimezone) : "unknown"} · Shopfront sync coverage {inventorySource?.shopfrontSync ? `${inventorySource.shopfrontSync.status}, through ${inventorySource.shopfrontSync.toDay}, updated ${formatStoreEpoch(Date.parse(inventorySource.shopfrontSync.updatedAt), storeTimezone)}` : "unknown"}. Sync events do not prove row-level Odoo completeness.</span>}
+            {!inventoryReport && shopfrontCoverage?.inventorySnapshotAt && <span className="ml-2">Shopfront inventory snapshot {formatStoreEpoch(Date.parse(shopfrontCoverage.inventorySnapshotAt), storeTimezone)}.</span>}
           </p>
           {shopfrontSyncBanner && (
             <p role="status" className="shrink-0 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">Shopfront sync finished · catalogue and stock were refreshed.</p>
           )}
+          {!inventoryReport && shopfrontCoverage && (shopfrontCoverage.unmappedProducts > 0 || shopfrontCoverage.ambiguousReferences > 0) && <p role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">Shopfront has {quantity(shopfrontCoverage.activeProducts)} active products; {quantity(shopfrontCoverage.unmappedProducts)} have no Odoo product link and {quantity(shopfrontCoverage.ambiguousReferences)} source links match multiple Odoo products. Ambiguous matches are read-only until reviewed.</p>}
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && items.length > 0 && (!inventoryReport || Boolean(snapshotId.current)))} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
 

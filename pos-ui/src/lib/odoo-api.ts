@@ -54,6 +54,16 @@ export interface OdooPage<T> {
   totalStockValue?: number | null;
   missingCostItems?: number;
   mixedUnits?: boolean;
+  shopfrontCoverage?: {
+    activeProducts: number;
+    mappedProducts: number;
+    unmappedProducts: number;
+    ambiguousReferences: number;
+    positiveInventoryUnits: number;
+    negativeInventoryRows: number;
+    inventoryProductRows: number;
+    inventorySnapshotAt: string | null;
+  };
 }
 
 export interface OdooProductRecord {
@@ -69,6 +79,12 @@ export interface OdooProductRecord {
   shopfront_cost?: number | null;
   shopfront_case_quantity?: number | null;
   shopfront_cost_synced_at?: string | null;
+  shopfront_price?: number | null;
+  shopfront_quantity?: number | null;
+  shopfront_single_level?: number | null;
+  shopfront_case_level?: number | null;
+  shopfront_inventory_snapshot_at?: string | null;
+  shopfront_data_status?: "unavailable";
   shopfront_source_ref?: string | null;
   shopfront_source_duplicate_count?: number;
   shopfront_source_canonical?: boolean;
@@ -79,6 +95,7 @@ export interface OdooProductRecord {
   shopfront_price_tiers?: Array<{ quantity?: number; price?: number }>;
   shopfront_legacy_duplicate?: boolean;
   performance_30d?: number[] | null;
+  performance_source?: "Shopfront" | "Odoo";
   taxes_id: number[];
   price_included: number | null;
   price_tax: number | null;
