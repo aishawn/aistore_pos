@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-11-07 follow-up
+
+- Purchase batch lines now require explicit numeric, non-negative `unitCost` and pass it as Odoo `purchase.order.line.price_unit`; no supplier or product price fallback is used.
+- Replaced the unbounded API operation executor queue with a 100-entry bounded queue and explicit rejection. Queue saturation follows the existing failed-operation response path.
+- Unified idempotency replay responses for normal lookup and concurrent reservation conflict: accepted work returns HTTP 202, stored terminal results return HTTP 200.
+- Added regression tests for purchase cost validation, replay status mapping, bounded executor saturation, exact-body webhook signatures, and resolved-address URL rejection. Updated API, CLI, OpenAPI assets, README, and design documentation. DNS-to-connect rebinding still requires outbound egress controls.
+- Exact-SHA Java 21 pre-push verification and deployment are pending. No business writes or webhook deliveries were performed for this follow-up.
+
 ## 2026-11-06
 
 - Removed POS Compose's local Redis and forecast-service containers. POS runtime now uses external `POS_REDIS_URL` (API database 0, report cache database 1) and routes forecast requests through the authenticated remote AI gateway. The AI repository adds a private upstream proxy for `/v1/forecast/sales`.

@@ -20,4 +20,28 @@ class PosApiControllerIdempotencyTest {
         assertNotEquals(purchaseHash, PosApiController.idempotencyHash(
                 "purchases", mapper.readTree("[{\"sourceId\":\"source-2\"}]")));
     }
+
+    @Test
+    void purchaseUnitCostMustBeExplicitAndNonNegative() throws Exception {
+        assertEquals(new java.math.BigDecimal("2.75"), PosApiController.requiredUnitCost(
+                mapper.readTree("{\"unitCost\":2.75}")));
+        assertEquals(java.math.BigDecimal.ZERO, PosApiController.requiredUnitCost(
+                mapper.readTree("{\"unitCost\":0}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> PosApiController.requiredUnitCost(mapper.readTree("{}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> PosApiController.requiredUnitCost(mapper.readTree("{\"unitCost\":-1}")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> PosApiController.requiredUnitCost(mapper.readTree("{\"unitCost\":\"2.75\"}")));
+    }
+
+    @Test
+    void idempotencyReplayKeepsAcceptedAndCompletedHttpSemantics() {
+        assertEquals(org.springframework.http.HttpStatus.ACCEPTED,
+                PosApiController.idempotencyHttpStatus("accepted"));
+        assertEquals(org.springframework.http.HttpStatus.OK,
+                PosApiController.idempotencyHttpStatus("completed"));
+        assertEquals(org.springframework.http.HttpStatus.OK,
+                PosApiController.idempotencyHttpStatus("failed"));
+    }
 }

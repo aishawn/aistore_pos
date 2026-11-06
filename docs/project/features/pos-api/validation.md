@@ -1,5 +1,14 @@
 # Validation
 
+## Bounded operations and purchase price validation (2026-11-07)
+
+- Candidate source: pending local `main` commit. Scope: purchase unit price validation and Odoo mapping, bounded async queue, idempotency replay HTTP status consistency, regression tests, API/CLI/OpenAPI documentation.
+- `python -m unittest discover -s tools/tests -v`: 4/4 PASS. OpenAPI YAML/schema validation and generated asset hash equality: PASS. `git diff --check`: PASS.
+- `python scripts/check-project-docs.py`: BLOCKED by 65 pre-existing missing-file/link/evidence errors in this checkout, including the project fact-library README/evidence sources; no unrelated files were fabricated to silence it.
+- Java 21 `mvn -B clean verify` on the exact candidate SHA: pending. `AGENTS.md` requires the remote pre-push gate; no local build is permitted.
+- Deployment/runtime SHA and authenticated UAT acceptance: pending. No sales, refunds, inventory adjustments, purchase orders, or webhook deliveries were performed for this change.
+- The checkout omits several files referenced by `AGENTS.md`, including `docs/project/maintenance.md`, `docs/project/README.md`, and the isolation runbook. The sibling maintenance checkout's runbook requires both Odoo `aipos_uat` and a dedicated POS PostgreSQL database; no missing isolation policy is inferred.
+
 ## Resource coverage and idempotency (2026-11-07)
 
 - Candidate `6f87c3b5dce2dd6337fc41b2f29503d2412512b5` adds read mappings for pricing, classifications, payment methods, outlets, and registers. The batch idempotency hash now includes the resource name, preventing the same vendor/token/key/payload on different resources from replaying another resource's operation.

@@ -1,5 +1,9 @@
 # Test Report Index
 
+Latest POS API bounded queue and purchase cost follow-up: [test session](test-sessions/2026-11-07-pos-api-bounded-queue-and-purchase-cost.md). Exact-SHA Java 21 verification and runtime acceptance are pending.
+
+POS API progress and validation are maintained in [feature progress](project/features/pos-api/progress.md) and [validation](project/features/pos-api/validation.md).
+
 Latest POS API resource coverage (`2026-11-07`): exact candidate `6f87c3b5` passed remote Java 21 `mvn -B clean verify` (516 tests, 0 failures); SKR and Demo runtime `79074650` serve the 12-resource OpenAPI. Verification completed after the candidate reached `main`, so the pre-push ordering gate was missed. Authenticated new-resource reads and business-write acceptance remain open. [Report](test-sessions/2026-11-07-pos-api-resource-coverage.md).
 
 Latest inventory scope follow-up (`2026-11-07`): [Odoo inventory scope label check](test-sessions/2026-11-07-inventory-scope-label.md): change auto-deployed to SKR/Demo/App at `2aead338`; helper tests confirm positive-only stock arithmetic and mixed-UOM protection, but current Shopfront-to-Odoo row parity remains unverified.
