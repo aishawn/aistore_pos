@@ -41,8 +41,11 @@ def main():
     revoke=token.add_parser("revoke");revoke.add_argument("id",type=int)
     for resource in ("products","customers","suppliers","orders","sales","purchases","inventory"):
         rp=s.add_parser(resource).add_subparsers(dest="action",required=True);rp.add_parser("list");rp.add_parser("get").add_argument("id",type=int)
-    op=s.add_parser("operations").add_parser("get");op.add_argument("id")
-    sync=s.add_parser("sync").add_parser("batch");sync.add_argument("--resource",required=True);sync.add_argument("--file",required=True);sync.add_argument("--confirm",action="store_true")
+        if resource == "sales":
+            quote=rp.add_parser("quote");quote.add_argument("--file",required=True)
+    wh=s.add_parser("webhooks").add_subparsers(dest="action",required=True);wh.add_parser("list");create_wh=wh.add_parser("create");create_wh.add_argument("--url",required=True);create_wh.add_argument("--event",action="append",required=True);create_wh.add_argument("--confirm",action="store_true");revoke_wh=wh.add_parser("revoke");revoke_wh.add_argument("id",type=int);revoke_wh.add_argument("--confirm",action="store_true")
+    op=s.add_parser("operations").add_subparsers(dest="action",required=True).add_parser("get");op.add_argument("id")
+    sync=s.add_parser("sync").add_subparsers(dest="action",required=True).add_parser("batch");sync.add_argument("--resource",required=True);sync.add_argument("--file",required=True);sync.add_argument("--confirm",action="store_true")
     a=p.parse_args()
     if a.group=="auth" and a.action=="login":
         path,cfg=config();cfg["api_url"]=a.api_url;cfg["token"]=getpass.getpass("API token: ");path.write_text(json.dumps(cfg));print("saved");return
@@ -50,6 +53,17 @@ def main():
         result=admin_request("POST","/api/pos/v1/auth/tokens",{"name":a.name,"scopes":a.scope,"expiresAt":a.expires_at} if a.token_action=="create" else None) if a.token_action=="create" else admin_request("DELETE",f"/api/pos/v1/auth/tokens/{a.id}")
         output(result,a.json);return
     if a.group=="operations": output(request("GET",f"/api/pos/v1/operations/{a.id}"),a.json);return
+    if a.group=="webhooks":
+        if a.action=="list": output(request("GET","/api/pos/v1/webhooks"),a.json)
+        elif a.action=="create":
+            if not a.confirm: raise SystemExit("writes require --confirm")
+            output(request("POST","/api/pos/v1/webhooks",{"url":a.url,"events":a.event}),a.json)
+        else:
+            if not a.confirm: raise SystemExit("writes require --confirm")
+            output(request("DELETE",f"/api/pos/v1/webhooks/{a.id}"),a.json)
+        return
+    if a.group=="sales" and a.action=="quote":
+        data=json.loads(pathlib.Path(a.file).read_text());output(request("POST","/api/pos/v1/sales:quote",data),a.json);return
     if a.group=="sync":
         if not a.confirm: raise SystemExit("writes require --confirm")
         data=[json.loads(line) for line in pathlib.Path(a.file).read_text().splitlines() if line.strip()] if a.file.endswith(".jsonl") else json.loads(pathlib.Path(a.file).read_text())

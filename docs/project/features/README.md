@@ -12,6 +12,6 @@
 | CAP-RPT | [报表与经营看板](reporting/README.md) | 已建立销售、采购、交班与库存报表事实记录；候选源码未完成线上验收 | 报表 owner 待指定 | [专题](reporting/README.md) / RPT-001 |
 | CAP-PLT | [平台、租户与集成](platform/README.md) | 待盘点，共享试用库不等于生产隔离 | 平台 owner 待指定 | TEN-001 / OPS-001 / R2-001 |
 | CAP-SHP | [Shopfront 数据同步](shopfront-sync/README.md) | 已实现；本轮销售镜像对账与修复待线上验收 | 集成 owner 待指定 | SHP-001 |
-| CAP-API | [Orithos POS API](pos-api/README.md) | 已实现首期只读 API、token、Odoo facade 与 CLI；写入按资源隔离门禁分阶段开放 | API owner 待指定 | API-001 |
+| CAP-API | [Orithos POS API](pos-api/README.md) | 已实现读取、token、CLI、异步批处理及 webhook 代码；销售/库存/采购写入默认关闭，退款/收货与线上验收待完成 | API owner 待指定 | API-001 |
 
 各套件定义见[测试目录](../../TEST_CATALOG.md)，结果见[测试索引](../../TEST_REPORT_INDEX.md)。UI、硬件、离线、供应商及历史归档分别由相关模块入口关联，不遗漏但不在首期伪造完整成熟度。

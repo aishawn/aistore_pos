@@ -21,7 +21,7 @@ public class PosApiTokenFilter extends OncePerRequestFilter {
     private final ObjectMapper mapper;
     public PosApiTokenFilter(PosApiTokenService tokens, ObjectMapper mapper) { this.tokens=tokens; this.mapper=mapper; }
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/pos/v1/") || request.getRequestURI().equals("/api/pos/v1/auth/tokens");
+        return !request.getRequestURI().startsWith("/api/pos/v1/") || request.getRequestURI().startsWith("/api/pos/v1/auth/tokens");
     }
     @Override protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
         String header=req.getHeader("Authorization");
@@ -29,7 +29,7 @@ public class PosApiTokenFilter extends OncePerRequestFilter {
         var token=tokens.authenticate(raw);
         var tenant=TenantHolder.get();
         if(token.isEmpty()) { fail(res,401,"invalid_api_token"); return; }
-        if(tenant==null || tenant.controlPlane() || tenant.vendorId()==null || tenant.vendorId()!=token.get().vendorId()) { fail(res,403,"tenant_scope_mismatch"); return; }
+        if(tenant==null || tenant.controlPlane() || tenant.vendorId()==null || !java.util.Objects.equals(tenant.vendorId(), token.get().vendorId())) { fail(res,403,"tenant_scope_mismatch"); return; }
         var auth=new UsernamePasswordAuthenticationToken(token.get(),null,token.get().scopes().stream().map(s->new SimpleGrantedAuthority("SCOPE_"+s)).toList());
         SecurityContextHolder.getContext().setAuthentication(auth);
         chain.doFilter(req,res);

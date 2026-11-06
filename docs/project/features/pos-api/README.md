@@ -4,6 +4,6 @@
 
 入口：`/api/pos/v1`。CLI：`tools/orithos-pos`。
 
-本期支持 API token 生命周期、scope、vendor/company 隔离、产品/客户/供应商/销售/订单/采购只读分页查询、CLI JSON/JSONL 读取和批量命令的显式确认/idempotency 头。高风险写入、webhook 和真实批处理在 Odoo 隔离验收前返回明确的 `501 not_implemented`，避免伪成功。
+本期代码增加 API token 生命周期、scope、vendor/company 隔离、资源只读分页查询、销售报价、异步批处理、幂等键重放、Webhook 签名和失败重试。销售、库存盘点和草稿采购批处理由服务端开关控制且默认关闭；退款和采购收货尚未接入 API。所有高风险写入必须在 `aipos_uat` 或批准的隔离环境完成验收后再启用。当前候选尚未通过远程 Java 21 验证或线上验收。
 
 文档：[design.md](design.md)、[progress.md](progress.md)、[validation.md](validation.md)、[API.md](API.md)、[OpenAPI](openapi.yaml)、[CLI 手册](../../../../tools/README.md)。
