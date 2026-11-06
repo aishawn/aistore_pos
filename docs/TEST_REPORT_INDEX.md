@@ -8,6 +8,8 @@ Latest API release (`2026-11-06`): Java 21 `mvn -B clean verify` PASS and Dokplo
 
 Latest POS API CLI follow-up (`2026-11-06`): REST fixture coverage 2/2 PASS on pushed commit `e9a01aad` (reads, operations, confirmation gate, idempotency header, token redaction). SKR/Demo runtime still reported `9265c7df` immediately after push; deployment not yet confirmed. Authenticated UAT writes and cleanup remain pending. Details: [CAP-API validation](project/features/pos-api/validation.md).
 
+Latest POS API CLI idempotency follow-up (`2026-11-06`): CLI fixture coverage 3/3 PASS, including reuse of an explicit idempotency key across separate invocations. Backend single-event webhook matching fix is an unverified local candidate and is not deployed. Authenticated Odoo writes remain NOT RUN.
+
 Latest Shopfront reliability candidate: [feature validation](project/features/shopfront-sync/validation.md): crawler 129/129 and Odoo supply fixture 7/7 PASS; inventory page resume and daily mirror timeout regressions pass. POS UI typecheck/lint are blocked by absent dependencies; two UI tests cannot import `redis`. Not deployed; Shopfront-to-POS parity remains NOT RUN.
 
 功能视角入口：[项目事实库](project/README.md)；AI 资料复核与原始证据映射见 [2026-11-03 事实库 session](test-sessions/2026-11-03-project-fact-library.md)。本索引按 session 区分本地候选验证与线上行为，不把本地通过当作部署通过。

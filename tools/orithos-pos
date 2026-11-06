@@ -39,11 +39,11 @@ def read_records(filename):
     if path.suffix.lower()==".jsonl": return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     value=json.loads(path.read_text())
     return value if isinstance(value,list) else value.get("records",[value])
-def submit_batch(resource, filename, as_json, confirm):
+def submit_batch(resource, filename, as_json, confirm, idempotency_key=None):
     if not confirm: raise SystemExit("writes require --confirm")
     records=read_records(filename)
     if not records: raise SystemExit("the input file contains no records")
-    output(request("POST",f"/api/pos/v1/{resource}:batch",records,secrets.token_urlsafe(24)),as_json)
+    output(request("POST",f"/api/pos/v1/{resource}:batch",records,idempotency_key or secrets.token_urlsafe(24)),as_json)
 def main():
     p=argparse.ArgumentParser(prog="orithos-pos");p.add_argument("--json",action="store_true");s=p.add_subparsers(dest="group",required=True)
     auth=s.add_parser("auth").add_subparsers(dest="action",required=True); login=auth.add_parser("login");login.add_argument("api_url")
@@ -54,14 +54,14 @@ def main():
         if resource == "sales":
             quote=rp.add_parser("quote");quote.add_argument("--file",required=True)
             for action in ("create","refund"):
-                cmd=rp.add_parser(action);cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true")
+                cmd=rp.add_parser(action);cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true");cmd.add_argument("--idempotency-key")
         if resource == "inventory":
-            cmd=rp.add_parser("adjust");cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true")
+            cmd=rp.add_parser("adjust");cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true");cmd.add_argument("--idempotency-key")
         if resource == "purchases":
-            cmd=rp.add_parser("create");cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true")
+            cmd=rp.add_parser("create");cmd.add_argument("--file",required=True);cmd.add_argument("--confirm",action="store_true");cmd.add_argument("--idempotency-key")
     wh=s.add_parser("webhooks").add_subparsers(dest="action",required=True);wh.add_parser("list");create_wh=wh.add_parser("create");create_wh.add_argument("--url",required=True);create_wh.add_argument("--event",action="append",required=True);create_wh.add_argument("--confirm",action="store_true");revoke_wh=wh.add_parser("revoke");revoke_wh.add_argument("id",type=int);revoke_wh.add_argument("--confirm",action="store_true")
     op=s.add_parser("operations").add_subparsers(dest="action",required=True).add_parser("get");op.add_argument("id")
-    sync=s.add_parser("sync").add_subparsers(dest="action",required=True).add_parser("batch");sync.add_argument("--resource",required=True);sync.add_argument("--file",required=True);sync.add_argument("--confirm",action="store_true")
+    sync=s.add_parser("sync").add_subparsers(dest="action",required=True).add_parser("batch");sync.add_argument("--resource",required=True);sync.add_argument("--file",required=True);sync.add_argument("--confirm",action="store_true");sync.add_argument("--idempotency-key")
     a=p.parse_args()
     if a.group=="auth" and a.action=="login":
         path,cfg=config();cfg["api_url"]=a.api_url;cfg["token"]=getpass.getpass("API token: ");path.write_text(json.dumps(cfg));print("saved");return
@@ -85,11 +85,11 @@ def main():
         if a.action=="refund":
             for record in records:
                 if not record.get("refundOfOrderId"): raise SystemExit("refund records require refundOfOrderId")
-        submit_batch("sales",a.file,a.json,a.confirm);return
-    if a.group=="inventory" and a.action=="adjust": submit_batch("inventory",a.file,a.json,a.confirm);return
-    if a.group=="purchases" and a.action=="create": submit_batch("purchases",a.file,a.json,a.confirm);return
+        submit_batch("sales",a.file,a.json,a.confirm,a.idempotency_key);return
+    if a.group=="inventory" and a.action=="adjust": submit_batch("inventory",a.file,a.json,a.confirm,a.idempotency_key);return
+    if a.group=="purchases" and a.action=="create": submit_batch("purchases",a.file,a.json,a.confirm,a.idempotency_key);return
     if a.group=="sync":
-        submit_batch(a.resource,a.file,a.json,a.confirm);return
+        submit_batch(a.resource,a.file,a.json,a.confirm,a.idempotency_key);return
     path=f"/api/pos/v1/{a.group}"+(f"/{a.id}" if a.action=="get" else "")
     output(request("GET",path),a.json)
 if __name__=="__main__": main()

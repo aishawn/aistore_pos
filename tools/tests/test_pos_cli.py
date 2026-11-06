@@ -106,6 +106,27 @@ class PosCliFixtureTest(unittest.TestCase):
         self.assertEqual(body, [{"sourceId": "fixture-1"}])
         self.assertNotIn("fixture-token", accepted.stdout)
 
+    def test_explicit_idempotency_key_can_be_reused_across_invocations(self):
+        records_path = Path(self.temp_dir.name) / "records.json"
+        records_path.write_text(json.dumps([{"sourceId": "fixture-1"}]))
+
+        first = self.run_cli(
+            "--json", "sync", "batch", "--resource", "inventory", "--file", str(records_path),
+            "--confirm", "--idempotency-key", "retry-fixture-1",
+        )
+        second = self.run_cli(
+            "--json", "sync", "batch", "--resource", "inventory", "--file", str(records_path),
+            "--confirm", "--idempotency-key", "retry-fixture-1",
+        )
+
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(len(FixtureHandler.requests), 2)
+        self.assertEqual([entry[2].get("Idempotency-Key") for entry in FixtureHandler.requests], [
+            "retry-fixture-1",
+            "retry-fixture-1",
+        ])
+
 
 if __name__ == "__main__":
     unittest.main()
