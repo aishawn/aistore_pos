@@ -1,5 +1,12 @@
 # Validation
 
+## UAT token and write-gate smoke (2026-11-07)
+
+- Exact commit/runtime `6187080370ffebc05d717ae599cf09bc7335bb72` is on GitHub `main`, SKR, and Demo. Authenticated `/api/odoo/uat-context` on both stores returns `isolated=true`, `database=aipos_uat`, and matching frontend/backend SHA.
+- A temporary SKR token with read/write/batch scopes read one product. Empty sales, inventory, and purchase batches returned HTTP 400 after feature gates and auth checks, not HTTP 423. The token was revoked and a follow-up read returned HTTP 401.
+- No valid business records were written. The UAT runbook requires a dedicated POS PostgreSQL database as well as Odoo `aipos_uat`; Dokploy's POS database identity is still unknown, and the local read-only PostgreSQL inspection timed out. No isolated POS DB is inferred.
+- See [UAT gate smoke](../../../test-sessions/2026-11-07-pos-api-uat-gates-61870803.md). Valid batch/replay/webhook acceptance remains pending this isolation evidence.
+
 ## Current runtime and API contract check (2026-11-07)
 
 - GitHub `main` is `a517667a0275f2290bc10561df2d0cb08ff0f384` at inspection. SKR and Demo both report frontend/backend runtime SHA `7352e1b52c34563f070f03a119a06d2681176b62`; the newest main commit had not reached runtime yet.

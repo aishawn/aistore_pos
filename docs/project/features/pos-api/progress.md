@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-07 current UAT API-gate smoke
+
+- Commit/runtime `61870803` is deployed on SKR and Demo. Authenticated UAT context on both stores reports `isolated=true`, `aipos_uat`, and matching runtime SHA.
+- A temporary SKR API token successfully read one product. Empty batch probes for sales, inventory, and purchases returned 400 after feature-gate checks; token revocation was confirmed by a 401 follow-up.
+- Valid business writes and replay/webhook acceptance remain unrun until Dokploy's POS PostgreSQL database is confirmed as the dedicated UAT database required by the isolation runbook. Details: [UAT gate smoke](../../../test-sessions/2026-11-07-pos-api-uat-gates-61870803.md).
+
 ## 2026-11-07 current runtime verification
 
 - Latest observed `main` is `a517667a`; SKR and Demo still run `7352e1b5`, so the most recent frontend-only main commit had not deployed at inspection.

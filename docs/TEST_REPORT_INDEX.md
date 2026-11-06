@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest POS API UAT gate smoke (`2026-11-07`): [report](test-sessions/2026-11-07-pos-api-uat-gates-61870803.md). Exact runtime `61870803` on main/SKR/Demo, both Odoo contexts attest `aipos_uat`, temporary token read/revoke passes, and all three write gates respond as enabled. No valid business write until Dokploy POS PostgreSQL isolation is confirmed.
+
 Latest POS API current runtime verification (`2026-11-07`): [report](test-sessions/2026-11-07-pos-api-current-verification.md). CLI fixtures 4/4, UI typecheck/targeted ESLint, OpenAPI parsing/hash equality, docs runtime, schema availability, and unauthenticated read guard pass. Main `a517667a` is ahead of both runtimes at `7352e1b5`; valid writes remain unrun pending POS PostgreSQL isolation proof.
 
 Latest deployed POS API read-only smoke (`2026-11-07`): [deployment and UAT attestation](test-sessions/2026-11-07-pos-api-deployment-smoke.md). SKR/Demo runtime `90125a3e`, API docs and OpenAPI 200, both Odoo UAT attestations pass; business writes remain unrun pending POS PostgreSQL isolation proof.
