@@ -150,6 +150,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-06-shopfront-refresh-reliability | 2026-11-06 | Report refresh/cache semantics and stale snapshot handling | Crawler 69/69, compileall, POS typecheck PASS; live health/coverage read-only PASS; source page parity and deployment NOT RUN | [Report](test-sessions/2026-11-06-shopfront-refresh-reliability.md) |
 | 2026-11-06-shopfront-live-inventory-coverage-followup | 2026-11-06 | Fresh source inventory coverage, staging ID parity and stale snapshot disclosure | Shopfront 10,849 active / 10,852 complete inventory rows / 51,526 positive units; staging IDs exact; 7/7 inventory tests; deployment pending | [Report](test-sessions/2026-11-06-shopfront-live-inventory-coverage-followup.md) |
 | 2026-11-07-shopfront-catalogue-reconciliation | 2026-11-07 | SKR Shopfront active product count vs Odoo variants and stock total | Read-only UAT: 10,849 active / 51,512 positive units; 11,005 exact stock comparisons / 0 mismatches; frontend helper tests 4/4 and typecheck PASS; Dokploy deployment pending | [Report](test-sessions/2026-11-07-shopfront-catalogue-reconciliation.md) |
+| 2026-11-07-pos-api-docs-idempotency-followup | 2026-11-07 | OpenAPI docs route, runtime SHA, CLI fixtures, cross-resource idempotency regression | CLI 3/3, POS UI typecheck and targeted ESLint PASS; SKR/Demo OpenAPI YAML 200; main ahead of runtime; backend exact-SHA gate and business-write UAT pending | [Report](test-sessions/2026-11-07-pos-api-docs-idempotency-followup.md) |
 
 ## Classification rule
 
