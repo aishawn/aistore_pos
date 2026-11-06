@@ -12,6 +12,11 @@ const resources = [
   { name: "Customers", path: "customers", read: true, write: "Read only" },
   { name: "Suppliers", path: "suppliers", read: true, write: "Read only" },
   { name: "Orders", path: "orders", read: true, write: "Read only" },
+  { name: "Pricing", path: "pricing", read: true, write: "Read only" },
+  { name: "Classifications", path: "classifications", read: true, write: "Read only" },
+  { name: "Payment methods", path: "payment-methods", read: true, write: "Read only" },
+  { name: "Outlets", path: "outlets", read: true, write: "Read only" },
+  { name: "Registers", path: "registers", read: true, write: "Read only" },
 ];
 
 const requestExamples = {

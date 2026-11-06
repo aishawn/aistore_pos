@@ -49,7 +49,7 @@ def main():
     auth=s.add_parser("auth").add_subparsers(dest="action",required=True); login=auth.add_parser("login");login.add_argument("api_url")
     token=auth.add_parser("token").add_subparsers(dest="token_action",required=True); create=token.add_parser("create");create.add_argument("--name",default="CLI");create.add_argument("--scope",action="append",default=["api.read"]);create.add_argument("--expires-at")
     revoke=token.add_parser("revoke");revoke.add_argument("id",type=int)
-    for resource in ("products","customers","suppliers","orders","sales","purchases","inventory"):
+    for resource in ("products","customers","suppliers","orders","sales","purchases","inventory","pricing","classifications","payment-methods","outlets","registers"):
         rp=s.add_parser(resource).add_subparsers(dest="action",required=True);rp.add_parser("list");rp.add_parser("get").add_argument("id",type=int)
         if resource == "sales":
             quote=rp.add_parser("quote");quote.add_argument("--file",required=True)

@@ -29,14 +29,19 @@ import java.util.concurrent.atomic.AtomicLong;
 @RequestMapping("/api/pos/v1")
 public class PosApiController {
     private static final DateTimeFormatter ODOO_DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
-    private static final Map<String, Resource> RESOURCES = Map.of(
-            "products", new Resource("product.template", List.of("id","name","default_code","barcode","list_price","standard_price","categ_id","active","write_date")),
-            "inventory", new Resource("stock.quant", List.of("id","product_id","location_id","quantity","write_date")),
-            "customers", new Resource("res.partner", List.of("id","name","email","phone","active","write_date")),
-            "suppliers", new Resource("res.partner", List.of("id","name","email","phone","active","write_date")),
-            "sales", new Resource("pos.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date")),
-            "orders", new Resource("sale.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date")),
-            "purchases", new Resource("purchase.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date"))
+    private static final Map<String, Resource> RESOURCES = Map.ofEntries(
+            Map.entry("products", new Resource("product.template", List.of("id","name","default_code","barcode","list_price","standard_price","categ_id","active","write_date"))),
+            Map.entry("inventory", new Resource("stock.quant", List.of("id","product_id","location_id","quantity","write_date"))),
+            Map.entry("customers", new Resource("res.partner", List.of("id","name","email","phone","active","write_date"))),
+            Map.entry("suppliers", new Resource("res.partner", List.of("id","name","email","phone","active","write_date"))),
+            Map.entry("sales", new Resource("pos.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date"))),
+            Map.entry("orders", new Resource("sale.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date"))),
+            Map.entry("purchases", new Resource("purchase.order", List.of("id","name","date_order","amount_total","state","partner_id","write_date"))),
+            Map.entry("pricing", new Resource("product.pricelist", List.of("id","name","currency_id","company_id","active","write_date"))),
+            Map.entry("classifications", new Resource("product.category", List.of("id","name","complete_name","parent_id","write_date"))),
+            Map.entry("payment-methods", new Resource("pos.payment.method", List.of("id","name","type","company_id","write_date"))),
+            Map.entry("outlets", new Resource("stock.warehouse", List.of("id","name","code","company_id","lot_stock_id","write_date"))),
+            Map.entry("registers", new Resource("pos.config", List.of("id","name","company_id","current_session_id","write_date")))
     );
     private final PosApiTokenService tokens;
     private final PosApiOperationService operations;
@@ -66,7 +71,7 @@ public class PosApiController {
     }
     @DeleteMapping("/auth/tokens/{id}") @PreAuthorize("isAuthenticated()")
     public Object revokeToken(@PathVariable long id) { AuthUser u=CurrentUser.get(); if(u==null||!u.admin()||u.vendorId()==null)throw new ResponseStatusException(HttpStatus.FORBIDDEN);tokens.revoke(u.vendorId(),id);return Map.of("revoked",true); }
-    @GetMapping("/{resource:products|inventory|customers|suppliers|sales|orders|purchases}")
+    @GetMapping("/{resource:products|inventory|customers|suppliers|sales|orders|purchases|pricing|classifications|payment-methods|outlets|registers}")
     public Object list(@PathVariable String resource,@RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="100") int limit,Authentication auth) throws Exception {
         require(auth,"api.read"); Resource spec=resource(resource); if(offset<0||limit<1||limit>500)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"invalid pagination");
         long company=company(auth); ArrayNode domain=resourceDomain(resource,company,((PosApiToken)auth.getPrincipal()).vendorId());
@@ -74,7 +79,7 @@ public class PosApiController {
         JsonNode rows=callKw(auth,spec.model,"search_read",List.of(domain),kwargs,company);
         return Map.of("requestId",UUID.randomUUID().toString(),"resource",resource,"offset",offset,"limit",limit,"items",rows);
     }
-    @GetMapping("/{resource:products|inventory|customers|suppliers|sales|orders|purchases}/{id}")
+    @GetMapping("/{resource:products|inventory|customers|suppliers|sales|orders|purchases|pricing|classifications|payment-methods|outlets|registers}/{id}")
     public Object get(@PathVariable String resource,@PathVariable long id,Authentication auth) throws Exception {
         require(auth,"api.read");Resource spec=resource(resource);long company=company(auth);ArrayNode domain=resourceDomain(resource,company,((PosApiToken)auth.getPrincipal()).vendorId());domain.add(mapper.createArrayNode().add("id").add("=").add(id));
         ObjectNode kwargs=mapper.createObjectNode();ArrayNode fields=mapper.createArrayNode();spec.fields.forEach(fields::add);kwargs.set("fields",fields);kwargs.put("limit",1);
@@ -86,7 +91,7 @@ public class PosApiController {
     @PostMapping("/{resource}:batch")
     public Object batch(@PathVariable String resource,@RequestHeader(value="Idempotency-Key",required=false) String key,@RequestBody JsonNode body,Authentication auth) {
         require(auth,"api.write");require(auth,"api.batch");if(!Set.of("sales","inventory","purchases").contains(resource))throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,"writes_not_enabled_for_resource");if("sales".equals(resource)&&!salesWriteEnabled||"inventory".equals(resource)&&!inventoryWriteEnabled||"purchases".equals(resource)&&!purchaseWriteEnabled)throw new ResponseStatusException(HttpStatus.LOCKED,"write_feature_disabled"); if(key==null||key.isBlank()||key.length()>200)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Idempotency-Key required");
-        String requestHash=sha256(body.toString());PosApiToken token=(PosApiToken)auth.getPrincipal();
+        String requestHash=idempotencyHash(resource,body);PosApiToken token=(PosApiToken)auth.getPrincipal();
         ArrayNode records=body.isArray()?(ArrayNode)body:body.path("records").isArray()?(ArrayNode)body.path("records"):null;if(records==null||records.isEmpty()||records.size()>500)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"records must contain 1-500 items");
         Set<String> sourceIds=new HashSet<>();for(JsonNode row:records){String sourceId=row.path("sourceId").asText("").trim();if(sourceId.isBlank()||sourceId.length()>200||!sourceIds.add(sourceId))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"each record requires a unique sourceId");}
         jdbc.update("DELETE FROM pos_api_idempotency WHERE vendor_id=? AND token_id=? AND idempotency_key=? AND expires_at<=CURRENT_TIMESTAMP",token.vendorId(),token.id(),key);
@@ -108,11 +113,12 @@ public class PosApiController {
     @PostMapping("/webhooks") public Object createWebhook(@RequestBody WebhookRequest input,Authentication auth){require(auth,"api.webhook");if(input.events()==null||input.events().isEmpty()||input.events().size()>20||input.events().stream().anyMatch(e->!Set.of("operation.completed","operation.failed","sale.created","refund.created","inventory.adjusted","purchase.created").contains(e)))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"invalid_webhook_events");PosApiToken t=(PosApiToken)auth.getPrincipal();try{return webhooks.create(t.vendorId(),t.id(),input.url(),Set.copyOf(input.events()));}catch(IllegalArgumentException e){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,e.getMessage());}catch(IllegalStateException e){throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"webhook_service_unavailable");}}
     @DeleteMapping("/webhooks/{id}") public Object revokeWebhook(@PathVariable long id,Authentication auth){require(auth,"api.webhook");PosApiToken t=(PosApiToken)auth.getPrincipal();webhooks.revoke(t.vendorId(),id);return Map.of("revoked",true);}
     private Resource resource(String name){Resource r=RESOURCES.get(name);if(r==null)throw new ResponseStatusException(HttpStatus.NOT_FOUND,"unsupported resource");return r;}
+    static Set<String> supportedResourceNames(){return RESOURCES.keySet();}
     private ArrayNode resourceDomain(String name,long company,long vendorId){
         ArrayNode domain=mapper.createArrayNode();
-        if(Set.of("products","customers","suppliers").contains(name)){
+        if(Set.of("products","customers","suppliers","pricing").contains(name)){
             domain.add("|");domain.add(mapper.createArrayNode().add("company_id").add("=").add(false));domain.add(mapper.createArrayNode().add("company_id").add("=").add(company));
-        }else domain.add(mapper.createArrayNode().add("company_id").add("=").add(company));
+        }else if(!"classifications".equals(name))domain.add(mapper.createArrayNode().add("company_id").add("=").add(company));
         if("inventory".equals(name)){
             var vendor=vendors.findById(vendorId);
             if(vendor==null||vendor.getOdooStockLocationId()==null||vendor.getOdooStockLocationId()<=0)throw new ResponseStatusException(HttpStatus.CONFLICT,"odoo_stock_location_not_ready");
@@ -132,7 +138,8 @@ public class PosApiController {
         var response=http.send(request,HttpResponse.BodyHandlers.ofString());JsonNode root=mapper.readTree(response.body());if(response.statusCode()/100!=2||root.has("error"))throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"odoo_read_failed");return root.path("result");
     }
     private String authenticate()throws Exception {ObjectNode p=mapper.createObjectNode();p.put("jsonrpc","2.0");p.put("method","call");p.put("id",rpcId.incrementAndGet());ObjectNode params=p.putObject("params");params.put("db",database);params.put("login",username);params.put("password",password);var req=HttpRequest.newBuilder(URI.create(odooUrl+"/web/session/authenticate")).timeout(Duration.ofSeconds(20)).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(p))).build();var res=http.send(req,HttpResponse.BodyHandlers.ofString());if(mapper.readTree(res.body()).path("result").path("uid").isMissingNode())throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"odoo_auth_failed");return res.headers().allValues("set-cookie").stream().map(s->s.split(";",2)[0]).filter(s->s.startsWith("session_id=")).findFirst().orElseThrow(()->new ResponseStatusException(HttpStatus.BAD_GATEWAY,"odoo_session_missing"));}
-    private String sha256(String text){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
+    static String idempotencyHash(String resource,JsonNode body){return sha256(resource.length()+":"+resource+":"+body);}
+    private static String sha256(String text){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
     private void executeBatch(UUID operationId, PosApiToken token, String resource, ArrayNode records,String idempotencyKey) {
         int created=0,updated=0,skipped=0,failed=0;ArrayNode results=mapper.createArrayNode();ArrayNode errors=mapper.createArrayNode();
         try {

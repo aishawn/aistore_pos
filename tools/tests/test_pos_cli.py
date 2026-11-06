@@ -127,6 +127,18 @@ class PosCliFixtureTest(unittest.TestCase):
             "retry-fixture-1",
         ])
 
+    def test_extended_read_resources_are_available_from_the_cli(self):
+        resources = ("pricing", "classifications", "payment-methods", "outlets", "registers")
+
+        for resource in resources:
+            with self.subTest(resource=resource):
+                response = self.run_cli("--json", resource, "list")
+                self.assertEqual(response.returncode, 0, response.stderr)
+
+        self.assertEqual([entry[1] for entry in FixtureHandler.requests], [
+            f"/api/pos/v1/{resource}" for resource in resources
+        ])
+
 
 if __name__ == "__main__":
     unittest.main()
