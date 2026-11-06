@@ -1,6 +1,6 @@
 # Test Report Index
 
-Latest POS API write follow-up (`2026-11-06`): Dokploy logs identified nanosecond timestamps as the Odoo 20 `sync_from_ui` rejection cause; the second-precision fix is deployed in runtime `6357c2a3`. UAT sale `8064930` remains paid with its original line `refunded_qty=0`. Sale detail now exposes refund line data so POS API clients can prepare refunds; this API change awaits its exact-SHA Java 21 gate. See [CAP-API validation](project/features/pos-api/validation.md).
+Latest POS API write follow-up (`2026-11-06`): Dokploy logs identified nanosecond timestamps as the Odoo 20 `sync_from_ui` rejection cause; the second-precision fix is deployed in runtime `6357c2a3`. UAT sale `8064930` remains paid with its original line `refunded_qty=0`. Sale detail now exposes refund line data and the API adds paginated webhook delivery status; the combined API candidate awaits its exact-SHA Java 21 gate. See [CAP-API validation](project/features/pos-api/validation.md).
 
 Latest inventory-label follow-up: [2026-11-06 inventory count and unit scope](test-sessions/2026-11-06-inventory-count-scope.md): runtime `0a5b0678` on SKR/Demo confirms the UI label change deployed. Explains the Odoo/Shopfront count scopes and positive-stock formula; live Shopfront coverage timed out so row-level parity remains unverified. Inventory helper tests 7/7 PASS; typecheck is unavailable in this worktree.
 
