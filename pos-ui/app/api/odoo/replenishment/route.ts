@@ -103,7 +103,9 @@ function purchaseDraftEnabled() {
 }
 
 function forecastBaseUrl() {
-  return (process.env.AI_FORECAST_BASE_URL?.trim() || "https://ai.orithos.com.au").replace(/\/+$/, "");
+  return (process.env.AI_SERVICE_BASE_URL?.trim()
+    || process.env.AI_FORECAST_BASE_URL?.trim()
+    || "https://ai.orithos.com.au").replace(/\/+$/, "");
 }
 
 async function callForecastService(payload: unknown): Promise<ForecastServiceResponse> {
