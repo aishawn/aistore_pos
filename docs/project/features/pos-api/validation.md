@@ -1,5 +1,14 @@
 # Validation
 
+## Current runtime and API contract check (2026-11-07)
+
+- GitHub `main` is `a517667a0275f2290bc10561df2d0cb08ff0f384` at inspection. SKR and Demo both report frontend/backend runtime SHA `7352e1b52c34563f070f03a119a06d2681176b62`; the newest main commit had not reached runtime yet.
+- Both `/api-docs` and `/api/pos/v1/openapi.yaml` return HTTP 200 on SKR and Demo. The deployed schema includes purchase `unitCost` and `completed_with_errors`. Unauthenticated product reads return HTTP 401 on both stores.
+- `python -m unittest discover -s tools/tests -v`: 4/4 PASS. On the current main checkout, POS UI `npm run typecheck` and targeted ESLint for `app/api-docs/page.tsx` and `app/api/odoo/records/route.ts` pass. All four OpenAPI YAML files parse and have identical SHA-256; `git diff --check` passes.
+- The deployed `/api-docs` page was visually/accessibility inspected in the previous verification turn and rendered the Orithos API content, batch examples and purchase cost/status guidance. The docs UI is part of the existing POS frontend; no standalone docs service is deployed.
+- No valid business write was sent. Odoo `aipos_uat` isolation is present in prior authenticated UAT evidence, but Dokploy's POS PostgreSQL database identity is still unverified. The local configured database connection timed out during a read-only `pg_stat_activity` query; this does not establish the live Dokploy database. Do not infer live isolation from local `.env`.
+- The exact Java 21 `mvn -B clean verify` result for the current backend source was not available in this check. Live sale/refund/inventory/purchase writes, idempotent replay/conflict, partial failure, webhook delivery/retry, and cleanup remain NOT RUN.
+
 ## Deployed API documentation and UAT read-only smoke (2026-11-07)
 
 - `main` commit `90125a3ea1faaee133f744947f40d15e8d7ee16e`; SKR and Demo both report the same frontend/backend runtime SHA.

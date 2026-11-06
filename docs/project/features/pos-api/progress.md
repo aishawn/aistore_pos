@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-07 current runtime verification
+
+- Latest observed `main` is `a517667a`; SKR and Demo still run `7352e1b5`, so the most recent frontend-only main commit had not deployed at inspection.
+- API documentation and OpenAPI return HTTP 200 on both stores; the deployed schema includes required purchase `unitCost` and partial-operation status. Unauthenticated API product reads return HTTP 401.
+- CLI fixture tests pass 4/4; current-main POS UI typecheck and targeted ESLint pass; all OpenAPI YAML copies are valid and byte-identical.
+- No valid UAT write was attempted. Odoo UAT isolation is documented, while Dokploy POS PostgreSQL isolation remains unverified; see `validation.md`.
+
 ## 2026-11-07 follow-up
 
 - Purchase batch lines now require explicit numeric, non-negative `unitCost` and pass it as Odoo `purchase.order.line.price_unit`; no supplier or product price fallback is used.
