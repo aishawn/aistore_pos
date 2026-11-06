@@ -1,11 +1,17 @@
 # Reporting Progress
 
-Updated: 2026-11-06. Owner: TBD.
+Updated: 2026-11-07. Owner: TBD.
+
+## Inventory scope and purchase URL follow-up (2026-11-07)
+
+- `/purchases?state=purchase` now redirects in the server page before the purchasing workspace renders, so the retired `Receipts · To receive` tab cannot flash during client hydration.
+- The inventory API's default catalogue view replaces the POS-only domain with `sale_ok = true`; therefore `13,292` is an Odoo saleable-variant count, not a POS-enabled-only count. The footer now names that scope accurately.
+- Odoo positive stock units remain an Odoo snapshot total. Shopfront active-product and positive-unit values remain read-only source-snapshot measures and are displayed with source/freshness context. The latest recorded Shopfront audit was 10,849 ACTIVE products and 51,512 positive units; the screenshot's 50,992 Odoo quantity is historical and is not asserted as the current Shopfront total.
 
 ## Inventory labels and purchasing navigation (2026-11-06)
 
 - Removed the redundant `Receipts · To receive` tab from the purchasing workspace. Legacy `/purchases?state=purchase` links now replace the URL with `/purchases` and show the canonical Purchase Orders view.
-- Inventory footer labels the count as Odoo POS-enabled variants and the quantity as Odoo positive stock units. The count matches the API's `available_in_pos = true` filter; the quantity sums positive balances only, while negative-stock variants remain in the list and do not offset the total. Shopfront product history states its active-catalog count and warns that it is not directly comparable to Odoo variants.
+- Inventory footer labels the count as Odoo saleable variants and the quantity as Odoo positive stock units. The count uses the inventory `All products` domain `sale_ok = true`; the quantity sums positive balances only, while negative-stock variants remain in the list and do not offset the total. Shopfront product history states its active-catalog count and warns that it is not directly comparable to Odoo variants.
 - The scope-label clarification deployed from `main` as runtime `2aead338` on SKR, Demo, and App. The screenshot values remain historical snapshot values; row-level Shopfront parity is not certified.
 - Inventory report's Shopfront read-only section now shows Shopfront active products, its complete snapshot's positive units and snapshot time beside the matching Odoo variant count. It flags snapshots older than 24 hours, so stale source quantities are not presented as current parity evidence.
 - The provided screenshots show 10,849 Shopfront product results versus 13,292 Odoo product variants (2,443 more Odoo rows). These are different sources and record scopes; aggregate counts alone cannot identify which products differ. Positive stock units are calculated by summing only positive Odoo balances, so negative balances do not offset the shown total (the screenshot shows 5,379 negative-stock variants). Public runtime version confirms deployment SHA `43fb774d`, built after the screenshots; the UI labels now expose the Odoo/positive-stock scope. This does not certify the Shopfront-to-Odoo row mapping or stock against an authenticated raw-source comparison.

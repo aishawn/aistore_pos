@@ -22,19 +22,14 @@ export function PurchasingWorkspace() {
   const params = useSearchParams();
   const router = useRouter();
   const requested = params.get("tab") || "orders";
-  const legacyReceiptLink = requested === "orders" && params.get("state") === "purchase";
   const transfers = requested === "transfers" || requested === "transfer-new";
   const available = views.filter((view) => hasPermission(view.permission));
   const permitted = transfers ? hasPermission("stock.purchases") : available.some((view) => view.key === requested);
   const active = permitted ? requested : available[0]?.key;
   useEffect(() => {
-    if (ready && legacyReceiptLink) {
-      router.replace("/purchases");
-      return;
-    }
     if (ready && !permitted && active) router.replace(`/purchases?tab=${active}`);
-  }, [ready, legacyReceiptLink, permitted, active, router]);
-  if (!ready || legacyReceiptLink) return <p role="status" className="p-6">Loading purchasing…</p>;
+  }, [ready, permitted, active, router]);
+  if (!ready) return <p role="status" className="p-6">Loading purchasing…</p>;
   if (!active) return <p role="alert" className="p-6">You do not have access to purchasing.</p>;
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
