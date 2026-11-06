@@ -198,6 +198,7 @@ services:
       SHOPFRONT_INTEGRATION_TOKEN: ${SHOPFRONT_INTEGRATION_TOKEN:-}
       LEGACY_MIGRATION_TOKEN: ${LEGACY_MIGRATION_TOKEN:-}
       LEGACY_MIGRATION_RUN: ${LEGACY_MIGRATION_RUN:-false}
+      LEGACY_MIGRATION_RUN_REVISION: "fa53746a"
     volumes:
       - ./shopfront_crawler/scripts/migrate_legacy_crawler.py:/migration/migrate_legacy_crawler.py:ro
     entrypoint: ["/bin/sh", "-ec"]
