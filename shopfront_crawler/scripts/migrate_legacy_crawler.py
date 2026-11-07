@@ -144,6 +144,10 @@ def keyset(
     return result
 
 
+def missing_sales(rows: list[dict[str, Any]], existing_sale_ids: set[str]) -> list[dict[str, Any]]:
+    return [row for row in rows if str(row.get("shopfront_sale_id") or "") not in existing_sale_ids]
+
+
 def read_coverage(client: httpx.Client, base_url: str, headers: dict[str, str]) -> dict[str, Any]:
     payload = api_request(client, "GET", f"{base_url}/api/sync/coverage", headers=headers, params={"store": "skr"})
     return payload["data"]
@@ -395,7 +399,17 @@ def main() -> int:
 
         sale_count = 0
         sale_item_count = 0
+        sale_imported_count = 0
         sale_ids: set[str] = set()
+        target_sale_ids = keyset(
+            client,
+            target,
+            "/api/sales",
+            target_headers,
+            lambda row: str(row["shopfront_sale_id"]),
+            size=200,
+        )
+        pending_sales: list[dict[str, Any]] = []
         for rows, _ in page_rows(client, source, "/api/sales", source_headers, size=1000):
             sale_count += len(rows)
             for row in rows:
@@ -408,8 +422,17 @@ def main() -> int:
                     raise RuntimeError(f"Duplicate legacy sale ID: {source_id}")
                 sale_ids.add(source_id)
                 sale_item_count += len(items)
-            post_batches(client, target, target_headers, job_id, "sales", rows, batch_size=1000)
-            print(f"sales: {sale_count}", flush=True)
+            pending_sales.extend(missing_sales(rows, target_sale_ids))
+            if len(pending_sales) >= 1000:
+                post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
+                sale_imported_count += len(pending_sales)
+                target_sale_ids.update(str(row["shopfront_sale_id"]) for row in pending_sales)
+                pending_sales.clear()
+            print(f"sales scanned: {sale_count}; missing queued: {len(pending_sales)}", flush=True)
+        if pending_sales:
+            post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
+            sale_imported_count += len(pending_sales)
+        print(f"sales scanned: {sale_count}; imported missing: {sale_imported_count}", flush=True)
         source_counts["sales"] = sale_count
         source_counts["sale_items"] = sale_item_count
         reported_counts = {
