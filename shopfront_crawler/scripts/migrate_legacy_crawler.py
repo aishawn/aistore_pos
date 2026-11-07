@@ -411,7 +411,7 @@ def verify_identities(
     checks = {
         "products": ("/api/products", lambda row: str(row["shopfront_product_id"]), 500),
         "inventory": ("/api/inventory", lambda row: (str(row["shopfront_product_id"]), str(row.get("outlet_id") or "")), 500),
-        "sales": ("/api/sales", lambda row: str(row["shopfront_sale_id"]), 1000),
+        "sales": ("/api/sales", lambda row: str(row["shopfront_sale_id"]), 200),
         "suppliers": ("/api/suppliers", lambda row: str(row["source_id"]), 500),
         "purchase-orders": ("/api/purchase-orders", lambda row: str(row["source_id"]), 500),
         "customers": ("/api/customers", lambda row: str(row["source_id"]), 500),
@@ -546,7 +546,7 @@ def main() -> int:
             "/api/sales",
             target_headers,
             lambda row: str(row["shopfront_sale_id"]),
-            size=1000,
+            size=200,
         )
         pending_sales: list[dict[str, Any]] = []
         for rows, _ in sales_page_rows(client, source, source_headers, size=1000):
