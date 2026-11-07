@@ -2,6 +2,14 @@
 
 Updated: 2026-11-07. Owner: TBD.
 
+## Shopfront products and inventory live follow-up (2026-11-07)
+
+- Authenticated read-only API checks on SKR and Demo returned 10,849 ACTIVE Shopfront products, all 10,849 mapped, no unmapped products, and inventory rows for all 10,849. Both hosts returned the same sample product mapping and values.
+- For `-196 LEMON P/F 6% 330ML`, Shopfront quantity and canonical Odoo quantity both read 128; source cost is 116.75, case quantity 30, Shopfront price 8.99, and 30-day sales quantity 109. Odoo recorded standard cost is 123.87. The raw source snapshot timestamp is `2026-11-06T18:13:31.444091`; this is not a fresh direct Shopfront read.
+- The Odoo inventory report's same-name search returned two saleable variants: one at zero quantity and the source-mapped variant at 128. The zero row is not the Shopfront canonical mapping; do not interpret the Odoo saleable-variant list as the active Shopfront catalog.
+- Inventory report synchronization metadata was `partial`, run 294, through `2026-11-06`, updated `2026-11-07T05:25:17.882Z`. Crawler health/status/coverage requests timed out, so the active worker state and latest source snapshot could not be verified. No stock or cost writes were issued.
+- `src/lib/shopfront-catalogue.test.ts`: 4/4 PASS; `npm run typecheck`: PASS; targeted ESLint: 0 errors / 9 existing effect warnings; `git diff --check`: PASS. The inventory report navigation/source-label change is not yet deployed.
+
 ## Odoo inventory scope label follow-up (2026-11-07)
 
 - Scope correction: `catalogueDomain("all")` replaces the base `available_in_pos = true` domain with `sale_ok = true`. The 13,292 Odoo rows therefore represent saleable variants, including variants hidden from POS; the prior POS-enabled label was inaccurate.

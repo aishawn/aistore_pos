@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Shopfront product and inventory check (`2026-11-07`): [read-only follow-up](test-sessions/2026-11-07-shopfront-product-inventory-current-followup.md). SKR and Demo both report 10,849 active/mapped products; the screenshot product maps to 128 units in both ledgers and exposes source cost, price, and 30-day sales. Odoo records a different standard cost; sync coverage is partial and crawler status endpoints timed out. UI source-navigation change is pending deployment; full sync parity is NOT VERIFIED.
+
 Latest SKR catalogue and inventory value recheck (`2026-11-07`): [read-only audit](test-sessions/2026-11-07-shopfront-catalogue-reconciliation.md). On the current UI scope, Odoo is 13,292 saleable variants / 51,229 positive units; Shopfront is 10,849 ACTIVE products / 51,512 source positive units. Screenshot quantity 50,992 is stale; counts and inventory snapshots are separate sources. Runtime SHA `a74f650c` matches `main`; authenticated page rendering was not rechecked.
 
 Latest inventory count and legacy purchase tab follow-up (`2026-11-07`): [test session](test-sessions/2026-11-07-inventory-count-purchase-tab-followup.md). Corrects the Odoo count scope to saleable variants and redirects the legacy receipt URL before rendering. Runtime SHA `b9e7784e` is live on SKR, Demo, and App; authenticated browser navigation remains unverified.

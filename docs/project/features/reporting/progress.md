@@ -2,6 +2,13 @@
 
 Updated: 2026-11-07. Owner: TBD.
 
+## Shopfront product and inventory follow-up (2026-11-07)
+
+- Live read-only product queries on SKR and Demo returned matching Shopfront coverage: 10,849 active, 10,849 mapped, 0 unmapped, and 10,849 inventory-covered products. The source snapshot timestamp was `2026-11-06T18:13:31.444091`; sync coverage reported `partial` for run 294 through `2026-11-06`.
+- The `-196 LEMON P/F 6% 330ML` source mapping returned 128 Shopfront units and 128 Odoo units. Its Shopfront cost field is 116.75 with case quantity 30; Odoo `standard_price` is 123.87. Cost tax/unit semantics are not verified, so no cost write was made. A same-name Odoo inventory search also returned a zero-quantity variant outside the canonical Shopfront product page mapping.
+- The Inventory report now identifies its Odoo company/warehouse snapshot and links to Products. Products already displays mapped Shopfront category, source cost, inventory, price, 30-day performance, and actions alongside Odoo stock/cost context.
+- Shopfront crawler health, sync status, and coverage endpoints timed out. Full current source refresh and complete row-level alignment remain unverified; no business data was written.
+
 ## Inventory scope and purchase URL follow-up (2026-11-07)
 
 - `/purchases?state=purchase` now redirects in the server page before the purchasing workspace renders, so the retired `Receipts · To receive` tab cannot flash during client hydration.
