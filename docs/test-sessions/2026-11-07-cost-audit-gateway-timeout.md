@@ -26,5 +26,6 @@ This isolates the failure to the long synchronous capture exceeding the gateway 
 - Targeted ESLint: zero errors; one existing `react-hooks/set-state-in-effect` warning in the panel's URL initialization effect.
 - Cost reconciliation unit tests: 17/17 PASS.
 - `git diff --check`: PASS. The repository documentation checker reports 65 existing missing-file/link errors across the broader `docs/project` tree in this checkout; none point to the new reporting references.
-- Candidate deployment and browser verification: NOT RUN.
+- Fix commit `99d996eb` is pushed to GitHub `main`; local `main` matches `origin/main`.
+- Dokploy deploy hook returned HTTP 301. Further retries were stopped; confirm Dokploy Git repository and branch settings. SKR and Demo still report runtime `9f0d733c`, so candidate deployment and browser verification are BLOCKED.
 - No database writes: PASS (read-only endpoint).

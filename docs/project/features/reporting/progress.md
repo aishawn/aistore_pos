@@ -6,7 +6,7 @@ Updated: 2026-11-07. Owner: TBD.
 
 - Authenticated SKR read-only reproduction on runtime `d814f135`: the default 30-day cost audit returned HTTP 502 after 30.2 seconds (the UI reported an HTML error page); the same endpoint limited to one completed business day returned HTTP 200 in 13.8 seconds (20 products, 27 sales lines). This confirms the long synchronous capture exceeded the gateway response window; no business records were written.
 - Source fix now runs capture in a background task and returns a job ID immediately; authorized same-store polling returns the persisted audit after completion. Identical requests join the active job; a different date/product scope is rejected until it completes. Odoo reads remain read-only.
-- The candidate is not deployed yet. Job status is in process memory and expires on service restart; evidence snapshots retain the existing `.local` persistence behavior. See [validation](validation.md) and [test session](../../../test-sessions/2026-11-07-cost-audit-gateway-timeout.md).
+- Fix commit `99d996eb` is on `main`; the deployment hook returned HTTP 301 and SKR/Demo still report runtime `9f0d733c`. Per deployment rules, further hook retries are stopped pending Dokploy Git repository/branch configuration review. Job status is in process memory and expires on service restart; evidence snapshots retain the existing `.local` persistence behavior. See [validation](validation.md) and [test session](../../../test-sessions/2026-11-07-cost-audit-gateway-timeout.md).
 
 ## Shopfront product and inventory follow-up (2026-11-07)
 
