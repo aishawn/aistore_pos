@@ -332,8 +332,13 @@ def verify_identities(
         target_keys = keyset(client, target, path, target_headers, identity, size=size)
         missing = source_keys - target_keys
         extra = target_keys - source_keys
-        if missing or extra:
+        if missing or (extra and entity != "sales"):
             raise RuntimeError(f"Identity audit failed for {entity}: missing={len(missing)}, extra={len(extra)}")
+        if entity == "sales" and extra:
+            print(
+                f"destination contains {len(extra)} sales outside the legacy source snapshot; preserving destination-only sales",
+                flush=True,
+            )
         results[entity] = len(source_keys)
         print(f"verified {entity}: {len(source_keys)} identities", flush=True)
     return results
