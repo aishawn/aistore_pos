@@ -18,10 +18,11 @@ Database: `aipos_uat`; store: `skr`; Odoo company: 5; stock location: `UATPI/Sto
 
 ### Latest read-only recheck
 
-- Shopfront still reports 10,849 ACTIVE products. Its complete inventory mirror has 10,852 rows and 51,512 positive units; the latest snapshot is `2026-11-06T18:13:31Z`. Negative quantities are tracked separately.
-- Odoo reports 13,364 saleable variants and 51,318 positive units for company 5 / `UATPI/Stock` in the latest recheck. These are Odoo balances, not the Shopfront mirror totals. The 13,292 / 50,992 values in the supplied screenshot are the earlier Odoo inventory view, retrieved on 2026-11-06 at 4:48 pm; they are not the current recheck.
-- The catalog totals are not directly comparable: Shopfront counts ACTIVE source products, while Odoo counts saleable variants, including products outside the mapped Shopfront set and legacy/duplicate variants. Of 11,004 uniquely comparable source mappings, 76 have stock differences with 196 units of total absolute variance; 26 references are ambiguous and 2 active source products have no mapping. No stock or cost values were written.
-- Odoo's available-unit total excludes negative balances and is only additive when all rows use a common unit. The Shopfront positive-unit total is a separate source snapshot. Neither number should be read as a reconciled cross-system total.
+- Fresh read-only recheck on 2026-11-07 used `aipos_uat`, SKR company 5, Odoo warehouse 5 (`Orithos UAT Business Two WH`) and its stock location 48 (`UATPI/Stock`). This matches the inventory API's `sale_ok = true`, company `[5]`, warehouse `5` scope.
+- Odoo returned 13,292 saleable variants, 51,229 positive available units, and 5,375 negative-stock variants. All positive balances use the `Units` UOM. The screenshot's 13,292 count is correct for this scope; its 50,992 quantity is stale and is 237 units below this fresh read.
+- Shopfront's Odoo mirror has 11,032 product rows, including 10,849 ACTIVE products. The ACTIVE products have 10,849 inventory rows, 51,512 positive units, and 5,373 negative rows; the latest source snapshot is `2026-11-06T18:13:31.444091` (Odoo datetime; timezone suffix is not stored). This source snapshot is older than the Odoo read.
+- The 10,849 ACTIVE source products and 13,292 Odoo saleable variants are different record scopes; the 2,443-row difference does not mean Shopfront products are missing. Shopfront's 51,512 source units and Odoo's 51,229 available units are also separate ledgers, currently 283 units apart. No stock or cost values were written. Aggregate totals do not establish row-level reconciliation.
+- Earlier audit notes showing 13,364 / 51,318 do not match this exact UI-domain query; the earlier query scope was not recorded in enough detail to explain the difference. They are superseded for the current UI scope by this explicit route-equivalent read. The public runtime on SKR reports frontend and backend SHA `a74f650c2dd25434d460030babb96a63e0e4698b`, matching `main` at the time of this read.
 
 ## Candidate changes
 
@@ -30,6 +31,7 @@ Database: `aipos_uat`; store: `skr`; Odoo company: 5; stock location: `UATPI/Sto
 - Failed source enrichment clears partial Shopfront values and labels source cost/price unavailable; it does not substitute Odoo price for a missing Shopfront price.
 - The existing PurchasingWorkspace handler redirects legacy `/purchases?state=purchase` requests to `/purchases`.
 - Inventory totals are explicitly labeled as Odoo saleable variants and positive available units. The legacy receipt URL redirects even when its query parameter is repeated.
+- The authenticated SKR login probe returned 401, so the current live rendered purchase page was not rechecked in this session. Anonymous access to the legacy URL is intercepted by the login guard; current source/runtime contains the server redirect, and no business writes were issued.
 
 ## Verification
 
