@@ -84,8 +84,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [items, setItems] = useState<OdooProductRecord[]>([]);
   const [printItems, setPrintItems] = useState<OdooProductRecord[] | null>(null);
   const [categories, setCategories] = useState<OdooPosCategoryRecord[]>([]);
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(() => searchParams.get("q") ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const requestedView = searchParams.get("view");
   const [catalogueView, setCatalogueView] = useState<CatalogueView>(() =>

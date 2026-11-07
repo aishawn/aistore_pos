@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, Eye, Pencil, RefreshCw, Search, X } from "lucide-react";
 import { parseShopfrontSalesReport, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
+import { Sparkline } from "@/components/admin/Sparkline";
 
 export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
 type SourceRow = Record<string, unknown>;
@@ -13,12 +14,12 @@ type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: nu
 type CoveragePayload = { data?: SourceCoverage };
 
 const PAGE_SIZE = 50;
-const PRODUCTS_PAGE_SIZE = 600;
+const PRODUCTS_PAGE_SIZE = 100;
 const MODE_META: Record<Mode, { title: string; odooHref: string; odooLabel: string }> = {
   dashboard: { title: "Shopfront dashboard", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
   sales: { title: "Shopfront sales", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
   inventory: { title: "Shopfront inventory", odooHref: "/reports/inventory/odoo", odooLabel: "Orithos inventory" },
-  products: { title: "Shopfront products", odooHref: "/products/odoo", odooLabel: "Orithos products" },
+  products: { title: "Products", odooHref: "/products/odoo", odooLabel: "Orithos products" },
   purchase: { title: "Shopfront purchase report", odooHref: "/reports/purchase/odoo", odooLabel: "Orithos purchasing" },
 };
 const MODE_HREF: Record<Mode, string> = {
@@ -104,9 +105,8 @@ function statusTone(status: unknown) {
 }
 
 function readSourceProductInventory(product: SourceRow) {
-  const raw = product.raw_payload && typeof product.raw_payload === "object" ? product.raw_payload as SourceRow : {};
-  const value = raw.inventory;
-  return Array.isArray(value) ? value[0] as SourceRow | undefined : value && typeof value === "object" ? value as SourceRow : undefined;
+  const value = product.inventory_snapshot;
+  return value && typeof value === "object" ? value as SourceRow : undefined;
 }
 
 function TableFrame({ children, empty }: { children: React.ReactNode; empty: boolean }) {
@@ -145,6 +145,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [negativeOnly, setNegativeOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<SourceRow[]>([]);
+  const [performanceById, setPerformanceById] = useState<Record<string, number[]>>({});
+  const [viewingProduct, setViewingProduct] = useState<SourceRow | null>(null);
   const [total, setTotal] = useState(0);
   const [liveActiveProducts, setLiveActiveProducts] = useState<number | null>(null);
   const [sellableUnits, setSellableUnits] = useState<number | null>(null);
@@ -177,7 +179,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     setSellableUnits(null);
     setSellableUnitsState("unavailable");
     try {
-      const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "report-products" : mode === "inventory" ? "report-inventory" : "report-purchase";
+      const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "products" : mode === "inventory" ? "report-inventory" : "report-purchase";
       const params = new URLSearchParams({ resource });
       if (mode === "dashboard" || mode === "sales") {
         params.set("from", range.from);
@@ -215,8 +217,24 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       if ((mode === "sales" || mode === "dashboard") && !parseShopfrontSalesReport(result)) {
         throw new Error("Shopfront returned an incomplete or inconsistent sales report. No partial totals are shown.");
       }
-      setRows(result.data ?? []);
-      setTotal(Number(result.pagination?.total ?? result.data?.length ?? 0));
+      const loadedRows = result.data ?? [];
+      setRows(loadedRows);
+      setTotal(Number(result.pagination?.total ?? loadedRows.length));
+      setPerformanceById({});
+      if (mode === "products") {
+        const ids = loadedRows.map(row => String(row.shopfront_product_id ?? "")).filter(Boolean);
+        if (ids.length) {
+          void fetch(`/api/shopfront-source?${new URLSearchParams({ resource: "product-performance", product_ids: ids.join(","), days: "30" })}`, { cache: "no-store", credentials: "same-origin" })
+            .then(response => response.ok ? response.json() as Promise<{ data?: Array<{ shopfront_product_id?: string; daily_units?: number[] }> }> : null)
+            .then(payload => {
+              if (!payload || !Array.isArray(payload.data)) return;
+              setPerformanceById(Object.fromEntries(payload.data.flatMap(row => typeof row.shopfront_product_id === "string" && Array.isArray(row.daily_units)
+                ? [[row.shopfront_product_id, row.daily_units.map(value => Number.isFinite(Number(value)) ? Number(value) : 0)] as const]
+                : [])));
+            })
+            .catch(() => setPerformanceById({}));
+        }
+      }
       setReportTotals(result.totals ?? {});
       setReportMetrics(result.metrics ?? {});
       setRangeCoverage(result.coverage ?? null);
@@ -233,7 +251,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
             setSellableUnitsState(value !== null ? "available" : inventoryPayload?.reason === "snapshot_stale" ? "stale" : "unavailable");
           })
           .catch(() => { setSellableUnits(null); setSellableUnitsState("unavailable"); });
-        const catalogParams = new URLSearchParams({ resource: "report-products", page: "1", size: "1", status: "ACTIVE" });
+        const catalogParams = new URLSearchParams({ resource: "products", page: "1", size: "1", status: "ACTIVE" });
         void fetch(`/api/shopfront-source?${catalogParams}`, { cache: "no-store", credentials: "same-origin" })
           .then(async catalogResponse => ({ catalogResponse, catalogResult: await catalogResponse.json().catch(() => null) as PagePayload | null }))
           .then(({ catalogResponse, catalogResult }) => {
@@ -297,7 +315,6 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const profitPercentage = sums.revenue !== 0 ? (sums.profit / sums.revenue) * 100 : 0;
   const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
   const inventory = coverage?.inventory ?? {};
-  const catalog = coverage?.catalog ?? {};
   const dashboardMetricsAvailable = reportMetrics.available !== false;
   const salesReportAvailable = !loading && error === null;
   const inventorySnapshotStale = mode === "inventory" && generatedAt !== null && !shopfrontInventorySnapshotIsFresh(generatedAt);
@@ -333,6 +350,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
           <p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Source: Shopfront · SKR</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{meta.title}</h1>
           {generatedAt && <p className="mt-1 text-xs text-[var(--oh-muted)]">{mode === "inventory" ? `Snapshot ${dateTimeLabel(generatedAt)} Adelaide` : `Loaded ${dateLabel(generatedAt)} · Adelaide business dates`}</p>}
+          {mode === "products" && <p className="mt-1 text-xs text-[var(--oh-muted)]">Inventory snapshot: {snapshot?.complete === true ? snapshot.fresh === true ? "complete" : "complete · stale" : snapshot?.manifest_complete === false ? "incomplete" : "unavailable"}{snapshot?.snapshot_at ? ` · ${dateTimeLabel(snapshot.snapshot_at)} Adelaide` : ""} · Shopfront source data</p>}
         </div>
         <div className="flex items-center gap-2">
           <Link href={meta.odooHref} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
@@ -344,11 +362,11 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         </div>
       </header>
 
-      <nav aria-label="Shopfront source views" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--oh-border)] bg-white px-4 md:px-6">
+      {mode !== "products" && <nav aria-label="Shopfront source views" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--oh-border)] bg-white px-4 md:px-6">
         {(Object.keys(MODE_HREF) as Mode[]).map(view => <Link key={view} href={MODE_HREF[view]} aria-current={view === mode ? "page" : undefined} className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${view === mode ? "border-[var(--oh-primary)] text-[var(--oh-primary)]" : "border-transparent text-[var(--oh-muted)] hover:text-[var(--oh-text)]"}`}>
           {MODE_LABEL[view]}
         </Link>)}
-      </nav>
+      </nav>}
 
       {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 md:mx-6"><AlertCircle size={16} />{error}</div>}
       {inventorySnapshotStale && <div role="status" className="mx-4 mt-3 flex items-center gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} />This Shopfront inventory report is over 24 hours old. The listed rows are historical until a fresh report is available.</div>}
@@ -409,17 +427,14 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {(mode === "sales" || mode === "dashboard") && missingDates.length > 0 && <div role="status" className="mx-4 mt-3 flex items-start gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:mx-6"><AlertCircle size={16} className="mt-0.5 shrink-0" />Report coverage is incomplete for {missingDates.length} date(s): {missingDates.slice(0, 8).join(", ")}{missingDates.length > 8 ? "…" : ""}.</div>}
 
       {mode === "products" && <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--oh-border)] bg-white px-4 py-2 text-xs text-[var(--oh-muted)] md:px-6">
-        <span>Current view: {status === "all" ? "ACTIVE" : status} products{query ? ` matching “${query}”` : ""}</span>
-        <span>{quantity(total)} matching source products</span>
-        <span>{quantity(catalog.active_records)} archived ACTIVE snapshot</span>
-        <span>{quantity(catalog.current_records)} archived current catalog</span>
-        <span>{quantity(coverage?.products?.total)} archived records</span>
-        <span>{quantity(catalog.historical_or_unconfirmed_records)} historical / unconfirmed</span>
+        <span>{quantity(total)} matching Shopfront products{query ? ` for “${query}”` : ""}</span>
+        <span>Read-only source data</span>
+        {typeof rows[0]?.synced_at === "string" && <span>Last source sync {dateTimeLabel(rows[0].synced_at)}</span>}
       </div>}
 
       <div className="min-h-0 flex-1 overflow-auto">
         {mode === "sales" || mode === "dashboard" ? <SalesTable rows={rows} loading={loading} />
-          : mode === "products" ? <ProductsTable rows={rows} loading={loading} />
+          : mode === "products" ? <ProductsTable rows={rows} loading={loading} performanceById={performanceById} onView={setViewingProduct} />
             : mode === "inventory" ? <InventoryTable rows={rows} loading={loading} fetchedAt={generatedAt} total={total} totals={reportTotals} />
               : <PurchaseTable rows={rows} loading={loading} />}
         {!(mode === "sales" || mode === "dashboard") && <div className="flex items-center justify-between border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
@@ -430,6 +445,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
           </div>
         </div>}
       </div>
+      {viewingProduct && <ProductSourceDialog product={viewingProduct} onClose={() => setViewingProduct(null)} />}
     </main>
   );
 }
@@ -470,23 +486,48 @@ function SalesTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) 
   </table></TableFrame>;
 }
 
-function ProductsTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
-  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[860px] border-collapse text-left">
-    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Status", "Product", "Category", "Cost", "Inventory", "Price"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+function ProductsTable({ rows, loading, performanceById, onView }: { rows: SourceRow[]; loading: boolean; performanceById: Record<string, number[]>; onView: (product: SourceRow) => void }) {
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[1080px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Status", "Product", "Category", "Cost", "Inventory", "Price", "Performance · 30d", "Actions"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
     <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
       const stock = readSourceProductInventory(row);
-      const caseLevel = stock?.caseLevel;
-      const singleLevel = stock?.singleLevel;
-      const caseQuantity = sourceNumber(row, "case_quantity", "caseQuantity");
-      const inventoryText = stock ? caseQuantity > 1 ? `${quantity(caseLevel)} Cases · ${quantity(singleLevel)} Items` : `${quantity(singleLevel)} Items` : "—";
-      return <tr key={String(row.shopfront_product_id)} className="hover:bg-[var(--oh-surface)]">
+      const tracksInventory = row.track_inventory === true;
+      const inventoryText = !tracksInventory ? "Non-stock" : !stock ? "Not synced" : stock.complete !== true ? "Snapshot incomplete" : stock.fresh !== true ? "Snapshot stale" : stock.available !== true ? "Not covered" : `${quantity(stock.quantity)} Units`;
+      const productId = String(row.shopfront_product_id ?? "");
+      const points = performanceById[productId];
+      const search = String(row.sku || row.barcode || row.name || "");
+      return <tr key={productId} className="hover:bg-[var(--oh-surface)]">
         <Cell><span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>{String(row.status ?? "UNKNOWN")}</span></Cell>
-        <Cell><span className="font-medium">{String(row.name ?? "—")}</span></Cell>
-        <Cell>{String(row.category ?? "—")}</Cell><Cell>{money(row.cost)}</Cell><Cell>{inventoryText}</Cell><Cell>{money(row.price)}</Cell>
+        <Cell><span className="font-medium">{String(row.name ?? "—")}</span>{typeof row.sku === "string" && row.sku && <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">SKU {row.sku}</span>}</Cell>
+        <Cell>{String(row.category ?? "—")}</Cell><Cell>{sourceMoney(row, "cost")}</Cell><Cell>{inventoryText}</Cell><Cell>{sourceMoney(row, "price")}</Cell>
+        <Cell><div className="flex min-w-36 items-center gap-2" title={points ? `${quantity(points.reduce((sum, value) => sum + value, 0))} units sold over the last 30 days` : "Sales trend unavailable"}>
+          {points ? <><Sparkline points={points} width={128} height={42} /><span className="text-xs tabular-nums text-[var(--oh-muted)]">{quantity(points.reduce((sum, value) => sum + value, 0))}</span></> : <span className="text-xs text-[var(--oh-muted)]">—</span>}
+        </div></Cell>
+        <Cell><div className="flex items-center gap-1">
+          <button type="button" onClick={() => onView(row)} aria-label={`View ${String(row.name ?? "product")}`} title="View source details" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]"><Eye size={16} /></button>
+          <Link href={`/products/odoo?q=${encodeURIComponent(search)}`} aria-label={`Edit ${String(row.name ?? "product")} in Orithos`} title="Open Orithos product record" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] text-emerald-700 hover:bg-[var(--oh-surface)]"><Pencil size={15} /></Link>
+        </div></Cell>
       </tr>;
     })}</tbody>
-    {loading && <tfoot><tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront products…</td></tr></tfoot>}
+    {loading && <tfoot><tr><td colSpan={8} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront products…</td></tr></tfoot>}
   </table></TableFrame>;
+}
+
+function ProductSourceDialog({ product, onClose }: { product: SourceRow; onClose: () => void }) {
+  const stock = readSourceProductInventory(product);
+  const fields: Array<[string, string]> = [
+    ["Category", sourceText(product, "category")], ["SKU", sourceText(product, "sku")], ["Barcode", sourceText(product, "barcode")],
+    ["Cost", sourceMoney(product, "cost")], ["Price", sourceMoney(product, "price")], ["Inventory tracking", product.track_inventory === true ? "Tracked" : "Non-stock"],
+    ["On hand", stock?.available === true ? `${quantity(sourceNumber(stock, "quantity"))} Units` : "Snapshot unavailable"], ["Outlets", stock?.available === true ? quantity(sourceNumber(stock, "outlets")) : "—"],
+    ["Source status", sourceText(product, "status")], ["Last synced", dateTimeLabel(product.synced_at)], ["Shopfront product ID", sourceText(product, "shopfront_product_id")],
+  ];
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="source-product-title" className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-lg bg-white shadow-xl">
+      <header className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] px-5 py-4"><div><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Shopfront · read only</p><h2 id="source-product-title" className="mt-1 break-words text-lg font-semibold text-[var(--oh-text)]">{sourceText(product, "name")}</h2></div><button type="button" aria-label="Close product details" onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[var(--oh-border)]"><X size={16} /></button></header>
+      <dl className="grid grid-cols-1 gap-x-5 gap-y-3 px-5 py-4 sm:grid-cols-2">{fields.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-[var(--oh-muted)]">{label}</dt><dd className="mt-0.5 break-words text-sm text-[var(--oh-text)]">{value}</dd></div>)}</dl>
+      <footer className="flex justify-end border-t border-[var(--oh-border)] px-5 py-3"><Link href={`/products/odoo?q=${encodeURIComponent(String(product.sku || product.barcode || product.name || ""))}`} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white"><Pencil size={15} />Open Orithos product</Link></footer>
+    </section>
+  </div>;
 }
 
 function InventoryTable({ rows, loading, fetchedAt, total, totals }: { rows: SourceRow[]; loading: boolean; fetchedAt: string | null; total: number; totals: SourceRow }) {

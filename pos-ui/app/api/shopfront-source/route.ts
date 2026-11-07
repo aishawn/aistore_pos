@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 const ENDPOINTS: Record<string, { path: string; params: string[]; permissions: string[] }> = {
   "products": { path: "/api/products", params: ["page", "size", "catalog_only", "status", "q", "brand", "category", "family", "tag", "supplier", "type", "tax_rate", "cost_tax_rate", "gift_card"], permissions: ["reports.dashboard", "stock.products.view", "stock.products.edit"] },
+  "product-performance": { path: "/api/product-performance", params: ["product_ids", "days"], permissions: ["reports.dashboard", "stock.products.view"] },
   "inventory": { path: "/api/inventory", params: ["page", "size", "outlet_id", "q", "negative_only"], permissions: ["reports.dashboard", "stock.inventory.view", "stock.products.view"] },
   "sales": { path: "/api/sales", params: ["from", "to", "page", "size", "snapshot_id"], permissions: ["reports.dashboard"] },
   "sales-trend": { path: "/api/reports/sales-trend", params: ["from", "to"], permissions: ["reports.dashboard"] },
