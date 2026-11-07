@@ -87,7 +87,7 @@ def sales_page_rows(
     size: int,
 ) -> Iterator[tuple[list[dict[str, Any]], dict[str, Any]]]:
     start_year = max(1970, int(os.getenv("LEGACY_MIGRATION_SALES_START_YEAR", "2010")))
-    today = date.today()
+    today = date.today() + timedelta(days=1)
     month_start = date(start_year, 1, 1)
     if month_start > today:
         raise RuntimeError("Legacy sales scan start year is in the future")
@@ -116,13 +116,42 @@ def sales_page_rows(
             "to": month_end.isoformat(),
             "snapshot_id": snapshot_id,
         }
-        for rows, payload in page_rows(
-            client, base_url, "/api/sales", headers, size=size, extra=extra
-        ):
-            if payload.get("pagination", {}).get("snapshot_id") != snapshot_id:
-                raise RuntimeError("Sales snapshot changed during partitioned scan")
-            scanned += len(rows)
-            yield rows, payload
+        def fetch_page(page: int, expected_total: int | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+            payload = api_request(
+                client,
+                "GET",
+                f"{base_url}/api/sales",
+                headers=headers,
+                params={"store": "skr", "page": page, "size": size, **extra},
+            )
+            rows = payload.get("data")
+            page_info = payload.get("pagination") or {}
+            page_total = page_info.get("total")
+            expected_rows = min(size, page_total - (page - 1) * size) if isinstance(page_total, int) else -1
+            if (
+                not isinstance(rows, list)
+                or not isinstance(page_total, int)
+                or (expected_total is not None and page_total != expected_total)
+                or page_info.get("snapshot_id") != snapshot_id
+                or len(rows) != expected_rows
+            ):
+                raise RuntimeError(f"Inconsistent sales partition pagination for {month_start} page {page}")
+            return rows, payload
+
+        first_rows, first_payload = fetch_page(1)
+        partition_total = int(first_payload["pagination"]["total"])
+        if partition_total:
+            scanned += len(first_rows)
+            yield first_rows, first_payload
+            total_pages = (partition_total + size - 1) // size
+
+            def fetch_followup(page: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                return fetch_page(page, partition_total)
+
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                for rows, payload in pool.map(fetch_followup, range(2, total_pages + 1)):
+                    scanned += len(rows)
+                    yield rows, payload
         month_start = next_month
 
     if scanned != expected_total:
@@ -382,7 +411,7 @@ def verify_identities(
     checks = {
         "products": ("/api/products", lambda row: str(row["shopfront_product_id"]), 500),
         "inventory": ("/api/inventory", lambda row: (str(row["shopfront_product_id"]), str(row.get("outlet_id") or "")), 500),
-        "sales": ("/api/sales", lambda row: str(row["shopfront_sale_id"]), 200),
+        "sales": ("/api/sales", lambda row: str(row["shopfront_sale_id"]), 1000),
         "suppliers": ("/api/suppliers", lambda row: str(row["source_id"]), 500),
         "purchase-orders": ("/api/purchase-orders", lambda row: str(row["source_id"]), 500),
         "customers": ("/api/customers", lambda row: str(row["source_id"]), 500),
@@ -517,7 +546,7 @@ def main() -> int:
             "/api/sales",
             target_headers,
             lambda row: str(row["shopfront_sale_id"]),
-            size=200,
+            size=1000,
         )
         pending_sales: list[dict[str, Any]] = []
         for rows, _ in sales_page_rows(client, source, source_headers, size=1000):
