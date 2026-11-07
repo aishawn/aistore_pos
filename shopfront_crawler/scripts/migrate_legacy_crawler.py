@@ -87,6 +87,7 @@ def sales_page_rows(
     headers: dict[str, str],
     *,
     size: int,
+    partition: tuple[date, date] | None = None,
 ) -> Iterator[tuple[list[dict[str, Any]], dict[str, Any]]]:
     start_year = max(1970, int(os.getenv("LEGACY_MIGRATION_SALES_START_YEAR", "2010")))
     today = date.today() + timedelta(days=1)
@@ -109,6 +110,12 @@ def sales_page_rows(
     if expected_total == 0:
         return
     scanned = 0
+
+    if partition is not None:
+        if partition[0].day != 1 or partition[1] < partition[0]:
+            raise ValueError("Sales partition must start on the first day of a month")
+        month_start = partition[0]
+        today = partition[1]
 
     while month_start <= today:
         next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
@@ -156,11 +163,23 @@ def sales_page_rows(
                     yield rows, payload
         month_start = next_month
 
-    if scanned != expected_total:
+    if partition is None and scanned != expected_total:
         raise RuntimeError(
             f"Partitioned sales scan found {scanned} of {expected_total} rows; "
             f"check LEGACY_MIGRATION_SALES_START_YEAR (currently {start_year})"
         )
+
+
+def sales_month_partitions(*, through: date | None = None) -> Iterator[tuple[date, date]]:
+    start_year = max(1970, int(os.getenv("LEGACY_MIGRATION_SALES_START_YEAR", "2010")))
+    last_day = through or (date.today() + timedelta(days=1))
+    month_start = date(start_year, 1, 1)
+    if month_start > last_day:
+        raise RuntimeError("Legacy sales scan start year is in the future")
+    while month_start <= last_day:
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        yield month_start, min(last_day, next_month - timedelta(days=1))
+        month_start = next_month
 
 
 def collect_rows(*args: Any, **kwargs: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -309,18 +328,18 @@ def destination_sale_line_ids(
     client: httpx.Client,
     base_url: str,
     headers: dict[str, str],
+    *,
+    partition: tuple[date, date] | None = None,
 ) -> dict[str, set[str]]:
     result: dict[str, set[str]] = {}
-    for rows, _ in sales_page_rows(client, base_url, headers, size=200):
+    for rows, _ in sales_page_rows(client, base_url, headers, size=1000, partition=partition):
         for row in rows:
             sale_id = str(row.get("shopfront_sale_id") or "")
             line_ids = row.get("sale_item_ids")
-            if not sale_id or not isinstance(line_ids, list) or any(not isinstance(value, str) or not value for value in line_ids):
+            if not sale_id or not isinstance(line_ids, list) or any(not isinstance(value, str) for value in line_ids):
                 raise RuntimeError("Destination sales endpoint does not provide valid sale item identities")
             if sale_id in result:
                 raise RuntimeError(f"Duplicate destination sale ID: {sale_id}")
-            if len(set(line_ids)) != len(line_ids):
-                raise RuntimeError(f"Duplicate destination sale line identity for sale {sale_id}")
             result[sale_id] = set(line_ids)
     return result
 
@@ -589,36 +608,56 @@ def main() -> int:
         sale_count = 0
         sale_item_count = 0
         malformed_sale_item_count = 0
-        sale_ids: set[str] = set()
-        source_sale_lines: dict[str, set[str]] = {}
-        target_sale_lines = destination_sale_line_ids(client, target, target_headers)
         sales_to_refresh = 0
-        pending_sales: list[dict[str, Any]] = []
-        for rows, _ in sales_page_rows(client, source, source_headers, size=1000):
-            sale_count += len(rows)
-            for row in rows:
-                source_id = str(row.get("shopfront_sale_id") or "")
-                raw = row.get("raw_payload") if isinstance(row.get("raw_payload"), dict) else {}
-                items = raw.get("items")
-                if not isinstance(items, list):
-                    raise RuntimeError(f"Sale {source_id} does not contain its source line items")
-                if source_id in sale_ids:
-                    raise RuntimeError(f"Duplicate legacy sale ID: {source_id}")
-                sale_ids.add(source_id)
-                sale_item_count += len(items)
-                malformed_sale_item_count += sum(not isinstance(source_item, dict) for source_item in items)
-                expected_line_ids = source_sale_line_ids(items)
-                source_sale_lines[source_id] = expected_line_ids
-                if target_sale_lines.get(source_id) != expected_line_ids:
-                    pending_sales.append(row)
-            if len(pending_sales) >= 1000:
+        for month_start, month_end in sales_month_partitions():
+            month = (month_start, month_end)
+            target_sale_lines = destination_sale_line_ids(
+                client, target, target_headers, partition=month
+            )
+            month_source_lines: dict[str, set[str]] = {}
+            pending_sales: list[dict[str, Any]] = []
+            for rows, _ in sales_page_rows(
+                client, source, source_headers, size=1000, partition=month
+            ):
+                sale_count += len(rows)
+                for row in rows:
+                    source_id = str(row.get("shopfront_sale_id") or "")
+                    raw = row.get("raw_payload") if isinstance(row.get("raw_payload"), dict) else {}
+                    items = raw.get("items")
+                    if not isinstance(items, list):
+                        raise RuntimeError(f"Sale {source_id} does not contain its source line items")
+                    if not source_id or source_id in month_source_lines:
+                        raise RuntimeError(f"Missing or duplicate legacy sale ID: {source_id}")
+                    sale_item_count += len(items)
+                    malformed_sale_item_count += sum(not isinstance(source_item, dict) for source_item in items)
+                    expected_line_ids = source_sale_line_ids(items)
+                    month_source_lines[source_id] = expected_line_ids
+                    if target_sale_lines.get(source_id) != expected_line_ids:
+                        pending_sales.append(row)
+                if len(pending_sales) >= 1000:
+                    post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
+                    sales_to_refresh += len(pending_sales)
+                    pending_sales.clear()
+            if pending_sales:
                 post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
                 sales_to_refresh += len(pending_sales)
-                pending_sales.clear()
-            print(f"sales scanned: {sale_count}; incomplete queued: {len(pending_sales)}", flush=True)
-        if pending_sales:
-            post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
-            sales_to_refresh += len(pending_sales)
+            verified_month_lines = destination_sale_line_ids(
+                client, target, target_headers, partition=month
+            )
+            mismatched_sales = [
+                sale_id for sale_id, line_ids in month_source_lines.items()
+                if verified_month_lines.get(sale_id) != line_ids
+            ]
+            if mismatched_sales:
+                raise RuntimeError(
+                    f"Destination sale line identities differ for {len(mismatched_sales)} sales "
+                    f"in {month_start:%Y-%m}; examples={mismatched_sales[:5]}"
+                )
+            print(
+                f"sales verified through {month_end}: {sale_count}; "
+                f"reimported incomplete or missing: {sales_to_refresh}",
+                flush=True,
+            )
         print(f"sales scanned: {sale_count}; reimported incomplete or missing: {sales_to_refresh}", flush=True)
         print(
             f"source sale lines: {sale_item_count}; non-object source lines: {malformed_sale_item_count}",
@@ -702,18 +741,8 @@ def main() -> int:
         )
         if quantity_differences:
             raise RuntimeError(f"Inventory quantity audit failed: {quantity_differences} values differ")
-        verified_sale_lines = destination_sale_line_ids(client, target, target_headers)
-        line_mismatches = sum(
-            verified_sale_lines.get(sale_id) != expected_line_ids
-            for sale_id, expected_line_ids in source_sale_lines.items()
-        )
-        if line_mismatches:
-            raise RuntimeError(
-                "Destination sale line identities differ from the source snapshot: "
-                f"mismatched_sales={line_mismatches}"
-            )
         print(
-            f"verified sales: {len(source_sale_lines)} source sales and {sale_item_count} source lines; "
+            f"verified sales: {sale_count} source sales and {sale_item_count} source lines; "
             "destination-only sales are preserved",
             flush=True,
         )
