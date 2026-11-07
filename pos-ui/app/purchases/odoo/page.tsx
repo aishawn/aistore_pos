@@ -11,7 +11,8 @@ export default async function OdooPurchaseOrdersRoute({
   searchParams: Promise<{ state?: string | string[] }>;
 }) {
   const { state } = await searchParams;
-  if (state === "purchase") redirect("/purchases");
+  const states = Array.isArray(state) ? state : [state];
+  if (states.includes("purchase")) redirect("/purchases");
 
   return (
     <Suspense fallback={<div className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading purchases…</div>}>

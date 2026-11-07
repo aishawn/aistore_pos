@@ -16,12 +16,20 @@ Database: `aipos_uat`; store: `skr`; Odoo company: 5; stock location: `UATPI/Sto
 - 281 mapped products have positive Shopfront cost while Odoo recorded cost is zero. Source costs were not written to Odoo because tax and unit basis are not verified.
 - The 13,292 value is an Odoo product variant count, not a Shopfront source product count. The positive stock sum is a Shopfront snapshot measure; 50,992 is not the current audited positive-unit total.
 
+### Latest read-only recheck
+
+- Shopfront still reports 10,849 ACTIVE products. Its complete inventory mirror has 10,852 rows and 51,512 positive units; the latest snapshot is `2026-11-06T18:13:31Z`. Negative quantities are tracked separately.
+- Odoo reports 13,364 saleable variants and 51,318 positive units for company 5 / `UATPI/Stock` in the latest recheck. These are Odoo balances, not the Shopfront mirror totals. The 13,292 / 50,992 values in the supplied screenshot are the earlier Odoo inventory view, retrieved on 2026-11-06 at 4:48 pm; they are not the current recheck.
+- The catalog totals are not directly comparable: Shopfront counts ACTIVE source products, while Odoo counts saleable variants, including products outside the mapped Shopfront set and legacy/duplicate variants. Of 11,004 uniquely comparable source mappings, 76 have stock differences with 196 units of total absolute variance; 26 references are ambiguous and 2 active source products have no mapping. No stock or cost values were written.
+- Odoo's available-unit total excludes negative balances and is only additive when all rows use a common unit. The Shopfront positive-unit total is a separate source snapshot. Neither number should be read as a reconciled cross-system total.
+
 ## Candidate changes
 
 - Product catalogue footer now labels Odoo variants separately from Shopfront active products, mapping coverage, inventory coverage, and positive source units.
 - Shared Odoo product templates are included in the company-scoped Shopfront mapping queries.
 - Failed source enrichment clears partial Shopfront values and labels source cost/price unavailable; it does not substitute Odoo price for a missing Shopfront price.
 - The existing PurchasingWorkspace handler redirects legacy `/purchases?state=purchase` requests to `/purchases`.
+- Inventory totals are explicitly labeled as Odoo saleable variants and positive available units. The legacy receipt URL redirects even when its query parameter is repeated.
 
 ## Verification
 

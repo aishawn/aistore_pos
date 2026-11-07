@@ -922,8 +922,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
               <span>Inventory-covered products <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.inventoryProductRows)} / {quantity(shopfrontCoverage.activeProducts)}</strong></span>
               {shopfrontCoverage.negativeInventoryRows > 0 && <span className="basis-full text-xs text-amber-800">{quantity(shopfrontCoverage.negativeInventoryRows)} source inventory rows have negative balances; those signed quantities remain visible on each product.</span>}
             </> : totals && !resultsPending && <>
-              <span>Odoo saleable variants <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
-              <span>Odoo positive stock units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              <span>Odoo products (saleable variants) <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>Odoo available units (positive balances) <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
               {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} variants have negative stock. The positive-unit total excludes negative balances; review those variants in the list.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
