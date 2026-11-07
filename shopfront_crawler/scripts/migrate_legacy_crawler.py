@@ -250,7 +250,7 @@ def verify_identities(
 ) -> dict[str, int]:
     checks = {
         "products": ("/api/products", lambda row: str(row["shopfront_product_id"]), 500),
-        "inventory": ("/api/inventory", lambda row: (str(row["shopfront_product_id"]), str(row.get("outlet_id") or ""), str(row.get("quantity"))), 500),
+        "inventory": ("/api/inventory", lambda row: (str(row["shopfront_product_id"]), str(row.get("outlet_id") or "")), 500),
         "sales": ("/api/sales", lambda row: str(row["shopfront_sale_id"]), 200),
         "suppliers": ("/api/suppliers", lambda row: str(row["source_id"]), 500),
         "purchase-orders": ("/api/purchase-orders", lambda row: str(row["source_id"]), 500),
@@ -331,7 +331,7 @@ def main() -> int:
                 if not inventory_ids:
                     raise RuntimeError("Legacy inventory snapshot is empty")
                 inventory_identity_quantity = {
-                    (str(row["shopfront_product_id"]), str(row.get("outlet_id") or "")): str(row.get("quantity"))
+                    (str(row["shopfront_product_id"]), str(row.get("outlet_id") or "")): Decimal(str(row.get("quantity"))).normalize()
                     for row in rows
                 }
                 if len(inventory_identity_quantity) != len(rows):
@@ -428,14 +428,38 @@ def main() -> int:
                 f"Daily summary audit failed: source={len(source_trend_map)} rows, destination={len(target_trend_map)} rows"
             )
         results["daily-summaries"] = len(source_trend_map)
-        inventory_target = keyset(
-            client, target, "/api/inventory", target_headers,
-            lambda row: (str(row["shopfront_product_id"]), str(row.get("outlet_id") or ""), str(row.get("quantity"))),
-            size=500,
-        )
-        if len(inventory_target) != len(inventory_identity_quantity):
-            raise RuntimeError("Destination inventory row count differs from the source snapshot")
         target_coverage = read_coverage(client, target, source_headers)
+        inventory_coverage = target_coverage.get("inventory", {})
+        if not inventory_coverage.get("complete") or not inventory_coverage.get("snapshot_complete"):
+            raise RuntimeError("Destination inventory snapshot is not complete")
+        target_inventory_quantity: dict[tuple[str, str], Decimal] = {}
+        for rows, _ in page_rows(client, target, "/api/inventory", target_headers, size=500):
+            for row in rows:
+                key = (str(row["shopfront_product_id"]), str(row.get("outlet_id") or ""))
+                if key in target_inventory_quantity:
+                    raise RuntimeError(f"Duplicate destination inventory identity: {key}")
+                try:
+                    target_inventory_quantity[key] = Decimal(str(row.get("quantity"))).normalize()
+                except InvalidOperation as exc:
+                    raise RuntimeError("Destination inventory contains an invalid quantity") from exc
+        source_inventory_ids = set(inventory_identity_quantity)
+        target_inventory_ids = set(target_inventory_quantity)
+        missing_inventory = source_inventory_ids - target_inventory_ids
+        extra_inventory = target_inventory_ids - source_inventory_ids
+        if missing_inventory or extra_inventory:
+            raise RuntimeError(
+                f"Inventory identity audit failed: missing={len(missing_inventory)}, extra={len(extra_inventory)}"
+            )
+        quantity_differences = sum(
+            inventory_identity_quantity[key] != target_inventory_quantity[key]
+            for key in source_inventory_ids
+        )
+        print(
+            f"verified inventory: {len(source_inventory_ids)} identities; "
+            f"{quantity_differences} quantities differ from the legacy snapshot; "
+            f"destination snapshot_at={inventory_coverage.get('snapshot_at')}",
+            flush=True,
+        )
         if int(target_coverage["sales"]["sale_items"]) != sale_item_count:
             raise RuntimeError("Destination sale line count differs from the source snapshot")
         finished = api_request(
