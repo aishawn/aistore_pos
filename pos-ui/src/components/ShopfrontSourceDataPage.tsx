@@ -9,7 +9,7 @@ import { Sparkline } from "@/components/admin/Sparkline";
 export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
 type SourceRow = Record<string, unknown>;
 type SourceSnapshot = { complete?: unknown; snapshot_at?: unknown; products?: unknown; source_products?: unknown; [key: string]: unknown };
-type SourceCoverage = { inventory?: SourceSnapshot; catalog?: Record<string, unknown>; products?: Record<string, unknown>; [key: string]: unknown };
+type SourceCoverage = { inventory?: SourceSnapshot; catalog?: { checkpoint_at?: unknown; [key: string]: unknown }; products?: Record<string, unknown>; [key: string]: unknown };
 type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; source_version?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
 type CoveragePayload = { data?: SourceCoverage };
 
@@ -440,7 +440,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       {mode === "products" && <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--oh-border)] bg-white px-4 py-2 text-xs text-[var(--oh-muted)] md:px-6">
         <span>{quantity(total)} matching Shopfront products{query ? ` for “${query}”` : ""}</span>
         <span>Read-only source data</span>
-        {typeof rows[0]?.synced_at === "string" && <span>Last source sync {dateTimeLabel(rows[0].synced_at)}</span>}
+        {typeof coverage?.catalog?.checkpoint_at === "string" && <span>Last catalog sync {dateTimeLabel(coverage.catalog.checkpoint_at)}</span>}
       </div>}
 
       <div className="min-h-0 flex-1 overflow-auto">
