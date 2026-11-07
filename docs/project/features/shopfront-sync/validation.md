@@ -10,6 +10,13 @@
 - Dokploy Compose is bound to GitHub `main` with `autoDeploy=true`. Online deployment for this candidate is pending; the public version endpoint reported `7d824a2665c616d7463fec72cb3dd8f7a7d9afad` before push.
 - First live candidate `5ba3b317` showed the corrected 10,849 source products and 51,512 source units, and redirected `/purchases?state=purchase` to `/purchases`. Product rows exposed an optional performance-query failure clearing other source fields; that failure isolation fix is in the follow-up candidate and awaits deployment verification.
 
+## Product route and runner check (2026-11-08)
+
+- Source route review: `/products` now uses the Odoo catalogue with existing Shopfront read-only enrichment; `/products/odoo` redirects to `/products`. `/products/shopfront` and the four `/reports/shopfront/*` routes already redirect to their canonical pages. Purchases and Suppliers already embed Shopfront historical purchase/supplier sections as read-only views.
+- Read-only `https://crawler.orithos.com.au` API: `/healthz` returned 200; no queued/running jobs. Durable job #10 failed because the crawler restarted; durable job #20 later completed. SyncRun #19 failed because inventory reconciliation found 3 unmatched source rows. Its record contains no source IDs, and `PosImportRun` IDs 19/20 return 404. Current product reconciliation returned 0 crawler products missing from POS and 11,030 POS source-linked products. Runtime source SHA was not exposed by these endpoints.
+- `git diff --check`: PASS. POS UI typecheck could not run: this checkout has no local TypeScript compiler (`tsc` missing from `pos-ui/node_modules/.bin`). Node 24.22.1 is available. Browser route acceptance and deployment are pending.
+- Read-only only: no migration retry, inventory import, source refresh, or Odoo business write was issued. Inventory row-level evidence is from the separate `aipos_uat` audit recorded above; this runner API check did not independently read Odoo quantities.
+
 ## Inventory report source alignment candidate (2026-11-06)
 
 - Inventory page and Dashboard KPI now consume one shared Shopfront Reporting API report result. A versioned cache rejects prior GraphQL-reconstructed rows; old cached values are refreshed before they can be shown as aligned. Dashboard and report pagination totals use the same case/item conversion and signed negative-stock rule.
