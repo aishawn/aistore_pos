@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 import sys
 import time
@@ -135,12 +136,54 @@ def keyset(
     extra: dict[str, Any] | None = None,
 ) -> set[Any]:
     result: set[Any] = set()
-    for rows, _ in page_rows(client, base_url, path, headers, size=size, extra=extra):
+    pages = page_rows(client, base_url, path, headers, size=size, extra=extra)
+    try:
+        first_rows, first_payload = next(pages)
+    except StopIteration:
+        return result
+
+    pagination = first_payload["pagination"]
+    expected_total = int(pagination["total"])
+    snapshot_id = pagination.get("snapshot_id")
+    total_pages = (expected_total + size - 1) // size
+    if len(first_rows) != min(size, expected_total):
+        raise RuntimeError(f"Incomplete first page while reading {path}")
+
+    def add_rows(rows: list[dict[str, Any]]) -> None:
         for row in rows:
             key = key_fn(row)
             if key in result:
                 raise RuntimeError(f"Duplicate source identity in {path}: {key}")
             result.add(key)
+
+    add_rows(first_rows)
+    if total_pages <= 1:
+        return result
+
+    def fetch_page(page: int) -> list[dict[str, Any]]:
+        params = {"store": "skr", "page": page, "size": size, **(extra or {})}
+        if snapshot_id is not None:
+            params["snapshot_id"] = snapshot_id
+        payload = api_request(client, "GET", f"{base_url}{path}", headers=headers, params=params)
+        rows = payload.get("data")
+        page_info = payload.get("pagination") or {}
+        expected_rows = min(size, expected_total - (page - 1) * size)
+        if (
+            not isinstance(rows, list)
+            or page_info.get("total") != expected_total
+            or (snapshot_id is not None and page_info.get("snapshot_id") != snapshot_id)
+            or len(rows) != expected_rows
+        ):
+            raise RuntimeError(f"Inconsistent pagination while reading {path} page {page}")
+        return rows
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for page, rows in enumerate(pool.map(fetch_page, range(2, total_pages + 1)), start=2):
+            add_rows(rows)
+            if page % 100 == 0 or page == total_pages:
+                print(f"identity scan {path}: page {page}/{total_pages}", flush=True)
+    if len(result) != expected_total:
+        raise RuntimeError(f"Read {len(result)} identities from {path}; expected {expected_total}")
     return result
 
 
