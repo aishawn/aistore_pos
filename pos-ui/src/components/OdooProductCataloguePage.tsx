@@ -45,6 +45,7 @@ import {
   truncateSku,
 } from "@/lib/product-display-name";
 import { type InventorySort, type InventoryDirection, type InventoryTotals } from "@/lib/inventory-report";
+import { shopfrontCostValue } from "@/lib/shopfront-cost";
 
 const PAGE_SIZE = 40;
 const INVENTORY_COLUMNS = [
@@ -827,7 +828,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   const label = friendlyProductName(fullName);
                   const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
                   const unitCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
-                  const sourceCost = typeof product.shopfront_cost === "number" && Number.isFinite(product.shopfront_cost) && product.shopfront_cost > 0 ? product.shopfront_cost : null;
+                  const sourceCost = shopfrontCostValue(product.shopfront_cost);
                   const sourceCaseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
                   const sourceQty = typeof product.shopfront_quantity === "number" ? product.shopfront_quantity : null;
                   const sourceStockMismatch = sourceQty !== null && Math.abs(sourceQty - product.qty_available) > 0.0001;
