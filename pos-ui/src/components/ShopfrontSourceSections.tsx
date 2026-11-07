@@ -98,7 +98,8 @@ export function ShopfrontInventorySummary({ odooProductCount }: { odooProductCou
   const totals = state.data?.totals ?? {};
   const snapshotTime = inventory?.snapshot_at || state.data?.fetched_at;
   const snapshotEpoch = snapshotTime ? Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(snapshotTime) ? snapshotTime : `${snapshotTime}Z`) : Number.NaN;
-  const snapshotAgeMs = Number.isFinite(snapshotEpoch) ? Date.now() - snapshotEpoch : null;
+  const fetchedEpoch = state.data?.fetched_at ? Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(state.data.fetched_at) ? state.data.fetched_at : `${state.data.fetched_at}Z`) : Number.NaN;
+  const snapshotAgeMs = Number.isFinite(snapshotEpoch) && Number.isFinite(fetchedEpoch) ? fetchedEpoch - snapshotEpoch : null;
   const snapshotIsStale = snapshotAgeMs !== null && snapshotAgeMs > 24 * 60 * 60 * 1000;
   return <SectionFrame title="Shopfront inventory snapshot" expanded={state.expanded} setExpanded={state.setExpanded}>
     <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
@@ -110,7 +111,7 @@ export function ShopfrontInventorySummary({ odooProductCount }: { odooProductCou
         <p><span className="block text-xs text-[var(--oh-muted)]">Item level</span><strong>{number(totals.item_level)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Case level</span><strong>{number(totals.case_level)}</strong></p>
         <p><span className="block text-xs text-[var(--oh-muted)]">Last cost value</span><strong>{totals.value_last_cost_complete === 1 ? money(totals.value_last_cost) : "—"}</strong></p>
-        <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront counts use ACTIVE source products; Odoo counts use saleable product variants in this store scope. They are different scopes, not a one-to-one count. Positive units are shown separately by source and snapshot time; do not treat an older Odoo total as current Shopfront stock. Snapshot {inventory?.complete === true ? "complete" : "coverage unverified"} · {snapshotTime && Number.isFinite(snapshotEpoch) ? formatStoreEpoch(snapshotEpoch, "Australia/Adelaide") : "timestamp unavailable"}{inventory?.negative_records ? ` · ${number(inventory.negative_records)} negative source balances` : ""} · read-only, excluded from Odoo inventory balances.</p>
+        <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront counts ACTIVE source product records. Odoo counts active, saleable variants in this company and warehouse, including products without a Shopfront link; a multi-variant product counts once per variant. Shopfront units come from its dated source snapshot; Odoo units use positive on-hand balances and exclude negatives. These are separate read-only sources, not a one-to-one reconciliation. Snapshot {inventory?.complete === true ? "complete" : "coverage unverified"} · {snapshotTime && Number.isFinite(snapshotEpoch) ? formatStoreEpoch(snapshotEpoch, "Australia/Adelaide") : "timestamp unavailable"}{inventory?.negative_records ? ` · ${number(inventory.negative_records)} negative source balances` : ""} · excluded from Odoo inventory balances.</p>
         {snapshotIsStale && <p role="status" className="basis-full text-xs text-amber-800">This Shopfront inventory snapshot is over 24 hours old; it cannot confirm current Odoo stock.</p>}
       </div>}
       {state.data?.pagination?.total === 0 && <p role="status" className="mt-2 text-sm text-[var(--oh-muted)]">No Shopfront inventory records are available for this store.</p>}

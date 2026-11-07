@@ -677,7 +677,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">{inventoryReport ? "Inventory report" : "Products"}</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Odoo inventory snapshot by company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
+            {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Active, saleable Odoo variants and on-hand inventory for this company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
           {tab === "catalogue" && showImportDisplayNote && (
             <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
@@ -923,9 +923,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
               <span>Inventory-covered products <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.inventoryProductRows)} / {quantity(shopfrontCoverage.activeProducts)}</strong></span>
               {shopfrontCoverage.negativeInventoryRows > 0 && <span className="basis-full text-xs text-amber-800">{quantity(shopfrontCoverage.negativeInventoryRows)} source inventory rows have negative balances; those signed quantities remain visible on each product.</span>}
             </> : totals && !resultsPending && <>
-              <span>Odoo products (saleable variants) <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
-              <span>Odoo available units (positive balances) <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
-              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} variants have negative stock. The positive-unit total excludes negative balances; review those variants in the list.</span>}
+              <span>Odoo active saleable variants <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>Odoo positive on-hand units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              <span className="basis-full text-xs text-[var(--oh-muted)]">Unit total is the sum of positive Odoo qty_available balances for these variants; it is not Shopfront stock or free-to-sell quantity.</span>
+              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} variants have negative stock. The positive on-hand total excludes negative balances; review those variants in the list.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
           </footer>
