@@ -332,7 +332,7 @@ def destination_sale_line_ids(
     partition: tuple[date, date] | None = None,
 ) -> dict[str, set[str]]:
     result: dict[str, set[str]] = {}
-    for rows, _ in sales_page_rows(client, base_url, headers, size=1000, partition=partition):
+    for rows, _ in sales_page_rows(client, base_url, headers, size=200, partition=partition):
         for row in rows:
             sale_id = str(row.get("shopfront_sale_id") or "")
             line_ids = row.get("sale_item_ids")
@@ -617,7 +617,7 @@ def main() -> int:
             month_source_lines: dict[str, set[str]] = {}
             pending_sales: list[dict[str, Any]] = []
             for rows, _ in sales_page_rows(
-                client, source, source_headers, size=1000, partition=month
+                client, source, source_headers, size=200, partition=month
             ):
                 sale_count += len(rows)
                 for row in rows:
