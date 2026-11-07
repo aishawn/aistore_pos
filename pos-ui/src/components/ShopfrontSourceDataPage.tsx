@@ -109,6 +109,17 @@ function readSourceProductInventory(product: SourceRow) {
   return value && typeof value === "object" ? value as SourceRow : undefined;
 }
 
+function sourcePriceTiers(product: SourceRow) {
+  if (!Array.isArray(product.prices)) return [];
+  return product.prices.flatMap(value => {
+    if (!value || typeof value !== "object") return [];
+    const tier = value as SourceRow;
+    const tierQuantity = sourceNumber(tier, "quantity");
+    const tierPrice = sourceNumber(tier, "price");
+    return tierQuantity > 0 ? [{ quantity: tierQuantity, price: tierPrice }] : [];
+  }).sort((left, right) => left.quantity - right.quantity);
+}
+
 function TableFrame({ children, empty }: { children: React.ReactNode; empty: boolean }) {
   return (
     <div className="overflow-x-auto border-y border-[var(--oh-border)] bg-white">
@@ -492,14 +503,33 @@ function ProductsTable({ rows, loading, performanceById, onView }: { rows: Sourc
     <tbody className="divide-y divide-[var(--oh-border)]">{rows.map(row => {
       const stock = readSourceProductInventory(row);
       const tracksInventory = row.track_inventory === true;
-      const inventoryText = !tracksInventory ? "Non-stock" : !stock ? "Not synced" : stock.complete !== true ? "Snapshot incomplete" : stock.fresh !== true ? "Snapshot stale" : stock.available !== true ? "Not covered" : `${quantity(stock.quantity)} Units`;
+      const caseQuantity = sourceNumber(row, "case_quantity", "caseQuantity");
+      const inventoryDisplay = !tracksInventory ? "Non-stock"
+        : !stock ? "Not synced"
+          : stock.complete !== true ? "Snapshot incomplete"
+            : stock.fresh !== true ? "Snapshot stale"
+              : stock.available !== true ? "Not covered"
+                : caseQuantity > 1
+                  ? <><span className="block">{quantity(sourceNumber(stock, "case_level"))} Cases</span><span className="block">{quantity(sourceNumber(stock, "single_level"))} Items</span></>
+                  : `${quantity(sourceNumber(stock, "quantity"))} Items`;
+      const rawCost = row.cost === null || row.cost === undefined || row.cost === "" ? null : Number(row.cost);
+      const unitCost = rawCost !== null && Number.isFinite(rawCost) ? rawCost / (caseQuantity > 0 ? caseQuantity : 1) : null;
+      const priceTiers = sourcePriceTiers(row);
+      const basePrice = priceTiers.find(tier => tier.quantity === 1)?.price ?? sourceNumber(row, "price");
+      const bulkTier = priceTiers.filter(tier => tier.quantity > 1).at(-1);
       const productId = String(row.shopfront_product_id ?? "");
       const points = performanceById[productId];
       const search = String(row.sku || row.barcode || row.name || "");
       return <tr key={productId} className="hover:bg-[var(--oh-surface)]">
         <Cell><span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${statusTone(row.status)}`}>{String(row.status ?? "UNKNOWN")}</span></Cell>
         <Cell><span className="font-medium">{String(row.name ?? "—")}</span>{typeof row.sku === "string" && row.sku && <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">SKU {row.sku}</span>}</Cell>
-        <Cell>{String(row.category ?? "—")}</Cell><Cell>{sourceMoney(row, "cost")}</Cell><Cell>{inventoryText}</Cell><Cell>{sourceMoney(row, "price")}</Cell>
+        <Cell>{String(row.category ?? "—")}</Cell>
+        <Cell>{unitCost === null ? "—" : <div title={`Shopfront case cost ${money(rawCost)} for ${quantity(caseQuantity || 1)} units`}>
+          <span className="block">{money(unitCost)}</span>
+          {bulkTier && <span className="block text-xs text-[var(--oh-muted)]">{quantity(bulkTier.quantity)} units · {money(unitCost * bulkTier.quantity)}</span>}
+        </div>}</Cell>
+        <Cell>{inventoryDisplay}</Cell>
+        <Cell><span className="block">{money(basePrice)}</span>{bulkTier && <span className="block text-xs text-[var(--oh-muted)]">{quantity(bulkTier.quantity)} units · {money(bulkTier.price)}</span>}</Cell>
         <Cell><div className="flex min-w-36 items-center gap-2" title={points ? `${quantity(points.reduce((sum, value) => sum + value, 0))} units sold over the last 30 days` : "Sales trend unavailable"}>
           {points ? <><Sparkline points={points} width={128} height={42} /><span className="text-xs tabular-nums text-[var(--oh-muted)]">{quantity(points.reduce((sum, value) => sum + value, 0))}</span></> : <span className="text-xs text-[var(--oh-muted)]">—</span>}
         </div></Cell>
