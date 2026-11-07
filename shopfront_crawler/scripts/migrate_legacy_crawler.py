@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+ACTIVE_MIGRATION: dict[str, Any] = {}
+
 
 def api_request(
     client: httpx.Client,
@@ -278,8 +280,49 @@ def keyset(
     return result
 
 
-def missing_sales(rows: list[dict[str, Any]], existing_sale_ids: set[str]) -> list[dict[str, Any]]:
-    return [row for row in rows if str(row.get("shopfront_sale_id") or "") not in existing_sale_ids]
+def source_sale_line_ids(items: list[Any]) -> set[str]:
+    line_ids: list[str] = []
+    seen: set[str] = set()
+    for index, source_item in enumerate(items):
+        if not isinstance(source_item, dict):
+            base_key = f"legacy-index-{index}"
+            line_key = base_key
+            suffix = 0
+            while line_key in seen:
+                suffix += 1
+                line_key = f"{base_key}-{suffix}"
+        else:
+            item_id = source_item.get("id")
+            if item_id is None:
+                item_id = source_item.get("ID")
+            line_key = str(item_id) if item_id is not None else f"legacy-index-{index}"
+            if line_key in seen:
+                line_key = f"{line_key}-{index}"
+        if line_key in seen:
+            raise RuntimeError("Source sale contains duplicate line identities")
+        seen.add(line_key)
+        line_ids.append(line_key)
+    return set(line_ids)
+
+
+def destination_sale_line_ids(
+    client: httpx.Client,
+    base_url: str,
+    headers: dict[str, str],
+) -> dict[str, set[str]]:
+    result: dict[str, set[str]] = {}
+    for rows, _ in sales_page_rows(client, base_url, headers, size=200):
+        for row in rows:
+            sale_id = str(row.get("shopfront_sale_id") or "")
+            line_ids = row.get("sale_item_ids")
+            if not sale_id or not isinstance(line_ids, list) or any(not isinstance(value, str) or not value for value in line_ids):
+                raise RuntimeError("Destination sales endpoint does not provide valid sale item identities")
+            if sale_id in result:
+                raise RuntimeError(f"Duplicate destination sale ID: {sale_id}")
+            if len(set(line_ids)) != len(line_ids):
+                raise RuntimeError(f"Duplicate destination sale line identity for sale {sale_id}")
+            result[sale_id] = set(line_ids)
+    return result
 
 
 def read_coverage(client: httpx.Client, base_url: str, headers: dict[str, str]) -> dict[str, Any]:
@@ -436,6 +479,7 @@ def verify_identities(
 
 
 def main() -> int:
+    global ACTIVE_MIGRATION
     parser = argparse.ArgumentParser(description="Copy a stable legacy Shopfront crawler snapshot into the standalone crawler.")
     parser.add_argument("--source", default=os.getenv("LEGACY_CRAWLER_URL", "https://shopfront.orithos.com.au"))
     parser.add_argument("--target", default=os.getenv("NEW_CRAWLER_URL", "https://crawler.orithos.com.au"))
@@ -472,6 +516,12 @@ def main() -> int:
             job_id = int(started["job_id"])
             resume_counts = {}
             print(f"destination migration job: {job_id}", flush=True)
+        ACTIVE_MIGRATION = {
+            "job_id": job_id,
+            "target": target,
+            "headers": target_headers,
+            "secrets": (integration_token, migration_token),
+        }
 
         simple_entities = [
             ("products", "/api/products", 500, 250),
@@ -538,16 +588,11 @@ def main() -> int:
 
         sale_count = 0
         sale_item_count = 0
-        sale_imported_count = 0
+        malformed_sale_item_count = 0
         sale_ids: set[str] = set()
-        target_sale_ids = keyset(
-            client,
-            target,
-            "/api/sales",
-            target_headers,
-            lambda row: str(row["shopfront_sale_id"]),
-            size=200,
-        )
+        source_sale_lines: dict[str, set[str]] = {}
+        target_sale_lines = destination_sale_line_ids(client, target, target_headers)
+        sales_to_refresh = 0
         pending_sales: list[dict[str, Any]] = []
         for rows, _ in sales_page_rows(client, source, source_headers, size=1000):
             sale_count += len(rows)
@@ -561,17 +606,24 @@ def main() -> int:
                     raise RuntimeError(f"Duplicate legacy sale ID: {source_id}")
                 sale_ids.add(source_id)
                 sale_item_count += len(items)
-            pending_sales.extend(missing_sales(rows, target_sale_ids))
+                malformed_sale_item_count += sum(not isinstance(source_item, dict) for source_item in items)
+                expected_line_ids = source_sale_line_ids(items)
+                source_sale_lines[source_id] = expected_line_ids
+                if target_sale_lines.get(source_id) != expected_line_ids:
+                    pending_sales.append(row)
             if len(pending_sales) >= 1000:
                 post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
-                sale_imported_count += len(pending_sales)
-                target_sale_ids.update(str(row["shopfront_sale_id"]) for row in pending_sales)
+                sales_to_refresh += len(pending_sales)
                 pending_sales.clear()
-            print(f"sales scanned: {sale_count}; missing queued: {len(pending_sales)}", flush=True)
+            print(f"sales scanned: {sale_count}; incomplete queued: {len(pending_sales)}", flush=True)
         if pending_sales:
             post_batches(client, target, target_headers, job_id, "sales", pending_sales, batch_size=1000)
-            sale_imported_count += len(pending_sales)
-        print(f"sales scanned: {sale_count}; imported missing: {sale_imported_count}", flush=True)
+            sales_to_refresh += len(pending_sales)
+        print(f"sales scanned: {sale_count}; reimported incomplete or missing: {sales_to_refresh}", flush=True)
+        print(
+            f"source sale lines: {sale_item_count}; non-object source lines: {malformed_sale_item_count}",
+            flush=True,
+        )
         source_counts["sales"] = sale_count
         source_counts["sale_items"] = sale_item_count
         reported_counts = {
@@ -634,18 +686,37 @@ def main() -> int:
             raise RuntimeError(
                 f"Inventory identity audit failed: missing={len(missing_inventory)}, extra={len(extra_inventory)}"
             )
-        quantity_differences = sum(
-            inventory_identity_quantity[key] != target_inventory_quantity[key]
-            for key in source_inventory_ids
-        )
+        quantity_mismatches = [
+            (key, inventory_identity_quantity[key], target_inventory_quantity[key])
+            for key in sorted(source_inventory_ids)
+            if inventory_identity_quantity[key] != target_inventory_quantity[key]
+        ]
+        quantity_differences = len(quantity_mismatches)
         print(
             f"verified inventory: {len(source_inventory_ids)} identities; "
             f"{quantity_differences} quantities differ from the legacy snapshot; "
-            f"destination snapshot_at={inventory_coverage.get('snapshot_at')}",
+            f"source snapshot_at={inventory_snapshot_at}; "
+            f"destination snapshot_at={inventory_coverage.get('snapshot_at')}; "
+            f"samples={quantity_mismatches[:10]}",
             flush=True,
         )
-        if int(target_coverage["sales"]["sale_items"]) != sale_item_count:
-            raise RuntimeError("Destination sale line count differs from the source snapshot")
+        if quantity_differences:
+            raise RuntimeError(f"Inventory quantity audit failed: {quantity_differences} values differ")
+        verified_sale_lines = destination_sale_line_ids(client, target, target_headers)
+        line_mismatches = sum(
+            verified_sale_lines.get(sale_id) != expected_line_ids
+            for sale_id, expected_line_ids in source_sale_lines.items()
+        )
+        if line_mismatches:
+            raise RuntimeError(
+                "Destination sale line identities differ from the source snapshot: "
+                f"mismatched_sales={line_mismatches}"
+            )
+        print(
+            f"verified sales: {len(source_sale_lines)} source sales and {sale_item_count} source lines; "
+            "destination-only sales are preserved",
+            flush=True,
+        )
         finished = api_request(
             client,
             "POST",
@@ -663,5 +734,27 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:
-        print(f"migration failed: {exc}", file=sys.stderr, flush=True)
+        message = str(exc)
+        for secret in ACTIVE_MIGRATION.get("secrets", ()):
+            if secret:
+                message = message.replace(secret, "<redacted>")
+        job_id = ACTIVE_MIGRATION.get("job_id")
+        if job_id:
+            try:
+                with httpx.Client(timeout=httpx.Timeout(30, connect=10)) as failure_client:
+                    api_request(
+                        failure_client,
+                        "POST",
+                        f"{ACTIVE_MIGRATION['target']}/api/legacy-import/skr/{job_id}/fail",
+                        headers=ACTIVE_MIGRATION["headers"],
+                        json={"error": f"{type(exc).__name__}: {message}"[:2000]},
+                    )
+                print(f"destination migration job {job_id} marked failed", file=sys.stderr, flush=True)
+            except Exception as report_error:
+                print(
+                    f"could not mark destination migration job failed: {type(report_error).__name__}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        print(f"migration failed: {type(exc).__name__}: {message}", file=sys.stderr, flush=True)
         raise

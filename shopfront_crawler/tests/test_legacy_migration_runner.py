@@ -48,3 +48,15 @@ def test_sales_page_rows_rejects_partition_count_gap(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(migration, "api_request", fake_request)
     with httpx.Client() as client, pytest.raises(RuntimeError, match="found 1 of 2"):
         list(migration.sales_page_rows(client, "https://source", {}, size=10))
+
+
+def test_source_sale_line_ids_preserve_malformed_and_duplicate_rows() -> None:
+    assert migration.source_sale_line_ids([
+        {"id": "line-1"},
+        "malformed",
+        {"id": "line-1"},
+    ]) == {"line-1", "legacy-index-1", "line-1-2"}
+
+
+def test_source_sale_line_ids_use_fallback_for_missing_ids() -> None:
+    assert migration.source_sale_line_ids([{}, {"id": "line-2"}]) == {"legacy-index-0", "line-2"}
