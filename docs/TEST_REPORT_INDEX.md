@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Shopfront catalogue cutover (`2026-11-08`): [deployed route and runner verification](test-sessions/2026-11-08-shopfront-catalogue-cutover.md). `/products` now serves the Odoo catalogue with Shopfront read-only enrichment on SKR and Demo at `d97ea602`; legacy source URLs redirect. Runner #10 failed on restart, later #20 completed; SyncRun #19 has no item identities for its three historical unmatched rows. No business writes were issued.
+
 Latest cost audit timeout check (`2026-11-07`): [read-only reproduction and candidate status](test-sessions/2026-11-07-cost-audit-gateway-timeout.md). Default 30-day audit returned HTTP 502 at 30.2s while a one-day audit passed in 13.8s. Fix `99d996eb` is on `main`; typecheck passes. Dokploy deploy hook returned HTTP 301 and runtime remains `9f0d733c`, so live verification is blocked pending source/branch configuration review.
 
 Latest Shopfront product and inventory check (`2026-11-07`): [read-only follow-up](test-sessions/2026-11-07-shopfront-product-inventory-current-followup.md). SKR and Demo both report 10,849 active/mapped products; the screenshot product maps to 128 units in both ledgers and exposes source cost, price, and 30-day sales. Odoo records a different standard cost; sync coverage is partial and crawler status endpoints timed out. UI source-navigation change is pending deployment; full sync parity is NOT VERIFIED.

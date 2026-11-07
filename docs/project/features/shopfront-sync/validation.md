@@ -12,9 +12,10 @@
 
 ## Product route and runner check (2026-11-08)
 
-- Source route review: `/products` now uses the Odoo catalogue with existing Shopfront read-only enrichment; `/products/odoo` redirects to `/products`. `/products/shopfront` and the four `/reports/shopfront/*` routes already redirect to their canonical pages. Purchases and Suppliers already embed Shopfront historical purchase/supplier sections as read-only views.
+- Source route review: `/products` now uses the Odoo catalogue with existing Shopfront read-only enrichment; `/products/odoo` redirects to `/products`. `/products/shopfront` and the four `/reports/shopfront/*` routes redirect to their canonical pages. Purchases and Suppliers embed Shopfront historical purchase/supplier sections as read-only views.
+- Deployment: GitHub `main` commit `d97ea602171692c06d9f58ebc2c036176423ba1a` auto-deployed to SKR and Demo; frontend and backend runtime SHAs both match. Authenticated HTTP route checks returned 200 for `/products` with Odoo-catalogue markers and without the source-only-page marker; legacy product, Shopfront Reports, and `/purchases?state=purchase` URLs returned 307 to their canonical pages.
 - Read-only `https://crawler.orithos.com.au` API: `/healthz` returned 200; no queued/running jobs. Durable job #10 failed because the crawler restarted; durable job #20 later completed. SyncRun #19 failed because inventory reconciliation found 3 unmatched source rows. Its record contains no source IDs, and `PosImportRun` IDs 19/20 return 404. Current product reconciliation returned 0 crawler products missing from POS and 11,030 POS source-linked products. Runtime source SHA was not exposed by these endpoints.
-- `git diff --check`: PASS. POS UI typecheck could not run: this checkout has no local TypeScript compiler (`tsc` missing from `pos-ui/node_modules/.bin`). Node 24.22.1 is available. Browser route acceptance and deployment are pending.
+- `git diff --check` and route static assertions: PASS. POS UI typecheck could not run: this checkout has no local TypeScript compiler (`tsc` missing from `pos-ui/node_modules/.bin`). The project-doc checker reports 65 pre-existing missing-file/link errors in this checkout. Node 24.22.1 is available; no local application build was run.
 - Read-only only: no migration retry, inventory import, source refresh, or Odoo business write was issued. Inventory row-level evidence is from the separate `aipos_uat` audit recorded above; this runner API check did not independently read Odoo quantities.
 
 ## Inventory report source alignment candidate (2026-11-06)
