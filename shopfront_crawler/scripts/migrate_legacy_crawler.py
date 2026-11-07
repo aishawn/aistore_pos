@@ -6,7 +6,7 @@ import os
 import sys
 import time
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -79,6 +79,59 @@ def page_rows(
         page += 1
 
 
+def sales_page_rows(
+    client: httpx.Client,
+    base_url: str,
+    headers: dict[str, str],
+    *,
+    size: int,
+) -> Iterator[tuple[list[dict[str, Any]], dict[str, Any]]]:
+    start_year = max(1970, int(os.getenv("LEGACY_MIGRATION_SALES_START_YEAR", "2010")))
+    today = date.today()
+    month_start = date(start_year, 1, 1)
+    if month_start > today:
+        raise RuntimeError("Legacy sales scan start year is in the future")
+
+    first_page = api_request(
+        client,
+        "GET",
+        f"{base_url}/api/sales",
+        headers=headers,
+        params={"store": "skr", "page": 1, "size": 1},
+    )
+    pagination = first_page.get("pagination") or {}
+    if not isinstance(pagination.get("total"), int) or not isinstance(pagination.get("snapshot_id"), int):
+        raise RuntimeError("Invalid global sales snapshot metadata")
+    expected_total = pagination["total"]
+    snapshot_id = pagination["snapshot_id"]
+    if expected_total == 0:
+        return
+    scanned = 0
+
+    while month_start <= today:
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month_end = min(today, next_month - timedelta(days=1))
+        extra = {
+            "from": month_start.isoformat(),
+            "to": month_end.isoformat(),
+            "snapshot_id": snapshot_id,
+        }
+        for rows, payload in page_rows(
+            client, base_url, "/api/sales", headers, size=size, extra=extra
+        ):
+            if payload.get("pagination", {}).get("snapshot_id") != snapshot_id:
+                raise RuntimeError("Sales snapshot changed during partitioned scan")
+            scanned += len(rows)
+            yield rows, payload
+        month_start = next_month
+
+    if scanned != expected_total:
+        raise RuntimeError(
+            f"Partitioned sales scan found {scanned} of {expected_total} rows; "
+            f"check LEGACY_MIGRATION_SALES_START_YEAR (currently {start_year})"
+        )
+
+
 def collect_rows(*args: Any, **kwargs: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     last_payload: dict[str, Any] = {}
@@ -136,6 +189,15 @@ def keyset(
     extra: dict[str, Any] | None = None,
 ) -> set[Any]:
     result: set[Any] = set()
+    if path == "/api/sales":
+        for rows, _ in sales_page_rows(client, base_url, headers, size=size):
+            for row in rows:
+                key = key_fn(row)
+                if key in result:
+                    raise RuntimeError(f"Duplicate source identity in {path}: {key}")
+                result.add(key)
+        return result
+
     pages = page_rows(client, base_url, path, headers, size=size, extra=extra)
     try:
         first_rows, first_payload = next(pages)
@@ -458,7 +520,7 @@ def main() -> int:
             size=200,
         )
         pending_sales: list[dict[str, Any]] = []
-        for rows, _ in page_rows(client, source, "/api/sales", source_headers, size=1000):
+        for rows, _ in sales_page_rows(client, source, source_headers, size=1000):
             sale_count += len(rows)
             for row in rows:
                 source_id = str(row.get("shopfront_sale_id") or "")
