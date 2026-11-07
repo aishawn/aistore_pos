@@ -207,16 +207,38 @@ def unique_trend_rows(rows: list[dict[str, Any]], *, date_key: str) -> list[dict
 
 
 def ensure_source_idle(client: httpx.Client, base_url: str, headers: dict[str, str]) -> None:
-    for path in ("/api/sync/status", "/api/sync/runs"):
-        params = {"store": "skr"} if path.endswith("status") else {"store": "skr", "page": 1, "size": 100}
-        payload = api_request(client, "GET", f"{base_url}{path}", headers=headers, params=params)
-        rows = payload.get("data", payload) if isinstance(payload, dict) else payload
-        if not isinstance(rows, list):
-            raise RuntimeError(f"Cannot verify source job state at {path}")
-        active = [row for row in rows if str(row.get("status", "")).lower() in {"queued", "running"}]
-        if active:
-            jobs = ", ".join(f"{row.get('id')}:{row.get('status')}" for row in active[:10])
-            raise RuntimeError(f"Legacy source has active work at {path}: {jobs}")
+    timeout_seconds = max(60, int(os.getenv("LEGACY_SOURCE_IDLE_TIMEOUT_SECONDS", "21600")))
+    poll_seconds = max(5, int(os.getenv("LEGACY_SOURCE_IDLE_POLL_SECONDS", "30")))
+    deadline = time.monotonic() + timeout_seconds
+    last_report = 0.0
+    while True:
+        active_jobs: list[tuple[str, dict[str, Any]]] = []
+        for path in ("/api/sync/status", "/api/sync/runs"):
+            params = {"store": "skr"} if path.endswith("status") else {"store": "skr", "page": 1, "size": 100}
+            payload = api_request(client, "GET", f"{base_url}{path}", headers=headers, params=params)
+            rows = payload.get("data", payload) if isinstance(payload, dict) else payload
+            if not isinstance(rows, list):
+                raise RuntimeError(f"Cannot verify source job state at {path}")
+            active_jobs.extend(
+                (path, row)
+                for row in rows
+                if str(row.get("status", "")).lower() in {"queued", "running"}
+            )
+        if not active_jobs:
+            print("legacy source is idle", flush=True)
+            return
+
+        now = time.monotonic()
+        details = "; ".join(
+            f"{path.rsplit('/', 1)[-1]} {row.get('id')}:{row.get('type')}:{row.get('phase')}:{row.get('status')} heartbeat={row.get('heartbeat_at')}"
+            for path, row in active_jobs[:10]
+        )
+        if now >= deadline:
+            raise RuntimeError(f"Legacy source remained busy after {timeout_seconds}s: {details}")
+        if last_report == 0 or now - last_report >= 60:
+            print(f"waiting for legacy source jobs to finish: {details}", flush=True)
+            last_report = now
+        time.sleep(min(poll_seconds, max(1, deadline - now)))
 
 
 def active_migration_job(client: httpx.Client, base_url: str, headers: dict[str, str]) -> dict[str, Any] | None:
