@@ -13,7 +13,9 @@ import { verifiedShopfrontSourceStore, verifiedShopfrontSourceStoreFromHost } fr
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers: { "Cache-Control": "private, no-store" } });
-const pending = new Set<number>();
+type AuditJob = { id: string; companyId: number; store: string; requestKey: string; status: "running" | "completed" | "failed"; message?: string };
+const jobs = new Map<string, AuditJob>();
+const activeByScope = new Map<string, string>();
 async function context(request: NextRequest) {
   await requireStoreAdmin(request);
   const scope = await scopedOdoo(request);
@@ -37,6 +39,21 @@ function failure(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     const scope = await context(request), id = request.nextUrl.searchParams.get("batch");
+    const jobId = request.nextUrl.searchParams.get("job");
+    if (jobId) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) return json({ message: "Invalid audit job" }, 400);
+      const job = jobs.get(jobId);
+      if (!job) return json({ message: "Audit job expired or the service restarted. Generate a new audit." }, 404);
+      if (job.companyId !== scope.companyIds[0] || job.store !== scope.binding!.subdomain) return json({ message: "Audit scope mismatch" }, 403);
+      if (job.status === "completed") {
+        try {
+          const saved: { audit: CostAudit } = JSON.parse(await readFile(path.join(directory(scope.database, job.companyId), `${jobId}.json`), "utf8"));
+          return json({ jobId, status: job.status, audit: saved.audit });
+        } catch { return json({ message: "Completed audit evidence is unavailable. Generate a new audit." }, 404); }
+      }
+      if (job.status === "failed") return json({ jobId, status: job.status, message: job.message });
+      return json({ jobId, status: job.status });
+    }
     if (!id) return json({ enabled: true, companyId: scope.companyIds[0], store: scope.binding!.subdomain });
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) return json({ message: "Invalid audit batch" }, 400);
     let saved: { audit: CostAudit };
@@ -48,21 +65,51 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return json({ message: "Cross-origin requests are not allowed" }, 403);
-  let locked: number | undefined;
   try {
     const scope = await context(request), companyId = scope.companyIds[0];
     const body = await request.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || Array.isArray(body) || Object.keys(body).some(k => !["fromDay", "toDay", "limit"].includes(k)) || (body.limit !== undefined && body.limit !== 20 && body.limit !== 0)) return json({ message: "Invalid audit request" }, 400);
     for (const key of ["fromDay", "toDay"]) if (body[key] !== undefined && (typeof body[key] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body[key] as string))) return json({ message: "Invalid business date" }, 400);
-    if (pending.has(companyId)) return json({ message: "An audit is already being captured for this store. Please wait." }, 409);
-    pending.add(companyId); locked = companyId;
-    const snapshot = await loadCostSnapshot(scope.rpc, { companyId, store: scope.binding!.subdomain, sourceStore: scope.sourceStore, fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined, limit: body.limit === 0 ? 0 : 20 });
-    const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"), id = randomUUID();
-    const audit = reconcileCosts(snapshot, id, sourceHash), dir = directory(scope.database, companyId);
-    audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
-    await mkdir(dir, { recursive: true, mode: 0o700 });
-    await writeFile(path.join(dir, `${id}.json`), JSON.stringify({ audit, snapshot }), { flag: "wx", mode: 0o600 });
-    return json(audit);
+    const activeKey = `${companyId}:${scope.binding!.subdomain}:${scope.sourceStore}`;
+    const requestKey = JSON.stringify({ fromDay: body.fromDay ?? null, toDay: body.toDay ?? null, limit: body.limit === 0 ? 0 : 20 });
+    const activeJobId = activeByScope.get(activeKey);
+    if (activeJobId) {
+      const activeJob = jobs.get(activeJobId);
+      if (activeJob?.requestKey === requestKey) return json({ jobId: activeJobId, status: "running" }, 202);
+      return json({ message: "Another cost audit is running for this store. Wait for it to finish before changing the range." }, 409);
+    }
+    while (jobs.size >= 20) {
+      const finished = [...jobs.values()].find(candidate => candidate.status !== "running");
+      if (!finished) break;
+      jobs.delete(finished.id);
+    }
+    const jobId = randomUUID();
+    const job: AuditJob = { id: jobId, companyId, store: scope.binding!.subdomain, requestKey, status: "running" };
+    jobs.set(jobId, job);
+    activeByScope.set(activeKey, jobId);
+    const options = { companyId, store: scope.binding!.subdomain, sourceStore: scope.sourceStore,
+      fromDay: body.fromDay as string | undefined, toDay: body.toDay as string | undefined, limit: body.limit === 0 ? 0 as const : 20 as const };
+    const db = scope.database;
+    void (async () => {
+      try {
+        const snapshot = await loadCostSnapshot(scope.rpc, options);
+        const sourceHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+        const audit = reconcileCosts(snapshot, jobId, sourceHash), dir = directory(db, companyId);
+        audit.sourceMargin = shopfrontSourceMargin(snapshot.sourceSales ?? [], snapshot.from, snapshot.to, snapshot.coverage?.sourceRowsComplete === true);
+        await mkdir(dir, { recursive: true, mode: 0o700 });
+        await writeFile(path.join(dir, `${jobId}.json`), JSON.stringify({ audit, snapshot }), { flag: "wx", mode: 0o600 });
+        job.status = "completed";
+      } catch (error) {
+        const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+        console.error("Cost audit failed", { category: error instanceof Error ? error.name : "unknown", code: /^[A-Z_]{2,30}$/.test(code) ? code : undefined });
+        job.message = error instanceof Error && /Choose between|safe snapshot limit|Narrow the date range/i.test(error.message)
+          ? error.message
+          : "Could not capture a complete, stable cost audit. Retry, or choose a shorter date range.";
+        job.status = "failed";
+      } finally {
+        if (activeByScope.get(activeKey) === jobId) activeByScope.delete(activeKey);
+      }
+    })();
+    return json({ jobId, status: "running" }, 202);
   } catch (error) { return failure(error); }
-  finally { if (locked !== undefined) pending.delete(locked); }
 }

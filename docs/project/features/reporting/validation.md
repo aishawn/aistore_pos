@@ -2,6 +2,13 @@
 
 Updated: 2026-11-07. Owner: TBD.
 
+## Cost audit gateway timeout (2026-11-07)
+
+- Runtime under test: SKR frontend/backend SHA `d814f135045db567a35b1e4a3a6a5a4801947159`.
+- Authenticated read-only POST to `/api/odoo/cost-reconciliation` with the default period returned HTTP 502 after 30.2 seconds; the site's error parser reported an HTML error page. An otherwise identical request limited to one completed business day returned HTTP 200 in 13.8 seconds with 20 products and 27 sale lines. The gateway timeout is therefore reproducible for the default full capture, while a small range succeeds.
+- Candidate implementation uses an in-process job registry and immediate `202` response, then scoped same-store status polling. Existing audit snapshot files remain the completed evidence store. Typecheck and runtime acceptance of this candidate are pending; the code change is not yet deployed. Job status is lost on process restart, so the UI must offer a new capture when polling returns 404.
+- No sales, purchases, receipts, stock, or other Odoo business records were written. The POST only reads Odoo and stores an audit snapshot locally on the POS service.
+
 ## Shopfront products and inventory live follow-up (2026-11-07)
 
 - Authenticated read-only API checks on SKR and Demo returned 10,849 ACTIVE Shopfront products, all 10,849 mapped, no unmapped products, and inventory rows for all 10,849. Both hosts returned the same sample product mapping and values.

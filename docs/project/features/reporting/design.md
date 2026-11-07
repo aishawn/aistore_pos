@@ -1,8 +1,10 @@
 # Reporting Design
 
-Updated: 2026-11-05. Owner: TBD.
+Updated: 2026-11-07. Owner: TBD.
 
 ## Scope and data path
+
+The Products cost reconciliation audit captures Odoo POS orders/lines, received Shopfront purchase mirrors, and Shopfront sales evidence using read-only RPCs. Its capture runs as an in-process background job: `POST /api/odoo/cost-reconciliation` returns a job ID immediately, and an authorized same-store `GET ?job=` returns running/completed/failed status. Completed audit and source snapshot remain under the existing ignored `.local/cost-reconciliation/` directory. Job status is process-local and is lost on service restart; clients must handle an unavailable job by starting a new audit. An active-job guard keyed by company and store scope reuses only requests with the same dates and product limit; a different range receives HTTP 409 while the current capture runs. This avoids holding the browser-to-proxy request open while the full evidence set is read.
 
 The reporting UI lives in `pos-ui`; report pages call same-origin `/api/odoo/*` routes. `reportAccess` enforces report permission and derives the company, warehouse, host, and timezone from the authenticated store binding. The API queries Odoo with company-scoped domains and returns uncached responses. Overview uses prepared snapshots and records Shopfront source coverage by target and business date; sales, purchases, and register closures query Odoo directly.
 

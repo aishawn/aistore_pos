@@ -65,7 +65,23 @@ export function CostReconciliationPanel() {
     try {
       const response = await fetchOdooRoute("/api/odoo/cost-reconciliation", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ limit: Number(limit), ...((dates?.fromDay ?? fromDay) ? { fromDay: dates?.fromDay ?? fromDay } : {}), ...((dates?.toDay ?? toDay) ? { toDay: dates?.toDay ?? toDay } : {}) }), signal: request.signal });
-      const body = await readJsonApiResponse<Record<string, unknown>>(response, "Cost audit request");
+      let body = await readJsonApiResponse<Record<string, unknown>>(response, "Cost audit request");
+      if (typeof body.jobId === "string" && body.status === "running") {
+        const deadline = Date.now() + 4 * 60_000;
+        while (Date.now() < deadline) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          if (request.signal.aborted) return;
+          const statusResponse = await fetchOdooRoute(`/api/odoo/cost-reconciliation?job=${encodeURIComponent(body.jobId)}`, { signal: request.signal, cache: "no-store" });
+          const status = await readJsonApiResponse<Record<string, unknown>>(statusResponse, "Cost audit status");
+          if (!statusResponse.ok) throw new Error(typeof status.message === "string" ? status.message : "Could not read cost audit status.");
+          if (status.status === "failed") throw new Error(typeof status.message === "string" ? status.message : "Could not complete the cost audit.");
+          if (status.status === "completed" && status.audit && typeof status.audit === "object") {
+            body = status.audit as Record<string, unknown>;
+            break;
+          }
+        }
+        if (body.status === "running") throw new Error("Audit is still processing. Retry the status check or choose a shorter date range.");
+      }
       if (!response.ok || !body.batchId || !Array.isArray(body.products)) {
         throw new Error(typeof body.message === "string" ? body.message : "Could not generate cost audit.");
       }
@@ -95,8 +111,8 @@ export function CostReconciliationPanel() {
       <button type="submit" disabled={busy} className={`${button} bg-[var(--oh-primary)] text-white`}>{busy ? "Capturing evidence…" : "Generate audit"}</button>
     </form>
     <p className="text-[var(--oh-muted)]">Blank dates use the last 30 completed business days in the store timezone. Refunds are shown separately from units sold.</p>
-    {busy && <p role="status">Reading sales and receipt history. This can take a minute.</p>}
-    {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-950">{error}</p>}
+    {busy && <p role="status">Reading sales and receipt history. This may take a few minutes.</p>}
+    {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-red-950"><span>{error}</span><button type="button" disabled={busy} onClick={() => void generate()} className={button}>Retry audit</button></div>}
     {data && <>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{[["Matched", data.summary.matched], ["Correction supported", data.summary.correctable], ["Needs review", data.summary.review]].map(([label, count]) => <div key={label} className="rounded-lg border border-[var(--oh-border)] p-3"><p className="text-[var(--oh-muted)]">{label}</p><p className="mt-1 text-xl font-semibold tabular-nums">{count}</p></div>)}</div>
       <p className="break-words text-[var(--oh-muted)]">{data.store.toUpperCase()} · {data.timezone} · {formatOdooDateTime(data.from, data.timezone)} – {formatOdooDateTime(data.to, data.timezone)} (exclusive)<br />Batch {data.batchId} · {data.summary.lines} sales lines · captured {formatOdooDateTime(data.capturedAt, data.timezone)}</p>
