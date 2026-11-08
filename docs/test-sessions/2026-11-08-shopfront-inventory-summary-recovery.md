@@ -2,7 +2,7 @@
 
 Date: 2026-11-08
 Environment: Local POS UI checks; prior authenticated SKR read-only UI; Odoo database `aipos_uat`, company 5, location `UATPI/Stock`
-Source/runtime SHA: First candidate `b09500eaa4e8aeb91f18af09d9b59c567dd934c5` deployed to SKR and Demo; always-visible summary follow-up pending
+Source/runtime SHA: Follow-up `9dc1f9a7f1a3c7f8e4a4d170589d0f266058611c` deployed to SKR and Demo
 Business data writes: 0
 
 ## Findings
@@ -17,6 +17,8 @@ Inventory coverage is calculated in the same Odoo mirror-backed snapshot as the 
 
 The first candidate's live page check found that coverage was still hidden inside a collapsed history section. The follow-up displays coverage continuously. Live SKR rows showed GRT NTH ORG with 465 units and `$50.02` / pack 24, and `-196 LEMON P/F 6% 330ML` with 128 units and `$116.75` / pack 30.
 
+After the follow-up deployment and a fresh authenticated SKR page load, the always-visible Shopfront snapshot summary showed: 10,849 active products; 10,849 Odoo saleable variants; 50,914 positive units; inventory coverage 10,849 / 10,849; 9,993 non-zero source-cost products; 856 source-reported zero-cost products. Snapshot shown in the UI: 8 Nov 2026, 5:04 am Adelaide.
+
 ## Checks
 
 - `npm run typecheck`: PASS for both candidates.
@@ -24,7 +26,7 @@ The first candidate's live page check found that coverage was still hidden insid
 - `npm run test:unit -- src/lib/shopfront-catalogue.test.ts src/lib/inventory-report.test.ts`: PASS, 202 tests (the package script runs the full UI unit suite).
 - `git diff --check`: PASS.
 - Project documentation checker: FAIL, 66 pre-existing missing-file/link errors in this checkout.
-- First candidate runtime confirmed on SKR and Demo. Follow-up commit/runtime and always-visible summary acceptance: pending.
+- Follow-up runtime confirmed on SKR and Demo; visible summary metrics accepted on the authenticated SKR page.
 - No crawler job, Shopfront write, or Odoo business-data write was issued.
 
 ## Limits
