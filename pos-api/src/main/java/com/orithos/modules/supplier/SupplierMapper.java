@@ -14,6 +14,7 @@ public interface SupplierMapper {
             WHERE ps.supplier_id = s.id
         ) AS product_count
         FROM supplier s
+        JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
             SELECT 1 FROM product_supplier ps
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
@@ -23,10 +24,12 @@ public interface SupplierMapper {
         ORDER BY s.id DESC
         LIMIT #{size} OFFSET #{offset}
         """)
-    List<Supplier> page(@Param("name") String name, @Param("size") int size, @Param("offset") int offset);
+    List<Supplier> page(@Param("name") String name, @Param("vendorId") Long vendorId,
+                        @Param("size") int size, @Param("offset") int offset);
 
     @Select("""
         SELECT COUNT(*) FROM supplier s
+        JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
             SELECT 1 FROM product_supplier ps
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
@@ -34,7 +37,7 @@ public interface SupplierMapper {
         ))
           AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         """)
-    long count(@Param("name") String name);
+    long count(@Param("name") String name, @Param("vendorId") Long vendorId);
 
     @Select("SELECT * FROM supplier WHERE id = #{id}")
     Supplier findById(Long id);

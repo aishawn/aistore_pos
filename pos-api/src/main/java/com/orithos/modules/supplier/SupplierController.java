@@ -3,6 +3,8 @@ package com.orithos.modules.supplier;
 import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.security.CurrentUser;
+import com.orithos.common.BusinessException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,8 +34,10 @@ public class SupplierController {
                                                 @RequestParam(defaultValue = "1") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
         int offset = Math.max(0, (page - 1) * size);
-        var items = mapper.page(name, size, offset);
-        return ApiResult.ok(PageResult.of(items, mapper.count(name), page, size));
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
+        var items = mapper.page(name, vendorId, size, offset);
+        return ApiResult.ok(PageResult.of(items, mapper.count(name, vendorId), page, size));
     }
 
     @GetMapping("/{id}")

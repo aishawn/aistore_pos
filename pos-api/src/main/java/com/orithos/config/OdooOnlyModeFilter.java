@@ -53,7 +53,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
-        if (enabled && isLegacy(request.getRequestURI())) {
+        if (enabled && isLegacy(request.getRequestURI(), request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_GONE);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
@@ -64,10 +64,22 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    private static boolean isLegacy(String path) {
+    private static boolean isLegacy(String path, String method) {
         // Orders now have vendor-scoped Orithos handlers and are the native
         // purchasing ledger. Keep unrelated Classic endpoints behind the gate.
         if (path.equals("/api/orders") || path.startsWith("/api/orders/")) {
+            return false;
+        }
+        // These read endpoints are used by the native purchasing UI. Their
+        // controllers scope results to the authenticated tenant; keep writes
+        // and supplier detail endpoints behind the legacy gate until audited.
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/suppliers") || path.equals("/api/outlets"))) {
+            return false;
+        }
+        if (path.equals("/api/supply-chain/plan")
+                || path.equals("/api/supply-chain/settings")
+                || path.matches("/api/supply-chain/suppliers/[0-9]+/cart")) {
             return false;
         }
         // Shopfront is an isolated, token-authenticated staging boundary. It

@@ -51,6 +51,45 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeSupplierAndOutletReadsPassThroughButSupplierDetailsRemainRetired() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (String path : new String[]{"/api/suppliers", "/api/outlets"}) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        MockHttpServletRequest detail = new MockHttpServletRequest("GET", "/api/suppliers/1");
+        MockHttpServletResponse detailResponse = new MockHttpServletResponse();
+        MockFilterChain detailChain = new MockFilterChain();
+        filter.doFilter(detail, detailResponse, detailChain);
+        assertEquals(410, detailResponse.getStatus());
+    }
+
+    @Test
+    void nativeSupplyPlanAndCartPassThroughWhileLegacySupplyWritesRemainRetired() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (var route : new String[][]{
+                {"GET", "/api/supply-chain/plan"},
+                {"GET", "/api/supply-chain/settings"},
+                {"POST", "/api/supply-chain/suppliers/12/cart"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        MockHttpServletRequest generate = new MockHttpServletRequest("POST", "/api/supply-chain/plan/generate");
+        MockHttpServletResponse generateResponse = new MockHttpServletResponse();
+        filter.doFilter(generate, generateResponse, new MockFilterChain());
+        assertEquals(410, generateResponse.getStatus());
+    }
+
+    @Test
     void appUserManagementRemainsAvailableInOdooOnlyMode() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users");
