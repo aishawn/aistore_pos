@@ -8,6 +8,7 @@ Updated: 2026-11-07. Owner: TBD.
 - `node --experimental-strip-types --test src/lib/report-cache.test.ts src/lib/product-catalogue.test.ts` under Node 24.22.1: 13/13 PASS, including concurrent singleflight, authenticated-session isolation, forced refresh replacing browser/server values, tenant revision invalidation and inventory-cache exclusion.
 - TypeScript `transpileModule` syntax check for the modified route, cache, client types, product component and tests: PASS. `git diff --check`: PASS.
 - Full `tsc --noEmit`: NOT PASS / environment blocked. `npm ci --ignore-scripts --no-audit --no-fund` did not complete; Next.js is absent from the installed tree, so the resulting compiler run reports missing `next/*` modules and cannot establish source type correctness. No build or live authenticated SKR/Demo timing test was run. Runtime SHA, P50/P95 and online source parity remain NOT RUN.
+- Read-only runtime identity check: SKR public version reports frontend/backend `75acb125c17475a1d402bc4680fcffda8663bf3f`; `/products` and `/dashboard` redirect to login when unauthenticated. This confirms the candidate is not deployed, but is not a page performance measurement.
 - Read-only cache tests use isolated fixture identities/revisions; no Odoo business records were written. These checks do not establish production deployment or live catalog parity.
 
 ## Cost audit gateway timeout (2026-11-07)

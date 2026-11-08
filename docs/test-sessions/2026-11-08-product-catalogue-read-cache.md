@@ -2,7 +2,7 @@
 
 Date: 2026-11-08
 Environment: Local POS UI source checks; Node 24.22.1; source checkout `orithopos-master` on local `main`
-Source/runtime SHA: Source commit `111d0e54` (local `main`; two commits ahead of `origin/main`); runtime SHA and authenticated SKR/Demo behavior were not checked
+Source/runtime SHA: Source commit `111d0e54` (local `main`; not deployed); SKR frontend/backend runtime `75acb125c17475a1d402bc4680fcffda8663bf3f`
 Business data writes: 0
 
 ## Changes
@@ -22,4 +22,4 @@ Business data writes: 0
 
 ## Limits
 
-No local application build, live browser run, authenticated SKR/Demo P50/P95 sample, deployment, or runtime SHA verification was performed. Fixture checks do not prove live catalogue parity or production performance. No Odoo business records were written.
+No local application build, authenticated browser run, or SKR/Demo P50/P95 sample was performed. Unauthenticated `/products` and `/dashboard` requests redirect to login. Fixture checks do not prove live catalogue parity or production performance. No Odoo business records were written.

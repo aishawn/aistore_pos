@@ -6,7 +6,7 @@ Updated: 2026-11-07. Owner: TBD.
 
 - Ordinary `/api/odoo/records` product pages now use the existing Redis-backed scoped read cache with a 30-second TTL and request coalescing. Cache identity includes host, authenticated Odoo/access session, tenant/company, sample-data revision, permission-derived cost visibility and all query/pagination parameters. Inventory report pages and their immutable snapshots bypass this cache.
 - Explicit product refresh bypasses both browser and server cache. Existing successful-write report revision invalidation and Shopfront sync revision changes make prior catalog entries unreachable. Responses expose `generatedAt`, `cacheStatus`, `requestId`, `X-Correlation-ID`, `X-Cache-Status` and total `Server-Timing`; the catalogue shows its generated time.
-- Node 24 targeted report/cache and catalogue-domain checks pass 13/13; modified TypeScript sources pass syntax transpilation and `git diff --check`. Full typecheck is blocked in this checkout because `npm ci` could not obtain Next.js and other packages. Authenticated SKR/Demo browser P50/P95 and running SHA have not been remeasured; deployment status is pending. No business data was written.
+- Node 24 targeted report/cache and catalogue-domain checks pass 13/13; modified TypeScript sources pass syntax transpilation and `git diff --check`. Full typecheck is blocked in this checkout because `npm ci` could not obtain Next.js and other packages. SKR runtime remains `75acb125c17475a1d402bc4680fcffda8663bf3f`; the candidate has not been deployed, and authenticated SKR/Demo browser P50/P95 remain unmeasured. No business data was written.
 
 ## Cost audit gateway timeout (2026-11-07)
 
