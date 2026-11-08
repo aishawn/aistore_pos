@@ -3,7 +3,12 @@ package com.orithos.modules.sell;
 import com.orithos.modules.customer.mapper.CustomerMapper;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.sale.SaleMapper;
+import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -21,12 +26,12 @@ class SellServiceParkedSaleReadTest {
         ProductMapper products = mock(ProductMapper.class);
         CustomerMapper customers = mock(CustomerMapper.class);
         SaleMapper sales = mock(SaleMapper.class);
-        when(sales.page("PARKED", null, 50, 0)).thenReturn(List.of());
+        when(sales.page(3L, 12L, "PARKED", null, 50, 0)).thenReturn(List.of());
 
         SellService service = new SellService(products, customers, sales);
 
         assertEquals(List.of(), service.listParked());
-        verify(sales).page("PARKED", null, 50, 0);
+        verify(sales).page(3L, 12L, "PARKED", null, 50, 0);
         verify(sales, never()).expireParkedBefore(any(), any());
     }
 
@@ -41,5 +46,16 @@ class SellServiceParkedSaleReadTest {
         assertEquals(List.of(), service.listParked());
         verify(sales, never()).page("PARKED", null, 50, 0);
         verify(sales, never()).expireParkedBefore(any(), any());
+    }
+
+    @BeforeEach
+    void authenticateOutlet() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthUser(7L, "cashier", false, 12L, 3L), null, List.of()));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
     }
 }

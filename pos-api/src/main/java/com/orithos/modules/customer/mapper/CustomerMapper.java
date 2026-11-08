@@ -11,6 +11,16 @@ import java.util.List;
 @Mapper
 public interface CustomerMapper {
 
+    @Select("SELECT c.id, c.name, c.customer_group_id, c.loyalty_points, g.name AS customer_group_name "
+            + "FROM customer c LEFT JOIN customer_group g ON g.id=c.customer_group_id "
+            + "WHERE c.deleted_at IS NULL AND c.outlet_id=#{outletId} "
+            + "AND c.outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL) "
+            + "AND (#{name} IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') "
+            + "OR c.code LIKE CONCAT('%', #{name}, '%') OR c.email LIKE CONCAT('%', #{name}, '%')) "
+            + "ORDER BY c.name LIMIT 10")
+    List<Customer> searchForSell(@Param("name") String name, @Param("vendorId") Long vendorId,
+                                 @Param("outletId") Long outletId);
+
     @Select("""
         <script>
         SELECT c.id, c.name, c.first_name, c.last_name, c.code, c.company, c.business_number,

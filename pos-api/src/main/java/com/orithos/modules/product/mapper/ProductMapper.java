@@ -25,6 +25,10 @@ public interface ProductMapper {
 
     @Select("SELECT p.* FROM product p JOIN outlet o ON o.id=p.outlet_id WHERE p.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL AND p.deleted_at IS NULL")
     Product findByIdAndVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
+    @Select("SELECT p.* FROM product p JOIN outlet o ON o.id=p.outlet_id WHERE p.id=#{id} AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL AND p.deleted_at IS NULL")
+    Product findByIdAndOutlet(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                              @Param("outletId") Long outletId);
     int insert(@Param("p") Product p);
     int update(@Param("p") Product p);
     int updateStatus(@Param("id") Long id, @Param("status") String status);
@@ -227,7 +231,35 @@ public interface ProductMapper {
     long countActiveByNameExcluding(@Param("name") String name, @Param("excludeId") Long excludeId);
 
     /** Sell-pad folder browse — see ProductMapper.xml. */
-    List<Product> browseForSell(@Param("stem") String stem, @Param("q") String q);
+    List<Product> browseForSell(@Param("stem") String stem, @Param("q") String q,
+                                @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
+
+    @Select("SELECT p.id, p.name, p.case_quantity AS caseQuantity, "
+            + "(SELECT pp.price FROM product_price pp WHERE pp.product_id=p.id AND pp.outlet_id=#{outletId} "
+            + "AND pp.quantity <= #{quantity} ORDER BY pp.quantity DESC LIMIT 1) AS price "
+            + "FROM product p JOIN outlet o ON o.id=p.outlet_id "
+            + "WHERE p.id=#{id} AND p.status='ACTIVE' AND p.deleted_at IS NULL "
+            + "AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL")
+    Product findSellableForOutlet(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                                  @Param("outletId") Long outletId, @Param("quantity") BigDecimal quantity);
+
+    @Select("SELECT p.id, p.name, p.case_quantity AS caseQuantity, "
+            + "(SELECT pp.price FROM product_price pp WHERE pp.product_id=p.id AND pp.outlet_id=#{outletId} "
+            + "ORDER BY pp.quantity LIMIT 1) AS price "
+            + "FROM product p JOIN outlet o ON o.id=p.outlet_id "
+            + "WHERE p.status='ACTIVE' AND p.deleted_at IS NULL AND o.vendor_id=#{vendorId} AND o.id=#{outletId} "
+            + "AND LOWER(p.name)=LOWER(#{name}) ORDER BY p.id LIMIT 2")
+    List<Product> findActiveByExactNameForOutlet(@Param("name") String name, @Param("vendorId") Long vendorId,
+                                                  @Param("outletId") Long outletId);
+
+    @Select("SELECT p.id, p.name, p.case_quantity AS caseQuantity, "
+            + "(SELECT pp.price FROM product_price pp WHERE pp.product_id=p.id AND pp.outlet_id=#{outletId} "
+            + "ORDER BY pp.quantity LIMIT 1) AS price "
+            + "FROM product p JOIN outlet o ON o.id=p.outlet_id "
+            + "WHERE p.id=#{id} AND p.status='ACTIVE' AND p.deleted_at IS NULL "
+            + "AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL")
+    Product findActiveForOutlet(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                                @Param("outletId") Long outletId);
 
     // ---- product filter facets (values actually used by products) ----
 

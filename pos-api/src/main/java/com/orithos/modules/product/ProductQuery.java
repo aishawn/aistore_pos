@@ -29,6 +29,8 @@ public class ProductQuery {
     private String statuses;
     private int page = 1;
     private int size = 10;
+    private Long vendorId;
+    private Long outletId;
 
     public int getOffset() {
         return Math.max(0, (page - 1) * size);

@@ -1,6 +1,8 @@
 package com.orithos.modules.sale;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.common.AustraliaTime;
 import com.orithos.common.BusinessException;
 import com.orithos.common.CashRounding;
@@ -10,6 +12,8 @@ import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.register.Register;
+import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.security.CurrentUser;
@@ -33,15 +37,17 @@ public class CheckoutService {
     private final SalePaymentMapper paymentMapper;
     private final PaymentMethodMapper paymentMethodMapper;
     private final ProductMapper productMapper;
+    private final RegisterMapper registerMapper;
     private final ObjectMapper objectMapper;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
-                           ObjectMapper objectMapper) {
+                           RegisterMapper registerMapper, ObjectMapper objectMapper) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
         this.productMapper = productMapper;
+        this.registerMapper = registerMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -52,6 +58,7 @@ public class CheckoutService {
         if (vendorId == null || authenticatedOutletId == null) {
             throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
         }
+        if (req == null) throw new BusinessException(40000, "Checkout request is required.");
         if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 200) {
             throw new BusinessException(40000, "Idempotency-Key is required for checkout.");
         }
@@ -80,8 +87,17 @@ public class CheckoutService {
             if (req.getItems() == null || req.getItems().isEmpty()) {
                 throw new BusinessException("Cannot finalise an empty sale.");
             }
+            prepareSellItems(req, vendorId, authenticatedOutletId);
             total = calculateTotal(req.getItems());
             sale = createPendingSale(req, total);
+        }
+
+        Long effectiveRegisterId = req.getRegisterId() != null ? req.getRegisterId() : sale.getRegisterId();
+        if (effectiveRegisterId == null) throw new BusinessException("An open register is required for checkout.");
+        Register register = registerMapper.findById(effectiveRegisterId);
+        if (register == null || !authenticatedOutletId.equals(register.getOutletId())
+                || Boolean.TRUE.equals(register.getClosed())) {
+            throw new BusinessException("Register is not open at this outlet.");
         }
 
         BigDecimal outstanding = sale.getOutstanding() != null ? sale.getOutstanding() : total;
@@ -147,7 +163,7 @@ public class CheckoutService {
         payment.setSaleId(sale.getId());
         payment.setPaymentMethodId(method != null ? method.getId() : null);
         payment.setSubtype(req.getTender());
-        payment.setRegisterId(req.getRegisterId() != null ? req.getRegisterId() : sale.getRegisterId());
+        payment.setRegisterId(effectiveRegisterId);
         payment.setStatus("COMPLETED");
         payment.setAmount(paymentAmount);
         payment.setRounding(rounding.signum() == 0 ? null : rounding);
@@ -218,9 +234,25 @@ public class CheckoutService {
         return res;
     }
 
-    private String requestHash(CheckoutRequest req) {
+    String requestHash(CheckoutRequest req) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(req));
+            ObjectNode intent = objectMapper.createObjectNode();
+            intent.put("saleId", req.getSaleId());
+            intent.put("registerId", req.getRegisterId());
+            intent.put("customerId", req.getCustomerId());
+            intent.put("tender", req.getTender());
+            intent.put("tendered", req.getTendered() == null ? null : req.getTendered().stripTrailingZeros().toPlainString());
+            intent.put("cashout", req.getCashout() == null ? null : req.getCashout().stripTrailingZeros().toPlainString());
+            if (req.getItems() != null) {
+                ArrayNode items = intent.putArray("items");
+                for (CheckoutRequest.Item item : req.getItems()) {
+                    ObjectNode line = items.addObject();
+                    line.put("productId", item.getProductId());
+                    BigDecimal quantity = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
+                    line.put("quantity", quantity.stripTrailingZeros().toPlainString());
+                }
+            }
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(intent));
             StringBuilder out = new StringBuilder(64);
             for (byte b : digest) out.append(String.format("%02x", b));
             return out.toString();
@@ -238,7 +270,7 @@ public class CheckoutService {
                 continue;
             }
             BigDecimal delta = item.getQuantity().negate();
-            Product product = productMapper.findByIdAndVendor(item.getProductId(), vendorId);
+            Product product = productMapper.findByIdAndOutlet(item.getProductId(), vendorId, outletId);
             if (product == null) throw new BusinessException("Product not found in this tenant.");
             boolean track = !Boolean.FALSE.equals(product.getTrackInventory());
             if (delta.signum() < 0 && track) {
@@ -256,6 +288,12 @@ public class CheckoutService {
         }
     }
 
+    static BigDecimal calculateTotal(java.util.List<CheckoutRequest.Item> items) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (CheckoutRequest.Item item : items) total = total.add(lineAmount(item));
+        return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
     private Sale createPendingSale(CheckoutRequest req, BigDecimal total) {
         int quantity = 0;
         for (CheckoutRequest.Item item : req.getItems()) {
@@ -268,7 +306,7 @@ public class CheckoutService {
         sale.setStatus("PENDING");
         sale.setRegisterId(req.getRegisterId());
         sale.setOutletId(CurrentUser.outletId());
-        sale.setUserId(req.getUserId() != null ? req.getUserId() : CurrentUser.id());
+        sale.setUserId(CurrentUser.id());
         sale.setCustomerId(resolveCustomerId(req.getCustomerId()));
         sale.setTotalQuantity(quantity);
         sale.setTotalPrice(total);
@@ -284,20 +322,19 @@ public class CheckoutService {
             si.setSaleId(sale.getId());
             si.setOutletId(sale.getOutletId());
             BigDecimal qty = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
-            BigDecimal unit = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
+            BigDecimal unit = item.getUnitPrice();
             BigDecimal lineTotal = lineAmount(item);
             si.setQuantity(qty);
             si.setBasePrice(unit);
             si.setTotalPrice(lineTotal);
-            si.setNote(item.getName());
-            Long productId = resolveProductId(item);
-            if (productId != null) {
-                si.setProductId(productId);
-                si.setTaxRateId(saleMapper.findTaxRateId(productId, CurrentUser.vendorId()));
-                si.setTax(GstMath.includedGst(lineTotal, taxPercent(productId)));
-            } else {
-                si.setTax(GstMath.includedGst(lineTotal, GstMath.DEFAULT_RATE));
-            }
+            Long productId = item.getProductId();
+            Product product = productMapper.findSellableForOutlet(productId, CurrentUser.vendorId(),
+                    CurrentUser.outletId(), qty);
+            si.setProductId(productId);
+            si.setCaseQuantity(product.getCaseQuantity());
+            si.setNote(product.getName());
+            si.setTaxRateId(saleMapper.findTaxRateId(productId, CurrentUser.vendorId(), CurrentUser.outletId()));
+            si.setTax(GstMath.includedGst(lineTotal, taxPercent(productId)));
             saleMapper.insertItem(si);
         }
         return sale;
@@ -306,38 +343,41 @@ public class CheckoutService {
     private BigDecimal gstForItems(java.util.List<CheckoutRequest.Item> items) {
         BigDecimal gst = BigDecimal.ZERO;
         for (CheckoutRequest.Item item : items) {
-            gst = gst.add(GstMath.includedGst(lineAmount(item), taxPercent(resolveProductId(item))));
+            gst = gst.add(GstMath.includedGst(lineAmount(item), taxPercent(item.getProductId())));
         }
         return gst.setScale(2, RoundingMode.HALF_UP);
     }
 
-    /** Prefer the cart product id. Fall back to an exact catalog name so the line stays on that product. */
-    private Long resolveProductId(CheckoutRequest.Item item) {
-        Long productId = item.getProductId();
-        if (productId != null && saleMapper.productExists(productId, CurrentUser.vendorId()) > 0) {
-            return productId;
-        }
-        if (item.getName() == null || item.getName().isBlank()) {
-            return null;
-        }
-        return saleMapper.findProductIdByName(item.getName().trim(), CurrentUser.vendorId());
-    }
-
-    /** GST-inclusive rate. Missing product tax falls back to 10% GST. */
+    /** GST-inclusive rate from the product's explicit tax configuration. */
     private BigDecimal taxPercent(Long productId) {
-        if (productId == null || saleMapper.productExists(productId, CurrentUser.vendorId()) == 0) {
-            return GstMath.DEFAULT_RATE;
-        }
-        BigDecimal rate = saleMapper.findSellTaxPercent(productId, CurrentUser.vendorId());
-        return rate == null ? GstMath.DEFAULT_RATE : rate;
+        BigDecimal rate = saleMapper.findSellTaxPercent(productId, CurrentUser.vendorId(), CurrentUser.outletId());
+        if (rate == null) throw new BusinessException("Product tax rate is missing. Configure GST before selling.");
+        return rate;
     }
 
-    private static BigDecimal calculateTotal(java.util.List<CheckoutRequest.Item> items) {
-        BigDecimal total = BigDecimal.ZERO;
-        for (CheckoutRequest.Item item : items) {
-            total = total.add(lineAmount(item));
+    void prepareSellItems(CheckoutRequest req, Long vendorId, Long outletId) {
+        for (CheckoutRequest.Item item : req.getItems()) {
+            if (item == null || item.getProductId() == null) {
+                throw new BusinessException(40000, "Each sale line must reference a catalogue product.");
+            }
+            BigDecimal quantity = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
+            if (quantity.signum() <= 0) throw new BusinessException(40000, "Sale quantity must be greater than zero.");
+            Product product = productMapper.findSellableForOutlet(item.getProductId(), vendorId, outletId, quantity);
+            if (product == null) throw new BusinessException("Product is not available at this outlet.");
+            BigDecimal unitPrice = product.getPrice();
+            if (unitPrice == null || unitPrice.signum() < 0) {
+                throw new BusinessException("Product has no valid outlet price. Configure a price before selling.");
+            }
+            Long taxRateId = saleMapper.findTaxRateId(product.getId(), vendorId, outletId);
+            BigDecimal taxPercent = saleMapper.findSellTaxPercent(product.getId(), vendorId, outletId);
+            if (taxRateId == null || taxPercent == null) {
+                throw new BusinessException("Product tax rate is missing. Configure GST before selling.");
+            }
+            item.setQuantity(quantity);
+            item.setUnitPrice(unitPrice);
+            item.setLineTotal(quantity.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP));
+            item.setName(product.getName());
         }
-        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -346,11 +386,9 @@ public class CheckoutService {
      * leaves a phantom cent and blocks an exact cash tender.
      */
     static BigDecimal lineAmount(CheckoutRequest.Item item) {
-        if (item.getLineTotal() != null) {
-            return item.getLineTotal().setScale(2, RoundingMode.HALF_UP);
-        }
         BigDecimal qty = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
         BigDecimal unit = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
+        if (item.getLineTotal() != null) return item.getLineTotal().setScale(2, RoundingMode.HALF_UP);
         return qty.multiply(unit).setScale(2, RoundingMode.HALF_UP);
     }
 
@@ -382,9 +420,11 @@ public class CheckoutService {
 
     /** Only attach a customer that actually exists, to satisfy the FK. */
     private Long resolveCustomerId(Long customerId) {
-        if (customerId != null && saleMapper.customerExists(customerId, CurrentUser.vendorId()) > 0) {
+        if (customerId != null && saleMapper.customerExists(customerId,
+                CurrentUser.vendorId(), CurrentUser.outletId()) > 0) {
             return customerId;
         }
+        if (customerId != null) throw new BusinessException("Customer is not available at this outlet.");
         return null;
     }
 

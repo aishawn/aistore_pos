@@ -36,7 +36,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             "/api/product-backorders", "/api/products", "/api/promotion-categories",
             "/api/promotions", "/api/push-devices", "/api/quick-menu", "/api/receipts",
             "/api/register-closures", "/api/registers", "/api/reports", "/api/resources",
-            "/api/sale-keys", "/api/security-events", "/api/settings",
+            "/api/sale-keys", "/api/sales", "/api/security-events", "/api/settings",
             "/api/shelf-tickets", "/api/statements", "/api/stock-list", "/api/stocktakes",
             "/api/suppliers", "/api/supply-chain", "/api/tax-rates", "/api/ticket-template-pages",
             "/api/ticket-templates", "/api/transferees", "/api/trashed-items",
@@ -58,7 +58,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(objectMapper.writeValueAsString(
-                    ApiResult.fail(41001, "This Classic POS API is retired; use the Odoo workflow.")));
+            ApiResult.fail(41001, "This Classic POS API route is retired.")));
             return;
         }
         chain.doFilter(request, response);
@@ -70,10 +70,11 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if (path.equals("/api/orders") || path.startsWith("/api/orders/")) {
             return false;
         }
-        // Native sales and checkout are tenant/outlet scoped by SaleController;
-        // checkout also requires a server-side idempotency key.
+        // Only scoped sales reads and the validated checkout workflow are live.
+        // Legacy sale create/update endpoints accept client-authored ledger values.
         if (path.equals("/api/sales") || path.startsWith("/api/sales/")) {
-            return false;
+            return !"GET".equalsIgnoreCase(method)
+                    && !("POST".equalsIgnoreCase(method) && path.equals("/api/sales/checkout"));
         }
         // These read endpoints are used by the native purchasing UI. Their
         // controllers scope results to the authenticated tenant; keep writes

@@ -1,10 +1,12 @@
 package com.orithos.modules.product;
 
 import com.orithos.common.ApiResult;
+import com.orithos.common.BusinessException;
 import com.orithos.common.PageResult;
 import com.orithos.common.PriceQuantityUtils;
 import com.orithos.modules.product.mapper.ProductCompetitionPriceMapper;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +44,13 @@ public class ProductController {
 
     @GetMapping
     public ApiResult<PageResult<Product>> list(ProductQuery q) {
+        Long vendorId = CurrentUser.vendorId();
+        Long outletId = CurrentUser.outletId();
+        if (vendorId == null || outletId == null) {
+            throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
+        q.setVendorId(vendorId);
+        q.setOutletId(outletId);
         q.normalize();
         var items = mapper.page(q);
         return ApiResult.ok(PageResult.of(items, mapper.count(q), q.getPage(), q.getSize()));

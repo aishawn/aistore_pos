@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -52,6 +51,8 @@ public class SellService {
 
     /** Search products and customers for the Sell-pad search bar. */
     public SellSearchResponse search(String q) {
+        Long vendorId = requireVendorId();
+        Long outletId = requireOutletId();
         String term = SqlLikeUtils.prepareLikeSearch(q);
         SellSearchResponse res = new SellSearchResponse();
         res.setProducts(new ArrayList<>());
@@ -63,6 +64,8 @@ public class SellService {
         pq.setStatus("ACTIVE");
         pq.setPage(1);
         pq.setSize(10);
+        pq.setVendorId(vendorId);
+        pq.setOutletId(outletId);
         for (Product p : productMapper.page(pq)) {
             SellSearchResponse.ProductHit hit = new SellSearchResponse.ProductHit();
             hit.setId(p.getId());
@@ -72,8 +75,7 @@ public class SellService {
             res.getProducts().add(hit);
         }
 
-        for (Customer c : customerMapper.page(term, Collections.emptyList(), false, false,
-                null, false, false, null, null, null, 10, 0)) {
+        for (Customer c : customerMapper.searchForSell(term, vendorId, outletId)) {
             SellSearchResponse.CustomerHit hit = new SellSearchResponse.CustomerHit();
             hit.setId(c.getId());
             hit.setName(c.getName());
@@ -89,10 +91,10 @@ public class SellService {
         // Parked sales are a Classic POS concept; Odoo-only deployments have no
         // legacy sale tables and must expose an empty read-only state instead.
         if (odooOnlyMode) return List.of();
+        Long vendorId = requireVendorId();
+        Long outletId = requireOutletId();
         LocalDate today = AustraliaTime.today();
-        List<Sale> parked = CurrentUser.vendorId() == null
-                ? saleMapper.page("PARKED", null, 50, 0)
-                : saleMapper.page(CurrentUser.vendorId(), CurrentUser.outletId(), "PARKED", null, 50, 0);
+        List<Sale> parked = saleMapper.page(vendorId, outletId, "PARKED", null, 50, 0);
         for (Sale sale : parked) {
             LocalDate parkedOn = parkedBusinessDate(sale);
             sale.setStale(ParkedSalePolicy.stale(parkedOn, today));
@@ -131,15 +133,31 @@ public class SellService {
     /** Park the current cart — persists as status PARKED and returns the sale. */
     @Transactional
     public Sale park(ParkSaleRequest req) {
+        if (req == null) throw new BusinessException(40000, "Park sale request is required.");
         if (req.getItems() == null || req.getItems().isEmpty()) {
             throw new BusinessException("Cannot park an empty sale.");
         }
 
+        Long vendorId = requireVendorId();
+        Long outletId = requireOutletId();
         BigDecimal total = BigDecimal.ZERO;
         int quantity = 0;
+        List<Product> products = new ArrayList<>();
         for (SellCartItem item : req.getItems()) {
+            if (item == null || item.getProductId() == null) {
+                throw new BusinessException(40000, "Each parked line must reference a catalogue product.");
+            }
             BigDecimal qty = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
-            BigDecimal unit = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
+            if (qty.signum() <= 0) throw new BusinessException(40000, "Sale quantity must be greater than zero.");
+            Product product = productMapper.findSellableForOutlet(item.getProductId(), vendorId, outletId, qty);
+            if (product == null) throw new BusinessException("Product is not available at this outlet.");
+            BigDecimal unit = product.getPrice();
+            if (unit == null || unit.signum() < 0) {
+                throw new BusinessException("Product has no valid outlet price. Configure a price before selling.");
+            }
+            products.add(product);
+            item.setName(product.getName());
+            item.setUnitPrice(unit);
             total = total.add(qty.multiply(unit));
             quantity += qty.intValue();
         }
@@ -147,10 +165,9 @@ public class SellService {
 
         Sale sale = new Sale();
         sale.setStatus("PARKED");
-        if (CurrentUser.vendorId() == null || CurrentUser.outletId() == null) throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
-        sale.setOutletId(CurrentUser.outletId());
+        sale.setOutletId(outletId);
         sale.setRegisterId(req.getRegisterId());
-        sale.setUserId(req.getUserId() != null ? req.getUserId() : CurrentUser.id());
+        sale.setUserId(CurrentUser.id());
         sale.setCustomerId(resolveCustomerId(req.getCustomerId()));
         sale.setNote(req.getNote());
         sale.setTotalQuantity(quantity);
@@ -160,8 +177,8 @@ public class SellService {
         sale.setLocalSoldAt(AustraliaTime.localNow());
         saleMapper.insert(sale);
 
-        for (SellCartItem item : req.getItems()) {
-            insertCartItem(sale.getId(), item);
+        for (int i = 0; i < req.getItems().size(); i++) {
+            insertCartItem(sale.getId(), req.getItems().get(i), products.get(i));
         }
         sale.setItems(saleMapper.findItemsBySaleId(sale.getId()));
         return sale;
@@ -206,8 +223,10 @@ public class SellService {
             case "CASE_QUANTITY" -> {
                 BigDecimal caseQty = BigDecimal.valueOf(24);
                 if (req.getProductId() != null) {
-                    Product p = productMapper.findById(req.getProductId());
-                    if (p != null && p.getCaseQuantity() != null && p.getCaseQuantity().signum() > 0) {
+                    Product p = productMapper.findByIdAndOutlet(req.getProductId(),
+                            requireVendorId(), requireOutletId());
+                    if (p == null) throw new BusinessException("Product is not available at this outlet.");
+                    if (p.getCaseQuantity() != null && p.getCaseQuantity().signum() > 0) {
                         caseQty = p.getCaseQuantity();
                     }
                 }
@@ -261,6 +280,8 @@ public class SellService {
      * "Beer Local" and the Beer family.
      */
     public ProductBrowseResponse browseProducts(String category, String q) {
+        Long vendorId = requireVendorId();
+        Long outletId = requireOutletId();
         String folder = category == null || category.isBlank() ? "Products" : category.trim();
         String stem = null;
         if (!"Products".equalsIgnoreCase(folder)) {
@@ -274,7 +295,7 @@ public class SellService {
                 stem == null ? "Products" : "Products In " + folder.toUpperCase());
 
         String nameFilter = q == null || q.isBlank() ? null : q.trim();
-        for (Product p : productMapper.browseForSell(stem, nameFilter)) {
+        for (Product p : productMapper.browseForSell(stem, nameFilter, vendorId, outletId)) {
             ProductBrowseResponse.Item item = new ProductBrowseResponse.Item();
             item.setId(p.getId());
             item.setName(p.getName());
@@ -296,7 +317,8 @@ public class SellService {
      */
     public SellSearchResponse.ProductHit findQuickKeyProduct(String key) {
         if (key == null || key.isBlank()) return null;
-        List<Product> hits = productMapper.findActiveByExactName(key.trim());
+        List<Product> hits = productMapper.findActiveByExactNameForOutlet(
+                key.trim(), requireVendorId(), requireOutletId());
         if (hits.size() != 1) return null;
         Product p = hits.get(0);
         SellSearchResponse.ProductHit hit = new SellSearchResponse.ProductHit();
@@ -310,7 +332,7 @@ public class SellService {
     /** Catalogue price for a sale key that is bound to a product id. */
     public SellSearchResponse.ProductHit findQuickKeyProductById(Long id) {
         if (id == null) return null;
-        Product p = productMapper.findActiveForSell(id);
+        Product p = productMapper.findActiveForOutlet(id, requireVendorId(), requireOutletId());
         if (p == null) return null;
         SellSearchResponse.ProductHit hit = new SellSearchResponse.ProductHit();
         hit.setId(p.getId());
@@ -320,26 +342,40 @@ public class SellService {
         return hit;
     }
 
-    private void insertCartItem(Long saleId, SellCartItem item) {
+    private void insertCartItem(Long saleId, SellCartItem item, Product product) {
         SaleItem si = new SaleItem();
         si.setSaleId(saleId);
+        si.setOutletId(CurrentUser.outletId());
+        si.setProductId(product.getId());
         BigDecimal qty = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
-        BigDecimal unit = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
+        BigDecimal unit = product.getPrice();
+        if (unit == null) throw new BusinessException("Product has no valid outlet price. Configure a price before selling.");
         si.setQuantity(qty);
+        si.setCaseQuantity(product.getCaseQuantity());
         si.setBasePrice(unit);
         si.setTotalPrice(qty.multiply(unit).setScale(2, RoundingMode.HALF_UP));
-        if (item.getProductId() != null && saleMapper.productExists(item.getProductId(), CurrentUser.vendorId()) > 0) {
-            si.setProductId(item.getProductId());
-        } else {
-            si.setNote(item.getName());
-        }
+        si.setNote(product.getName());
         saleMapper.insertItem(si);
     }
 
     private Long resolveCustomerId(Long customerId) {
-        if (customerId != null && saleMapper.customerExists(customerId, CurrentUser.vendorId()) > 0) {
+        if (customerId != null && saleMapper.customerExists(customerId,
+                requireVendorId(), requireOutletId()) > 0) {
             return customerId;
         }
+        if (customerId != null) throw new BusinessException("Customer is not available at this outlet.");
         return null;
+    }
+
+    private static Long requireVendorId() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40100, "Authenticated vendor is required.");
+        return vendorId;
+    }
+
+    private static Long requireOutletId() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
+        return outletId;
     }
 }

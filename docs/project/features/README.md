@@ -5,7 +5,7 @@
 | 功能 ID | 功能 / 入口 | 本期状态与范围 | 负责人 | 证据入口 |
 |---|---|---|---|---|
 | CAP-AI | [AI 能力](ai/README.md) | 已实现；各子能力验证层级不同，见七个完整样板 | AI/后端 owner 待指定 | [AI 验证总览](ai/README.md#验证与效果) |
-| CAP-POS | [收银与退款](checkout/README.md) | 待盘点，已有 Odoo 工作流 | POS owner 待指定 | POS-001/002/003 |
+| CAP-POS | [收银与退款](checkout/README.md) | Orithos 原生 checkout 本地候选已通过 537 项后端回归；未部署/未做隔离业务验收；Odoo 仍为现行账本 | POS owner 待指定 | [迁移验证](checkout/validation.md) |
 | CAP-INV | [商品、库存与盘点](inventory/README.md) | 待盘点，已有修复与报表记录 | 库存 owner 待指定 | INV-001 |
 | CAP-PUR | [采购与收货](purchasing/README.md) | 待盘点，业务写入需独立验收 | 采购 owner 待指定 | PUR-001 |
 | CAP-CUS | [客户与价格表](customers/README.md) | 待盘点，已有角色和定价方案 | 客户模块 owner 待指定 | CUS-001 |

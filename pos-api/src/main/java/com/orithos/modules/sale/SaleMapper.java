@@ -103,15 +103,18 @@ public interface SaleMapper {
     @Select("""
         SELECT tr.amount FROM product p
         LEFT JOIN tax_rate tr ON tr.id = p.tax_rate_id AND tr.deleted_at IS NULL
-        WHERE p.id = #{id} AND p.outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)
+        WHERE p.id = #{id} AND p.outlet_id = #{outletId}
+          AND p.outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)
         """)
-    java.math.BigDecimal findSellTaxPercent(@Param("id") Long id, @Param("vendorId") Long vendorId);
+    java.math.BigDecimal findSellTaxPercent(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                                            @Param("outletId") Long outletId);
 
-    @Select("SELECT tax_rate_id FROM product WHERE id = #{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)")
-    Long findTaxRateId(@Param("id") Long id, @Param("vendorId") Long vendorId);
+    @Select("SELECT tax_rate_id FROM product WHERE id = #{id} AND outlet_id = #{outletId} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)")
+    Long findTaxRateId(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
-    @Select("SELECT COUNT(*) FROM customer c JOIN outlet o ON o.id=c.outlet_id WHERE c.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL")
-    long customerExists(@Param("id") Long id, @Param("vendorId") Long vendorId);
+    @Select("SELECT COUNT(*) FROM customer c JOIN outlet o ON o.id=c.outlet_id WHERE c.id=#{id} AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL")
+    long customerExists(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                        @Param("outletId") Long outletId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""

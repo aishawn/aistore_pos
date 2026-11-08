@@ -37,6 +37,12 @@
     <sql id="filters">
         <where>
             p.deleted_at IS NULL
+            <if test="q.vendorId != null">
+                AND p.outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{q.vendorId} AND deleted_at IS NULL)
+            </if>
+            <if test="q.outletId != null">
+                AND p.outlet_id = #{q.outletId}
+            </if>
             <if test="q.name != null and q.name != ''">
                 AND (
                     p.name LIKE CONCAT('%', #{q.name}, '%')
@@ -221,12 +227,14 @@
         SELECT p.id, p.name,
                c.name AS category_name,
                (SELECT pp.price FROM product_price pp
-                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price
+                 WHERE pp.product_id = p.id AND pp.outlet_id = #{outletId} ORDER BY pp.quantity LIMIT 1) AS price
         FROM product p
         LEFT JOIN category c ON c.id = p.category_id
         LEFT JOIN family f ON f.id = p.family_id
         WHERE p.deleted_at IS NULL
           AND p.status = 'ACTIVE'
+          AND p.outlet_id = #{outletId}
+          AND p.outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)
           <if test="stem != null and stem != ''">
             AND (
               c.name LIKE CONCAT(#{stem}, '%')
