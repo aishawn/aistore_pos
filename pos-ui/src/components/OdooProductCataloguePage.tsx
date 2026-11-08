@@ -841,7 +841,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   {inventoryColumns.includes("quantity") && sortHeader(inventoryReport ? "shopfront_quantity" : "qty_available", inventoryReport ? "Shopfront inventory" : "Inventory")}
                   {inventoryReport && inventoryColumns.includes("odoo_quantity") && sortHeader("qty_available", "Odoo inventory")}
                   {inventoryReport && inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
-                  {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Odoo sale price · AUD" : "Shopfront sale price · AUD")}
+                  {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Odoo sale price · AUD" : "Price")}
                   {inventoryReport && inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}
                   {!inventoryReport && <><th scope="col" className="px-4 py-3">Performance</th><th scope="col" className="px-4 py-3 text-right">Actions</th></>}
                 </tr>
