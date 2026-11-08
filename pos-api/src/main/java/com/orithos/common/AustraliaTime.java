@@ -7,13 +7,12 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * Civil clock for Australian stores. Australia/Sydney observes AEST (UTC+10)
- * and AEDT (UTC+11); the zone rules cover the daylight-saving transition so a
- * sale just after midnight stays on the store's business day.
+ * Civil clock for the current Orithos pilot stores in South Australia. The
+ * zone rules cover Adelaide daylight-saving transitions and business dates.
  */
 public final class AustraliaTime {
 
-    public static final ZoneId ZONE = ZoneId.of("Australia/Sydney");
+    public static final ZoneId ZONE = ZoneId.of("Australia/Adelaide");
 
     private AustraliaTime() {
     }
@@ -26,14 +25,14 @@ public final class AustraliaTime {
         return LocalDateTime.now(ZONE);
     }
 
-    /** Business date of an instant, using Sydney AEST/AEDT rules. */
+    /** Business date of an instant, using Adelaide ACST/ACDT rules. */
     public static LocalDate businessDate(Instant instant) {
         return instant.atZone(ZONE).toLocalDate();
     }
 
     /**
      * {@code utcWall} is a DATETIME stored as UTC (JDBC {@code serverTimezone=UTC}).
-     * Returns the matching Australia/Sydney civil date and wall time.
+     * Returns the matching Australia/Adelaide civil date and wall time.
      */
     public static ZonedDateTime fromUtcWall(LocalDateTime utcWall) {
         return utcWall.atZone(java.time.ZoneOffset.UTC).withZoneSameInstant(ZONE);

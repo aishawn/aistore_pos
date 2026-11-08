@@ -68,6 +68,8 @@ mybatis:
     default-fetch-size: 100
 
 app:
+  native-pos:
+    enabled-vendor-ids: ${APP_NATIVE_POS_ENABLED_VENDOR_IDS:}
   shopfront:
     # Writes require the integration token and an enabled store mapping.
     integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}

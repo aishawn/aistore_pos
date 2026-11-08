@@ -1,3 +1,7 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-export { default } from "./odoo/page";
+import { OrithosRegisterRoute } from "@/components/OrithosRegisterRoute";
+
+export default function RegisterRoute() {
+  return <OrithosRegisterRoute />;
+}

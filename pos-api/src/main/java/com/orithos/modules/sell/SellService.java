@@ -104,7 +104,7 @@ public class SellService {
     }
 
     /**
-     * Void parked sales from before yesterday's Sydney business day.
+     * Void parked sales from before yesterday's outlet business day.
      * Called by the scheduled cleanup job every 15 minutes.
      */
     public int expireOverdueParkedSales() {

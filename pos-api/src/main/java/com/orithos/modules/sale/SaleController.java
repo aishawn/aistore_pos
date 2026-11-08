@@ -2,6 +2,7 @@ package com.orithos.modules.sale;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
+import com.orithos.config.NativePosGate;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
@@ -17,21 +18,25 @@ public class SaleController {
 
     private final SaleMapper mapper;
     private final CheckoutService checkoutService;
+    private final NativePosGate nativePosGate;
 
-    public SaleController(SaleMapper mapper, CheckoutService checkoutService) {
+    public SaleController(SaleMapper mapper, CheckoutService checkoutService, NativePosGate nativePosGate) {
         this.mapper = mapper;
         this.checkoutService = checkoutService;
+        this.nativePosGate = nativePosGate;
     }
 
     /** Finalise a Sell-pad cart with a tender (EFTPOS / cash), returning change. */
     @PostMapping("/quote")
     public ApiResult<CheckoutQuoteResponse> quote(@RequestBody CheckoutRequest req) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(checkoutService.quote(req));
     }
 
     @PostMapping("/checkout")
     public ApiResult<CheckoutResponse> checkout(@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                 @RequestBody CheckoutRequest req) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(checkoutService.checkout(req, idempotencyKey));
     }
 

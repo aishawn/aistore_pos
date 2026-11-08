@@ -687,6 +687,72 @@ export interface CheckoutQuote {
   total: number;
 }
 
+export interface RetailRegister {
+  id: number;
+  name: string;
+  outletId: number;
+  closed: boolean;
+}
+
+export interface RetailRegisterSession {
+  id: number;
+  registerId: number;
+  openedAt: string;
+  openingFloat: number;
+  closedAt: string | null;
+}
+
+export interface RetailRegisterSessionSummary {
+  sessionId: number;
+  registerId: number;
+  openedAt: string;
+  openingFloat: number;
+  cashMovements: number;
+  expectedCash: number;
+  transactionCount: number;
+  unsettledSales: number;
+  unmappedPayments: number;
+  tenders: Array<{ paymentMethodId: number; name: string; type: string; expectedAmount: number }>;
+}
+
+export interface RetailRegisterClosure {
+  id: number;
+  registerId: number;
+  totalExpected: number;
+  totalReceived: number;
+  movement: number;
+  totalTransactions: number;
+  closedAt: string;
+}
+
+export function listRetailRegisters(): Promise<RetailRegister[]> {
+  return api.get<RetailRegister[]>("/api/retail/registers");
+}
+
+export function getRetailRegisterSession(registerId: number): Promise<RetailRegisterSession | null> {
+  return api.get<RetailRegisterSession | null>(`/api/retail/registers/${registerId}/sessions/current`);
+}
+
+export function getRetailRegisterSessionSummary(registerId: number): Promise<RetailRegisterSessionSummary> {
+  return api.get<RetailRegisterSessionSummary>(`/api/retail/registers/${registerId}/sessions/current/summary`);
+}
+
+export function openRetailRegisterSession(registerId: number, openingFloat: number, idempotencyKey = crypto.randomUUID()): Promise<RetailRegisterSession> {
+  return api.post<RetailRegisterSession>(`/api/retail/registers/${registerId}/sessions`, { openingFloat }, {
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
+export function closeRetailRegisterSession(
+  registerId: number,
+  payload: { countedCash: number; countedTenders: Record<number, number>; note?: string },
+  idempotencyKey = crypto.randomUUID(),
+): Promise<RetailRegisterClosure> {
+  return api.post<RetailRegisterClosure>(`/api/retail/registers/${registerId}/sessions/close`, payload, {
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
 export function quoteSale(payload: Pick<CheckoutPayload, "registerId" | "customerId" | "items">): Promise<CheckoutQuote> {
   return api.post<CheckoutQuote>("/api/sales/quote", payload);
 }

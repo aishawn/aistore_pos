@@ -37,6 +37,29 @@ public class RegisterSessionService {
         return sessions.findActiveSession(registerId, scope.vendorId(), scope.outletId());
     }
 
+    public RegisterSessionSummary summary(Long registerId) {
+        Scope scope = scope();
+        Register register = sessions.findRegister(registerId, scope.vendorId(), scope.outletId());
+        if (register == null) throw notFound();
+        RegisterSession session = sessions.findActiveSession(registerId, scope.vendorId(), scope.outletId());
+        if (session == null) throw conflict("There is no open register session to close.");
+        LocalDateTime now = AustraliaTime.localNow();
+        BigDecimal movement = nz(sessions.sumCashMovements(session.getId(), scope.vendorId(), scope.outletId()));
+        BigDecimal netCash = nz(sessions.cashSalesNetOfChange(registerId, scope.outletId(), session.getOpenedAt(), now));
+        BigDecimal expectedCash = session.getOpeningFloat().add(movement).add(netCash).setScale(2, RoundingMode.HALF_UP);
+        List<RegisterSessionSummary.Tender> tenders = sessions.tenderTotals(registerId, scope.outletId(), session.getOpenedAt(), now)
+                .stream()
+                .filter(tender -> !"CASH".equalsIgnoreCase(tender.getPaymentMethodType()))
+                .map(tender -> new RegisterSessionSummary.Tender(tender.getPaymentMethodId(),
+                        tender.getPaymentMethodName(), tender.getPaymentMethodType(), nz(tender.getAmount())))
+                .toList();
+        return new RegisterSessionSummary(session.getId(), registerId, session.getOpenedAt(),
+                session.getOpeningFloat(), movement, expectedCash,
+                sessions.countSessionSales(registerId, scope.outletId(), session.getOpenedAt(), now),
+                sessions.countUnsettledSales(registerId, scope.outletId(), session.getOpenedAt(), now),
+                sessions.countUnmappedPayments(registerId, scope.outletId(), session.getOpenedAt(), now), tenders);
+    }
+
     @Transactional
     public RegisterSession open(Long registerId, String key, BigDecimal openingFloat) {
         Scope scope = scope();

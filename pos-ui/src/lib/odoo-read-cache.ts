@@ -90,7 +90,8 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
         const endpoint = new URL(path, "https://cache.invalid").pathname;
         const complete = payload && typeof payload === "object" && !payload.message
           && (endpoint !== "/api/odoo/reporting-dashboard" || (Number.isFinite(payload.revenue) && (new URL(path, "https://cache.invalid").searchParams.get("view") === "summary" || Array.isArray(payload.trend))))
-          && (endpoint !== "/api/odoo/records" || Array.isArray(payload.items));
+          && (endpoint !== "/api/odoo/records" || Array.isArray(payload.items))
+          && (endpoint !== "/api/odoo/sales-report" || Array.isArray(payload.rows));
         if (complete && payload.cacheStatus !== "STALE") {
           let expires = Date.now() + ttl;
           if (payload?.timezone && ["yesterday", "last_7_days", "last_week", "last_month"].includes(payload.period)) {

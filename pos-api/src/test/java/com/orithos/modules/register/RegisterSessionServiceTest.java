@@ -60,6 +60,32 @@ class RegisterSessionServiceTest {
     }
 
     @Test
+    void summaryUsesTheAuthenticatedOutletAndSeparatesDrawerCashFromNonCashTenders() {
+        LocalDateTime openedAt = LocalDateTime.of(2026, 11, 9, 9, 0);
+        Register register = new Register(); register.setId(11L); register.setOutletId(12L);
+        RegisterSession session = new RegisterSession();
+        session.setId(41L); session.setOutletId(12L); session.setRegisterId(11L);
+        session.setOpenedAt(openedAt); session.setOpeningFloat(new BigDecimal("100.00"));
+        when(sessions.findRegister(11L, 3L, 12L)).thenReturn(register);
+        when(sessions.findActiveSession(11L, 3L, 12L)).thenReturn(session);
+        when(sessions.sumCashMovements(41L, 3L, 12L)).thenReturn(new BigDecimal("5.00"));
+        when(sessions.cashSalesNetOfChange(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(new BigDecimal("90.00"));
+        when(sessions.tenderTotals(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(List.of(
+                tender(1L, "CASH", "100.00"), tender(2L, "CARD", "55.00")));
+        when(sessions.countSessionSales(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(2);
+        when(sessions.countUnsettledSales(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(0);
+        when(sessions.countUnmappedPayments(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(0);
+
+        RegisterSessionSummary summary = service.summary(11L);
+        assertEquals(new BigDecimal("195.00"), summary.expectedCash());
+        assertEquals(2, summary.transactionCount());
+        assertEquals(1, summary.tenders().size());
+        assertEquals(2L, summary.tenders().getFirst().paymentMethodId());
+        assertEquals(new BigDecimal("55.00"), summary.tenders().getFirst().expectedAmount());
+        verify(sessions).findRegister(11L, 3L, 12L);
+    }
+
+    @Test
     void closeReconcilesFloatCashRoundingAndCardCashoutAndReplaysExactRequest() {
         LocalDateTime openedAt = LocalDateTime.of(2026, 11, 9, 9, 0);
         Register register = new Register(); register.setId(11L); register.setOutletId(12L);

@@ -1,6 +1,7 @@
 package com.orithos.modules.register;
 
 import com.orithos.common.ApiResult;
+import com.orithos.config.NativePosGate;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -11,7 +12,11 @@ import java.util.Map;
 @RequestMapping("/api/retail/registers")
 public class RetailRegisterController {
     private final RegisterSessionService service;
-    public RetailRegisterController(RegisterSessionService service) { this.service = service; }
+    private final NativePosGate nativePosGate;
+    public RetailRegisterController(RegisterSessionService service, NativePosGate nativePosGate) {
+        this.service = service;
+        this.nativePosGate = nativePosGate;
+    }
 
     @GetMapping
     public ApiResult<List<Register>> list() { return ApiResult.ok(service.list()); }
@@ -21,10 +26,16 @@ public class RetailRegisterController {
         return ApiResult.ok(service.current(registerId));
     }
 
+    @GetMapping("/{registerId}/sessions/current/summary")
+    public ApiResult<RegisterSessionSummary> summary(@PathVariable Long registerId) {
+        return ApiResult.ok(service.summary(registerId));
+    }
+
     @PostMapping("/{registerId}/sessions")
     public ApiResult<RegisterSession> open(@PathVariable Long registerId,
                                            @RequestHeader("Idempotency-Key") String key,
                                            @RequestBody OpenRequest body) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(service.open(registerId, key, body.openingFloat()));
     }
 
@@ -32,6 +43,7 @@ public class RetailRegisterController {
     public ApiResult<RegisterCashMovement> move(@PathVariable Long sessionId,
                                                 @RequestHeader("Idempotency-Key") String key,
                                                 @RequestBody CashMovementRequest body) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(service.moveCash(sessionId, key, body.type(), body.amount(), body.reason()));
     }
 
@@ -39,6 +51,7 @@ public class RetailRegisterController {
     public ApiResult<RegisterClosure> close(@PathVariable Long registerId,
                                             @RequestHeader("Idempotency-Key") String key,
                                             @RequestBody CloseRequest body) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(service.close(registerId, key, body.countedCash(), body.countedTenders(), body.note()));
     }
 

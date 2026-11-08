@@ -12,7 +12,7 @@ import java.time.ZoneOffset;
  */
 public final class ParkedSalePolicy {
 
-    /** How many previous Sydney business days to keep before auto-void. */
+    /** How many previous outlet business days to keep before auto-void. */
     public static final int KEEP_PREVIOUS_DAYS = 1;
 
     private ParkedSalePolicy() {
@@ -23,7 +23,7 @@ public final class ParkedSalePolicy {
         return today.minusDays(KEEP_PREVIOUS_DAYS);
     }
 
-    /** UTC wall-clock cutoff matching {@link #expireBefore(LocalDate)} at Sydney midnight. */
+    /** UTC wall-clock cutoff matching {@link #expireBefore(LocalDate)} at outlet midnight. */
     public static LocalDateTime createdBeforeUtc(LocalDate today) {
         return expireBefore(today).atStartOfDay(AustraliaTime.ZONE)
                 .withZoneSameInstant(ZoneOffset.UTC)
@@ -36,7 +36,7 @@ public final class ParkedSalePolicy {
         return businessDate.isBefore(today) && !businessDate.isBefore(expireBefore(today));
     }
 
-    /** Sydney date on which this parked sale is voided (start of that day). */
+    /** Business date on which this parked sale is voided (start of that day). */
     public static LocalDate clearsOn(LocalDate businessDate) {
         if (businessDate == null) return null;
         return businessDate.plusDays(KEEP_PREVIOUS_DAYS + 1L);

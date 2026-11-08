@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { OdooCloseRegisterPage } from "@/components/OdooCloseRegisterPage";
+import { OrithosCloseRegisterRoute } from "@/components/OrithosCloseRegisterRoute";
 
 export default function CloseRegisterPage() {
-  return <OdooCloseRegisterPage />;
+  return <OrithosCloseRegisterRoute />;
 }
