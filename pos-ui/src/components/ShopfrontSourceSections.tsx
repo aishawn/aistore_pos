@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, RefreshCw } from "lucide-react";
 import { parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
 import { formatStoreEpoch } from "@/lib/odoo-date";
@@ -125,8 +125,22 @@ export function ShopfrontProductHistorySection() {
   </SectionFrame>;
 }
 
-export function ShopfrontSalesSummary({ from, to }: { from: string; to: string }) {
-  const state = useSourceSection("report-sales", `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, true);
+function shopfrontSalesRangeQuery(from: string, to: string) {
+  const daySpan = Math.max(1, Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) + 1);
+  return `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&size=${Math.min(600, daySpan)}`;
+}
+
+export function ShopfrontSalesSummary({ from, to, enabled = false }: { from: string; to: string; enabled?: boolean }) {
+  const state = useSourceSection("report-sales", shopfrontSalesRangeQuery(from, to), false);
+  const lastFetchRef = useRef("");
+  useEffect(() => {
+    if (!enabled) return;
+    const key = `${from}:${to}`;
+    if (lastFetchRef.current === key && state.data) return;
+    lastFetchRef.current = key;
+    if (!state.expanded) state.setExpanded(true);
+    else state.refresh();
+  }, [enabled, from, to, state.data, state.expanded]);
   const metrics = state.data ? parseShopfrontSalesReport(state.data) : null;
   const coverage = state.data?.coverage as { missing_dates?: unknown[] } | undefined;
   const missingDays = Array.isArray(coverage?.missing_dates) ? coverage.missing_dates.length : null;

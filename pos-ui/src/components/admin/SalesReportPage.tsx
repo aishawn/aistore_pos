@@ -15,7 +15,7 @@ import { ShopfrontSalesSummary } from "@/components/ShopfrontSourceSections";
 type Group = "day" | "product" | "category";
 const REPORT_COLUMNS = [{ key: "label", label: "Group" }, { key: "count", label: "Transactions or lines" }, { key: "quantity", label: "Quantity" }, { key: "amount", label: "Grouped amount" }] as const;
 type SalesReport = { company: string; currency: string; timezone: string; source: string; shopfrontSync: { fromDay: string; toDay: string; status: "completed" | "partial" | "failed"; updatedAt: string; revision: string } | null; from: string; to: string; generatedAt: string; group: Group; totalRows: number; totalAmount: number; orderGrossAmount: number; refundOrderTotal: number; refundAmount: number; refundOrderCount: number; netSalesAmount: number; reconciliationDifference: number; reconcilesToCent: boolean; orderCount: number; totalCount: number; totalQuantity: number | null; offset: number; hasNext: boolean; rows: Array<{ key: string; label: string; count: number; quantity: number | null; amount: number }> };
-function defaultDates() { const to = salesDate(new Date().toISOString(), "Australia/Adelaide"); return { from: shiftDay(to, -29), to }; }
+function defaultDates() { const to = salesDate(new Date().toISOString(), "Australia/Adelaide"); return { from: shiftDay(to, -6), to }; }
 function csvDownload(response: Response, name: string) { return response.blob().then((blob) => { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); }); }
 
 export function SalesReportPage() {
@@ -41,22 +41,22 @@ export function SalesReportPage() {
     if (offset === 0) { setReport(null); setComparisonReport(null); setComparisonError(null); }
     try {
       const params = new URLSearchParams({ from: dates.from, to: dates.to, group, offset: String(offset) });
-      const response = await fetchOdooRoute(`/api/odoo/sales-report?${params}`, { credentials: "same-origin", cache: "no-store" });
+      const compareRange = offset === 0 && comparison !== "none" ? comparisonDateRange(dates.from, dates.to, comparison) : null;
+      const mainTask = fetchOdooRoute(`/api/odoo/sales-report?${params}`, { credentials: "same-origin", cache: "no-store" });
+      const compareTask = compareRange
+        ? fetchOdooRoute(`/api/odoo/sales-report?${new URLSearchParams({ from: compareRange.from, to: compareRange.to, group })}`, { credentials: "same-origin", cache: "no-store" })
+        : null;
+      const [response, compareResponse] = await Promise.all([mainTask, compareTask]);
       const body = await readJsonApiResponse<SalesReport & { message?: string }>(response, "Sales report request");
       if (!response.ok || !Array.isArray(body.rows)) throw new Error(body.message || "Sales report is unavailable.");
       if (revision === requestRevision.current) setReport((current) => offset ? { ...body, rows: [...(current?.rows ?? []), ...body.rows] } : body);
-      if (offset === 0 && comparison !== "none") {
-        const range = comparisonDateRange(dates.from, dates.to, comparison);
-        if (range) {
-          try {
-            const compareParams = new URLSearchParams({ from: range.from, to: range.to, group });
-            const compareResponse = await fetchOdooRoute(`/api/odoo/sales-report?${compareParams}`, { credentials: "same-origin", cache: "no-store" });
-            const compareBody = await readJsonApiResponse<SalesReport & { message?: string }>(compareResponse, "Sales comparison request");
-            if (!compareResponse.ok || !Array.isArray(compareBody.rows)) throw new Error(compareBody.message || "Comparison period is unavailable.");
-            if (revision === requestRevision.current) setComparisonReport(compareBody);
-          } catch (cause) {
-            if (revision === requestRevision.current) setComparisonError(cause instanceof Error ? cause.message : "Comparison period is unavailable.");
-          }
+      if (compareResponse) {
+        try {
+          const compareBody = await readJsonApiResponse<SalesReport & { message?: string }>(compareResponse, "Sales comparison request");
+          if (!compareResponse.ok || !Array.isArray(compareBody.rows)) throw new Error(compareBody.message || "Comparison period is unavailable.");
+          if (revision === requestRevision.current) setComparisonReport(compareBody);
+        } catch (cause) {
+          if (revision === requestRevision.current) setComparisonError(cause instanceof Error ? cause.message : "Comparison period is unavailable.");
         }
       }
     } catch (cause) { if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Sales report is unavailable."); }
@@ -149,7 +149,7 @@ export function SalesReportPage() {
       <ReportColumnChooser columns={[...REPORT_COLUMNS]} selected={selectedColumns} onChange={toggleColumn} />
     </section>
     <p className="text-xs text-[var(--oh-muted)]">{report?.company ?? "—"} · {dates.from} to {dates.to} · {report?.timezone ?? "—"} · Odoo POS · prepared {report?.generatedAt ? formatStoreEpoch(Date.parse(report.generatedAt), report.timezone) : "—"}</p>
-    {report?.shopfrontSync && <ShopfrontSalesSummary from={dates.from} to={dates.to} />}
+    {report?.shopfrontSync && <ShopfrontSalesSummary from={dates.from} to={dates.to} enabled={Boolean(report) && !loading} />}
     {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
     <section aria-label="Sales report totals" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <div className="border-l-2 border-[var(--oh-primary)] bg-white px-4 py-3"><p className="text-sm text-[var(--oh-muted)]">{group === "day" ? "Positive-order amount · incl. tax" : "Grouped line amount · incl. tax"}</p><p className="mt-1 text-xl font-semibold tabular-nums">{report ? new Intl.NumberFormat("en-AU", { style: "currency", currency: report.currency }).format(report.totalAmount) : "—"}</p></div>

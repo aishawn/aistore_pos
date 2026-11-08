@@ -38,6 +38,7 @@ function policy(path: string, init?: RequestInit): number | null {
   if (url.pathname === "/api/odoo/reporting-dashboard") return url.searchParams.has("period") ? 300_000 : 30_000;
   if (["/api/odoo/dead-stock", "/api/odoo/price-suggestions", "/api/odoo/replenishment", "/api/odoo/categories", "/api/odoo/customer-groups", "/api/odoo/pricelists", "/api/odoo/pricelist-items"].includes(url.pathname)) return 300_000;
   if (["/api/odoo/purchase-orders", "/api/odoo/suppliers", "/api/odoo/transfers"].includes(url.pathname)) return 30_000;
+  if (url.pathname === "/api/odoo/sales-report" && !url.searchParams.has("export") && !url.searchParams.has("detailKey") && url.searchParams.get("refresh") !== "true") return 90_000;
   return null;
 }
 
