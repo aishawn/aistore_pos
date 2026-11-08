@@ -46,7 +46,11 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
             ensureAuditTable();
             seedPermissions();
             ensureSnapshotTable();
-            provisionTenantSchemas();
+            if (provisioner.shouldProvisionAllOnStartup()) {
+                provisionTenantSchemas();
+            } else {
+                log.info("Skipping startup provisioning of per-outlet AI report schemas; using lazy provisioning.");
+            }
         } catch (Exception e) {
             log.warn("Skipped AI report schema migration: {}", e.getMessage());
         }

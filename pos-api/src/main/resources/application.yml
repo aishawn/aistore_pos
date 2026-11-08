@@ -120,6 +120,7 @@ app:
       # Never use a source-controlled fallback for the tenant reporting account.
       password: ${AI_REPORT_RO_PASSWORD:}
       fallback-to-primary: false
+      provision-all-on-startup: ${AI_REPORT_PROVISION_ALL_ON_STARTUP:false}
       query-timeout-seconds: 5
       max-rows: 500
       queries-per-hour: ${AI_REPORT_QUOTA_QUERIES:120}

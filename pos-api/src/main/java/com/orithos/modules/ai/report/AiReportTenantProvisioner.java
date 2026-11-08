@@ -45,6 +45,10 @@ public class AiReportTenantProvisioner {
         provision(outletId);
     }
 
+    public boolean shouldProvisionAllOnStartup() {
+        return props.isProvisionAllOnStartup();
+    }
+
     public List<Long> listOutletIds() {
         List<Long> ids = new ArrayList<>();
         String sql = "SELECT id FROM outlet WHERE deleted_at IS NULL";
