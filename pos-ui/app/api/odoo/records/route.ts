@@ -317,7 +317,10 @@ export async function POST(request: NextRequest) {
   const sourceStore = type === "products"
     ? verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"))
     : null;
-  const includeSourceProducts = type === "products" && !body.inventoryReport && Boolean(sourceStore);
+  // Products and Inventory must use the same Shopfront canonical population.
+  // Odoo-only variants belong in the separate Odoo catalogue views, not in
+  // the Shopfront-backed inventory report.
+  const includeSourceProducts = type === "products" && Boolean(sourceStore);
   let shopfrontCoverage: { activeProducts: number; productsWithCost?: number; zeroCostProducts?: number; mappedProducts: number; unmappedProducts: number; ambiguousReferences: number; positiveInventoryUnits: number; negativeInventoryRows: number; inventoryProductRows: number; inventorySnapshotAt: string | null } | undefined;
   if (includeSourceProducts && sourceStore) {
     try {
