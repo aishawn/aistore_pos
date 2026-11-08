@@ -639,6 +639,8 @@ export interface CheckoutPayload {
   cashout?: number | null;
   /** Required on the first tender; omitted when continuing with saleId. */
   items?: CheckoutItem[];
+  /** Stable across network retries of the same tender attempt. */
+  idempotencyKey?: string;
 }
 
 /** Response from `POST /api/sales/checkout` (money maths computed server-side). */
@@ -666,15 +668,16 @@ export interface CheckoutResponse {
 
 /** Finalise the current cart with the chosen tender; returns the change owed. */
 export function checkoutSale(payload: CheckoutPayload): Promise<CheckoutResponse> {
+  const { idempotencyKey, ...body } = payload;
   return api.post<CheckoutResponse>("/api/sales/checkout", {
-    ...payload,
-    customerId: toOptionalLong(payload.customerId),
-    saleId: payload.saleId == null || payload.saleId === "" ? null : toOptionalLong(payload.saleId),
-    items: payload.items?.map((item) => ({
+    ...body,
+    customerId: toOptionalLong(body.customerId),
+    saleId: body.saleId == null || body.saleId === "" ? null : toOptionalLong(body.saleId),
+    items: body.items?.map((item) => ({
       ...item,
       productId: toOptionalLong(item.productId),
     })),
-  });
+  }, { headers: { "Idempotency-Key": idempotencyKey ?? crypto.randomUUID() } });
 }
 
 // ---- Sell-pad POS flows (search, park, actions) ----

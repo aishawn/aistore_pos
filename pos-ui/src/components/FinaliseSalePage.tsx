@@ -116,6 +116,7 @@ export function FinaliseSalePage() {
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
 
   const inFlight = useRef(false);
+  const paymentIdempotencyKey = useRef<string | null>(null);
 
   const accumulatedChange = useRef(0);
 
@@ -264,6 +265,7 @@ export function FinaliseSalePage() {
     inFlight.current = true;
 
     setPhase("processing");
+    if (!paymentIdempotencyKey.current) paymentIdempotencyKey.current = crypto.randomUUID();
 
     setError(null);
 
@@ -272,6 +274,8 @@ export function FinaliseSalePage() {
     try {
 
       const res = await checkoutSale({
+
+        idempotencyKey: paymentIdempotencyKey.current,
 
         tender: method.tender,
 
@@ -298,6 +302,8 @@ export function FinaliseSalePage() {
       setRemainingBalance(res.remaining);
 
       setAppliedPayments((prev) => [...prev, { method: method.label, amount: res.tendered }]);
+
+      paymentIdempotencyKey.current = null;
 
       setTenderInput("");
 
