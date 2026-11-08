@@ -115,6 +115,7 @@ export function parseShopfrontInventoryReport(payload: unknown, nowMs = Date.now
   const sellableUnits = numeric(report.sellable_units);
   const negativeStockProducts = numeric(report.negative_stock_products);
   const recordCount = numeric(report.record_count);
+  if (recordCount === null) return null;
   const coveredRecordCount = numeric(report.covered_record_count) ?? recordCount;
   const incompleteRecordCount = numeric(report.incomplete_record_count) ?? Math.max(0, recordCount - coveredRecordCount);
   const coverage = numeric(report.coverage) ?? (recordCount > 0 ? coveredRecordCount / recordCount : 0);
