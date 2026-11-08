@@ -61,6 +61,26 @@ public interface SupplierMapper {
     Supplier findByNameOrAbn(@Param("name") String name, @Param("abn") String abn);
 
     @Select("""
+        SELECT s.*
+        FROM supplier s
+        JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
+        WHERE s.deleted_at IS NULL
+          AND (
+            (#{name} IS NOT NULL AND #{name} != '' AND (
+                LOWER(TRIM(s.name)) = LOWER(TRIM(#{name}))
+                OR (CHAR_LENGTH(TRIM(#{name})) >= 4 AND LOWER(s.name) LIKE CONCAT('%', LOWER(TRIM(#{name})), '%'))
+            ))
+            OR (#{abn} IS NOT NULL AND #{abn} != ''
+                AND REPLACE(COALESCE(s.business_number, ''), ' ', '') = REPLACE(#{abn}, ' ', ''))
+          )
+        ORDER BY (LOWER(TRIM(s.name)) = LOWER(TRIM(COALESCE(#{name}, '')))) DESC, s.id
+        LIMIT 2
+        """)
+    List<Supplier> findMatchesByNameOrAbnForVendor(@Param("name") String name,
+                                                    @Param("abn") String abn,
+                                                    @Param("vendorId") Long vendorId);
+
+    @Select("""
         SELECT s.id, s.name, s.mdb_id, s.status, s.contact_id, s.business_number, s.account_number,
                s.order_notes, s.internal_order_notes, s.order_automatic_email, s.default_order_tax,
                s.email_format, s.comments, s.fee_amount, s.distribute_fees, s.distribute_freight,

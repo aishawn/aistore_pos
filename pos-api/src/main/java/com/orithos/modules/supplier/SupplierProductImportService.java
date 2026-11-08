@@ -1,10 +1,10 @@
 package com.orithos.modules.supplier;
 
 import com.orithos.common.BusinessException;
-import com.orithos.modules.product.Product;
-import com.orithos.modules.product.ProductService;
 import com.orithos.modules.supplier.mapper.SupplierProductImportMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -13,21 +13,20 @@ public class SupplierProductImportService {
 
     private final SupplierMapper supplierMapper;
     private final SupplierProductImportMapper importMapper;
-    private final ProductService productService;
-
     public SupplierProductImportService(SupplierMapper supplierMapper,
-                                        SupplierProductImportMapper importMapper,
-                                        ProductService productService) {
+                                        SupplierProductImportMapper importMapper) {
         this.supplierMapper = supplierMapper;
         this.importMapper = importMapper;
-        this.productService = productService;
     }
 
+    @Transactional
     public SupplierProductImportResult importProducts(Long supplierId, String productList) {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
         if (supplierId == null) {
             throw new BusinessException("Please select a supplier.");
         }
-        if (supplierMapper.findById(supplierId) == null) {
+        if (supplierMapper.findByIdAndVendor(supplierId, vendorId) == null) {
             throw new BusinessException("Supplier not found.");
         }
         if (productList == null || productList.isBlank()) {
@@ -42,26 +41,26 @@ public class SupplierProductImportService {
             if (code.isEmpty()) continue;
 
             try {
-                if (importMapper.countExisting(supplierId, code) > 0) {
+                importMapper.lockSupplierProductCode(vendorId, supplierId, code);
+                if (importMapper.countExisting(supplierId, code, vendorId) > 0) {
                     result.setSkipped(result.getSkipped() + 1);
                     continue;
                 }
 
-                Long productId = importMapper.findProductIdByCode(code);
+                Long productId = importMapper.findProductIdByCode(code, vendorId);
                 if (productId == null) {
-                    productId = importMapper.findProductIdByMasterReference(code);
+                    productId = importMapper.findProductIdByMasterReference(code, vendorId);
                 }
                 if (productId == null) {
-                    productId = createFromMasterDatabase(code);
+                    throw new BusinessException("No unique product match in this tenant. Create or map the product first.");
                 }
 
-                importMapper.insertLink(productId, supplierId, code);
+                if (importMapper.insertLink(productId, supplierId, code, vendorId) != 1) {
+                    throw new BusinessException("Product or supplier is no longer available in this tenant.");
+                }
                 result.setImported(result.getImported() + 1);
             } catch (BusinessException e) {
                 result.getErrors().add(new SupplierProductImportError(lineNum, e.getMessage()));
-            } catch (Exception e) {
-                result.getErrors().add(new SupplierProductImportError(
-                        lineNum, e.getMessage() != null ? e.getMessage() : "Import failed"));
             }
         }
 
@@ -69,16 +68,6 @@ public class SupplierProductImportService {
             throw new BusinessException("No supplier product codes found.");
         }
         return result;
-    }
-
-    private Long createFromMasterDatabase(String code) {
-        Product product = new Product();
-        product.setName(code);
-        product.setType("STANDARD");
-        product.setStatus("ACTIVE");
-        product.setTrackInventory(true);
-        productService.create(product);
-        return product.getId();
     }
 
     public record ImportRequest(Long supplierId, String productList) {}

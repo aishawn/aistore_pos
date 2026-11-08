@@ -216,10 +216,21 @@
     </insert>
 
     <insert id="assignSupplierProducts">
-        INSERT INTO product_supplier (product_id, supplier_id) VALUES
-        <foreach collection="ids" item="id" separator=",">
-            (#{id}, #{supplierId})
+        INSERT INTO product_supplier (product_id, supplier_id, outlet_id)
+        SELECT p.id, s.id, p.outlet_id
+        FROM product p
+        JOIN outlet po ON po.id=p.outlet_id AND po.vendor_id=#{vendorId} AND po.deleted_at IS NULL
+        JOIN supplier s ON s.id=#{supplierId} AND s.deleted_at IS NULL
+        JOIN outlet so ON so.id=s.outlet_id AND so.vendor_id=#{vendorId} AND so.deleted_at IS NULL
+        WHERE p.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
         </foreach>
+          AND p.deleted_at IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM product_supplier ps
+              WHERE ps.product_id=p.id AND ps.supplier_id=s.id AND ps.outlet_id=p.outlet_id
+          )
     </insert>
 
     <!-- Sell-pad folder browse: stem matches category or family name prefix. -->

@@ -103,10 +103,11 @@ public interface ProductMapper {
     @Insert("INSERT INTO product_supplier (product_id, supplier_id) VALUES (#{productId}, #{supplierId})")
     int insertSupplier(@Param("productId") Long productId, @Param("supplierId") Long supplierId);
 
-    @Delete("DELETE FROM product_supplier WHERE supplier_id = #{supplierId}")
-    int clearSupplierAssignment(@Param("supplierId") Long supplierId);
+    @Delete("DELETE FROM product_supplier WHERE supplier_id = #{supplierId} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int clearSupplierAssignment(@Param("supplierId") Long supplierId, @Param("vendorId") Long vendorId);
 
-    int assignSupplierProducts(@Param("supplierId") Long supplierId, @Param("ids") List<Long> ids);
+    int assignSupplierProducts(@Param("supplierId") Long supplierId, @Param("ids") List<Long> ids,
+                               @Param("vendorId") Long vendorId);
 
     @Select("SELECT id, code FROM product_barcode WHERE product_id = #{productId} ORDER BY id")
     List<ProductBarcode> findBarcodesByProductId(@Param("productId") Long productId);
@@ -219,6 +220,18 @@ public interface ProductMapper {
     @Select("SELECT * FROM product WHERE deleted_at IS NULL "
             + "AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) LIMIT 1")
     Product findActiveByName(@Param("name") String name);
+
+    @Select("""
+        SELECT p.*
+        FROM product p
+        JOIN outlet o ON o.id=p.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL AND p.status='ACTIVE'
+          AND LOWER(TRIM(p.name)) = LOWER(TRIM(#{name}))
+        ORDER BY p.id
+        LIMIT 2
+        """)
+    List<Product> findActiveByExactNameForVendor(@Param("name") String name,
+                                                  @Param("vendorId") Long vendorId);
 
     @Select("SELECT COUNT(*) FROM product "
             + "WHERE LOWER(TRIM(name)) = LOWER(TRIM(#{name})) "

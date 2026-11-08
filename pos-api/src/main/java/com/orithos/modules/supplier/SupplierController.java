@@ -71,13 +71,22 @@ public class SupplierController {
     @PutMapping("/{id}/products")
     @Transactional
     public ApiResult<Void> setProducts(@PathVariable Long id, @RequestBody AssignProductsRequest body) {
-        if (mapper.findById(id) == null) {
-            return ApiResult.ok();
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
+        if (mapper.findByIdAndVendor(id, vendorId) == null) {
+            throw new BusinessException(40410, "Supplier not found.");
         }
-        productMapper.clearSupplierAssignment(id);
-        List<Long> ids = body != null && body.productIds() != null ? body.productIds() : List.of();
+        List<Long> ids = body != null && body.productIds() != null
+                ? body.productIds().stream().distinct().toList() : List.of();
+        if (ids.contains(null)) throw new BusinessException("Product ids cannot contain null values.");
+        for (Long productId : ids) {
+            if (productMapper.findByIdAndVendor(productId, vendorId) == null) {
+                throw new BusinessException(40410, "Product not found.");
+            }
+        }
+        productMapper.clearSupplierAssignment(id, vendorId);
         if (!ids.isEmpty()) {
-            productMapper.assignSupplierProducts(id, ids);
+            productMapper.assignSupplierProducts(id, ids, vendorId);
         }
         return ApiResult.ok();
     }

@@ -77,7 +77,7 @@ public class InvoiceScanService {
         if (request == null) {
             throw new BusinessException("Request body is required.");
         }
-        Long toId = resolveOutletId(request.getToId());
+        Long toId = resolveOutletId(request.getToId(), CurrentUser.vendorId());
         Long supplierId = resolveOrCreateSupplier(request);
         List<ReceiveLineRequest> lines = new ArrayList<>();
         if (request.getLines() != null) {
@@ -105,19 +105,22 @@ public class InvoiceScanService {
     }
 
     InvoiceScanResponse toResponse(TaxInvoiceRead read) {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
         InvoiceScanResponse response = new InvoiceScanResponse();
         String supplierName = trimToNull(read.supplierName());
         String abn = trimToNull(read.abn());
-        Supplier matched = null;
-        if (supplierName != null || abn != null) {
-            matched = supplierMapper.findByNameOrAbn(supplierName, digits(abn));
-        }
+        List<Supplier> supplierMatches = supplierName == null && abn == null ? List.of()
+                : supplierMapper.findMatchesByNameOrAbnForVendor(supplierName, digits(abn), vendorId);
+        Supplier matched = supplierMatches != null && supplierMatches.size() == 1
+                ? supplierMatches.getFirst() : null;
         response.setSupplierId(matched == null ? null : matched.getId());
         response.setSupplierName(supplierName);
         response.setSupplierAbn(abn);
         response.setSupplierWebsite(trimToNull(read.website()));
-        response.setCreateSupplier(matched == null && supplierName != null);
-        response.setToId(resolveOutletId(null));
+        response.setCreateSupplier(matched == null && supplierName != null
+                && supplierMatches != null && supplierMatches.isEmpty());
+        response.setToId(resolveOutletId(null, vendorId));
         response.setInvoiceNumber(trimToNull(read.invoiceNumber()));
         response.setInvoiceDate(read.invoiceDate());
         response.setCustomerName(trimToNull(read.customerName()));
@@ -137,7 +140,8 @@ public class InvoiceScanService {
                 if (src == null || !StringUtils.hasText(src.description())) continue;
                 InvoiceScanLine line = new InvoiceScanLine();
                 String description = src.description().trim();
-                Product product = productMapper.findActiveByName(description);
+                List<Product> matches = productMapper.findActiveByExactNameForVendor(description, vendorId);
+                Product product = matches != null && matches.size() == 1 ? matches.getFirst() : null;
                 line.setProductId(product == null ? null : product.getId());
                 line.setDescription(description);
                 line.setBrand(trimToNull(src.brand()));
@@ -145,7 +149,7 @@ public class InvoiceScanService {
                 line.setQtyCases(src.qtyCases());
                 line.setUnitPrice(src.unitPrice());
                 line.setLineTotal(src.lineTotal());
-                line.setCreateProduct(product == null);
+                line.setCreateProduct(matches == null || matches.isEmpty());
                 lines.add(line);
             }
         }
@@ -155,14 +159,18 @@ public class InvoiceScanService {
 
     private Long resolveOrCreateSupplier(InvoiceScanResponse request) {
         if (request.getSupplierId() != null) {
-            if (supplierMapper.findById(request.getSupplierId()) == null) {
+            Long vendorId = CurrentUser.vendorId();
+            if (vendorId == null || supplierMapper.findByIdAndVendor(request.getSupplierId(), vendorId) == null) {
                 throw new BusinessException("Supplier not found.");
             }
             return request.getSupplierId();
         }
         String name = trimToNull(request.getSupplierName());
         String abn = trimToNull(request.getSupplierAbn());
-        Supplier existing = supplierMapper.findByNameOrAbn(name, digits(abn));
+        Long vendorId = CurrentUser.vendorId();
+        List<Supplier> matches = vendorId == null ? List.of()
+                : supplierMapper.findMatchesByNameOrAbnForVendor(name, digits(abn), vendorId);
+        Supplier existing = matches != null && matches.size() == 1 ? matches.getFirst() : null;
         if (existing != null) {
             return existing.getId();
         }
@@ -183,7 +191,10 @@ public class InvoiceScanService {
         String description = trimToNull(line.getDescription());
         Long productId = line.getProductId();
         if (productId == null && description != null) {
-            Product existing = productMapper.findActiveByName(description);
+            Long vendorId = CurrentUser.vendorId();
+            List<Product> matches = vendorId == null ? List.of()
+                    : productMapper.findActiveByExactNameForVendor(description, vendorId);
+            Product existing = matches != null && matches.size() == 1 ? matches.getFirst() : null;
             if (existing != null) {
                 productId = existing.getId();
             } else if (line.isCreateProduct()) {
@@ -215,20 +226,21 @@ public class InvoiceScanService {
         return row;
     }
 
-    private Long resolveOutletId(Long requested) {
+    private Long resolveOutletId(Long requested, Long vendorId) {
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
         if (requested != null) {
-            if (outletMapper.findById(requested) == null) {
+            if (outletMapper.findByIdAndVendor(requested, vendorId) == null) {
                 throw new BusinessException("Destination outlet not found.");
             }
             return requested;
         }
         Long current = CurrentUser.outletId();
-        if (current != null && outletMapper.findById(current) != null) {
+        if (current != null && outletMapper.findByIdAndVendor(current, vendorId) != null) {
             return current;
         }
-        List<Outlet> outlets = outletMapper.findAll();
-        if (outlets == null || outlets.isEmpty()) {
-            throw new BusinessException("Destination outlet is required.");
+        List<Outlet> outlets = outletMapper.findByVendorId(vendorId);
+        if (outlets == null || outlets.size() != 1) {
+            throw new BusinessException("A destination outlet must be selected for this tenant.");
         }
         return outlets.get(0).getId();
     }
