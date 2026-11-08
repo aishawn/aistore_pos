@@ -26,6 +26,7 @@ function policy(path: string, init?: RequestInit): number | null {
   if (method === "POST" && url.pathname === "/api/odoo/records") {
     try {
       const body = JSON.parse(String(init?.body));
+      if (body.refresh === true && body.type === "products" && !body.inventoryReport) return 0;
       if (body.inventoryReport) return null; // The server's immutable inventory snapshot owns pagination.
       return ["sales", "customers", "suppliers", "products", "purchaseProducts"].includes(body.type) ? 30_000 : null;
     } catch { return null; }
@@ -52,6 +53,16 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
     const ordinaryKey = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, requested.pathname + requested.search, init?.method ?? "GET", init?.body ?? null]);
     entries.delete(ordinaryKey);
     flights.get(ordinaryKey)?.controller.abort();
+  } else if ((init?.method?.toUpperCase() ?? "GET") === "POST" && requested.pathname === "/api/odoo/records") {
+    try {
+      const body = JSON.parse(String(init?.body));
+      if (body.type === "products" && body.refresh === true && !body.inventoryReport) {
+        delete body.refresh;
+        const ordinaryKey = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, requested.pathname + requested.search, init?.method ?? "GET", JSON.stringify(body)]);
+        entries.delete(ordinaryKey);
+        flights.get(ordinaryKey)?.controller.abort();
+      }
+    } catch { /* The route validates malformed request bodies. */ }
   }
   const key = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, path, init?.method ?? "GET", init?.body ?? null]);
   if (init?.signal?.aborted) throw abortError();

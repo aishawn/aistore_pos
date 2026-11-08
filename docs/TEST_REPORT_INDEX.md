@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest product catalogue read-cache candidate (`2026-11-08`): scoped 30-second cache, request coalescing, refresh and revision invalidation are implemented; targeted Node 24 checks pass 13/13. Full typecheck and live timing/deployment remain unverified because the local frontend dependency install is incomplete. [Session](test-sessions/2026-11-08-product-catalogue-read-cache.md) [Validation](project/features/reporting/validation.md) [Progress](project/features/reporting/progress.md).
+
 Latest Shopfront inventory summary recovery (`2026-11-08`): `9dc1f9a7` deployed on SKR and Demo. Live SKR shows the always-visible mirror coverage: 10,849 active/mapped/inventory-covered products, 50,914 positive units, 9,993 products with non-zero source cost, and 856 source-reported zero-cost products. Typecheck pass, focused ESLint 0 errors, UI unit suite 202/202 pass. [Session](test-sessions/2026-11-08-shopfront-inventory-summary-recovery.md) [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
 
 Latest Shopfront inventory viewport correction (`2026-11-08`): Inventory now defaults to Shopfront stock descending. Authenticated SKR verification returned 50,914 positive source units, 0 quantity mismatches, and non-zero source costs on stock-ranked rows; the earlier all-zero first page was name-sorted gift-card/recharge inventory. [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).

@@ -2,6 +2,12 @@
 
 Updated: 2026-11-07. Owner: TBD.
 
+## Product catalogue read latency (2026-11-08)
+
+- Ordinary `/api/odoo/records` product pages now use the existing Redis-backed scoped read cache with a 30-second TTL and request coalescing. Cache identity includes host, authenticated Odoo/access session, tenant/company, sample-data revision, permission-derived cost visibility and all query/pagination parameters. Inventory report pages and their immutable snapshots bypass this cache.
+- Explicit product refresh bypasses both browser and server cache. Existing successful-write report revision invalidation and Shopfront sync revision changes make prior catalog entries unreachable. Responses expose `generatedAt`, `cacheStatus`, `requestId`, `X-Correlation-ID`, `X-Cache-Status` and total `Server-Timing`; the catalogue shows its generated time.
+- Node 24 targeted report/cache and catalogue-domain checks pass 13/13; modified TypeScript sources pass syntax transpilation and `git diff --check`. Full typecheck is blocked in this checkout because `npm ci` could not obtain Next.js and other packages. Authenticated SKR/Demo browser P50/P95 and running SHA have not been remeasured; deployment status is pending. No business data was written.
+
 ## Cost audit gateway timeout (2026-11-07)
 
 - Authenticated SKR read-only reproduction on runtime `d814f135`: the default 30-day cost audit returned HTTP 502 after 30.2 seconds (the UI reported an HTML error page); the same endpoint limited to one completed business day returned HTTP 200 in 13.8 seconds (20 products, 27 sales lines). This confirms the long synchronous capture exceeded the gateway response window; no business records were written.

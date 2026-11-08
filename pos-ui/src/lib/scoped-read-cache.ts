@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { reportRedis, snapshotRevision } from "./report-snapshots";
+import { reportRedis, snapshotRevision } from "./report-snapshots.ts";
 import type { TenantOdooBinding } from "./odoo-tenant-company";
 
 const values = new Map<string, { expires: number; body: unknown }>();
@@ -10,8 +10,11 @@ const LOCAL_READ_TTL_MS = 5 * 60 * 1000;
 
 type ScopedReadCacheOptions = {
   persistentTtlMs?: number;
+  localTtlMs?: number;
   maxPersistentBytes?: number;
   identityScope?: string | number;
+  force?: boolean;
+  shouldCache?: (value: unknown) => boolean;
   onCacheHit?: () => void;
 };
 
@@ -24,7 +27,7 @@ export async function scopedReadCache<T>(request: NextRequest, binding: TenantOd
     : ["verified-identity", options.identityScope];
   const key = createHash("sha256").update(JSON.stringify([process.env.ODOO_DATABASE, host, identity,
     binding.vendorId, binding.odooCompanyId, binding.sampleDataClearedAt, parameters, revision])).digest("hex");
-  const force = request.nextUrl.searchParams.get("refresh") === "true" || request.nextUrl.searchParams.get("validateSales") === "true";
+  const force = options.force === true || request.nextUrl.searchParams.get("refresh") === "true" || request.nextUrl.searchParams.get("validateSales") === "true";
   const old = values.get(key);
   if (!force && old && old.expires > Date.now()) {
     options.onCacheHit?.();
@@ -37,7 +40,7 @@ export async function scopedReadCache<T>(request: NextRequest, binding: TenantOd
       if (serialized) {
         const cached = JSON.parse(serialized) as T;
         if (values.size >= 128) values.delete(values.keys().next().value!);
-        values.set(key, { body: cached, expires: Date.now() + LOCAL_READ_TTL_MS });
+        values.set(key, { body: cached, expires: Date.now() + (options.localTtlMs ?? LOCAL_READ_TTL_MS) });
         options.onCacheHit?.();
         return cached;
       }
@@ -48,9 +51,9 @@ export async function scopedReadCache<T>(request: NextRequest, binding: TenantOd
   let flight = pending.get(key);
   if (!flight) {
     flight = run().then(async body => {
-      if (values.size >= 128) values.delete(values.keys().next().value!);
-      const canCache = request.nextUrl.searchParams.get("validateSales") !== "true";
-      if (canCache) values.set(key, { body, expires: Date.now() + LOCAL_READ_TTL_MS });
+      const canCache = request.nextUrl.searchParams.get("validateSales") !== "true" && (options.shouldCache?.(body) ?? true);
+      if (canCache && values.size >= 128) values.delete(values.keys().next().value!);
+      if (canCache) values.set(key, { body, expires: Date.now() + (options.localTtlMs ?? LOCAL_READ_TTL_MS) });
       if (canCache && options.persistentTtlMs) {
         try {
           const redis = await reportRedis();

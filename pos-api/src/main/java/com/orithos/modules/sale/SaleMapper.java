@@ -87,7 +87,7 @@ public interface SaleMapper {
                                     @Param("sourceId") Long sourceId, @Param("sourceLineId") Long sourceLineId,
                                     @Param("idempotencyKey") String idempotencyKey, @Param("actorId") Long actorId);
 
-    @Select("SELECT pg_advisory_xact_lock(hashtextextended(CAST(#{vendorId} AS TEXT) || ':' || #{key}, 0))")
+    @Select("SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(CAST(#{vendorId} AS TEXT) || ':' || #{key}, 0))) lock_result")
     Integer lockCheckoutKey(@Param("vendorId") Long vendorId, @Param("key") String key);
 
     @Select("SELECT request_hash FROM sale_checkout_idempotency WHERE vendor_id=#{vendorId} AND idempotency_key=#{key}")

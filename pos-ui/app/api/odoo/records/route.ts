@@ -3,16 +3,17 @@ import { canReadBalances, companyDomain } from "@/lib/customer-access";
 import { categoryScope, categoryDomain, categoryError, validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
-import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
+import { fetchTenantOdooBinding, odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
 import { catalogueDomain } from "@/lib/product-catalogue";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
 import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot, type InventoryShopfrontCoverage } from "@/lib/inventory-snapshot";
 import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, shopfrontInventoryBySource, shopfrontTrackInventory, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
+import { scopedReadCache } from "@/lib/scoped-read-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -220,7 +221,7 @@ function getOdooBaseUrl() {
   return value;
 }
 
-export async function POST(request: NextRequest) {
+async function handleRecords(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   }
@@ -881,4 +882,66 @@ export async function POST(request: NextRequest) {
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
+}
+
+type CachedRecordsResponse = { status: number; body: Record<string, unknown> };
+
+export async function POST(request: NextRequest) {
+  const startedAt = performance.now();
+  const correlationId = request.headers.get("x-correlation-id") || randomUUID();
+  let body: { type?: string; inventoryReport?: boolean; refresh?: boolean; [key: string]: unknown };
+  try { body = await request.clone().json(); }
+  catch { return handleRecords(request); }
+
+  if (body.type !== "products" || body.inventoryReport === true || !isSameOrigin(request)
+    || !request.cookies.get(SESSION_COOKIE)?.value) return handleRecords(request);
+
+  const headersWithCorrelation = new Headers(request.headers);
+  headersWithCorrelation.set("x-correlation-id", correlationId);
+  const tracedRequest = new NextRequest(request.clone(), { headers: headersWithCorrelation });
+
+  let viewer: Awaited<ReturnType<typeof requirePermission>>;
+  let binding: Awaited<ReturnType<typeof fetchTenantOdooBinding>>;
+  try {
+    viewer = await requirePermission(tracedRequest, "stock.products.view");
+    binding = await fetchTenantOdooBinding(tracedRequest);
+  } catch {
+    return handleRecords(tracedRequest);
+  }
+  if (!binding?.odooCompanyId) return handleRecords(tracedRequest);
+
+  let cacheHit = false;
+  const { refresh: _refresh, ...cacheParameters } = body;
+  const result = await scopedReadCache<CachedRecordsResponse>(tracedRequest, binding, {
+    ...cacheParameters,
+    canReadProductCost: canReadBalances(viewer),
+  }, async () => {
+    const response = await handleRecords(tracedRequest);
+    const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+    if (response.ok && Array.isArray(payload.items)) payload.generatedAt ??= new Date().toISOString();
+    return { status: response.status, body: payload };
+  }, {
+    localTtlMs: 30_000,
+    persistentTtlMs: 30_000,
+    maxPersistentBytes: 4 * 1024 * 1024,
+    force: body.refresh === true,
+    shouldCache: (value) => {
+      const cached = value as CachedRecordsResponse;
+      return cached.status === 200 && Array.isArray(cached.body?.items);
+    },
+    onCacheHit: () => { cacheHit = true; },
+  });
+
+  const cacheStatus = cacheHit ? "HIT" : "MISS";
+
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "X-Cache-Status": cacheStatus,
+    "X-Correlation-ID": correlationId,
+    "Server-Timing": `app;dur=${Math.max(0, performance.now() - startedAt).toFixed(1)}`,
+  });
+  if (result.status === 200 && Array.isArray(result.body.items)) {
+    return NextResponse.json({ ...result.body, cacheStatus, requestId: correlationId }, { status: result.status, headers });
+  }
+  return NextResponse.json(result.body, { status: result.status, headers });
 }

@@ -459,12 +459,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         catalogueView,
         ...(inventoryReport ? {
           inventoryReport: true,
-          refresh: forceRefresh,
           sortBy,
           sortDirection,
           inventoryFilter,
           snapshotId: append ? snapshotId.current : undefined,
         } : {}),
+        refresh: forceRefresh,
       });
       if (revision !== requestRevision.current) return;
       if (inventoryReport && (!page.snapshotId || !page.generatedAt || typeof page.totalItems !== "number" || page.totalQty === undefined || page.totalStockValue === undefined || (page.hasNext && page.items.length === 0))) {
@@ -476,7 +476,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, negativeStockItems: page.negativeStockItems ?? 0, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
       setShopfrontCoverage(page.shopfrontCoverage ?? null);
       setHasNext(page.hasNext === true);
-      if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : null);
+      if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) {
         setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
@@ -730,6 +730,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Active, saleable Odoo variants and on-hand inventory for this company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
+          {!inventoryReport && lastLoadedAt !== null && <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Catalogue updated {formatStoreEpoch(lastLoadedAt, storeTimezone)}</p>}
           {tab === "catalogue" && showImportDisplayNote && (
             <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
               Legacy import prefixes are hidden in the list; source SKUs remain available for reconciliation.

@@ -40,6 +40,8 @@ export interface OdooDailySalesPage {
 
 export interface OdooPage<T> {
   generatedAt?: string;
+  cacheStatus?: "HIT" | "MISS";
+  requestId?: string;
   items: T[];
   limit: number;
   offset: number;

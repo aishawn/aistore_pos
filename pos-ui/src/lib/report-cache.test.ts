@@ -4,6 +4,9 @@ import { getReportPeriodBounds } from "./report-period.ts";
 import { snapshotKey, snapshotFresh, reportScheduleDue, reportTargets, digest, summarizeShopfrontSyncDays, type ReportScope, type ReportSnapshot, type ShopfrontSyncState } from "./report-snapshots.ts";
 import { cachedOdooRead, cachedReadPolicy, clearOdooReadCache, setOdooReadIdentity } from "./odoo-read-cache.ts";
 import { calculateReport, type ReportRpc } from "./report-data.ts";
+import type { NextRequest } from "next/server";
+import { scopedReadCache } from "./scoped-read-cache.ts";
+import { invalidateReportTarget } from "./report-snapshots.ts";
 
 const scope: ReportScope = { vendorId: 1, companyId: 41, host: "demo.fixture.invalid", database: "fixture", timezone: "Australia/Adelaide", sampleDataClearedAt: null, uid: 17, permissionScope: "company-admin" };
 const now = new Date("2026-11-03T00:00:00Z");
@@ -67,6 +70,7 @@ test("Shopfront completeness is evaluated per requested business day and exposes
 test("only whitelisted reads are cached; financial validation and immutable pagination remain live", () => {
   for (const path of ["/api/odoo/checkout/quote", "/api/odoo/checkout/status", "/api/odoo/customer-balances", "/api/odoo/sales/5"]) assert.equal(cachedReadPolicy(path), null);
   assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", inventoryReport: true }) }), null);
+  assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", refresh: true }) }), 0);
   assert.equal(cachedReadPolicy("/api/odoo/purchase-orders"), 30_000);
   assert.equal(cachedReadPolicy("/api/odoo/sales-daily", { method: "POST", body: JSON.stringify({ offset: 40 }) }), 30_000);
   assert.equal(cachedReadPolicy("/api/odoo/customer-groups"), 300_000);
@@ -86,6 +90,91 @@ test("read cache coalesces requests, isolates parameters and identity, and force
   setOdooReadIdentity("user-two");
   await cachedOdooRead(path, undefined, read); assert.equal(calls, 5);
   clearOdooReadCache();
+});
+
+test("forced product refresh evicts the ordinary browser entry", async () => {
+  setOdooReadIdentity("product-refresh-user");
+  let calls = 0;
+  const read = () => { calls++; return Promise.resolve(Response.json({ items: [calls] })); };
+  const path = "/api/odoo/records";
+  const body = JSON.stringify({ type: "products", query: "lager", limit: 100, offset: 0 });
+  await cachedOdooRead(path, { method: "POST", body }, read);
+  await cachedOdooRead(path, { method: "POST", body: JSON.stringify({ type: "products", query: "lager", limit: 100, offset: 0, refresh: true }) }, read);
+  await cachedOdooRead(path, { method: "POST", body }, read);
+  assert.equal(calls, 3, "the request after refresh must not restore the pre-refresh browser response");
+  clearOdooReadCache();
+});
+
+test("server scoped read cache coalesces, isolates, force refreshes, and follows tenant revisions", async () => {
+  const previousRedisUrl = process.env.REPORT_REDIS_URL;
+  process.env.REPORT_REDIS_URL = "";
+  try {
+    const binding = {
+      vendorId: 9182,
+      subdomain: "skr-cache-fixture",
+      odooCompanyId: 9183,
+      odooPosConfigId: null,
+      odooWarehouseId: null,
+      odooStockLocationId: null,
+      odooProvisionStatus: "ready",
+      odooProvisionError: null,
+      r2Prefix: null,
+      sampleDataClearedAt: null,
+    };
+    const request = (session: string) => ({
+      headers: new Headers({ host: "skr-cache-fixture.invalid" }),
+      cookies: { get: (name: string) => name === "orithos_odoo_session" ? { value: session } : name === "orithos_access_token" ? { value: `access-${session}` } : undefined },
+      nextUrl: new URL("https://skr-cache-fixture.invalid/api/odoo/records"),
+    }) as unknown as NextRequest;
+    const parameters = { type: "products", query: "red wine", limit: 100, offset: 0 };
+    const options = { localTtlMs: 30_000, persistentTtlMs: 0 };
+    let calls = 0;
+    let release!: (value: { items: number[] }) => void;
+    const first = scopedReadCache(request("one"), binding, parameters, () => {
+      calls++;
+      return new Promise<{ items: number[] }>(resolve => { release = resolve; });
+    }, { ...options, onCoalesced: () => { coalesced++; } });
+    const concurrent = scopedReadCache(request("one"), binding, parameters, async () => {
+      calls++;
+      return { items: [99] };
+    }, options);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(calls, 1);
+    release({ items: [1] });
+    assert.deepEqual(await first, { items: [1] });
+    assert.deepEqual(await concurrent, { items: [1] });
+
+    let cacheHit = false;
+    assert.deepEqual(await scopedReadCache(request("one"), binding, parameters, async () => {
+      calls++;
+      return { items: [2] };
+    }, { ...options, onCacheHit: () => { cacheHit = true; } }), { items: [1] });
+    assert.equal(cacheHit, true);
+    assert.equal(calls, 1);
+
+    await scopedReadCache(request("two"), binding, parameters, async () => {
+      calls++;
+      return { items: [3] };
+    }, options);
+    assert.equal(calls, 2, "another authenticated session has an isolated cache entry");
+
+    await scopedReadCache(request("one"), binding, parameters, async () => {
+      calls++;
+      return { items: [4] };
+    }, { ...options, force: true });
+    assert.equal(calls, 3, "manual refresh bypasses the old value and replaces it");
+
+    await invalidateReportTarget({ database: process.env.ODOO_DATABASE || "unconfigured", vendorId: binding.vendorId,
+      companyId: binding.odooCompanyId!, host: "skr-cache-fixture.invalid", timezone: "UTC", sampleDataClearedAt: null });
+    await scopedReadCache(request("one"), binding, parameters, async () => {
+      calls++;
+      return { items: [5] };
+    }, options);
+    assert.equal(calls, 4, "a tenant revision change makes prior catalog data unreachable");
+  } finally {
+    if (previousRedisUrl === undefined) delete process.env.REPORT_REDIS_URL;
+    else process.env.REPORT_REDIS_URL = previousRedisUrl;
+  }
 });
 
 test("one cancelled subscriber does not abort another, and invalidation rejects obsolete responses", async () => {
