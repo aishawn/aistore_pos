@@ -589,7 +589,7 @@ export async function POST(request: NextRequest) {
             if (sourceIds.length) {
               enrichmentStep = "source products";
               const sourceProducts = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id"], limit: sourceIds.length, context: companyContext });
-              const sourceDetails = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
+              const sourceDetails = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; source_status?: string | false; track_inventory?: boolean; raw_payload?: unknown; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "source_status", "track_inventory", "raw_payload", "synced_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               const sourcePricing = await odooRpc<Array<{ source_id: string; case_quantity?: number; price?: number | false; prices?: unknown }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "case_quantity", "price", "prices"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               let sourceCosts: Array<{ source_id: string; cost?: number | false }> = [];
               let sourceCostsAvailable = false;
@@ -649,6 +649,25 @@ export async function POST(request: NextRequest) {
                 product.shopfront_source_sku = sourceDetail?.sku ?? null;
                 product.shopfront_source_category = sourceDetail?.category ?? null;
                 product.shopfront_source_status = sourceDetail?.source_status ?? null;
+                product.shopfront_track_inventory = typeof sourceDetail?.track_inventory === "boolean" ? sourceDetail.track_inventory : null;
+                const sourcePayload = sourceDetail?.raw_payload && typeof sourceDetail.raw_payload === "object" && !Array.isArray(sourceDetail.raw_payload)
+                  ? sourceDetail.raw_payload as Record<string, unknown>
+                  : {};
+                const sourceRetailTax = sourcePayload.taxRate ?? sourcePayload.tax_rate;
+                const sourcePurchaseTax = sourcePayload.costTaxRate ?? sourcePayload.cost_tax_rate;
+                const taxName = (rate: unknown, fallbackName: unknown, rateKeys: string[], nameKeys: string[]) => {
+                  if (typeof rate === "string" && rate.trim()) return rate.trim();
+                  if (rate && typeof rate === "object" && !Array.isArray(rate)) {
+                    const name = (rate as { name?: unknown }).name;
+                    return typeof name === "string" && name.trim() ? name.trim() : null;
+                  }
+                  if (typeof fallbackName === "string" && fallbackName.trim()) return fallbackName.trim();
+                  const rateIsInherited = rateKeys.some((key) => Object.prototype.hasOwnProperty.call(sourcePayload, key) && (sourcePayload[key] === null || sourcePayload[key] === false));
+                  const nameIsInherited = nameKeys.some((key) => Object.prototype.hasOwnProperty.call(sourcePayload, key) && (sourcePayload[key] === null || sourcePayload[key] === false || sourcePayload[key] === ""));
+                  return rateIsInherited || nameIsInherited ? "Inherit" : null;
+                };
+                product.shopfront_retail_tax_rate = taxName(sourceRetailTax, sourcePayload.tax_rate_name, ["taxRate", "tax_rate"], ["tax_rate_name"]);
+                product.shopfront_purchase_tax_rate = taxName(sourcePurchaseTax, sourcePayload.cost_tax_rate_name, ["costTaxRate", "cost_tax_rate"], ["cost_tax_rate_name"]);
                 product.shopfront_price = typeof sourcePrice?.price === "number" && Number.isFinite(sourcePrice.price) ? sourcePrice.price : null;
                 product.shopfront_price_tiers = Array.isArray(sourcePrice?.prices) ? sourcePrice.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
                 product.shopfront_quantity = typeof sourceStock?.quantity === "number" && Number.isFinite(sourceStock.quantity) ? sourceStock.quantity : null;
@@ -706,6 +725,9 @@ export async function POST(request: NextRequest) {
               product.shopfront_source_sku = null;
               product.shopfront_source_category = null;
               product.shopfront_source_status = null;
+              product.shopfront_track_inventory = null;
+              product.shopfront_retail_tax_rate = null;
+              product.shopfront_purchase_tax_rate = null;
               product.shopfront_price = null;
               product.shopfront_price_tiers = [];
               product.shopfront_quantity = null;

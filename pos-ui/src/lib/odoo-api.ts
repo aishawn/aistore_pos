@@ -94,7 +94,10 @@ export interface OdooProductRecord {
   shopfront_source_sku?: string | false | null;
   shopfront_source_category?: string | false | null;
   shopfront_source_status?: string | false | null;
-  shopfront_price_tiers?: Array<{ quantity?: number; price?: number }>;
+  shopfront_track_inventory?: boolean | null;
+  shopfront_retail_tax_rate?: string | null;
+  shopfront_purchase_tax_rate?: string | null;
+  shopfront_price_tiers?: Array<{ quantity?: number; price?: number; priceEx?: number; price_ex?: number }>;
   shopfront_legacy_duplicate?: boolean;
   performance_30d?: number[] | null;
   performance_source?: "Shopfront" | "Odoo";
