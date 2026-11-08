@@ -362,6 +362,49 @@ async def test_push_pos_snapshot_returns_batch_and_response_summary(db_session, 
 
 
 @pytest.mark.asyncio
+async def test_push_pos_snapshot_bounds_sales_batches_and_advances_by_committed_count(db_session, monkeypatch):
+    seed_snapshot(db_session)
+    db_session.add_all([
+        Sale(store_key="skr", shopfront_sale_id=f"sale-{index}",
+             created_at=datetime(2026, 10, 26, hour=index), total_price=Decimal("12.99"))
+        for index in (2, 3)
+    ])
+    db_session.commit()
+    monkeypatch.setattr(main.settings, "pos_sales_import_batch_size", 2)
+    monkeypatch.setattr(main.settings, "pos_api_mirror_base_url", "")
+    monkeypatch.setattr(main.settings, "pos_api_mirror_token", "")
+
+    class FakePosClient:
+        batch_sizes = []
+
+        def __init__(self, *args):
+            pass
+
+        async def upsert_products(self, payload):
+            return {"data": {"upserted": len(payload["items"])}}
+
+        async def replace_inventory(self, payload):
+            return {"data": {"replaced": len(payload["items"])}}
+
+        async def upsert_sales(self, payload):
+            self.batch_sizes.append(len(payload["items"]))
+            return {"data": {"upserted": len(payload["items"])}}
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(main, "OrithosClient", FakePosClient)
+
+    result = await main.push_pos_snapshot(db_session, "skr")
+
+    assert result["status"] == "completed"
+    assert result["sales_imported"] == 3
+    assert result["sale_batches"] == 2
+    assert result["target_sale_batches"] == {"primary": 2}
+    assert FakePosClient.batch_sizes == [2, 1]
+
+
+@pytest.mark.asyncio
 async def test_sales_reconcile_does_not_require_formal_order_receipt(db_session, monkeypatch):
     seed_snapshot(db_session)
 

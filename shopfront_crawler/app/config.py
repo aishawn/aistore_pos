@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     # Keep the crawler-to-POS mirror enabled by default. Formal Odoo business
     # writes remain separately gated below.
     pos_import_enabled: bool = True
+    # Bound POS sales transactions so one slow or malformed range does not
+    # hold an oversized import transaction open.
+    pos_sales_import_batch_size: int = 50
     # Historical compensation can re-read unchanged sales to validate report
     # counts. Once a catalog snapshot has been mirrored, re-sending every
     # product referenced by those unchanged sales adds latency without

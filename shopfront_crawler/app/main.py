@@ -3050,9 +3050,10 @@ async def push_pos_snapshot(
         sale_batches = 0
         odoo_batches = 0
         target_sale_batches = {target_name: 0 for target_name in clients}
+        sales_batch_size = max(1, min(250, int(settings.pos_sales_import_batch_size)))
         offset = max(0, int(sales_offset or 0))
         while include_sales and offset < total_sales:
-            sales = db.scalars(sales_query.offset(offset).limit(250)).all()
+            sales = db.scalars(sales_query.offset(offset).limit(sales_batch_size)).all()
             if not sales:
                 break
             items = [sale_payload(sale) for sale in sales]
