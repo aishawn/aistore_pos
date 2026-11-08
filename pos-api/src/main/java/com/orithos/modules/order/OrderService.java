@@ -37,6 +37,7 @@ public class OrderService {
 
     /** Paginated order search for the Orders page Filter action. */
     public PageResult<Order> search(OrderListQuery query) {
+        if (query.getVendorId() == null) throw new BusinessException(40310, "Tenant context is required.");
         query.normalize();
         var items = orderMapper.page(query);
         long total = orderMapper.count(query);
@@ -52,6 +53,7 @@ public class OrderService {
         order.setStatus("OPEN");
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
+        order.setOutletId(request.getToId());
         order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now());
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getInvoiceNumber().trim());
@@ -76,6 +78,7 @@ public class OrderService {
         order.setStatus("OPEN");
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
+        order.setOutletId(request.getFromId());
         order.setOrderDate(request.getTransferDate() != null ? request.getTransferDate() : LocalDate.now());
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getTransferNumber().trim());
@@ -100,6 +103,7 @@ public class OrderService {
         order.setStatus("RECEIVED");
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
+        order.setOutletId(request.getToId());
         order.setOrderDate(request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDate.now());
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(trimToNull(request.getInvoiceNumber()));
@@ -116,9 +120,9 @@ public class OrderService {
         orderMapper.insert(order);
         Long userId = CurrentUser.id();
         if (userId != null) {
-            orderMapper.setReceivedMeta(order.getId(), userId);
+            orderMapper.setReceivedMeta(order.getId(), userId, requireVendorId());
         } else {
-            orderMapper.markReceived(order.getId());
+            orderMapper.markReceived(order.getId(), requireVendorId());
         }
         persistReceiveLines(order.getId(), request.getFromId(), request.getToId(), request.getProducts());
         Order saved = orderMapper.findById(order.getId());
@@ -135,6 +139,7 @@ public class OrderService {
         order.setStatus("OPEN");
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
+        order.setOutletId(request.getFromId());
         order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now());
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(trimToNull(request.getOrderNumber()));
@@ -159,6 +164,7 @@ public class OrderService {
         order.setStatus("OPEN");
         order.setFromId(request.getFromId());
         order.setToId(request.getToId());
+        order.setOutletId(request.getToId());
         order.setOrderDate(request.getCreditNoteDate() != null ? request.getCreditNoteDate() : LocalDate.now());
         order.setDueDate(request.getDueDate());
         order.setInvoiceNumber(request.getCreditNoteNumber().trim());
@@ -181,20 +187,20 @@ public class OrderService {
         if (request.getFromId() == null) {
             throw new BusinessException("Supplier is required.");
         }
-        if (supplierMapper.findById(request.getFromId()) == null) {
+        if (supplierMapper.findByIdAndVendor(request.getFromId(), requireVendorId()) == null) {
             throw new BusinessException("Supplier not found.");
         }
         if (request.getToId() == null) {
             throw new BusinessException("Destination outlet is required.");
         }
-        if (outletMapper.findById(request.getToId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getToId(), requireVendorId()) == null) {
             throw new BusinessException("Destination outlet not found.");
         }
         if (request.getCreditNoteNumber() == null || request.getCreditNoteNumber().isBlank()) {
             throw new BusinessException("Credit note number is required.");
         }
         String creditNoteNumber = request.getCreditNoteNumber().trim();
-        if (orderMapper.countByInvoiceNumber(creditNoteNumber) > 0) {
+        if (orderMapper.countByInvoiceNumber(creditNoteNumber, requireVendorId()) > 0) {
             throw new BusinessException("Credit note number already exists.");
         }
         LocalDate creditNoteDate = request.getCreditNoteDate() != null ? request.getCreditNoteDate() : LocalDate.now();
@@ -210,17 +216,17 @@ public class OrderService {
         if (request.getFromId() == null) {
             throw new BusinessException("Source outlet is required.");
         }
-        if (outletMapper.findById(request.getFromId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getFromId(), requireVendorId()) == null) {
             throw new BusinessException("Source outlet not found.");
         }
         if (request.getToId() == null) {
             throw new BusinessException("Supplier is required.");
         }
-        if (supplierMapper.findById(request.getToId()) == null) {
+        if (supplierMapper.findByIdAndVendor(request.getToId(), requireVendorId()) == null) {
             throw new BusinessException("Supplier not found.");
         }
         String orderNumber = trimToNull(request.getOrderNumber());
-        if (orderNumber != null && orderMapper.countByInvoiceNumber(orderNumber) > 0) {
+        if (orderNumber != null && orderMapper.countByInvoiceNumber(orderNumber, requireVendorId()) > 0) {
             throw new BusinessException("Order number already exists.");
         }
         LocalDate orderDate = request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now();
@@ -236,17 +242,17 @@ public class OrderService {
         if (request.getFromId() == null) {
             throw new BusinessException("Supplier is required.");
         }
-        if (supplierMapper.findById(request.getFromId()) == null) {
+        if (supplierMapper.findByIdAndVendor(request.getFromId(), requireVendorId()) == null) {
             throw new BusinessException("Supplier not found.");
         }
         if (request.getToId() == null) {
             throw new BusinessException("Destination outlet is required.");
         }
-        if (outletMapper.findById(request.getToId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getToId(), requireVendorId()) == null) {
             throw new BusinessException("Destination outlet not found.");
         }
         String invoiceNumber = trimToNull(request.getInvoiceNumber());
-        if (invoiceNumber != null && orderMapper.countByInvoiceNumber(invoiceNumber) > 0) {
+        if (invoiceNumber != null && orderMapper.countByInvoiceNumber(invoiceNumber, requireVendorId()) > 0) {
             throw new BusinessException("Invoice number already exists.");
         }
         LocalDate invoiceDate = request.getInvoiceDate() != null ? request.getInvoiceDate() : LocalDate.now();
@@ -268,17 +274,17 @@ public class OrderService {
         if (request.getFromId().equals(request.getToId())) {
             throw new BusinessException("Source and destination outlets must be different.");
         }
-        if (outletMapper.findById(request.getFromId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getFromId(), requireVendorId()) == null) {
             throw new BusinessException("Source outlet not found.");
         }
-        if (outletMapper.findById(request.getToId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getToId(), requireVendorId()) == null) {
             throw new BusinessException("Destination outlet not found.");
         }
         if (request.getTransferNumber() == null || request.getTransferNumber().isBlank()) {
             throw new BusinessException("Transfer number is required.");
         }
         String transferNumber = request.getTransferNumber().trim();
-        if (orderMapper.countByInvoiceNumber(transferNumber) > 0) {
+        if (orderMapper.countByInvoiceNumber(transferNumber, requireVendorId()) > 0) {
             throw new BusinessException("Transfer number already exists.");
         }
         LocalDate transferDate = request.getTransferDate() != null ? request.getTransferDate() : LocalDate.now();
@@ -294,17 +300,17 @@ public class OrderService {
         if (request.getToId() == null) {
             throw new BusinessException("Destination outlet is required.");
         }
-        if (outletMapper.findById(request.getToId()) == null) {
+        if (outletMapper.findByIdAndVendor(request.getToId(), requireVendorId()) == null) {
             throw new BusinessException("Destination outlet not found.");
         }
-        if (request.getFromId() != null && supplierMapper.findById(request.getFromId()) == null) {
+        if (request.getFromId() != null && supplierMapper.findByIdAndVendor(request.getFromId(), requireVendorId()) == null) {
             throw new BusinessException("Supplier not found.");
         }
         if (request.getInvoiceNumber() == null || request.getInvoiceNumber().isBlank()) {
             throw new BusinessException("Order number is required.");
         }
         String invoiceNumber = request.getInvoiceNumber().trim();
-        if (orderMapper.countByInvoiceNumber(invoiceNumber) > 0) {
+        if (orderMapper.countByInvoiceNumber(invoiceNumber, requireVendorId()) > 0) {
             throw new BusinessException("Order number already exists.");
         }
         if (request.getDueDate() != null
@@ -340,7 +346,11 @@ public class OrderService {
 
             OrderProduct row = new OrderProduct();
             row.setOrderId(orderId);
+            row.setOutletId(outletId);
             row.setProductId(line.getProductId());
+            if (productMapper.findByIdAndVendor(line.getProductId(), requireVendorId()) == null) {
+                throw new BusinessException("Product not found.");
+            }
             row.setSupplierId(supplierId);
             row.setSupplierCode(trimToNull(line.getDescription()));
             row.setCaseQuantity(pack);
@@ -371,5 +381,45 @@ public class OrderService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static Long requireVendorId() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
+        return vendorId;
+    }
+
+    @Transactional
+    public Order update(Long id, Order changes) {
+        Long vendorId = requireVendorId();
+        Order current = orderMapper.findByIdForVendor(id, vendorId);
+        if (current == null) throw new BusinessException(40410, "Order not found.");
+        changes.setId(id);
+        changes.setVendorId(vendorId);
+        changes.setOutletId(current.getOutletId());
+        changes.setType(current.getType());
+        validateOrderParties(changes, vendorId);
+        if (orderMapper.update(changes) == 0) throw new BusinessException(40410, "Order not found.");
+        return orderMapper.findByIdForVendor(id, vendorId);
+    }
+
+    private void validateOrderParties(Order order, Long vendorId) {
+        String type = order.getType();
+        boolean hasOutletFrom = "TRANSFER".equals(type) || "RETURN".equals(type);
+        boolean hasSupplierFrom = "ORDER".equals(type) || "RECEIVE".equals(type) || "CREDIT".equals(type);
+        boolean hasSupplierTo = "RETURN".equals(type) || "CREDIT".equals(type);
+        boolean hasOutletTo = "ORDER".equals(type) || "TRANSFER".equals(type) || "RECEIVE".equals(type) || "CREDIT".equals(type);
+        if (hasOutletFrom && outletMapper.findByIdAndVendor(order.getFromId(), vendorId) == null) {
+            throw new BusinessException("Source outlet not found.");
+        }
+        if (hasSupplierFrom && order.getFromId() != null && supplierMapper.findByIdAndVendor(order.getFromId(), vendorId) == null) {
+            throw new BusinessException("Supplier not found.");
+        }
+        if (hasOutletTo && outletMapper.findByIdAndVendor(order.getToId(), vendorId) == null) {
+            throw new BusinessException("Destination outlet not found.");
+        }
+        if (hasSupplierTo && supplierMapper.findByIdAndVendor(order.getToId(), vendorId) == null) {
+            throw new BusinessException("Supplier not found.");
+        }
     }
 }

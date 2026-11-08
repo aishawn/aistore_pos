@@ -15,6 +15,9 @@ public interface OutletMapper {
     @Select("SELECT * FROM outlet WHERE id = #{id}")
     Outlet findById(Long id);
 
+    @Select("SELECT * FROM outlet WHERE id = #{id} AND vendor_id = #{vendorId} AND deleted_at IS NULL")
+    Outlet findByIdAndVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO outlet (vendor_id, name, contact_id, logo, business_number, loyalty_enabled, "
             + "loyalty_name, loyalty_earn_rate, loyalty_redeem_rate, has_kitchen_screen, ticketing_price_set_id) "

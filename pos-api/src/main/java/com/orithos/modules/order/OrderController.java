@@ -4,6 +4,8 @@ import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
 import com.orithos.modules.ai.invoice.InvoiceScanResponse;
 import com.orithos.modules.ai.invoice.InvoiceScanService;
+import com.orithos.security.CurrentUser;
+import com.orithos.common.BusinessException;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,6 +57,7 @@ public class OrderController {
         query.setSentById(sentById);
         query.setReceivedById(receivedById);
         query.setProductId(productId);
+        query.setVendorId(requireVendor());
         query.setPage(page);
         query.setSize(size);
         return ApiResult.ok(orderService.search(query));
@@ -62,7 +65,7 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public ApiResult<Order> get(@PathVariable Long id) {
-        Order order = mapper.findById(id);
+        Order order = mapper.findByIdForVendor(id, requireVendor());
         if (order != null) {
             order.setProducts(mapper.findProductsByOrderId(id));
         }
@@ -106,32 +109,30 @@ public class OrderController {
 
     @PutMapping("/{id}")
     public ApiResult<Order> update(@PathVariable Long id, @RequestBody Order order) {
-        order.setId(id);
-        mapper.update(order);
-        return ApiResult.ok(order);
+        return ApiResult.ok(orderService.update(id, order));
     }
 
     @PutMapping("/{id}/send")
     public ApiResult<Void> send(@PathVariable Long id) {
-        mapper.markSent(id);
+        if (mapper.markSent(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/receive")
     public ApiResult<Void> receive(@PathVariable Long id) {
-        mapper.markReceived(id);
+        if (mapper.markReceived(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/cancel")
     public ApiResult<Void> cancel(@PathVariable Long id) {
-        mapper.markCancelled(id);
+        if (mapper.markCancelled(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/reopen")
     public ApiResult<Void> reopen(@PathVariable Long id) {
-        mapper.reopen(id);
+        if (mapper.reopen(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
@@ -139,9 +140,15 @@ public class OrderController {
     public ApiResult<Void> markOrdersAsRelated(@PathVariable Long id, @RequestBody List<Long> relatedOrderIds) {
         if (relatedOrderIds != null) {
             for (Long relatedOrderId : relatedOrderIds) {
-                mapper.insertRelated(id, relatedOrderId);
+                if (mapper.insertRelated(id, relatedOrderId, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
             }
         }
         return ApiResult.ok();
+    }
+
+    private static Long requireVendor() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
+        return vendorId;
     }
 }

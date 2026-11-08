@@ -39,6 +39,9 @@ public interface SupplierMapper {
     @Select("SELECT * FROM supplier WHERE id = #{id}")
     Supplier findById(Long id);
 
+    @Select("SELECT s.* FROM supplier s JOIN outlet o ON o.id=s.outlet_id WHERE s.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL AND s.deleted_at IS NULL")
+    Supplier findByIdAndVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
     @Select("""
         SELECT * FROM supplier
         WHERE deleted_at IS NULL

@@ -28,6 +28,7 @@
         <result property="createdAt" column="created_at"/>
         <result property="sentAt" column="sent_at"/>
         <result property="receivedAt" column="received_at"/>
+        <result property="outletId" column="outlet_id"/>
         <result property="fromName" column="from_name"/>
         <result property="toName" column="to_name"/>
     </resultMap>
@@ -51,6 +52,12 @@
 
     <sql id="filters">
         <where>
+            AND EXISTS (
+                SELECT 1 FROM outlet tenant_outlet
+                WHERE tenant_outlet.id = po.outlet_id
+                  AND tenant_outlet.vendor_id = #{q.vendorId}
+                  AND tenant_outlet.deleted_at IS NULL
+            )
             <if test="q.outstanding">
                 AND po.status IN ('OPEN', 'SENT')
             </if>
@@ -115,6 +122,17 @@
     <select id="findById" resultMap="OrderListMap">
         <include refid="listSelect"/>
         WHERE po.id = #{id}
+    </select>
+
+    <select id="findByIdForVendor" resultMap="OrderListMap">
+        <include refid="listSelect"/>
+        WHERE po.id = #{id}
+          AND EXISTS (
+              SELECT 1 FROM outlet tenant_outlet
+              WHERE tenant_outlet.id = po.outlet_id
+                AND tenant_outlet.vendor_id = #{vendorId}
+                AND tenant_outlet.deleted_at IS NULL
+          )
     </select>
 
 </mapper>

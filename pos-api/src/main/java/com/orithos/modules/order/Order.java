@@ -1,5 +1,6 @@
 package com.orithos.modules.order;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,6 +31,9 @@ public class Order {
     private Long sentById;
     private Long receivedById;
     private Long mergedIntoId;
+    private Long outletId;
+    @JsonIgnore
+    private Long vendorId;
     private LocalDateTime createdAt;
     private LocalDateTime sentAt;
     private LocalDateTime receivedAt;

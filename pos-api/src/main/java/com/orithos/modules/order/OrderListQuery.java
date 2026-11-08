@@ -24,6 +24,8 @@ public class OrderListQuery {
     private Long sentById;
     private Long receivedById;
     private Long productId;
+    /** Tenant scope is populated from the authenticated principal, never from request input. */
+    private Long vendorId;
     private int page = 1;
     private int size = 10;
 

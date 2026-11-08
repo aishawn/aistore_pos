@@ -250,6 +250,7 @@ public class SupplyChainService {
         order.setStatus("OPEN");
         order.setFromId(supplierId);
         order.setToId(outletId);
+        order.setOutletId(outletId);
         order.setOrderDate(LocalDate.now());
         order.setDueDate(LocalDate.now().plusDays(7));
         order.setInvoiceNumber(invoice);
@@ -265,6 +266,7 @@ public class SupplyChainService {
         for (SupplyChainRows.LineRow line : eligible) {
             OrderProduct product = new OrderProduct();
             product.setOrderId(order.getId());
+            product.setOutletId(outletId);
             product.setProductId(line.getProductId());
             product.setSupplierId(supplierId);
             product.setSupplierCode(line.getSupplierSku());
@@ -868,13 +870,15 @@ public class SupplyChainService {
     }
 
     private String invoiceNumber(LocalDate week, long supplierId) {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
         String base = "SC" + week.format(WEEK) + "-" + supplierId;
-        if (orderMapper.countByInvoiceNumber(base) == 0) {
+        if (orderMapper.countByInvoiceNumber(base, vendorId) == 0) {
             return base;
         }
         for (int n = 2; n < 50; n++) {
             String next = base + "-" + n;
-            if (orderMapper.countByInvoiceNumber(next) == 0) {
+            if (orderMapper.countByInvoiceNumber(next, vendorId) == 0) {
                 return next;
             }
         }

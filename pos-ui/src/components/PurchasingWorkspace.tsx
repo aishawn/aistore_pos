@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
+import { OrithosPurchaseOrdersPage } from "@/components/OrithosPurchaseOrdersPage";
 import { OdooReplenishmentPage } from "@/components/OdooReplenishmentPage";
 import { InvoiceScansListPage } from "@/components/admin/InvoiceScansListPage";
 import { OdooSupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
@@ -43,7 +44,7 @@ export function PurchasingWorkspace() {
         </nav>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
-        {permitted && active === "orders" && <><OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded /><ShopfrontPurchasingSection kind="purchase-orders" /></>}
+        {permitted && active === "orders" && <OrithosPurchaseOrdersPage embedded />}
         {permitted && transfers && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
