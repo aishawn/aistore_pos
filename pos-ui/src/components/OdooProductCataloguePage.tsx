@@ -66,7 +66,7 @@ function ShopfrontCostDetails({ product }: { product: OdooProductRecord }) {
   return <>
     <span className="block font-medium text-[var(--oh-text)]">{status === "restricted" ? "Cost access restricted" : status === "unavailable" ? "Shopfront cost unavailable" : sourceCost === null ? "No Shopfront cost recorded" : caseQuantity && caseQuantity > 1 ? `${money(unitCost!)} / item` : money(sourceCost)}</span>
     {sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title="Shopfront source cost; tax basis is source-reported">Shopfront {money(sourceCost)}{caseQuantity ? ` / pack ${quantity(caseQuantity)}` : " · unit basis unknown"}</span>}
-    {product.shopfront_data_status === "available" && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]">Shopfront · Purchase tax {product.shopfront_purchase_tax_rate || "Unavailable"} · Retail tax {product.shopfront_retail_tax_rate || "Unavailable"}</span>}
+    {product.shopfront_data_status === "available" && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]">Shopfront · Purchase tax (effective) {product.shopfront_purchase_tax_rate || "Unavailable"} · Retail tax {product.shopfront_retail_tax_rate || "Unavailable"}</span>}
     {sourceCost !== null && caseQuantity && caseQuantity > 1 && <span className="block text-[11px] text-amber-800">Per item from box cost ÷ pack size</span>}
     <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Odoo recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>
   </>;
