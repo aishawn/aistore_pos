@@ -128,9 +128,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [sortBy, setSortBy] = useState<InventorySort>(() => {
     if (!inventoryReport) return "name";
     const value = searchParams.get("sort");
-    return value === "category" || value === "qty_available" || value === "shopfront_quantity" || value === "price_included" ? value : "name";
+    return value === "category" || value === "qty_available" || value === "shopfront_quantity" || value === "price_included" ? value : "shopfront_quantity";
   });
-  const [sortDirection, setSortDirection] = useState<InventoryDirection>(() => inventoryReport && searchParams.get("direction") === "desc" ? "desc" : "asc");
+  const [sortDirection, setSortDirection] = useState<InventoryDirection>(() => inventoryReport && searchParams.has("direction") ? (searchParams.get("direction") === "desc" ? "desc" : "asc") : inventoryReport ? "desc" : "asc");
   const [inventoryFilter, setInventoryFilter] = useState<"all" | "zero" | "negative">(() => {
     const value = searchParams.get("stock");
     return value === "zero" || value === "negative" ? value : "all";
@@ -165,8 +165,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     const stock = searchParams.get("stock");
     setInventoryFilter(stock === "zero" || stock === "negative" ? stock : "all");
     const sort = searchParams.get("sort");
-    setSortBy(sort === "category" || sort === "qty_available" || sort === "shopfront_quantity" || sort === "price_included" ? sort : "name");
-    setSortDirection(searchParams.get("direction") === "desc" ? "desc" : "asc");
+    setSortBy(sort === "category" || sort === "qty_available" || sort === "shopfront_quantity" || sort === "price_included" ? sort : "shopfront_quantity");
+    setSortDirection(searchParams.has("direction") ? (searchParams.get("direction") === "desc" ? "desc" : "asc") : "desc");
   }, [inventoryReport, searchParams]);
   const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
   const stockApplied = useCallback(() => setRefreshKey((value) => value + 1), []);

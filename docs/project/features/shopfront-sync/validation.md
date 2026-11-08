@@ -1,5 +1,11 @@
 # Shopfront Sync Validation
 
+## Inventory default view correction (2026-11-08)
+
+- Read-only authenticated SKR API check: Products coverage was 10,849 active/mapped products, 50,914 positive Shopfront units, and 10,849 inventory rows. Inventory sorted by `shopfront_quantity desc` returned 465, 456, 425, 422, and 400 units on the first five rows; each row exposed Shopfront cost and Odoo quantity matched source quantity.
+- The prior name-sorted first page contained zero-stock gift-card/recharge products, which explains the reported all-zero appearance. The UI now defaults Inventory to stock descending while preserving explicit URL sorting.
+- `npm run typecheck` passed. No business-data writes were performed. Seven positive source-cost records still have zero Odoo `standard_price`; these require source case-size/tax-basis review and remain explicitly source-read-only.
+
 ## Inventory scope and coverage clarification (2026-11-08)
 
 - Runtime `68b2c7efa9c8248339277408382b5ece615c3048` is deployed on SKR (frontend and backend). The preceding coverage UI runtime was `f2b7fb0b944520647c9a1fdd9bb245348f1c0d6d`.

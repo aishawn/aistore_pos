@@ -2,6 +2,12 @@
 
 Updated: 2026-11-08. Owner: TBD.
 
+## Inventory default view correction (2026-11-08)
+
+- Live SKR API verification after the previous deployment returned 10,849 Shopfront products, 50,914 positive source units, and source/Odoo quantities matching on the full active scope. The first Products rows were zero-stock `$...` gift-card/recharge records because the catalogue is name-sorted; this was a misleading viewport, not a failed inventory sync.
+- Inventory now defaults to Shopfront inventory descending when no explicit sort is supplied, so the first rows show products with stock and source cost. Explicit `sort` and `direction` URL parameters continue to override the default, and zero/negative filters remain available.
+- The same audit found 7 source products with positive cost but Odoo `standard_price` still zero. The Products and Inventory views display the Shopfront read-only cost; no unit-cost write is made when source case quantity is absent or the tax basis cannot be proven.
+
 ## Inventory scope and coverage clarification (2026-11-08)
 
 - POS commits `f2b7fb0b944520647c9a1fdd9bb245348f1c0d6d` and `68b2c7efa9c8248339277408382b5ece615c3048` are deployed on SKR. Products now reports the source coverage counts and links to the stock-ranked Inventory view; Inventory uses the same 10,849 Shopfront canonical products instead of the broader Odoo-only variant population.
