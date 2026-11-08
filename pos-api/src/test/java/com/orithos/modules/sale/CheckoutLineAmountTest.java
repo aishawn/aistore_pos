@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class CheckoutLineAmountTest {
 
-    private final CheckoutService service = new CheckoutService(null, null, null, null, null, new ObjectMapper());
+    private final CheckoutService service = new CheckoutService(null, null, null, null, null, null, new ObjectMapper());
 
     @Test
     void displayedLineTotalIsChargedInsteadOfReconstructedUnitPrice() {

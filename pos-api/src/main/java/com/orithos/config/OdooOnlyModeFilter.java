@@ -88,6 +88,9 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
                 || path.matches("/api/supply-chain/suppliers/[0-9]+/cart")) {
             return false;
         }
+        if (path.equals("/api/retail/registers") || path.startsWith("/api/retail/registers/")) {
+            return false;
+        }
         // Shopfront is an isolated, token-authenticated staging boundary. It
         // never writes Odoo or Classic POS business tables.
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {

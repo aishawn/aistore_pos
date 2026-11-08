@@ -10,4 +10,5 @@ public class RegisterClosurePayment {
     private Long paymentMethodId;
     private BigDecimal expected;
     private BigDecimal received;
+    private Long outletId;
 }

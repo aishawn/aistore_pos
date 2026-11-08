@@ -9,6 +9,7 @@ import java.util.List;
 public class RegisterClosure {
     private Long id;
     private Long registerId;
+    private Long outletId;
     private Long userId;
     private BigDecimal movement;
     private BigDecimal totalExpected;

@@ -13,6 +13,7 @@ public class SalePayment {
     /** Human tender label as tapped on the Sell pad, e.g. "EFTPOS VISA MasterCard". */
     private String subtype;
     private Long registerId;
+    private Long outletId;
     private String status;
     private BigDecimal amount;
     private BigDecimal rounding;

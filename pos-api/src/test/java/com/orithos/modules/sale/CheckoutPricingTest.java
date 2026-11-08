@@ -6,6 +6,7 @@ import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.RegisterMapper;
+import com.orithos.modules.register.RegisterSessionMapper;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
@@ -26,7 +27,8 @@ class CheckoutPricingTest {
     private final SaleMapper saleMapper = mock(SaleMapper.class);
     private final ProductMapper productMapper = mock(ProductMapper.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
-            mock(PaymentMethodMapper.class), productMapper, mock(RegisterMapper.class), new ObjectMapper());
+            mock(PaymentMethodMapper.class), productMapper, mock(RegisterMapper.class),
+            mock(RegisterSessionMapper.class), new ObjectMapper());
 
     @BeforeEach
     void authenticateOutlet() {

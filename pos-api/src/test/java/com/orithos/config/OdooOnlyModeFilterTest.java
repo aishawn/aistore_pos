@@ -68,6 +68,29 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeRegisterSessionRoutesPassThroughWhileClassicRegisterRoutesRemainRetired() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (String[] route : new String[][]{
+                {"GET", "/api/retail/registers"},
+                {"GET", "/api/retail/registers/11/sessions/current"},
+                {"POST", "/api/retail/registers/11/sessions"},
+                {"POST", "/api/retail/registers/sessions/41/cash-movements"},
+                {"POST", "/api/retail/registers/11/sessions/close"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        MockHttpServletRequest legacy = new MockHttpServletRequest("GET", "/api/registers");
+        MockHttpServletResponse legacyResponse = new MockHttpServletResponse();
+        filter.doFilter(legacy, legacyResponse, new MockFilterChain());
+        assertEquals(410, legacyResponse.getStatus());
+    }
+
+    @Test
     void legacySaleWritesRemainRetiredInOdooOnlyMode() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         for (String[] route : new String[][]{

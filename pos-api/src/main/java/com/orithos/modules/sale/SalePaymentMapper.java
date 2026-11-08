@@ -7,9 +7,9 @@ import java.util.List;
 public interface SalePaymentMapper {
 
     @Insert("""
-        INSERT INTO sale_payment (sale_id, payment_method_id, subtype, register_id, status,
+        INSERT INTO sale_payment (sale_id, payment_method_id, subtype, register_id, outlet_id, status,
                                   amount, rounding, cashout, process_time)
-        VALUES (#{saleId}, #{paymentMethodId}, #{subtype}, #{registerId}, #{status},
+        VALUES (#{saleId}, #{paymentMethodId}, #{subtype}, #{registerId}, #{outletId}, #{status},
                 #{amount}, #{rounding}, #{cashout}, #{processTime})
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id")

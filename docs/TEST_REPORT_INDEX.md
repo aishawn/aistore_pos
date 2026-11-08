@@ -153,6 +153,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | `DOC-001` | 2026-11-03-project-fact-library | PASS: 56 Markdown files / 19 evidence entries; 12 checker regressions | Inventory baseline `d2020745`; integrated on `b7249014`; doc commit in Git | Not applicable: static documentation | [Session](test-sessions/2026-11-03-project-fact-library.md) | Maintain with behavior/evidence changes; no new business acceptance claimed |
 | `OPS-001` |  | NOT RUN |  |  |  |  |
 | `R2-001` |  | NOT RUN |  |  |  |  |
+| `POS-003` (native register session candidate) | 2026-11-09-native-register-session | PASS: backend suite 541/541; 4 session/filter cases included; database/runtime UAT NOT RUN | Dirty worktree based on `0e97658e`; runtime not applicable, SKR read-only SHA `5dc69fdf` | Local Java 21 unit/regression tests; no business writes | [Session](test-sessions/2026-11-09-native-register-session.md), [Feature validation](project/features/register-session/validation.md) | POS UI still uses Odoo; PostgreSQL SQL/concurrency and isolated tenant acceptance required |
 
 ## Session history
 
@@ -193,6 +194,7 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-07-pos-api-docs-idempotency-followup | 2026-11-07 | OpenAPI docs route, runtime SHA, CLI fixtures, cross-resource idempotency regression | CLI 3/3, POS UI typecheck and targeted ESLint PASS; SKR/Demo OpenAPI YAML 200; main ahead of runtime; backend exact-SHA gate and business-write UAT pending | [Report](test-sessions/2026-11-07-pos-api-docs-idempotency-followup.md) |
 | 2026-11-07-pos-api-docs-deployment | 2026-11-07 | Docs UI deployment and OpenAPI link verification | SKR and Demo report deployed SHA `3f7365ca`; browser confirms the fixed link and both OpenAPI endpoints return YAML 200; backend acceptance remains pending | [Report](test-sessions/2026-11-07-pos-api-docs-deployment.md) |
 | 2026-11-07-pos-api-resource-coverage | 2026-11-07 | Candidate read-resource expansion and docs/schema synchronization | CLI fixtures 4/4, docs ESLint PASS, OpenAPI YAML valid with 12 resources and generated copies identical; Java 21 gate and live resource checks pending | [Report](test-sessions/2026-11-07-pos-api-resource-coverage.md) |
+| 2026-11-09-native-register-session | 2026-11-09 | Orithos native register session API, checkout session gate and outlet-scoped payment persistence | Java 21 full suite 541/541; no DB, deployment or business writes | [Report](test-sessions/2026-11-09-native-register-session.md) |
 
 | 2026-11-08-shopfront-product-read-states | 2026-11-08 | Shopfront product cost/inventory read-state handling in Odoo catalogue | Local tests, typecheck, lint, and production build pass; deployment pending; no business data writes | [Report](test-sessions/2026-11-08-shopfront-product-read-states.md) |
 

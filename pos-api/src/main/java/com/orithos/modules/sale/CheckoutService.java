@@ -14,6 +14,7 @@ import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
+import com.orithos.modules.register.RegisterSessionMapper;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.security.CurrentUser;
@@ -38,16 +39,19 @@ public class CheckoutService {
     private final PaymentMethodMapper paymentMethodMapper;
     private final ProductMapper productMapper;
     private final RegisterMapper registerMapper;
+    private final RegisterSessionMapper registerSessionMapper;
     private final ObjectMapper objectMapper;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
-                           RegisterMapper registerMapper, ObjectMapper objectMapper) {
+                           RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
+                           ObjectMapper objectMapper) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
         this.productMapper = productMapper;
         this.registerMapper = registerMapper;
+        this.registerSessionMapper = registerSessionMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -98,6 +102,9 @@ public class CheckoutService {
         if (register == null || !authenticatedOutletId.equals(register.getOutletId())
                 || Boolean.TRUE.equals(register.getClosed())) {
             throw new BusinessException("Register is not open at this outlet.");
+        }
+        if (registerSessionMapper.lockActiveSession(effectiveRegisterId, vendorId, authenticatedOutletId) == null) {
+            throw new BusinessException("An open Orithos register session is required for checkout.");
         }
 
         BigDecimal outstanding = sale.getOutstanding() != null ? sale.getOutstanding() : total;
@@ -164,11 +171,12 @@ public class CheckoutService {
         payment.setPaymentMethodId(method != null ? method.getId() : null);
         payment.setSubtype(req.getTender());
         payment.setRegisterId(effectiveRegisterId);
+        payment.setOutletId(authenticatedOutletId);
         payment.setStatus("COMPLETED");
         payment.setAmount(paymentAmount);
         payment.setRounding(rounding.signum() == 0 ? null : rounding);
         payment.setCashout(cashout.signum() > 0 ? cashout : null);
-        payment.setProcessTime(LocalDateTime.now());
+        payment.setProcessTime(AustraliaTime.localNow());
         paymentMapper.insert(payment);
 
         BigDecimal newOutstanding = outstanding.subtract(paymentAmount).setScale(2, RoundingMode.HALF_UP);
