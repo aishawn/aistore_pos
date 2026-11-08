@@ -1,5 +1,15 @@
 # Shopfront Sync Validation
 
+## Product / inventory parity follow-up (2026-11-08)
+
+- POS `main` `fce60e3cef10322b10c578032eb9d2d16c0542b1` and Odoo `main` `63c50a0bb65d6a06f6622928506857abc74eec37` are deployed. Odoo identity-resolution fix `077b740` is included in the deployed history. POS and Odoo deployment status was reported `done` for these exact revisions.
+- Durable sync job #29: `completed`, 11,030 products, 10,852 inventory rows, 0 unmatched inventory rows.
+- Read-only comparison scope: Odoo database `aipos_uat`, company 5, `UATPI/Stock`. All 10,849 ACTIVE Shopfront products on the canonical Products-page mapping had 0 missing canonical products and 0 stock quantity differences. Valid case-size products had 0 differences between source box cost divided by case quantity and Odoo standard unit cost.
+- Authenticated SKR Products page was verified with Status, Product, Category, Cost, Inventory, Price, Performance, and Actions, including responsive/mobile rendering. Example `-196 LEMON P/F 6% 330ML`: `$116.75` per case / 30 = `$3.89` per item; 128 units; `$8.99` price; 105 units in 30 days.
+- Current counts are scope-specific: 10,849 ACTIVE Shopfront products; 50,914 positive units on the matched source-key scope; 13,292 Odoo saleable variants and 51,229 route-wide positive units. The screenshot's 50,992 and prior source snapshot's 51,512 are stale.
+- Tax/cost semantic limit: Shopfront product source provides separate retail `taxRate` and purchase `costTaxRate`, but the captured API query has no explicit `costEx` or tax-inclusive cost flag. Mapping the tax IDs separately is correct; it does not prove the cost's tax inclusion. Shopfront reported profit remains a Shopfront metric, not an Odoo ledger amount. Cost display parity is verified; tax-basis parity and full-site functional/data parity remain open pending source setting/UI evidence.
+- No Odoo database migration or new business-data mutation was performed in this follow-up. The audit inspected the already deployed state on `aipos_uat`.
+
 ## Product enrichment read states (2026-11-08)
 
 - Candidate based on POS repository `7afad8245a17a2d087f88c089262a03dfbe64620` plus the local changes in [test session](../../../../test-sessions/2026-11-08-shopfront-product-read-states.md).

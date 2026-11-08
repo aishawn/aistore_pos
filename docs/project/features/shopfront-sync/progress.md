@@ -2,6 +2,15 @@
 
 Updated: 2026-11-08. Owner: TBD.
 
+## Product / inventory parity follow-up (2026-11-08)
+
+- POS `main` commit `fce60e3cef10322b10c578032eb9d2d16c0542b1` is deployed. Its product import maps Shopfront retail `taxRate` and purchase `costTaxRate` independently. The Odoo integration fixes `077b740` and `63c50a0bb65d6a06f6622928506857abc74eec37` are deployed; the latter resolves unique-SKU legacy product identities while retaining rejection of conflicting evidence.
+- Durable sync job #29 completed: 11,030 products, 10,852 inventory rows, and 0 unmatched inventory rows. On `aipos_uat`, company 5, location `UATPI/Stock`, the latest route-equivalent comparison covered all 10,849 ACTIVE Shopfront products: 0 inventory quantity mismatches and 0 missing canonical products. For records with a valid case quantity, `Shopfront box cost / case quantity` matched Odoo unit standard cost with 0 differences.
+- Authenticated SKR `/products` verification confirmed the merged catalogue fields: status, product, category, Shopfront cost, inventory, price, 30-day performance, and actions. Example `-196 LEMON P/F 6% 330ML`: source box cost `$116.75`, case quantity 30, unit cost `$3.89`, stock 128 (4 cases + 8 items), price `$8.99`, and 105 units sold over 30 days. A `$0.00` source record is a real zero, not a missing value.
+- Current live source counts: 10,849 ACTIVE Shopfront products; positive stock 50,914 on the matched Shopfront inventory key scope. Odoo's 13,292 saleable variants and 51,229 positive units are broader route totals; they are not directly comparable counts. Earlier 50,992 and 51,512 totals are stale snapshots.
+- Fidelity boundary: the source product API exposes `cost`, `caseQuantity`, `costTaxRate`, and retail `taxRate` separately; it does not expose a `costEx` field in the captured product query. Shopfront's source sales reports expose their own profit values. Those values can be mirrored/displayed as Shopfront data, but must stay labeled as source metrics rather than verified Odoo ledger amounts. Do not infer whether source cost includes recoverable tax from the tax-rate name alone.
+- The product/inventory parity evidence does not establish full Shopfront parity across every report, purchase field, or source setting, and does not authorize a cost write when tax basis is unknown. Preserve the exact source fields and read-only history; represent unavailable or unverified fields explicitly.
+
 ## Product enrichment read states (2026-11-08)
 
 - Current `main` candidate preserves Shopfront cost and inventory read outcomes separately: available (including a real zero), no source value, unavailable query, or restricted cost permission.
