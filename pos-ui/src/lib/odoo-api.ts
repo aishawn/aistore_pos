@@ -56,6 +56,8 @@ export interface OdooPage<T> {
   mixedUnits?: boolean;
   shopfrontCoverage?: {
     activeProducts: number;
+    productsWithCost?: number;
+    zeroCostProducts?: number;
     mappedProducts: number;
     unmappedProducts: number;
     ambiguousReferences: number;

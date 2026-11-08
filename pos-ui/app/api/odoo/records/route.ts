@@ -22,6 +22,8 @@ const MAX_LIMIT = 100;
 const shopfrontCatalogueCache = new Map<string, {
   templateIds: number[];
   activeProductCount: number;
+  productsWithCost?: number;
+  zeroCostProducts?: number;
   mappedProductCount: number;
   unmappedProductCount: number;
   ambiguousReferenceCount: number;
@@ -316,7 +318,7 @@ export async function POST(request: NextRequest) {
     ? verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"))
     : null;
   const includeSourceProducts = type === "products" && !body.inventoryReport && Boolean(sourceStore);
-  let shopfrontCoverage: { activeProducts: number; mappedProducts: number; unmappedProducts: number; ambiguousReferences: number; positiveInventoryUnits: number; negativeInventoryRows: number; inventoryProductRows: number; inventorySnapshotAt: string | null } | undefined;
+  let shopfrontCoverage: { activeProducts: number; productsWithCost?: number; zeroCostProducts?: number; mappedProducts: number; unmappedProducts: number; ambiguousReferences: number; positiveInventoryUnits: number; negativeInventoryRows: number; inventoryProductRows: number; inventorySnapshotAt: string | null } | undefined;
   if (includeSourceProducts && sourceStore) {
     try {
       const sourceScope = await scopedOdoo(request);
@@ -326,7 +328,8 @@ export async function POST(request: NextRequest) {
       const cached = shopfrontCatalogueCache.get(cacheKey);
       let catalogue = cached && cached.expiresAt > Date.now() ? cached : null;
       if (!catalogue) {
-        const sourceRows = await odooRpc<Array<{ source_id: string; source_status?: string | false; sku?: string | false }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: ["source_id", "source_status", "sku"], limit: 15000, context: companyContext });
+      const sourceFields = ["source_id", "source_status", "sku", ...(canReadProductCost ? ["cost"] : [])];
+      const sourceRows = await odooRpc<Array<{ source_id: string; source_status?: string | false; sku?: string | false; cost?: number | false }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: sourceFields, limit: 15000, context: companyContext });
         const activeRows = sourceRows.filter((row) => String(row.source_status || "").toUpperCase() === "ACTIVE" && /^[0-9a-f]{24,64}$/i.test(row.source_id));
         const sourceRefs = [...new Set(activeRows.map((row) => `${sourceStore}:${row.source_id}`))];
         const templates = sourceRefs.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false; active?: boolean; sale_ok?: boolean; default_code?: string | false }>>(sessionId, request, "product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceRefs], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref", "active", "sale_ok", "default_code"], limit: sourceRefs.length * 2, context: companyContext }) : [];
@@ -336,6 +339,8 @@ export async function POST(request: NextRequest) {
         const inventorySummary = summarizeShopfrontInventory(inventoryRows, activeSourceIds);
         catalogue = {
           ...mapping,
+          productsWithCost: canReadProductCost ? activeRows.filter((row) => typeof row.cost === "number" && Number.isFinite(row.cost) && row.cost > 0).length : undefined,
+          zeroCostProducts: canReadProductCost ? activeRows.filter((row) => typeof row.cost === "number" && Number.isFinite(row.cost) && row.cost === 0).length : undefined,
           ...inventorySummary,
           expiresAt: Date.now() + 5 * 60_000,
         };
@@ -344,6 +349,8 @@ export async function POST(request: NextRequest) {
       }
       shopfrontCoverage = {
         activeProducts: catalogue.activeProductCount,
+        productsWithCost: catalogue.productsWithCost,
+        zeroCostProducts: catalogue.zeroCostProducts,
         mappedProducts: catalogue.mappedProductCount,
         unmappedProducts: catalogue.unmappedProductCount,
         ambiguousReferences: catalogue.ambiguousReferenceCount,
