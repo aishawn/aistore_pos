@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
+import { enrichShopfrontInventoryRows, pickShopfrontInventoryRow, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, shopfrontInventoryBySource, shopfrontTrackInventory, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
 
 const active = (source_id: string, sku?: string) => ({ source_id, source_status: "ACTIVE", sku });
 const template = (id: number, sourceId: string, values: Record<string, unknown> = {}) => ({ id, shopfront_source_ref: `skr:${sourceId}`, active: true, sale_ok: true, ...values });
@@ -92,4 +92,24 @@ test("inventory report enrichment labels restricted cost and unavailable invento
   assert.equal(result[0].shopfront_cost_status, "restricted");
   assert.equal(result[0].shopfront_inventory_status, "unavailable");
   assert.equal(result[0].shopfront_quantity, null);
+});
+
+test("track inventory falls back to Shopfront raw payload and stays unknown when absent", () => {
+  assert.equal(shopfrontTrackInventory(false, {}), false);
+  assert.equal(shopfrontTrackInventory(null, { trackInventory: true }), true);
+  assert.equal(shopfrontTrackInventory(undefined, { trackInventory: false }), false);
+  assert.equal(shopfrontTrackInventory(null, {}), null);
+});
+
+test("inventory row picker prefers the newest snapshot across outlets", () => {
+  const picked = pickShopfrontInventoryRow([
+    { source_product_id: "p1", quantity: 1, snapshot_at: "2026-11-07T00:00:00", outlet_id: "a" },
+    { source_product_id: "p1", quantity: 9, snapshot_at: "2026-11-08T00:00:00", outlet_id: "b" },
+  ]);
+  assert.equal(picked?.quantity, 9);
+  const bySource = shopfrontInventoryBySource([
+    { source_product_id: "p1", quantity: 3, snapshot_at: "2026-11-08T00:00:00", outlet_id: "a", single_level: 4, case_level: 0 },
+    { source_product_id: "p1", quantity: 99, snapshot_at: "2026-11-01T00:00:00", outlet_id: "b", single_level: 1, case_level: 1 },
+  ]);
+  assert.equal(bySource.get("p1")?.single_level, 4);
 });

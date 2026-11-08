@@ -28,6 +28,57 @@ export interface ShopfrontInventorySourceRow {
   single_level?: number;
   case_level?: number;
   snapshot_at?: string;
+  outlet_id?: string | false;
+}
+
+export function shopfrontTrackInventory(
+  mirror: boolean | null | undefined,
+  rawPayload: unknown,
+): boolean | null {
+  if (mirror === true || mirror === false) return mirror;
+  if (rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
+    const raw = rawPayload as Record<string, unknown>;
+    if (raw.trackInventory === true || raw.trackInventory === false) return raw.trackInventory;
+    if (raw.track_inventory === true || raw.track_inventory === false) return raw.track_inventory;
+  }
+  return null;
+}
+
+export function pickShopfrontInventoryRow<T extends ShopfrontInventorySourceRow>(
+  rows: T[],
+  preferredOutletId?: string | null,
+): T | undefined {
+  if (!rows.length) return undefined;
+  const preferred = preferredOutletId?.trim();
+  if (preferred) {
+    const scoped = rows.filter((row) => String(row.outlet_id || "").trim() === preferred);
+    if (scoped.length) return pickNewestShopfrontInventoryRow(scoped);
+  }
+  return pickNewestShopfrontInventoryRow(rows);
+}
+
+function pickNewestShopfrontInventoryRow<T extends ShopfrontInventorySourceRow>(rows: T[]): T {
+  return rows.reduce((best, row) => (String(row.snapshot_at ?? "") > String(best.snapshot_at ?? "") ? row : best));
+}
+
+export function shopfrontInventoryBySource<T extends ShopfrontInventorySourceRow>(
+  rows: T[],
+  preferredOutletId?: string | null,
+): Map<string, T> {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = row.source_product_id;
+    if (!key) continue;
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(row);
+    grouped.set(key, bucket);
+  }
+  const result = new Map<string, T>();
+  for (const [key, bucket] of grouped) {
+    const picked = pickShopfrontInventoryRow(bucket, preferredOutletId);
+    if (picked) result.set(key, picked);
+  }
+  return result;
 }
 
 export interface ShopfrontCatalogueMapping {
@@ -138,7 +189,7 @@ export function enrichShopfrontInventoryRows<
     }
   }
   const productsById = new Map(sourceProducts.map((product) => [product.source_id, product]));
-  const inventoryById = new Map(inventoryRows.map((inventory) => [inventory.source_product_id, inventory]));
+  const inventoryById = shopfrontInventoryBySource(inventoryRows);
 
   return rows.map((row) => {
     const templateId = Array.isArray(row.product_tmpl_id) ? Number(row.product_tmpl_id[0]) : 0;
@@ -167,7 +218,7 @@ export function enrichShopfrontInventoryRows<
       shopfront_source_sku: typeof source?.sku === "string" ? source.sku : null,
       shopfront_source_category: typeof source?.category === "string" ? source.category : null,
       shopfront_source_status: source?.source_status ?? null,
-      shopfront_track_inventory: typeof source?.track_inventory === "boolean" ? source.track_inventory : null,
+      shopfront_track_inventory: shopfrontTrackInventory(source?.track_inventory, source?.raw_payload),
       shopfront_case_quantity: typeof source?.case_quantity === "number" && Number.isFinite(source.case_quantity) && source.case_quantity > 0 ? source.case_quantity : null,
       shopfront_cost: sourceCost,
       shopfront_cost_status: shopfrontFieldStatus(costReadStatus, sourceCost),

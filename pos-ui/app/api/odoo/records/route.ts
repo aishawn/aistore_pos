@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
 import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot, type InventoryShopfrontCoverage } from "@/lib/inventory-snapshot";
 import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
-import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
+import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, shopfrontInventoryBySource, shopfrontTrackInventory, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -661,22 +661,18 @@ export async function POST(request: NextRequest) {
                   sourceCostsAvailable = true;
                 } catch { /* Isolate optional cost reads from other Shopfront fields. */ }
               }
-              let sourceInventory: Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }> = [];
+              let sourceInventory: Array<{ source_product_id: string; quantity?: number; snapshot_at?: string; single_level?: number; case_level?: number; outlet_id?: string | false }> = [];
               let sourceInventoryAvailable = false;
               try {
-                sourceInventory = await odooRpc(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: sourceIds.length, context: companyContext });
+                sourceInventory = await odooRpc(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at", "single_level", "case_level", "outlet_id"], limit: Math.max(sourceIds.length * 4, sourceIds.length), context: companyContext });
                 sourceInventoryAvailable = true;
               } catch { /* Isolate optional inventory reads from catalogue data. */ }
-              const inventoryLevels = sourceInventoryAvailable
-                ? await odooRpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: sourceIds.length, context: companyContext }).catch(() => [])
-                : [];
               const bySource = new Map(sourceProducts.map((row) => [row.source_id, row]));
               const detailsBySource = new Map(sourceDetails.map((row) => [row.source_id, row]));
               const pricingBySource = new Map(sourcePricing.map((row) => [row.source_id, row]));
               const templateDetailsById = new Map(templateDetails.map((row) => [row.id, row]));
               const costsBySource = new Map(sourceCosts.map((row) => [row.source_id, row]));
-              const levelsBySource = new Map(inventoryLevels.map((row) => [row.source_product_id, row]));
-              const inventoryBySource = new Map(sourceInventory.map((row) => [row.source_product_id, { ...row, ...levelsBySource.get(row.source_product_id) }]));
+              const inventoryBySource = shopfrontInventoryBySource(sourceInventory);
               enrichmentStep = "source mappings";
               const matchingTemplates = templateIds.length ? await odooRpc<Array<{ id: number; shopfront_source_ref?: string | false }>>(sessionId, request, "product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceIds.map((id) => `${sourceStore}:${id}`)], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref"], limit: Math.max(sourceIds.length * 2, 100), context: companyContext }) : [];
               const templateCountByRef = new Map<string, number>();
@@ -711,7 +707,10 @@ export async function POST(request: NextRequest) {
                 product.shopfront_source_sku = sourceDetail?.sku ?? null;
                 product.shopfront_source_category = sourceDetail?.category ?? null;
                 product.shopfront_source_status = sourceDetail?.source_status ?? null;
-                product.shopfront_track_inventory = typeof sourceDetail?.track_inventory === "boolean" ? sourceDetail.track_inventory : null;
+                product.shopfront_track_inventory = shopfrontTrackInventory(
+                  typeof sourceDetail?.track_inventory === "boolean" ? sourceDetail.track_inventory : null,
+                  sourceDetail?.raw_payload,
+                );
                 const sourcePayload = sourceDetail?.raw_payload && typeof sourceDetail.raw_payload === "object" && !Array.isArray(sourceDetail.raw_payload)
                   ? sourceDetail.raw_payload as Record<string, unknown>
                   : {};
@@ -745,8 +744,22 @@ export async function POST(request: NextRequest) {
                 const [year, month, date] = storeDay.split("-").map(Number);
                 const todayUtc = Date.UTC(year, month - 1, date);
                 const from = new Date(todayUtc - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-                const saleLines = await odooRpc<Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }>>(sessionId, request, "shopfront.sync.sale.line", "search_read", [[ ["source_product_id", "in", sourceIds], ["sale_id.store_key", "=", sourceStore], ["sale_id.created_at", ">=", from] ]], { fields: ["source_product_id", "quantity", "sale_id"], limit: 20000, context: companyContext });
-                if (saleLines.length >= 20000) throw new Error("Shopfront product sales exceed the safe per-page summary limit.");
+                const saleLineDomain: unknown[] = [["source_product_id", "in", sourceIds], ["sale_id.store_key", "=", sourceStore], ["sale_id.created_at", ">=", from]];
+                const saleLines: Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }> = [];
+                const saleLinePageSize = 5000;
+                for (let saleLineOffset = 0; saleLineOffset < 120_000; saleLineOffset += saleLinePageSize) {
+                  const page = await odooRpc<Array<{ source_product_id?: string | false; quantity?: number; sale_id?: [number, string] | false }>>(
+                    sessionId,
+                    request,
+                    "shopfront.sync.sale.line",
+                    "search_read",
+                    [saleLineDomain],
+                    { fields: ["source_product_id", "quantity", "sale_id"], limit: saleLinePageSize, offset: saleLineOffset, context: companyContext },
+                  );
+                  if (!page.length) break;
+                  saleLines.push(...page);
+                  if (page.length < saleLinePageSize) break;
+                }
                 const saleIds = [...new Set(saleLines.flatMap((line) => Array.isArray(line.sale_id) ? [Number(line.sale_id[0])] : []).filter((id) => Number.isSafeInteger(id) && id > 0))];
                 const sales = saleIds.length ? await odooRpc<Array<{ id: number; status?: string | false; created_at?: string | false }>>(sessionId, request, "shopfront.sync.sale", "search_read", [[ ["id", "in", saleIds], ["store_key", "=", sourceStore] ]], { fields: ["id", "status", "created_at"], limit: saleIds.length, context: companyContext }) : [];
                 const completedSales = new Map(sales.filter((sale) => String(sale.status || "").toUpperCase() === "COMPLETED").map((sale) => [sale.id, String(sale.created_at || "").slice(0, 10)]));

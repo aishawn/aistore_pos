@@ -72,10 +72,26 @@ function ShopfrontCostDetails({ product, showOdooCost = true }: { product: OdooP
   </>;
 }
 
+function shopfrontInventoryHeadline(
+  caseLevel: number | null | undefined,
+  singleLevel: number | null | undefined,
+  sourceQty: number | null,
+) {
+  const cases = typeof caseLevel === "number" && Number.isFinite(caseLevel) ? caseLevel : null;
+  const items = typeof singleLevel === "number" && Number.isFinite(singleLevel) ? singleLevel : null;
+  if (cases !== null && items !== null) {
+    if (cases === 0) return `${quantity(items)} Items`;
+    return `${quantity(cases)} Cases · ${quantity(items)} Items`;
+  }
+  if (sourceQty !== null) return `${quantity(sourceQty)} Units`;
+  return null;
+}
+
 function ShopfrontInventoryDetails({ product }: { product: OdooProductRecord }) {
   const sourceQty = typeof product.shopfront_quantity === "number" && Number.isFinite(product.shopfront_quantity) ? product.shopfront_quantity : null;
   const status = product.shopfront_inventory_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceQty === null ? "missing" : "available");
-  if (product.shopfront_track_inventory === false) return <>
+  const trackInventory = product.shopfront_track_inventory;
+  if (trackInventory === false) return <>
     <span className="block text-[var(--oh-text-secondary)]">Not tracked</span>
     <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Shopfront product does not track stock</span>
   </>;
@@ -83,8 +99,9 @@ function ShopfrontInventoryDetails({ product }: { product: OdooProductRecord }) 
     <span className="block text-amber-800">{status === "unavailable" ? "Shopfront inventory unavailable" : "No Shopfront inventory record"}</span>
     <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Odoo · {quantity(product.qty_available)} {product.uom_id ? product.uom_id[1] : "units"}</span>
   </>;
+  const headline = shopfrontInventoryHeadline(product.shopfront_case_level, product.shopfront_single_level, sourceQty);
   return <>
-    <span className="block">{typeof product.shopfront_case_level === "number" ? `${quantity(product.shopfront_case_level)} Cases · ${quantity(product.shopfront_single_level ?? 0)} Items` : `${quantity(sourceQty)} Units`}</span>
+    <span className="block">{headline ?? `${quantity(sourceQty)} Units`}</span>
     <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Shopfront · {quantity(sourceQty)} units</span>
   </>;
 }

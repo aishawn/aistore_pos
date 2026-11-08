@@ -2830,8 +2830,15 @@ async def push_pos_snapshot(
                     if existing is None:
                         product_items_by_source[source_id] = normalized
                     else:
+                        catalog_fields = {
+                            "category", "category_id", "brand", "brand_id", "family", "family_id",
+                            "track_inventory", "case_quantity", "source_status", "source_type",
+                            "source_created_at", "source_updated_at", "price", "prices", "cost",
+                        }
                         for key, value in normalized.items():
-                            if value not in (None, "", [], {}) and not existing.get(key):
+                            if value in (None, "", [], {}):
+                                continue
+                            if key in catalog_fields or not existing.get(key):
                                 existing[key] = value
                     product = products_by_source.get(source_id)
                     if product is None and normalized.get("name"):
@@ -2858,7 +2865,10 @@ async def push_pos_snapshot(
                         product.name = product.name or normalized.get("name")
                         product.sku = product.sku or normalized.get("sku")
                         product.barcode = product.barcode or normalized.get("barcode")
-                        product.category = product.category or normalized.get("category")
+                        if normalized.get("category"):
+                            product.category = normalized.get("category")
+                        else:
+                            product.category = product.category or normalized.get("category")
                         product.brand = product.brand or normalized.get("brand")
                         product.cost = product.cost if product.cost is not None else parse_decimal(normalized.get("cost"))
                         product.price = product.price if product.price is not None else parse_decimal(normalized.get("price"))
