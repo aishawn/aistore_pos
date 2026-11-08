@@ -106,11 +106,16 @@ type DeadStockData = {
 const OVERVIEW_RANGES = [
   { period: "today", label: "Today" },
   { period: "yesterday", label: "Yesterday" },
-  { period: "last_7_days", label: "Last 7 days" },
   { period: "last_week", label: "Last week" },
   { period: "last_month", label: "Last month" },
 ] as const;
 type DashboardPeriod = ReportQueryPeriod | "custom";
+
+function normalizeDashboardPeriod(value: string | null): DashboardPeriod | null {
+  if (value === "last_7_days") return "last_week";
+  if (value === "custom") return "custom";
+  return OVERVIEW_RANGES.some((range) => range.period === value) ? value as ReportQueryPeriod : null;
+}
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 
@@ -214,13 +219,6 @@ export function OrithosReportsDashboardPage() {
   }, []);
   const periodRef = useRef<DashboardPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
-  const shopfrontPeriod = useMemo(() => {
-    if (!data?.from || !data?.to) return null;
-    const fromDay = storeDay(data.from, data.timezone);
-    const endDay = storeDay(data.to, data.timezone);
-    const toDay = endDay > fromDay ? shiftDay(endDay, -1) : fromDay;
-    return toDay < fromDay ? null : { from: fromDay, to: toDay };
-  }, [data?.from, data?.to, data?.timezone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,7 +252,9 @@ export function OrithosReportsDashboardPage() {
       setRequestId(correlationId);
       const params = new URLSearchParams({ period: selectedPeriod });
       if (selectedPeriod === "custom") { params.set("from", customRangeRef.current.from); params.set("to", customRangeRef.current.to); }
-      const response = await fetchPreparedReport(`/api/odoo/reporting-dashboard?${params}`, { refresh, signal: controller.signal, correlationId });
+      const warmEntry = periodCache.current.get(cacheKey);
+      const allowStale = !refresh && warmEntry != null && warmEntry.data.period === selectedPeriod;
+      const response = await fetchPreparedReport(`/api/odoo/reporting-dashboard?${params}`, { refresh, allowStale, signal: controller.signal, correlationId });
       if (revision !== requestRevision.current) return;
       setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as OverviewData | { message?: string } | null;
@@ -271,8 +271,11 @@ export function OrithosReportsDashboardPage() {
       }
       setNeedsConnection(false);
       setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : null);
-      if (payload.cacheStatus !== "STALE") periodCache.current.set(cacheKey, { data: payload, expires: Date.now() + 30_000,
-        businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) });
+      if (payload.cacheStatus !== "STALE") periodCache.current.set(cacheKey, {
+        data: payload,
+        expires: Date.now() + (payload.cacheStatus === "HIT" ? 300_000 : 30_000),
+        businessDay: new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()),
+      });
       setData({
         ...payload,
         itemsSold: Number(payload.itemsSold ?? 0),
@@ -310,11 +313,17 @@ export function OrithosReportsDashboardPage() {
   useEffect(() => {
     const search = new URLSearchParams(location.search);
     const saved = search.get("period");
-    if (saved && OVERVIEW_RANGES.some(range => range.period === saved)) {
-      periodRef.current = saved as ReportPeriod | "today"; setPeriod(saved as ReportPeriod | "today");
-    } else if (saved === "custom" && search.get("from") && search.get("to")) {
+    const normalized = normalizeDashboardPeriod(saved);
+    if (normalized === "custom" && search.get("from") && search.get("to")) {
       const from = search.get("from")!; const to = search.get("to")!;
       customRangeRef.current = { from, to }; setFromDay(from); setToDay(to); periodRef.current = "custom"; setPeriod("custom");
+    } else if (normalized && normalized !== "custom") {
+      periodRef.current = normalized; setPeriod(normalized);
+      if (saved === "last_7_days") {
+        const url = new URL(location.href);
+        url.searchParams.set("period", "last_week");
+        history.replaceState(null, "", url);
+      }
     }
     void load();
     return () => { requestRevision.current++; reportAbort.current?.abort(); };
@@ -352,64 +361,60 @@ export function OrithosReportsDashboardPage() {
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Report update failed."); });
     return () => controller.abort();
   }, [data?.taskId, data?.cacheStatus]);
-  useEffect(() => {
-    let lastRefresh = 0;
-    const refresh = () => {
-      if (document.visibilityState !== "visible" || Date.now() - lastRefresh < 15_000) return;
-      lastRefresh = Date.now();
-      periodCache.current.delete(periodRef.current);
-      void load(false, periodRef.current);
-    };
-    const timer = window.setInterval(refresh, 60_000);
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [load]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
-  const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
-  const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
-  const hasTrendData = data?.trend.some((item) => item.revenue > 0) ?? false;
-  const trendData = data?.trend ?? [];
-  const trendGranularity = data?.trendGranularity ?? "hour";
+  const displayData = useMemo(() => {
+    if (!data) return null;
+    if (period === "custom") return data.period === "custom" ? data : null;
+    return data.period === period ? data : null;
+  }, [data, period]);
+  const preparingFigures = loading || refreshing || (data != null && displayData == null);
+  const shopfrontPeriod = useMemo(() => {
+    if (!displayData?.from || !displayData?.to) return null;
+    const fromDay = storeDay(displayData.from, displayData.timezone);
+    const endDay = storeDay(displayData.to, displayData.timezone);
+    const toDay = endDay > fromDay ? shiftDay(endDay, -1) : fromDay;
+    return toDay < fromDay ? null : { from: fromDay, to: toDay };
+  }, [displayData]);
+  const averageSale = displayData?.transactions ? (displayData.grossSales ?? displayData.revenue) / displayData.transactions : 0;
+  const maxRevenue = useMemo(() => Math.max(1, ...(displayData?.trend.map((item) => item.revenue) ?? [0])), [displayData]);
+  const hasTrendData = displayData?.trend.some((item) => item.revenue > 0) ?? false;
+  const trendData = displayData?.trend ?? [];
+  const trendGranularity = displayData?.trendGranularity ?? "hour";
   const trendLabelOptions: Intl.DateTimeFormatOptions =
     trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" };
   const trendLabelInterval = Math.max(1, Math.ceil(trendData.length / 6));
-  const currency = data?.currency ?? "AUD";
-  const rangeLabel = period === "custom" ? "Custom dates" : OVERVIEW_RANGES.find((range) => range.period === (data?.period ?? period))?.label ?? "Yesterday";
-  const comparisonLabel = data?.comparisonLabel ?? "vs same day last week";
+  const currency = displayData?.currency ?? data?.currency ?? "AUD";
+  const rangeLabel = period === "custom" ? "Custom dates" : OVERVIEW_RANGES.find((range) => range.period === period)?.label ?? "Yesterday";
+  const comparisonLabel = displayData?.comparisonLabel ?? "vs same day last week";
   const trendSummary = useMemo(() => {
-    if (!data?.trend.length) return "No sales in this period.";
-    const totalRevenue = data.trend.reduce((sum, item) => sum + item.revenue, 0);
-    const totalTransactions = data.trend.reduce((sum, item) => sum + item.transactions, 0);
-    const peak = data.trend.reduce((highest, item) => (item.revenue > highest.revenue ? item : highest), data.trend[0]);
+    if (!displayData?.trend.length) return "No sales in this period.";
+    const totalRevenue = displayData.trend.reduce((sum, item) => sum + item.revenue, 0);
+    const totalTransactions = displayData.trend.reduce((sum, item) => sum + item.transactions, 0);
+    const peak = displayData.trend.reduce((highest, item) => (item.revenue > highest.revenue ? item : highest), displayData.trend[0]);
     const peakLabel = formatGroupedStoreTime(
       peak.label,
-      data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" },
+      displayData.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" },
     );
-    return `${data.trend.length} periods with ${formatMoney(totalRevenue, data.currency)} in sales across ${totalTransactions} transactions. Highest period: ${peakLabel} at ${formatMoney(peak.revenue, data.currency)}.`;
-  }, [data]);
+    return `${displayData.trend.length} periods with ${formatMoney(totalRevenue, displayData.currency)} in sales across ${totalTransactions} transactions. Highest period: ${peakLabel} at ${formatMoney(peak.revenue, displayData.currency)}.`;
+  }, [displayData]);
   const dateOptions: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
-  const periodEnd = data ? new Date(data.to.includes("T") ? data.to : `${data.to.replace(" ", "T")}Z`).getTime() - 1 : 0;
-  const periodBounds = data
-    ? data.period === "yesterday"
-      ? formatOdooDateTime(data.from, data.timezone, dateOptions)
-      : `${formatOdooDateTime(data.from, data.timezone, dateOptions)} – ${formatStoreEpoch(periodEnd, data.timezone, dateOptions)}`
+  const periodEnd = displayData ? new Date(displayData.to.includes("T") ? displayData.to : `${displayData.to.replace(" ", "T")}Z`).getTime() - 1 : 0;
+  const periodBounds = displayData
+    ? displayData.period === "yesterday"
+      ? formatOdooDateTime(displayData.from, displayData.timezone, dateOptions)
+      : `${formatOdooDateTime(displayData.from, displayData.timezone, dateOptions)} – ${formatStoreEpoch(periodEnd, displayData.timezone, dateOptions)}`
     : "";
   const donutGradient = useMemo(() => {
-    if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
+    if (!displayData?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
     let cursor = 0;
-    const parts = data.byCategory.map((item, index) => {
+    const parts = displayData.byCategory.map((item, index) => {
       const start = cursor;
       cursor += item.share;
       return `${CATEGORY_COLORS[index % CATEGORY_COLORS.length]} ${start}% ${cursor}%`;
     });
     if (cursor < 100) parts.push(`#e2e8f0 ${cursor}% 100%`);
     return `conic-gradient(${parts.join(", ")})`;
-  }, [data]);
+  }, [displayData]);
 
   if (loading && !data) {
     return (
@@ -523,8 +528,8 @@ export function OrithosReportsDashboardPage() {
               </Link>
             </div>
           </header>
-          {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
-          {data?.cacheStatus === "STALE" && (
+          {preparingFigures && <p role="status" className="text-sm text-[var(--oh-muted)]">{slowLoading ? "Preparing your report. Last week and last month can take up to a minute." : `Preparing ${rangeLabel} report…`}</p>}
+          {displayData?.cacheStatus === "STALE" && (
             <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               <span>Figures may be outdated. Refresh for the latest Odoo ledger totals.</span>
               <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 text-xs font-semibold disabled:opacity-60">
@@ -564,68 +569,82 @@ export function OrithosReportsDashboardPage() {
             </section>
           )}
 
+          {preparingFigures ? (
+            <section aria-busy="true" aria-label={`Loading ${rangeLabel} report`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3">
+                  <div className="h-3 w-24 rounded bg-[var(--oh-border)]" />
+                  <div className="mt-4 h-6 w-32 rounded bg-[var(--oh-surface-muted)]" />
+                  <div className="mt-3 h-3 w-40 rounded bg-[var(--oh-border)]" />
+                </div>
+              ))}
+            </section>
+          ) : displayData ? (
+            <>
           <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Primary totals: Odoo POS ledger · {rangeLabel}. Shopfront source reference follows when this store is mapped.</p>
           <section aria-label={`${rangeLabel} Orithos summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <KpiCard
               title="Orithos net sales"
-              value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
+              value={formatMoney(displayData.revenue ?? 0, displayData.currency ?? "AUD")}
               detail="Odoo POS ledger · after refunds"
               comparisonLabel={comparisonLabel}
-              delta={data && data.compare.revenue >= 50 ? data.compare.revenueDeltaPct : null}
-              comparisonMessage={data && data.compare.revenue < 50 ? "Prior activity too small to compare" : undefined}
+              delta={displayData.compare.revenue >= 50 ? displayData.compare.revenueDeltaPct : null}
+              comparisonMessage={displayData.compare.revenue < 50 ? "Prior activity too small to compare" : undefined}
               icon={<ShoppingBag size={15} />}
             />
             <KpiCard
               title="Gross margin"
-              value={typeof data?.grossMarginPercent === "number" && Number.isFinite(data.grossMarginPercent) ? `${(data.grossMarginPercent * 100).toFixed(1)}%` : "—"}
-              detail={data?.grossMarginStatus === "verified"
-                ? `Odoo recorded cost · ${Math.round((data.grossMarginCoverage ?? 0) * 100)}% cost coverage`
-                : data?.grossMarginStatus === "source_margin" ? "Shopfront source cost · not ledger-audited"
-                : data?.grossMarginStatus === "source_margin_unverified" ? "Shopfront source cost · sync coverage unverified"
-                : data?.grossMarginStatus === "sales_mismatch" ? "Odoo sales and line totals do not reconcile"
-                  : data?.grossMarginStatus === "no_sales" ? "No sales in this period" : "Odoo cost records are incomplete"}
+              value={typeof displayData.grossMarginPercent === "number" && Number.isFinite(displayData.grossMarginPercent) ? `${(displayData.grossMarginPercent * 100).toFixed(1)}%` : "—"}
+              detail={displayData.grossMarginStatus === "verified"
+                ? `Odoo recorded cost · ${Math.round((displayData.grossMarginCoverage ?? 0) * 100)}% cost coverage`
+                : displayData.grossMarginStatus === "source_margin" ? "Shopfront source cost · not ledger-audited"
+                : displayData.grossMarginStatus === "source_margin_unverified" ? "Shopfront source cost · sync coverage unverified"
+                : displayData.grossMarginStatus === "sales_mismatch" ? "Odoo sales and line totals do not reconcile"
+                  : displayData.grossMarginStatus === "no_sales" ? "No sales in this period" : "Odoo cost records are incomplete"}
               icon={<BarChart3 size={15} />}
-              href={`/products?dialog=cost-reconciliation&fromDay=${data ? storeDay(data.from, data.timezone) : ""}&toDay=${data ? storeDay(data.to, data.timezone) : ""}`}
+              href={`/products?dialog=cost-reconciliation&fromDay=${storeDay(displayData.from, displayData.timezone)}&toDay=${storeDay(displayData.to, displayData.timezone)}`}
             />
             <KpiCard
               title="Sales"
-              value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)}
-              detail={`Odoo POS orders · avg ${formatMoney(averageSale, data?.currency ?? "AUD")}`}
+              value={new Intl.NumberFormat("en-AU").format(displayData.transactions ?? 0)}
+              detail={`Odoo POS orders · avg ${formatMoney(averageSale, displayData.currency ?? "AUD")}`}
               comparisonLabel={comparisonLabel}
-              delta={data && data.compare.transactions >= 3 ? data.compare.transactionsDeltaPct : null}
-              comparisonMessage={data && data.compare.transactions < 3 ? "Prior activity too small to compare" : undefined}
+              delta={displayData.compare.transactions >= 3 ? displayData.compare.transactionsDeltaPct : null}
+              comparisonMessage={displayData.compare.transactions < 3 ? "Prior activity too small to compare" : undefined}
               icon={<Package size={15} />}
             />
             <KpiCard
               title="Refunds"
-              value={formatMoney(data?.refunds ?? 0, data?.currency ?? "AUD")}
-              detail={`${new Intl.NumberFormat("en-AU").format(data?.refundTransactions ?? 0)} refunded orders`}
+              value={formatMoney(displayData.refunds ?? 0, displayData.currency ?? "AUD")}
+              detail={`${new Intl.NumberFormat("en-AU").format(displayData.refundTransactions ?? 0)} refunded orders`}
               icon={<RotateCcw size={15} />}
             />
             <KpiCard
               title="Items sold"
-              value={new Intl.NumberFormat("en-AU", { maximumFractionDigits: 0 }).format(data?.itemsSold ?? 0)}
+              value={new Intl.NumberFormat("en-AU", { maximumFractionDigits: 0 }).format(displayData.itemsSold ?? 0)}
               detail="Odoo POS line units"
               comparisonLabel={comparisonLabel}
-              delta={data && data.compare.itemsSold >= 5 ? data.compare.itemsSoldDeltaPct : null}
-              comparisonMessage={data && data.compare.itemsSold < 5 ? "Prior activity too small to compare" : undefined}
+              delta={displayData.compare.itemsSold >= 5 ? displayData.compare.itemsSoldDeltaPct : null}
+              comparisonMessage={displayData.compare.itemsSold < 5 ? "Prior activity too small to compare" : undefined}
               icon={<Archive size={15} />}
             />
             <KpiCard
               title="Net tax"
-              value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")}
+              value={formatMoney(displayData.tax ?? 0, displayData.currency ?? "AUD")}
               detail="Sales tax less refunded tax"
               icon={<ArrowUpRight size={15} />}
             />
             <KpiCard
               title="Open registers"
-              value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}
+              value={new Intl.NumberFormat("en-AU").format(displayData.openRegisters ?? 0)}
                 detail="At the report preparation time"
               icon={<Store size={15} />}
             />
           </section>
 
           {shopfrontPeriod ? <ShopfrontSalesSummary from={shopfrontPeriod.from} to={shopfrontPeriod.to} /> : null}
+            </>
+          ) : null}
 
           {deadStock ? (
             <section aria-label="Dead stock cash occupancy" className="shrink-0 rounded-lg border border-[var(--oh-border)] bg-white p-3 shadow-[var(--oh-shadow-card)]">
@@ -662,7 +681,7 @@ export function OrithosReportsDashboardPage() {
               </div>
               <Link href="/products" className="oh-type-meta inline-flex min-h-11 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
             </div>
-            {data?.topProducts.length ? (
+            {displayData?.topProducts.length ? (
               <div className="overflow-x-auto">
                 <table aria-label="Top products by revenue" className="w-full table-fixed text-left">
                   <thead>
@@ -673,7 +692,7 @@ export function OrithosReportsDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">
-                    {data.topProducts.slice(0, 4).map((product) => {
+                    {displayData.topProducts.slice(0, 4).map((product) => {
                       const label = friendlyName(product.name);
                       const tone = markTone(label);
                       const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
@@ -686,7 +705,7 @@ export function OrithosReportsDashboardPage() {
                             </div>
                           </td>
                           <td className="oh-type-meta px-2 py-1.5 text-right tabular-nums text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty)}</td>
-                          <td className="oh-type-label px-3 py-1.5 text-right font-medium tabular-nums text-[var(--oh-text)]">{formatMoney(product.revenue, data.currency)}</td>
+                          <td className="oh-type-label px-3 py-1.5 text-right font-medium tabular-nums text-[var(--oh-text)]">{formatMoney(product.revenue, displayData.currency)}</td>
                         </tr>
                       );
                     })}
@@ -769,7 +788,7 @@ export function OrithosReportsDashboardPage() {
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Orithos sales in this period</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
                       No completed Orithos POS orders in {rangeLabel}.
-                      {data?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
+                      {displayData?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                       <Link href="/" className="oh-type-meta inline-flex min-h-11 items-center gap-1 rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale <ArrowRight size={14} /></Link>
@@ -782,13 +801,13 @@ export function OrithosReportsDashboardPage() {
             <section className="flex min-h-[16rem] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales by category</h2>
               <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Share of revenue</p>
-              {data?.byCategory.length ? (
+              {displayData?.byCategory.length ? (
                 <div className="mt-2 flex min-h-0 flex-1 flex-wrap items-center gap-4">
                   <div className="relative h-24 w-24 shrink-0 rounded-full" style={{ background: donutGradient }} aria-hidden="true">
                     <div className="absolute inset-[28%] rounded-full bg-white" />
                   </div>
                   <ul className="min-w-0 flex-1 space-y-1.5">
-                    {data.byCategory.map((item, index) => (
+                    {displayData.byCategory.map((item, index) => (
                       <li key={item.name} className="oh-type-meta flex items-center justify-between gap-2">
                         <span className="flex min-w-0 items-center gap-1.5">
                           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }} />
@@ -821,9 +840,9 @@ export function OrithosReportsDashboardPage() {
                 View all <ArrowUpRight size={14} />
               </Link>
             </div>
-            {data?.recentSales.length ? (
+            {displayData?.recentSales.length ? (
               <ul className="divide-y divide-[var(--oh-border)]">
-                {data.recentSales.map((sale) => (
+                {displayData.recentSales.map((sale) => (
                   <li key={sale.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                     <div className="min-w-0">
                       <p className="oh-type-label truncate font-semibold text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p>
@@ -831,11 +850,11 @@ export function OrithosReportsDashboardPage() {
                         {sale.amount_total < 0 ? "Refund · " : "Sale · "}
                         {sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}
                         {" · "}
-                        {formatOdooDateTime(sale.date_order, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {formatOdooDateTime(sale.date_order, displayData.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                     <span className={cn("oh-type-label shrink-0 font-semibold tabular-nums", sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]")}>
-                      {formatMoney(sale.amount_total, data.currency)}
+                      {formatMoney(sale.amount_total, displayData.currency)}
                     </span>
                   </li>
                 ))}
@@ -860,7 +879,7 @@ export function OrithosReportsDashboardPage() {
           <p className="oh-type-meta inline-flex shrink-0 flex-wrap items-start gap-1.5 text-[var(--oh-muted)]">
             <Clock3 size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
-              Data before {data ? formatOdooDateTime(data.to, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+              Data before {displayData ? formatOdooDateTime(displayData.to, displayData.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
               {lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}.
               {" "}Sales count excludes drafts, cancelled orders, and refunds; net sales deduct refunds. Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}).
             </span>

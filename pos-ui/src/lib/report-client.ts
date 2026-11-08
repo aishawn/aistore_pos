@@ -1,9 +1,10 @@
 import { fetchOdooRoute, OdooApiError } from "./odoo-api";
 
 /** Polling is visible-page-only, abortable, bounded, and never repeats a force-refresh request. */
-export async function fetchPreparedReport(path: string, options: { refresh?: boolean; signal?: AbortSignal; correlationId?: string } = {}) {
+export async function fetchPreparedReport(path: string, options: { refresh?: boolean; allowStale?: boolean; signal?: AbortSignal; correlationId?: string } = {}) {
   const url = new URL(path, location.origin);
   if (options.refresh) url.searchParams.set("refresh", "true");
+  if (options.allowStale) url.searchParams.set("stale", "allow");
   let response: Response;
   const deadline = Date.now() + 120_000;
   for (;;) {

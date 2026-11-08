@@ -128,7 +128,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     const access = await reportAccess(request, summary);
     const authMs = performance.now() - started;
     const requested = request.nextUrl.searchParams.get("period");
-    const period = deadStock ? "dead_stock" : summary ? "today" : requested;
+    const period = deadStock ? "dead_stock" : summary ? "today" : requested === "last_7_days" ? "last_week" : requested;
     const fromDay = request.nextUrl.searchParams.get("from");
     const toDay = request.nextUrl.searchParams.get("to");
     if ((fromDay || toDay) && (!fromDay || !toDay || !isValidBusinessDay(fromDay) || !isValidBusinessDay(toDay) || fromDay > toDay || period !== "custom")) {
@@ -176,7 +176,10 @@ export async function serveReport(request: NextRequest, deadStock = false) {
         const job = await enqueueReport(access.scope, period as SnapshotPeriod, true, true, force);
         if (!job) throw new Error("Report queue unavailable");
         nextTask = job.id;
-        if (!snapshot || (force && !task)) return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000 }, 202, `auth;dur=${authMs.toFixed(1)}`);
+        const allowStale = request.nextUrl.searchParams.get("stale") === "allow";
+        if (!snapshot || (force && !task) || (!fresh && !allowStale)) {
+          return response({ ...sourceMetadata, taskId: job.id, updateStatus: "queued", retryAfterMs: 2000, period }, 202, `auth;dur=${authMs.toFixed(1)}`);
+        }
       }
       if (snapshot) return response({ ...sourceMetadata, ...responseReportBody(snapshot.body, sourceSyncEventsCoverPeriod), generatedAt: snapshot.generatedAt, queryThrough: snapshot.queryThrough,
         cacheStatus: fresh ? "HIT" : "STALE", taskId: nextTask, updateStatus: fresh ? "complete" : "queued" }, 200,
