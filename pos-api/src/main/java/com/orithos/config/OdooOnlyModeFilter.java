@@ -65,6 +65,11 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
     }
 
     private static boolean isLegacy(String path) {
+        // Orders now have vendor-scoped Orithos handlers and are the native
+        // purchasing ledger. Keep unrelated Classic endpoints behind the gate.
+        if (path.equals("/api/orders") || path.startsWith("/api/orders/")) {
+            return false;
+        }
         // Shopfront is an isolated, token-authenticated staging boundary. It
         // never writes Odoo or Classic POS business tables.
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {
