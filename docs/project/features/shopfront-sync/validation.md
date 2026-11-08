@@ -8,6 +8,13 @@
 - Candidate verification: POS UI `npm run typecheck` PASS; targeted ESLint PASS (0 errors; 9 existing warnings); `npm run test:unit` PASS (202 tests); `git diff --check` PASS. No crawler task, Shopfront write, or Odoo business-data write was issued.
 - Deployment/runtime acceptance is pending this candidate's `main` commit and Dokploy SHA. This does not resolve the crawler's missing Shopfront OAuth report scopes, verify report sales/purchase parity, or establish the tax basis of source cost.
 
+### Live visibility follow-up (2026-11-08)
+
+- GitHub `main` commit `b09500eaa4e8aeb91f18af09d9b59c567dd934c5` reached both SKR and Demo; `/api/public/version` returned that SHA for frontend and backend.
+- Authenticated SKR `/reports/inventory` read showed Shopfront inventory and cost on stock-ranked rows (for example, GRT NTH ORG: 465 units, `$50.02` / pack 24; `-196 LEMON P/F 6% 330ML`: 128 units, `$116.75` / pack 30). The summary content was hidden because it reused the collapsible history section. The follow-up renders the snapshot coverage continuously.
+- After the visibility change: UI typecheck PASS; focused ESLint on `ShopfrontSourceSections.tsx` PASS, 0 errors; UI unit suite 202/202 PASS; `git diff --check` PASS. Follow-up deployment and visible summary metrics are pending.
+- Project documentation checker remains FAIL with 66 pre-existing missing-file/link errors in this checkout. No Shopfront write or Odoo business-data write was issued.
+
 ## Inventory default view correction (2026-11-08)
 
 - Read-only authenticated SKR API check: Products coverage was 10,849 active/mapped products, 50,914 positive Shopfront units, and 10,849 inventory rows. Inventory sorted by `shopfront_quantity desc` returned 465, 456, 425, 422, and 400 units on the first five rows; each row exposed Shopfront cost and Odoo quantity matched source quantity.

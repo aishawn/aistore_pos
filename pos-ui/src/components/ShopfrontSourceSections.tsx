@@ -93,9 +93,12 @@ function SourceState({ loading, error, onRetry, children }: { loading: boolean; 
 }
 
 export function ShopfrontInventorySummary({ odooProductCount, coverage }: { odooProductCount?: number; coverage?: InventoryShopfrontCoverage | null }) {
-  const [expanded, setExpanded] = useState(false);
   const sourceCoverage = coverage ?? null;
-  return <SectionFrame title="Shopfront inventory snapshot" expanded={expanded} setExpanded={setExpanded}>
+  return <section className="shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+    <header className="px-4 py-3">
+      <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront inventory snapshot</h2>
+      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Shopfront · read-only source mirror · separate from Odoo balances</p>
+    </header>
     {sourceCoverage && <div className="flex flex-wrap gap-x-8 gap-y-3 p-4 text-sm">
       <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront active products</span><strong>{number(sourceCoverage.activeProducts)}</strong></p>
       {typeof odooProductCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Odoo saleable variants</span><strong>{number(odooProductCount)}</strong></p>}
@@ -103,10 +106,10 @@ export function ShopfrontInventorySummary({ odooProductCount, coverage }: { odoo
       <p><span className="block text-xs text-[var(--oh-muted)]">Inventory-covered products</span><strong>{number(sourceCoverage.inventoryProductRows)} / {number(sourceCoverage.activeProducts)}</strong></p>
       {typeof sourceCoverage.productsWithCost === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Products with source cost</span><strong>{number(sourceCoverage.productsWithCost)}</strong></p>}
       {typeof sourceCoverage.zeroCostProducts === "number" && sourceCoverage.zeroCostProducts > 0 && <p><span className="block text-xs text-[var(--oh-muted)]">Source-reported $0 cost</span><strong>{number(sourceCoverage.zeroCostProducts)}</strong></p>}
-      {expanded && <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront source mirror · read-only · {sourceCoverage.inventorySnapshotAt ? `snapshot ${formatStoreEpoch(Date.parse(sourceCoverage.inventorySnapshotAt), "Australia/Adelaide")}` : "snapshot time unavailable"}. The report rows and totals above use the same canonical Shopfront-linked products. Positive source stock is shown separately from signed Odoo on-hand balances.</p>}
+      <p className="basis-full text-xs text-[var(--oh-muted)]">Snapshot {sourceCoverage.inventorySnapshotAt ? formatStoreEpoch(Date.parse(sourceCoverage.inventorySnapshotAt), "Australia/Adelaide") : "time unavailable"}. Product rows and coverage use the same canonical Shopfront-linked products; source stock is separate from signed Odoo on-hand balances.</p>
     </div>}
     {!sourceCoverage && <p role="status" className="px-4 pb-4 text-sm text-amber-800">Shopfront coverage is unavailable; the rows remain marked by source status.</p>}
-  </SectionFrame>;
+  </section>;
 }
 
 export function ShopfrontProductHistorySection() {

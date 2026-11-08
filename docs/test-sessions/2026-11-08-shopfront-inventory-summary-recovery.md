@@ -2,7 +2,7 @@
 
 Date: 2026-11-08
 Environment: Local POS UI checks; prior authenticated SKR read-only UI; Odoo database `aipos_uat`, company 5, location `UATPI/Stock`
-Source/runtime SHA: Candidate commit pending; deployed SHA pending
+Source/runtime SHA: First candidate `b09500eaa4e8aeb91f18af09d9b59c567dd934c5` deployed to SKR and Demo; always-visible summary follow-up pending
 Business data writes: 0
 
 ## Findings
@@ -15,14 +15,16 @@ Business data writes: 0
 
 Inventory coverage is calculated in the same Odoo mirror-backed snapshot as the report rows. The summary uses that coverage instead of making another Reporting API request and keeps Shopfront values identified separately from Odoo balances. When cost coverage is unavailable because of permissions, the UI omits the cost counts instead of displaying a misleading zero.
 
+The first candidate's live page check found that coverage was still hidden inside a collapsed history section. The follow-up displays coverage continuously. Live SKR rows showed GRT NTH ORG with 465 units and `$50.02` / pack 24, and `-196 LEMON P/F 6% 330ML` with 128 units and `$116.75` / pack 30.
+
 ## Checks
 
-- `npm run typecheck`: PASS.
-- Targeted ESLint on changed UI/API files: 0 errors, 9 existing `react-hooks/set-state-in-effect` warnings.
+- `npm run typecheck`: PASS for both candidates.
+- Targeted ESLint: first candidate 0 errors / 9 existing warnings; visibility follow-up `ShopfrontSourceSections.tsx` 0 errors.
 - `npm run test:unit -- src/lib/shopfront-catalogue.test.ts src/lib/inventory-report.test.ts`: PASS, 202 tests (the package script runs the full UI unit suite).
 - `git diff --check`: PASS.
-- Project documentation checker: pending.
-- Dokploy build, deployed runtime SHA, and post-deploy page check: pending.
+- Project documentation checker: FAIL, 66 pre-existing missing-file/link errors in this checkout.
+- First candidate runtime confirmed on SKR and Demo. Follow-up commit/runtime and always-visible summary acceptance: pending.
 - No crawler job, Shopfront write, or Odoo business-data write was issued.
 
 ## Limits
