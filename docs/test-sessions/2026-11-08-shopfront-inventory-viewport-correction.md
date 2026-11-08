@@ -17,6 +17,7 @@ Date: 2026-11-08
 - Authenticated SKR Inventory API sorted `shopfront_quantity desc`: first five quantities 465, 456, 425, 422, 400; source costs were readable and Odoo quantities matched each source quantity.
 - UI now defaults Inventory to `shopfront_quantity desc` if no sort URL parameters are supplied. Explicit URL sort and direction are preserved.
 - `npm run typecheck` passed in `pos-ui`.
+- Commit `d33d14b427d598c548642e848b78b807bcdb6e53` is deployed on both SKR and Demo; both public version APIs report the exact frontend/backend SHA. Post-deployment authenticated SKR Inventory request using the page's default stock-descending options returned 465, 456, 425, 422, and 400 units with readable source costs and matching Odoo quantities.
 - The independent Odoo audit observed 7 mapped products with positive Shopfront cost and zero `standard_price`; source case quantity or cost semantics prevent a proven unit-cost write for these cases. The UI keeps displaying the source value directly.
 
 ## Limitations
