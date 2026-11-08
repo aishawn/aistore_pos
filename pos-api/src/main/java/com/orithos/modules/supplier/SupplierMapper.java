@@ -81,15 +81,28 @@ public interface SupplierMapper {
         """)
     SupplierDetail findDetailById(Long id);
 
+    @Select("""
+        SELECT s.*, ct.email, ct.fax, ct.phone, ct.mobile, ct.website, ct.twitter, ct.facebook,
+               ct.address_street1 AS street_address1, ct.address_street2 AS street_address2,
+               ct.address_suburb AS suburb, ct.address_city AS city,
+               ct.address_postcode AS post_code, ct.address_region AS region,
+               ct.address_country AS country
+        FROM supplier s
+        JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
+        LEFT JOIN contact ct ON ct.id=s.contact_id
+        WHERE s.id=#{id} AND s.deleted_at IS NULL
+        """)
+    SupplierDetail findDetailByIdAndVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
-        INSERT INTO supplier (name, mdb_id, status, contact_id, business_number, account_number,
+        INSERT INTO supplier (outlet_id, name, mdb_id, status, contact_id, business_number, account_number,
                               order_notes, internal_order_notes, order_automatic_email, default_order_tax,
                               email_format, comments, fee_amount, distribute_fees, distribute_freight,
                               freight_included_on_invoices, freight_tax_id, fees_tax_id,
                               allow_order_below_minimum, minimum_order_value, maximum_order_value,
                               default_days_until_due, freight_fixed_cost_per_case)
-        VALUES (#{name}, #{mdbId}, #{status}, #{contactId}, #{businessNumber}, #{accountNumber},
+        VALUES (#{outletId}, #{name}, #{mdbId}, #{status}, #{contactId}, #{businessNumber}, #{accountNumber},
                 #{orderNotes}, #{internalOrderNotes}, #{orderAutomaticEmail}, #{defaultOrderTax},
                 #{emailFormat}, #{comments}, #{feeAmount}, #{distributeFees}, #{distributeFreight},
                 #{freightIncludedOnInvoices}, #{freightTaxId}, #{feesTaxId},
@@ -111,7 +124,7 @@ public interface SupplierMapper {
                minimum_order_value=#{minimumOrderValue}, maximum_order_value=#{maximumOrderValue},
                default_days_until_due=#{defaultDaysUntilDue},
                freight_fixed_cost_per_case=#{freightFixedCostPerCase}
-        WHERE id=#{id}
+        WHERE id=#{id} AND outlet_id=#{outletId}
         """)
     int updateDetail(SupplierDetail s);
 
@@ -126,21 +139,26 @@ public interface SupplierMapper {
             + "account_number=#{accountNumber}, order_notes=#{orderNotes}, comments=#{comments} WHERE id=#{id}")
     int update(Supplier s);
 
-    @Update("UPDATE supplier SET deleted_at = NOW() WHERE id=#{id}")
-    int softDelete(Long id);
+    @Update("UPDATE supplier SET deleted_at = NOW() WHERE id=#{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int softDelete(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE product SET core_supplier_id=#{target} WHERE core_supplier_id=#{source}")
-    int reassignProductCoreSupplier(@Param("target") Long target, @Param("source") Long source);
+    @Update("UPDATE product SET core_supplier_id=#{target} WHERE core_supplier_id=#{source} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int reassignProductCoreSupplier(@Param("target") Long target, @Param("source") Long source,
+                                    @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE product_supplier SET supplier_id=#{target} WHERE supplier_id=#{source}")
-    int reassignProductSupplier(@Param("target") Long target, @Param("source") Long source);
+    @Update("UPDATE product_supplier SET supplier_id=#{target} WHERE supplier_id=#{source} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int reassignProductSupplier(@Param("target") Long target, @Param("source") Long source,
+                                @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE purchase_order SET from_id=#{target} WHERE from_id=#{source}")
-    int reassignOrderFrom(@Param("target") Long target, @Param("source") Long source);
+    @Update("UPDATE purchase_order SET from_id=#{target} WHERE from_id=#{source} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int reassignOrderFrom(@Param("target") Long target, @Param("source") Long source,
+                          @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE order_product SET supplier_id=#{target} WHERE supplier_id=#{source}")
-    int reassignOrderProductSupplier(@Param("target") Long target, @Param("source") Long source);
+    @Update("UPDATE order_product SET supplier_id=#{target} WHERE supplier_id=#{source} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int reassignOrderProductSupplier(@Param("target") Long target, @Param("source") Long source,
+                                     @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE future_cost SET supplier_id=#{target} WHERE supplier_id=#{source}")
-    int reassignFutureCostSupplier(@Param("target") Long target, @Param("source") Long source);
+    @Update("UPDATE future_cost SET supplier_id=#{target} WHERE supplier_id=#{source} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int reassignFutureCostSupplier(@Param("target") Long target, @Param("source") Long source,
+                                   @Param("vendorId") Long vendorId);
 }

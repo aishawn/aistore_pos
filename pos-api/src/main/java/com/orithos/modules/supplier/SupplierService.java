@@ -5,6 +5,8 @@ import com.orithos.modules.customer.Contact;
 import com.orithos.modules.customer.mapper.ContactMapper;
 import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
 import com.orithos.modules.supplier.mapper.SupplierAuthenticationMapper;
+import com.orithos.modules.register.OutletMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,21 +21,25 @@ public class SupplierService {
     private final SupplierAuthenticationMapper authenticationMapper;
     private final SupplierAdditionalContactMapper additionalContactMapper;
     private final PasswordEncoder passwordEncoder;
+    private final OutletMapper outletMapper;
 
     public SupplierService(SupplierMapper supplierMapper,
                            ContactMapper contactMapper,
                            SupplierAuthenticationMapper authenticationMapper,
                            SupplierAdditionalContactMapper additionalContactMapper,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           OutletMapper outletMapper) {
         this.supplierMapper = supplierMapper;
         this.contactMapper = contactMapper;
         this.authenticationMapper = authenticationMapper;
         this.additionalContactMapper = additionalContactMapper;
         this.passwordEncoder = passwordEncoder;
+        this.outletMapper = outletMapper;
     }
 
     public SupplierDetail getDetail(Long id) {
-        SupplierDetail detail = supplierMapper.findDetailById(id);
+        Long vendorId = requireVendorId();
+        SupplierDetail detail = supplierMapper.findDetailByIdAndVendor(id, vendorId);
         if (detail == null) {
             throw new BusinessException("Supplier not found.");
         }
@@ -44,7 +50,13 @@ public class SupplierService {
 
     @Transactional
     public SupplierDetail create(SupplierDetail input) {
+        Long vendorId = requireVendorId();
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null || outletMapper.findByIdAndVendor(outletId, vendorId) == null) {
+            throw new BusinessException(40310, "A tenant outlet is required to create a supplier.");
+        }
         SupplierDetail detail = prepareForSave(input);
+        detail.setOutletId(outletId);
         applyPersistableDefaults(detail);
         detail.setContactId(upsertContact(null, toContact(detail)));
         supplierMapper.insertDetail(detail);
@@ -55,19 +67,58 @@ public class SupplierService {
 
     @Transactional
     public SupplierDetail update(Long id, SupplierDetail input) {
-        SupplierDetail existing = supplierMapper.findDetailById(id);
+        Long vendorId = requireVendorId();
+        SupplierDetail existing = supplierMapper.findDetailByIdAndVendor(id, vendorId);
         if (existing == null) {
             throw new BusinessException("Supplier not found.");
         }
 
         SupplierDetail detail = prepareForSave(input);
         detail.setId(id);
+        detail.setOutletId(existing.getOutletId());
         ensurePersistableDefaults(detail, existing);
         detail.setContactId(upsertContact(existing.getContactId(), toContact(detail)));
         supplierMapper.updateDetail(detail);
         saveAuthentication(id, detail, authenticationMapper.findBySupplierId(id));
         saveAdditionalContacts(id, detail.getAdditionalContacts());
         return getDetail(id);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (supplierMapper.findDetailByIdAndVendor(id, requireVendorId()) == null
+                || supplierMapper.softDelete(id, requireVendorId()) == 0) {
+            throw new BusinessException("Supplier not found.");
+        }
+    }
+
+    @Transactional
+    public void merge(Long targetId, List<Long> sourceIds) {
+        Long vendorId = requireVendorId();
+        if (supplierMapper.findDetailByIdAndVendor(targetId, vendorId) == null) {
+            throw new BusinessException("Supplier not found.");
+        }
+        if (sourceIds == null) return;
+        for (Long sourceId : sourceIds) {
+            if (sourceId == null || sourceId.equals(targetId)) continue;
+            if (supplierMapper.findDetailByIdAndVendor(sourceId, vendorId) == null) {
+                throw new BusinessException("Supplier not found.");
+            }
+            supplierMapper.reassignProductCoreSupplier(targetId, sourceId, vendorId);
+            supplierMapper.reassignProductSupplier(targetId, sourceId, vendorId);
+            supplierMapper.reassignOrderFrom(targetId, sourceId, vendorId);
+            supplierMapper.reassignOrderProductSupplier(targetId, sourceId, vendorId);
+            supplierMapper.reassignFutureCostSupplier(targetId, sourceId, vendorId);
+            if (supplierMapper.softDelete(sourceId, vendorId) == 0) {
+                throw new BusinessException("Supplier not found.");
+            }
+        }
+    }
+
+    private static Long requireVendorId() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
+        return vendorId;
     }
 
     private SupplierDetail prepareForSave(SupplierDetail input) {

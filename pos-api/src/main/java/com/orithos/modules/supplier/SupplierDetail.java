@@ -1,5 +1,6 @@
 package com.orithos.modules.supplier;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -9,6 +10,8 @@ import java.util.List;
 @Data
 public class SupplierDetail {
     private Long id;
+    @JsonIgnore
+    private Long outletId;
     private String name;
     private Integer mdbId;
     private String status;

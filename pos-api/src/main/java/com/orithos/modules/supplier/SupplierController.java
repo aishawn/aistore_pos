@@ -63,7 +63,7 @@ public class SupplierController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
-        mapper.softDelete(id);
+        service.delete(id);
         return ApiResult.ok();
     }
 
@@ -86,17 +86,7 @@ public class SupplierController {
     @PutMapping("/{id}/merge")
     @Transactional
     public ApiResult<Void> merge(@PathVariable Long id, @RequestBody MergeRequest body) {
-        if (body != null && body.sourceIds() != null) {
-            for (Long src : body.sourceIds()) {
-                if (src == null || src.equals(id)) continue;
-                mapper.reassignProductCoreSupplier(id, src);
-                mapper.reassignProductSupplier(id, src);
-                mapper.reassignOrderFrom(id, src);
-                mapper.reassignOrderProductSupplier(id, src);
-                mapper.reassignFutureCostSupplier(id, src);
-                mapper.softDelete(src);
-            }
-        }
+        service.merge(id, body == null ? null : body.sourceIds());
         return ApiResult.ok();
     }
 
