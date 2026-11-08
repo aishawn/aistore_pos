@@ -43,11 +43,19 @@ public class VendorSubdomainSchemaMigrator implements CommandLineRunner {
             log.info("Applying vendor subdomain migration...");
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
             populator.setSeparator(";");
-            populator.addScript(new ClassPathResource("db/migration_vendor_subdomain.sql"));
+            populator.addScript(new ClassPathResource(isPostgres()
+                    ? "db/migration_vendor_subdomain_postgres.sql"
+                    : "db/migration_vendor_subdomain.sql"));
             DatabasePopulatorUtils.execute(populator, dataSource);
             log.info("Vendor subdomain migration applied.");
         } catch (Exception e) {
             log.warn("Skipped vendor subdomain migration: {}", e.getMessage());
+        }
+    }
+
+    private boolean isPostgres() throws Exception {
+        try (Connection c = dataSource.getConnection()) {
+            return c.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres");
         }
     }
 
@@ -67,17 +75,14 @@ public class VendorSubdomainSchemaMigrator implements CommandLineRunner {
     }
 
     private boolean indexExists(String table, String index) throws Exception {
-        String sql = """
-                SELECT COUNT(*) FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND INDEX_NAME = ?
-                """;
         try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, table);
-            ps.setString(2, index);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() && rs.getInt(1) > 0;
+             ResultSet indexes = c.getMetaData().getIndexInfo(c.getCatalog(), c.getSchema(), table, false, false)) {
+            while (indexes.next()) {
+                if (index.equalsIgnoreCase(indexes.getString("INDEX_NAME"))) {
+                    return true;
+                }
             }
+            return false;
         }
     }
 }

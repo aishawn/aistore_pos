@@ -38,23 +38,23 @@ public class AustraliaComplianceSchemaMigrator implements CommandLineRunner {
     public void run(String... args) {
         try (Connection conn = dataSource.getConnection()) {
             addColumn(conn, "sale", "business_date",
-                    "ALTER TABLE sale ADD COLUMN business_date DATE NULL COMMENT 'Australia/Sydney civil date'");
+                    "ALTER TABLE sale ADD COLUMN business_date DATE NULL");
             addColumn(conn, "sale", "local_sold_at",
-                    "ALTER TABLE sale ADD COLUMN local_sold_at DATETIME NULL COMMENT 'Australia/Sydney wall time'");
+                    "ALTER TABLE sale ADD COLUMN local_sold_at TIMESTAMP NULL");
             addColumn(conn, "product", "abv",
-                    "ALTER TABLE product ADD COLUMN abv DECIMAL(5,2) NULL COMMENT 'Alcohol by volume percent'");
+                    "ALTER TABLE product ADD COLUMN abv DECIMAL(5,2) NULL");
             addColumn(conn, "product", "volume_ml",
-                    "ALTER TABLE product ADD COLUMN volume_ml INT NULL COMMENT 'Container size in millilitres'");
+                    "ALTER TABLE product ADD COLUMN volume_ml INT NULL");
             addColumn(conn, "product", "region",
-                    "ALTER TABLE product ADD COLUMN region VARCHAR(128) NULL COMMENT 'Wine region or place of origin'");
+                    "ALTER TABLE product ADD COLUMN region VARCHAR(128) NULL");
             addColumn(conn, "product", "vintage",
-                    "ALTER TABLE product ADD COLUMN vintage VARCHAR(16) NULL COMMENT 'Vintage year or NV'");
+                    "ALTER TABLE product ADD COLUMN vintage VARCHAR(16) NULL");
             int volumes = backfillVolumeFromName(conn);
             if (volumes > 0) {
                 log.info("Backfilled container volume for {} products from the product name", volumes);
             }
             addColumn(conn, "product_wine_profile", "abv",
-                    "ALTER TABLE product_wine_profile ADD COLUMN abv DECIMAL(5,2) NULL COMMENT 'Alcohol by volume percent'");
+                    "ALTER TABLE product_wine_profile ADD COLUMN abv DECIMAL(5,2) NULL");
             ensureIndex(conn);
             int filled = backfillBusinessDates(conn);
             if (filled > 0) {
@@ -78,17 +78,18 @@ public class AustraliaComplianceSchemaMigrator implements CommandLineRunner {
         if (!tableExists(conn, "sale")) {
             return;
         }
-        try (PreparedStatement ps = conn.prepareStatement("""
-                SELECT COUNT(*) FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = 'sale' AND INDEX_NAME = 'idx_sale_business_date'
-                """);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next() && rs.getInt(1) > 0) {
-                return;
+        try (ResultSet indexes = conn.getMetaData().getIndexInfo(conn.getCatalog(), conn.getSchema(), "sale", false, false)) {
+            while (indexes.next()) {
+                if ("idx_sale_business_date".equalsIgnoreCase(indexes.getString("INDEX_NAME"))) {
+                    return;
+                }
             }
         }
+        String createIndex = conn.getMetaData().getDatabaseProductName().toLowerCase().contains("postgres")
+                ? "CREATE INDEX IF NOT EXISTS idx_sale_business_date ON sale (outlet_id, business_date)"
+                : "CREATE INDEX idx_sale_business_date ON sale (outlet_id, business_date)";
         try (Statement st = conn.createStatement()) {
-            st.execute("CREATE INDEX idx_sale_business_date ON sale (outlet_id, business_date)");
+            st.execute(createIndex);
         }
     }
 
