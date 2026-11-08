@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Dashboard sellable-units coverage (2026-11-09)
+
+- Crawler full local fixture suite: `python -m pytest -q` in `shopfront-crawler`, 167 passed. Focused `tests/test_source_reporting.py`: 19 passed.
+- POS UI focused parser suite: `node --experimental-strip-types --test src/lib/shopfront-dashboard-metrics.test.ts`, 9 passed. It covers full coverage, valid partial subtotal, zero coverage, inconsistent row counts, stale/future timestamps, and legacy source rejection.
+- `npm run typecheck` is BLOCKED in the POS UI checkout: `tsc` is not installed in `node_modules`; current Node is 22.22.2 while package engines require Node 24+. `git diff --check` passed in both repositories.
+- POS base SHA: `a08f27e91dcf4acdb1c9fcc27b0d782fce7d7ba7`; crawler base SHA: `acc2ed0c2753af73440ecb66fcc4e4c899d2eaa8`. Both candidates are dirty working trees. Runtime SHA, deployed API response, SKR/Demo page acceptance, and real row coverage are NOT RUN. No Shopfront, Odoo, or POS business writes were made.
+- The local fixture confirms the contract behavior only. It does not prove that a partial subtotal matches Shopfront's Dashboard total or that excluded rows have no stock.
+
 ## Inventory coverage summary recovery (2026-11-08)
 
 - Authenticated read-only SKR browser check showed the Inventory page's first 40 Shopfront-linked products with non-zero inventory and source cost. Example `-196 LEMON P/F 6% 330ML`: 4 cases + 8 items (128 units), source box cost `$116.75` / 30, unit display `$3.89`, shelf price `$8.99`. The inventory summary's separate crawler Reporting API request returned a temporary service error even though the Odoo `aipos_uat` mirror-backed product rows were available.

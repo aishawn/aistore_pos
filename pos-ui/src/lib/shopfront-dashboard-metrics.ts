@@ -34,6 +34,10 @@ export type ShopfrontInventoryMetrics = {
   sellableUnits: number;
   negativeStockProducts: number;
   recordCount: number;
+  coveredRecordCount: number;
+  incompleteRecordCount: number;
+  coverage: number;
+  completeness: "complete" | "partial";
   fetchedAt: string | null;
 };
 
@@ -111,12 +115,24 @@ export function parseShopfrontInventoryReport(payload: unknown, nowMs = Date.now
   const sellableUnits = numeric(report.sellable_units);
   const negativeStockProducts = numeric(report.negative_stock_products);
   const recordCount = numeric(report.record_count);
+  const coveredRecordCount = numeric(report.covered_record_count) ?? recordCount;
+  const incompleteRecordCount = numeric(report.incomplete_record_count) ?? Math.max(0, recordCount - coveredRecordCount);
+  const coverage = numeric(report.coverage) ?? (recordCount > 0 ? coveredRecordCount / recordCount : 0);
+  const completeness = report.completeness === "partial" || incompleteRecordCount > 0 ? "partial" : "complete";
   if (sellableUnits === null || negativeStockProducts === null || recordCount === null || recordCount < 0
+    || coveredRecordCount === null || incompleteRecordCount === null || coverage === null
+    || !Number.isSafeInteger(recordCount) || !Number.isSafeInteger(coveredRecordCount) || !Number.isSafeInteger(incompleteRecordCount)
+    || coveredRecordCount <= 0 || coveredRecordCount + incompleteRecordCount !== recordCount
+    || coverage <= 0 || coverage > 1 || Math.abs(coverage - coveredRecordCount / recordCount) > 0.000001
     || numeric(report.outlet_count) !== 1) return null;
   return {
     sellableUnits,
     negativeStockProducts,
     recordCount,
+    coveredRecordCount,
+    incompleteRecordCount,
+    coverage,
+    completeness,
     fetchedAt: fetchedAt(report.snapshot_at),
   };
 }

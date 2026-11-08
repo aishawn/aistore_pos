@@ -42,7 +42,39 @@ test("inventory KPI uses the durable single-outlet snapshot summary", () => {
     record_count: 10849, outlet_count: 1, snapshot_at: "2026-11-05T14:00:00Z",
     source: "shopfront_reporting_api", source_version: "shopfront_reporting_api_v1",
   }, now);
-  assert.deepEqual(result, { sellableUnits: 49993, negativeStockProducts: 7076, recordCount: 10849, fetchedAt: "2026-11-05T14:00:00Z" });
+  assert.deepEqual(result, {
+    sellableUnits: 49993, negativeStockProducts: 7076, recordCount: 10849,
+    coveredRecordCount: 10849, incompleteRecordCount: 0, coverage: 1,
+    completeness: "complete", fetchedAt: "2026-11-05T14:00:00Z",
+  });
+});
+
+test("inventory KPI accepts a covered subtotal and exposes row coverage", () => {
+  const now = Date.parse("2026-11-06T12:00:00Z");
+  const result = parseShopfrontInventoryReport({
+    available: true, sellable_units: 49993, negative_stock_products: 7,
+    record_count: 100, covered_record_count: 92, incomplete_record_count: 8,
+    coverage: 0.92, completeness: "partial", outlet_count: 1,
+    snapshot_at: "2026-11-06T11:00:00Z",
+    source: "shopfront_reporting_api", source_version: "shopfront_reporting_api_v1",
+  }, now);
+  assert.equal(result?.sellableUnits, 49993);
+  assert.equal(result?.coverage, 0.92);
+  assert.equal(result?.incompleteRecordCount, 8);
+  assert.equal(result?.completeness, "partial");
+});
+
+test("inventory KPI rejects zero coverage and inconsistent row coverage", () => {
+  const payload = {
+    available: true, sellable_units: 0, negative_stock_products: 0,
+    record_count: 2, covered_record_count: 0, incomplete_record_count: 2,
+    coverage: 0, completeness: "partial", outlet_count: 1,
+    snapshot_at: "2026-11-06T11:00:00Z",
+    source: "shopfront_reporting_api", source_version: "shopfront_reporting_api_v1",
+  };
+  const now = Date.parse("2026-11-06T12:00:00Z");
+  assert.equal(parseShopfrontInventoryReport(payload, now), null);
+  assert.equal(parseShopfrontInventoryReport({ ...payload, covered_record_count: 1, coverage: 0.5 }, now), null);
 });
 
 test("inventory KPI rejects a stale or future snapshot", () => {

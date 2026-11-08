@@ -1,6 +1,12 @@
 # Shopfront Sync Progress
 
-Updated: 2026-11-08. Owner: TBD.
+Updated: 2026-11-09. Owner: TBD.
+
+## Dashboard sellable-units coverage (2026-11-09)
+
+- The crawler previously returned `available: false` whenever any Inventory Reporting API row lacked case level, item level, or a positive case quantity. The source aggregation already computed valid rows, but the API discarded that subtotal and the Dashboard showed `—`.
+- The dashboard response now reports convertible and excluded row counts plus row coverage. A fresh report with at least one convertible row returns its known sellable-units subtotal and `complete`/`partial` status; zero coverage, stale snapshots, and upstream failures remain unavailable. The POS Overview labels partial values as a known subtotal with row coverage and excluded row count.
+- Crawler full suite passed 167/167; frontend inventory metric tests passed 9/9. Frontend `npm run typecheck` is blocked because this checkout lacks `tsc` and runs Node 22 while the project requires Node 24+. SKR/Demo runtime verification and deployment remain pending; this change does not prove exact parity with Shopfront Dashboard filters or that omitted rows have zero stock.
 
 ## Inventory coverage summary recovery (2026-11-08)
 

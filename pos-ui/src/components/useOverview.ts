@@ -40,6 +40,8 @@ export type OverviewPulse = {
   inventoryStatus?: string;
   inventorySnapshotAt?: string | null;
   negativeStockProducts?: number | null;
+  inventoryCoverage?: number | null;
+  inventoryIncompleteRows?: number | null;
   grossMarginStatus?: string;
   yesterdayNetSales?: number | null;
   yesterdayTax?: number | null;
@@ -134,6 +136,8 @@ function mapPayload(payload: Record<string, unknown>): OverviewPulse {
     inventoryStatus: payload.inventoryStatus as string | undefined,
     inventorySnapshotAt: payload.inventorySnapshotAt as string | null | undefined,
     negativeStockProducts: payload.negativeStockProducts as number | null | undefined,
+    inventoryCoverage: Number.isFinite(payload.inventoryCoverage) ? Number(payload.inventoryCoverage) : null,
+    inventoryIncompleteRows: Number.isFinite(payload.inventoryIncompleteRows) ? Number(payload.inventoryIncompleteRows) : null,
     grossMarginStatus: payload.grossMarginStatus as string | undefined,
     yesterdayNetSales: payload.yesterdayNetSales as number | null | undefined,
     yesterdayTax: payload.yesterdayTax as number | null | undefined,
@@ -201,31 +205,56 @@ function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<Ret
   const salesToday = source.salesToday;
   const salesYesterday = source.salesYesterday;
   const inventory = source.inventory;
+  const sourceActive = salesToday !== null || salesYesterday !== null || inventory !== null;
+  if (!sourceActive) return data;
   const fetchedTimes = [salesToday?.fetchedAt, salesYesterday?.fetchedAt, inventory?.fetchedAt, source.inventorySnapshotAt].filter((value): value is string => Boolean(value)).map(value => Date.parse(value)).filter(Number.isFinite);
   const sourceReportsFetchedAt = fetchedTimes.length ? new Date(Math.min(...fetchedTimes)).toISOString() : null;
-  return {
-    ...data,
-    revenue: salesToday?.revenue ?? data.revenue,
-    transactions: salesToday?.transactionCount ?? data.transactions,
-    todayShopfrontSalesAvailable: salesToday !== null,
-    todaySalesReconciliation: reconcileShopfrontSales(salesToday, data.revenue, data.transactions ?? Number.NaN),
-    todaySourceFetchedAt: salesToday?.fetchedAt ?? null,
-    yesterdaySales: salesYesterday?.revenue ?? 0,
-    yesterdaySalesAvailable: salesYesterday !== null,
-    yesterdayGrossMargin: salesYesterday?.grossMargin ?? null,
-    grossMarginCoverage: salesYesterday ? 1 : 0,
-    grossMarginStatus: salesYesterday ? salesYesterday.grossMargin === null ? "no_sales" : "shopfront_source_report" : "unavailable",
-    grossMarginBasis: "shopfront_sales_report_profit_percentage",
-    inventoryUnits: inventory?.sellableUnits ?? null,
-    inventoryAvailable: inventory !== null,
-    inventoryStatus: source.inventoryStale ? "stale" : !inventory ? "unavailable" : inventory.negativeStockProducts ? "negative_stock" : "verified",
-    inventorySnapshotAt: source.inventorySnapshotAt,
-    negativeStockProducts: inventory?.negativeStockProducts ?? null,
-    sourceReportsFetchedAt,
-    sourceSalesAvailable: salesYesterday !== null,
-    sourceInventoryAvailable: inventory !== null,
-    shopfrontReportsMode: "source",
-  };
+  const next: OverviewPulse = { ...data, shopfrontReportsMode: "source", sourceReportsFetchedAt };
+  if (salesToday) {
+    const odooRevenue = data.revenue;
+    const odooTransactions = data.transactions ?? Number.NaN;
+    next.revenue = salesToday.revenue;
+    next.transactions = salesToday.transactionCount;
+    next.todayShopfrontSalesAvailable = true;
+    next.todaySalesReconciliation = reconcileShopfrontSales(salesToday, odooRevenue, odooTransactions);
+    next.todaySourceFetchedAt = salesToday.fetchedAt;
+  }
+  if (salesYesterday) {
+    next.yesterdaySales = salesYesterday.revenue;
+    next.yesterdaySalesAvailable = true;
+    next.yesterdayGrossMargin = salesYesterday.grossMargin;
+    next.grossMarginCoverage = 1;
+    next.grossMarginStatus = salesYesterday.grossMargin === null ? "no_sales" : "shopfront_source_report";
+    next.grossMarginBasis = "shopfront_sales_report_profit_percentage";
+    next.sourceSalesAvailable = true;
+  }
+  if (inventory) {
+    next.inventoryUnits = inventory.sellableUnits;
+    next.inventoryAvailable = true;
+    next.inventoryStatus = inventory.completeness === "partial" ? "partial_inventory" : inventory.negativeStockProducts ? "negative_stock" : "verified";
+    next.inventorySnapshotAt = source.inventorySnapshotAt;
+    next.negativeStockProducts = inventory.negativeStockProducts;
+    next.inventoryCoverage = inventory.coverage;
+    next.inventoryIncompleteRows = inventory.incompleteRecordCount;
+    next.sourceInventoryAvailable = true;
+  } else {
+    next.inventoryUnits = null;
+    next.inventoryAvailable = false;
+    next.sourceInventoryAvailable = false;
+    next.inventoryStatus = source.inventoryStale ? "stale" : "unavailable";
+    next.inventorySnapshotAt = source.inventorySnapshotAt;
+    next.negativeStockProducts = null;
+    next.inventoryCoverage = null;
+    next.inventoryIncompleteRows = null;
+  }
+  return next;
+}
+
+function downgradeStaleShopfrontPulse(data: OverviewPulse): OverviewPulse {
+  if (data.shopfrontReportsMode !== "source") return data;
+  if (data.todayShopfrontSalesAvailable || data.sourceSalesAvailable || data.sourceInventoryAvailable) return data;
+  if (data.inventoryAvailable && Number.isFinite(data.inventoryUnits)) return data;
+  return { ...data, shopfrontReportsMode: "odoo" };
 }
 export function money(value: number, currency: string) {
   try {
@@ -247,20 +276,26 @@ export function useOverview() {
   const [parked, setParked] = useState(0);
   const revision = useRef(0);
   const lastFetchAt = useRef(0);
+  const pulseRef = useRef<OverviewPulse | null>(null);
+  pulseRef.current = data;
   const load = useCallback(async (refresh = false, revalidate = false) => {
     const current = ++revision.current;
     const scope = pulseScope(user?.vendorId);
     const cached = refresh || revalidate ? null : readPulse(scope);
+    const paintedFromCache = Boolean(cached);
     if (cached) {
-      const cachedData = { ...cached.data };
+      let cachedData = { ...cached.data };
       if (cachedData.shopfrontReportsMode === "source" && !shopfrontInventorySnapshotIsFresh(cachedData.inventorySnapshotAt)) {
         cachedData.inventoryUnits = null;
         cachedData.negativeStockProducts = null;
         cachedData.inventoryAvailable = false;
         cachedData.sourceInventoryAvailable = false;
         cachedData.inventoryStatus = cachedData.inventorySnapshotAt ? "stale" : "unavailable";
-        writePulse(scope, cachedData);
+        cachedData.inventoryCoverage = null;
+        cachedData.inventoryIncompleteRows = null;
       }
+      cachedData = downgradeStaleShopfrontPulse(cachedData);
+      writePulse(scope, cachedData);
       setData(cachedData);
       setLoading(false);
       const freshFor = cached.data.cacheStatus === "STALE" ? 15_000 : PULSE_FRESH_MS;
@@ -310,15 +345,18 @@ export function useOverview() {
           && !checkingSession;
         setAuthExpired(authExpired);
         setConnection(odooSessionExpired ? true : false);
-        setError(
-          authExpired
-            ? "Your Orithos session has expired. Please sign in again."
-            : odooSessionExpired
-              ? "Connect your store to load dashboard data."
-            : cause instanceof Error
-              ? cause.message
-              : "Could not load dashboard.",
-        );
+        const surfaceError = refresh || authExpired || odooSessionExpired || (!paintedFromCache && !pulseRef.current);
+        if (surfaceError) {
+          setError(
+            authExpired
+              ? "Your Orithos session has expired. Please sign in again."
+              : odooSessionExpired
+                ? "Connect your store to load dashboard data."
+              : cause instanceof Error
+                ? cause.message
+                : "Could not load dashboard.",
+          );
+        }
       }
     } finally {
       if (current === revision.current) setLoading(false);
@@ -339,7 +377,7 @@ export function useOverview() {
           writePulse(pulseScope(user?.vendorId), next);
           lastFetchAt.current = Date.now();
         }
-      }).catch(cause => { if (!controller.signal.aborted && current === revision.current) setError(cause instanceof Error ? cause.message : "Summary update failed."); });
+      }).catch(() => { /* Keep the saved summary visible when background refresh fails. */ });
     return () => controller.abort();
   }, [data?.taskId, data?.cacheStatus, user?.vendorId]);
   useEffect(() => {

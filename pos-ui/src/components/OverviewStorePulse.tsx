@@ -60,9 +60,9 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           value={marginAvailable ? `${(data.yesterdayGrossMargin! * 100).toFixed(sourceMode ? 2 : 1)}%` : "—"}
           note={marginNote} />
         <Metric label="Sellable units" href={sourceMode ? "/reports/inventory" : "/products"}
-          title={stockAvailable ? sourceMode ? "Positive on-hand quantity converted from Shopfront case and item levels." : "Sum of positive on-hand balances by product across internal locations." : undefined}
+          title={stockAvailable ? sourceMode ? data.inventoryStatus === "partial_inventory" ? "Estimated from Shopfront rows with complete case and item quantities." : "Positive on-hand quantity converted from Shopfront case and item levels." : "Sum of positive on-hand balances by product across internal locations." : undefined}
           value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
-          note={data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : data.inventoryStatus === "stale" ? "Shopfront inventory report is stale" : !stockAvailable ? sourceMode ? "Shopfront inventory report unavailable" : "Temporarily unavailable"
+          note={data.inventoryStatus === "partial_inventory" ? `Known subtotal · ${Math.round((data.inventoryCoverage ?? 0) * 100)}% of rows · ${data.inventoryIncompleteRows ?? 0} excluded` : data.inventoryStatus === "mixed_units" ? "Mixed units of measure" : data.inventoryStatus === "stale" ? "Shopfront inventory report is stale" : !stockAvailable ? sourceMode ? "Shopfront inventory report unavailable" : "Temporarily unavailable"
             : data.inventoryStatus === "negative_stock" ? `${data.negativeStockProducts ?? 0} SKUs below zero · review list` : sourceMode ? "Shopfront Inventory · positive on-hand only" : "Positive on-hand only"}
           noteHref={data.inventoryStatus === "negative_stock" ? negativeStockHref : undefined} />
       </dl>
