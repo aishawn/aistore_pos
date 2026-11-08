@@ -4,6 +4,7 @@ import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
+import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
 import com.orithos.security.CurrentUser;
 import com.orithos.common.BusinessException;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,11 @@ public class SaleController {
     }
 
     /** Finalise a Sell-pad cart with a tender (EFTPOS / cash), returning change. */
+    @PostMapping("/quote")
+    public ApiResult<CheckoutQuoteResponse> quote(@RequestBody CheckoutRequest req) {
+        return ApiResult.ok(checkoutService.quote(req));
+    }
+
     @PostMapping("/checkout")
     public ApiResult<CheckoutResponse> checkout(@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                 @RequestBody CheckoutRequest req) {

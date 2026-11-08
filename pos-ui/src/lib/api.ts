@@ -627,16 +627,22 @@ export interface CheckoutItem {
   unitPrice: number;
   /** Cent-rounded line net. Authoritative charge so qty × unit cannot drift. */
   lineTotal: number;
+  /** GST rate from the server quote used to authorize the payment. */
+  expectedTaxRate?: number;
 }
 
 /** Request body for `POST /api/sales/checkout`. */
 export interface CheckoutPayload {
+  registerId?: number | string | null;
   tender: string;
   customerId?: string | null;
   /** When set, record another tender against an open sale. */
   saleId?: string | number | null;
   tendered?: number | null;
   cashout?: number | null;
+  /** Server quote values required to reject a stale price or GST at checkout. */
+  expectedTotal?: number | null;
+  expectedGst?: number | null;
   /** Required on the first tender; omitted when continuing with saleId. */
   items?: CheckoutItem[];
   /** Stable across network retries of the same tender attempt. */
@@ -666,11 +672,31 @@ export interface CheckoutResponse {
   completed: boolean;
 }
 
+export interface CheckoutQuote {
+  lines: Array<{
+    productId: number;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    taxRate: number;
+    gst: number;
+  }>;
+  subtotalExGst: number;
+  gst: number;
+  total: number;
+}
+
+export function quoteSale(payload: Pick<CheckoutPayload, "registerId" | "customerId" | "items">): Promise<CheckoutQuote> {
+  return api.post<CheckoutQuote>("/api/sales/quote", payload);
+}
+
 /** Finalise the current cart with the chosen tender; returns the change owed. */
 export function checkoutSale(payload: CheckoutPayload): Promise<CheckoutResponse> {
   const { idempotencyKey, ...body } = payload;
   return api.post<CheckoutResponse>("/api/sales/checkout", {
     ...body,
+    registerId: toOptionalLong(body.registerId),
     customerId: toOptionalLong(body.customerId),
     saleId: body.saleId == null || body.saleId === "" ? null : toOptionalLong(body.saleId),
     items: body.items?.map((item) => ({

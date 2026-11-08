@@ -20,6 +20,9 @@ public class CheckoutRequest {
     private Long saleId;
     /** Tender label tapped on the pad, e.g. "EFTPOS VISA MasterCard" / "Exact Cash". */
     private String tender;
+    /** Amounts last confirmed by the till quote. Checkout rejects a stale quote. */
+    private BigDecimal expectedTotal;
+    private BigDecimal expectedGst;
     /** Amount for this tender. Null → assume the outstanding balance (or full total on first tender). */
     private BigDecimal tendered;
     /** Optional cash-out amount (Eftpos Cash Out). */
@@ -38,5 +41,7 @@ public class CheckoutRequest {
          * amount charged — {@code quantity × rounded unit price} can drift by a cent.
          */
         private BigDecimal lineTotal;
+        /** GST rate confirmed by the most recent server quote. */
+        private BigDecimal expectedTaxRate;
     }
 }

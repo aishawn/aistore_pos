@@ -8,6 +8,8 @@ import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
+import com.orithos.modules.register.Register;
+import com.orithos.modules.register.RegisterSession;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
@@ -28,9 +30,11 @@ class CheckoutPricingTest {
     private final SaleMapper saleMapper = mock(SaleMapper.class);
     private final ProductMapper productMapper = mock(ProductMapper.class);
     private final PaymentMethodMapper paymentMethodMapper = mock(PaymentMethodMapper.class);
+    private final RegisterMapper registerMapper = mock(RegisterMapper.class);
+    private final RegisterSessionMapper registerSessionMapper = mock(RegisterSessionMapper.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
-            paymentMethodMapper, productMapper, mock(RegisterMapper.class),
-            mock(RegisterSessionMapper.class), new ObjectMapper());
+            paymentMethodMapper, productMapper, registerMapper,
+            registerSessionMapper, new ObjectMapper());
 
     @BeforeEach
     void authenticateOutlet() {
@@ -93,6 +97,56 @@ class CheckoutPricingTest {
 
         assertThrows(BusinessException.class,
                 () -> service.resolvePaymentMethod(99L, 12L, "EFTPOS", "EFTPOS VISA MasterCard"));
+    }
+
+    @Test
+    void quoteUsesServerPriceAndConfiguredGstWithoutWriting() {
+        Product product = product("3.25");
+        Register register = new Register();
+        register.setOutletId(12L);
+        register.setClosed(false);
+        when(registerMapper.findById(99L)).thenReturn(register);
+        when(registerSessionMapper.findActiveSession(99L, 3L, 12L)).thenReturn(new RegisterSession());
+        when(productMapper.findSellableForOutlet(42L, 3L, 12L, new BigDecimal("2"))).thenReturn(product);
+        when(saleMapper.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);
+        when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
+
+        CheckoutRequest request = request(42L, "2", "999.00", "1998.00");
+        request.setRegisterId(99L);
+        var quote = service.quote(request);
+
+        assertEquals(new BigDecimal("6.50"), quote.total());
+        assertEquals(new BigDecimal("0.59"), quote.gst());
+        assertEquals(new BigDecimal("5.91"), quote.subtotalExGst());
+        assertEquals("Outlet wine", quote.lines().get(0).name());
+        assertEquals(new BigDecimal("10"), quote.lines().get(0).taxRate());
+        verify(saleMapper, never()).insert(any());
+    }
+
+    @Test
+    void quoteRequiresAnOpenRegisterSession() {
+        CheckoutRequest request = request(42L, "1", "0.00", null);
+        request.setRegisterId(99L);
+
+        assertThrows(BusinessException.class, () -> service.quote(request));
+        verify(productMapper, never()).findSellableForOutlet(anyLong(), anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void checkoutRejectsQuoteWhenServerPriceHasChanged() {
+        when(saleMapper.findCheckoutRequestHash(3L, "checkout-key")).thenReturn(null);
+        when(productMapper.findSellableForOutlet(42L, 3L, 12L, BigDecimal.ONE)).thenReturn(product("3.25"));
+        when(saleMapper.findTaxRateId(42L, 3L, 12L)).thenReturn(9L);
+        when(saleMapper.findSellTaxPercent(42L, 3L, 12L)).thenReturn(new BigDecimal("10"));
+        CheckoutRequest request = request(42L, "1", "3.25", "3.25");
+        request.setRegisterId(99L);
+        request.setTender("Exact Cash");
+        request.setExpectedTotal(new BigDecimal("3.00"));
+        request.setExpectedGst(new BigDecimal("0.27"));
+        request.getItems().get(0).setExpectedTaxRate(new BigDecimal("10"));
+
+        assertThrows(BusinessException.class, () -> service.checkout(request, "checkout-key"));
+        verify(saleMapper, never()).insert(any());
     }
 
     private static Product product(String price) {

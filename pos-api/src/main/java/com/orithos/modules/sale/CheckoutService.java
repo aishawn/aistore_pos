@@ -17,12 +17,14 @@ import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.register.RegisterSessionMapper;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
+import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
 import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.time.LocalDateTime;
 import java.security.MessageDigest;
 
@@ -55,6 +57,36 @@ public class CheckoutService {
         this.objectMapper = objectMapper;
     }
 
+    public CheckoutQuoteResponse quote(CheckoutRequest req) {
+        Long vendorId = CurrentUser.vendorId();
+        Long outletId = CurrentUser.outletId();
+        if (vendorId == null || outletId == null) {
+            throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
+        if (req == null || req.getItems() == null || req.getItems().isEmpty()) {
+            throw new BusinessException(40000, "Cannot quote an empty sale.");
+        }
+        if (req.getRegisterId() == null) throw new BusinessException(40000, "A register is required for a POS quote.");
+        if (req.getItems().size() > 200) throw new BusinessException(40000, "A sale cannot exceed 200 lines.");
+        Register register = registerMapper.findById(req.getRegisterId());
+        if (register == null || !outletId.equals(register.getOutletId())
+                || Boolean.TRUE.equals(register.getClosed())
+                || registerSessionMapper.findActiveSession(req.getRegisterId(), vendorId, outletId) == null) {
+            throw new BusinessException(40900, "An open Orithos register session is required for a quote.");
+        }
+
+        prepareSellItems(req, vendorId, outletId);
+        BigDecimal total = calculateTotal(req.getItems());
+        BigDecimal gst = gstForItems(req.getItems());
+        List<CheckoutQuoteResponse.Line> lines = req.getItems().stream().map(item -> {
+            BigDecimal lineTotal = lineAmount(item);
+            BigDecimal rate = taxPercent(item.getProductId());
+            return new CheckoutQuoteResponse.Line(item.getProductId(), item.getName(), item.getQuantity(),
+                    item.getUnitPrice(), lineTotal, rate, GstMath.includedGst(lineTotal, rate));
+        }).toList();
+        return new CheckoutQuoteResponse(lines, total.subtract(gst).setScale(2, RoundingMode.HALF_UP), gst, total);
+    }
+
     @Transactional
     public CheckoutResponse checkout(CheckoutRequest req, String idempotencyKey) {
         Long vendorId = CurrentUser.vendorId();
@@ -73,6 +105,16 @@ public class CheckoutService {
             if (!previousHash.equals(requestHash)) throw new BusinessException(40900, "Idempotency-Key was already used for a different checkout.");
             try { return objectMapper.readValue(saleMapper.findCheckoutResponse(vendorId, idempotencyKey), CheckoutResponse.class); }
             catch (Exception e) { throw new BusinessException(40900, "The previous checkout response could not be replayed."); }
+        }
+        if (req.getSaleId() == null && (req.getItems() == null || req.getItems().isEmpty())) {
+            throw new BusinessException(40000, "Cannot finalise an empty sale.");
+        }
+        if (req.getSaleId() == null && (req.getExpectedTotal() == null || req.getExpectedGst() == null)) {
+            throw new BusinessException(40000, "Refresh and confirm a server quote before checkout.");
+        }
+        if (req.getSaleId() == null && req.getItems().stream().anyMatch(item -> item == null
+                || item.getUnitPrice() == null || item.getExpectedTaxRate() == null)) {
+            throw new BusinessException(40000, "Each checkout line must include its confirmed quote price and GST rate.");
         }
         String tenderType = resolveTenderType(req.getTender());
         boolean cash = "CASH".equals(tenderType);
@@ -93,6 +135,11 @@ public class CheckoutService {
             }
             prepareSellItems(req, vendorId, authenticatedOutletId);
             total = calculateTotal(req.getItems());
+            BigDecimal gst = gstForItems(req.getItems());
+            if ((req.getExpectedTotal() != null && req.getExpectedTotal().compareTo(total) != 0)
+                    || (req.getExpectedGst() != null && req.getExpectedGst().compareTo(gst) != 0)) {
+                throw new BusinessException(40900, "The quoted price or GST changed. Refresh the quote before payment.");
+            }
             sale = createPendingSale(req, total);
         }
 
@@ -382,9 +429,15 @@ public class CheckoutService {
             if (taxRateId == null || taxPercent == null) {
                 throw new BusinessException("Product tax rate is missing. Configure GST before selling.");
             }
+            if (req.getExpectedTotal() != null
+                    && ((item.getUnitPrice() != null && item.getUnitPrice().compareTo(unitPrice) != 0)
+                    || (item.getExpectedTaxRate() != null && item.getExpectedTaxRate().compareTo(taxPercent) != 0))) {
+                throw new BusinessException(40900, "A quoted product price or GST rate changed. Refresh the quote before payment.");
+            }
             item.setQuantity(quantity);
             item.setUnitPrice(unitPrice);
             item.setLineTotal(quantity.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP));
+            item.setExpectedTaxRate(taxPercent);
             item.setName(product.getName());
         }
     }
