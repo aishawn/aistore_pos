@@ -18,9 +18,10 @@ function load(file) {
   mod._compile(ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file);
   return mod.exports;
 }
-let company = 41, permissions = ["stock.products.view"], costDenied = false, unavailable = false;
+let company = 41, permissions = ["stock.products.view", "customers.balances"], costDenied = false, unavailable = false;
+const sourceId = "a".repeat(32);
 const products = Array.from({ length: 1012 }, (_, index) => ({
-  id: index + 1, company_id: 41, name: `Wine ${index + 1}`, display_name: `Wine ${index + 1}`, barcode: `930${index}`, default_code: false,
+  id: index + 1, company_id: 41, product_tmpl_id: [index + 1, `Wine ${index + 1}`], name: `Wine ${index + 1}`, display_name: `Wine ${index + 1}`, barcode: `930${index}`, default_code: false,
   sale_ok: true, available_in_pos: true, list_price: 10 + index % 2, taxes_id: [1], standard_price: 2.005,
   qty_available: index - 4.5, free_qty: index - 4.5, pos_categ_ids: [index % 2 ? 1 : 2], uom_id: [1, "Units"],
 }));
@@ -62,6 +63,9 @@ globalThis.fetch = async (input, options = {}) => {
   if (model === "pos.category" && method === "fields_get") return json({ result: { company_id: { type: "many2one" } } });
   if (model === "pos.category") return json({ result: [{ id: 1, name: "Wine", company_id: company }, { id: 2, name: "Beer", company_id: company }].filter((row) => matches(row, args[0])) });
   if (model === "account.tax") return json({ result: { total_included: args[1] * 1.1, total_excluded: args[1] } });
+  if (model === "product.template") return json({ result: [{ id: 1012, company_id: 41, shopfront_source_ref: `skr:${sourceId}`, active: true, sale_ok: true, default_code: false }].filter((row) => matches(row, args[0])).map((row) => Object.fromEntries(kwargs.fields.map((field) => [field, row[field]]))) });
+  if (model === "shopfront.sync.product") return json({ result: [{ store_key: "skr", source_id: sourceId, source_status: "ACTIVE", name: "Source wine", sku: false, category: "Red", case_quantity: 6, cost: 72.5, price: 18.99, track_inventory: true, raw_payload: { costTaxRate: { name: "GST" }, taxRate: { name: "Retail GST" } } }].filter((row) => matches(row, args[0])).map((row) => Object.fromEntries(kwargs.fields.map((field) => [field, row[field]]))) });
+  if (model === "shopfront.sync.inventory") return json({ result: [{ store_key: "skr", source_product_id: sourceId, quantity: 0, single_level: 0, case_level: 0, snapshot_at: "2026-11-08T00:00:00Z" }].filter((row) => matches(row, args[0])).map((row) => Object.fromEntries(kwargs.fields.map((field) => [field, row[field]]))) });
   if (model === "product.product") {
     assert.ok(args[0].some((term) => Array.isArray(term) && term[0] === "company_id" && term[2][0] === company), "Company domain retained");
     if (unavailable) return json({ error: { data: { name: "odoo.exceptions.UserError" } } });
@@ -73,7 +77,7 @@ globalThis.fetch = async (input, options = {}) => {
   throw new Error(`Unmocked ${model}.${method}`);
 };
 const request = (body, session = "fixture") => new NextRequest("https://demo.fixture.invalid/api/odoo/records", {
-  method: "POST", headers: { Origin: "https://demo.fixture.invalid", "Content-Type": "application/json", Cookie: `orithos_access_token=fixture; orithos_odoo_session=${session}` }, body: JSON.stringify(body),
+  method: "POST", headers: { Origin: "https://demo.fixture.invalid", "x-forwarded-host": "demo.orithos.com.au", "Content-Type": "application/json", Cookie: `orithos_access_token=fixture; orithos_odoo_session=${session}` }, body: JSON.stringify(body),
 });
 const opts = { type: "products", catalogueView: "all", inventoryReport: true, sortBy: "qty_available", sortDirection: "desc", limit: 40 };
 async function check(name, action) { await action(); checks.push({ name, status: "PASS" }); }
@@ -84,9 +88,12 @@ try {
     const response = await POST(request(opts)); assert.equal(response.status, 200);
     first = await response.json();
     assert.equal(first.totalItems, 1012); assert.equal(first.items.length, 40); assert.equal(first.items[0].id, 1012);
-    assert.equal(first.totalQty, products.filter((p) => p.company_id === 41).reduce((sum, p) => sum + p.qty_available, 0));
-    assert.equal(first.totalStockValue, Math.round(first.totalQty * 2.005 * 100) / 100);
+    assert.equal(first.totalQty, products.filter((p) => p.company_id === 41).reduce((sum, p) => sum + Math.max(0, p.qty_available), 0));
+    assert.equal(first.totalStockValue, Math.round(products.filter((p) => p.company_id === 41).reduce((sum, p) => sum + p.qty_available, 0) * 2.005 * 100) / 100);
     assert.ok(first.snapshotId); assert.ok(first.items.every((p) => !("standard_price" in p)));
+    assert.equal(first.items[0].shopfront_quantity, 0); assert.equal(first.items[0].shopfront_inventory_status, "available");
+    assert.equal(first.items[0].shopfront_cost, 72.5); assert.equal(first.items[0].shopfront_case_quantity, 6);
+    assert.equal(first.items[0].shopfront_source_category, "Red"); assert.notEqual(first.items[0].shopfront_quantity, first.items[0].qty_available);
   });
   await check("revisiting an identical query reuses its snapshot; explicit refresh creates a new one", async () => {
     const reused = await (await POST(request(opts))).json(); assert.equal(reused.snapshotId, first.snapshotId);
@@ -108,7 +115,7 @@ try {
   await check("search and category/quick filters change both rows and full totals", async () => {
     const response = await POST(request({ ...opts, query: "Wine 10", categoryIds: [1], catalogueView: "negative-stock" }));
     assert.equal(response.status, 200); const page = await response.json(); assert.equal(page.totalItems, 0); assert.equal(page.totalQty, 0);
-    const negative = await (await POST(request({ ...opts, catalogueView: "negative-stock" }))).json(); assert.equal(negative.totalItems, 5); assert.equal(negative.totalQty, -12.5);
+    const negative = await (await POST(request({ ...opts, catalogueView: "negative-stock" }))).json(); assert.equal(negative.totalItems, 5); assert.equal(negative.totalQty, 0); assert.equal(negative.negativeStockItems, 5);
   });
   await check("category and true GST-inclusive price sort work globally", async () => {
     const category = await (await POST(request({ ...opts, sortBy: "category", sortDirection: "asc" }))).json(); assert.equal(category.items[0].id, 1);
@@ -118,6 +125,13 @@ try {
   await check("cost access denial preserves stock but never reports a partial value as a full total", async () => {
     costDenied = true; const page = await (await POST(request({ ...opts, refresh: true }))).json();
     assert.equal(page.totalStockValue, null); assert.equal(page.missingCostItems, 1012); assert.equal(page.totalQty, first.totalQty); costDenied = false;
+  });
+  await check("Shopfront cost stays hidden without the balances permission", async () => {
+    permissions = ["stock.products.view"];
+    const page = await (await POST(request({ ...opts, refresh: true }))).json();
+    assert.equal(page.items[0].shopfront_cost, null); assert.equal(page.items[0].shopfront_cost_status, "restricted");
+    assert.ok(page.items.every((item) => !("standard_price" in item)));
+    permissions = ["stock.products.view", "customers.balances"];
   });
   await check("session, company, query and expired/unknown snapshot cannot be reused", async () => {
     assert.equal((await POST(request({ ...opts, offset: 40, snapshotId: first.snapshotId }, "other"))).status, 409);
@@ -136,5 +150,5 @@ try {
 } finally {
   globalThis.fetch = originalFetch;
   if (originalBase === undefined) delete process.env.ODOO_BASE_URL; else process.env.ODOO_BASE_URL = originalBase;
-  fs.writeFileSync(path.join(root, "docs/UAT_INVENTORY_REPORT_ROUTE_LOCAL_2026-11-03.json"), JSON.stringify({ scope: "Actual route with in-memory Odoo transport; no live acceptance", liveBusinessWrites: 0, checks }, null, 2));
+  fs.writeFileSync(path.join(root, "docs/UAT_INVENTORY_REPORT_ROUTE_LOCAL_2026-11-08.json"), JSON.stringify({ scope: "Actual route with in-memory Odoo transport; no live acceptance", liveBusinessWrites: 0, checks }, null, 2));
 }

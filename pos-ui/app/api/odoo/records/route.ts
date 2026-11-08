@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
 import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
 import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
-import { resolveShopfrontCatalogueMappings, shopfrontFieldStatus, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
+import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -509,8 +509,46 @@ export async function POST(request: NextRequest) {
             ? await rpc<Array<{ id: number; name: string }>>("pos.category", "search_read", [categoryDomain(companyIds)], { fields: ["id", "name"] }) : [];
           if (sortBy === "price_included") await withTaxInclusivePrices(sessionId, rows, correlationId);
           const totals = inventoryTotals(rows);
-          const sorted = sortInventory(rows, sortBy, sortDirection, new Map(categories.map((item) => [item.id, item.name])));
-          // Costs are used for the aggregate only; never expose individual costs in this dataset.
+          let enrichedRows: InventoryRow[] = rows;
+          if (sourceStore) {
+            try {
+              const sourceFields = ["source_id", "source_status", "name", "sku", "category", "case_quantity", "price", "track_inventory"];
+              if (canReadProductCost) sourceFields.push("cost", "raw_payload");
+              const sourceProducts = await rpc<Array<{ source_id: string; source_status?: string | false; name?: string | false; sku?: string | false; category?: string | false; case_quantity?: number | false; cost?: number | false; price?: number | false; track_inventory?: boolean; raw_payload?: unknown }>>("shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore] ]], { fields: sourceFields, limit: 15000, context: companyContext });
+              const activeSourceIds = sourceProducts.filter((product) => String(product.source_status || "").toUpperCase() === "ACTIVE").map((product) => product.source_id);
+              const sourceRefs = activeSourceIds.map((sourceId) => `${sourceStore}:${sourceId}`);
+              const templates = sourceRefs.length
+                ? await rpc<Array<{ id: number; shopfront_source_ref?: string | false; active?: boolean; sale_ok?: boolean; default_code?: string | false }>>("product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceRefs], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref", "active", "sale_ok", "default_code"], limit: sourceRefs.length * 2 })
+                : [];
+              const inventoryRows = activeSourceIds.length
+                ? await rpc<Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }>>("shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", activeSourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: activeSourceIds.length * 2, context: companyContext })
+                : [];
+              const inventoryLevels = activeSourceIds.length
+                ? await rpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>("shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", activeSourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: activeSourceIds.length * 2, context: companyContext }).catch(() => [])
+                : [];
+              const levelsBySource = new Map(inventoryLevels.map((item) => [item.source_product_id, item]));
+              enrichedRows = enrichShopfrontInventoryRows(
+                rows,
+                sourceStore,
+                sourceProducts,
+                templates,
+                inventoryRows.map((item) => ({ ...item, ...levelsBySource.get(item.source_product_id) })),
+                canReadProductCost ? "available" : "restricted",
+                "available",
+              ) as InventoryRow[];
+            } catch {
+              enrichedRows = rows.map((row) => ({
+                ...row,
+                shopfront_data_status: "unavailable",
+                shopfront_cost: null,
+                shopfront_cost_status: canReadProductCost ? "unavailable" : "restricted",
+                shopfront_inventory_status: "unavailable",
+                shopfront_quantity: null,
+                shopfront_price: null,
+              })) as InventoryRow[];
+            }
+          }
+          const sorted = sortInventory(enrichedRows, sortBy, sortDirection, new Map(categories.map((item) => [item.id, item.name])));
           for (const row of sorted) delete row.standard_price;
           snapshotId = saveInventorySnapshot(key, sorted, totals);
           snapshot = getInventorySnapshot(snapshotId, key)!;
@@ -641,7 +679,7 @@ export async function POST(request: NextRequest) {
                 const duplicateCount = sourceRef ? templateCountByRef.get(sourceRef) ?? 0 : 0;
                 product.shopfront_source_duplicate_count = duplicateCount;
                 product.shopfront_source_canonical = Boolean(sourceRef) && duplicateCount <= 1;
-                product.shopfront_cost = canReadProductCost && typeof sourceCost?.cost === "number" && Number.isFinite(sourceCost.cost) ? sourceCost.cost : null;
+                product.shopfront_cost = canReadProductCost ? shopfrontCostFromPayload(sourceCost?.cost, sourceDetail?.raw_payload) : null;
                 product.shopfront_cost_status = shopfrontFieldStatus(!canReadProductCost ? "restricted" : sourceCostsAvailable ? "available" : "unavailable", product.shopfront_cost);
                 product.shopfront_case_quantity = typeof sourcePrice?.case_quantity === "number" && Number.isFinite(sourcePrice.case_quantity) && sourcePrice.case_quantity > 0 ? sourcePrice.case_quantity : null;
                 product.shopfront_cost_synced_at = sourceDetail?.synced_at ?? null;

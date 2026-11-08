@@ -49,15 +49,15 @@ import { shopfrontCostValue } from "@/lib/shopfront-cost";
 
 const PAGE_SIZE = 40;
 const INVENTORY_COLUMNS = [
-  { key: "product", label: "Product" }, { key: "category", label: "Category" },
+  { key: "product", label: "Product" }, { key: "category", label: "Category" }, { key: "cost", label: "Cost" },
   { key: "barcode", label: "Barcode" }, { key: "sku", label: "SKU" },
-  { key: "quantity", label: "Inventory" }, { key: "unit", label: "Unit" },
+  { key: "quantity", label: "Inventory" }, { key: "odoo_quantity", label: "Odoo inventory" }, { key: "unit", label: "Unit" },
   { key: "price", label: "Sale price" }, { key: "pos", label: "POS" },
 ] as const;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(amount);
 
-function ShopfrontCostDetails({ product }: { product: OdooProductRecord }) {
+function ShopfrontCostDetails({ product, showOdooCost = true }: { product: OdooProductRecord; showOdooCost?: boolean }) {
   const sourceCost = shopfrontCostValue(product.shopfront_cost);
   const caseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
   const status = product.shopfront_cost_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceCost === null ? "missing" : "available");
@@ -68,7 +68,7 @@ function ShopfrontCostDetails({ product }: { product: OdooProductRecord }) {
     {sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title="Shopfront source cost; tax basis is source-reported">Shopfront {money(sourceCost)}{caseQuantity ? ` / pack ${quantity(caseQuantity)}` : " · unit basis unknown"}</span>}
     {product.shopfront_data_status === "available" && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]">Shopfront · Purchase tax (effective) {product.shopfront_purchase_tax_rate || "Unavailable"} · Retail tax {product.shopfront_retail_tax_rate || "Unavailable"}</span>}
     {sourceCost !== null && caseQuantity && caseQuantity > 1 && <span className="block text-[11px] text-amber-800">Per item from box cost ÷ pack size</span>}
-    <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Odoo recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>
+    {showOdooCost && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Odoo recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>}
   </>;
 }
 
@@ -128,7 +128,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [sortBy, setSortBy] = useState<InventorySort>(() => {
     if (!inventoryReport) return "name";
     const value = searchParams.get("sort");
-    return value === "category" || value === "qty_available" || value === "price_included" ? value : "name";
+    return value === "category" || value === "qty_available" || value === "shopfront_quantity" || value === "price_included" ? value : "name";
   });
   const [sortDirection, setSortDirection] = useState<InventoryDirection>(() => inventoryReport && searchParams.get("direction") === "desc" ? "desc" : "asc");
   const [inventoryFilter, setInventoryFilter] = useState<"all" | "zero" | "negative">(() => {
@@ -165,7 +165,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     const stock = searchParams.get("stock");
     setInventoryFilter(stock === "zero" || stock === "negative" ? stock : "all");
     const sort = searchParams.get("sort");
-    setSortBy(sort === "category" || sort === "qty_available" || sort === "price_included" ? sort : "name");
+    setSortBy(sort === "category" || sort === "qty_available" || sort === "shopfront_quantity" || sort === "price_included" ? sort : "name");
     setSortDirection(searchParams.get("direction") === "desc" ? "desc" : "asc");
   }, [inventoryReport, searchParams]);
   const categoriesChanged = useCallback(() => { setCategoryRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }, []);
@@ -350,7 +350,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }
 
   function downloadInventoryCsv(products: OdooProductRecord[]) {
-    const labels: Record<string, string> = { product: "Product", category: "Category", barcode: "Barcode", sku: "SKU", quantity: "Inventory", unit: "Unit", price: "Sale price (AUD)", pos: "POS" };
+    const labels: Record<string, string> = { product: "Product", category: "Category", cost: "Shopfront source cost", barcode: "Barcode", sku: "SKU", quantity: "Shopfront inventory", odoo_quantity: "Odoo inventory", unit: "Unit", price: "Odoo sale price (AUD)", pos: "POS" };
     const cell = (value: string | number) => {
       const text = String(value);
       const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
@@ -358,9 +358,10 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     };
     const values = (product: OdooProductRecord): Record<string, string | number> => ({
       product: friendlyProductName(product.display_name || product.name),
-      category: product.pos_categ_ids.map((id) => categoryNames.get(id) ?? `Category #${id}`).join(", ") || "Uncategorised",
-      barcode: product.barcode || "", sku: product.default_code || "", quantity: product.qty_available,
-      unit: product.uom_id ? product.uom_id[1] : "", price: product.price_included ?? "", pos: product.available_in_pos ? "Available" : "Hidden",
+      category: typeof product.shopfront_source_category === "string" ? product.shopfront_source_category : product.pos_categ_ids.map((id) => categoryNames.get(id) ?? `Category #${id}`).join(", ") || "Uncategorised",
+      barcode: product.barcode || "", sku: product.default_code || "", quantity: product.shopfront_quantity ?? "", odoo_quantity: product.qty_available,
+      cost: typeof product.shopfront_cost === "number" ? product.shopfront_cost : "",
+      unit: product.uom_id ? product.uom_id[1] : "", price: product.price_included ?? product.list_price ?? "", pos: product.available_in_pos ? "Available" : "Hidden",
     });
     const columns = INVENTORY_COLUMNS.filter((column) => inventoryColumns.includes(column.key));
     const rows = products.map((product) => { const row = values(product); return columns.map((column) => row[column.key]); });
@@ -520,7 +521,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   function sortHeader(field: InventorySort, label: string) {
     const active = sortBy === field;
     const Icon = active ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
-    return <th scope="col" aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className={`px-4 py-2 ${field === "qty_available" || field === "price_included" ? "text-right" : ""}`}>
+    return <th scope="col" aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"} className={`px-4 py-2 ${field === "qty_available" || field === "shopfront_quantity" || field === "price_included" ? "text-right" : ""}`}>
       <button type="button" onClick={() => changeSort(field)} className="inline-flex min-h-11 items-center gap-1.5 rounded px-1 text-xs font-semibold uppercase focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}<Icon aria-hidden="true" size={14} /></button>
     </th>;
   }
@@ -785,22 +786,22 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 <option value="">All categories</option>
                 {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
             </select>
-            {inventoryReport && <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Stock status
-              <select aria-label="Filter inventory by stock status" value={inventoryFilter} onChange={(event) => {
+            {inventoryReport && <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Odoo stock status
+              <select aria-label="Filter inventory by Odoo stock status" value={inventoryFilter} onChange={(event) => {
                 const value = event.target.value as "all" | "zero" | "negative";
                 setInventoryFilter(value);
                 const params = new URLSearchParams(searchParams.toString());
                 if (value === "all") params.delete("stock"); else params.set("stock", value);
                 router.replace(`/reports/inventory${params.size ? `?${params}` : ""}`, { scroll: false });
               }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
-                <option value="all">All stock</option><option value="zero">Zero stock</option><option value="negative">Negative stock</option>
+                <option value="all">All Odoo stock</option><option value="zero">Zero Odoo stock</option><option value="negative">Negative Odoo stock</option>
               </select>
             </label>}
           </div>
 
           <label className="print:hidden grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by
             <select aria-label="Sort inventory" value={`${sortBy}:${sortDirection}`} onChange={(event) => { const [field, direction] = event.target.value.split(":"); changeSort(field as InventorySort, direction as InventoryDirection); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm">
-              {([ ["name", "Product"], ["category", "Category"], ["qty_available", "Inventory"], ["price_included", "Sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
+              {([ ["name", "Product"], ["category", "Category"], ["shopfront_quantity", "Shopfront inventory"], ["qty_available", "Odoo inventory"], ["price_included", "Odoo sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
             </select>
           </label>
 
@@ -836,10 +837,11 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   {inventoryColumns.includes("category") && sortHeader("category", "Category")}
                   {inventoryReport && inventoryColumns.includes("barcode") && <th scope="col" className="px-4 py-3">Barcode</th>}
                   {inventoryReport && inventoryColumns.includes("sku") && <th scope="col" className="px-4 py-3">SKU</th>}
-                  {!inventoryReport && <th scope="col" className="px-4 py-3">Cost</th>}
-                  {inventoryColumns.includes("quantity") && sortHeader("qty_available", "Inventory")}
+                  {(!inventoryReport || inventoryColumns.includes("cost")) && <th scope="col" className="px-4 py-3">Cost</th>}
+                  {inventoryColumns.includes("quantity") && sortHeader(inventoryReport ? "shopfront_quantity" : "qty_available", inventoryReport ? "Shopfront inventory" : "Inventory")}
+                  {inventoryReport && inventoryColumns.includes("odoo_quantity") && sortHeader("qty_available", "Odoo inventory")}
                   {inventoryReport && inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
-                  {inventoryColumns.includes("price") && sortHeader("price_included", "Sale price · AUD")}
+                  {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Odoo sale price · AUD" : "Shopfront sale price · AUD")}
                   {inventoryReport && inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}
                   {!inventoryReport && <><th scope="col" className="px-4 py-3">Performance</th><th scope="col" className="px-4 py-3 text-right">Actions</th></>}
                 </tr>
@@ -869,8 +871,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                       {inventoryColumns.includes("category") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{displayCategory}</td>}
                       {inventoryReport && inventoryColumns.includes("barcode") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.barcode || "—"}</td>}
                       {inventoryReport && inventoryColumns.includes("sku") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{skuShort || "—"}</td>}
-                      {!inventoryReport && <td className="px-4 py-3 tabular-nums"><ShopfrontCostDetails product={product} />{product.shopfront_source_duplicate_count && product.shopfront_source_duplicate_count > 1 && <span className="mt-1 block text-[11px] text-amber-800">Source link needs review · {product.shopfront_source_duplicate_count} matches</span>}</td>}
+                      {(!inventoryReport || inventoryColumns.includes("cost")) && <td className="px-4 py-3 tabular-nums"><ShopfrontCostDetails product={product} showOdooCost={!inventoryReport} />{product.shopfront_source_duplicate_count && product.shopfront_source_duplicate_count > 1 && <span className="mt-1 block text-[11px] text-amber-800">Source link needs review · {product.shopfront_source_duplicate_count} matches</span>}</td>}
                       {inventoryColumns.includes("quantity") && <td className={`px-4 py-3 text-right tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}><ShopfrontInventoryDetails product={product} />{sourceStockMismatch && <span className="mt-0.5 block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</td>}
+                      {inventoryReport && inventoryColumns.includes("odoo_quantity") && <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{quantity(product.qty_available)} {product.uom_id ? product.uom_id[1] : ""}</td>}
                       {inventoryReport && inventoryColumns.includes("unit") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</td>}
                       {inventoryColumns.includes("price") && <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{!inventoryReport ? sourceUnavailable ? <span className="font-normal text-[var(--oh-muted)]">Shopfront unavailable</span> : typeof product.shopfront_price === "number" ? <>{money(product.shopfront_price)}<span className="mt-0.5 block text-[11px] font-normal text-[var(--oh-muted)]">Shopfront</span></> : <span className="font-normal text-[var(--oh-muted)]">No Shopfront price</span> : <CataloguePrice product={product} />}{!inventoryReport && product.shopfront_price_tiers?.length ? <span className="mt-1 block text-[11px] font-normal text-[var(--oh-muted)]" title="Shopfront source price tiers">{product.shopfront_price_tiers.slice(0, 2).map((tier) => { const priceEx = Number(tier.priceEx ?? tier.price_ex); return `${quantity(Number(tier.quantity) || 1)}+ ${money(Number(tier.price) || 0)}${Number.isFinite(priceEx) ? ` · ex tax ${money(priceEx)}` : ""}`; }).join(" · ")}</span> : null}</td>}
                       {inventoryReport && inventoryColumns.includes("pos") && <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>}
@@ -916,7 +919,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                     </header>
                     <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1.5 text-xs min-[360px]:grid-cols-2">
                       {(!inventoryReport || inventoryColumns.includes("category")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{displayCategory}</dd></div>}
-                      {!inventoryReport && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Cost</dt><dd className="min-w-0 text-[var(--oh-text-secondary)]"><ShopfrontCostDetails product={product} /></dd></div>}
+                      {(!inventoryReport || inventoryColumns.includes("cost")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Cost</dt><dd className="min-w-0 text-[var(--oh-text-secondary)]"><ShopfrontCostDetails product={product} showOdooCost={!inventoryReport} /></dd></div>}
                       {(!inventoryReport || inventoryColumns.includes("barcode")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>}
                       {(!inventoryReport || inventoryColumns.includes("quantity")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Inventory</dt><dd className={`min-w-0 tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}><ShopfrontInventoryDetails product={product} />{sourceStockMismatch && <span className="block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</dd></div>}
                       {inventoryReport && inventoryColumns.includes("unit") && <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Unit</dt><dd className="text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</dd></div>}

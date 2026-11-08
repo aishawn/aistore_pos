@@ -1,6 +1,6 @@
 import { friendlyProductName } from "./product-display-name.ts";
 
-export const INVENTORY_SORTS = ["name", "category", "qty_available", "price_included"] as const;
+export const INVENTORY_SORTS = ["name", "category", "qty_available", "shopfront_quantity", "price_included"] as const;
 export type InventorySort = typeof INVENTORY_SORTS[number];
 export type InventoryDirection = "asc" | "desc";
 
@@ -8,11 +8,13 @@ export interface InventoryRow {
   id: number;
   name: string;
   display_name?: string;
+  product_tmpl_id?: [number, string] | false;
   qty_available: number;
   standard_price?: number | false;
   price_included?: number | null;
   pos_categ_ids: number[];
   uom_id: [number, string] | false;
+  [key: string]: unknown;
 }
 
 export interface InventoryTotals {

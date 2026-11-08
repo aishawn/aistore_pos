@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveShopfrontCatalogueMappings, shopfrontFieldStatus, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
+import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
 
 const active = (source_id: string, sku?: string) => ({ source_id, source_status: "ACTIVE", sku });
 const template = (id: number, sourceId: string, values: Record<string, unknown> = {}) => ({ id, shopfront_source_ref: `skr:${sourceId}`, active: true, sale_ok: true, ...values });
@@ -44,4 +44,52 @@ test("source field status distinguishes a real zero from missing or unreadable d
   assert.equal(shopfrontFieldStatus("available", null), "missing");
   assert.equal(shopfrontFieldStatus("unavailable", null), "unavailable");
   assert.equal(shopfrontFieldStatus("restricted", null), "restricted");
+});
+
+test("Shopfront raw payload distinguishes a true zero cost from the mirror's default zero", () => {
+  assert.equal(shopfrontCostFromPayload(0, { cost: 0 }), 0);
+  assert.equal(shopfrontCostFromPayload(0, {}), null);
+  assert.equal(shopfrontCostFromPayload(4.25, {}), 4.25);
+  assert.equal(shopfrontCostFromPayload(12, { cost: null }), null);
+});
+
+test("inventory report enrichment uses the canonical Shopfront mapping and preserves zero values", () => {
+  const sourceId = "a".repeat(32);
+  const product = {
+    source_id: sourceId, source_status: "ACTIVE", name: "Wine", sku: "W1", category: "Red",
+    case_quantity: 6, cost: 0, price: 0, track_inventory: true, raw_payload: { cost: 0 },
+  };
+  const result = enrichShopfrontInventoryRows(
+    [{ id: 10, product_tmpl_id: [2, "Wine"] }, { id: 11, product_tmpl_id: [3, "Duplicate"] }],
+    "skr",
+    [product],
+    [template(2, sourceId, { default_code: "W1" }), template(3, sourceId, { default_code: "OTHER" })],
+    [{ source_product_id: sourceId, quantity: 0, single_level: 0, case_level: 0, snapshot_at: "2026-11-08T00:00:00Z" }],
+    "available",
+    "available",
+  );
+
+  assert.equal(result[0].shopfront_source_category, "Red");
+  assert.equal(result[0].shopfront_cost, 0);
+  assert.equal(result[0].shopfront_cost_status, "available");
+  assert.equal(result[0].shopfront_quantity, 0);
+  assert.equal(result[0].shopfront_inventory_status, "available");
+  assert.equal(result[1].shopfront_data_status, "missing");
+});
+
+test("inventory report enrichment labels restricted cost and unavailable inventory separately", () => {
+  const sourceId = "b".repeat(32);
+  const result = enrichShopfrontInventoryRows(
+    [{ id: 10, product_tmpl_id: [2, "Wine"] }],
+    "skr",
+    [{ source_id: sourceId, source_status: "ACTIVE", sku: "W1", cost: 12 }],
+    [template(2, sourceId, { default_code: "W1" })],
+    [],
+    "restricted",
+    "unavailable",
+  );
+
+  assert.equal(result[0].shopfront_cost_status, "restricted");
+  assert.equal(result[0].shopfront_inventory_status, "unavailable");
+  assert.equal(result[0].shopfront_quantity, null);
 });
