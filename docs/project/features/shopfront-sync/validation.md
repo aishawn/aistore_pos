@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Inventory scope and coverage clarification (2026-11-08)
+
+- Runtime `68b2c7efa9c8248339277408382b5ece615c3048` is deployed on SKR (frontend and backend). The preceding coverage UI runtime was `f2b7fb0b944520647c9a1fdd9bb245348f1c0d6d`.
+- Authenticated read-only route check: Products and Inventory both use 10,849 Shopfront canonical products. Inventory returned 10,849 rows, 50,914 positive units, and source cost/inventory data on the first page; Odoo quantity matched source quantity in the sampled rows and the full `aipos_uat` audit had 0 mismatches.
+- Coverage API returned 10,849 active, 10,849 mapped, 0 unmapped, 10,849 inventory-covered, 9,993 non-zero-cost products, and 856 real zero-cost products. Source snapshot: `2026-11-07T18:34:46.280813+00:00`.
+- `npm run typecheck` passed for the candidate. Dokploy deployment status was `done`; public version API reports runtime `68b2c7ef`.
+- This resolves the UI scope discrepancy between 10,849 Shopfront products and the previous 13,064 mixed Odoo inventory rows. It does not claim that every Shopfront setting or tax-inclusive cost interpretation has been independently verified.
+
 ## Product / inventory parity follow-up (2026-11-08)
 
 - POS `main` `fce60e3cef10322b10c578032eb9d2d16c0542b1` and Odoo `main` `63c50a0bb65d6a06f6622928506857abc74eec37` are deployed. Odoo identity-resolution fix `077b740` is included in the deployed history. POS and Odoo deployment status was reported `done` for these exact revisions.

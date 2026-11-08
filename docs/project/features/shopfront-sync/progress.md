@@ -2,6 +2,12 @@
 
 Updated: 2026-11-08. Owner: TBD.
 
+## Inventory scope and coverage clarification (2026-11-08)
+
+- POS commits `f2b7fb0b944520647c9a1fdd9bb245348f1c0d6d` and `68b2c7efa9c8248339277408382b5ece615c3048` are deployed on SKR. Products now reports the source coverage counts and links to the stock-ranked Inventory view; Inventory uses the same 10,849 Shopfront canonical products instead of the broader Odoo-only variant population.
+- Deployed read-only verification: Products total 10,849; Inventory total 10,849; 10,849 mapped source products; 10,849 inventory rows; 0 unmapped; 0 row quantity differences; 50,914 positive units. First-page Inventory rows carried source cost and source inventory, with Odoo quantity shown separately for comparison.
+- Current source cost coverage is 9,993 products with non-zero cost and 856 products reporting a real zero cost. A zero source cost remains visible as `$0.00`; it is not replaced by an invented value. Cost access remains permission-gated.
+
 ## Product / inventory parity follow-up (2026-11-08)
 
 - POS `main` commit `fce60e3cef10322b10c578032eb9d2d16c0542b1` is deployed. Its product import maps Shopfront retail `taxRate` and purchase `costTaxRate` independently. The Odoo integration fixes `077b740` and `63c50a0bb65d6a06f6622928506857abc74eec37` are deployed; the latter resolves unique-SKU legacy product identities while retaining rejection of conflicting evidence.
