@@ -9,20 +9,21 @@ import java.util.List;
 public interface SupplierAdditionalContactMapper {
 
     @Select("""
-        SELECT id, supplier_id, name, email, phone, sort_order
+        SELECT id, supplier_id, outlet_id, name, email, phone, sort_order
         FROM supplier_additional_contact
-        WHERE supplier_id = #{supplierId}
+        WHERE supplier_id = #{supplierId} AND outlet_id = #{outletId}
         ORDER BY sort_order, id
         """)
-    List<SupplierAdditionalContact> findBySupplierId(Long supplierId);
+    List<SupplierAdditionalContact> findBySupplierId(@Param("supplierId") Long supplierId,
+                                                     @Param("outletId") Long outletId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
-        INSERT INTO supplier_additional_contact (supplier_id, name, email, phone, sort_order)
-        VALUES (#{supplierId}, #{name}, #{email}, #{phone}, #{sortOrder})
+        INSERT INTO supplier_additional_contact (supplier_id, outlet_id, name, email, phone, sort_order)
+        VALUES (#{supplierId}, #{outletId}, #{name}, #{email}, #{phone}, #{sortOrder})
         """)
     int insert(SupplierAdditionalContact contact);
 
-    @Delete("DELETE FROM supplier_additional_contact WHERE supplier_id = #{supplierId}")
-    int deleteBySupplierId(Long supplierId);
+    @Delete("DELETE FROM supplier_additional_contact WHERE supplier_id = #{supplierId} AND outlet_id = #{outletId}")
+    int deleteBySupplierId(@Param("supplierId") Long supplierId, @Param("outletId") Long outletId);
 }

@@ -1,10 +1,13 @@
 package com.orithos.modules.customer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 @Data
 public class Contact {
     private Long id;
+    @JsonIgnore
+    private Long outletId;
     private String addressStreet1;
     private String addressStreet2;
     private String addressSuburb;

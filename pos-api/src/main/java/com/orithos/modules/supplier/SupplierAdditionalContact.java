@@ -1,11 +1,14 @@
 package com.orithos.modules.supplier;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 @Data
 public class SupplierAdditionalContact {
     private Long id;
     private Long supplierId;
+    @JsonIgnore
+    private Long outletId;
     private String name;
     private String email;
     private String phone;

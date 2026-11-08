@@ -6,23 +6,24 @@ import org.apache.ibatis.annotations.*;
 @Mapper
 public interface SupplierAuthenticationMapper {
 
-    @Select("SELECT supplier_id, account_number, username, password_hash, additional_auth "
-            + "FROM supplier_authentication WHERE supplier_id = #{supplierId}")
-    SupplierAuthentication findBySupplierId(Long supplierId);
+    @Select("SELECT supplier_id, outlet_id, account_number, username, password_hash, additional_auth "
+            + "FROM supplier_authentication WHERE supplier_id = #{supplierId} AND outlet_id = #{outletId}")
+    SupplierAuthentication findBySupplierId(@Param("supplierId") Long supplierId,
+                                             @Param("outletId") Long outletId);
 
     @Insert("""
-        INSERT INTO supplier_authentication (supplier_id, account_number, username, password_hash, additional_auth)
-        VALUES (#{supplierId}, #{accountNumber}, #{username}, #{passwordHash}, #{additionalAuth})
+        INSERT INTO supplier_authentication (supplier_id, outlet_id, account_number, username, password_hash, additional_auth)
+        VALUES (#{supplierId}, #{outletId}, #{accountNumber}, #{username}, #{passwordHash}, #{additionalAuth})
         """)
     int insert(SupplierAuthentication auth);
 
     @Update("""
-        UPDATE supplier_authentication SET account_number=#{accountNumber}, username=#{username},
+        UPDATE supplier_authentication SET outlet_id=#{outletId}, account_number=#{accountNumber}, username=#{username},
                password_hash=#{passwordHash}, additional_auth=#{additionalAuth}
-        WHERE supplier_id=#{supplierId}
+        WHERE supplier_id=#{supplierId} AND outlet_id=#{outletId}
         """)
     int update(SupplierAuthentication auth);
 
-    @Delete("DELETE FROM supplier_authentication WHERE supplier_id = #{supplierId}")
-    int deleteBySupplierId(Long supplierId);
+    @Delete("DELETE FROM supplier_authentication WHERE supplier_id = #{supplierId} AND outlet_id = #{outletId}")
+    int deleteBySupplierId(@Param("supplierId") Long supplierId, @Param("outletId") Long outletId);
 }

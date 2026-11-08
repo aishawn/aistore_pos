@@ -58,10 +58,10 @@ public class SupplierService {
         SupplierDetail detail = prepareForSave(input);
         detail.setOutletId(outletId);
         applyPersistableDefaults(detail);
-        detail.setContactId(upsertContact(null, toContact(detail)));
+        detail.setContactId(upsertContact(null, toContact(detail), outletId));
         supplierMapper.insertDetail(detail);
-        saveAuthentication(detail.getId(), detail, null);
-        saveAdditionalContacts(detail.getId(), detail.getAdditionalContacts());
+        saveAuthentication(detail.getId(), outletId, detail, null);
+        saveAdditionalContacts(detail.getId(), outletId, detail.getAdditionalContacts());
         return getDetail(detail.getId());
     }
 
@@ -77,10 +77,11 @@ public class SupplierService {
         detail.setId(id);
         detail.setOutletId(existing.getOutletId());
         ensurePersistableDefaults(detail, existing);
-        detail.setContactId(upsertContact(existing.getContactId(), toContact(detail)));
+        detail.setContactId(upsertContact(existing.getContactId(), toContact(detail), existing.getOutletId()));
         supplierMapper.updateDetail(detail);
-        saveAuthentication(id, detail, authenticationMapper.findBySupplierId(id));
-        saveAdditionalContacts(id, detail.getAdditionalContacts());
+        saveAuthentication(id, existing.getOutletId(), detail,
+                authenticationMapper.findBySupplierId(id, existing.getOutletId()));
+        saveAdditionalContacts(id, existing.getOutletId(), detail.getAdditionalContacts());
         return getDetail(id);
     }
 
@@ -158,7 +159,7 @@ public class SupplierService {
     }
 
     private void attachAuthentication(SupplierDetail detail) {
-        SupplierAuthentication auth = authenticationMapper.findBySupplierId(detail.getId());
+        SupplierAuthentication auth = authenticationMapper.findBySupplierId(detail.getId(), detail.getOutletId());
         if (auth == null) return;
         detail.setAuthAccountNumber(auth.getAccountNumber());
         detail.setUsername(auth.getUsername());
@@ -166,7 +167,7 @@ public class SupplierService {
     }
 
     private void attachAdditionalContacts(SupplierDetail detail) {
-        detail.setAdditionalContacts(additionalContactMapper.findBySupplierId(detail.getId()));
+        detail.setAdditionalContacts(additionalContactMapper.findBySupplierId(detail.getId(), detail.getOutletId()));
     }
 
     private SupplierDetail sanitizeForResponse(SupplierDetail detail) {
@@ -174,9 +175,11 @@ public class SupplierService {
         return detail;
     }
 
-    private void saveAuthentication(Long supplierId, SupplierDetail input, SupplierAuthentication existing) {
+    private void saveAuthentication(Long supplierId, Long outletId, SupplierDetail input,
+                                    SupplierAuthentication existing) {
         SupplierAuthentication auth = new SupplierAuthentication();
         auth.setSupplierId(supplierId);
+        auth.setOutletId(outletId);
         auth.setAccountNumber(trimToNull(input.getAuthAccountNumber()));
         auth.setUsername(trimToNull(input.getUsername()));
         auth.setAdditionalAuth(trimToNull(input.getAdditionalAuth()));
@@ -189,7 +192,7 @@ public class SupplierService {
         }
 
         if (auth.isBlank()) {
-            authenticationMapper.deleteBySupplierId(supplierId);
+            authenticationMapper.deleteBySupplierId(supplierId, outletId);
             return;
         }
 
@@ -200,8 +203,9 @@ public class SupplierService {
         }
     }
 
-    private void saveAdditionalContacts(Long supplierId, List<SupplierAdditionalContact> contacts) {
-        additionalContactMapper.deleteBySupplierId(supplierId);
+    private void saveAdditionalContacts(Long supplierId, Long outletId,
+                                        List<SupplierAdditionalContact> contacts) {
+        additionalContactMapper.deleteBySupplierId(supplierId, outletId);
         if (contacts == null || contacts.isEmpty()) return;
 
         int order = 0;
@@ -209,6 +213,7 @@ public class SupplierService {
             if (contact == null || contact.isBlank()) continue;
             SupplierAdditionalContact row = new SupplierAdditionalContact();
             row.setSupplierId(supplierId);
+            row.setOutletId(outletId);
             row.setName(trimToNull(contact.getName()));
             row.setEmail(trimToNull(contact.getEmail()));
             row.setPhone(trimToNull(contact.getPhone()));
@@ -217,19 +222,23 @@ public class SupplierService {
         }
     }
 
-    private Long upsertContact(Long existingId, Contact contact) {
+    private Long upsertContact(Long existingId, Contact contact, Long outletId) {
+        contact.setOutletId(outletId);
         if (existingId == null) {
             if (contact.isBlank()) return null;
-            contactMapper.insert(contact);
+            contactMapper.insertForOutlet(contact);
             return contact.getId();
         }
         contact.setId(existingId);
-        contactMapper.update(contact);
+        if (contactMapper.updateForOutlet(contact) == 0) {
+            throw new BusinessException("Supplier contact not found.");
+        }
         return existingId;
     }
 
     private static Contact toContact(SupplierDetail detail) {
         Contact contact = new Contact();
+        contact.setOutletId(detail.getOutletId());
         contact.setEmail(trimToNull(detail.getEmail()));
         contact.setFax(trimToNull(detail.getFax()));
         contact.setPhone(trimToNull(detail.getPhone()));
