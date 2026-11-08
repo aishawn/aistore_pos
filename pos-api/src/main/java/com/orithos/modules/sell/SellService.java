@@ -90,7 +90,9 @@ public class SellService {
         // legacy sale tables and must expose an empty read-only state instead.
         if (odooOnlyMode) return List.of();
         LocalDate today = AustraliaTime.today();
-        List<Sale> parked = saleMapper.page("PARKED", null, 50, 0);
+        List<Sale> parked = CurrentUser.vendorId() == null
+                ? saleMapper.page("PARKED", null, 50, 0)
+                : saleMapper.page(CurrentUser.vendorId(), CurrentUser.outletId(), "PARKED", null, 50, 0);
         for (Sale sale : parked) {
             LocalDate parkedOn = parkedBusinessDate(sale);
             sale.setStale(ParkedSalePolicy.stale(parkedOn, today));
@@ -118,7 +120,7 @@ public class SellService {
 
     /** Load a parked sale with its line items (for resume). */
     public Sale getParked(Long id) {
-        Sale sale = saleMapper.findById(id);
+        Sale sale = saleMapper.findById(id, CurrentUser.vendorId(), CurrentUser.outletId());
         if (sale == null || !"PARKED".equals(sale.getStatus())) {
             throw new BusinessException("Parked sale not found.");
         }
@@ -145,6 +147,8 @@ public class SellService {
 
         Sale sale = new Sale();
         sale.setStatus("PARKED");
+        if (CurrentUser.vendorId() == null || CurrentUser.outletId() == null) throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        sale.setOutletId(CurrentUser.outletId());
         sale.setRegisterId(req.getRegisterId());
         sale.setUserId(req.getUserId() != null ? req.getUserId() : CurrentUser.id());
         sale.setCustomerId(resolveCustomerId(req.getCustomerId()));
@@ -170,18 +174,18 @@ public class SellService {
     @Transactional
     public Sale resume(Long id) {
         Sale sale = getParked(id);
-        saleMapper.voidParked(id);
+        saleMapper.voidParked(id, CurrentUser.vendorId(), CurrentUser.outletId());
         return sale;
     }
 
     /** Discard a parked sale without restoring lines to the cart. */
     @Transactional
     public void voidParked(Long id) {
-        Sale sale = saleMapper.findById(id);
+        Sale sale = saleMapper.findById(id, CurrentUser.vendorId(), CurrentUser.outletId());
         if (sale == null || !"PARKED".equals(sale.getStatus())) {
             throw new BusinessException("Parked sale not found.");
         }
-        saleMapper.voidParked(id);
+        saleMapper.voidParked(id, CurrentUser.vendorId(), CurrentUser.outletId());
     }
 
     /** Execute a register action triggered from a Sell-pad key. */
@@ -324,7 +328,7 @@ public class SellService {
         si.setQuantity(qty);
         si.setBasePrice(unit);
         si.setTotalPrice(qty.multiply(unit).setScale(2, RoundingMode.HALF_UP));
-        if (item.getProductId() != null && saleMapper.productExists(item.getProductId()) > 0) {
+        if (item.getProductId() != null && saleMapper.productExists(item.getProductId(), CurrentUser.vendorId()) > 0) {
             si.setProductId(item.getProductId());
         } else {
             si.setNote(item.getName());
@@ -333,7 +337,7 @@ public class SellService {
     }
 
     private Long resolveCustomerId(Long customerId) {
-        if (customerId != null && saleMapper.customerExists(customerId) > 0) {
+        if (customerId != null && saleMapper.customerExists(customerId, CurrentUser.vendorId()) > 0) {
             return customerId;
         }
         return null;

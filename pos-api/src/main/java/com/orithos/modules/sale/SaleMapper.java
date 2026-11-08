@@ -6,33 +6,46 @@ import java.util.List;
 @Mapper
 public interface SaleMapper {
 
+    /** Legacy signature retained for existing mock clients; production callers must provide tenant scope. */
+    @Deprecated
+    default List<Sale> page(String status, Long customerId, int size, int offset) {
+        return page(null, null, status, customerId, size, offset);
+    }
+
     @Select("""
         SELECT s.*, u.name AS user_name, c.name AS customer_name
-        FROM sale s
+        FROM sale s JOIN outlet o ON o.id = s.outlet_id
         LEFT JOIN app_user u ON u.id = s.user_id
         LEFT JOIN customer c ON c.id = s.customer_id
-        WHERE (#{status} IS NULL OR s.status = #{status})
+        WHERE o.vendor_id = #{vendorId} AND o.deleted_at IS NULL
+          AND (#{outletId} IS NULL OR s.outlet_id = #{outletId})
+          AND (#{status} IS NULL OR s.status = #{status})
           AND (#{customerId} IS NULL OR s.customer_id = #{customerId})
         ORDER BY s.created_at DESC LIMIT #{size} OFFSET #{offset}
         """)
-    List<Sale> page(@Param("status") String status, @Param("customerId") Long customerId,
+    List<Sale> page(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
+                    @Param("status") String status, @Param("customerId") Long customerId,
                     @Param("size") int size, @Param("offset") int offset);
 
     @Select("""
-        SELECT COUNT(*) FROM sale s
-        WHERE (#{status} IS NULL OR s.status = #{status})
+        SELECT COUNT(*) FROM sale s JOIN outlet o ON o.id = s.outlet_id
+        WHERE o.vendor_id = #{vendorId} AND o.deleted_at IS NULL
+          AND (#{outletId} IS NULL OR s.outlet_id = #{outletId})
+          AND (#{status} IS NULL OR s.status = #{status})
           AND (#{customerId} IS NULL OR s.customer_id = #{customerId})
         """)
-    long count(@Param("status") String status, @Param("customerId") Long customerId);
+    long count(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
+               @Param("status") String status, @Param("customerId") Long customerId);
 
     @Select("""
         SELECT s.*, u.name AS user_name, c.name AS customer_name
-        FROM sale s
+        FROM sale s JOIN outlet o ON o.id = s.outlet_id
         LEFT JOIN app_user u ON u.id = s.user_id
         LEFT JOIN customer c ON c.id = s.customer_id
-        WHERE s.id = #{id}
+        WHERE s.id = #{id} AND o.vendor_id = #{vendorId} AND o.deleted_at IS NULL
+          AND (#{outletId} IS NULL OR s.outlet_id = #{outletId})
         """)
-    Sale findById(Long id);
+    Sale findById(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
     @Select("""
         SELECT si.*, COALESCE(p.name, si.note) AS note
@@ -47,71 +60,78 @@ public interface SaleMapper {
         INSERT INTO sale (register_id, user_id, customer_id, outlet_id, status, invoice_id, note,
                           total_quantity, total_price, total_tax, outstanding, total_change, cashout,
                           business_date, local_sold_at)
-        VALUES (#{registerId}, #{userId}, #{customerId}, COALESCE(#{outletId}, 1), #{status}, #{invoiceId}, #{note},
+        VALUES (#{registerId}, #{userId}, #{customerId}, #{outletId}, #{status}, #{invoiceId}, #{note},
                 #{totalQuantity}, #{totalPrice}, #{totalTax}, #{outstanding}, #{totalChange}, #{cashout},
                 #{businessDate}, #{localSoldAt})
         """)
     int insert(Sale s);
 
-    @Select("SELECT COUNT(*) FROM product WHERE id = #{id}")
-    long productExists(Long id);
+    @Select("SELECT COUNT(*) FROM product p JOIN outlet o ON o.id=p.outlet_id WHERE p.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL AND p.deleted_at IS NULL")
+    long productExists(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
     @Select("""
         SELECT id FROM product
         WHERE deleted_at IS NULL AND name = #{name}
+          AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)
         ORDER BY id
         LIMIT 1
         """)
-    Long findProductIdByName(@Param("name") String name);
+    Long findProductIdByName(@Param("name") String name, @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE sale SET stock_applied = 1 WHERE id = #{id}")
-    int markStockApplied(Long id);
+    @Update("UPDATE sale SET stock_applied = 1 WHERE id = #{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId})")
+    int markStockApplied(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
+    @Insert("INSERT INTO inventory_movement (vendor_id, outlet_id, product_id, quantity_delta, source_type, source_id, source_line_id, idempotency_key, actor_id) VALUES (#{vendorId}, #{outletId}, #{productId}, #{quantityDelta}, 'POS_SALE', #{sourceId}, #{sourceLineId}, #{idempotencyKey}, #{actorId}) ON CONFLICT (source_type, source_line_id) DO NOTHING")
+    int insertSaleInventoryMovement(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
+                                    @Param("productId") Long productId, @Param("quantityDelta") java.math.BigDecimal quantityDelta,
+                                    @Param("sourceId") Long sourceId, @Param("sourceLineId") Long sourceLineId,
+                                    @Param("idempotencyKey") String idempotencyKey, @Param("actorId") Long actorId);
 
     @Select("""
         SELECT tr.amount FROM product p
         LEFT JOIN tax_rate tr ON tr.id = p.tax_rate_id AND tr.deleted_at IS NULL
-        WHERE p.id = #{id}
+        WHERE p.id = #{id} AND p.outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)
         """)
-    java.math.BigDecimal findSellTaxPercent(Long id);
+    java.math.BigDecimal findSellTaxPercent(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
-    @Select("SELECT tax_rate_id FROM product WHERE id = #{id}")
-    Long findTaxRateId(Long id);
+    @Select("SELECT tax_rate_id FROM product WHERE id = #{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL)")
+    Long findTaxRateId(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
-    @Select("SELECT COUNT(*) FROM customer WHERE id = #{id}")
-    long customerExists(Long id);
+    @Select("SELECT COUNT(*) FROM customer c JOIN outlet o ON o.id=c.outlet_id WHERE c.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL")
+    long customerExists(@Param("id") Long id, @Param("vendorId") Long vendorId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
         INSERT INTO sale_item (sale_id, product_id, outlet_id, quantity, case_quantity, cost, base_price,
                                total_price, savings, tax, tax_rate_id, discount_amount, discount_reason, note)
-        VALUES (#{saleId}, #{productId}, COALESCE(#{outletId}, 1), #{quantity}, #{caseQuantity}, #{cost}, #{basePrice},
+        VALUES (#{saleId}, #{productId}, #{outletId}, #{quantity}, #{caseQuantity}, #{cost}, #{basePrice},
                 #{totalPrice}, #{savings}, #{tax}, #{taxRateId}, #{discountAmount}, #{discountReason}, #{note})
         """)
     int insertItem(SaleItem item);
 
     @Update("""
-        UPDATE sale SET status=#{status}, customer_id=#{customerId}, note=#{note},
-               total_quantity=#{totalQuantity}, total_price=#{totalPrice}, outstanding=#{outstanding}
-        WHERE id=#{id}
+        UPDATE sale SET status=#{sale.status}, customer_id=#{sale.customerId}, note=#{sale.note},
+               total_quantity=#{sale.totalQuantity}, total_price=#{sale.totalPrice}, outstanding=#{sale.outstanding}
+        WHERE id=#{sale.id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND (#{outletId} IS NULL OR id=#{outletId}) AND deleted_at IS NULL)
         """)
-    int update(Sale s);
+    int update(@Param("sale") Sale s, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
     @Update("""
-        UPDATE sale SET status=#{status}, outstanding=#{outstanding}, total_change=#{totalChange},
-               invoice_id=#{invoiceId}, cashout=#{cashout}, total_tax=#{totalTax},
-               total_rounding=#{totalRounding}, business_date=#{businessDate}, local_sold_at=#{localSoldAt}
-        WHERE id=#{id}
+        UPDATE sale SET status=#{sale.status}, outstanding=#{sale.outstanding}, total_change=#{sale.totalChange},
+               invoice_id=#{sale.invoiceId}, cashout=#{sale.cashout}, total_tax=#{sale.totalTax},
+               total_rounding=#{sale.totalRounding}, business_date=#{sale.businessDate}, local_sold_at=#{sale.localSoldAt}
+        WHERE id=#{sale.id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND (#{outletId} IS NULL OR id=#{outletId}) AND deleted_at IS NULL)
         """)
-    int updatePaymentState(Sale s);
+    int updatePaymentState(@Param("sale") Sale s, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
-    @Update("UPDATE sale SET status='VOIDED', outstanding=0 WHERE id=#{id}")
-    int markVoid(Long id);
+    @Update("UPDATE sale SET status='VOIDED', outstanding=0 WHERE id=#{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND (#{outletId} IS NULL OR id=#{outletId}) AND deleted_at IS NULL)")
+    int markVoid(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
-    @Update("UPDATE sale SET status='ACTIVE' WHERE id=#{id} AND status='PARKED'")
-    int unpark(Long id);
+    @Update("UPDATE sale SET status='ACTIVE' WHERE id=#{id} AND status='PARKED' AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND (#{outletId} IS NULL OR id=#{outletId}) AND deleted_at IS NULL)")
+    int unpark(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
-    @Update("UPDATE sale SET status='VOIDED', outstanding=0 WHERE id=#{id} AND status='PARKED'")
-    int voidParked(Long id);
+    @Update("UPDATE sale SET status='VOIDED', outstanding=0 WHERE id=#{id} AND status='PARKED' AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND (#{outletId} IS NULL OR id=#{outletId}) AND deleted_at IS NULL)")
+    int voidParked(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
     /**
      * Void parked sales older than the keep window.

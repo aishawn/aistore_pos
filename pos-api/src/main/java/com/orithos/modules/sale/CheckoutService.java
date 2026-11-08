@@ -42,6 +42,11 @@ public class CheckoutService {
 
     @Transactional
     public CheckoutResponse checkout(CheckoutRequest req) {
+        Long vendorId = CurrentUser.vendorId();
+        Long authenticatedOutletId = CurrentUser.outletId();
+        if (vendorId == null || authenticatedOutletId == null) {
+            throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
         String tenderType = resolveTenderType(req.getTender());
         boolean cash = "CASH".equals(tenderType);
         BigDecimal cashout = nonNeg(req.getCashout());
@@ -50,7 +55,7 @@ public class CheckoutService {
         BigDecimal total;
 
         if (req.getSaleId() != null) {
-            sale = saleMapper.findById(req.getSaleId());
+            sale = saleMapper.findById(req.getSaleId(), vendorId, authenticatedOutletId);
             if (sale == null || !"PENDING".equals(sale.getStatus())) {
                 throw new BusinessException("Sale not found or not open for payment.");
             }
@@ -164,12 +169,12 @@ public class CheckoutService {
                 sale.setCashout(cashout);
             }
         }
-        saleMapper.updatePaymentState(sale);
+        saleMapper.updatePaymentState(sale, vendorId, authenticatedOutletId);
 
         sale.setItems(saleMapper.findItemsBySaleId(sale.getId()));
         if (completed) {
             deductStock(sale);
-            saleMapper.markStockApplied(sale.getId());
+            saleMapper.markStockApplied(sale.getId(), vendorId);
         }
 
         CheckoutResponse res = new CheckoutResponse();
@@ -196,17 +201,16 @@ public class CheckoutService {
         if (sale.getItems() == null) {
             return;
         }
-        Long outletId = sale.getOutletId() != null ? sale.getOutletId() : CurrentUser.outletId();
-        if (outletId == null) {
-            outletId = 1L;
-        }
+        Long outletId = sale.getOutletId();
+        Long vendorId = CurrentUser.vendorId();
         for (SaleItem item : sale.getItems()) {
             if (item.getProductId() == null || item.getQuantity() == null || item.getQuantity().signum() == 0) {
                 continue;
             }
             BigDecimal delta = item.getQuantity().negate();
-            Product product = productMapper.findById(item.getProductId());
-            boolean track = product == null || !Boolean.FALSE.equals(product.getTrackInventory());
+            Product product = productMapper.findByIdAndVendor(item.getProductId(), vendorId);
+            if (product == null) throw new BusinessException("Product not found in this tenant.");
+            boolean track = !Boolean.FALSE.equals(product.getTrackInventory());
             if (delta.signum() < 0 && track) {
                 int updated = productMapper.adjustInventoryIfAvailable(item.getProductId(), outletId, delta);
                 if (updated == 0) {
@@ -217,6 +221,8 @@ public class CheckoutService {
             } else {
                 productMapper.adjustInventory(item.getProductId(), outletId, delta);
             }
+            saleMapper.insertSaleInventoryMovement(vendorId, outletId, item.getProductId(), delta,
+                    sale.getId(), item.getId(), "pos-sale:" + sale.getId() + ":" + item.getId(), CurrentUser.id());
         }
     }
 
@@ -257,7 +263,7 @@ public class CheckoutService {
             Long productId = resolveProductId(item);
             if (productId != null) {
                 si.setProductId(productId);
-                si.setTaxRateId(saleMapper.findTaxRateId(productId));
+                si.setTaxRateId(saleMapper.findTaxRateId(productId, CurrentUser.vendorId()));
                 si.setTax(GstMath.includedGst(lineTotal, taxPercent(productId)));
             } else {
                 si.setTax(GstMath.includedGst(lineTotal, GstMath.DEFAULT_RATE));
@@ -278,21 +284,21 @@ public class CheckoutService {
     /** Prefer the cart product id. Fall back to an exact catalog name so the line stays on that product. */
     private Long resolveProductId(CheckoutRequest.Item item) {
         Long productId = item.getProductId();
-        if (productId != null && saleMapper.productExists(productId) > 0) {
+        if (productId != null && saleMapper.productExists(productId, CurrentUser.vendorId()) > 0) {
             return productId;
         }
         if (item.getName() == null || item.getName().isBlank()) {
             return null;
         }
-        return saleMapper.findProductIdByName(item.getName().trim());
+        return saleMapper.findProductIdByName(item.getName().trim(), CurrentUser.vendorId());
     }
 
     /** GST-inclusive rate. Missing product tax falls back to 10% GST. */
     private BigDecimal taxPercent(Long productId) {
-        if (productId == null || saleMapper.productExists(productId) == 0) {
+        if (productId == null || saleMapper.productExists(productId, CurrentUser.vendorId()) == 0) {
             return GstMath.DEFAULT_RATE;
         }
-        BigDecimal rate = saleMapper.findSellTaxPercent(productId);
+        BigDecimal rate = saleMapper.findSellTaxPercent(productId, CurrentUser.vendorId());
         return rate == null ? GstMath.DEFAULT_RATE : rate;
     }
 
@@ -346,7 +352,7 @@ public class CheckoutService {
 
     /** Only attach a customer that actually exists, to satisfy the FK. */
     private Long resolveCustomerId(Long customerId) {
-        if (customerId != null && saleMapper.customerExists(customerId) > 0) {
+        if (customerId != null && saleMapper.customerExists(customerId, CurrentUser.vendorId()) > 0) {
             return customerId;
         }
         return null;

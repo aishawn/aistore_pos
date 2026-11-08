@@ -4,6 +4,8 @@ import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
+import com.orithos.security.CurrentUser;
+import com.orithos.common.BusinessException;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -32,13 +34,14 @@ public class SaleController {
                                             @RequestParam(defaultValue = "1") int page,
                                             @RequestParam(defaultValue = "20") int size) {
         int offset = Math.max(0, (page - 1) * size);
-        var items = mapper.page(status, customerId, size, offset);
-        return ApiResult.ok(PageResult.of(items, mapper.count(status, customerId), page, size));
+        Long vendorId = requireVendor();
+        var items = mapper.page(vendorId, CurrentUser.outletId(), status, customerId, size, offset);
+        return ApiResult.ok(PageResult.of(items, mapper.count(vendorId, CurrentUser.outletId(), status, customerId), page, size));
     }
 
     @GetMapping("/{id}")
     public ApiResult<Sale> get(@PathVariable Long id) {
-        Sale sale = mapper.findById(id);
+        Sale sale = mapper.findById(id, requireVendor(), CurrentUser.outletId());
         if (sale != null) {
             sale.setItems(mapper.findItemsBySaleId(id));
         }
@@ -47,6 +50,7 @@ public class SaleController {
 
     @PostMapping
     public ApiResult<Sale> create(@RequestBody Sale sale) {
+        sale.setOutletId(requireOutlet());
         if (sale.getStatus() == null) sale.setStatus("ACTIVE");
         if (sale.getTotalQuantity() == null) sale.setTotalQuantity(0);
         if (sale.getTotalPrice() == null) sale.setTotalPrice(BigDecimal.ZERO);
@@ -64,19 +68,31 @@ public class SaleController {
     @PutMapping("/{id}")
     public ApiResult<Sale> update(@PathVariable Long id, @RequestBody Sale sale) {
         sale.setId(id);
-        mapper.update(sale);
+        if (mapper.update(sale, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
         return ApiResult.ok(sale);
     }
 
     @PutMapping("/{id}/void")
     public ApiResult<Void> voidSale(@PathVariable Long id) {
-        mapper.markVoid(id);
+        if (mapper.markVoid(id, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/unpark")
     public ApiResult<Void> unpark(@PathVariable Long id) {
-        mapper.unpark(id);
+        if (mapper.unpark(id, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
         return ApiResult.ok();
+    }
+
+    private Long requireVendor() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) throw new BusinessException(40100, "Authentication required.");
+        return vendorId;
+    }
+
+    private Long requireOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40000, "An outlet must be selected.");
+        return outletId;
     }
 }
