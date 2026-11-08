@@ -261,7 +261,7 @@ export function OverviewPageContent({
               </p>}
               {canReport ? (
                 <Link className="ov-report-link" href="/reports/dashboard">
-                  View insights <ArrowRight size={16} aria-hidden="true" />
+                  View reports <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               ) : null}
             </section> : (

@@ -11,7 +11,10 @@ export async function fetchPreparedReport(path: string, options: { refresh?: boo
     response = await fetchOdooRoute(url.pathname + url.search, { credentials: "same-origin", cache: "no-store", signal: options.signal,
       headers: options.correlationId ? { "X-Correlation-ID": options.correlationId } : undefined });
     if (!response.headers.get("content-type")?.includes("json")) {
-      throw new OdooApiError("The report service is temporarily unavailable. Please retry shortly.", response.status);
+      const peek = (await response.clone().text()).trimStart();
+      if (!peek.startsWith("{") && !peek.startsWith("[")) {
+        throw new OdooApiError("The report service is temporarily unavailable. Please retry shortly.", response.status);
+      }
     }
     if (response.status !== 202) return response;
     const status = await response.json() as { taskId?: string };

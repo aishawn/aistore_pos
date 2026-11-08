@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { BarChart3, Boxes, Lightbulb, PackageSearch, ReceiptText, WalletCards } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { BarChart3, Boxes, PackageSearch, ReceiptText, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReportTab = {
@@ -21,19 +21,13 @@ const TABS: ReportTab[] = [
     match: ["/reports/dashboard", "/reports/ai"],
   },
   {
-    label: "AI Insights",
-    href: "/reports/dashboard#ai-insights",
-    icon: Lightbulb,
-    match: ["/reports/dashboard#ai-insights"],
-  },
-  {
     label: "Sales report",
     href: "/reports/sales",
     icon: ReceiptText,
     match: ["/reports/sales"],
   },
   {
-    label: "Sales History",
+    label: "Daily ledger",
     href: "/history",
     icon: ReceiptText,
     match: ["/history"],
@@ -76,29 +70,14 @@ function isActive(pathname: string, tab: ReportTab) {
 
 export function ReportsNavigation() {
   const pathname = usePathname();
-  const [hash, setHash] = useState("");
   const activeTabRef = useRef<HTMLAnchorElement>(null);
-  useEffect(() => {
-    const updateHash = () => setHash(window.location.hash);
-    updateHash();
-    window.addEventListener("hashchange", updateHash);
-    return () => window.removeEventListener("hashchange", updateHash);
-  }, [pathname]);
-  useEffect(() => {
-    if (pathname !== "/reports/dashboard" || hash !== "#ai-insights") return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById("ai-insights")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [hash, pathname]);
   const active = TABS.find((tab) => isActive(pathname, tab)) ?? TABS[0];
   useEffect(() => {
-    if (active.href === TABS[0].href && !hash) return;
     const frame = window.requestAnimationFrame(() => {
       activeTabRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [active.href, hash]);
+  }, [active.href]);
 
   // This admin health page belongs to Setup, rather than business reports.
   if (pathname === "/reports/ai/metrics") return null;
@@ -109,22 +88,13 @@ export function ReportsNavigation() {
         <div className="flex min-w-max items-center gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
-            const selected = tab.href.includes("#")
-              ? pathname === tab.href.split("#")[0] && hash === `#${tab.href.split("#")[1]}`
-              : active.href === tab.href && !hash;
+            const selected = active.href === tab.href;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 ref={selected ? activeTabRef : undefined}
                 aria-current={selected ? "page" : undefined}
-                onClick={(event) => {
-                  if (tab.href !== "/reports/dashboard" || pathname !== "/reports/dashboard") return;
-                  event.preventDefault();
-                  window.history.replaceState(null, "", "/reports/dashboard");
-                  setHash("");
-                  (document.getElementById("ai-insights")?.closest("main") as HTMLElement | null)?.scrollTo({ top: 0, behavior: "smooth" });
-                }}
                 className={cn(
                   "inline-flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition-colors",
                   selected

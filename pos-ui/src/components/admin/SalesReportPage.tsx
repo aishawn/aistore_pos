@@ -133,7 +133,7 @@ export function SalesReportPage() {
   }
 
   return <main className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-5"><div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-    <header><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Odoo · {report?.company ?? "Store"}</p><h1 className="oh-type-title mt-1">Sales report</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Completed POS orders with positive order totals. Product and category amounts are grouped from sale lines; mixed-order returns may remain included.</p></header>
+    <header><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Odoo · {report?.company ?? "Store"}</p><h1 className="oh-type-title mt-1">Sales report</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Odoo POS grouping and export. For daily refunds and net totals by business day, use <a href="/history" className="font-semibold text-[var(--oh-primary)] hover:underline">Daily ledger</a>.</p></header>
     <section aria-label="Sales report filters" className="print:hidden flex flex-wrap items-end gap-3 border-y border-[var(--oh-border)] py-3">
       <ReportDateControls value={draftDates} onChange={setDraftDates} comparison={comparison} onComparisonChange={selectComparison} timezone={report?.timezone} />
       <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={draftDates.from} onChange={(event) => setDraftDates((value) => ({ ...value, from: event.target.value }))} className="min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm" /></label>
@@ -144,7 +144,7 @@ export function SalesReportPage() {
       <button type="button" onClick={() => void printAll()} disabled={!report || loading} title="Print all matching groups" aria-label="Print all matching sales groups" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-50"><Printer size={16} /></button>
       <ReportColumnChooser columns={[...REPORT_COLUMNS]} selected={selectedColumns} onChange={toggleColumn} />
     </section>
-    <p className="text-xs text-[var(--oh-muted)]">Company scope: {report?.company ?? "—"} · Period: {dates.from} to {dates.to} · Timezone: {report?.timezone ?? "—"} · Source: {report?.source ?? "Odoo completed POS sales"} · Shopfront archive sync (separate; excluded from Odoo totals): {report?.shopfrontSync ? `${report.shopfrontSync.status}, through ${report.shopfrontSync.toDay}, updated ${formatStoreEpoch(Date.parse(report.shopfrontSync.updatedAt), report.timezone)}` : "unknown (no sync coverage evidence)"} · Report prepared {report?.generatedAt ? formatStoreEpoch(Date.parse(report.generatedAt), report.timezone) : "—"}</p>
+    <p className="text-xs text-[var(--oh-muted)]">{report?.company ?? "—"} · {dates.from} to {dates.to} · {report?.timezone ?? "—"} · Odoo POS · prepared {report?.generatedAt ? formatStoreEpoch(Date.parse(report.generatedAt), report.timezone) : "—"}</p>
     {report?.shopfrontSync && <ShopfrontSalesSummary from={dates.from} to={dates.to} />}
     {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
     <section aria-label="Sales report totals" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

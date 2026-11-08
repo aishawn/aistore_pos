@@ -23,8 +23,9 @@ import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 import type { ReportPeriod, ReportQueryPeriod } from "@/lib/report-period";
 import { friendlyProductName } from "@/lib/product-display-name";
-import { DashboardInsightsPanel } from "@/components/admin/DashboardInsightsPanel";
+import { ShopfrontSalesSummary } from "@/components/ShopfrontSourceSections";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
+import { shiftDay } from "@/lib/replenishment-safety";
 
 type RecentSale = {
   id: number;
@@ -213,6 +214,13 @@ export function OrithosReportsDashboardPage() {
   }, []);
   const periodRef = useRef<DashboardPeriod>("yesterday");
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
+  const shopfrontPeriod = useMemo(() => {
+    if (!data?.from || !data?.to) return null;
+    const fromDay = storeDay(data.from, data.timezone);
+    const endDay = storeDay(data.to, data.timezone);
+    const toDay = endDay > fromDay ? shiftDay(endDay, -1) : fromDay;
+    return toDay < fromDay ? null : { from: fromDay, to: toDay };
+  }, [data?.from, data?.to, data?.timezone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -516,7 +524,15 @@ export function OrithosReportsDashboardPage() {
             </div>
           </header>
           {(loading || refreshing) && data && <p role="status" className="text-xs text-[var(--oh-muted)]">Preparing report…</p>}
-          {data?.cacheStatus === "STALE" && <p role="status" className="text-xs text-amber-800">Showing the last prepared report. An updated report is being prepared.</p>}
+          {data?.cacheStatus === "STALE" && (
+            <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <span>Figures may be outdated. Refresh for the latest Odoo ledger totals.</span>
+              <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 text-xs font-semibold disabled:opacity-60">
+                {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                Refresh report
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--oh-muted)]">
             <span>{deadStockError ?? (deadStockGeneratedAt ? `Dead-stock prepared ${formatStoreEpoch(Date.parse(deadStockGeneratedAt), data?.timezone ?? "Australia/Adelaide")}` : "Preparing dead-stock analysis…")}</span>
             <button type="button" disabled={deadStockRefreshing} onClick={() => void loadDeadStock(true)} className="min-h-9 rounded border px-2 disabled:opacity-50">{deadStockRefreshing ? "Preparing…" : "Refresh dead-stock"}</button>
@@ -548,11 +564,12 @@ export function OrithosReportsDashboardPage() {
             </section>
           )}
 
+          <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Primary totals: Odoo POS ledger · {rangeLabel}. Shopfront source reference follows when this store is mapped.</p>
           <section aria-label={`${rangeLabel} Orithos summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <KpiCard
               title="Orithos net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
-              detail="After refunds · incl. tax"
+              detail="Odoo POS ledger · after refunds"
               comparisonLabel={comparisonLabel}
               delta={data && data.compare.revenue >= 50 ? data.compare.revenueDeltaPct : null}
               comparisonMessage={data && data.compare.revenue < 50 ? "Prior activity too small to compare" : undefined}
@@ -573,7 +590,7 @@ export function OrithosReportsDashboardPage() {
             <KpiCard
               title="Sales"
               value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)}
-              detail={`Avg ${formatMoney(averageSale, data?.currency ?? "AUD")} per sale`}
+              detail={`Odoo POS orders · avg ${formatMoney(averageSale, data?.currency ?? "AUD")}`}
               comparisonLabel={comparisonLabel}
               delta={data && data.compare.transactions >= 3 ? data.compare.transactionsDeltaPct : null}
               comparisonMessage={data && data.compare.transactions < 3 ? "Prior activity too small to compare" : undefined}
@@ -588,7 +605,7 @@ export function OrithosReportsDashboardPage() {
             <KpiCard
               title="Items sold"
               value={new Intl.NumberFormat("en-AU", { maximumFractionDigits: 0 }).format(data?.itemsSold ?? 0)}
-              detail="From completed sales"
+              detail="Odoo POS line units"
               comparisonLabel={comparisonLabel}
               delta={data && data.compare.itemsSold >= 5 ? data.compare.itemsSoldDeltaPct : null}
               comparisonMessage={data && data.compare.itemsSold < 5 ? "Prior activity too small to compare" : undefined}
@@ -608,25 +625,7 @@ export function OrithosReportsDashboardPage() {
             />
           </section>
 
-          <DashboardInsightsPanel
-            data={data ? {
-              company: data.company,
-              currency: data.currency,
-              rangeLabel,
-              periodBounds,
-              revenue: data.revenue,
-              transactions: data.transactions,
-              refunds: data.refunds ?? 0,
-              refundTransactions: data.refundTransactions ?? 0,
-              itemsSold: data.itemsSold,
-              tax: data.tax,
-              openRegisters: data.openRegisters,
-              topProducts: data.topProducts,
-              byCategory: data.byCategory,
-              compare: data.compare,
-              lowStockCount: data.lowStockCount,
-            } : null}
-          />
+          {shopfrontPeriod ? <ShopfrontSalesSummary from={shopfrontPeriod.from} to={shopfrontPeriod.to} /> : null}
 
           {deadStock ? (
             <section aria-label="Dead stock cash occupancy" className="shrink-0 rounded-lg border border-[var(--oh-border)] bg-white p-3 shadow-[var(--oh-shadow-card)]">

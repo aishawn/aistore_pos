@@ -53,7 +53,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
       </header>
       {data.cacheStatus === "STALE" && <p className="ov-pulse-updating" role="status">Updating · Showing saved summary</p>}
       <dl className="ov-pulse-stats" aria-label="Store metrics">
-        <Metric label="Yesterday sales" href={sourceMode ? "/reports/sales" : "/reports/daily-sales"}
+        <Metric label="Yesterday sales" href="/reports/dashboard?period=yesterday"
           value={data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}
           note={data.yesterdaySalesAvailable === false ? sourceMode ? "Shopfront report unavailable" : "Temporarily unavailable" : sourceMode ? "Shopfront Sales report" : "Including tax"} />
         <Metric label={sourceMode ? "Profit percentage" : "Gross margin"} href={marginHref}

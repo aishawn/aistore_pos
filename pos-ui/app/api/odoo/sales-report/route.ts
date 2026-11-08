@@ -93,13 +93,26 @@ export async function GET(request: NextRequest) {
     const refundOrderTotal = Number(refundTotals?.[0]?.amount_total ?? 0);
     const salesTotals = summarizeSalesTotals(Number(orderTotals?.[0]?.amount_total ?? 0), refundOrderTotal);
     let rows: Row[];
+  let periodLineQuantity: number | null = null;
     if (group === "day") {
-      const grouped = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: scope.timezone } });
+      const [grouped, qtyByDay, periodQty] = await Promise.all([
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [orderDomain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: scope.timezone } }),
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], ["order_id.date_order:day"]], { lazy: false, context: { tz: scope.timezone } }),
+        rpc<Array<{ qty?: number }>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }),
+      ]);
+      periodLineQuantity = typeof periodQty?.[0]?.qty === "number" && Number.isFinite(periodQty[0].qty) ? periodQty[0].qty : null;
+      const quantityByDay = new Map<string, number>();
+      for (const item of qtyByDay ?? []) {
+        const raw = String(item["order_id.date_order:day"] ?? "");
+        const range = item.__range && typeof item.__range === "object" ? (item.__range as Record<string, { from?: string }>)["order_id.date_order:day"] : undefined;
+        const key = range?.from?.slice(0, 10) ?? raw.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? raw;
+        if (key) quantityByDay.set(key, Number(item.qty ?? 0));
+      }
       rows = (grouped ?? []).map((item) => {
         const raw = String(item["date_order:day"] ?? "");
         const range = item.__range && typeof item.__range === "object" ? (item.__range as Record<string, { from?: string }>) ["date_order:day"] : undefined;
         const key = range?.from?.slice(0, 10) ?? raw.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? raw;
-        return { key, label: raw, count: Number(item.__count ?? 0), quantity: null, amount: Number(item.amount_total ?? 0) };
+        return { key, label: raw, count: Number(item.__count ?? 0), quantity: quantityByDay.has(key) ? quantityByDay.get(key)! : 0, amount: Number(item.amount_total ?? 0) };
       });
     } else {
       const grouped = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal_incl:sum"], ["product_id"]], { lazy: false });
@@ -127,7 +140,9 @@ export async function GET(request: NextRequest) {
     if (!Array.isArray(rows)) throw new Error("Sales report data is incomplete.");
     const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
     const totalCount = rows.reduce((sum, row) => sum + row.count, 0);
-    const totalQuantity = rows.some((row) => row.quantity === null) ? null : rows.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+    const totalQuantity = group === "day"
+      ? periodLineQuantity
+      : rows.some((row) => row.quantity === null) ? null : rows.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
     if (exportCsv) {
       const reconciliation = reconcileSalesAmounts(Number(orderTotals?.[0]?.amount_total ?? 0), totalAmount);
       const labels: Record<typeof EXPORT_COLUMNS[number], string> = { label: group === "day" ? "Date" : group === "product" ? "Product" : "Category", count: group === "day" ? "Transactions" : "Sale lines", quantity: "Quantity", amount: `Grouped amount (${company.currency})` };
