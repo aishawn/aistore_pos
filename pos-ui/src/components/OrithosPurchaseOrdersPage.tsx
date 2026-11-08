@@ -17,7 +17,7 @@ type Order = {
   lineCount?: number;
 };
 
-const statuses = [["OUTSTANDING", "Outstanding"], ["", "All statuses"], ["OPEN", "Open"], ["SENT", "Sent"], ["RECEIVED", "Received"], ["CANCELLED", "Cancelled"]] as const;
+const statuses = [["OUTSTANDING", "Outstanding"], ["", "All statuses"], ["OPEN", "Open"], ["SENT", "Sent"], ["PARTIALLY_RECEIVED", "Partially received"], ["RECEIVED", "Received"], ["CANCELLED", "Cancelled"]] as const;
 
 function statusClass(status?: string) {
   if (status === "RECEIVED") return "border-emerald-200 bg-emerald-50 text-emerald-800";

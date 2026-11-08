@@ -10,7 +10,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -42,6 +47,154 @@ public class OrderService {
         var items = orderMapper.page(query);
         long total = orderMapper.count(query);
         return PageResult.of(items, total, query.getPage(), query.getSize());
+    }
+
+    @Transactional
+    public PurchaseReceiptResult receivePurchaseOrder(Long orderId, String rawIdempotencyKey,
+                                                       PurchaseReceiptRequest request) {
+        Long vendorId = requireVendorId();
+        String idempotencyKey = trimToNull(rawIdempotencyKey);
+        if (idempotencyKey == null || idempotencyKey.length() > 200) {
+            throw new BusinessException("A valid Idempotency-Key is required.");
+        }
+        if (orderMapper.lockReceiptIdempotencyKey(vendorId, idempotencyKey) == null) {
+            throw new IllegalStateException("Could not acquire receipt idempotency lock.");
+        }
+        if (request == null || request.lines() == null || request.lines().isEmpty()) {
+            throw new BusinessException("At least one receipt line is required.");
+        }
+        String requestHash = receiptRequestHash(orderId, request);
+        Order order = orderMapper.lockPurchaseOrderForVendor(orderId, vendorId);
+        if (order == null) throw new BusinessException(40410, "Order not found.");
+        Long userOutlet = CurrentUser.outletId();
+        if (userOutlet != null && !userOutlet.equals(order.getOutletId())) {
+            throw new BusinessException(40410, "Order not found.");
+        }
+        PurchaseReceipt previous = orderMapper.findReceiptByKey(vendorId, idempotencyKey);
+        if (previous != null) {
+            if (!orderId.equals(previous.getOrderId()) || !requestHash.equals(previous.getRequestHash())) {
+                throw new BusinessException("Idempotency-Key was already used with a different receipt.");
+            }
+            return new PurchaseReceiptResult(previous.getId(), previous.getOrderId(),
+                    previous.getStatus(), previous.getReceivedAt(), true);
+        }
+        if (!"ORDER".equals(order.getType()) || !Set.of("OPEN", "SENT", "PARTIALLY_RECEIVED").contains(order.getStatus())) {
+            throw new BusinessException("This purchase order cannot receive stock in its current state.");
+        }
+
+        PurchaseReceipt receipt = new PurchaseReceipt();
+        receipt.setVendorId(vendorId);
+        receipt.setOrderId(orderId);
+        receipt.setOutletId(order.getOutletId());
+        receipt.setIdempotencyKey(idempotencyKey);
+        receipt.setRequestHash(requestHash);
+        receipt.setStatus("PROCESSING");
+        receipt.setReceivedById(CurrentUser.id());
+        if (orderMapper.insertReceipt(receipt) == 0) {
+            PurchaseReceipt raced = orderMapper.findReceiptByKey(vendorId, idempotencyKey);
+            if (raced == null || !orderId.equals(raced.getOrderId()) || !requestHash.equals(raced.getRequestHash())) {
+                throw new BusinessException("Idempotency-Key was already used with a different receipt.");
+            }
+            return new PurchaseReceiptResult(raced.getId(), raced.getOrderId(), raced.getStatus(), raced.getReceivedAt(), true);
+        }
+
+        Set<Long> seenLines = new HashSet<>();
+        for (PurchaseReceiptRequest.Line requested : request.lines()) {
+            if (requested == null || requested.orderProductId() == null || requested.quantity() == null
+                    || requested.quantity().signum() <= 0 || requested.quantity().scale() > 4
+                    || !seenLines.add(requested.orderProductId())) {
+                throw new BusinessException("Receipt lines must have unique order line IDs and positive quantities.");
+            }
+            OrderProduct line = orderMapper.lockOrderProduct(requested.orderProductId(), orderId);
+            if (line == null || line.getProductId() == null || !order.getOutletId().equals(line.getOutletId())) {
+                throw new BusinessException("Purchase order line not found.");
+            }
+            if (productMapper.findByIdAndVendor(line.getProductId(), vendorId) == null) {
+                throw new BusinessException("Purchase order product is outside this tenant.");
+            }
+            BigDecimal ordered = nz(line.getOrderedQuantity());
+            BigDecimal received = nz(line.getReceivedQuantity());
+            BigDecimal outstanding = ordered.subtract(received);
+            if (outstanding.signum() <= 0 || requested.quantity().compareTo(outstanding) > 0) {
+                throw new BusinessException("Received quantity exceeds the outstanding quantity.");
+            }
+            BigDecimal packSize = line.getCaseQuantity() == null ? BigDecimal.ONE : line.getCaseQuantity();
+            if (packSize.signum() <= 0) throw new BusinessException("Purchase order case quantity is invalid.");
+            BigDecimal inventoryQuantity = requested.quantity().multiply(packSize);
+
+            PurchaseReceiptLine receiptLine = new PurchaseReceiptLine();
+            receiptLine.setReceiptId(receipt.getId());
+            receiptLine.setOrderProductId(line.getId());
+            receiptLine.setProductId(line.getProductId());
+            receiptLine.setReceivedQuantity(requested.quantity());
+            receiptLine.setInventoryQuantity(inventoryQuantity);
+            receiptLine.setUnitCost(line.getOrderedCost());
+            if (orderMapper.insertReceiptLine(receiptLine) != 1 || receiptLine.getId() == null) {
+                throw new IllegalStateException("Purchase receipt line could not be recorded.");
+            }
+            if (productMapper.adjustInventory(line.getProductId(), order.getOutletId(), inventoryQuantity) != 1) {
+                throw new IllegalStateException("Inventory could not be updated for the purchase receipt.");
+            }
+            InventoryMovement movement = new InventoryMovement();
+            movement.setVendorId(vendorId);
+            movement.setOutletId(order.getOutletId());
+            movement.setProductId(line.getProductId());
+            movement.setQuantityDelta(inventoryQuantity);
+            movement.setSourceId(receipt.getId());
+            movement.setSourceLineId(receiptLine.getId());
+            movement.setIdempotencyKey(idempotencyKey);
+            movement.setActorId(CurrentUser.id());
+            if (orderMapper.insertInventoryMovement(movement) != 1) {
+                throw new IllegalStateException("Inventory movement could not be recorded.");
+            }
+            if (orderMapper.updateReceivedQuantity(line.getId(), orderId, received.add(requested.quantity())) != 1) {
+                throw new IllegalStateException("Purchase order line could not be updated.");
+            }
+        }
+
+        List<OrderProduct> updatedLines = orderMapper.findProductsByOrderId(orderId);
+        boolean complete = updatedLines.stream().allMatch(line ->
+                nz(line.getReceivedQuantity()).compareTo(nz(line.getOrderedQuantity())) >= 0);
+        String status = complete ? "RECEIVED" : "PARTIALLY_RECEIVED";
+        if (orderMapper.updateReceiptStatus(orderId, vendorId, status, CurrentUser.id()) != 1) {
+            throw new BusinessException(40410, "Order not found.");
+        }
+        receipt.setStatus(status);
+        if (orderMapper.updateReceiptEventStatus(receipt.getId(), vendorId, status) != 1) {
+            throw new IllegalStateException("Purchase receipt status could not be recorded.");
+        }
+        PurchaseReceipt saved = orderMapper.findReceiptByKey(vendorId, idempotencyKey);
+        return new PurchaseReceiptResult(receipt.getId(), orderId, status,
+                saved == null ? null : saved.getReceivedAt(), false);
+    }
+
+    static String receiptRequestHash(Long orderId, PurchaseReceiptRequest request) {
+        String canonical = orderId + ":" + request.lines().stream()
+                .sorted(Comparator.comparing(line -> line == null ? null : line.orderProductId(), Comparator.nullsFirst(Long::compareTo)))
+                .map(line -> line == null ? "null" : line.orderProductId() + "=" + line.quantity())
+                .reduce((left, right) -> left + ";" + right).orElse("");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable.", e);
+        }
+    }
+
+    private static String directReceiveRequestHash(CreateReceiveRequest request) {
+        String canonical = String.valueOf(request.getFromId()) + ":" + request.getToId() + ":"
+                + request.getInvoiceNumber() + ":" + request.getInvoiceDate() + ":"
+                + request.getProducts().stream()
+                .sorted(Comparator.comparing((ReceiveLineRequest line) -> line.getProductId()))
+                .map(line -> line.getProductId() + "=" + line.getQuantity() + "x" + line.getCaseQuantity()
+                        + "@" + line.getUnitPrice())
+                .reduce((left, right) -> left + ";" + right).orElse("");
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable.", e);
+        }
     }
 
     @Transactional
@@ -97,6 +250,33 @@ public class OrderService {
     @Transactional
     public Order createReceive(CreateReceiveRequest request) {
         validateCreateReceiveRequest(request);
+        String fingerprint = directReceiveRequestHash(request);
+        String invoiceNumber = trimToNull(request.getInvoiceNumber());
+        return createReceive(request, "invoice-" + (invoiceNumber == null ? fingerprint : invoiceNumber));
+    }
+
+    @Transactional
+    public Order createReceive(CreateReceiveRequest request, String rawIdempotencyKey) {
+        validateCreateReceiveRequest(request);
+        Long vendorId = requireVendorId();
+        String idempotencyKey = trimToNull(rawIdempotencyKey);
+        if (idempotencyKey == null || idempotencyKey.length() > 200) {
+            throw new BusinessException("A valid Idempotency-Key is required.");
+        }
+        if (orderMapper.lockReceiptIdempotencyKey(vendorId, idempotencyKey) == null) {
+            throw new IllegalStateException("Could not acquire receipt idempotency lock.");
+        }
+        String requestHash = directReceiveRequestHash(request);
+        PurchaseReceipt previous = orderMapper.findReceiptByKey(vendorId, idempotencyKey);
+        if (previous != null) {
+            if (!requestHash.equals(previous.getRequestHash()) || !"DIRECT_INVOICE".equals(previous.getStatus())) {
+                throw new BusinessException("Idempotency-Key was already used with a different receipt.");
+            }
+            Order existing = orderMapper.findByIdForVendor(previous.getOrderId(), vendorId);
+            if (existing == null) throw new BusinessException(40410, "Order not found.");
+            existing.setProducts(orderMapper.findProductsByOrderId(existing.getId()));
+            return existing;
+        }
 
         Order order = new Order();
         order.setType("ORDER");
@@ -118,13 +298,25 @@ public class OrderService {
         order.setCreatedById(CurrentUser.id());
 
         orderMapper.insert(order);
+        PurchaseReceipt receipt = new PurchaseReceipt();
+        receipt.setVendorId(vendorId);
+        receipt.setOrderId(order.getId());
+        receipt.setOutletId(order.getOutletId());
+        receipt.setIdempotencyKey(idempotencyKey);
+        receipt.setRequestHash(requestHash);
+        receipt.setStatus("DIRECT_INVOICE");
+        receipt.setReceivedById(CurrentUser.id());
+        if (orderMapper.insertReceipt(receipt) != 1 || receipt.getId() == null) {
+            throw new BusinessException("Idempotency-Key was already used with a different receipt.");
+        }
         Long userId = CurrentUser.id();
         if (userId != null) {
             orderMapper.setReceivedMeta(order.getId(), userId, requireVendorId());
         } else {
             orderMapper.markReceived(order.getId(), requireVendorId());
         }
-        persistReceiveLines(order.getId(), request.getFromId(), request.getToId(), request.getProducts());
+        persistReceiveLines(order.getId(), receipt.getId(), idempotencyKey, vendorId,
+                request.getFromId(), request.getToId(), request.getProducts());
         Order saved = orderMapper.findById(order.getId());
         saved.setProducts(orderMapper.findProductsByOrderId(order.getId()));
         return saved;
@@ -259,6 +451,17 @@ public class OrderService {
         if (request.getDueDate() != null && request.getDueDate().isBefore(invoiceDate)) {
             throw new BusinessException("Due date cannot be before invoice date.");
         }
+        if (request.getProducts() == null || request.getProducts().isEmpty()) {
+            throw new BusinessException("At least one priced product line is required to receive stock.");
+        }
+        for (ReceiveLineRequest line : request.getProducts()) {
+            if (line == null || line.getProductId() == null || line.getQuantity() == null
+                    || line.getQuantity().signum() <= 0 || line.getQuantity().scale() > 4
+                    || line.getCaseQuantity() == null || line.getCaseQuantity().signum() <= 0
+                    || line.getUnitPrice() == null || line.getUnitPrice().signum() < 0) {
+                throw new BusinessException("Each receipt line needs a product, positive quantity, case size, and verified unit price.");
+            }
+        }
     }
 
     private void validateCreateTransferRequest(CreateTransferRequest request) {
@@ -324,21 +527,13 @@ public class OrderService {
         }
     }
 
-    private void persistReceiveLines(Long orderId, Long supplierId, Long outletId, List<ReceiveLineRequest> lines) {
-        if (lines == null || lines.isEmpty()) {
-            return;
-        }
+    private void persistReceiveLines(Long orderId, Long receiptId, String idempotencyKey, Long vendorId,
+                                     Long supplierId, Long outletId, List<ReceiveLineRequest> lines) {
         BigDecimal total = BigDecimal.ZERO;
         int count = 0;
         for (ReceiveLineRequest line : lines) {
-            if (line == null || line.getProductId() == null) {
-                continue;
-            }
             BigDecimal cases = nz(line.getQuantity());
-            BigDecimal pack = nz(line.getCaseQuantity());
-            if (pack.compareTo(BigDecimal.ZERO) <= 0) {
-                pack = BigDecimal.ONE;
-            }
+            BigDecimal pack = line.getCaseQuantity();
             BigDecimal caseCost = nz(line.getUnitPrice());
             BigDecimal lineTotal = caseCost.multiply(cases);
             total = total.add(lineTotal);
@@ -348,7 +543,7 @@ public class OrderService {
             row.setOrderId(orderId);
             row.setOutletId(outletId);
             row.setProductId(line.getProductId());
-            if (productMapper.findByIdAndVendor(line.getProductId(), requireVendorId()) == null) {
+            if (productMapper.findByIdAndVendor(line.getProductId(), vendorId) == null) {
                 throw new BusinessException("Product not found.");
             }
             row.setSupplierId(supplierId);
@@ -365,7 +560,31 @@ public class OrderService {
 
             BigDecimal units = cases.multiply(pack);
             if (outletId != null && units.compareTo(BigDecimal.ZERO) > 0) {
-                productMapper.adjustInventory(line.getProductId(), outletId, units);
+                if (productMapper.adjustInventory(line.getProductId(), outletId, units) != 1) {
+                    throw new IllegalStateException("Inventory could not be updated for the supplier invoice.");
+                }
+                PurchaseReceiptLine receiptLine = new PurchaseReceiptLine();
+                receiptLine.setReceiptId(receiptId);
+                receiptLine.setOrderProductId(row.getId());
+                receiptLine.setProductId(line.getProductId());
+                receiptLine.setReceivedQuantity(cases);
+                receiptLine.setInventoryQuantity(units);
+                receiptLine.setUnitCost(caseCost);
+                if (orderMapper.insertReceiptLine(receiptLine) != 1 || receiptLine.getId() == null) {
+                    throw new IllegalStateException("Supplier invoice line could not be recorded.");
+                }
+                InventoryMovement movement = new InventoryMovement();
+                movement.setVendorId(vendorId);
+                movement.setOutletId(outletId);
+                movement.setProductId(line.getProductId());
+                movement.setQuantityDelta(units);
+                movement.setSourceId(receiptId);
+                movement.setSourceLineId(receiptLine.getId());
+                movement.setIdempotencyKey(idempotencyKey);
+                movement.setActorId(CurrentUser.id());
+                if (orderMapper.insertInventoryMovement(movement) != 1) {
+                    throw new IllegalStateException("Inventory movement could not be recorded.");
+                }
             }
         }
         orderMapper.updateTotals(orderId, total, total, count, "INCLUSIVE");

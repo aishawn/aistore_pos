@@ -17,6 +17,53 @@ public interface OrderMapper {
     @Select("SELECT * FROM order_product WHERE order_id = #{orderId} ORDER BY id")
     List<OrderProduct> findProductsByOrderId(Long orderId);
 
+    @Select("SELECT po.* FROM purchase_order po JOIN outlet o ON o.id=po.outlet_id "
+            + "WHERE po.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL FOR UPDATE")
+    Order lockPurchaseOrderForVendor(@Param("id") Long id, @Param("vendorId") Long vendorId);
+
+    @Select("SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(CAST(#{vendorId} AS TEXT) || ':' || #{key}, 0))) lock_result")
+    Integer lockReceiptIdempotencyKey(@Param("vendorId") Long vendorId, @Param("key") String key);
+
+    @Select("SELECT id, order_id AS orderId, product_id AS productId, outlet_id AS outletId, "
+            + "supplier_id AS supplierId, supplier_code AS supplierCode, case_quantity AS caseQuantity, "
+            + "ordered_quantity AS orderedQuantity, received_quantity AS receivedQuantity, "
+            + "base_cost AS baseCost, ordered_cost AS orderedCost, fees, freight, rebate "
+            + "FROM order_product WHERE id=#{lineId} AND order_id=#{orderId} FOR UPDATE")
+    OrderProduct lockOrderProduct(@Param("lineId") Long lineId, @Param("orderId") Long orderId);
+
+    @Select("SELECT id, vendor_id AS vendorId, order_id AS orderId, request_hash AS requestHash, "
+            + "status, received_at AS receivedAt FROM purchase_receipt "
+            + "WHERE vendor_id=#{vendorId} AND idempotency_key=#{key}")
+    PurchaseReceipt findReceiptByKey(@Param("vendorId") Long vendorId, @Param("key") String key);
+
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    @Insert("INSERT INTO purchase_receipt (vendor_id, order_id, outlet_id, idempotency_key, request_hash, status, received_by_id) "
+            + "VALUES (#{vendorId}, #{orderId}, #{outletId}, #{idempotencyKey}, #{requestHash}, #{status}, #{receivedById}) "
+            + "ON CONFLICT (vendor_id, idempotency_key) DO NOTHING")
+    int insertReceipt(PurchaseReceipt receipt);
+
+    @Update("UPDATE purchase_receipt SET status=#{status} WHERE id=#{id} AND vendor_id=#{vendorId}")
+    int updateReceiptEventStatus(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                                 @Param("status") String status);
+
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    @Insert("INSERT INTO purchase_receipt_line (receipt_id, order_product_id, product_id, received_quantity, inventory_quantity, unit_cost) "
+            + "VALUES (#{receiptId}, #{orderProductId}, #{productId}, #{receivedQuantity}, #{inventoryQuantity}, #{unitCost})")
+    int insertReceiptLine(PurchaseReceiptLine line);
+
+    @Update("UPDATE order_product SET received_quantity=#{receivedQuantity} WHERE id=#{lineId} AND order_id=#{orderId}")
+    int updateReceivedQuantity(@Param("lineId") Long lineId, @Param("orderId") Long orderId,
+                               @Param("receivedQuantity") java.math.BigDecimal receivedQuantity);
+
+    @Insert("INSERT INTO inventory_movement (vendor_id, outlet_id, product_id, quantity_delta, source_type, source_id, source_line_id, idempotency_key, actor_id) "
+            + "VALUES (#{vendorId}, #{outletId}, #{productId}, #{quantityDelta}, 'PURCHASE_RECEIPT', #{sourceId}, #{sourceLineId}, #{idempotencyKey}, #{actorId})")
+    int insertInventoryMovement(InventoryMovement movement);
+
+    @Update("UPDATE purchase_order SET status=#{status}, received_at=CASE WHEN #{status}='RECEIVED' THEN CURRENT_TIMESTAMP ELSE received_at END, "
+            + "received_by_id=#{userId} WHERE id=#{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
+    int updateReceiptStatus(@Param("id") Long id, @Param("vendorId") Long vendorId,
+                            @Param("status") String status, @Param("userId") Long userId);
+
     @Select("SELECT COUNT(*) FROM purchase_order po WHERE invoice_number = #{invoiceNumber} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
     long countByInvoiceNumber(@Param("invoiceNumber") String invoiceNumber, @Param("vendorId") Long vendorId);
 
@@ -29,6 +76,7 @@ public interface OrderMapper {
             + "#{totalCost}, #{expectedTotal}, #{feePercentage}, #{createdById}, #{mergedIntoId}, #{outletId})")
     int insert(Order o);
 
+    @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO order_product (order_id, product_id, supplier_id, supplier_code, outlet_id, "
             + "case_quantity, ordered_quantity, received_quantity, base_cost, ordered_cost, "
             + "fees, freight, rebate) "

@@ -1,7 +1,10 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PackageCheck } from "lucide-react";
 import { useApi } from "@/hooks/useApi";
+import { api } from "@/lib/api";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { ArrowLeftIcon, EditIcon } from "@/components/icons";
 import { formatAuDate } from "@/lib/au";
@@ -60,6 +63,69 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">{label}</p>
       <p className="mt-1.5 break-words text-sm font-medium leading-5 text-[var(--oh-text)]">{value}</p>
     </div>
+  );
+}
+
+function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onReceived: () => void }) {
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const idempotencyKey = useRef<string | null>(null);
+  const outstanding = (order.products ?? []).filter((line) => Number(line.orderedQuantity ?? 0) > Number(line.receivedQuantity ?? 0));
+  if (order.type !== "ORDER" || !["OPEN", "SENT", "PARTIALLY_RECEIVED"].includes(order.status) || !outstanding.length) return null;
+
+  async function receive() {
+    const lines = outstanding
+      .map((line) => ({ orderProductId: Number(line.id), quantity: Number(quantities[line.id] ?? 0) }))
+      .filter((line) => Number.isFinite(line.quantity) && line.quantity > 0);
+    if (!lines.length) {
+      setError("Enter a quantity for at least one line.");
+      return;
+    }
+    idempotencyKey.current ??= crypto.randomUUID();
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await api.post<{ status: string }>(`/api/orders/${order.id}/receipts`, { lines }, {
+        headers: { "Idempotency-Key": idempotencyKey.current },
+      });
+      idempotencyKey.current = null;
+      setSuccess(result.status === "RECEIVED" ? "Purchase order fully received." : "Partial receipt recorded.");
+      onReceived();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Receipt failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section aria-labelledby="receive-stock-heading" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+      <div className="flex items-center gap-2 border-b border-[var(--oh-border)] px-4 py-3">
+        <PackageCheck size={17} className="text-[var(--oh-primary)]" />
+        <h2 id="receive-stock-heading" className="text-sm font-semibold">Receive stock</h2>
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive</span></div>
+        {outstanding.map((line) => {
+          const remaining = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
+          return <label key={line.id} className="grid grid-cols-[1fr_100px] items-center gap-3 text-sm">
+            <span className="min-w-0 truncate">{display(line.productId)} · {remaining}</span>
+            <input type="number" min="0" max={remaining} step="0.0001" inputMode="decimal" aria-label={`Receive quantity for product ${line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => {
+              idempotencyKey.current = null;
+              setQuantities((current) => ({ ...current, [line.id]: event.target.value }));
+            }} className="h-10 w-full rounded-md border border-[var(--oh-border)] px-2 text-right tabular-nums" />
+          </label>;
+        })}
+        {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+        {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
+        <button type="button" onClick={() => void receive()} disabled={busy} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-60">
+          <PackageCheck size={16} /> {busy ? "Recording…" : "Record receipt"}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -191,6 +257,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                     </div>
                   )}
                 </section>
+                <PurchaseReceiptPanel order={order} onReceived={reload} />
               </>
             )}
           </AsyncState>

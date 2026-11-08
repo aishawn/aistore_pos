@@ -83,8 +83,9 @@ public class OrderController {
     }
 
     @PostMapping("/receives")
-    public ApiResult<Order> createReceive(@RequestBody CreateReceiveRequest request) {
-        return ApiResult.ok(orderService.createReceive(request));
+    public ApiResult<Order> createReceive(@RequestHeader("Idempotency-Key") String idempotencyKey,
+                                          @RequestBody CreateReceiveRequest request) {
+        return ApiResult.ok(orderService.createReceive(request, idempotencyKey));
     }
 
     @PostMapping(value = "/receives/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -120,8 +121,14 @@ public class OrderController {
 
     @PutMapping("/{id}/receive")
     public ApiResult<Void> receive(@PathVariable Long id) {
-        if (mapper.markReceived(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
-        return ApiResult.ok();
+        throw new BusinessException("Receive quantities must be recorded against purchase order lines.");
+    }
+
+    @PostMapping("/{id}/receipts")
+    public ApiResult<PurchaseReceiptResult> receiveLines(@PathVariable Long id,
+                                                          @RequestHeader("Idempotency-Key") String idempotencyKey,
+                                                          @RequestBody PurchaseReceiptRequest request) {
+        return ApiResult.ok(orderService.receivePurchaseOrder(id, idempotencyKey, request));
     }
 
     @PutMapping("/{id}/cancel")

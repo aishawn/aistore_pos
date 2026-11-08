@@ -208,14 +208,14 @@ export async function refreshAccessToken(): Promise<boolean> {
 async function request<T>(
   method: string,
   path: string,
-  opts: { query?: Record<string, QueryValue>; body?: unknown; signal?: AbortSignal } = {},
+  opts: { query?: Record<string, QueryValue>; body?: unknown; signal?: AbortSignal; headers?: HeadersInit } = {},
   retriedAfterRefresh = false,
   retriedAfterRoute = false,
 ): Promise<T> {
   getToken();
   const res = await fetch(buildUrl(path, opts.query), {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...Object.fromEntries(new Headers(opts.headers).entries()) },
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     cache: "no-store",
     credentials: "same-origin",
@@ -270,8 +270,8 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string, query?: Record<string, QueryValue>) => request<T>("GET", path, { query }),
-  post: <T>(path: string, body?: unknown, opts?: { signal?: AbortSignal }) =>
-    request<T>("POST", path, { body, signal: opts?.signal }),
+  post: <T>(path: string, body?: unknown, opts?: { signal?: AbortSignal; headers?: HeadersInit }) =>
+    request<T>("POST", path, { body, signal: opts?.signal, headers: opts?.headers }),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, { body }),
   del: <T>(path: string, body?: unknown) => request<T>("DELETE", path, { body }),

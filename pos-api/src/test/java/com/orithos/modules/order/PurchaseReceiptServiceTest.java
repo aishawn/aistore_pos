@@ -1,0 +1,148 @@
+package com.orithos.modules.order;
+
+import com.orithos.common.BusinessException;
+import com.orithos.modules.product.Product;
+import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.register.OutletMapper;
+import com.orithos.modules.supplier.SupplierMapper;
+import com.orithos.security.AuthUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class PurchaseReceiptServiceTest {
+    private final OrderMapper orders = mock(OrderMapper.class);
+    private final ProductMapper products = mock(ProductMapper.class);
+    private final OrderService service = new OrderService(orders, mock(OutletMapper.class), mock(SupplierMapper.class), products);
+    private final PurchaseReceiptRequest request = new PurchaseReceiptRequest(List.of(
+            new PurchaseReceiptRequest.Line(71L, new BigDecimal("4"))));
+
+    @BeforeEach
+    void authenticateTenant() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new AuthUser(9L, "buyer", false, 3L, 5L), null, List.of()));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void recordsPartialReceiptAndInventoryMovementAtomicallyThroughService() {
+        when(orders.lockReceiptIdempotencyKey(5L, "receive-1")).thenReturn(1);
+        Order order = order("SENT");
+        OrderProduct line = line(new BigDecimal("0"));
+        when(orders.lockPurchaseOrderForVendor(12L, 5L)).thenReturn(order);
+        when(orders.findReceiptByKey(5L, "receive-1")).thenReturn(null, savedReceipt(44L, 12L,
+                OrderService.receiptRequestHash(12L, request)));
+        when(orders.insertReceipt(any())).thenAnswer(invocation -> {
+            ((PurchaseReceipt) invocation.getArgument(0)).setId(44L);
+            return 1;
+        });
+        when(orders.lockOrderProduct(71L, 12L)).thenReturn(line);
+        when(products.findByIdAndVendor(81L, 5L)).thenReturn(new Product());
+        when(orders.insertReceiptLine(any())).thenAnswer(invocation -> {
+            ((PurchaseReceiptLine) invocation.getArgument(0)).setId(55L);
+            return 1;
+        });
+        when(products.adjustInventory(81L, 3L, new BigDecimal("24"))).thenReturn(1);
+        when(orders.insertInventoryMovement(any())).thenReturn(1);
+        when(orders.updateReceivedQuantity(71L, 12L, new BigDecimal("4"))).thenReturn(1);
+        when(orders.findProductsByOrderId(12L)).thenReturn(List.of(line(new BigDecimal("4"))));
+        when(orders.updateReceiptStatus(12L, 5L, "PARTIALLY_RECEIVED", 9L)).thenReturn(1);
+        when(orders.updateReceiptEventStatus(44L, 5L, "PARTIALLY_RECEIVED")).thenReturn(1);
+
+        PurchaseReceiptResult result = service.receivePurchaseOrder(12L, "receive-1", request);
+
+        assertEquals("PARTIALLY_RECEIVED", result.status());
+        assertEquals(44L, result.receiptId());
+        verify(products).adjustInventory(81L, 3L, new BigDecimal("24"));
+        verify(orders).insertInventoryMovement(argThat(movement -> movement.getQuantityDelta().equals(new BigDecimal("24"))
+                && movement.getSourceId().equals(44L) && movement.getSourceLineId().equals(55L)));
+    }
+
+    @Test
+    void rejectsOverReceiptBeforeChangingStock() {
+        when(orders.lockReceiptIdempotencyKey(5L, "receive-1")).thenReturn(1);
+        when(orders.lockPurchaseOrderForVendor(12L, 5L)).thenReturn(order("SENT"));
+        when(orders.findReceiptByKey(5L, "receive-1")).thenReturn(null);
+        when(orders.insertReceipt(any())).thenAnswer(invocation -> {
+            ((PurchaseReceipt) invocation.getArgument(0)).setId(44L);
+            return 1;
+        });
+        when(orders.lockOrderProduct(71L, 12L)).thenReturn(line(new BigDecimal("8")));
+        when(products.findByIdAndVendor(81L, 5L)).thenReturn(new Product());
+
+        assertThrows(BusinessException.class, () -> service.receivePurchaseOrder(12L, "receive-1", request));
+        verify(products, never()).adjustInventory(any(), any(), any());
+        verify(orders, never()).insertInventoryMovement(any());
+    }
+
+    @Test
+    void idempotentReplayDoesNotChangeInventoryAgain() {
+        when(orders.lockReceiptIdempotencyKey(5L, "receive-1")).thenReturn(1);
+        String hash = OrderService.receiptRequestHash(12L, request);
+        when(orders.lockPurchaseOrderForVendor(12L, 5L)).thenReturn(order("RECEIVED"));
+        when(orders.findReceiptByKey(5L, "receive-1")).thenReturn(savedReceipt(44L, 12L, hash));
+
+        PurchaseReceiptResult result = service.receivePurchaseOrder(12L, "receive-1", request);
+
+        assertEquals(true, result.replayed());
+        verify(orders, never()).insertReceipt(any());
+        verifyNoInteractions(products);
+    }
+
+    @Test
+    void tenantCannotReceiveAnotherTenantsOrder() {
+        when(orders.lockReceiptIdempotencyKey(5L, "receive-1")).thenReturn(1);
+        when(orders.lockPurchaseOrderForVendor(12L, 5L)).thenReturn(null);
+
+        assertThrows(BusinessException.class, () -> service.receivePurchaseOrder(12L, "receive-1", request));
+        verify(orders, never()).findReceiptByKey(any(), any());
+        verifyNoInteractions(products);
+    }
+
+    private static Order order(String status) {
+        Order order = new Order();
+        order.setId(12L);
+        order.setType("ORDER");
+        order.setStatus(status);
+        order.setOutletId(3L);
+        return order;
+    }
+
+    private static OrderProduct line(BigDecimal received) {
+        OrderProduct line = new OrderProduct();
+        line.setId(71L);
+        line.setOrderId(12L);
+        line.setProductId(81L);
+        line.setOutletId(3L);
+        line.setOrderedQuantity(new BigDecimal("10"));
+        line.setReceivedQuantity(received);
+        line.setCaseQuantity(new BigDecimal("6"));
+        line.setOrderedCost(new BigDecimal("12.50"));
+        return line;
+    }
+
+    private static PurchaseReceipt savedReceipt(Long id, Long orderId, String hash) {
+        PurchaseReceipt receipt = new PurchaseReceipt();
+        receipt.setId(id);
+        receipt.setOrderId(orderId);
+        receipt.setRequestHash(hash);
+        receipt.setStatus("PARTIALLY_RECEIVED");
+        receipt.setReceivedAt(LocalDateTime.parse("2026-11-08T10:00:00"));
+        return receipt;
+    }
+}

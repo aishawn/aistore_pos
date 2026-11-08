@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class InvoiceScanService {
@@ -100,7 +101,7 @@ public class InvoiceScanService {
         receive.setEnteredAs("INCLUSIVE");
         receive.setTotalCost(request.getTotalPayable());
         receive.setProducts(lines);
-        return orderService.createReceive(receive);
+        return orderService.createReceive(receive, "invoice-scan-" + UUID.randomUUID());
     }
 
     InvoiceScanResponse toResponse(TaxInvoiceRead read) {
