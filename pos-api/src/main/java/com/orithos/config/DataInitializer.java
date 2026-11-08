@@ -139,7 +139,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedDefaultSuppliers() {
         try {
-            if (supplierMapper.count(null) > 0) return;
+            if (supplierMapper.count(null, 1L) > 0) return;
             for (String name : DEFAULT_SUPPLIERS) {
                 Supplier supplier = new Supplier();
                 supplier.setName(name);
