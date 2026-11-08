@@ -4,7 +4,7 @@
 
 ## 最近适用结果
 
-- 环境：本地 Java 21，POS API unit/regression tests；source 基于 `15d06c68` 的未提交工作树；runtime SHA：不适用；数据库：不适用；业务写入：0。
+- 环境：本地 Java 21，POS API unit/regression tests；source SHA `0474672b`；runtime SHA：不适用；数据库：不适用；业务写入：0。
 - `mvn -B test`：537 tests, 0 failures, 0 errors, 0 skipped，PASS。
 - 重点覆盖 checkout 金额意图幂等摘要、服务端门店定价、篡价忽略、无价/跨店商品拒绝、挂单读取门店范围、销售旧写入口在 Odoo-only filter 下退役。
 - `git diff --check`：PASS。
