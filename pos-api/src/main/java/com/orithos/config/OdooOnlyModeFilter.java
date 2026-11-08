@@ -74,7 +74,8 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         // Legacy sale create/update endpoints accept client-authored ledger values.
         if (path.equals("/api/sales") || path.startsWith("/api/sales/")) {
             return !"GET".equalsIgnoreCase(method)
-                    && !("POST".equalsIgnoreCase(method) && path.equals("/api/sales/checkout"));
+                    && !("POST".equalsIgnoreCase(method)
+                    && (path.equals("/api/sales/quote") || path.equals("/api/sales/checkout")));
         }
         // These read endpoints are used by the native purchasing UI. Their
         // controllers scope results to the authenticated tenant; keep writes

@@ -56,6 +56,7 @@ class OdooOnlyModeFilterTest {
         for (String[] route : new String[][]{
                 {"GET", "/api/sales"},
                 {"GET", "/api/sales/42"},
+                {"POST", "/api/sales/quote"},
                 {"POST", "/api/sales/checkout"}
         }) {
             MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
