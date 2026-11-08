@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, LoaderCircle, Printer, RefreshCw } from "lucide-react";
+import { OdooSalesHistoryPage } from "@/components/OdooSalesHistoryPage";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { readJsonApiResponse } from "@/lib/json-api-response";
 import { formatStoreEpoch } from "@/lib/odoo-date";
@@ -13,6 +14,7 @@ import { ReportSourceDetails } from "@/components/admin/ReportSourceDetails";
 import { ShopfrontSalesSummary } from "@/components/ShopfrontSourceSections";
 
 type Group = "day" | "product" | "category";
+type SalesView = "grouped" | "ledger";
 const REPORT_COLUMNS = [{ key: "label", label: "Group" }, { key: "count", label: "Transactions or lines" }, { key: "quantity", label: "Quantity" }, { key: "amount", label: "Grouped amount" }] as const;
 type SalesReport = { company: string; currency: string; timezone: string; source: string; shopfrontSync: { fromDay: string; toDay: string; status: "completed" | "partial" | "failed"; updatedAt: string; revision: string } | null; from: string; to: string; generatedAt: string; group: Group; totalRows: number; totalAmount: number; orderGrossAmount: number; refundOrderTotal: number; refundAmount: number; refundOrderCount: number; netSalesAmount: number; reconciliationDifference: number; reconcilesToCent: boolean; orderCount: number; totalCount: number; totalQuantity: number | null; offset: number; hasNext: boolean; rows: Array<{ key: string; label: string; count: number; quantity: number | null; amount: number }> };
 function defaultDates() { const to = salesDate(new Date().toISOString(), "Australia/Adelaide"); return { from: shiftDay(to, -6), to }; }
@@ -34,6 +36,7 @@ export function SalesReportPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [urlReady, setUrlReady] = useState(false);
+  const [view, setView] = useState<SalesView>("grouped");
   const requestRevision = useRef(0);
   const load = useCallback(async (offset = 0) => {
     const revision = ++requestRevision.current;
@@ -66,6 +69,7 @@ export function SalesReportPage() {
     const params = new URLSearchParams(location.search);
     const from = params.get("from"); const to = params.get("to"); const selected = params.get("group");
     const selectedComparison = params.get("compare"); const selectedColumnsParam = params.get("columns");
+    setView(params.get("view") === "ledger" ? "ledger" : "grouped");
     if (from && to && /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)) { setDates({ from, to }); setDraftDates({ from, to }); }
     if (selected === "day" || selected === "product" || selected === "category") { setGroup(selected); setDraftGroup(selected); }
     if (selectedComparison === "none" || selectedComparison === "previous_period" || selectedComparison === "last_year") setComparison(selectedComparison);
@@ -92,12 +96,20 @@ export function SalesReportPage() {
   useEffect(() => { if (urlReady) void load(0); }, [load, urlReady]);
   const groupLabel = group === "day" ? "Date" : group === "product" ? "Product" : "Category";
 
-  function updateUrl(next: { from?: string; to?: string; group?: Group; comparison?: ReportComparison; columns?: string[] }) {
+  function updateUrl(next: { from?: string; to?: string; group?: Group; comparison?: ReportComparison; columns?: string[]; view?: SalesView }) {
     const params = new URLSearchParams(location.search);
     params.set("from", next.from ?? dates.from); params.set("to", next.to ?? dates.to);
     params.set("group", next.group ?? group); params.set("compare", next.comparison ?? comparison);
     params.set("columns", (next.columns ?? selectedColumns).join(","));
+    const nextView = next.view ?? view;
+    if (nextView === "ledger") params.set("view", "ledger");
+    else params.delete("view");
     history.replaceState(null, "", `${location.pathname}?${params}`);
+  }
+
+  function selectView(next: SalesView) {
+    setView(next);
+    updateUrl({ view: next });
   }
 
   async function apply() {
@@ -136,8 +148,27 @@ export function SalesReportPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not prepare the report for printing."); }
   }
 
+  const viewSwitch = (
+    <nav aria-label="Sales report views" className="flex flex-wrap gap-2">
+      {([["grouped", "Grouped analysis"], ["ledger", "Daily ledger"]] as const).map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={view === key} onClick={() => selectView(key)} className={`min-h-11 rounded-md border px-3 text-sm font-semibold ${view === key ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)]"}`}>{label}</button>
+      ))}
+    </nav>
+  );
+
+  if (view === "ledger") {
+    return <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-3 lg:p-5">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1400px] flex-col gap-3">
+        <header className="shrink-0"><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Odoo POS ledger</p><h1 className="oh-type-title mt-1">Sales report</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Daily sales, refunds and net totals — same rules as Reports Overview.</p></header>
+        {viewSwitch}
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-3 lg:p-4"><OdooSalesHistoryPage variant="embedded" /></div>
+      </div>
+    </main>;
+  }
+
   return <main className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-5"><div className="mx-auto flex max-w-[1400px] flex-col gap-4">
-    <header><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Odoo · {report?.company ?? "Store"}</p><h1 className="oh-type-title mt-1">Sales report</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Odoo POS grouping and export. For daily refunds and net totals by business day, use <a href="/history" className="font-semibold text-[var(--oh-primary)] hover:underline">Daily ledger</a>.</p></header>
+    <header><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Odoo · {report?.company ?? "Store"}</p><h1 className="oh-type-title mt-1">Sales report</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Odoo POS grouping and export. <button type="button" onClick={() => selectView("ledger")} className="font-semibold text-[var(--oh-primary)] hover:underline">Daily ledger</button> shows the same net sales rules by business day.</p></header>
+    {viewSwitch}
     <section aria-label="Sales report filters" className="print:hidden flex flex-wrap items-end gap-3 border-y border-[var(--oh-border)] py-3">
       <ReportDateControls value={draftDates} onChange={setDraftDates} comparison={comparison} onComparisonChange={selectComparison} timezone={report?.timezone} />
       <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={draftDates.from} onChange={(event) => setDraftDates((value) => ({ ...value, from: event.target.value }))} className="min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm" /></label>

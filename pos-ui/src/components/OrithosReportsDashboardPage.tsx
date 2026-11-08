@@ -582,7 +582,7 @@ export function OrithosReportsDashboardPage() {
             </section>
           ) : displayData ? (
             <>
-          <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Primary totals: Odoo POS ledger · {rangeLabel}. Shopfront source reference follows when this store is mapped.</p>
+          <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Primary totals: Odoo POS ledger · {rangeLabel} · net sales = completed sales minus refunds (same as Sales report daily ledger). Shopfront source reference follows when this store is mapped.{shopfrontPeriod ? <>{" "}<Link href={`/reports/sales?from=${shopfrontPeriod.from}&to=${shopfrontPeriod.to}&group=day`} className="font-semibold text-[var(--oh-primary)] hover:underline">Open Sales report</Link></> : null}</p>
           <section aria-label={`${rangeLabel} Orithos summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <KpiCard
               title="Orithos net sales"
@@ -837,7 +837,7 @@ export function OrithosReportsDashboardPage() {
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Recent sales &amp; refunds</h2>
                 <p className="oh-type-meta text-[var(--oh-muted)]">Latest completed Orithos POS orders · {rangeLabel}</p>
               </div>
-              <Link href="/history" className="oh-type-meta inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-[var(--oh-primary)] hover:underline">
+              <Link href="/reports/sales?view=ledger" className="oh-type-meta inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-[var(--oh-primary)] hover:underline">
                 View all <ArrowUpRight size={14} />
               </Link>
             </div>
@@ -868,8 +868,8 @@ export function OrithosReportsDashboardPage() {
                     No completed Orithos POS orders in {rangeLabel}. Open sales history for all-time Orithos rows.
                   </p>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                    <Link href="/history" className="oh-type-label inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
-                      Open sales history
+                    <Link href="/reports/sales?view=ledger" className="oh-type-label inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
+                      Open daily ledger
                     </Link>
                   </div>
                 </div>
@@ -915,7 +915,7 @@ export function OrithosReportsDashboardPage() {
               Open point of sale <ArrowRight size={16} />
             </Link>
             <Link
-              href="/history"
+              href="/reports/sales?view=ledger"
               className="oh-type-label mt-1.5 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
             >
               Sales history

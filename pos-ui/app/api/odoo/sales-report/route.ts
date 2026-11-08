@@ -139,8 +139,8 @@ export async function GET(request: NextRequest) {
     const end = localMidnightUtc(shiftDay(to, 1), scope.timezone);
     const dayCount = (Date.parse(`${shiftDay(to, 1)}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000;
     if (dayCount > 366) return NextResponse.json({ message: "Sales report ranges are limited to 366 days." }, { status: 400 });
-    const orderDomain: unknown[] = [["company_id", "=", scope.companyId], ["date_order", ">=", start], ["date_order", "<", end], ["state", "in", ["paid", "done", "invoiced"]], ["amount_total", ">", 0]];
-    const lineDomain: unknown[] = [["order_id.company_id", "=", scope.companyId], ["order_id.date_order", ">=", start], ["order_id.date_order", "<", end], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">", 0]];
+    const orderDomain: unknown[] = [["company_id", "=", scope.companyId], ["date_order", ">=", start], ["date_order", "<", end], ["state", "in", ["paid", "done", "invoiced"]], ["amount_total", ">=", 0]];
+    const lineDomain: unknown[] = [["order_id.company_id", "=", scope.companyId], ["order_id.date_order", ">=", start], ["order_id.date_order", "<", end], ["order_id.state", "in", ["paid", "done", "invoiced"]], ["order_id.amount_total", ">=", 0]];
     if (binding.sampleDataClearedAt) {
       orderDomain.push("!", ["uuid", "=like", `demo-seed-${scope.companyId}-%`]);
       lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${scope.companyId}-%`]);
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
     }
     const refundDomain = [...orderDomain.filter((item) => !(Array.isArray(item) && item[0] === "amount_total")), ["amount_total", "<", 0]];
     const cacheKey = salesReportCacheKey(scope.companyId, scope.database, from, to, group, binding.sampleDataClearedAt);
-    if (refresh) coreCache.delete(cacheKey);
+    if (refresh) { coreCache.delete(cacheKey); coreFlights.delete(cacheKey); }
     const shopfrontSyncTask = scope.shopfrontStore ? readShopfrontSyncState(scope, from, to) : null;
     const core = await loadReportCore(cacheKey, sessionId, rpc, scope, orderDomain, lineDomain, refundDomain, group);
     const { rows, periodLineQuantity, orderGross, orderCount, refundOrderTotal, refundCount } = core;

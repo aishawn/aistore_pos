@@ -24,13 +24,7 @@ const TABS: ReportTab[] = [
     label: "Sales report",
     href: "/reports/sales",
     icon: ReceiptText,
-    match: ["/reports/sales"],
-  },
-  {
-    label: "Daily ledger",
-    href: "/history",
-    icon: ReceiptText,
-    match: ["/history"],
+    match: ["/reports/sales", "/history"],
   },
   {
     label: "Inventory",

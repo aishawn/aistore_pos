@@ -14,7 +14,7 @@ export const NAVIGATION: NavEntry[] = [
       items: [
         { label: "Manage Cash", href: "/manage-cash" },
         { label: "Close Register", href: "/close" },
-        { label: "Sales History", href: "/history" },
+        { label: "Sales report", href: "/reports/sales" },
       ],
     },
   },

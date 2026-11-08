@@ -4,6 +4,7 @@ import { type CostSale } from "./dashboard-purchase-cost.ts";
 import { verifiedLedgerCosts } from "./dashboard-ledger-cost.ts";
 import { storeWeekStart } from "./assistant-business-period.ts";
 import { readShopfrontReportMargin } from "./shopfront-report-margin.ts";
+import { summarizeSalesTotals } from "./sales-report-totals.ts";
 
 export type ReportRpc = <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs?: Record<string, unknown>, correlationId?: string | null) => Promise<T | undefined>;
 export type ReportCompany = { name: string; currency: string; timezone: string };
@@ -178,15 +179,15 @@ export async function calculateReport(rpc: ReportRpc, options: {
       ["state", "in", ["paid", "done", "invoiced"]],
       ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
-    const salesDomain = [...domain, ["amount_total", ">", 0]];
+    const salesDomain = [...domain, ["amount_total", ">=", 0]];
     const refundDomain = [...domain, ["amount_total", "<", 0]];
-    const compareSalesDomain = [...compareDomain, ["amount_total", ">", 0]];
+    const compareSalesDomain = [...compareDomain, ["amount_total", ">=", 0]];
     const lineDomain = [
       ["order_id.company_id", "=", companyId],
       ["order_id.date_order", ">=", from],
       ["order_id.date_order", endOperator, to],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
-      ["order_id.amount_total", ">", 0],
+      ["order_id.amount_total", ">=", 0],
       ...(excludeDemoSeed ? [excludeDemoLineClause] : []),
     ];
 
@@ -196,7 +197,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       }
       return clause;
     });
-
+    const compareRefundDomain = [...compareDomain, ["amount_total", "<", 0]];
 
     if (summaryOnly) {
       const [totals, count, openRegisters, businessMetrics] = await Promise.all([
@@ -209,7 +210,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
         ...businessMetrics, revenue: Number(totals?.[0]?.amount_total ?? 0), transactions: Number(count ?? 0), openRegisters: Number(openRegisters ?? 0) };
     }
 
-  const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras, marginMetrics, sourceMarginFallback] = await Promise.all([
+  const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, compareRefundTotals, lineExtras, marginMetrics, sourceMarginFallback] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
     rpc<Array<{ amount_total?: number; amount_tax?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
@@ -227,6 +228,7 @@ export async function calculateReport(rpc: ReportRpc, options: {
       rpc<number>(sessionId, "pos.order", "search_count", [compareSalesDomain], {}, correlationId),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
       rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []], {}, correlationId),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareRefundDomain, ["amount_total:sum"], []], {}, correlationId),
       loadLineExtras(rpc, sessionId, lineDomain, compareLineDomain, correlationId),
       calculateOdooGrossMargin(rpc, sessionId, companyId, domain,
         lineDomain.filter(clause => !(Array.isArray(clause) && clause[0] === "order_id.amount_total")), correlationId),
@@ -237,14 +239,14 @@ export async function calculateReport(rpc: ReportRpc, options: {
     const grossSummary = grossTotals?.[0] ?? {};
     const refundSummary = refundTotals?.[0] ?? {};
     const compareSummary = compareTotals?.[0] ?? {};
-    const revenue = Number(summary.amount_total ?? 0);
-    const transactions = Number(count ?? summary.__count ?? 0);
     const grossSales = Number(grossSummary.amount_total ?? 0);
+    const revenue = summarizeSalesTotals(grossSales, Number(refundSummary.amount_total ?? 0)).netSales;
+    const transactions = Number(count ?? summary.__count ?? 0);
     const refunds = Math.abs(Number(refundSummary.amount_total ?? 0));
     const refundTransactions = Number(refundCount ?? 0);
-    const compareRevenue = Number(compareSummary.amount_total ?? 0);
-    const compareTransactions = Number(compareCount ?? compareSummary.__count ?? 0);
     const compareGrossSales = Number(compareGrossTotals?.[0]?.amount_total ?? 0);
+    const compareRevenue = summarizeSalesTotals(compareGrossSales, Number(compareRefundTotals?.[0]?.amount_total ?? 0)).netSales;
+    const compareTransactions = Number(compareCount ?? compareSummary.__count ?? 0);
 
     return {
       rangeHours: calendarPeriod ? (end.getTime() - start.getTime()) / 3_600_000 : rangeHours,
