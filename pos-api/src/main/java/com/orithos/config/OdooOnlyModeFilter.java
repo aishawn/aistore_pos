@@ -36,7 +36,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             "/api/product-backorders", "/api/products", "/api/promotion-categories",
             "/api/promotions", "/api/push-devices", "/api/quick-menu", "/api/receipts",
             "/api/register-closures", "/api/registers", "/api/reports", "/api/resources",
-            "/api/sale-keys", "/api/sales", "/api/security-events", "/api/settings",
+            "/api/sale-keys", "/api/security-events", "/api/settings",
             "/api/shelf-tickets", "/api/statements", "/api/stock-list", "/api/stocktakes",
             "/api/suppliers", "/api/supply-chain", "/api/tax-rates", "/api/ticket-template-pages",
             "/api/ticket-templates", "/api/transferees", "/api/trashed-items",
@@ -68,6 +68,11 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         // Orders now have vendor-scoped Orithos handlers and are the native
         // purchasing ledger. Keep unrelated Classic endpoints behind the gate.
         if (path.equals("/api/orders") || path.startsWith("/api/orders/")) {
+            return false;
+        }
+        // Native sales and checkout are tenant/outlet scoped by SaleController;
+        // checkout also requires a server-side idempotency key.
+        if (path.equals("/api/sales") || path.startsWith("/api/sales/")) {
             return false;
         }
         // These read endpoints are used by the native purchasing UI. Their

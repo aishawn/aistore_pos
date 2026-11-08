@@ -51,6 +51,23 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeSalesRoutesPassThroughInOdooOnlyMode() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (String[] route : new String[][]{
+                {"GET", "/api/sales"},
+                {"GET", "/api/sales/42"},
+                {"POST", "/api/sales/checkout"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+    }
+
+    @Test
     void nativeSupplierAndOutletReadsPassThroughButSupplierDetailsRemainRetired() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         for (String path : new String[]{"/api/suppliers", "/api/outlets"}) {
