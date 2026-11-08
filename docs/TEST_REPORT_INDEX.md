@@ -180,6 +180,8 @@ Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot pro
 | 2026-11-07-pos-api-docs-deployment | 2026-11-07 | Docs UI deployment and OpenAPI link verification | SKR and Demo report deployed SHA `3f7365ca`; browser confirms the fixed link and both OpenAPI endpoints return YAML 200; backend acceptance remains pending | [Report](test-sessions/2026-11-07-pos-api-docs-deployment.md) |
 | 2026-11-07-pos-api-resource-coverage | 2026-11-07 | Candidate read-resource expansion and docs/schema synchronization | CLI fixtures 4/4, docs ESLint PASS, OpenAPI YAML valid with 12 resources and generated copies identical; Java 21 gate and live resource checks pending | [Report](test-sessions/2026-11-07-pos-api-resource-coverage.md) |
 
+| 2026-11-08-shopfront-product-read-states | 2026-11-08 | Shopfront product cost/inventory read-state handling in Odoo catalogue | Local tests, typecheck, lint, and production build pass; deployment pending; no business data writes | [Report](test-sessions/2026-11-08-shopfront-product-read-states.md) |
+
 ## Classification rule
 
 The index is a navigation and summary layer, not a replacement for evidence. A fixture `PASS` must not overwrite an online `BLOCKED` or `FAIL`; the environment belongs in the row and the detailed report.

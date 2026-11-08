@@ -24,6 +24,8 @@ The SKR Store Pulse uses Shopfront source sales report for yesterday sales and p
 
 Catalogue counts must identify their scope: Shopfront ACTIVE products are source products, Odoo catalogue totals are saleable variants, and positive available units are a signed-stock-derived quantity. These measures are not interchangeable and must retain their source labels.
 
+Product enrichment reports cost and inventory status independently. A numeric zero is a valid source value; a missing source row, failed read, or restricted cost permission must remain distinguishable. Failed optional source reads must not silently become an empty successful result or replace Shopfront values with Odoo values.
+
 ## Completion evidence
 
 For each store and selected business date, record source query/report, timezone, source row/count totals, unique IDs, crawler rows, downstream acknowledgement counts, snapshot timestamp and completeness, job status, and sampled field comparisons. Local fixtures and deployment health are not source-to-POS parity evidence.

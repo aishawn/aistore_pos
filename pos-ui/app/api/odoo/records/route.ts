@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
 import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
 import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
-import { resolveShopfrontCatalogueMappings, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
+import { resolveShopfrontCatalogueMappings, shopfrontFieldStatus, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -591,11 +591,23 @@ export async function POST(request: NextRequest) {
               const sourceProducts = await odooRpc<Array<{ source_id: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id"], limit: sourceIds.length, context: companyContext });
               const sourceDetails = await odooRpc<Array<{ source_id: string; name?: string; sku?: string | false; category?: string | false; source_status?: string | false; synced_at?: string }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "name", "sku", "category", "source_status", "synced_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               const sourcePricing = await odooRpc<Array<{ source_id: string; case_quantity?: number; price?: number | false; prices?: unknown }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "case_quantity", "price", "prices"], limit: sourceIds.length, context: companyContext }).catch(() => []);
-              const sourceCosts = canReadProductCost
-                ? await odooRpc<Array<{ source_id: string; cost?: number | false }>>(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "cost"], limit: sourceIds.length, context: companyContext }).catch(() => [])
+              let sourceCosts: Array<{ source_id: string; cost?: number | false }> = [];
+              let sourceCostsAvailable = false;
+              if (canReadProductCost) {
+                try {
+                  sourceCosts = await odooRpc(sessionId, request, "shopfront.sync.product", "search_read", [[ ["store_key", "=", sourceStore], ["source_id", "in", sourceIds] ]], { fields: ["source_id", "cost"], limit: sourceIds.length, context: companyContext });
+                  sourceCostsAvailable = true;
+                } catch { /* Isolate optional cost reads from other Shopfront fields. */ }
+              }
+              let sourceInventory: Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }> = [];
+              let sourceInventoryAvailable = false;
+              try {
+                sourceInventory = await odooRpc(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: sourceIds.length, context: companyContext });
+                sourceInventoryAvailable = true;
+              } catch { /* Isolate optional inventory reads from catalogue data. */ }
+              const inventoryLevels = sourceInventoryAvailable
+                ? await odooRpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: sourceIds.length, context: companyContext }).catch(() => [])
                 : [];
-              const sourceInventory = await odooRpc<Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: sourceIds.length, context: companyContext }).catch(() => []);
-              const inventoryLevels = await odooRpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>(sessionId, request, "shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", sourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: sourceIds.length, context: companyContext }).catch(() => []);
               const bySource = new Map(sourceProducts.map((row) => [row.source_id, row]));
               const detailsBySource = new Map(sourceDetails.map((row) => [row.source_id, row]));
               const pricingBySource = new Map(sourcePricing.map((row) => [row.source_id, row]));
@@ -630,6 +642,7 @@ export async function POST(request: NextRequest) {
                 product.shopfront_source_duplicate_count = duplicateCount;
                 product.shopfront_source_canonical = Boolean(sourceRef) && duplicateCount <= 1;
                 product.shopfront_cost = canReadProductCost && typeof sourceCost?.cost === "number" && Number.isFinite(sourceCost.cost) ? sourceCost.cost : null;
+                product.shopfront_cost_status = shopfrontFieldStatus(!canReadProductCost ? "restricted" : sourceCostsAvailable ? "available" : "unavailable", product.shopfront_cost);
                 product.shopfront_case_quantity = typeof sourcePrice?.case_quantity === "number" && Number.isFinite(sourcePrice.case_quantity) && sourcePrice.case_quantity > 0 ? sourcePrice.case_quantity : null;
                 product.shopfront_cost_synced_at = sourceDetail?.synced_at ?? null;
                 product.shopfront_source_name = sourceDetail?.name ?? null;
@@ -639,6 +652,7 @@ export async function POST(request: NextRequest) {
                 product.shopfront_price = typeof sourcePrice?.price === "number" && Number.isFinite(sourcePrice.price) ? sourcePrice.price : null;
                 product.shopfront_price_tiers = Array.isArray(sourcePrice?.prices) ? sourcePrice.prices : Array.isArray(template?.shopfront_price_tiers) ? template.shopfront_price_tiers : [];
                 product.shopfront_quantity = typeof sourceStock?.quantity === "number" && Number.isFinite(sourceStock.quantity) ? sourceStock.quantity : null;
+                product.shopfront_inventory_status = shopfrontFieldStatus(sourceInventoryAvailable ? "available" : "unavailable", product.shopfront_quantity);
                 product.shopfront_single_level = typeof sourceStock?.single_level === "number" && Number.isFinite(sourceStock.single_level) ? sourceStock.single_level : null;
                 product.shopfront_case_level = typeof sourceStock?.case_level === "number" && Number.isFinite(sourceStock.case_level) ? sourceStock.case_level : null;
                 product.shopfront_inventory_snapshot_at = sourceStock?.snapshot_at ?? null;
@@ -698,7 +712,9 @@ export async function POST(request: NextRequest) {
               product.shopfront_single_level = null;
               product.shopfront_case_level = null;
               product.shopfront_inventory_snapshot_at = null;
+              product.shopfront_inventory_status = "unavailable";
               product.shopfront_cost = null;
+              product.shopfront_cost_status = "unavailable";
               product.shopfront_case_quantity = null;
               product.shopfront_cost_synced_at = null;
               product.shopfront_data_status = "unavailable";

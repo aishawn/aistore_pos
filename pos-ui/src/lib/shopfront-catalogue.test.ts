@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveShopfrontCatalogueMappings, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
+import { resolveShopfrontCatalogueMappings, shopfrontFieldStatus, summarizeShopfrontInventory } from "./shopfront-catalogue.ts";
 
 const active = (source_id: string, sku?: string) => ({ source_id, source_status: "ACTIVE", sku });
 const template = (id: number, sourceId: string, values: Record<string, unknown> = {}) => ({ id, shopfront_source_ref: `skr:${sourceId}`, active: true, sale_ok: true, ...values });
@@ -36,4 +36,12 @@ test("source stock totals preserve negative rows while counting positive units s
     { source_product_id: "inactive", quantity: 99, snapshot_at: "2026-11-06T14:00:00" },
   ], new Set(["active", "negative"]));
   assert.deepEqual(summary, { positiveInventoryUnits: 12, negativeInventoryRows: 1, inventoryProductRows: 2, inventorySnapshotAt: "2026-11-06T13:00:00" });
+});
+
+test("source field status distinguishes a real zero from missing or unreadable data", () => {
+  assert.equal(shopfrontFieldStatus("available", 0), "available");
+  assert.equal(shopfrontFieldStatus("available", 4), "available");
+  assert.equal(shopfrontFieldStatus("available", null), "missing");
+  assert.equal(shopfrontFieldStatus("unavailable", null), "unavailable");
+  assert.equal(shopfrontFieldStatus("restricted", null), "restricted");
 });

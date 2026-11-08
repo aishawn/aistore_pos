@@ -57,6 +57,33 @@ const INVENTORY_COLUMNS = [
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(amount);
 
+function ShopfrontCostDetails({ product }: { product: OdooProductRecord }) {
+  const sourceCost = shopfrontCostValue(product.shopfront_cost);
+  const caseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
+  const status = product.shopfront_cost_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceCost === null ? "missing" : "available");
+  const unitCost = sourceCost !== null && caseQuantity && caseQuantity > 1 ? sourceCost / caseQuantity : sourceCost;
+  const odooCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
+  return <>
+    <span className="block font-medium text-[var(--oh-text)]">{status === "restricted" ? "Cost access restricted" : status === "unavailable" ? "Shopfront cost unavailable" : sourceCost === null ? "No Shopfront cost recorded" : caseQuantity && caseQuantity > 1 ? `${money(unitCost!)} / item` : money(sourceCost)}</span>
+    {sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title="Shopfront source cost; tax basis is source-reported">Shopfront {money(sourceCost)}{caseQuantity ? ` / pack ${quantity(caseQuantity)}` : " · unit basis unknown"}</span>}
+    {sourceCost !== null && caseQuantity && caseQuantity > 1 && <span className="block text-[11px] text-amber-800">Per item from box cost ÷ pack size</span>}
+    <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Odoo recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>
+  </>;
+}
+
+function ShopfrontInventoryDetails({ product }: { product: OdooProductRecord }) {
+  const sourceQty = typeof product.shopfront_quantity === "number" && Number.isFinite(product.shopfront_quantity) ? product.shopfront_quantity : null;
+  const status = product.shopfront_inventory_status ?? (product.shopfront_data_status !== "available" ? "unavailable" : sourceQty === null ? "missing" : "available");
+  if (sourceQty === null) return <>
+    <span className="block text-amber-800">{status === "unavailable" ? "Shopfront inventory unavailable" : "No Shopfront inventory record"}</span>
+    <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Odoo · {quantity(product.qty_available)} {product.uom_id ? product.uom_id[1] : "units"}</span>
+  </>;
+  return <>
+    <span className="block">{typeof product.shopfront_case_level === "number" ? `${quantity(product.shopfront_case_level)} Cases · ${quantity(product.shopfront_single_level ?? 0)} Items` : `${quantity(sourceQty)} Units`}</span>
+    <span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Shopfront · {quantity(sourceQty)} units</span>
+  </>;
+}
+
 export function OdooProductCataloguePage({ inventoryReport = false }: { inventoryReport?: boolean }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -827,9 +854,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   const fullName = product.shopfront_source_name || (typeof product.display_name === "string" ? product.display_name : product.name);
                   const label = friendlyProductName(fullName);
                   const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
-                  const unitCost = typeof product.standard_price === "number" && Number.isFinite(product.standard_price) ? product.standard_price : null;
-                  const sourceCost = shopfrontCostValue(product.shopfront_cost);
-                  const sourceCaseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
                   const sourceQty = typeof product.shopfront_quantity === "number" ? product.shopfront_quantity : null;
                   const sourceStockMismatch = sourceQty !== null && Math.abs(sourceQty - product.qty_available) > 0.0001;
                   const sourceUnavailable = product.shopfront_data_status !== "available";
@@ -840,8 +864,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                       {inventoryColumns.includes("category") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{displayCategory}</td>}
                       {inventoryReport && inventoryColumns.includes("barcode") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.barcode || "—"}</td>}
                       {inventoryReport && inventoryColumns.includes("sku") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{skuShort || "—"}</td>}
-                      {!inventoryReport && <td className="px-4 py-3 tabular-nums"><span className="block font-medium text-[var(--oh-text)]">{sourceUnavailable ? "Shopfront data unavailable" : sourceCost === null ? "No Shopfront cost" : sourceCaseQuantity && sourceCaseQuantity > 1 ? `${money(sourceCost / sourceCaseQuantity)} / item` : money(sourceCost)}</span>{sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title="Shopfront source cost; tax and unit basis must be verified">Shopfront {money(sourceCost)}{sourceCaseQuantity ? ` / pack ${quantity(sourceCaseQuantity)}` : " · unit basis unknown"}</span>}{sourceCost !== null && sourceCaseQuantity && sourceCaseQuantity > 1 && <span className="block text-[11px] text-amber-800">Indicative item cost · verify invoice</span>}<span className="mt-1 block text-[11px] text-[var(--oh-muted)]">{unitCost === null || unitCost === 0 ? "Odoo recorded cost unavailable" : `Odoo recorded ${money(unitCost)}`}</span>{product.shopfront_source_duplicate_count && product.shopfront_source_duplicate_count > 1 && <span className="mt-1 block text-[11px] text-amber-800">Source link needs review · {product.shopfront_source_duplicate_count} matches</span>}</td>}
-                      {inventoryColumns.includes("quantity") && <td className={`px-4 py-3 text-right tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}>{sourceQty === null ? quantity(product.qty_available) : <><span className="block">{product.shopfront_case_level !== null && product.shopfront_case_level !== undefined ? `${quantity(product.shopfront_case_level)} Cases · ${quantity(product.shopfront_single_level ?? 0)} Items` : `${quantity(sourceQty)} Units`}</span><span className="mt-0.5 block text-[11px] text-[var(--oh-muted)]">Shopfront · {quantity(sourceQty)} units</span></>}{sourceStockMismatch && <span className="mt-0.5 block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</td>}
+                      {!inventoryReport && <td className="px-4 py-3 tabular-nums"><ShopfrontCostDetails product={product} />{product.shopfront_source_duplicate_count && product.shopfront_source_duplicate_count > 1 && <span className="mt-1 block text-[11px] text-amber-800">Source link needs review · {product.shopfront_source_duplicate_count} matches</span>}</td>}
+                      {inventoryColumns.includes("quantity") && <td className={`px-4 py-3 text-right tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}><ShopfrontInventoryDetails product={product} />{sourceStockMismatch && <span className="mt-0.5 block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</td>}
                       {inventoryReport && inventoryColumns.includes("unit") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</td>}
                       {inventoryColumns.includes("price") && <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{!inventoryReport ? sourceUnavailable ? <span className="font-normal text-[var(--oh-muted)]">Shopfront unavailable</span> : typeof product.shopfront_price === "number" ? <>{money(product.shopfront_price)}<span className="mt-0.5 block text-[11px] font-normal text-[var(--oh-muted)]">Shopfront</span></> : <span className="font-normal text-[var(--oh-muted)]">No Shopfront price</span> : <CataloguePrice product={product} />}{!inventoryReport && product.shopfront_price_tiers?.length ? <span className="mt-1 block text-[11px] font-normal text-[var(--oh-muted)]" title="Shopfront source price tiers">{product.shopfront_price_tiers.slice(0, 2).map((tier) => `${quantity(Number(tier.quantity) || 1)}+ ${money(Number(tier.price) || 0)}`).join(" · ")}</span> : null}</td>}
                       {inventoryReport && inventoryColumns.includes("pos") && <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>}
@@ -876,8 +900,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 const fullName = product.shopfront_source_name || (typeof product.display_name === "string" ? product.display_name : product.name);
                 const label = friendlyProductName(fullName);
                 const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
-                const sourceCost = typeof product.shopfront_cost === "number" && Number.isFinite(product.shopfront_cost) && product.shopfront_cost > 0 ? product.shopfront_cost : null;
-                const sourceCaseQuantity = typeof product.shopfront_case_quantity === "number" && product.shopfront_case_quantity > 0 ? product.shopfront_case_quantity : null;
                 const sourceQty = typeof product.shopfront_quantity === "number" ? product.shopfront_quantity : null;
                 const sourceStockMismatch = sourceQty !== null && Math.abs(sourceQty - product.qty_available) > 0.0001;
                 const sourceUnavailable = product.shopfront_data_status !== "available";
@@ -889,9 +911,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                     </header>
                     <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1.5 text-xs min-[360px]:grid-cols-2">
                       {(!inventoryReport || inventoryColumns.includes("category")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{displayCategory}</dd></div>}
-                      {!inventoryReport && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Cost</dt><dd className="min-w-0 text-[var(--oh-text-secondary)]"><span className="block">{sourceUnavailable ? "Shopfront data unavailable" : sourceCost === null ? "No Shopfront cost" : sourceCaseQuantity && sourceCaseQuantity > 1 ? `${money(sourceCost / sourceCaseQuantity)} / item` : money(sourceCost)}</span>{sourceCost !== null && <span className="block text-[11px]">Shopfront {money(sourceCost)}{sourceCaseQuantity ? ` / pack ${quantity(sourceCaseQuantity)}` : " · unit basis unknown"}</span>}{sourceCost !== null && sourceCaseQuantity && sourceCaseQuantity > 1 && <span className="block text-[11px] text-amber-800">Indicative item cost · verify invoice</span>}<span className="block text-[11px]">{typeof product.standard_price === "number" && product.standard_price !== 0 ? `Odoo recorded ${money(product.standard_price)}` : "Odoo recorded cost unavailable"}</span></dd></div>}
+                      {!inventoryReport && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Cost</dt><dd className="min-w-0 text-[var(--oh-text-secondary)]"><ShopfrontCostDetails product={product} /></dd></div>}
                       {(!inventoryReport || inventoryColumns.includes("barcode")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>}
-                      {(!inventoryReport || inventoryColumns.includes("quantity")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Inventory</dt><dd className={`min-w-0 tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{sourceQty === null ? `${quantity(product.qty_available)} Odoo · source unavailable` : <><span className="block">{product.shopfront_case_level !== null && product.shopfront_case_level !== undefined ? `${quantity(product.shopfront_case_level)} Cases · ${quantity(product.shopfront_single_level ?? 0)} Items` : `${quantity(sourceQty)} Units`}</span><span className="block text-[11px] text-[var(--oh-muted)]">Shopfront · {quantity(sourceQty)} units</span></>}{sourceStockMismatch && <span className="block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</dd></div>}
+                      {(!inventoryReport || inventoryColumns.includes("quantity")) && <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Inventory</dt><dd className={`min-w-0 tabular-nums ${sourceQty === null ? "font-medium text-amber-700" : sourceQty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}><ShopfrontInventoryDetails product={product} />{sourceStockMismatch && <span className="block text-[11px] font-medium text-amber-800">Odoo {quantity(product.qty_available)} · mismatch</span>}</dd></div>}
                       {inventoryReport && inventoryColumns.includes("unit") && <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Unit</dt><dd className="text-[var(--oh-text-secondary)]">{product.uom_id ? product.uom_id[1] : "—"}</dd></div>}
                       {!inventoryReport && <div className="flex min-w-0 items-center gap-2"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Performance</dt><dd className="flex min-w-0 items-center gap-2"><Sparkline points={product.performance_30d ?? []} width={82} height={26} /><span className="text-[11px] tabular-nums text-[var(--oh-muted)]">{product.performance_30d ? `${quantity(product.performance_30d.reduce((sum, point) => sum + point, 0))} · 30d ${product.performance_source ?? ""}` : "Unavailable"}</span></dd></div>}
                     </dl>

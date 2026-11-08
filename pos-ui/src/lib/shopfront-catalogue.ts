@@ -20,6 +20,13 @@ export interface ShopfrontCatalogueMapping {
   ambiguousReferenceCount: number;
 }
 
+export type ShopfrontFieldStatus = "available" | "missing" | "unavailable" | "restricted";
+
+export function shopfrontFieldStatus(readStatus: "available" | "unavailable" | "restricted", value: unknown): ShopfrontFieldStatus {
+  if (readStatus !== "available") return readStatus;
+  return typeof value === "number" && Number.isFinite(value) ? "available" : "missing";
+}
+
 export function resolveShopfrontCatalogueMappings(
   storeKey: string,
   sourceRows: ShopfrontSourceIdentity[],

@@ -2,6 +2,13 @@
 
 Updated: 2026-11-08. Owner: TBD.
 
+## Product enrichment read states (2026-11-08)
+
+- Current `main` candidate preserves Shopfront cost and inventory read outcomes separately: available (including a real zero), no source value, unavailable query, or restricted cost permission.
+- Product table and mobile rows show the Shopfront source state and keep Odoo recorded values separately labeled. Optional cost/inventory read failures no longer masquerade as empty source records or clear the rest of product enrichment.
+- This is a display/read-path correction. It does not write Shopfront cost into Odoo `standard_price` or modify inventory quantities.
+- Local verification and deployment status are recorded in the corresponding dated test session and validation entry.
+
 ## Canonical product directory (2026-11-08)
 
 - `/products` now renders the Odoo product catalogue, including its existing read-only Shopfront enrichment and source coverage indicators. `/products/odoo` redirects to the canonical directory; `/products/shopfront` already redirects there.

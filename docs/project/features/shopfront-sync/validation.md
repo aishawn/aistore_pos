@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Product enrichment read states (2026-11-08)
+
+- Candidate based on POS repository `7afad8245a17a2d087f88c089262a03dfbe64620` plus the local changes in [test session](../../../../test-sessions/2026-11-08-shopfront-product-read-states.md).
+- The read path now marks source cost as available/missing/unavailable/restricted and source inventory as available/missing/unavailable. Zero is considered a returned value. Desktop and mobile catalogue rows use the same rendering helper and keep Odoo values distinct.
+- Focused `shopfront-catalogue.test.ts`: 5/5 PASS. POS UI typecheck and production build: PASS. Targeted ESLint: 0 errors / 9 pre-existing React effect warnings. `git diff --check`: PASS.
+- Project fact-library checker: FAIL with 66 missing-file/link errors in this checkout; the new session file is ignored by `/docs/` and is explicitly force-added for the change record. These errors concern absent repository docs, not this implementation.
+- Deployment and authenticated live route check remain pending. No Odoo business-data write has been performed for this candidate.
+
 ## Product catalogue count reconciliation (2026-11-07)
 
 - Read-only `aipos_uat` audit, SKR company 5, location `UATPI/Stock`: 10,849 ACTIVE Shopfront products, 10,852 inventory rows, and 51,512 positive units. Positive units exclude negative balances; 5,373 inventory rows are negative. Latest inventory snapshot: `2026-11-06T16:22:09.877859`.

@@ -77,6 +77,7 @@ export interface OdooProductRecord {
   list_price: number;
   standard_price?: number | false;
   shopfront_cost?: number | null;
+  shopfront_cost_status?: "available" | "missing" | "unavailable" | "restricted";
   shopfront_case_quantity?: number | null;
   shopfront_cost_synced_at?: string | null;
   shopfront_price?: number | null;
@@ -84,6 +85,7 @@ export interface OdooProductRecord {
   shopfront_single_level?: number | null;
   shopfront_case_level?: number | null;
   shopfront_inventory_snapshot_at?: string | null;
+  shopfront_inventory_status?: "available" | "missing" | "unavailable";
   shopfront_data_status?: "available" | "missing" | "unavailable";
   shopfront_source_ref?: string | null;
   shopfront_source_duplicate_count?: number;
