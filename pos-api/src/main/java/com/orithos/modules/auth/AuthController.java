@@ -152,7 +152,8 @@ public class AuthController {
                 throw new BusinessException(40323, "This trial or store is no longer available");
             }
         }
-        return ApiResult.ok(issueTokens(u, refreshToken));
+        // Rotate refresh tokens so active sessions keep their sliding expiry.
+        return ApiResult.ok(issueTokens(u));
     }
 
     @PostMapping("/logout")
@@ -293,13 +294,6 @@ public class AuthController {
         var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
         tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
         return toResponse(u, access.token(), refresh.token());
-    }
-
-    private TokenResponse issueTokens(User u, String existingRefresh) {
-        List<String> authorities = userService.authorities(u);
-        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(), authorities);
-        return toResponse(u, access.token(), existingRefresh);
     }
 
     private TokenResponse toResponse(User u, String access, String refresh) {

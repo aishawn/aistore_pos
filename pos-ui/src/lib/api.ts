@@ -237,6 +237,7 @@ async function request<T>(
   const authExpired = !isLocalPreviewSession()
     && (res.status === 401 || json?.code === 40100 || json?.code === 40103);
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+  let sessionRecovered = false;
   const isOdooRead = canReplay && path.startsWith("/api/odoo/") && path !== "/api/odoo/session";
   if (authExpired && isOdooRead && !retriedAfterRefresh && await recoverOdooSession()) {
     return request<T>(method, path, opts, true, retriedAfterRoute);
@@ -246,9 +247,12 @@ async function request<T>(
   if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
     return request<T>(method, path, opts, true, retriedAfterRoute);
   }
+  if (authExpired && !canReplay && !retriedAfterRefresh && !isAuthExemptPath(path)) {
+    sessionRecovered = await refreshAccessToken();
+  }
 
   if (!res.ok || !json) {
-    handleAuthFailure(path, res.status, json?.code ?? -1);
+    if (!sessionRecovered) handleAuthFailure(path, res.status, json?.code ?? -1);
     throw new ApiError(
       json?.message ?? gatewayFailureMessage(res.status, `Request failed (${res.status})`),
       json?.code ?? -1,
@@ -257,7 +261,7 @@ async function request<T>(
     );
   }
   if (json.code !== 0) {
-    handleAuthFailure(path, res.status, json.code);
+    if (!sessionRecovered) handleAuthFailure(path, res.status, json.code);
     throw new ApiError(json.message, json.code, res.status, res.headers.get("x-correlation-id"));
   }
   if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !path.startsWith("/api/auth/refresh")) clearOdooReadCache();
