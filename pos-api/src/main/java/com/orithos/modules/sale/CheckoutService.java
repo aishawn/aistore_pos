@@ -1,5 +1,6 @@
 package com.orithos.modules.sale;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.AustraliaTime;
 import com.orithos.common.BusinessException;
 import com.orithos.common.CashRounding;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * Finalises a Sell-pad cart into a completed sale with one or more tenders.
@@ -31,21 +34,35 @@ public class CheckoutService {
     private final SalePaymentMapper paymentMapper;
     private final PaymentMethodMapper paymentMethodMapper;
     private final ProductMapper productMapper;
+    private final ObjectMapper objectMapper;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
-                           PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper) {
+                           PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
+                           ObjectMapper objectMapper) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
         this.productMapper = productMapper;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
-    public CheckoutResponse checkout(CheckoutRequest req) {
+    public CheckoutResponse checkout(CheckoutRequest req, String idempotencyKey) {
         Long vendorId = CurrentUser.vendorId();
         Long authenticatedOutletId = CurrentUser.outletId();
         if (vendorId == null || authenticatedOutletId == null) {
             throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
+        if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 200) {
+            throw new BusinessException(40000, "Idempotency-Key is required for checkout.");
+        }
+        String requestHash = requestHash(req);
+        saleMapper.lockCheckoutKey(vendorId, idempotencyKey);
+        String previousHash = saleMapper.findCheckoutRequestHash(vendorId, idempotencyKey);
+        if (previousHash != null) {
+            if (!previousHash.equals(requestHash)) throw new BusinessException(40900, "Idempotency-Key was already used for a different checkout.");
+            try { return objectMapper.readValue(saleMapper.findCheckoutResponse(vendorId, idempotencyKey), CheckoutResponse.class); }
+            catch (Exception e) { throw new BusinessException(40900, "The previous checkout response could not be replayed."); }
         }
         String tenderType = resolveTenderType(req.getTender());
         boolean cash = "CASH".equals(tenderType);
@@ -194,7 +211,21 @@ public class CheckoutService {
         res.setCashout(cashout);
         res.setRemaining(completed ? BigDecimal.ZERO : newOutstanding);
         res.setCompleted(completed);
+        try {
+            saleMapper.insertCheckoutResponse(vendorId, idempotencyKey, requestHash, objectMapper.writeValueAsString(res));
+        } catch (Exception e) {
+            throw new BusinessException(50000, "Checkout completed but its retry record could not be saved.");
+        }
         return res;
+    }
+
+    private String requestHash(CheckoutRequest req) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(req));
+            StringBuilder out = new StringBuilder(64);
+            for (byte b : digest) out.append(String.format("%02x", b));
+            return out.toString();
+        } catch (Exception e) { throw new BusinessException(40000, "Invalid checkout request."); }
     }
 
     private void deductStock(Sale sale) {

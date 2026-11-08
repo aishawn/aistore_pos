@@ -87,6 +87,19 @@ public interface SaleMapper {
                                     @Param("sourceId") Long sourceId, @Param("sourceLineId") Long sourceLineId,
                                     @Param("idempotencyKey") String idempotencyKey, @Param("actorId") Long actorId);
 
+    @Select("SELECT pg_advisory_xact_lock(hashtextextended(CAST(#{vendorId} AS TEXT) || ':' || #{key}, 0))")
+    Integer lockCheckoutKey(@Param("vendorId") Long vendorId, @Param("key") String key);
+
+    @Select("SELECT request_hash FROM sale_checkout_idempotency WHERE vendor_id=#{vendorId} AND idempotency_key=#{key}")
+    String findCheckoutRequestHash(@Param("vendorId") Long vendorId, @Param("key") String key);
+
+    @Select("SELECT response_json FROM sale_checkout_idempotency WHERE vendor_id=#{vendorId} AND idempotency_key=#{key}")
+    String findCheckoutResponse(@Param("vendorId") Long vendorId, @Param("key") String key);
+
+    @Insert("INSERT INTO sale_checkout_idempotency (vendor_id, idempotency_key, request_hash, response_json) VALUES (#{vendorId}, #{key}, #{requestHash}, #{responseJson})")
+    int insertCheckoutResponse(@Param("vendorId") Long vendorId, @Param("key") String key,
+                               @Param("requestHash") String requestHash, @Param("responseJson") String responseJson);
+
     @Select("""
         SELECT tr.amount FROM product p
         LEFT JOIN tax_rate tr ON tr.id = p.tax_rate_id AND tr.deleted_at IS NULL
