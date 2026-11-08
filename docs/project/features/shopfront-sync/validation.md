@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Inventory coverage summary recovery (2026-11-08)
+
+- Authenticated read-only SKR browser check showed the Inventory page's first 40 Shopfront-linked products with non-zero inventory and source cost. Example `-196 LEMON P/F 6% 330ML`: 4 cases + 8 items (128 units), source box cost `$116.75` / 30, unit display `$3.89`, shelf price `$8.99`. The inventory summary's separate crawler Reporting API request returned a temporary service error even though the Odoo `aipos_uat` mirror-backed product rows were available.
+- A read-only audit of `aipos_uat`, company 5, `UATPI/Stock` compared all 10,849 ACTIVE Shopfront products: 0 missing canonical products and 0 quantity mismatches. Shopfront source mirror contains 10,849 active products, 10,852 inventory rows and 50,914 positive units. Seven source-cost-positive products still have zero Odoo `standard_price`; source cost remains visible read-only and is not written when pack/tax evidence is insufficient.
+- Candidate change calculates active product, cost, mapping, inventory coverage and snapshot timestamp in the same Odoo mirror-backed inventory snapshot as the rows, and serves this summary without a second Reporting API request. The summary labels source values separately from signed Odoo balances. Legacy historical/reporting endpoints remain available.
+- Candidate verification: POS UI `npm run typecheck` PASS; targeted ESLint PASS (0 errors; 9 existing warnings); `npm run test:unit` PASS (202 tests); `git diff --check` PASS. No crawler task, Shopfront write, or Odoo business-data write was issued.
+- Deployment/runtime acceptance is pending this candidate's `main` commit and Dokploy SHA. This does not resolve the crawler's missing Shopfront OAuth report scopes, verify report sales/purchase parity, or establish the tax basis of source cost.
+
 ## Inventory default view correction (2026-11-08)
 
 - Read-only authenticated SKR API check: Products coverage was 10,849 active/mapped products, 50,914 positive Shopfront units, and 10,849 inventory rows. Inventory sorted by `shopfront_quantity desc` returned 465, 456, 425, 422, and 400 units on the first five rows; each row exposed Shopfront cost and Odoo quantity matched source quantity.

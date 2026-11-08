@@ -61,3 +61,14 @@ test("snapshots are query/session bound, expire, and are bounded", () => {
   for (let index = 0; index < 32; index += 1) saveInventorySnapshot("other", rows, inventoryTotals(rows), 1);
   assert.equal(getInventorySnapshot(token, "session-company-query-sort", 1), null);
 });
+
+test("inventory snapshots retain the Shopfront coverage summary for every page", () => {
+  const coverage = {
+    activeProducts: 10849, productsWithCost: 10171, zeroCostProducts: 856,
+    mappedProducts: 10849, unmappedProducts: 0, ambiguousReferences: 5,
+    positiveInventoryUnits: 50914, negativeInventoryRows: 5374,
+    inventoryProductRows: 10849, inventorySnapshotAt: "2026-11-08T02:34:46+08:00",
+  };
+  const id = saveInventorySnapshot("shopfront-coverage", [], inventoryTotals([]), 1000, coverage);
+  assert.deepEqual(getInventorySnapshot(id, "shopfront-coverage", 1001)?.shopfrontCoverage, coverage);
+});

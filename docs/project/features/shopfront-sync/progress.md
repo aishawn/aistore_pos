@@ -2,6 +2,12 @@
 
 Updated: 2026-11-08. Owner: TBD.
 
+## Inventory coverage summary recovery (2026-11-08)
+
+- Live SKR authenticated read-only check: Inventory rows already show Shopfront stock, case cost, price and category. The bottom Shopfront summary fails because it independently calls the crawler Reporting API, while the product rows read the Odoo Shopfront mirror.
+- Candidate uses the same complete Odoo-backed inventory snapshot to report active source products, cost coverage, mapped references, inventory row coverage, positive source units and snapshot time. This removes the unnecessary reporting-proxy dependency from the inventory page summary and keeps Shopfront values distinct from Odoo balances.
+- Read-only `aipos_uat` comparison remains 10,849 active source products, 10,852 source inventory rows, 50,914 positive source units, 0 stock mismatches; 7 positive source costs are still absent in Odoo standard cost. No data write was issued. Candidate checks and deployment state are in [validation](validation.md).
+
 ## Inventory default view correction (2026-11-08)
 
 - Live SKR API verification after the previous deployment returned 10,849 Shopfront products, 50,914 positive source units, and source/Odoo quantities matching on the full active scope. The first Products rows were zero-stock `$...` gift-card/recharge records because the catalogue is name-sorted; this was a misleading viewport, not a failed inventory sync.

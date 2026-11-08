@@ -1,16 +1,29 @@
 import { randomUUID } from "node:crypto";
 import type { InventoryRow, InventoryTotals } from "./inventory-report";
 
-type Snapshot = { key: string; expires: number; rows: InventoryRow[]; totals: InventoryTotals };
+export type InventoryShopfrontCoverage = {
+  activeProducts: number;
+  productsWithCost?: number;
+  zeroCostProducts?: number;
+  mappedProducts: number;
+  unmappedProducts: number;
+  ambiguousReferences: number;
+  positiveInventoryUnits: number;
+  negativeInventoryRows: number;
+  inventoryProductRows: number;
+  inventorySnapshotAt: string | null;
+};
+
+type Snapshot = { key: string; expires: number; rows: InventoryRow[]; totals: InventoryTotals; shopfrontCoverage?: InventoryShopfrontCoverage };
 const snapshots = new Map<string, Snapshot>();
 const TTL = 5 * 60_000;
 
 /** Process-local, bounded, short-lived and bound to the session, company and full query. */
-export function saveInventorySnapshot(key: string, rows: InventoryRow[], totals: InventoryTotals, now = Date.now()) {
+export function saveInventorySnapshot(key: string, rows: InventoryRow[], totals: InventoryTotals, now = Date.now(), shopfrontCoverage?: InventoryShopfrontCoverage) {
   for (const [id, snapshot] of snapshots) if (snapshot.expires <= now) snapshots.delete(id);
   while (snapshots.size >= 32) snapshots.delete(snapshots.keys().next().value!);
   const id = randomUUID();
-  snapshots.set(id, { key, rows, totals, expires: now + TTL });
+  snapshots.set(id, { key, rows, totals, shopfrontCoverage, expires: now + TTL });
   return id;
 }
 

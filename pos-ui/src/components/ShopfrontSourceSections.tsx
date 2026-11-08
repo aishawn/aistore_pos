@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, RefreshCw } from "lucide-react";
 import { parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
 import { formatStoreEpoch } from "@/lib/odoo-date";
+import type { InventoryShopfrontCoverage } from "@/lib/inventory-snapshot";
 
 type SourceRow = Record<string, unknown>;
 type SourceResponse = {
@@ -91,31 +92,20 @@ function SourceState({ loading, error, onRetry, children }: { loading: boolean; 
   return <>{children}</>;
 }
 
-export function ShopfrontInventorySummary({ odooProductCount }: { odooProductCount?: number }) {
-  const state = useSourceSection("report-inventory", "", true);
-  const inventory = state.data?.coverage?.inventory;
-  const catalog = state.data?.coverage?.catalog;
-  const totals = state.data?.totals ?? {};
-  const snapshotTime = inventory?.snapshot_at || state.data?.fetched_at;
-  const snapshotEpoch = snapshotTime ? Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(snapshotTime) ? snapshotTime : `${snapshotTime}Z`) : Number.NaN;
-  const fetchedEpoch = state.data?.fetched_at ? Date.parse(/[zZ]|[+-]\d{2}:?\d{2}$/.test(state.data.fetched_at) ? state.data.fetched_at : `${state.data.fetched_at}Z`) : Number.NaN;
-  const snapshotAgeMs = Number.isFinite(snapshotEpoch) && Number.isFinite(fetchedEpoch) ? fetchedEpoch - snapshotEpoch : null;
-  const snapshotIsStale = snapshotAgeMs !== null && snapshotAgeMs > 24 * 60 * 60 * 1000;
-  return <SectionFrame title="Shopfront inventory snapshot" expanded={state.expanded} setExpanded={state.setExpanded}>
-    <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
-      {state.data && <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-        <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront active products</span><strong>{number(catalog?.active_records)}</strong></p>
-        {typeof odooProductCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Odoo saleable variants</span><strong>{number(odooProductCount)}</strong></p>}
-        <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront positive units</span><strong>{number(inventory?.positive_quantity_total)}</strong></p>
-        <p><span className="block text-xs text-[var(--oh-muted)]">Source rows</span><strong>{number(state.data.pagination?.total)}</strong></p>
-        <p><span className="block text-xs text-[var(--oh-muted)]">Item level</span><strong>{number(totals.item_level)}</strong></p>
-        <p><span className="block text-xs text-[var(--oh-muted)]">Case level</span><strong>{number(totals.case_level)}</strong></p>
-        <p><span className="block text-xs text-[var(--oh-muted)]">Last cost value</span><strong>{totals.value_last_cost_complete === 1 ? money(totals.value_last_cost) : "—"}</strong></p>
-        <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront counts ACTIVE source product records. Odoo counts active, saleable variants in this company and warehouse, including products without a Shopfront link; a multi-variant product counts once per variant. Shopfront units come from its dated source snapshot; Odoo units use positive on-hand balances and exclude negatives. These are separate read-only sources, not a one-to-one reconciliation. Snapshot {inventory?.complete === true ? "complete" : "coverage unverified"} · {snapshotTime && Number.isFinite(snapshotEpoch) ? formatStoreEpoch(snapshotEpoch, "Australia/Adelaide") : "timestamp unavailable"}{inventory?.negative_records ? ` · ${number(inventory.negative_records)} negative source balances` : ""} · excluded from Odoo inventory balances.</p>
-        {snapshotIsStale && <p role="status" className="basis-full text-xs text-amber-800">This Shopfront inventory snapshot is over 24 hours old; it cannot confirm current Odoo stock.</p>}
-      </div>}
-      {state.data?.pagination?.total === 0 && <p role="status" className="mt-2 text-sm text-[var(--oh-muted)]">No Shopfront inventory records are available for this store.</p>}
-    </SourceState>
+export function ShopfrontInventorySummary({ odooProductCount, coverage }: { odooProductCount?: number; coverage?: InventoryShopfrontCoverage | null }) {
+  const [expanded, setExpanded] = useState(false);
+  const sourceCoverage = coverage ?? null;
+  return <SectionFrame title="Shopfront inventory snapshot" expanded={expanded} setExpanded={setExpanded}>
+    {sourceCoverage && <div className="flex flex-wrap gap-x-8 gap-y-3 p-4 text-sm">
+      <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront active products</span><strong>{number(sourceCoverage.activeProducts)}</strong></p>
+      {typeof odooProductCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Odoo saleable variants</span><strong>{number(odooProductCount)}</strong></p>}
+      <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront positive units</span><strong>{number(sourceCoverage.positiveInventoryUnits)}</strong></p>
+      <p><span className="block text-xs text-[var(--oh-muted)]">Inventory-covered products</span><strong>{number(sourceCoverage.inventoryProductRows)} / {number(sourceCoverage.activeProducts)}</strong></p>
+      {typeof sourceCoverage.productsWithCost === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Products with source cost</span><strong>{number(sourceCoverage.productsWithCost)}</strong></p>}
+      {typeof sourceCoverage.zeroCostProducts === "number" && sourceCoverage.zeroCostProducts > 0 && <p><span className="block text-xs text-[var(--oh-muted)]">Source-reported $0 cost</span><strong>{number(sourceCoverage.zeroCostProducts)}</strong></p>}
+      {expanded && <p className="basis-full text-xs text-[var(--oh-muted)]">Shopfront source mirror · read-only · {sourceCoverage.inventorySnapshotAt ? `snapshot ${formatStoreEpoch(Date.parse(sourceCoverage.inventorySnapshotAt), "Australia/Adelaide")}` : "snapshot time unavailable"}. The report rows and totals above use the same canonical Shopfront-linked products. Positive source stock is shown separately from signed Odoo on-hand balances.</p>}
+    </div>}
+    {!sourceCoverage && <p role="status" className="px-4 pb-4 text-sm text-amber-800">Shopfront coverage is unavailable; the rows remain marked by source status.</p>}
   </SectionFrame>;
 }
 

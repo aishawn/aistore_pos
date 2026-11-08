@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Shopfront inventory summary recovery candidate (`2026-11-08`): authenticated SKR Inventory showed nonzero source rows and cost, while the separate source reporting request failed. Candidate reuses Shopfront mirror coverage from the same complete inventory snapshot. Typecheck pass, targeted ESLint 0 errors / 9 warnings, UI unit suite 202/202 pass; deployment/runtime verification pending. [Session](test-sessions/2026-11-08-shopfront-inventory-summary-recovery.md) [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
+
 Latest Shopfront inventory viewport correction (`2026-11-08`): Inventory now defaults to Shopfront stock descending. Authenticated SKR verification returned 50,914 positive source units, 0 quantity mismatches, and non-zero source costs on stock-ranked rows; the earlier all-zero first page was name-sorted gift-card/recharge inventory. [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
 
 Latest Shopfront inventory scope and coverage fix (`2026-11-08`): runtime `68b2c7ef` on SKR. Products and Inventory now share 10,849 Shopfront canonical products; read-only verification found 50,914 positive units, 0 unmapped products, 0 stock mismatches, 9,993 non-zero-cost products, and 856 real zero-cost products. [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).

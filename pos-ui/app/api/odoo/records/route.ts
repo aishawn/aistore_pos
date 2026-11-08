@@ -10,7 +10,7 @@ import { catalogueDomain } from "@/lib/product-catalogue";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { createHash } from "node:crypto";
 import { INVENTORY_SORTS, inventoryTotals, sortInventory, type InventoryRow, type InventorySort, type InventoryDirection } from "@/lib/inventory-report";
-import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot } from "@/lib/inventory-snapshot";
+import { findInventorySnapshot, getInventorySnapshot, saveInventorySnapshot, type InventoryShopfrontCoverage } from "@/lib/inventory-snapshot";
 import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 import { enrichShopfrontInventoryRows, resolveShopfrontCatalogueMappings, shopfrontCostFromPayload, shopfrontFieldStatus, summarizeShopfrontInventory } from "@/lib/shopfront-catalogue";
 
@@ -496,6 +496,7 @@ export async function POST(request: NextRequest) {
         try {
           const rows: InventoryRow[] = [];
           let costReadable = true;
+          let sourceCoverage: InventoryShopfrontCoverage | undefined;
           let afterId = 0;
           for (;;) {
             const readBatch = () => rpc<InventoryRow[]>(config.model, "search_read", [[...domain, ["id", ">", afterId]]], {
@@ -530,9 +531,22 @@ export async function POST(request: NextRequest) {
               const templates = sourceRefs.length
                 ? await rpc<Array<{ id: number; shopfront_source_ref?: string | false; active?: boolean; sale_ok?: boolean; default_code?: string | false }>>("product.template", "search_read", [[ ["shopfront_source_ref", "in", sourceRefs], ...companyDomain(companyIds, true) ]], { fields: ["id", "shopfront_source_ref", "active", "sale_ok", "default_code"], limit: sourceRefs.length * 2 })
                 : [];
+              const mapping = resolveShopfrontCatalogueMappings(sourceStore, sourceProducts, templates);
               const inventoryRows = activeSourceIds.length
                 ? await rpc<Array<{ source_product_id: string; quantity?: number; snapshot_at?: string }>>("shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", activeSourceIds] ]], { fields: ["source_product_id", "quantity", "snapshot_at"], limit: activeSourceIds.length * 2, context: companyContext })
                 : [];
+              const inventorySummary = summarizeShopfrontInventory(inventoryRows, new Set(activeSourceIds));
+              sourceCoverage = {
+                activeProducts: mapping.activeProductCount,
+                ...(canReadProductCost ? {
+                  productsWithCost: sourceProducts.filter((product) => String(product.source_status || "").toUpperCase() === "ACTIVE" && typeof shopfrontCostFromPayload(product.cost, product.raw_payload) === "number" && Number(shopfrontCostFromPayload(product.cost, product.raw_payload)) > 0).length,
+                  zeroCostProducts: sourceProducts.filter((product) => String(product.source_status || "").toUpperCase() === "ACTIVE" && shopfrontCostFromPayload(product.cost, product.raw_payload) === 0).length,
+                } : {}),
+                mappedProducts: mapping.mappedProductCount,
+                unmappedProducts: mapping.unmappedProductCount,
+                ambiguousReferences: mapping.ambiguousReferenceCount,
+                ...inventorySummary,
+              };
               const inventoryLevels = activeSourceIds.length
                 ? await rpc<Array<{ source_product_id: string; single_level?: number; case_level?: number }>>("shopfront.sync.inventory", "search_read", [[ ["store_key", "=", sourceStore], ["source_product_id", "in", activeSourceIds] ]], { fields: ["source_product_id", "single_level", "case_level"], limit: activeSourceIds.length * 2, context: companyContext }).catch(() => [])
                 : [];
@@ -560,7 +574,7 @@ export async function POST(request: NextRequest) {
           }
           const sorted = sortInventory(enrichedRows, sortBy, sortDirection, new Map(categories.map((item) => [item.id, item.name])));
           for (const row of sorted) delete row.standard_price;
-          snapshotId = saveInventorySnapshot(key, sorted, totals);
+          snapshotId = saveInventorySnapshot(key, sorted, totals, Date.now(), sourceCoverage);
           snapshot = getInventorySnapshot(snapshotId, key)!;
         } catch (error) {
           const status = error instanceof Error && "status" in error ? Number(error.status) : 502;
@@ -569,7 +583,7 @@ export async function POST(request: NextRequest) {
       }
       let items: unknown[] = snapshot.rows.slice(offset, offset + limit).map((row) => ({ ...row }));
       if (sortBy !== "price_included") items = await withTaxInclusivePrices(sessionId, items, correlationId);
-      return NextResponse.json({ items, limit, offset, hasNext: offset + limit < snapshot.rows.length, snapshotId, generatedAt: new Date(snapshot.expires - 300_000).toISOString(), total: snapshot.totals.totalItems, ...snapshot.totals }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ items, limit, offset, hasNext: offset + limit < snapshot.rows.length, snapshotId, generatedAt: new Date(snapshot.expires - 300_000).toISOString(), total: snapshot.totals.totalItems, ...snapshot.totals, ...(snapshot.shopfrontCoverage ? { shopfrontCoverage: snapshot.shopfrontCoverage } : {}) }, { headers: { "Cache-Control": "no-store" } });
     }
 
     // After sample purge, hide seeded demo POS orders so History matches Reporting.
