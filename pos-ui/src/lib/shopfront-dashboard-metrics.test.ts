@@ -2,15 +2,30 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
 
-test("Shopfront sales KPI validates and uses source Profit / Revenue", () => {
+test("Shopfront sales KPI validates source Profit and computes margin from Revenue minus COGS", () => {
   const result = parseShopfrontSalesReport({
     data: [{ Revenue: 4494.56, "Cost of Goods Sold": 3074.14, Profit: 1420.42, "Profit Percentage": "31.60%", "Transaction Count": 164 }],
     pagination: { total: 1, returned: 1 }, fetched_at: "2026-11-05T14:00:00Z",
   });
   assert.equal(result?.revenue, 4494.56);
-  assert.ok(Math.abs((result?.grossMargin ?? 0) - 1420.42 / 4494.56) < 1e-12);
+  assert.equal(result?.cost, 3074.14);
+  assert.equal(result?.calculatedProfit, 1420.42);
+  assert.equal(result?.reportedProfit, 1420.42);
+  assert.equal(result?.profitDelta, 0);
+  assert.ok(Math.abs((result?.grossMargin ?? 0) - (4494.56 - 3074.14) / 4494.56) < 1e-12);
   assert.equal(result?.transactionCount, 164);
   assert.equal(result?.fetchedAt, "2026-11-05T14:00:00Z");
+});
+
+test("reported profit is comparison-only when it differs within source rounding tolerance", () => {
+  const result = parseShopfrontSalesReport({
+    data: [{ Revenue: 100, "Cost of Goods Sold": 60, Profit: 40.01, "Profit Percentage": "40.01%", "Transaction Count": 1 }],
+    pagination: { total: 1, returned: 1 },
+  });
+  assert.equal(result?.calculatedProfit, 40);
+  assert.equal(result?.reportedProfit, 40.01);
+  assert.equal(result?.profitDelta, -0.01);
+  assert.equal(result?.grossMargin, 0.4);
 });
 
 test("incomplete and internally inconsistent Shopfront reports are not displayed as exact", () => {

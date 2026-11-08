@@ -21,6 +21,10 @@ function field(row: RecordValue, ...names: string[]): unknown {
 
 export type ShopfrontSalesMetrics = {
   revenue: number;
+  cost: number;
+  calculatedProfit: number;
+  reportedProfit: number;
+  profitDelta: number;
   grossMargin: number | null;
   transactionCount: number;
   fetchedAt: string | null;
@@ -67,7 +71,8 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
     || pagination.returned !== rows.length || pagination.total !== rows.length) return null;
 
   let revenue = 0;
-  let profit = 0;
+  let cost = 0;
+  let reportedProfit = 0;
   let transactions = 0;
   for (const value of rows) {
     const row = object(value);
@@ -81,12 +86,18 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
       || Math.abs(rowProfit - (rowRevenue - rowCost)) > 0.021
       || (rowRevenue !== 0 && Math.abs(rowProfitPercent - (rowProfit / rowRevenue * 100)) > 0.021)) return null;
     revenue += rowRevenue;
-    profit += rowProfit;
+    cost += rowCost;
+    reportedProfit += rowProfit;
     transactions += rowTransactions;
   }
+  const calculatedProfit = revenue - cost;
   return {
     revenue: Math.round(revenue * 100) / 100,
-    grossMargin: revenue > 0 ? profit / revenue : null,
+    cost: Math.round(cost * 100) / 100,
+    calculatedProfit: Math.round(calculatedProfit * 100) / 100,
+    reportedProfit: Math.round(reportedProfit * 100) / 100,
+    profitDelta: Math.round((calculatedProfit - reportedProfit) * 100) / 100,
+    grossMargin: revenue > 0 ? calculatedProfit / revenue : null,
     transactionCount: transactions,
     fetchedAt: fetchedAt(report?.fetched_at),
   };
