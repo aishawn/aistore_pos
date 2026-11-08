@@ -21,11 +21,13 @@ import { fetchPreparedReport } from "@/lib/report-client";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
-import type { ReportPeriod, ReportQueryPeriod } from "@/lib/report-period";
+import type { ReportQueryPeriod } from "@/lib/report-period";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { ShopfrontSalesSummary } from "@/components/ShopfrontSourceSections";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
 import { shiftDay } from "@/lib/replenishment-safety";
+
+type DashboardPeriod = ReportQueryPeriod | "custom";
 
 type RecentSale = {
   id: number;
@@ -47,7 +49,7 @@ type OverviewData = {
   sourceSyncedThrough?: string | null;
   sourceSyncUpdatedAt?: string | null;
   dataRevision?: string;
-  period?: ReportPeriod;
+  period?: DashboardPeriod;
   comparisonLabel?: string;
   rangeHours: number;
   from: string;
@@ -109,7 +111,6 @@ const OVERVIEW_RANGES = [
   { period: "last_week", label: "Last week" },
   { period: "last_month", label: "Last month" },
 ] as const;
-type DashboardPeriod = ReportQueryPeriod | "custom";
 
 function normalizeDashboardPeriod(value: string | null): DashboardPeriod | null {
   if (value === "last_7_days") return "last_week";
