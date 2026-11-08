@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eye, LoaderCircle, Printer, RefreshCw } from "lucide-react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
+import { readJsonApiResponse } from "@/lib/json-api-response";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { salesDate, shiftDay } from "@/lib/replenishment-safety";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
@@ -41,7 +42,7 @@ export function SalesReportPage() {
     try {
       const params = new URLSearchParams({ from: dates.from, to: dates.to, group, offset: String(offset) });
       const response = await fetchOdooRoute(`/api/odoo/sales-report?${params}`, { credentials: "same-origin", cache: "no-store" });
-      const body = await response.json() as SalesReport & { message?: string };
+      const body = await readJsonApiResponse<SalesReport & { message?: string }>(response, "Sales report request");
       if (!response.ok || !Array.isArray(body.rows)) throw new Error(body.message || "Sales report is unavailable.");
       if (revision === requestRevision.current) setReport((current) => offset ? { ...body, rows: [...(current?.rows ?? []), ...body.rows] } : body);
       if (offset === 0 && comparison !== "none") {
@@ -50,7 +51,7 @@ export function SalesReportPage() {
           try {
             const compareParams = new URLSearchParams({ from: range.from, to: range.to, group });
             const compareResponse = await fetchOdooRoute(`/api/odoo/sales-report?${compareParams}`, { credentials: "same-origin", cache: "no-store" });
-            const compareBody = await compareResponse.json() as SalesReport & { message?: string };
+            const compareBody = await readJsonApiResponse<SalesReport & { message?: string }>(compareResponse, "Sales comparison request");
             if (!compareResponse.ok || !Array.isArray(compareBody.rows)) throw new Error(compareBody.message || "Comparison period is unavailable.");
             if (revision === requestRevision.current) setComparisonReport(compareBody);
           } catch (cause) {
@@ -115,7 +116,10 @@ export function SalesReportPage() {
       const params = new URLSearchParams({ from: report.from, to: report.to, group: report.group, export: "csv" });
       params.set("columns", REPORT_COLUMNS.map((column) => column.key).filter((key) => selectedColumns.includes(key)).join(","));
       const response = await fetchOdooRoute(`/api/odoo/sales-report?${params}`, { credentials: "same-origin", cache: "no-store" });
-      if (!response.ok) { const body = await response.json() as { message?: string }; throw new Error(body.message || "CSV export failed."); }
+      if (!response.ok) {
+        const body = await readJsonApiResponse<{ message?: string }>(response, "Sales CSV export");
+        throw new Error(body.message || "CSV export failed.");
+      }
       await csvDownload(response, `sales-report-${report.from}-${report.to}.csv`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "CSV export failed."); }
   }
@@ -124,7 +128,7 @@ export function SalesReportPage() {
     try {
       const params = new URLSearchParams({ from: report.from, to: report.to, group: report.group, export: "print" });
       const response = await fetchOdooRoute(`/api/odoo/sales-report?${params}`, { credentials: "same-origin", cache: "no-store" });
-      const body = await response.json() as SalesReport & { message?: string };
+      const body = await readJsonApiResponse<SalesReport & { message?: string }>(response, "Sales print export");
       if (!response.ok || !Array.isArray(body.rows)) throw new Error(body.message || "Could not prepare all report rows for printing.");
       window.addEventListener("afterprint", () => setPrintRows(null), { once: true });
       setPrintRows(body.rows);

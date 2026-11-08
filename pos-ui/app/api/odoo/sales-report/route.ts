@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       orderDomain.push("!", ["uuid", "=like", `demo-seed-${scope.companyId}-%`]);
       lineDomain.push("!", ["order_id.uuid", "=like", `demo-seed-${scope.companyId}-%`]);
     }
-    const rpc = companyReportRpc(scope.companyId);
+    const rpc = companyReportRpc(scope.companyId, undefined, binding.odooWarehouseId, 60_000);
     if (detailKey !== null) {
       const detailPageSize = 100;
       if (group === "day") {

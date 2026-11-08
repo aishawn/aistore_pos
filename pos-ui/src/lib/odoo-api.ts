@@ -511,7 +511,7 @@ async function fetchOdooTransport(input: RequestInfo | URL, init?: RequestInit, 
   let response = await fetch(input, init);
   // A complete replenishment calculation is expensive. Let its explicit Retry
   // action control retries instead of silently running a second full scan.
-  const expensivePlan = reportRead || ["/api/odoo/replenishment", "/api/odoo/reporting-dashboard", "/api/odoo/dead-stock"].some(route => path.split("?")[0].endsWith(route));
+  const expensivePlan = reportRead || ["/api/odoo/replenishment", "/api/odoo/reporting-dashboard", "/api/odoo/dead-stock", "/api/odoo/sales-report"].some(route => path.split("?")[0].endsWith(route));
   if ([404, 502, 503, 504].includes(response.status) && canRetryRoute && !expensivePlan) {
     response = await fetch(input, init);
   }

@@ -14,13 +14,13 @@ function base() {
   return value;
 }
 
-export async function reportEnvelope<T>(path: string, sessionId: string | null, params: unknown, correlationId?: string | null): Promise<{ result: T; cookie: string | null }> {
+export async function reportEnvelope<T>(path: string, sessionId: string | null, params: unknown, correlationId?: string | null, timeoutMs = 15_000): Promise<{ result: T; cookie: string | null }> {
   const headers = new Headers({ "Content-Type": "application/json" });
   if (sessionId) headers.set("Cookie", `session_id=${sessionId}`);
   if (correlationId && /^[a-f0-9-]{36}$/i.test(correlationId)) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${base()}${path}`, {
     method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", method: "call", params, id: Date.now() }),
-    cache: "no-store", signal: AbortSignal.timeout(15_000),
+    cache: "no-store", signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) throw new ReportOdooError("Orithos reporting is unavailable", response.status === 401 ? 401 : 502);
   const payload = await response.json() as { result?: T; error?: { message?: string; data?: { name?: string } } };
@@ -32,15 +32,19 @@ export async function reportEnvelope<T>(path: string, sessionId: string | null, 
   return { result: payload.result, cookie: response.headers.getSetCookie?.().find(value => value.startsWith("session_id="))?.match(/^session_id=([^;]+)/)?.[1] ?? null };
 }
 
-export const reportRpc: ReportRpc = async <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) =>
-  (await reportEnvelope<T>("/web/dataset/call_kw", sessionId, { model, method, args, kwargs }, correlationId)).result;
+async function reportRpcCall<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null, timeoutMs = 15_000) {
+  return (await reportEnvelope<T>("/web/dataset/call_kw", sessionId, { model, method, args, kwargs }, correlationId, timeoutMs)).result;
+}
 
-export function companyReportRpc(companyId: number, onCall?: () => void, warehouseId?: number | null): ReportRpc {
+export const reportRpc: ReportRpc = async <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) =>
+  reportRpcCall<T>(sessionId, model, method, args, kwargs, correlationId);
+
+export function companyReportRpc(companyId: number, onCall?: () => void, warehouseId?: number | null, timeoutMs = 15_000): ReportRpc {
   return <T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) => {
     onCall?.();
     const context = { ...(kwargs.context as object), allowed_company_ids: [companyId], force_company: companyId,
       ...(warehouseId && warehouseId > 0 ? { warehouse: warehouseId } : {}) };
-    return reportRpc<T>(sessionId, model, method, args, { ...kwargs, context }, correlationId);
+    return reportRpcCall<T>(sessionId, model, method, args, { ...kwargs, context }, correlationId, timeoutMs);
   };
 }
 
