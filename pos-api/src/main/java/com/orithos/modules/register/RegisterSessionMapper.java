@@ -79,7 +79,7 @@ public interface RegisterSessionMapper {
     int countUnmappedPayments(@Param("registerId") Long registerId, @Param("outletId") Long outletId,
                               @Param("openedAt") LocalDateTime openedAt, @Param("closedAt") LocalDateTime closedAt);
 
-    @Select("SELECT COUNT(DISTINCT s.id) FROM sale s WHERE s.register_id=#{registerId} AND s.outlet_id=#{outletId} AND s.local_sold_at >= #{openedAt} AND s.local_sold_at <= #{closedAt} AND s.status IN ('COMPLETED','PENDING')")
+    @Select("SELECT COUNT(DISTINCT s.id) FROM sale s WHERE s.register_id=#{registerId} AND s.outlet_id=#{outletId} AND s.local_sold_at >= #{openedAt} AND s.local_sold_at <= #{closedAt} AND s.status IN ('COMPLETED','PENDING','REFUNDED')")
     int countSessionSales(@Param("registerId") Long registerId, @Param("outletId") Long outletId, @Param("openedAt") LocalDateTime openedAt, @Param("closedAt") LocalDateTime closedAt);
 
     @Select("SELECT COUNT(*) FROM sale WHERE register_id=#{registerId} AND outlet_id=#{outletId} "

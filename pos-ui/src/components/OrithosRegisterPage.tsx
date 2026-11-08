@@ -1,26 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, LoaderCircle, Plus, RefreshCw, ShoppingBasket, X } from "lucide-react";
+import { AlertCircle, LoaderCircle, Plus, RefreshCw, RotateCcw, ShoppingBasket, X } from "lucide-react";
 import {
+  api,
   browseProducts,
   checkoutSale,
   getRetailRegisterSession,
   listRetailRegisters,
   openRetailRegisterSession,
   quoteSale,
+  refundSale,
   type CheckoutPayload,
   type CheckoutQuote,
+  type Page,
   type ProductBrowseItem,
   type RetailRegister,
   type RetailRegisterSession,
+  type SaleForRefund,
+  type SaleRefundResponse,
 } from "@/lib/api";
 import { ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 type CartLine = { product: ProductBrowseItem; quantity: number };
 type Receipt = { reference: string; total: number; gst: number; change: number; lines: CartLine[] };
 type CheckoutAttempt = { key: string; payload: CheckoutPayload; lines: CartLine[] };
+type RefundPayload = { registerId: number; reason: string; lines: Array<{ saleItemId: number; quantity: number }> };
+type RefundAttempt = { saleId: number; key: string; fingerprint: string; payload: RefundPayload };
 const PENDING_CHECKOUT_KEY = "orithos.native-checkout.pending.v1";
+const PENDING_REFUND_KEY = "orithos.native-refund.pending.v1";
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
@@ -43,8 +52,20 @@ function NativeOrithosRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [productsRevision, setProductsRevision] = useState(0);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundSales, setRefundSales] = useState<SaleForRefund[]>([]);
+  const [refundSalesLoading, setRefundSalesLoading] = useState(false);
+  const [selectedRefundSale, setSelectedRefundSale] = useState<SaleForRefund | null>(null);
+  const [refundQuantities, setRefundQuantities] = useState<Record<number, string>>({});
+  const [refundReason, setRefundReason] = useState("");
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [refundResult, setRefundResult] = useState<SaleRefundResponse | null>(null);
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundRecovery, setRefundRecovery] = useState(false);
   const openAttemptKey = useRef<string | null>(null);
   const checkoutAttempt = useRef<CheckoutAttempt | null>(null);
+  const refundAttempt = useRef<RefundAttempt | null>(null);
+  const { hasPermission } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -87,6 +108,21 @@ function NativeOrithosRegisterPage() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const pending = JSON.parse(sessionStorage.getItem(PENDING_REFUND_KEY) ?? "null") as Partial<RefundAttempt> | null;
+        if (!pending || typeof pending.saleId !== "number" || typeof pending.key !== "string"
+            || typeof pending.fingerprint !== "string" || !pending.payload
+            || typeof pending.payload.registerId !== "number" || typeof pending.payload.reason !== "string"
+            || !Array.isArray(pending.payload.lines)) return;
+        refundAttempt.current = pending as RefundAttempt;
+        setRefundRecovery(true);
+      } catch { /* Keep invalid or unavailable browser storage from blocking the register. */ }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     const timer = window.setTimeout(() => {
       setProductsLoading(true);
@@ -124,6 +160,23 @@ function NativeOrithosRegisterPage() {
     ? JSON.stringify([registerId, cart.map(({ product, quantity: count }) => [product.id, count, product.price])])
     : null;
   const currentQuote = currentQuoteFingerprint && quotedFingerprint === currentQuoteFingerprint ? quote : null;
+  const refundPreview = useMemo(() => {
+    let amount = 0;
+    let gst = 0;
+    let count = 0;
+    for (const line of selectedRefundSale?.items ?? []) {
+      const quantity = Number(refundQuantities[line.id] ?? "");
+      if (!Number.isFinite(quantity) || quantity <= 0 || quantity > line.refundableQuantity || line.quantity <= 0) continue;
+      const finalQuantity = quantity === line.refundableQuantity;
+      const factor = quantity / line.quantity;
+      const lineTotal = Number(line.totalPrice ?? 0);
+      const lineTax = Number(line.tax ?? 0);
+      amount += finalQuantity ? line.refundableAmount : Math.round(lineTotal * factor * 100) / 100;
+      gst += finalQuantity ? line.refundableTax : Math.round(lineTax * factor * 100) / 100;
+      count += 1;
+    }
+    return count ? { amount, gst, cashPaid: Math.round(amount * 20) / 20 } : null;
+  }, [refundQuantities, selectedRefundSale]);
 
   async function startSession() {
     if (!registerId) return;
@@ -246,6 +299,105 @@ function NativeOrithosRegisterPage() {
     }
   }
 
+  async function openRefundWorkspace() {
+    if (refundAttempt.current) { await resumePendingRefund(); return; }
+    setRefundOpen(true);
+    setRefundError(null);
+    setSelectedRefundSale(null);
+    setRefundQuantities({});
+    setRefundSalesLoading(true);
+    try {
+      const result = await api.get<Page<SaleForRefund>>("/api/sales", { status: "COMPLETED", page: 1, size: 30 });
+      setRefundSales(result.items ?? []);
+    } catch (cause) {
+      setRefundError(cause instanceof Error ? cause.message : "Could not load completed sales.");
+    } finally {
+      setRefundSalesLoading(false);
+    }
+  }
+
+  async function selectRefundSale(id: number) {
+    setRefundError(null);
+    setSelectedRefundSale(null);
+    setRefundQuantities({});
+    try {
+      setSelectedRefundSale(await api.get<SaleForRefund>(`/api/sales/${id}`));
+    } catch (cause) {
+      setRefundError(cause instanceof Error ? cause.message : "Could not load sale details.");
+    }
+  }
+
+  async function resumePendingRefund() {
+    const attempt = refundAttempt.current;
+    if (!attempt) return;
+    setRefundOpen(true);
+    setRefundError(null);
+    try {
+      setSelectedRefundSale(await api.get<SaleForRefund>(`/api/sales/${attempt.saleId}`));
+      setRefundReason(attempt.payload.reason);
+      setRefundQuantities(Object.fromEntries(attempt.payload.lines.map((line) => [line.saleItemId, String(line.quantity)])));
+    } catch (cause) {
+      setRefundError(cause instanceof Error ? cause.message : "Could not recover the pending refund.");
+    }
+  }
+
+  async function submitRefund() {
+    if (!selectedRefundSale || (!refundRecovery && (!registerId || !session))) return;
+    const pending = refundAttempt.current;
+    const lines = refundRecovery && pending
+      ? pending.payload.lines
+      : (selectedRefundSale.items ?? []).flatMap((line) => {
+        const quantity = Number(refundQuantities[line.id] ?? "");
+        return Number.isFinite(quantity) && quantity > 0 ? [{ saleItemId: line.id, quantity }] : [];
+      });
+    const reason = refundRecovery && pending ? pending.payload.reason : refundReason.trim();
+    if (!lines.length) { setRefundError("Enter a refund quantity for at least one line."); return; }
+    if (!reason) { setRefundError("Enter a refund reason."); return; }
+    const payload = refundRecovery && pending ? pending.payload : { registerId: registerId!, reason, lines };
+    const fingerprint = JSON.stringify([selectedRefundSale.id, payload]);
+    const retryingSameRequest = Boolean(refundRecovery && pending && pending.fingerprint === fingerprint);
+    if (refundRecovery && !retryingSameRequest) {
+      setRefundError("Resolve the pending refund by retrying its original request before starting another refund.");
+      return;
+    }
+    if (!retryingSameRequest && lines.some((line) => line.quantity > ((selectedRefundSale.items ?? []).find((item) => item.id === line.saleItemId)?.refundableQuantity ?? 0))) {
+      setRefundError("A quantity exceeds the remaining refundable amount. Refresh the sale and review it.");
+      return;
+    }
+    if (!pending || pending.fingerprint !== fingerprint) {
+      refundAttempt.current = { saleId: selectedRefundSale.id, payload, fingerprint, key: crypto.randomUUID() };
+    }
+    const attempt = refundAttempt.current!;
+    setRefundBusy(true);
+    setRefundError(null);
+    try {
+      try { sessionStorage.setItem(PENDING_REFUND_KEY, JSON.stringify(attempt)); }
+      catch {
+        refundAttempt.current = null;
+        setRefundRecovery(false);
+        setRefundError("Browser storage is unavailable. The refund was not submitted; enable session storage and retry.");
+        return;
+      }
+      const result = await refundSale(attempt.saleId, attempt.payload, attempt.key);
+      setRefundResult(result);
+      refundAttempt.current = null;
+      setRefundRecovery(false);
+      try { sessionStorage.removeItem(PENDING_REFUND_KEY); } catch { /* Keep the confirmed result visible. */ }
+      setRefundOpen(false);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status < 500) {
+        refundAttempt.current = null;
+        setRefundRecovery(false);
+        try { sessionStorage.removeItem(PENDING_REFUND_KEY); } catch { /* Preserve the server error. */ }
+      } else {
+        setRefundRecovery(true);
+      }
+      setRefundError(cause instanceof Error ? cause.message : "Refund failed.");
+    } finally {
+      setRefundBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1500px] flex-col gap-4 p-4 text-[var(--oh-text)] lg:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
@@ -254,6 +406,7 @@ function NativeOrithosRegisterPage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Orithos register {selectedRegister ? `· ${selectedRegister.name}` : "· no register configured"}</p>
         </div>
         <div className="flex items-center gap-2">
+          {hasPermission("sell.refund") && <button type="button" onClick={() => void openRefundWorkspace()} disabled={!session || busy} title="Refund a completed sale" aria-label="Refund a completed sale" className="inline-flex h-10 items-center gap-2 rounded border border-[var(--oh-border)] px-3 text-sm font-semibold disabled:opacity-50"><RotateCcw size={16} /> Refund</button>}
           <select aria-label="Register" value={registerId ?? ""} disabled={checkoutRecovery || openAttemptPending} onChange={(event) => {
             const id = Number(event.target.value);
             setRegisterId(id);
@@ -270,6 +423,26 @@ function NativeOrithosRegisterPage() {
 
       {checkoutRecovery && <div role="status" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">A previous payment response is pending. Retry the same payment to confirm its result; the cart is locked to prevent a duplicate sale.</div>}
       {error && <div role="alert" className="flex items-start gap-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"><AlertCircle size={18} className="mt-0.5 shrink-0" />{error}</div>}
+      {refundRecovery && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>A refund response is unconfirmed. Retry the exact same request to check its recorded result.</span><button type="button" onClick={() => void resumePendingRefund()} className="min-h-9 rounded border border-amber-500 px-3 font-semibold">Retry same refund</button></div>}
+
+      {refundResult && <section aria-live="polite" className="flex flex-wrap items-center justify-between gap-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div><strong>Refund recorded · {refundResult.invoiceId}</strong><span className="ml-3">{money(refundResult.amount)} incl. GST {money(refundResult.gst)} · cash paid {money(refundResult.cashPaid)}</span><span className="ml-3">Original {refundResult.originalSaleId}</span></div><button type="button" onClick={() => setRefundResult(null)} title="Dismiss refund receipt" aria-label="Dismiss refund receipt" className="grid size-8 place-items-center rounded border border-amber-400"><X size={16} /></button></section>}
+
+      {refundOpen && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-3" onMouseDown={(event) => { if (event.target === event.currentTarget && !refundBusy) setRefundOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="native-refund-title" className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded border border-[var(--oh-border)] bg-white shadow-xl">
+          <header className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3"><div><h2 id="native-refund-title" className="font-semibold">Refund sale</h2><p className="mt-0.5 text-sm text-[var(--oh-muted)]">Cash refunds link to the original sale and return items to stock.</p></div><button type="button" onClick={() => setRefundOpen(false)} disabled={refundBusy} title="Close refund" aria-label="Close refund" className="grid size-10 place-items-center rounded border border-[var(--oh-border)] disabled:opacity-50"><X size={17} /></button></header>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            {refundError && <div role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{refundError}</div>}
+            <label className="grid gap-1 text-sm font-medium">Completed sale<select aria-label="Completed sale to refund" disabled={refundSalesLoading || refundBusy || refundRecovery} value={selectedRefundSale?.id ?? ""} onChange={(event) => { const id = Number(event.target.value); if (id) void selectRefundSale(id); else setSelectedRefundSale(null); }} className="h-11 rounded border border-[var(--oh-border)] bg-white px-3"><option value="">Select a sale</option>{refundSales.map((sale) => <option key={sale.id} value={sale.id}>{sale.invoiceId || `Sale ${sale.id}`} · {money(sale.totalPrice)} · {new Date(sale.createdAt).toLocaleString("en-AU")}</option>)}</select></label>
+            {refundSalesLoading && <p role="status" className="text-sm text-[var(--oh-muted)]">Loading completed sales…</p>}
+            {selectedRefundSale && <>
+              <div className="overflow-x-auto rounded border border-[var(--oh-border)]"><table className="w-full min-w-[560px] text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs text-[var(--oh-muted)]"><tr><th className="px-3 py-2">Item</th><th className="px-3 py-2 text-right">Sold</th><th className="px-3 py-2 text-right">Available</th><th className="px-3 py-2 text-right">Original line</th><th className="px-3 py-2">Refund qty</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{(selectedRefundSale.items ?? []).map((line) => <tr key={line.id}><td className="px-3 py-2">{line.note || `Product ${line.productId ?? ""}`}</td><td className="px-3 py-2 text-right tabular-nums">{line.quantity}</td><td className="px-3 py-2 text-right tabular-nums">{line.refundableQuantity}</td><td className="px-3 py-2 text-right tabular-nums">{money(Number(line.totalPrice ?? 0))}</td><td className="px-3 py-2"><input aria-label={`Refund quantity for ${line.note || line.id}`} type="number" min="0" max={line.refundableQuantity} step="0.0001" disabled={!line.refundableQuantity || refundBusy || refundRecovery} value={refundQuantities[line.id] ?? ""} onChange={(event) => setRefundQuantities((current) => ({ ...current, [line.id]: event.target.value }))} className="h-9 w-28 rounded border border-[var(--oh-border)] px-2 text-right tabular-nums" /></td></tr>)}</tbody></table></div>
+              <label className="grid gap-1 text-sm font-medium">Reason<input value={refundReason} maxLength={255} disabled={refundRecovery} onChange={(event) => setRefundReason(event.target.value)} placeholder="Customer return" className="h-11 rounded border border-[var(--oh-border)] px-3 disabled:bg-[var(--oh-surface)]" /></label>
+              {refundPreview && <dl className="grid grid-cols-3 gap-3 border-t border-[var(--oh-border)] pt-3 text-sm"><div><dt className="text-[var(--oh-muted)]">Refund total</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.amount)}</dd></div><div><dt className="text-[var(--oh-muted)]">GST reversed</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.gst)}</dd></div><div><dt className="text-[var(--oh-muted)]">Cash paid</dt><dd className="mt-1 font-semibold tabular-nums">{money(refundPreview.cashPaid)}</dd></div></dl>}
+            </>}
+          </div>
+          <footer className="flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] p-4"><button type="button" onClick={() => setRefundOpen(false)} disabled={refundBusy} className="h-10 rounded border border-[var(--oh-border)] px-4 text-sm">Cancel</button><button type="button" onClick={() => void submitRefund()} disabled={(!session && !refundRecovery) || !selectedRefundSale || refundBusy || !hasPermission("sell.refund")} className="h-10 rounded bg-amber-700 px-4 text-sm font-semibold text-white disabled:opacity-50">{refundBusy ? "Recording…" : refundRecovery ? "Retry same refund" : "Record cash refund"}</button></footer>
+        </section>
+      </div>}
 
       {receipt && <section aria-live="polite" className="flex flex-wrap items-center justify-between gap-3 rounded border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-900">
         <div><strong>Sale complete · {receipt.reference}</strong><span className="ml-3">{money(receipt.total)} incl. GST {money(receipt.gst)}</span>{receipt.change > 0 && <span className="ml-3">Change {money(receipt.change)}</span>}</div>

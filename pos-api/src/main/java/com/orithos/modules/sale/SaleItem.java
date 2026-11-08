@@ -7,9 +7,13 @@ import java.math.BigDecimal;
 public class SaleItem {
     private Long id;
     private Long saleId;
+    private Long refundOfSaleItemId;
     private Long outletId;
     private Long productId;
     private BigDecimal quantity;
+    private BigDecimal refundableQuantity;
+    private BigDecimal refundableAmount;
+    private BigDecimal refundableTax;
     private BigDecimal caseQuantity;
     private BigDecimal cost;
     private BigDecimal basePrice;

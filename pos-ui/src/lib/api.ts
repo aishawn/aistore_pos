@@ -687,6 +687,47 @@ export interface CheckoutQuote {
   total: number;
 }
 
+export interface SaleLineForRefund {
+  id: number;
+  productId: number | null;
+  quantity: number;
+  refundableQuantity: number;
+  refundableAmount: number;
+  refundableTax: number;
+  totalPrice: number | null;
+  tax: number | null;
+  note: string | null;
+}
+
+export interface SaleForRefund {
+  id: number;
+  invoiceId: string | null;
+  status: string;
+  totalPrice: number;
+  createdAt: string;
+  items?: SaleLineForRefund[];
+}
+
+export interface SaleRefundResponse {
+  refundSaleId: number;
+  originalSaleId: number;
+  invoiceId: string;
+  amount: number;
+  gst: number;
+  cashPaid: number;
+  reason: string;
+}
+
+export function refundSale(
+  saleId: number,
+  payload: { registerId: number; reason: string; lines: Array<{ saleItemId: number; quantity: number }> },
+  idempotencyKey = crypto.randomUUID(),
+): Promise<SaleRefundResponse> {
+  return api.post<SaleRefundResponse>(`/api/sales/${saleId}/refunds`, payload, {
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
 export interface RetailRegister {
   id: number;
   name: string;

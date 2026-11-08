@@ -47,13 +47,46 @@ public interface SaleMapper {
         """)
     Sale findById(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
 
+    @Select("SELECT s.* FROM sale s JOIN outlet o ON o.id=s.outlet_id WHERE s.id=#{id} AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL FOR UPDATE OF s")
+    Sale lockForRefund(@Param("id") Long id, @Param("vendorId") Long vendorId, @Param("outletId") Long outletId);
+
     @Select("""
-        SELECT si.*, COALESCE(p.name, si.note) AS note
+        SELECT si.*, COALESCE(p.name, si.note) AS note,
+               GREATEST(si.quantity - COALESCE((
+                   SELECT SUM(-ri.quantity) FROM sale_item ri
+                   JOIN sale rs ON rs.id=ri.sale_id
+                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                     AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
+                     AND ri.refund_of_sale_item_id=si.id
+               ), 0), 0) AS refundable_quantity,
+               GREATEST(COALESCE(si.total_price,0) - COALESCE((
+                   SELECT SUM(-ri.total_price) FROM sale_item ri
+                   JOIN sale rs ON rs.id=ri.sale_id
+                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                     AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
+                     AND ri.refund_of_sale_item_id=si.id
+               ), 0), 0) AS refundable_amount,
+               GREATEST(COALESCE(si.tax,0) - COALESCE((
+                   SELECT SUM(-ri.tax) FROM sale_item ri
+                   JOIN sale rs ON rs.id=ri.sale_id
+                   WHERE rs.linked_sale_id=si.sale_id AND rs.refund_reason IS NOT NULL
+                     AND rs.status='COMPLETED' AND rs.outlet_id=si.outlet_id
+                     AND ri.refund_of_sale_item_id=si.id
+               ), 0), 0) AS refundable_tax
         FROM sale_item si
         LEFT JOIN product p ON p.id = si.product_id
         WHERE si.sale_id = #{saleId} ORDER BY si.id
         """)
     List<SaleItem> findItemsBySaleId(Long saleId);
+
+    @Select("SELECT COALESCE(SUM(-ri.quantity),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    java.math.BigDecimal refundedQuantity(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
+
+    @Select("SELECT COALESCE(SUM(-ri.total_price),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    java.math.BigDecimal refundedLineAmount(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
+
+    @Select("SELECT COALESCE(SUM(-ri.tax),0) FROM sale_item ri JOIN sale rs ON rs.id=ri.sale_id WHERE rs.linked_sale_id=#{saleId} AND rs.refund_reason IS NOT NULL AND rs.status='COMPLETED' AND rs.outlet_id=(SELECT s.outlet_id FROM sale s WHERE s.id=#{saleId}) AND ri.refund_of_sale_item_id=#{saleItemId}")
+    java.math.BigDecimal refundedLineTax(@Param("saleId") Long saleId, @Param("saleItemId") Long saleItemId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
@@ -65,6 +98,13 @@ public interface SaleMapper {
                 #{businessDate}, #{localSoldAt})
         """)
     int insert(Sale s);
+
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    @Insert("INSERT INTO sale (linked_sale_id, register_id, user_id, customer_id, outlet_id, status, invoice_id, refund_reason, total_quantity, total_price, total_tax, outstanding, total_change, total_rounding, business_date, local_sold_at) VALUES (#{linkedSaleId}, #{registerId}, #{userId}, #{customerId}, #{outletId}, 'COMPLETED', #{invoiceId}, #{refundReason}, #{totalQuantity}, #{totalPrice}, #{totalTax}, 0, 0, #{totalRounding}, #{businessDate}, #{localSoldAt})")
+    int insertRefund(Sale sale);
+
+    @Update("UPDATE sale SET status='REFUNDED' WHERE id=#{id} AND status='COMPLETED' AND outlet_id=#{outletId}")
+    int markRefunded(@Param("id") Long id, @Param("outletId") Long outletId);
 
     @Select("SELECT COUNT(*) FROM product p JOIN outlet o ON o.id=p.outlet_id WHERE p.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL AND p.deleted_at IS NULL")
     long productExists(@Param("id") Long id, @Param("vendorId") Long vendorId);
@@ -86,6 +126,12 @@ public interface SaleMapper {
                                     @Param("productId") Long productId, @Param("quantityDelta") java.math.BigDecimal quantityDelta,
                                     @Param("sourceId") Long sourceId, @Param("sourceLineId") Long sourceLineId,
                                     @Param("idempotencyKey") String idempotencyKey, @Param("actorId") Long actorId);
+
+    @Insert("INSERT INTO inventory_movement (vendor_id, outlet_id, product_id, quantity_delta, source_type, source_id, source_line_id, idempotency_key, actor_id) VALUES (#{vendorId}, #{outletId}, #{productId}, #{quantityDelta}, 'POS_REFUND', #{sourceId}, #{sourceLineId}, #{idempotencyKey}, #{actorId}) ON CONFLICT (source_type, source_line_id) DO NOTHING")
+    int insertRefundInventoryMovement(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
+                                      @Param("productId") Long productId, @Param("quantityDelta") java.math.BigDecimal quantityDelta,
+                                      @Param("sourceId") Long sourceId, @Param("sourceLineId") Long sourceLineId,
+                                      @Param("idempotencyKey") String idempotencyKey, @Param("actorId") Long actorId);
 
     @Select("SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtextextended(CAST(#{vendorId} AS TEXT) || ':' || #{key}, 0))) lock_result")
     Integer lockCheckoutKey(@Param("vendorId") Long vendorId, @Param("key") String key);
@@ -118,9 +164,9 @@ public interface SaleMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
-        INSERT INTO sale_item (sale_id, product_id, outlet_id, quantity, case_quantity, cost, base_price,
+        INSERT INTO sale_item (sale_id, refund_of_sale_item_id, product_id, outlet_id, quantity, case_quantity, cost, base_price,
                                total_price, savings, tax, tax_rate_id, discount_amount, discount_reason, note)
-        VALUES (#{saleId}, #{productId}, #{outletId}, #{quantity}, #{caseQuantity}, #{cost}, #{basePrice},
+        VALUES (#{saleId}, #{refundOfSaleItemId}, #{productId}, #{outletId}, #{quantity}, #{caseQuantity}, #{cost}, #{basePrice},
                 #{totalPrice}, #{savings}, #{tax}, #{taxRateId}, #{discountAmount}, #{discountReason}, #{note})
         """)
     int insertItem(SaleItem item);

@@ -6,6 +6,9 @@ import com.orithos.config.NativePosGate;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.orithos.modules.sale.dto.CheckoutResponse;
 import com.orithos.modules.sale.dto.CheckoutQuoteResponse;
+import com.orithos.modules.sale.dto.RefundRequest;
+import com.orithos.modules.sale.dto.RefundResponse;
+import com.orithos.security.PermissionAccess;
 import com.orithos.security.CurrentUser;
 import com.orithos.common.BusinessException;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +22,16 @@ public class SaleController {
     private final SaleMapper mapper;
     private final CheckoutService checkoutService;
     private final NativePosGate nativePosGate;
+    private final RefundService refundService;
+    private final PermissionAccess permissionAccess;
 
-    public SaleController(SaleMapper mapper, CheckoutService checkoutService, NativePosGate nativePosGate) {
+    public SaleController(SaleMapper mapper, CheckoutService checkoutService, NativePosGate nativePosGate,
+                          RefundService refundService, PermissionAccess permissionAccess) {
         this.mapper = mapper;
         this.checkoutService = checkoutService;
         this.nativePosGate = nativePosGate;
+        this.refundService = refundService;
+        this.permissionAccess = permissionAccess;
     }
 
     /** Finalise a Sell-pad cart with a tender (EFTPOS / cash), returning change. */
@@ -38,6 +46,15 @@ public class SaleController {
                                                 @RequestBody CheckoutRequest req) {
         nativePosGate.requireEnabled();
         return ApiResult.ok(checkoutService.checkout(req, idempotencyKey));
+    }
+
+    @PostMapping("/{id}/refunds")
+    public ApiResult<RefundResponse> refund(@PathVariable Long id,
+                                            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+                                            @RequestBody RefundRequest request) {
+        nativePosGate.requireEnabled();
+        permissionAccess.requirePermission("sell.refund");
+        return ApiResult.ok(refundService.refund(id, idempotencyKey, request));
     }
 
     @GetMapping

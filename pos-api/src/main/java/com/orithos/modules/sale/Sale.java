@@ -8,6 +8,8 @@ import java.util.List;
 @Data
 public class Sale {
     private Long id;
+    private Long linkedSaleId;
+    private String refundReason;
     private String invoiceId;
     private String status;
     private BigDecimal totalPrice;
