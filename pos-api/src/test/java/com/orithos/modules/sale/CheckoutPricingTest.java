@@ -2,6 +2,7 @@ package com.orithos.modules.sale;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
 import com.orithos.modules.product.mapper.ProductMapper;
@@ -26,8 +27,9 @@ class CheckoutPricingTest {
 
     private final SaleMapper saleMapper = mock(SaleMapper.class);
     private final ProductMapper productMapper = mock(ProductMapper.class);
+    private final PaymentMethodMapper paymentMethodMapper = mock(PaymentMethodMapper.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
-            mock(PaymentMethodMapper.class), productMapper, mock(RegisterMapper.class),
+            paymentMethodMapper, productMapper, mock(RegisterMapper.class),
             mock(RegisterSessionMapper.class), new ObjectMapper());
 
     @BeforeEach
@@ -72,6 +74,25 @@ class CheckoutPricingTest {
 
         assertThrows(BusinessException.class,
                 () -> service.prepareSellItems(request(42L, "1", "0.01", null), 3L, 12L));
+    }
+
+    @Test
+    void paymentMethodMustBelongToAuthenticatedRegisterAndOutlet() {
+        PaymentMethod expected = new PaymentMethod();
+        when(paymentMethodMapper.findForRegisterByType(99L, 12L, "CASH")).thenReturn(expected);
+
+        assertSame(expected, service.resolvePaymentMethod(99L, 12L, "CASH", "Exact Cash"));
+        verify(paymentMethodMapper).findForRegisterByType(99L, 12L, "CASH");
+        verify(paymentMethodMapper, never()).findForRegisterByName(anyLong(), anyLong(), anyString());
+    }
+
+    @Test
+    void checkoutRejectsTenderNotConfiguredOnRegister() {
+        when(paymentMethodMapper.findForRegisterByType(99L, 12L, "EFTPOS")).thenReturn(null);
+        when(paymentMethodMapper.findForRegisterByName(99L, 12L, "EFTPOS VISA MasterCard")).thenReturn(null);
+
+        assertThrows(BusinessException.class,
+                () -> service.resolvePaymentMethod(99L, 12L, "EFTPOS", "EFTPOS VISA MasterCard"));
     }
 
     private static Product product(String price) {

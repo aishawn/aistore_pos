@@ -18,6 +18,22 @@ public interface PaymentMethodMapper {
     @Select("SELECT * FROM payment_method WHERE name = #{name} AND deleted_at IS NULL ORDER BY id LIMIT 1")
     PaymentMethod findByName(String name);
 
+    @Select("SELECT pm.* FROM register_payment_method rpm "
+            + "JOIN payment_method pm ON pm.id=rpm.payment_method_id AND pm.outlet_id=rpm.outlet_id "
+            + "WHERE rpm.register_id=#{registerId} AND rpm.outlet_id=#{outletId} "
+            + "AND pm.type=#{type} AND pm.deleted_at IS NULL ORDER BY pm.id LIMIT 1")
+    PaymentMethod findForRegisterByType(@Param("registerId") Long registerId,
+                                        @Param("outletId") Long outletId,
+                                        @Param("type") String type);
+
+    @Select("SELECT pm.* FROM register_payment_method rpm "
+            + "JOIN payment_method pm ON pm.id=rpm.payment_method_id AND pm.outlet_id=rpm.outlet_id "
+            + "WHERE rpm.register_id=#{registerId} AND rpm.outlet_id=#{outletId} "
+            + "AND pm.name=#{name} AND pm.deleted_at IS NULL ORDER BY pm.id LIMIT 1")
+    PaymentMethod findForRegisterByName(@Param("registerId") Long registerId,
+                                        @Param("outletId") Long outletId,
+                                        @Param("name") String name);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO payment_method (name, type, surcharge, always_open_drawer, always_print, "
             + "use_rounding, default_pay_exact, background_colour, text_colour, outlet_id) "

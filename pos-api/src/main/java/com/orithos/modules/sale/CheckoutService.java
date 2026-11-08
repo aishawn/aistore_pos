@@ -165,7 +165,8 @@ public class CheckoutService {
             throw new BusinessException("Payment amount must be greater than zero.");
         }
 
-        PaymentMethod method = resolvePaymentMethod(tenderType, req.getTender());
+        PaymentMethod method = resolvePaymentMethod(effectiveRegisterId, authenticatedOutletId,
+                tenderType, req.getTender());
         SalePayment payment = new SalePayment();
         payment.setSaleId(sale.getId());
         payment.setPaymentMethodId(method != null ? method.getId() : null);
@@ -400,11 +401,12 @@ public class CheckoutService {
         return qty.multiply(unit).setScale(2, RoundingMode.HALF_UP);
     }
 
-    private PaymentMethod resolvePaymentMethod(String tenderType, String tenderLabel) {
-        PaymentMethod method = paymentMethodMapper.findByType(tenderType);
+    PaymentMethod resolvePaymentMethod(Long registerId, Long outletId, String tenderType, String tenderLabel) {
+        PaymentMethod method = paymentMethodMapper.findForRegisterByType(registerId, outletId, tenderType);
         if (method == null && tenderLabel != null) {
-            method = paymentMethodMapper.findByName(tenderLabel);
+            method = paymentMethodMapper.findForRegisterByName(registerId, outletId, tenderLabel);
         }
+        if (method == null) throw new BusinessException("Payment method is not configured on this register.");
         return method;
     }
 
