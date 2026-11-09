@@ -25,8 +25,12 @@ public final class NativePosGate {
     public void requireEnabled() {
         Long vendorId = CurrentUser.vendorId();
         if (vendorId == null) throw new BusinessException(40100, "Authenticated tenant is required.");
-        if (!enabledVendorIds.contains(vendorId)) {
+        if (!enabledFor(vendorId)) {
             throw new BusinessException(40300, "Native Orithos POS is not enabled for this store.");
         }
+    }
+
+    public boolean enabledFor(Long vendorId) {
+        return vendorId != null && enabledVendorIds.contains(vendorId);
     }
 }

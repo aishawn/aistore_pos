@@ -11,7 +11,7 @@
 - 新 API 位于 `/api/retail/registers`，只从认证主体取得 vendor/outlet/user。
 - checkout 只接受当前门店已开启的 Orithos 班次；旧 `/api/registers` 路由继续退役。
 - 支付流水按认证 outlet 持久化；关班按 register 配置的支付方式核算现金舍入、EFTPOS cash-out、备用金与现金变动。
-- UI 仍使用 Odoo register/session/close 流程，因此这项后端实现不能单独作为切换收银的依据。
+- Demo 使用原生 Orithos POS 页面；SKR 仍走 Odoo register/session/close，直到该店完成授权切换。付款方式设置页按门店 gate 选择 Orithos 或当前 Odoo 配置，因此后端实现不能单独作为切换收银的依据。
 
 ## 设计、进展与证据
 

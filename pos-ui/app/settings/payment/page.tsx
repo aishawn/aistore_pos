@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
 import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
+import { api, ApiError } from "@/lib/api";
 import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
 type PaymentRow = {
@@ -15,13 +16,45 @@ type PaymentRow = {
   registers: string[];
 };
 
+type RegisterPaymentMethod = {
+  paymentMethodId: number;
+  name: string;
+  type: string;
+  registerId: number;
+  registerName: string;
+};
+
+type RegisterPaymentMethodResponse = {
+  nativePosEnabled: boolean;
+  assignments: RegisterPaymentMethod[];
+};
+
 function paymentType(type: string, isCash: boolean) {
-  if (isCash || type === "cash") return "Cash";
-  if (type === "bank") return "Card / bank";
+  const normalized = type.toLowerCase();
+  if (isCash || normalized === "cash") return "Cash";
+  if (["bank", "card", "eftpos"].includes(normalized)) return "Card / bank";
   return type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function toRows(data: OdooPosBootstrap): PaymentRow[] {
+function toRows(data: RegisterPaymentMethod[]): PaymentRow[] {
+  const methods = new Map<number, PaymentRow>();
+  for (const assignment of data) {
+    const existing = methods.get(assignment.paymentMethodId);
+    if (existing) {
+      if (!existing.registers.includes(assignment.registerName)) existing.registers.push(assignment.registerName);
+    } else {
+      methods.set(assignment.paymentMethodId, {
+        id: assignment.paymentMethodId,
+        name: assignment.name,
+        type: paymentType(assignment.type, assignment.type === "CASH"),
+        registers: [assignment.registerName],
+      });
+    }
+  }
+  return [...methods.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function toOdooRows(data: OdooPosBootstrap): PaymentRow[] {
   const methods = new Map<number, PaymentRow>();
   for (const config of data.configs) {
     for (const method of config.paymentMethods) {
@@ -49,16 +82,19 @@ export default function PaymentMethodsPage() {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
     void (async () => {
       try {
+        const source = await api.get<RegisterPaymentMethodResponse>("/api/retail/payment-methods");
+        if (source.nativePosEnabled) {
+          if (active) setRows(toRows(source.assignments));
+          return;
+        }
         const session = await getOdooSession();
-        if (!session) throw new Error("Connect your Orithos staff account to view live payment methods.");
+        if (!session) throw new Error("Payment configuration is unavailable for this store.");
         const bootstrap = await getOdooPosBootstrap();
-        if (active) setRows(toRows(bootstrap));
+        if (active) setRows(toOdooRows(bootstrap));
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos payment methods.");
+        if (active) setError(cause instanceof ApiError ? cause.message : cause instanceof Error ? cause.message : "Could not load payment methods.");
       } finally {
         if (active) setLoading(false);
       }
@@ -73,7 +109,7 @@ export default function PaymentMethodsPage() {
       count={loading || error ? undefined : rows.length}
       countLabel="Methods"
       actions={
-        <AdminSecondaryButton onClick={() => setRetryKey((value) => value + 1)} disabled={loading}>
+        <AdminSecondaryButton onClick={() => { setError(null); setLoading(true); setRetryKey((value) => value + 1); }} disabled={loading}>
           <RefreshCw size={15} className={loading ? "animate-spin" : undefined} aria-hidden="true" />
           Refresh
         </AdminSecondaryButton>
@@ -82,14 +118,14 @@ export default function PaymentMethodsPage() {
     >
       <section aria-label="Payment method source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
-        <div><p className="font-semibold text-[var(--oh-text)]">Live from Orithos <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
-          <p className="mt-1">Changes to payment methods should be made in Orithos. Orithos does not save a second copy.</p></div>
+        <div><p className="font-semibold text-[var(--oh-text)]">Register payment methods <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
+          <p className="mt-1">Payment methods are shown from the active store ledger.</p></div>
       </section>
       {error ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           <span>{error}</span>
           <div className="flex flex-wrap items-center gap-2">
-<button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={loading ? "animate-spin" : undefined} /> {loading ? "Retrying…" : "Retry"}</button>
+          <button type="button" onClick={() => { setError(null); setLoading(true); setRetryKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={loading ? "animate-spin" : undefined} /> {loading ? "Retrying…" : "Retry"}</button>
             <Link className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]" href="/settings/account?tab=connection">View connection status</Link>
           </div>
         </div>

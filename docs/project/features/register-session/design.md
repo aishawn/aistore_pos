@@ -15,8 +15,11 @@
 | POST | `/api/retail/registers/{id}/sessions` | `Idempotency-Key`、`openingFloat` |
 | POST | `/api/retail/registers/sessions/{id}/cash-movements` | `Idempotency-Key`、`CASH_IN/CASH_OUT`、金额和原因 |
 | POST | `/api/retail/registers/{id}/sessions/close` | `Idempotency-Key`、`countedCash`、按支付方式点款、备注 |
+| GET | `/api/retail/payment-methods` | `settings.view` 权限；返回认证门店的 register/payment method 绑定及原生 POS 是否已启用 |
 
 请求体不接受 tenant/outlet 覆盖。越店收银机或班次不可见；重复键只在归一化请求相同的情况下回放，键复用不同内容返回冲突。
+
+付款方式设置页根据认证 vendor 的原生 POS gate 选择活动账本。已切换租户读取 Orithos register 绑定；未切换租户继续读取 Odoo 当前配置。完成逐店验收后移除 Odoo 回退。
 
 ## 并发与金额
 

@@ -34,6 +34,16 @@ public interface PaymentMethodMapper {
                                         @Param("outletId") Long outletId,
                                         @Param("name") String name);
 
+    @Select("SELECT pm.id AS payment_method_id, pm.name AS name, pm.type AS type, "
+            + "r.id AS register_id, r.name AS register_name "
+            + "FROM outlet o JOIN register r ON r.outlet_id=o.id AND r.deleted_at IS NULL "
+            + "JOIN register_payment_method rpm ON rpm.register_id=r.id AND rpm.outlet_id=o.id "
+            + "JOIN payment_method pm ON pm.id=rpm.payment_method_id AND pm.outlet_id=o.id "
+            + "WHERE o.id=#{outletId} AND o.vendor_id=#{vendorId} AND pm.deleted_at IS NULL "
+            + "ORDER BY pm.name, r.name, pm.id")
+    List<RegisterPaymentMethodView> findAssignedForOutlet(@Param("vendorId") Long vendorId,
+                                                          @Param("outletId") Long outletId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO payment_method (name, type, surcharge, always_open_drawer, always_print, "
             + "use_rounding, default_pay_exact, background_colour, text_colour, outlet_id) "
