@@ -1,0 +1,28 @@
+{
+  "uat": {
+    "isolated": true,
+    "odooDatabaseIsolated": true,
+    "posDatabaseVerified": true,
+    "posTenantIsolated": true,
+    "commit": "1392e64660221121402f73688151e90239df65ea"
+  },
+  "version": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "1392e64660221121402f73688151e90239df65ea",
+      "builtAt": "2026-11-09T05:09:35.167Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "1392e64660221121402f73688151e90239df65ea",
+      "builtAt": "2026-11-09T05:09:35Z"
+    }
+  },
+  "saleId": 6,
+  "checkoutReplaySame": true,
+  "refundOk": true,
+  "closeCode": 0,
+  "movement": 0,
+  "expectedCash": 100,
+  "transactionCount": 2
+}

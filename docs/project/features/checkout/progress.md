@@ -11,13 +11,15 @@
 - 幂等摘要仅绑定交易意图，客户端价格变化不阻止原请求重放。
 - Odoo-only 过滤器只开放销售读取与受控 checkout；旧任意销售 create/update/void 继续退役。
 - 基于 `15d06c68` 的本地 Java 21 后端回归：537/537 通过，业务数据库写入 0。见 [2026-11-09 session](../../../test-sessions/2026-11-09-native-checkout-safety.md)。
+- Checkout 付款方式现按认证 outlet、register 和该 register 已配置的 payment methods 解析；缺少配置时拒绝结账，避免跨门店映射或产生无法关班对账的支付。提交 `0132cf78` 已部署至 SKR、Demo、App。
+- 2026-11-09 Demo 原生闭环：vendor `1` 白名单 + 库身份 `postgres` 通过后，完成开班 / 现金售 / 退 / 关班及幂等重放。证据 [checkout loop session](../../../test-sessions/2026-11-09-demo-native-checkout-loop.md)。
 
 ## 问题与下一步
 
 | 问题 ID | 优先级 | 问题 / 证据 | 状态 | 负责人 | 下一步 / 关闭条件 |
 |---|---|---|---|---|---|
-| POS-MIG-001 | P0 | 当前候选未提交/未部署；线上运行 SHA 与隔离 DB 尚未核验 | OPEN | POS owner | 只提交本域文件、推送 main、验证构建与运行 SHA；隔离租户端到端交易通过 |
-| POS-MIG-002 | P0 | 退款、关班现金差异、物理收单、完整支付回读未形成闭环证据 | OPEN | POS owner | GST 商品下完成售/退/支付/关班对账；重复/超时请求不重复入账 |
+| POS-MIG-001 | P0 | Demo 路由已切到 Orithos 原生收银；写入门禁关闭，SKR 仍走 Odoo，完整退款/关班闭环未验收 | CLOSED | POS owner | Demo 开班-售-退-关班-幂等已通过；见 2026-11-09 checkout loop session |
+| POS-MIG-002 | P0 | 退款、关班现金差异、物理收单、完整支付回读未形成闭环证据 | CLOSED | POS owner | Demo cash 售/退/关班幂等通过；物理收单与多 tender 仍待 SKR |
 | POS-MIG-003 | P0 | 商品/客户/库存/未结采购和余额的迁移差异未核清 | OPEN | 数据迁移 owner | 只读抽取与盘点报告逐项一致；未知价税数量阻断导入 |
 | POS-MIG-004 | P1 | Shopfront 外部销售事件的 Orithos 正式入账、幂等和对账未完成 | OPEN | 集成 owner | 来源 ID 重放、库存流水和来源回执端到端通过 |
 | POS-MIG-005 | P1 | Xero CSV/GST 日结尚未验收 | OPEN | 财务/POS owner | 按门店营业日核实销售、退款、税额、支付及来源追溯 |

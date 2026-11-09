@@ -19,8 +19,8 @@ public interface SaleMapper {
         LEFT JOIN customer c ON c.id = s.customer_id
         WHERE o.vendor_id = #{vendorId} AND o.deleted_at IS NULL
           AND (#{outletId} IS NULL OR s.outlet_id = #{outletId})
-          AND (#{status} IS NULL OR s.status = #{status})
-          AND (#{customerId} IS NULL OR s.customer_id = #{customerId})
+          AND (CAST(#{status} AS varchar) IS NULL OR s.status = CAST(#{status} AS varchar))
+          AND (CAST(#{customerId} AS bigint) IS NULL OR s.customer_id = CAST(#{customerId} AS bigint))
         ORDER BY s.created_at DESC LIMIT #{size} OFFSET #{offset}
         """)
     List<Sale> page(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
@@ -31,8 +31,8 @@ public interface SaleMapper {
         SELECT COUNT(*) FROM sale s JOIN outlet o ON o.id = s.outlet_id
         WHERE o.vendor_id = #{vendorId} AND o.deleted_at IS NULL
           AND (#{outletId} IS NULL OR s.outlet_id = #{outletId})
-          AND (#{status} IS NULL OR s.status = #{status})
-          AND (#{customerId} IS NULL OR s.customer_id = #{customerId})
+          AND (CAST(#{status} AS varchar) IS NULL OR s.status = CAST(#{status} AS varchar))
+          AND (CAST(#{customerId} AS bigint) IS NULL OR s.customer_id = CAST(#{customerId} AS bigint))
         """)
     long count(@Param("vendorId") Long vendorId, @Param("outletId") Long outletId,
                @Param("status") String status, @Param("customerId") Long customerId);

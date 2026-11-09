@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (!store) return NextResponse.json({ message: "Shopfront source is not mapped to this store." }, { status: 409 });
 
     const base = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
-    const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim();
+    const integrationToken = (process.env.SHOPFRONT_INTEGRATION_TOKEN || process.env.APP_SHOPFRONT_INTEGRATION_TOKEN || "").trim();
     if (!integrationToken) {
       return NextResponse.json({ message: "Shopfront source access is not configured." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
@@ -57,7 +57,21 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(resource.startsWith("report-") || resource === "dashboard-inventory" ? 90_000 : 15_000),
     });
     if (!upstream.ok) {
-      return NextResponse.json({ message: upstream.status >= 500 ? "Shopfront source service is temporarily unavailable." : "Shopfront source request was rejected." }, { status: upstream.status >= 500 ? 503 : upstream.status, headers: { "Cache-Control": "no-store" } });
+      const bodyText = await upstream.text().catch(() => "");
+      let detail = "";
+      try {
+        const parsed = JSON.parse(bodyText) as { detail?: unknown; message?: unknown };
+        if (typeof parsed.detail === "string") detail = parsed.detail;
+        else if (typeof parsed.message === "string") detail = parsed.message;
+      } catch { /* plain-text upstream body */ }
+      if (!detail && bodyText && bodyText.length < 240) detail = bodyText;
+      const base = upstream.status === 401
+        ? "Shopfront crawler authorization failed. Set the same SHOPFRONT_INTEGRATION_TOKEN on POS and crawler."
+        : upstream.status >= 500
+          ? "Shopfront source service is temporarily unavailable."
+          : "Shopfront source request was rejected.";
+      const message = detail && !detail.includes(integrationToken) ? `${base} (${detail})` : base;
+      return NextResponse.json({ message, upstreamStatus: upstream.status }, { status: upstream.status >= 500 ? 503 : upstream.status, headers: { "Cache-Control": "no-store" } });
     }
     return new NextResponse(await upstream.text(), {
       status: 200,

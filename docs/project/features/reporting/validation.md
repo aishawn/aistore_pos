@@ -88,7 +88,7 @@ Updated: 2026-11-07. Owner: TBD.
 | Sales amount reconciliation helper | PASS | 3/3 local cases for cent rounding, detectable variance, and non-finite totals; [session](../../../test-sessions/2026-11-05-report-reconciliation.md) |
 | Sales refund/net totals and source-ledger classification | PASS | 10/10 focused local unit cases and Node 24 TypeScript typecheck; [candidate session](../../../test-sessions/2026-11-05-report-ledger-and-refunds.md). Shopfront archive vs native POS is `not_comparable`; no online acceptance claimed. |
 | Scoped sales report TypeScript check | PASS | Changed sales report API/page and reconciliation helper; temporary scoped tsconfig removed after checking |
-| Scoped report table/column TypeScript check | PASS | Sales, purchase, closure API/page, and shared column chooser; [session](../../../test-sessions/2026-11-05-report-columns.md) |
+| Scoped report table/column TypeScript check | PASS | Sales, purchase, closure API/page, and shared column chooser; implementation and focused report checks are summarized in [optimization follow-up](../../../test-sessions/2026-11-05-report-optimization-follow-up.md). A separate report-columns session file is not present. |
 | Shopfront margin, inventory totals, report cache, source margin tests | PASS | 25/25 focused unit tests; [session](../../../test-sessions/2026-11-05-store-data-scope.md) |
 | `git diff --check` | PASS | No whitespace errors; Git emitted line-ending normalization notices for three route wrappers |
 | Report date, closure summary, sales reconciliation unit tests | PASS | Focused report/date/inventory suites passed 39/39 with no Odoo data; [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |

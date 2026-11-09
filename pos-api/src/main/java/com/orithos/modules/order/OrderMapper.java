@@ -72,7 +72,8 @@ public interface OrderMapper {
             + "entered_as, invoice_number, reference, notes, internal_notes, include_freight, "
             + "total_cost, expected_total, fee_percentage, created_by_id, merged_into_id, outlet_id) "
             + "VALUES (#{type}, #{status}, #{fromId}, #{toId}, #{orderDate}, #{dueDate}, "
-            + "#{enteredAs}, #{invoiceNumber}, #{reference}, #{notes}, #{internalNotes}, #{includeFreight}, "
+            + "#{enteredAs}, #{invoiceNumber}, #{reference}, #{notes}, #{internalNotes}, "
+            + "CASE WHEN #{includeFreight} THEN 1 ELSE 0 END, "
             + "#{totalCost}, #{expectedTotal}, #{feePercentage}, #{createdById}, #{mergedIntoId}, #{outletId})")
     int insert(Order o);
 
@@ -88,7 +89,7 @@ public interface OrderMapper {
     @Update("UPDATE purchase_order SET type=#{type}, from_id=#{fromId}, to_id=#{toId}, "
             + "order_date=#{orderDate}, due_date=#{dueDate}, entered_as=#{enteredAs}, "
             + "invoice_number=#{invoiceNumber}, reference=#{reference}, notes=#{notes}, "
-            + "internal_notes=#{internalNotes}, include_freight=#{includeFreight}, "
+            + "internal_notes=#{internalNotes}, include_freight=CASE WHEN #{includeFreight} THEN 1 ELSE 0 END, "
             + "total_cost=#{totalCost}, expected_total=#{expectedTotal}, fee_percentage=#{feePercentage} "
             + "WHERE id=#{id} AND outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL)")
     int update(Order o);
