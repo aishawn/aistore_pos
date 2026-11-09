@@ -2,6 +2,12 @@
 
 Updated: 2026-11-09. Owner: TBD.
 
+## Source-only accuracy + Orithos flip prep (2026-11-09)
+
+- Crawler `main` `75c84c6` pushed: daily sync now requeues supply-chain after `partial`/`failed` (previously waited on the last successful interval only); supply-chain persistence resets the DB session after long Shopfront reads; default `POS_API_MIRROR_BASE_URL` is empty so `ledger=orithos` does not imply a second push to the SKR UI host.
+- Focused local pytest for ledger/source-only/supply-chain cases PASS. Public `/healthz` before deploy still reported fingerprint `4bc51b09…` for prior `9cd7745`. Authenticated crawler API probes from this workstation were Cloudflare-blocked; no sync job or Dokploy ledger env change was made.
+- Remaining Demo cutover blockers: set `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos` in Dokploy after POS mapping + PostgreSQL isolation attestation; confirm post-deploy fingerprint for `75c84c6`; run source→Orithos count parity on the first non-`source_only` sync. Evidence: [2026-11-09-crawler-source-only-status](../../../test-sessions/2026-11-09-crawler-source-only-status.md).
+
 ## Per-store ledger routing deployment (2026-11-09)
 
 - Crawler `main` now routes each store's regular imports to exactly one configured ledger (`odoo` or `orithos`); unconfigured stores retain the legacy Odoo route. `source_only=true` jobs skip both ledgers, and manual Orithos imports reject stores not explicitly selected for Orithos. Deployed crawler source fingerprint `4bc51b093c60019d925ef671d3a79c2e0dca9b170f224a16d5cc093a2bbf82fc` matches local `main` at `9cd7745` (`fix: improve supply-chain heartbeat and report diagnostics`) including `83181b9` (`fix: release database connection during supply chain reads`). Full local fixture suite: 229/229 PASS.
