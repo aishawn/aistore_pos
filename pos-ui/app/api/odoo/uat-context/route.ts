@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
       && backend?.isolated === true
       && backend.odooDatabaseIsolated === true
       && backend.posDatabaseVerified === true
-      && backend.posDatabaseIsolated === true;
-    if (!isolated) return NextResponse.json({ isolated: false, message: "Both services must attest their dedicated UAT databases." }, { status: 409 });
+      && backend.posTenantIsolated === true;
+    if (!isolated) return NextResponse.json({ isolated: false, message: "Both services must attest the UAT tenant boundary." }, { status: 409 });
     return NextResponse.json({ isolated: true, database, frontendCommit: identity.commit, backendCommit: backend.commit }, {
       headers: { "Cache-Control": "no-store" },
     });

@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,8 +47,7 @@ public final class NativePosGate {
     public boolean databaseAuthorized() {
         if (expectedDatabase.isEmpty()) return false;
         if ("uat".equalsIgnoreCase(runtimeEnvironment)
-                && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase)
-                || isSharedDatabaseName(expectedDatabase))) return false;
+                && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase))) return false;
         try {
             String actualDatabase = normalize(jdbcTemplate.queryForObject("select current_database()", String.class));
             return expectedDatabase.equals(actualDatabase);
@@ -66,8 +64,4 @@ public final class NativePosGate {
         return value == null ? "" : value.trim();
     }
 
-    private static boolean isSharedDatabaseName(String value) {
-        String normalized = value.toLowerCase(Locale.ROOT);
-        return Set.of("postgres", "aipos", "orithos", "production", "prod").contains(normalized);
-    }
 }

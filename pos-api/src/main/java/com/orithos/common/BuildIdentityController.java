@@ -12,8 +12,8 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-import java.util.Locale;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /** Immutable metadata written into the image by the remote builder. */
 @RestController
@@ -30,6 +30,8 @@ public class BuildIdentityController {
     private String expectedPosDatabase;
     @Value("${app.native-pos.isolation-database:}")
     private String isolationPosDatabase;
+    @Value("${app.native-pos.enabled-vendor-ids:}")
+    private String enabledPosVendorIds;
     private final JdbcTemplate jdbcTemplate;
 
     public BuildIdentityController(JdbcTemplate jdbcTemplate) {
@@ -42,15 +44,17 @@ public class BuildIdentityController {
         boolean odooIsolated = "uat".equals(environment) && !database.isBlank()
                 && database.equals(isolationOdooDatabase) && !"aipos".equals(database);
         boolean posDatabaseVerified = posDatabaseMatchesExpectation();
-        boolean posIsolated = "uat".equals(runtimeEnvironment) && posDatabaseVerified
+        boolean posTenantIsolated = "uat".equals(runtimeEnvironment) && posDatabaseVerified
                 && !isolationPosDatabase.isBlank() && isolationPosDatabase.equals(expectedPosDatabase)
-                && !isSharedDatabaseName(expectedPosDatabase);
-        boolean isolated = odooIsolated && posIsolated;
+                && enabledPosVendorIds != null
+                && Arrays.stream(enabledPosVendorIds.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet()).size() == 1;
+        boolean isolated = odooIsolated && posTenantIsolated;
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("isolated", isolated);
         result.put("odooDatabaseIsolated", odooIsolated);
         result.put("posDatabaseVerified", posDatabaseVerified);
-        result.put("posDatabaseIsolated", posIsolated);
+        result.put("posTenantIsolated", posTenantIsolated);
         if (isolated) result.put("commit", version().getBody().get("commit"));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
     }
@@ -63,11 +67,6 @@ public class BuildIdentityController {
         } catch (RuntimeException unavailable) {
             return false;
         }
-    }
-
-    private static boolean isSharedDatabaseName(String value) {
-        return Set.of("postgres", "aipos", "orithos", "production", "prod")
-                .contains(value.trim().toLowerCase(Locale.ROOT));
     }
 
     @GetMapping("/api/public/version")

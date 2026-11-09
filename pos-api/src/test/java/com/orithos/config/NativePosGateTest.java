@@ -19,13 +19,13 @@ class NativePosGateTest {
     @Test
     void onlyExplicitlyEnabledVendorMayUseNativeWrites() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_demo_uat");
-        NativePosGate gate = new NativePosGate("1, 55", "pos_demo_uat", "pos_demo_uat", "uat", jdbc);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
+        NativePosGate gate = new NativePosGate("1", "postgres", "postgres", "uat", jdbc);
         authenticate(1L);
         assertDoesNotThrow(gate::requireEnabled);
 
         authenticate(55L);
-        assertDoesNotThrow(gate::requireEnabled);
+        assertEquals(40300, assertThrows(BusinessException.class, gate::requireEnabled).getCode());
 
         authenticate(2L);
         BusinessException denied = assertThrows(BusinessException.class, gate::requireEnabled);
@@ -37,25 +37,26 @@ class NativePosGateTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("production");
         NativePosGate wrongRuntimeDatabase = new NativePosGate(
-                "1", "pos_demo_uat", "pos_demo_uat", "uat", jdbc);
+                "1", "postgres", "postgres", "uat", jdbc);
         authenticate(1L);
         assertEquals(40300, assertThrows(BusinessException.class, wrongRuntimeDatabase::requireEnabled).getCode());
 
         NativePosGate wrongConfiguredIsolation = new NativePosGate(
-                "1", "pos_demo_uat", "pos_production", "uat", jdbc);
+                "1", "postgres", "production", "uat", jdbc);
         assertEquals(40300, assertThrows(BusinessException.class, wrongConfiguredIsolation::requireEnabled).getCode());
 
         NativePosGate productionWithoutExpectedDatabase = new NativePosGate("1", "", "", "production", jdbc);
         assertEquals(40300, assertThrows(BusinessException.class, productionWithoutExpectedDatabase::requireEnabled).getCode());
 
-        NativePosGate sharedDefaultDatabase = new NativePosGate(
+        NativePosGate sharedPostgresDatabaseForAllowlistedTenant = new NativePosGate(
                 "1", "postgres", "postgres", "uat", jdbc);
-        assertEquals(40300, assertThrows(BusinessException.class, sharedDefaultDatabase::requireEnabled).getCode());
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
+        assertDoesNotThrow(sharedPostgresDatabaseForAllowlistedTenant::requireEnabled);
     }
 
     @Test
     void emptyAllowlistFailsClosedAndUnauthenticatedRequestsAreRejected() {
-        NativePosGate gate = new NativePosGate("", "pos_demo_uat", "pos_demo_uat", "uat", mock(JdbcTemplate.class));
+        NativePosGate gate = new NativePosGate("", "postgres", "postgres", "uat", mock(JdbcTemplate.class));
         authenticate(1L);
         assertEquals(40300, assertThrows(BusinessException.class, gate::requireEnabled).getCode());
 

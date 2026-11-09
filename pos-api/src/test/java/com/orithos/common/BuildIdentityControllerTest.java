@@ -11,7 +11,7 @@ import static org.mockito.Mockito.*;
 
 class BuildIdentityControllerTest {
     @Test
-    void uatContextRequiresActualIsolatedPosDatabaseAndIsolatedOdooDatabase() {
+    void uatContextRequiresActualPosDatabaseAndSingleTenantAllowlist() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_demo_uat");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
@@ -21,12 +21,13 @@ class BuildIdentityControllerTest {
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "uat");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "pos_demo_uat");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "pos_demo_uat");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1");
 
         Map<String, Object> verified = controller.uatContext().getBody();
         assertNotNull(verified);
         assertEquals(true, verified.get("isolated"));
         assertEquals(true, verified.get("posDatabaseVerified"));
-        assertEquals(true, verified.get("posDatabaseIsolated"));
+        assertEquals(true, verified.get("posTenantIsolated"));
         assertFalse(verified.containsKey("database"));
 
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_production");
@@ -47,16 +48,17 @@ class BuildIdentityControllerTest {
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "production");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "pos_production");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1");
 
         Map<String, Object> result = controller.uatContext().getBody();
         assertNotNull(result);
         assertEquals(false, result.get("isolated"));
         assertEquals(true, result.get("posDatabaseVerified"));
-        assertEquals(false, result.get("posDatabaseIsolated"));
+        assertEquals(false, result.get("posTenantIsolated"));
     }
 
     @Test
-    void sharedPostgresDatabaseCannotBeReportedAsIsolatedUat() {
+    void sharedPostgresDatabaseCanAttestOnlyItsAllowlistedTestTenant() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
@@ -66,11 +68,14 @@ class BuildIdentityControllerTest {
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "uat");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "postgres");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "postgres");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1");
 
         Map<String, Object> result = controller.uatContext().getBody();
         assertNotNull(result);
-        assertEquals(false, result.get("isolated"));
+        assertEquals(true, result.get("isolated"));
         assertEquals(true, result.get("posDatabaseVerified"));
-        assertEquals(false, result.get("posDatabaseIsolated"));
+        assertEquals(true, result.get("posTenantIsolated"));
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,55");
+        assertEquals(false, controller.uatContext().getBody().get("posTenantIsolated"));
     }
 }
