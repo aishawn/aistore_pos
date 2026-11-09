@@ -108,10 +108,10 @@ export function ShopfrontReportsOverviewPage() {
   const [transactions, setTransactions] = useState<number | null>(null);
   const [sellableUnits, setSellableUnits] = useState<number | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
+  const [trendAvailable, setTrendAvailable] = useState(false);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [compareRevenue, setCompareRevenue] = useState<number | null>(null);
   const [comparisonLabel, setComparisonLabel] = useState("");
-  const [missingTrendDays, setMissingTrendDays] = useState(0);
   const [marginWeek, setMarginWeek] = useState<TrendPoint[]>([]);
   const revision = useRef(0);
 
@@ -142,7 +142,6 @@ export function ShopfrontReportsOverviewPage() {
         dashboard: "true",
         size: "600",
       });
-      const trendQuery = new URLSearchParams({ resource: "sales-trend", from: days.from, to: days.to });
       const inventoryQuery = new URLSearchParams({ resource: "dashboard-inventory" });
       const compareQuery = new URLSearchParams({
         resource: "report-sales",
@@ -152,23 +151,24 @@ export function ShopfrontReportsOverviewPage() {
       });
       const weekEnd = salesDate(new Date().toISOString(), TIMEZONE);
       const weekStart = shiftDay(weekEnd, -6);
-      const weekTrendQuery = new URLSearchParams({ resource: "sales-trend", from: weekStart, to: weekEnd });
       const cache = refresh ? "no-store" : "default";
-      const [salesRes, trendRes, inventoryRes, compareRes, weekTrendRes] = await Promise.all([
+      const weekTrendRequest = fetch(`/api/shopfront-source?${new URLSearchParams({
+        resource: "report-sales", from: weekStart, to: weekEnd, dashboard: "true", size: "600",
+      })}`, { credentials: "same-origin", cache })
+        .then((response) => response.ok ? response.json().catch(() => null) : null)
+        .catch(() => null);
+      const [salesRes, inventoryRes, compareRes, weekTrendBody] = await Promise.all([
         fetch(`/api/shopfront-source?${salesQuery}`, { credentials: "same-origin", cache }),
-        fetch(`/api/shopfront-source?${trendQuery}`, { credentials: "same-origin", cache }),
         fetch(`/api/shopfront-source?${inventoryQuery}`, { credentials: "same-origin", cache }),
         fetch(`/api/shopfront-source?${compareQuery}`, { credentials: "same-origin", cache }),
-        fetch(`/api/shopfront-source?${weekTrendQuery}`, { credentials: "same-origin", cache }),
+        weekTrendRequest,
       ]);
       if (current !== revision.current) return;
-      if (salesRes.status === 409 || trendRes.status === 409) {
+      if (salesRes.status === 409) {
         setUnmapped(true);
         throw new Error("Shopfront is not mapped for this store.");
       }
       const salesBody = await salesRes.json().catch(() => null);
-      const trendBody = await trendRes.json().catch(() => null);
-      const weekTrendBody = await weekTrendRes.json().catch(() => null);
       const inventoryBody = await inventoryRes.json().catch(() => null);
       const compareBody = await compareRes.json().catch(() => null);
       if (!salesRes.ok || !salesBody) throw new Error(salesBody?.message ?? "Shopfront sales are unavailable.");
@@ -182,10 +182,13 @@ export function ShopfrontReportsOverviewPage() {
       setCompareRevenue(compareMetrics?.revenue ?? null);
       const inventory = parseShopfrontInventoryReport(inventoryBody);
       setSellableUnits(inventory?.sellableUnits ?? null);
-      setTrend(parseTrendRows(trendBody));
-      setMarginWeek(parseTrendRows(weekTrendBody));
-      setMissingTrendDays(Array.isArray(trendBody?.coverage?.missing_dates) ? trendBody.coverage.missing_dates.length : 0);
       const metricBlock = salesBody.metrics as Record<string, unknown> | undefined;
+      const dailyTrendAvailable = metricBlock?.daily_trend_available === true;
+      const dailyTrend = dailyTrendAvailable ? parseTrendRows({ data: metricBlock.daily_trend }) : [];
+      setTrend(dailyTrend);
+      setTrendAvailable(dailyTrendAvailable);
+      const weekMetrics = weekTrendBody?.metrics as Record<string, unknown> | undefined;
+      setMarginWeek(weekMetrics?.daily_trend_available === true ? parseTrendRows({ data: weekMetrics.daily_trend }) : []);
       const products = Array.isArray(metricBlock?.top_products) ? metricBlock.top_products as Array<Record<string, unknown>> : [];
       setTopProducts(products.slice(0, 6).map((row) => ({
         id: String(row.id ?? row.name ?? "product"),
@@ -230,7 +233,7 @@ export function ShopfrontReportsOverviewPage() {
   }, [load]);
 
   const maxRevenue = Math.max(1, ...trend.map((point) => point.revenue));
-  const hasTrend = trend.some((point) => point.revenue > 0);
+  const hasTrend = trend.some((point) => point.transactions !== 0 || point.revenue !== 0 || point.profit !== 0);
   const revenueDelta = revenue !== null && compareRevenue !== null ? percentDelta(revenue, compareRevenue) : null;
   const averageSale = revenue !== null && transactions ? revenue / transactions : 0;
 
@@ -346,9 +349,9 @@ export function ShopfrontReportsOverviewPage() {
         </div>
       ) : null}
 
-      {missingTrendDays > 0 ? (
+      {!loading && !trendAvailable ? (
         <p role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          Daily trend is missing {missingTrendDays} day{missingTrendDays === 1 ? "" : "s"} in this range (not counted as zero sales).
+          Shopfront report totals could not be reconciled to transaction detail. The daily trend is withheld.
         </p>
       ) : null}
 
@@ -364,10 +367,10 @@ export function ShopfrontReportsOverviewPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <h2 className="text-base font-semibold text-[var(--oh-text)]">Sales trend</h2>
-              <p className="text-xs text-[var(--oh-muted)]">Daily Shopfront totals · {rangeLabel}</p>
+              <p className="text-xs text-[var(--oh-muted)]">Transaction detail · report range reconciled · {rangeLabel}</p>
             </div>
             {(() => {
-              const bounds = periodDays(period, customRef.current.from, customRef.current.to);
+              const bounds = periodDays(period, fromDay, toDay);
               return bounds ? (
                 <Link href={`/reports/sales?from=${bounds.from}&to=${bounds.to}&group=day`} className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--oh-primary)] hover:underline">
                   Sales report <ArrowUpRight size={14} />
@@ -401,8 +404,8 @@ export function ShopfrontReportsOverviewPage() {
           ) : (
             <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-2 text-center">
               <BarChart3 className="text-[var(--oh-primary)]" size={28} aria-hidden="true" />
-              <p className="text-sm font-medium text-[var(--oh-text)]">No sales in this period</p>
-              <p className="text-xs text-[var(--oh-muted)]">Try another range or refresh after sync.</p>
+              <p className="text-sm font-medium text-[var(--oh-text)]">{trendAvailable ? "No sales in this period" : "Trend data unavailable"}</p>
+              <p className="text-xs text-[var(--oh-muted)]">{trendAvailable ? "No Shopfront transactions were reported for these dates." : "Shopfront report totals and transaction details have not reconciled."}</p>
             </div>
           )}
         </section>
