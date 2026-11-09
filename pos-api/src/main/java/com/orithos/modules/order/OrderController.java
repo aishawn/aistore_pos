@@ -2,6 +2,7 @@ package com.orithos.modules.order;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.PageResult;
+import com.orithos.config.NativePosGate;
 import com.orithos.modules.ai.invoice.InvoiceScanResponse;
 import com.orithos.modules.ai.invoice.InvoiceScanService;
 import com.orithos.security.CurrentUser;
@@ -20,11 +21,14 @@ public class OrderController {
     private final OrderMapper mapper;
     private final OrderService orderService;
     private final InvoiceScanService invoiceScanService;
+    private final NativePosGate nativePosGate;
 
-    public OrderController(OrderMapper mapper, OrderService orderService, InvoiceScanService invoiceScanService) {
+    public OrderController(OrderMapper mapper, OrderService orderService, InvoiceScanService invoiceScanService,
+                           NativePosGate nativePosGate) {
         this.mapper = mapper;
         this.orderService = orderService;
         this.invoiceScanService = invoiceScanService;
+        this.nativePosGate = nativePosGate;
     }
 
     @GetMapping
@@ -74,17 +78,20 @@ public class OrderController {
 
     @PostMapping
     public ApiResult<Order> create(@RequestBody CreateOrderRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.create(request));
     }
 
     @PostMapping("/transfers")
     public ApiResult<Order> createTransfer(@RequestBody CreateTransferRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.createTransfer(request));
     }
 
     @PostMapping("/receives")
     public ApiResult<Order> createReceive(@RequestHeader("Idempotency-Key") String idempotencyKey,
                                           @RequestBody CreateReceiveRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.createReceive(request, idempotencyKey));
     }
 
@@ -95,26 +102,31 @@ public class OrderController {
 
     @PostMapping("/receives/from-scan")
     public ApiResult<Order> saveScannedReceive(@RequestBody InvoiceScanResponse request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(invoiceScanService.save(request));
     }
 
     @PostMapping("/returns")
     public ApiResult<Order> createReturn(@RequestBody CreateReturnRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.createReturn(request));
     }
 
     @PostMapping("/credits")
     public ApiResult<Order> createCredit(@RequestBody CreateCreditRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.createCredit(request));
     }
 
     @PutMapping("/{id}")
     public ApiResult<Order> update(@PathVariable Long id, @RequestBody Order order) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.update(id, order));
     }
 
     @PutMapping("/{id}/send")
     public ApiResult<Void> send(@PathVariable Long id) {
+        nativePosGate.requireEnabled();
         if (mapper.markSent(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
@@ -128,23 +140,27 @@ public class OrderController {
     public ApiResult<PurchaseReceiptResult> receiveLines(@PathVariable Long id,
                                                           @RequestHeader("Idempotency-Key") String idempotencyKey,
                                                           @RequestBody PurchaseReceiptRequest request) {
+        nativePosGate.requireEnabled();
         return ApiResult.ok(orderService.receivePurchaseOrder(id, idempotencyKey, request));
     }
 
     @PutMapping("/{id}/cancel")
     public ApiResult<Void> cancel(@PathVariable Long id) {
+        nativePosGate.requireEnabled();
         if (mapper.markCancelled(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/reopen")
     public ApiResult<Void> reopen(@PathVariable Long id) {
+        nativePosGate.requireEnabled();
         if (mapper.reopen(id, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/related")
     public ApiResult<Void> markOrdersAsRelated(@PathVariable Long id, @RequestBody List<Long> relatedOrderIds) {
+        nativePosGate.requireEnabled();
         if (relatedOrderIds != null) {
             for (Long relatedOrderId : relatedOrderIds) {
                 if (mapper.insertRelated(id, relatedOrderId, requireVendor()) == 0) throw new BusinessException(40410, "Order not found.");
