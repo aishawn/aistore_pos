@@ -1,24 +1,21 @@
 "use client";
-import { clearOdooReadCache } from "@/lib/odoo-read-cache";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
-import { fetchOdooRoute, getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
-import { formatStoreEpoch } from "@/lib/odoo-date";
+import { api, type Page } from "@/lib/api";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 
-interface OdooSupplierRecord {
-  id: number;
+interface SupplierRecord {
+  id: string | number;
   name: string;
-  phone: string | false;
-  email: string | false;
-  vat: string | false;
-  ref: string | false;
-  supplier_rank: number;
+  phone?: string | null;
+  email?: string | null;
+  businessNumber?: string | null;
+  accountNumber?: string | null;
 }
 
 function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean; onClear: () => void; onAdd: () => void }) {
@@ -36,16 +33,16 @@ function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean;
   );
 }
 
-export function OdooSupplierDirectoryPage() {
-  return <OdooNativeSupplierDirectoryPage />;
+export function SupplierDirectoryPage() {
+  return <SupplierDirectory />;
 }
 
-function OdooNativeSupplierDirectoryPage() {
+function SupplierDirectory() {
   const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
-  const [items, setItems] = useState<OdooSupplierRecord[]>([]);
+  const [items, setItems] = useState<SupplierRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const nextOffset = useRef(0);
@@ -58,7 +55,6 @@ function OdooNativeSupplierDirectoryPage() {
   const scrollRoot = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
-  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -86,12 +82,12 @@ function OdooNativeSupplierDirectoryPage() {
   useEffect(() => {
     let cancelled = false;
     setCheckingConnection(true);
-    void getOdooSession().then((user) => {
-      if (!cancelled) setConnected(Boolean(user));
+    void api.get<unknown>("/api/auth/me").then(() => {
+      if (!cancelled) setConnected(true);
     }).catch((cause) => {
       if (!cancelled) {
         setConnected(false);
-        setError(cause instanceof Error ? cause.message : "Could not check the Orithos connection.");
+        setError(cause instanceof Error ? cause.message : "Could not check your Orithos session.");
       }
     }).finally(() => {
       if (!cancelled) setCheckingConnection(false);
@@ -99,36 +95,28 @@ function OdooNativeSupplierDirectoryPage() {
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
 
-  useEffect(() => {
-    if (connected !== true) return;
-    let cancelled = false;
-    void getOdooPosBootstrap().then((bootstrap) => {
-      if (cancelled) return;
-      const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
-      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
-    }).catch(() => {
-      // Keep Adelaide as the display fallback when bootstrap is unavailable.
-    });
-    return () => { cancelled = true; };
-  }, [connected]);
-
   const loadSuppliers = useCallback(async (append = false) => {
     if (connected !== true) return;
     if (append && requestBusy.current) return;
     requestBusy.current = true;
     const offset = append ? nextOffset.current : 0;
+    const pageNumber = Math.floor(offset / PAGE_SIZE) + 1;
     if (!append) { setHasNext(false); nextOffset.current = 0; }
     const revision = ++requestRevision.current;
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset });
+      const page = await api.get<Page<SupplierRecord>>("/api/suppliers", {
+        name: debouncedQuery || undefined,
+        page: pageNumber,
+        size: PAGE_SIZE,
+      });
       if (revision !== requestRevision.current) return;
-      if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
-      setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
-      nextOffset.current = offset + Math.min(page.items.length, PAGE_SIZE);
-      setHasNext(page.items.length > PAGE_SIZE);
-      setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
+      if (append && !page.items.length && offset < page.total) throw new Error("The next batch was empty. Retry to continue.");
+      setItems((previous) => append ? [...previous, ...page.items.filter((row) => !previous.some((item) => item.id === row.id))] : page.items);
+      nextOffset.current = offset + page.items.length;
+      setHasNext(nextOffset.current < page.total);
+      setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) { failedAppend.current = append; setError(cause instanceof Error ? cause.message : "Could not load Orithos suppliers."); }
     } finally {
@@ -157,14 +145,13 @@ function OdooNativeSupplierDirectoryPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const response = await fetchOdooRoute("/api/odoo/suppliers", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createForm),
+      await api.post("/api/suppliers", {
+        name: createForm.name,
+        phone: createForm.phone || null,
+        email: createForm.email || null,
+        businessNumber: createForm.vat || null,
+        accountNumber: createForm.ref || null,
       });
-      const payload = await response.json().catch(() => null) as { message?: string } | null;
-      if (!response.ok) throw new Error(payload?.message || "Could not create the supplier.");
       setCreateOpen(false);
       setCreateForm({ name: "", phone: "", email: "", vat: "", ref: "" });
       setQuery("");
@@ -194,12 +181,12 @@ function OdooNativeSupplierDirectoryPage() {
       <header className="mt-4 flex flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Supplier contacts available to your Orithos staff account.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Supplier contacts available to your Orithos staff account.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Date(lastLoadedAt).toLocaleTimeString()}.</span>}</p>
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
           <Link href="/stock/replenishment" className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:px-3"><span className="sm:hidden">Replenish</span><span className="hidden sm:inline">Open replenishment</span></Link>
           <button type="button" onClick={openCreateSupplier} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={16} /> Add supplier</button>
-          <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={connected !== true || loading} aria-label="Refresh suppliers" title="Refresh suppliers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={connected !== true || loading} aria-label="Refresh suppliers" title="Refresh suppliers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -209,11 +196,10 @@ function OdooNativeSupplierDirectoryPage() {
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view suppliers</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Orithos staff account to see suppliers used for purchase orders.</p>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Supplier service unavailable</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Your signed-in Orithos account could not load suppliers. Retry the connection.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
-              <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
             </div>
           </div>
         </section>
@@ -223,7 +209,7 @@ function OdooNativeSupplierDirectoryPage() {
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input aria-label="Search suppliers by name, phone, email, ABN or reference" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or ABN" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadSuppliers(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSuppliers(failedAppend.current)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos suppliers" className="hidden w-full min-w-[760px] border-collapse text-left text-sm xl:table">
@@ -245,8 +231,8 @@ function OdooNativeSupplierDirectoryPage() {
                       {supplier.email && <a className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded px-1 text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`mailto:${encodeURIComponent(supplier.email)}`}><Mail size={14} /><span className="break-all">{supplier.email}</span></a>}
                       {!supplier.phone && !supplier.email && "—"}
                     </td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{supplier.vat || "—"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{supplier.ref || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{supplier.businessNumber || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{supplier.accountNumber || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -273,8 +259,8 @@ function OdooNativeSupplierDirectoryPage() {
                     {supplier.email ? <a className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`mailto:${encodeURIComponent(supplier.email)}`}><Mail size={15} className="shrink-0 text-[var(--oh-muted)]" /><span className="break-all">{supplier.email}</span></a> : <p className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-muted)]"><Mail size={15} />No email</p>}
                   </div>
                   <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                    <div className="min-w-0 rounded-lg bg-[var(--oh-surface)] px-3 py-2"><dt className="text-[var(--oh-muted)]">ABN / Tax ID</dt><dd className="mt-0.5 break-all text-[var(--oh-text-secondary)]">{supplier.vat || "—"}</dd></div>
-                    <div className="min-w-0 rounded-lg bg-[var(--oh-surface)] px-3 py-2"><dt className="text-[var(--oh-muted)]">Reference</dt><dd className="mt-0.5 break-words text-[var(--oh-text-secondary)]">{supplier.ref || "—"}</dd></div>
+                    <div className="min-w-0 rounded-lg bg-[var(--oh-surface)] px-3 py-2"><dt className="text-[var(--oh-muted)]">ABN / Tax ID</dt><dd className="mt-0.5 break-all text-[var(--oh-text-secondary)]">{supplier.businessNumber || "—"}</dd></div>
+                    <div className="min-w-0 rounded-lg bg-[var(--oh-surface)] px-3 py-2"><dt className="text-[var(--oh-muted)]">Reference</dt><dd className="mt-0.5 break-words text-[var(--oh-text-secondary)]">{supplier.accountNumber || "—"}</dd></div>
                   </dl>
                 </article>
               ))}
@@ -294,7 +280,7 @@ function OdooNativeSupplierDirectoryPage() {
           <form onSubmit={(event) => void createSupplier(event)} className="grid gap-3 p-4 sm:gap-4 sm:p-5">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Business name <span className="text-red-700">*</span></span><input ref={supplierNameInputRef} required maxLength={120} value={createForm.name} onChange={(event) => setCreateForm((form) => ({ ...form, name: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label>
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Phone<input maxLength={32} type="tel" autoComplete="tel" value={createForm.phone} onChange={(event) => setCreateForm((form) => ({ ...form, phone: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Email<input maxLength={254} type="email" autoComplete="email" value={createForm.email} onChange={(event) => setCreateForm((form) => ({ ...form, email: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label></div>
-            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">ABN / Tax ID<input maxLength={32} value={createForm.vat} onChange={(event) => setCreateForm((form) => ({ ...form, vat: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /><span className="text-xs font-normal text-[var(--oh-muted)]">Existing matching ABN is blocked to help avoid duplicates.</span></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Internal reference<input maxLength={64} value={createForm.ref} onChange={(event) => setCreateForm((form) => ({ ...form, ref: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label></div>
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">ABN / Tax ID<input maxLength={32} value={createForm.vat} onChange={(event) => setCreateForm((form) => ({ ...form, vat: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Internal reference<input maxLength={64} value={createForm.ref} onChange={(event) => setCreateForm((form) => ({ ...form, ref: event.target.value }))} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label></div>
             {createError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{createError}</p>}
             <div className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end"><button type="button" onClick={() => setCreateOpen(false)} disabled={creating} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Cancel</button><button type="submit" disabled={creating} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">{creating ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />}{creating ? "Saving…" : "Create supplier"}</button></div>
           </form>

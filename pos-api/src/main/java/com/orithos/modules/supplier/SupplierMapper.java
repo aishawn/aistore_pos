@@ -7,20 +7,25 @@ import java.util.List;
 public interface SupplierMapper {
 
     @Select("""
-        SELECT s.*, (
+        SELECT s.*, ct.phone, ct.email, (
             SELECT COUNT(DISTINCT ps.product_id)
             FROM product_supplier ps
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
             WHERE ps.supplier_id = s.id
         ) AS product_count
         FROM supplier s
+        LEFT JOIN contact ct ON ct.id = s.contact_id
         JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
             SELECT 1 FROM product_supplier ps
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
             WHERE ps.supplier_id = s.id
         ))
-          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
+          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(ct.phone, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(ct.email, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(s.business_number, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(s.account_number, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         ORDER BY s.id DESC
         LIMIT #{size} OFFSET #{offset}
         """)
@@ -29,13 +34,18 @@ public interface SupplierMapper {
 
     @Select("""
         SELECT COUNT(*) FROM supplier s
+        LEFT JOIN contact ct ON ct.id = s.contact_id
         JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
             SELECT 1 FROM product_supplier ps
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
             WHERE ps.supplier_id = s.id
         ))
-          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
+          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(ct.phone, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(ct.email, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(s.business_number, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
+               OR COALESCE(s.account_number, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         """)
     long count(@Param("name") String name, @Param("vendorId") Long vendorId);
 

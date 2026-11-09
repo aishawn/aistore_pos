@@ -1,13 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { Suspense } from "react";
-import { OdooSupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
+import { redirect } from "next/navigation";
 
-export default function OdooSupplierDirectoryRoute() {
-  return (
-    <Suspense fallback={<div role="status" className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading suppliers...</div>}>
-      <OdooSupplierDirectoryPage />
-    </Suspense>
-  );
+export default function OdooSupplierDirectoryRoute(): never {
+  redirect("/suppliers");
 }

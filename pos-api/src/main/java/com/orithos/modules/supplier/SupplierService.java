@@ -56,6 +56,13 @@ public class SupplierService {
             throw new BusinessException(40310, "A tenant outlet is required to create a supplier.");
         }
         SupplierDetail detail = prepareForSave(input);
+        if (detail.getBusinessNumber() != null && !detail.getBusinessNumber().isBlank()) {
+            List<Supplier> matches = supplierMapper.findMatchesByNameOrAbnForVendor(
+                    null, detail.getBusinessNumber(), vendorId);
+            if (!matches.isEmpty()) {
+                throw new BusinessException("ABN / Tax ID already belongs to " + matches.getFirst().getName() + ".");
+            }
+        }
         detail.setOutletId(outletId);
         applyPersistableDefaults(detail);
         detail.setContactId(upsertContact(null, toContact(detail), outletId));

@@ -12,6 +12,8 @@ public class Supplier {
     private Long contactId;
     private String businessNumber;
     private String accountNumber;
+    private String phone;
+    private String email;
     private String orderNotes;
     private String comments;
     private BigDecimal minimumOrderValue;

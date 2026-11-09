@@ -2,6 +2,7 @@ package com.orithos.modules.supplier;
 
 import com.orithos.common.BusinessException;
 import com.orithos.modules.customer.mapper.ContactMapper;
+import com.orithos.modules.register.Outlet;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
 import com.orithos.modules.supplier.mapper.SupplierAuthenticationMapper;
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import java.util.List;
 
 class SupplierServiceTenantScopeTest {
 
@@ -71,6 +73,28 @@ class SupplierServiceTenantScopeTest {
         assertEquals(40310, error.getCode());
         verify(outlets).findByIdAndVendor(700L, 70L);
         verifyNoInteractions(suppliers);
+    }
+
+    @Test
+    void createRejectsDuplicateAbnWithinAuthenticatedTenant() {
+        setUser(7L, 70L, 700L);
+        SupplierMapper suppliers = mock(SupplierMapper.class);
+        OutletMapper outlets = mock(OutletMapper.class);
+        when(outlets.findByIdAndVendor(700L, 70L)).thenReturn(mock(Outlet.class));
+        Supplier existing = new Supplier();
+        existing.setName("Existing Distributor");
+        when(suppliers.findMatchesByNameOrAbnForVendor(null, "123456789", 70L))
+                .thenReturn(List.of(existing));
+        SupplierService service = service(suppliers, outlets);
+        SupplierDetail input = new SupplierDetail();
+        input.setName("New Distributor");
+        input.setBusinessNumber("123456789");
+
+        BusinessException error = assertThrows(BusinessException.class, () -> service.create(input));
+
+        assertEquals("ABN / Tax ID already belongs to Existing Distributor.", error.getMessage());
+        verify(suppliers).findMatchesByNameOrAbnForVendor(null, "123456789", 70L);
+        verifyNoMoreInteractions(suppliers);
     }
 
     private static SupplierService service(SupplierMapper suppliers, OutletMapper outlets) {

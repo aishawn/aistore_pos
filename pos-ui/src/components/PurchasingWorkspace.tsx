@@ -8,7 +8,7 @@ import { OdooPurchaseOrdersPage } from "@/components/OdooPurchaseOrdersPage";
 import { OrithosPurchaseOrdersPage } from "@/components/OrithosPurchaseOrdersPage";
 import { OdooReplenishmentPage } from "@/components/OdooReplenishmentPage";
 import { InvoiceScansListPage } from "@/components/admin/InvoiceScansListPage";
-import { OdooSupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
+import { SupplierDirectoryPage } from "@/components/OdooSupplierDirectoryPage";
 import { ShopfrontPurchasingSection } from "@/components/ShopfrontPurchasingDirectory";
 
 const views = [
@@ -48,7 +48,7 @@ export function PurchasingWorkspace() {
         {permitted && transfers && <OdooPurchaseOrdersPage key={params.get("state") ?? "all"} embedded />}
         {permitted && active === "replenishment" && <OdooReplenishmentPage embedded />}
         {permitted && active === "invoices" && <InvoiceScansListPage embedded />}
-        {permitted && active === "suppliers" && <><OdooSupplierDirectoryPage /><ShopfrontPurchasingSection kind="suppliers" /></>}
+        {permitted && active === "suppliers" && <><SupplierDirectoryPage /><ShopfrontPurchasingSection kind="suppliers" /></>}
       </div>
     </div>
   );
