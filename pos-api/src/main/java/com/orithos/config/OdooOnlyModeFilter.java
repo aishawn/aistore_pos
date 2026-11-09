@@ -85,6 +85,12 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
                 && (path.equals("/api/suppliers") || path.equals("/api/outlets"))) {
             return false;
         }
+        // Orithos is the live catalogue for Demo/SKR after Shopfront sync.
+        // ProductController scopes list/detail reads to the authenticated outlet.
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/products") || path.startsWith("/api/products/"))) {
+            return false;
+        }
         if (path.equals("/api/supply-chain/plan")
                 || path.equals("/api/supply-chain/settings")
                 || path.matches("/api/supply-chain/suppliers/[0-9]+/cart")) {

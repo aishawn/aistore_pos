@@ -126,6 +126,23 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeProductReadsPassThroughWhileProductWritesRemainRetired() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (String path : new String[]{"/api/products", "/api/products/filter-options", "/api/products/12", "/api/products/12/prices"}) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        MockHttpServletRequest write = new MockHttpServletRequest("POST", "/api/products");
+        MockHttpServletResponse writeResponse = new MockHttpServletResponse();
+        filter.doFilter(write, writeResponse, new MockFilterChain());
+        assertEquals(410, writeResponse.getStatus());
+    }
+
+    @Test
     void nativeSupplyPlanAndCartPassThroughWhileLegacySupplyWritesRemainRetired() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         for (var route : new String[][]{
