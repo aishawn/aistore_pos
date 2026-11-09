@@ -23,8 +23,9 @@ export type ShopfrontSalesMetrics = {
   revenue: number;
   cost: number;
   calculatedProfit: number;
-  reportedProfit: number;
-  profitDelta: number;
+  reportedProfit: number | null;
+  profitDelta: number | null;
+  profitStatus: "matched" | "mismatch" | "incomplete" | "no_sales";
   grossMargin: number | null;
   transactionCount: number;
   fetchedAt: string | null;
@@ -42,6 +43,23 @@ export type ShopfrontInventoryMetrics = {
 };
 
 export const SHOPFRONT_INVENTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export function calculateShopfrontRowProfit(row: unknown) {
+  const value = object(row);
+  if (!value) return null;
+  const revenue = numeric(field(value, "Revenue", "revenue"));
+  const cost = numeric(field(value, "Cost of Goods Sold", "cost", "Cost"));
+  if (revenue === null || cost === null) return null;
+  const calculatedProfit = Math.round((revenue - cost) * 100) / 100;
+  const reportedProfit = numeric(field(value, "Profit", "profit"));
+  const profitPercentage = revenue ? Math.round((calculatedProfit / revenue * 100) * 100) / 100 : null;
+  return {
+    calculatedProfit,
+    reportedProfit,
+    profitDelta: reportedProfit === null ? null : Math.round((calculatedProfit - reportedProfit) * 100) / 100,
+    profitPercentage,
+  };
+}
 
 export function shopfrontInventorySnapshotIsFresh(value: unknown, nowMs = Date.now()): boolean {
   const timestamp = fetchedAt(value);
@@ -77,6 +95,7 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
   let revenue = 0;
   let cost = 0;
   let reportedProfit = 0;
+  let profitMismatch = false;
   let transactions = 0;
   for (const value of rows) {
     const row = object(value);
@@ -86,21 +105,37 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
     const rowTransactions = numeric(field(row, "Transaction Count", "transaction_count"));
     const rowProfit = numeric(field(row, "Profit", "profit"));
     const rowProfitPercent = numeric(field(row, "Profit Percentage", "profit_percentage"));
-    if (rowRevenue === null || rowCost === null || rowTransactions === null || rowProfit === null || rowProfitPercent === null
-      || Math.abs(rowProfit - (rowRevenue - rowCost)) > 0.021
-      || (rowRevenue !== 0 && Math.abs(rowProfitPercent - (rowProfit / rowRevenue * 100)) > 0.021)) return null;
+    if (rowRevenue === null || rowCost === null || rowTransactions === null) return null;
     revenue += rowRevenue;
     cost += rowCost;
-    reportedProfit += rowProfit;
+    if (rowProfit !== null && rowProfitPercent !== null) {
+      reportedProfit += rowProfit;
+      const expectedProfit = Math.round((rowRevenue - rowCost) * 100) / 100;
+      const expectedPercent = rowRevenue === 0 ? null : Math.round((expectedProfit / rowRevenue * 100) * 100) / 100;
+      if (Math.round(rowProfit * 100) !== Math.round(expectedProfit * 100)
+        || (expectedPercent !== null && Math.round(rowProfitPercent * 100) !== Math.round(expectedPercent * 100))) {
+        profitMismatch = true;
+      }
+    }
     transactions += rowTransactions;
   }
   const calculatedProfit = revenue - cost;
+  const calculatedProfitRounded = Math.round(calculatedProfit * 100) / 100;
+  const reportedProfitComplete = rows.every(value => {
+    const row = object(value);
+    return row !== null && numeric(field(row, "Profit", "profit")) !== null
+      && numeric(field(row, "Profit Percentage", "profit_percentage")) !== null;
+  });
+  const profitStatus = rows.length === 0 ? "no_sales"
+    : !reportedProfitComplete ? "incomplete"
+      : profitMismatch ? "mismatch" : "matched";
   return {
     revenue: Math.round(revenue * 100) / 100,
     cost: Math.round(cost * 100) / 100,
-    calculatedProfit: Math.round(calculatedProfit * 100) / 100,
-    reportedProfit: Math.round(reportedProfit * 100) / 100,
-    profitDelta: Math.round((calculatedProfit - reportedProfit) * 100) / 100,
+    calculatedProfit: calculatedProfitRounded,
+    reportedProfit: reportedProfitComplete ? Math.round(reportedProfit * 100) / 100 : null,
+    profitDelta: reportedProfitComplete ? Math.round((calculatedProfitRounded - reportedProfit) * 100) / 100 : null,
+    profitStatus,
     grossMargin: revenue > 0 ? calculatedProfit / revenue : null,
     transactionCount: transactions,
     fetchedAt: fetchedAt(report?.fetched_at),

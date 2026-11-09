@@ -89,6 +89,8 @@ function writePulse(scope: string, data: OverviewPulse) {
 export function pulseMarginNote(data: OverviewPulse): string {
   const status = data.grossMarginStatus;
   if (status === "sales_mismatch") return "Odoo sales do not reconcile";
+  if (status === "shopfront_profit_mismatch") return "Shopfront Profit differs from Revenue − COGS";
+  if (status === "shopfront_profit_incomplete") return "Shopfront Profit unavailable · margin uses Revenue − COGS";
   if (status === "shopfront_source_report") return "Shopfront Sales · Profit / Revenue";
   if (data.shopfrontReportsMode === "source" && status === "unavailable") return "Shopfront Sales report unavailable";
   if (status === "source_margin") return "Shopfront source cost · not ledger-audited";
@@ -224,7 +226,10 @@ function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<Ret
     next.yesterdaySalesAvailable = true;
     next.yesterdayGrossMargin = salesYesterday.grossMargin;
     next.grossMarginCoverage = 1;
-    next.grossMarginStatus = salesYesterday.grossMargin === null ? "no_sales" : "shopfront_source_report";
+    next.grossMarginStatus = salesYesterday.grossMargin === null ? "no_sales"
+      : salesYesterday.profitStatus === "mismatch" ? "shopfront_profit_mismatch"
+        : salesYesterday.profitStatus === "incomplete" ? "shopfront_profit_incomplete"
+          : "shopfront_source_report";
     next.grossMarginBasis = "shopfront_sales_report_profit_percentage";
     next.sourceSalesAvailable = true;
   }

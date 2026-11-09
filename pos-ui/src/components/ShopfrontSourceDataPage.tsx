@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, Eye, Pencil, RefreshCw, Search, X } from "lucide-react";
-import { parseShopfrontSalesReport, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
+import { calculateShopfrontRowProfit, parseShopfrontSalesReport, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
 import { Sparkline } from "@/components/admin/Sparkline";
 
 export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
@@ -168,6 +168,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [snapshot, setSnapshot] = useState<SourceSnapshot | null>(null);
   const [reportTotals, setReportTotals] = useState<SourceRow>({});
   const [reportMetrics, setReportMetrics] = useState<SourceRow>({});
+  const [salesMetrics, setSalesMetrics] = useState<ReturnType<typeof parseShopfrontSalesReport>>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +182,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     setTotal(0);
     setReportTotals({});
     setReportMetrics({ available: false });
+    setSalesMetrics(null);
     setRangeCoverage(null);
     setSnapshot(null);
     setGeneratedAt(null);
@@ -225,9 +227,11 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       if (mode === "inventory" && (result.source !== "shopfront_reporting_api" || result.source_version !== "shopfront_reporting_api_v1")) {
         throw new Error("The Shopfront inventory report source is outdated. Refresh after the source service has updated.");
       }
-      if ((mode === "sales" || mode === "dashboard") && !parseShopfrontSalesReport(result)) {
-        throw new Error("Shopfront returned an incomplete or inconsistent sales report. No partial totals are shown.");
+      const parsedSalesMetrics = mode === "sales" || mode === "dashboard" ? parseShopfrontSalesReport(result) : null;
+      if ((mode === "sales" || mode === "dashboard") && !parsedSalesMetrics) {
+        throw new Error("Shopfront returned an incomplete sales report. No partial totals are shown.");
       }
+      setSalesMetrics(parsedSalesMetrics);
       const loadedRows = result.data ?? [];
       setRows(loadedRows);
       setTotal(Number(result.pagination?.total ?? loadedRows.length));
@@ -303,6 +307,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       setTotal(0);
       setReportTotals({});
       setReportMetrics({ available: false });
+      setSalesMetrics(null);
       setRangeCoverage(null);
       setSnapshot(null);
       setGeneratedAt(null);
@@ -314,20 +319,29 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const sums = useMemo(() => rows.reduce<{ revenue: number; cost: number; profit: number; tax: number; discount: number; transactions: number }>((acc, row) => ({
+  const sums = useMemo(() => rows.reduce<{ revenue: number; cost: number; tax: number; discount: number; transactions: number }>((acc, row) => ({
     revenue: acc.revenue + sourceNumber(row, "Revenue", "revenue"),
     cost: acc.cost + sourceNumber(row, "Cost of Goods Sold", "cost"),
-    profit: acc.profit + sourceNumber(row, "Profit", "profit"),
     tax: acc.tax + sourceNumber(row, "Tax Amount", "tax"),
     discount: acc.discount + sourceNumber(row, "Discount Amount", "discount"),
     transactions: acc.transactions + sourceNumber(row, "Transaction Count", "transaction_count"),
-  }), { revenue: 0, cost: 0, profit: 0, tax: 0, discount: 0, transactions: 0 }), [rows]);
-  const averageSale = sums.transactions > 0 ? sums.revenue / sums.transactions : 0;
-  const profitPercentage = sums.revenue !== 0 ? (sums.profit / sums.revenue) * 100 : 0;
+  }), { revenue: 0, cost: 0, tax: 0, discount: 0, transactions: 0 }), [rows]);
+  const revenue = salesMetrics?.revenue ?? sums.revenue;
+  const cost = salesMetrics?.cost ?? sums.cost;
+  const calculatedProfit = salesMetrics?.calculatedProfit ?? Math.round((revenue - cost) * 100) / 100;
+  const averageSale = sums.transactions > 0 ? revenue / sums.transactions : 0;
+  const profitPercentage = revenue !== 0 ? (calculatedProfit / revenue) * 100 : 0;
   const missingDates = Array.isArray(rangeCoverage?.missing_dates) ? rangeCoverage?.missing_dates as string[] : [];
   const inventory = coverage?.inventory ?? {};
   const dashboardMetricsAvailable = reportMetrics.available !== false;
-  const salesReportAvailable = !loading && error === null;
+  const salesReportAvailable = !loading && error === null && salesMetrics !== null;
+  const profitAuditMessage = salesMetrics?.profitStatus === "matched"
+    ? "Shopfront Profit matches the independent Revenue − COGS calculation."
+    : salesMetrics?.profitStatus === "mismatch"
+      ? `Shopfront Profit differs from calculated profit by ${money(salesMetrics.profitDelta)} (calculated − Shopfront).`
+      : salesMetrics?.profitStatus === "incomplete"
+        ? "Profit is calculated from Revenue − COGS; Shopfront's Profit comparison fields are incomplete."
+        : null;
   const inventorySnapshotStale = mode === "inventory" && generatedAt !== null && !shopfrontInventorySnapshotIsFresh(generatedAt);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const meta = MODE_META[mode];
@@ -407,9 +421,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       </details>}
 
       {mode === "dashboard" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <Metric label="Revenue" value={salesReportAvailable ? money(sums.revenue) : "—"} />
-        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(sums.cost) : "—"} />
-        <Metric label="Gross profit" value={salesReportAvailable ? money(sums.profit) : "—"} emphasis />
+        <Metric label="Revenue" value={salesReportAvailable ? money(revenue) : "—"} />
+        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(cost) : "—"} />
+        <Metric label="Gross profit · calculated" value={salesReportAvailable ? money(calculatedProfit) : "—"} emphasis />
         <Metric label="Average sale" value={salesReportAvailable ? money(averageSale) : "—"} />
         <Metric label="Profit percentage" value={salesReportAvailable ? `${quantity(profitPercentage)}%` : "—"} />
         <Metric label="Sale count" value={salesReportAvailable ? quantity(sums.transactions) : "—"} />
@@ -422,12 +436,14 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         <Metric label="Negative stock rows" value={quantity(inventory.negative_records)} />
       </div>}
 
+      {(mode === "sales" || mode === "dashboard") && profitAuditMessage && <div role="status" className={`mx-4 border-b px-3 py-2 text-sm md:mx-6 ${salesMetrics?.profitStatus === "mismatch" ? "border-amber-200 bg-amber-50 text-amber-950" : "border-[var(--oh-border)] bg-white text-[var(--oh-muted)]"}`}>{profitAuditMessage}</div>}
+
       {mode === "dashboard" && <DashboardBreakdown metrics={reportMetrics} />}
 
       {mode === "sales" && <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <Metric label="Revenue" value={salesReportAvailable ? money(sums.revenue) : "—"} />
-        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(sums.cost) : "—"} />
-        <Metric label="Profit" value={salesReportAvailable ? money(sums.profit) : "—"} emphasis />
+        <Metric label="Revenue" value={salesReportAvailable ? money(revenue) : "—"} />
+        <Metric label="Cost of goods sold" value={salesReportAvailable ? money(cost) : "—"} />
+        <Metric label="Profit · calculated" value={salesReportAvailable ? money(calculatedProfit) : "—"} emphasis />
         <Metric label="Average sale" value={salesReportAvailable ? money(averageSale) : "—"} />
         <Metric label="Profit percentage" value={salesReportAvailable ? `${quantity(profitPercentage)}%` : "—"} />
         <Metric label="Tax" value={salesReportAvailable ? money(sums.tax) : "—"} />
@@ -488,12 +504,17 @@ function DashboardBreakdown({ metrics }: { metrics: SourceRow }) {
 }
 
 function SalesTable({ rows, loading }: { rows: SourceRow[]; loading: boolean }) {
-  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[860px] border-collapse text-left">
-    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Name", "Revenue", "Cost of goods sold", "Transactions", "Average sale", "Profit", "Profit %", "Tax", "Discount", "Revenue %", "Transactions %"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
-    <tbody className="divide-y divide-[var(--oh-border)]">{rows.map((row, index) => <tr key={`${sourceText(row, "Name", "BY_NAME")}-${index}`} className="hover:bg-[var(--oh-surface)]">
-      <Cell>{sourceText(row, "Name", "BY_NAME")}</Cell><Cell>{money(sourceNumber(row, "Revenue", "revenue"))}</Cell><Cell>{money(sourceNumber(row, "Cost of Goods Sold", "cost"))}</Cell><Cell>{quantity(sourceNumber(row, "Transaction Count", "transaction_count"))}</Cell><Cell>{money(sourceNumber(row, "Average Sale", "average_sale"))}</Cell><Cell className="font-semibold">{money(sourceNumber(row, "Profit", "profit"))}</Cell><Cell>{sourceText(row, "Profit Percentage", "profit_percentage")}</Cell><Cell>{money(sourceNumber(row, "Tax Amount", "tax"))}</Cell><Cell>{money(sourceNumber(row, "Discount Amount", "discount"))}</Cell><Cell>{sourceText(row, "Revenue Percentage", "revenue_percentage")}</Cell><Cell>{sourceText(row, "Transaction Percentage", "transaction_percentage")}</Cell>
-    </tr>)}</tbody>
-    {loading && <tfoot><tr><td colSpan={11} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront report…</td></tr></tfoot>}
+  return <TableFrame empty={!loading && !rows.length}><table className="w-full min-w-[1160px] border-collapse text-left">
+    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Name", "Revenue", "Cost of goods sold", "Transactions", "Average sale", "Shopfront Profit", "Calculated Profit", "Calculated − Shopfront", "Profit %", "Tax", "Discount", "Revenue %", "Transactions %"].map(item => <th key={item} className="px-3 py-2 font-semibold">{item}</th>)}</tr></thead>
+    <tbody className="divide-y divide-[var(--oh-border)]">{rows.map((row, index) => {
+      const calculation = calculateShopfrontRowProfit(row);
+      const calculated = calculation?.calculatedProfit ?? (sourceNumber(row, "Revenue", "revenue") - sourceNumber(row, "Cost of Goods Sold", "cost"));
+      const reported = calculation?.reportedProfit ?? null;
+      return <tr key={`${sourceText(row, "Name", "BY_NAME")}-${index}`} className="hover:bg-[var(--oh-surface)]">
+        <Cell>{sourceText(row, "Name", "BY_NAME")}</Cell><Cell>{money(sourceNumber(row, "Revenue", "revenue"))}</Cell><Cell>{money(sourceNumber(row, "Cost of Goods Sold", "cost"))}</Cell><Cell>{quantity(sourceNumber(row, "Transaction Count", "transaction_count"))}</Cell><Cell>{money(sourceNumber(row, "Average Sale", "average_sale"))}</Cell><Cell>{reported === null ? "—" : money(reported)}</Cell><Cell className="font-semibold">{money(calculated)}</Cell><Cell>{reported === null ? "—" : money(calculated - reported)}</Cell><Cell>{calculation?.profitPercentage == null ? "—" : `${quantity(calculation.profitPercentage)}%`}</Cell><Cell>{money(sourceNumber(row, "Tax Amount", "tax"))}</Cell><Cell>{money(sourceNumber(row, "Discount Amount", "discount"))}</Cell><Cell>{sourceText(row, "Revenue Percentage", "revenue_percentage")}</Cell><Cell>{sourceText(row, "Transaction Percentage", "transaction_percentage")}</Cell>
+      </tr>;
+    })}</tbody>
+    {loading && <tfoot><tr><td colSpan={13} className="px-3 py-6 text-center text-sm text-[var(--oh-muted)]">Loading Shopfront report…</td></tr></tfoot>}
   </table></TableFrame>;
 }
 
