@@ -70,6 +70,11 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if (path.equals("/api/orders") || path.startsWith("/api/orders/")) {
             return false;
         }
+        // Supplier CRUD, import, product links, and merge all derive vendor
+        // scope from the authenticated user in SupplierController/Service.
+        if (path.equals("/api/suppliers") || path.startsWith("/api/suppliers/")) {
+            return false;
+        }
         // Only scoped sales reads and the validated checkout workflow are live.
         // Legacy sale create/update endpoints accept client-authored ledger values.
         if (path.equals("/api/sales") || path.startsWith("/api/sales/")) {
