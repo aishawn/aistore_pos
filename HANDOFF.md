@@ -16,13 +16,13 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 - Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
 - SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).
 - Shopfront store mappings on POS: `skr→company 55 / outlet 87`, `demo→company 1 / outlet 1`.
-- Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=http://backend:8080`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
-- Crawler `main` includes secondary inventory mirror (`8ba7f94`); live `/healthz` fingerprint matches local tree after deploy.
+- Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=https://api.orithos.com.au`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
+- Crawler `main` `e59e050` joins external Docker network `orithos-pos-qeyai0_default`; the current Dokploy runtime uses the public POS API URL above because the prior container hostname was not resolvable from the crawler.
 
 **Broken / incomplete:**
 - Pilot remains **NO-GO for formal production** until backup/Xero/Odoo-retire acceptance (owner’s earlier readiness bar).
 - SKR **PO receive** UAT not re-run in this cutover session (sell-loop only).
-- Dual-outlet catalogue/inventory parity still open: `shopfront` shadow for `store_key=demo` was **0/0** before the skip-import fix; job `#184` catalog_snapshot failed earlier on products:upsert 422. Re-run after `9e9b4643` deploy and prove Demo outlet 1 vs SKR outlet 87.
+- Dual-outlet catalogue/inventory parity still open: after network fix, job `#192` reached POS but failed products:upsert 422 on alias conflicts; soft-skip patch pending deploy, then re-run catalog-snapshot and prove Demo≈SKR.
 - Shared DB name `postgres` will never attest `isolated=true`; long-term should move to a dedicated DB name.
 - Local `.gitignore` contains `/docs/`, so dated evidence under `docs/test-sessions/` may stay untracked unless force-added.
 
