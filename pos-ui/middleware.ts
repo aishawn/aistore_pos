@@ -65,6 +65,8 @@ const PUBLIC_PREFIXES = [
   "/api/auth/reset-token",
   "/api/auth/bootstrap",
   "/api/public",
+  "/enapi.json",
+  "/openapi.json",
 ];
 
 function isPublic(pathname: string): boolean {
