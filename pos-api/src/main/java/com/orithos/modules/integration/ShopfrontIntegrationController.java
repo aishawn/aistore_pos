@@ -508,12 +508,19 @@ public class ShopfrontIntegrationController {
             if (completeInventorySnapshot) {
                 jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
             }
+            List<Object[]> inventoryRows = new ArrayList<>();
             for (JsonNode item : items) {
                 String sourceId = text(item, "source_id");
                 Long productId = inventoryMappings.get(sourceId);
                 if (productId == null || productId <= 0) continue;
-                upsertBusinessInventory(productId, outletId, item);
-                updated++;
+                inventoryRows.add(new Object[]{productId, outletId, decimal(item, "quantity", BigDecimal.ZERO),
+                        decimal(item, "reorder_level"), decimal(item, "reorder_amount"),
+                        decimal(item, "reorder_limit"), decimal(item, "max_quantity"),
+                        decimal(item, "on_order", BigDecimal.ZERO)});
+            }
+            if (!inventoryRows.isEmpty()) {
+                jdbc.batchUpdate("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", inventoryRows);
+                updated += inventoryRows.size();
             }
         } else {
             validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
@@ -1095,10 +1102,6 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private void upsertBusinessInventory(long productId, long outletId, JsonNode item) {
-        jdbc.update("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", productId, outletId, decimal(item, "quantity", BigDecimal.ZERO), decimal(item, "reorder_level"), decimal(item, "reorder_amount"), decimal(item, "reorder_limit"), decimal(item, "max_quantity"), decimal(item, "on_order", BigDecimal.ZERO));
-    }
-
     private void upsertSourceMapping(String store, String sourceId, long productId) {
         jdbc.update("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type=EXCLUDED.match_type,status='MAPPED',updated_at=CURRENT_TIMESTAMP", store, sourceId, productId);
     }
@@ -1170,14 +1173,18 @@ public class ShopfrontIntegrationController {
         boolean postgres = isPostgres();
         String outlet = String.valueOf(mapping.getOrDefault("outlet_id", ""));
         if ("products".equals(type)) {
+            String sql = postgres
+                    ? "INSERT INTO shopfront_product (store_key,source_id,name,sku,barcode,category,brand,cost,price,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,source_id) DO UPDATE SET name=EXCLUDED.name,sku=EXCLUDED.sku,barcode=EXCLUDED.barcode,category=EXCLUDED.category,brand=EXCLUDED.brand,cost=EXCLUDED.cost,price=EXCLUDED.price,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
+                    : "INSERT INTO shopfront_product (store_key,source_id,name,sku,barcode,category,brand,cost,price,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),sku=VALUES(sku),barcode=VALUES(barcode),category=VALUES(category),brand=VALUES(brand),cost=VALUES(cost),price=VALUES(price),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
+            List<Object[]> rows = new ArrayList<>();
             for (JsonNode item : items) {
                 String source = text(item, "source_id");
                 if (source.isBlank()) continue;
-                String sql = postgres
-                        ? "INSERT INTO shopfront_product (store_key,source_id,name,sku,barcode,category,brand,cost,price,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,source_id) DO UPDATE SET name=EXCLUDED.name,sku=EXCLUDED.sku,barcode=EXCLUDED.barcode,category=EXCLUDED.category,brand=EXCLUDED.brand,cost=EXCLUDED.cost,price=EXCLUDED.price,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
-                        : "INSERT INTO shopfront_product (store_key,source_id,name,sku,barcode,category,brand,cost,price,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),sku=VALUES(sku),barcode=VALUES(barcode),category=VALUES(category),brand=VALUES(brand),cost=VALUES(cost),price=VALUES(price),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
-                jdbc.update(sql, store, source, text(item,"name"), text(item,"sku"), text(item,"barcode"), text(item,"category"), text(item,"brand"), decimal(item,"cost"), decimal(item,"price"), objectMapper.writeValueAsString(item));
+                rows.add(new Object[]{store, source, text(item, "name"), text(item, "sku"),
+                        text(item, "barcode"), text(item, "category"), text(item, "brand"),
+                        decimal(item, "cost"), decimal(item, "price"), objectMapper.writeValueAsString(item)});
             }
+            if (!rows.isEmpty()) jdbc.batchUpdate(sql, rows);
             // Product batches can arrive after their historical sales. Repair
             // those durable sale-line mirrors from the source ID in one
             // idempotent statement so old lines do not stay unnamed forever.
@@ -1186,16 +1193,19 @@ public class ShopfrontIntegrationController {
             if (completeInventorySnapshot) {
                 jdbc.update("DELETE FROM shopfront_inventory WHERE store_key = ?", store);
             }
+            String sql = postgres
+                    ? "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON CONFLICT (store_key,source_product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,snapshot_at=EXCLUDED.snapshot_at,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
+                    : "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),snapshot_at=VALUES(snapshot_at),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
+            List<Object[]> rows = new ArrayList<>();
             for (JsonNode item : items) {
                 String source = text(item, "source_id");
                 if (source.isBlank()) continue;
-                String sql = postgres
-                        ? "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON CONFLICT (store_key,source_product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,snapshot_at=EXCLUDED.snapshot_at,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
-                        : "INSERT INTO shopfront_inventory (store_key,source_product_id,outlet_id,quantity,snapshot_at,raw_payload) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),snapshot_at=VALUES(snapshot_at),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
                 String itemOutlet = text(item, "outlet_id");
                 if (itemOutlet == null || itemOutlet.isBlank()) itemOutlet = outlet;
-                jdbc.update(sql, store, source, itemOutlet, decimal(item,"quantity"), text(item,"timestamp"), objectMapper.writeValueAsString(item));
+                rows.add(new Object[]{store, source, itemOutlet, decimal(item, "quantity"),
+                        text(item, "timestamp"), objectMapper.writeValueAsString(item)});
             }
+            if (!rows.isEmpty()) jdbc.batchUpdate(sql, rows);
         } else if ("sales".equals(type)) {
             for (JsonNode sale : items) {
                 String external = text(sale, "external_id");

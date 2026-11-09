@@ -1,6 +1,7 @@
 package com.orithos.modules.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -14,6 +15,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +70,64 @@ class ShopfrontIntegrationControllerTest {
                 new ObjectMapper().readTree("[]"), true);
 
         verify(jdbc).update(contains("DELETE FROM shopfront_inventory WHERE store_key = ?"), eq("skr"));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void batchesProductAndInventoryShadowWritesAndPreservesNegativeStock() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "persistShadow", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        persistShadow.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        persistShadow.invoke(controller, "products", "skr", Map.of("outlet_id", "87"), mapper.readTree(
+                "[{\"source_id\":\"p1\",\"name\":\"One\"},{\"source_id\":\"p2\",\"name\":\"Two\"}]"), false);
+        ArgumentCaptor<List<Object[]>> productRows = ArgumentCaptor.forClass((Class) List.class);
+        verify(jdbc).batchUpdate(contains("INSERT INTO shopfront_product"), productRows.capture());
+        assertEquals(2, productRows.getValue().size());
+        assertEquals("p1", productRows.getValue().get(0)[1]);
+
+        persistShadow.invoke(controller, "inventory", "skr", Map.of("outlet_id", "87"), mapper.readTree(
+                "[{\"source_id\":\"p1\",\"quantity\":-5.25,\"timestamp\":\"2026-11-09\"}]"), false);
+        ArgumentCaptor<List<Object[]>> inventoryRows = ArgumentCaptor.forClass((Class) List.class);
+        verify(jdbc).batchUpdate(contains("INSERT INTO shopfront_inventory"), inventoryRows.capture());
+        assertEquals(new BigDecimal("-5.25"), inventoryRows.getValue().get(0)[3]);
+        assertEquals("87", inventoryRows.getValue().get(0)[2]);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void batchesBusinessInventoryWritesWithoutChangingNegativeQuantity() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT m.source_product_id"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("source_product_id", "p1", "pos_product_id", 77L)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusiness", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        importBusiness.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) importBusiness.invoke(controller, "inventory", "skr",
+                Map.of("outlet_id", "87"), new ObjectMapper().readTree(
+                        "[{\"source_id\":\"p1\",\"quantity\":-5.25}]"), false);
+
+        ArgumentCaptor<List<Object[]>> rows = ArgumentCaptor.forClass((Class) List.class);
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_inventory"), rows.capture());
+        assertEquals(1, rows.getValue().size());
+        assertEquals(new BigDecimal("-5.25"), rows.getValue().get(0)[2]);
+        assertEquals(1, result.get("updated"));
+        assertEquals(0, result.get("skipped"));
     }
 
     @Test
