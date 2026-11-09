@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ACCESS_COOKIE, backendUrl } from "@/lib/server-auth";
+import {
+  ACCESS_COOKIE,
+  applyRefreshedAccess,
+  backendUrl,
+  refreshAccessFromRequest,
+  type RefreshedAccess,
+} from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,29 +40,14 @@ const BACKEND_PROXY_TIMEOUT_MS = (() => {
   return Number.isFinite(configured) ? Math.min(120_000, Math.max(5_000, configured)) : 60_000;
 })();
 
-async function proxy(request: NextRequest, context: RouteContext) {
-  const { path } = await context.params;
-  const upstreamUrl = new URL(
-    `/api/${path.map((part) => encodeURIComponent(part).replace(/%3A/gi, ":")).join("/")}`,
-    backendUrl().replace(/\/+$/, "") + "/",
-  );
-  upstreamUrl.search = new URL(request.url).search;
-
+function buildProxyHeaders(request: NextRequest, path: string[], authorization: string | null) {
   const headers = new Headers();
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  // Preserve machine-to-machine API tokens. Browser requests do not expose
-  // the HttpOnly access token, so fall back to the session cookie only when
-  // the caller did not supply an Authorization header.
-  const clientAuthorization = request.headers.get("authorization");
-  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (clientAuthorization) headers.set("authorization", clientAuthorization);
-  else if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
+  if (authorization) headers.set("authorization", authorization);
 
-  // Shopfront is a service-token boundary and must not inherit a tenant Host.
-  // Tenant-aware POS requests still forward the original host below.
   const isShopfrontIntegration = path[0] === "integrations" && path[1] === "shopfront";
   if (!isShopfrontIntegration) {
     const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
@@ -70,31 +61,83 @@ async function proxy(request: NextRequest, context: RouteContext) {
     const forwardedFor = request.headers.get("x-forwarded-for");
     if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
   }
+  return headers;
+}
+
+async function resolveAuthorization(
+  request: NextRequest,
+  clientAuthorization: string | null,
+): Promise<{ authorization: string | null; refreshed: RefreshedAccess | null }> {
+  if (clientAuthorization) return { authorization: clientAuthorization, refreshed: null };
+  let accessToken = request.cookies.get(ACCESS_COOKIE)?.value ?? null;
+  let refreshed: RefreshedAccess | null = null;
+  if (!accessToken) {
+    refreshed = await refreshAccessFromRequest(request);
+    if (refreshed) accessToken = refreshed.accessToken;
+  }
+  return { authorization: accessToken ? `Bearer ${accessToken}` : null, refreshed };
+}
+
+async function proxy(request: NextRequest, context: RouteContext) {
+  const { path } = await context.params;
+  const upstreamUrl = new URL(
+    `/api/${path.map((part) => encodeURIComponent(part).replace(/%3A/gi, ":")).join("/")}`,
+    backendUrl().replace(/\/+$/, "") + "/",
+  );
+  upstreamUrl.search = new URL(request.url).search;
+
+  const clientAuthorization = request.headers.get("authorization");
+  let { authorization, refreshed } = await resolveAuthorization(request, clientAuthorization);
 
   const method = request.method.toUpperCase();
+  const headers = buildProxyHeaders(request, path, authorization);
+  const requestBody = method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
+
   try {
-    const upstream = await fetch(upstreamUrl, {
+    let upstream = await fetch(upstreamUrl, {
       method,
       headers,
-      body: method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer(),
+      body: requestBody,
       cache: "no-store",
       redirect: "manual",
       signal: AbortSignal.timeout(BACKEND_PROXY_TIMEOUT_MS),
     });
+
+    const canRefresh = !clientAuthorization && (method === "GET" || method === "HEAD");
+    if (canRefresh && upstream.status === 401 && request.cookies.get(ACCESS_COOKIE)?.value) {
+      const retryRefresh = await refreshAccessFromRequest(request);
+      if (retryRefresh) {
+        refreshed = retryRefresh;
+        const retryHeaders = buildProxyHeaders(request, path, `Bearer ${retryRefresh.accessToken}`);
+        upstream = await fetch(upstreamUrl, {
+          method,
+          headers: retryHeaders,
+          body: requestBody,
+          cache: "no-store",
+          redirect: "manual",
+          signal: AbortSignal.timeout(BACKEND_PROXY_TIMEOUT_MS),
+        });
+      }
+    }
+
     const responseHeaders = new Headers();
     for (const name of FORWARDED_RESPONSE_HEADERS) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }
-    return new NextResponse(method === "HEAD" ? null : upstream.body, {
+    const response = new NextResponse(method === "HEAD" ? null : upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
     });
+    if (refreshed) applyRefreshedAccess(response, refreshed);
+    return response;
   } catch {
-    return NextResponse.json(
+    const unavailable = NextResponse.json(
       { code: 50200, message: "Backend service is unavailable", data: null },
       { status: 502 },
     );
+    if (refreshed) applyRefreshedAccess(unavailable, refreshed);
+    return unavailable;
   }
 }
 

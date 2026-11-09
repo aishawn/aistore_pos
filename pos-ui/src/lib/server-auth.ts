@@ -34,9 +34,59 @@ export function backendUrl() {
     || "http://localhost:8080";
 }
 
+export function hasRecoverableOrithosSession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(ACCESS_COOKIE)?.value) || Boolean(request.cookies.get(REFRESH_COOKIE)?.value);
+}
+
+const TRANSIENT_AUTH_HTTP = new Set([408, 425, 429, 502, 503, 504]);
+
+/** Clear cookies only on definitive auth failure, not during deploy/gateway blips. */
+export function authFailureShouldClearSession(status: number, code: unknown): boolean {
+  if (TRANSIENT_AUTH_HTTP.has(status)) return false;
+  if (status === 401) return true;
+  const numeric = typeof code === "number" ? code : NaN;
+  return numeric === 40100 || numeric === 40102 || numeric === 40103 || numeric === 40323;
+}
+
+export type RefreshedAccess = {
+  accessToken: string;
+  refreshToken: string | null;
+  accessMaxAge: number;
+};
+
+export async function refreshAccessFromRequest(request: NextRequest): Promise<RefreshedAccess | null> {
+  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  if (!refreshToken) return null;
+  const backendResponse = await postAuthBackend("refresh", { refreshToken }, null, request);
+  let payload: Record<string, unknown>;
+  try {
+    payload = await backendResponse.json() as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (authFailureShouldClearSession(backendResponse.status, payload.code)) return null;
+  if (!backendResponse.ok || payload.code !== 0 || !payload.data || typeof payload.data !== "object") return null;
+  const data = payload.data as Record<string, unknown>;
+  if (typeof data.accessToken !== "string") return null;
+  const accessMaxAge = typeof data.expiresIn === "number" && Number.isFinite(data.expiresIn)
+    ? Math.max(1, Math.floor(data.expiresIn))
+    : 2 * 60 * 60;
+  return {
+    accessToken: data.accessToken,
+    refreshToken: typeof data.refreshToken === "string" ? data.refreshToken : null,
+    accessMaxAge,
+  };
+}
+
+export function applyRefreshedAccess(response: NextResponse, refreshed: RefreshedAccess) {
+  setAccessCookie(response, refreshed.accessToken, refreshed.accessMaxAge);
+  if (refreshed.refreshToken) setRefreshCookie(response, refreshed.refreshToken);
+}
+
 export async function hasOrithosSession(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (!accessToken) return false;
+  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  if (!accessToken) return Boolean(refreshToken);
 
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
     || request.headers.get("host");
@@ -52,11 +102,11 @@ export async function hasOrithosSession(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) return false;
+    if (!response.ok) return Boolean(refreshToken);
     const payload = (await response.json()) as { code?: number; data?: unknown };
     return payload.code === 0 && Boolean(payload.data);
   } catch {
-    return false;
+    return Boolean(refreshToken);
   }
 }
 
@@ -130,16 +180,6 @@ export function clearAuthCookies(response: NextResponse) {
   // Expire legacy path-scoped cookies from earlier releases.
   response.cookies.set(ACCESS_COOKIE, "", { httpOnly: true, path: "/api", maxAge: 0 });
   response.cookies.set(REFRESH_COOKIE, "", { httpOnly: true, path: "/api/auth", maxAge: 0 });
-}
-
-const TRANSIENT_AUTH_HTTP = new Set([408, 425, 429, 502, 503, 504]);
-
-/** Clear cookies only on definitive auth failure, not during deploy/gateway blips. */
-export function authFailureShouldClearSession(status: number, code: unknown): boolean {
-  if (TRANSIENT_AUTH_HTTP.has(status)) return false;
-  if (status === 401) return true;
-  const numeric = typeof code === "number" ? code : NaN;
-  return numeric === 40100 || numeric === 40102 || numeric === 40103 || numeric === 40323;
 }
 
 export async function respondWithAuthTokens(backendResponse: Response, clearOnFailure = false) {

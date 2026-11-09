@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasOrithosSession } from "@/lib/server-auth";
+import { hasRecoverableOrithosSession } from "@/lib/server-auth";
 import { isControlPlanePageAllowed, parseTenantSlugFromHost } from "@/lib/tenant-host";
 
 const ACCESS_COOKIE = "orithos_access_token";
@@ -134,7 +134,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !localPreview && !(await hasOrithosSession(request))) {
+  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !localPreview && !hasRecoverableOrithosSession(request)) {
     return withHeaders(
       NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
       tenantSlug,

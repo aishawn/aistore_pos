@@ -93,17 +93,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (cached) {
       try { setUser(normalizeUser(JSON.parse(cached) as CurrentUserResponse)); } catch { localStorage.removeItem(USER_KEY); }
     }
-    void api.get<CurrentUserResponse>("/api/auth/me")
-      .then((current) => {
+    void (async () => {
+      try {
+        let current = await api.get<CurrentUserResponse>("/api/auth/me");
         if (!active) return;
         const normalized = normalizeUser(current);
         setUser(normalized);
         localStorage.setItem(USER_KEY, JSON.stringify(normalized));
-      })
-      .catch(() => {
-        // A 401 handler clears the cached identity; keep it for transient 5xx/network outages.
-      })
-      .finally(() => { if (active) setReady(true); });
+      } catch {
+        const refreshed = await refreshAccessToken();
+        if (!active) return;
+        if (refreshed === "ok") {
+          try {
+            const current = await api.get<CurrentUserResponse>("/api/auth/me");
+            if (!active) return;
+            const normalized = normalizeUser(current);
+            setUser(normalized);
+            localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+            return;
+          } catch {
+            // Fall through to cached identity.
+          }
+        }
+        // Keep cached identity for transient outages; only hard logout clears cookies.
+      } finally {
+        if (active) setReady(true);
+      }
+    })();
     /* eslint-enable react-hooks/set-state-in-effect */
     return () => { active = false; };
   }, []);
@@ -116,14 +132,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!ready || !user || isLocalPreviewSession()) return;
 
     let active = true;
-    let lastRefreshAt = Date.now();
-    const refreshIfDue = () => {
-      if (document.visibilityState !== "visible" || Date.now() - lastRefreshAt < 60 * 60 * 1000) return;
+    const refreshIntervalMs = 45 * 60 * 1000;
+    let lastRefreshAt = 0;
+    const refreshIfDue = (force = false) => {
+      if (document.visibilityState !== "visible") return;
+      if (!force && Date.now() - lastRefreshAt < refreshIntervalMs) return;
       void refreshAccessToken().then((refreshed) => {
         if (active && refreshed === "ok") lastRefreshAt = Date.now();
       });
     };
-    const interval = window.setInterval(refreshIfDue, 5 * 60 * 1000);
+    refreshIfDue(true);
+    const interval = window.setInterval(() => refreshIfDue(false), 5 * 60 * 1000);
     window.addEventListener("focus", refreshIfDue);
     document.addEventListener("visibilitychange", refreshIfDue);
 
