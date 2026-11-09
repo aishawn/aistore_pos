@@ -33,6 +33,8 @@ import java.util.Map;
 @RequestMapping("/api/integrations/shopfront")
 public class ShopfrontIntegrationController {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
+    private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
+
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final String token;
@@ -421,16 +423,15 @@ public class ShopfrontIntegrationController {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
         Map<String, Long> taxRates = new LinkedHashMap<>();
-        validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
+        BusinessImportPlan plan = validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
         int created = 0;
         int updated = 0;
         int skipped = 0;
         if ("products".equals(type)) {
             for (JsonNode item : items) {
-                long productId = upsertBusinessProduct(store, item, outletId, taxRates);
-                boolean existed = jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key=? AND source_product_id=? AND pos_product_id=?",
-                        Integer.class, store, text(item, "source_id"), productId) > 0;
+                String sourceId = text(item, "source_id");
+                long productId = upsertBusinessProduct(item, outletId, taxRates, plan.productIds().get(sourceId));
+                boolean existed = plan.existingProductMappings().contains(sourceId);
                 upsertSourceMapping(store, text(item, "source_id"), productId);
                 if (existed) updated++; else created++;
             }
@@ -439,7 +440,7 @@ public class ShopfrontIntegrationController {
                 jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
             }
             for (JsonNode item : items) {
-                Long productId = mappedProductId(store, text(item, "source_id"));
+                Long productId = plan.productIds().get(text(item, "source_id"));
                 upsertBusinessInventory(productId, outletId, item);
                 updated++;
             }
@@ -453,8 +454,8 @@ public class ShopfrontIntegrationController {
         return result;
     }
 
-    private void validateBusinessImport(String type, JsonNode items, String store, long outletId,
-                                        boolean completeInventorySnapshot, Map<String, Long> taxRates) {
+    private BusinessImportPlan validateBusinessImport(String type, JsonNode items, String store, long outletId,
+                                                      boolean completeInventorySnapshot, Map<String, Long> taxRates) {
         if ("products".equals(type)) {
             for (JsonNode item : items) {
                 String sourceId = text(item, "source_id");
@@ -484,16 +485,22 @@ public class ShopfrontIntegrationController {
                     requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
                 }
             }
-            validateProductAliasConflicts(items, store, outletId);
+            BusinessImportPlan plan = resolveBusinessProductIds(store, outletId, items);
+            validateProductAliasConflicts(items, store, plan.productIds());
+            return plan;
         } else if ("inventory".equals(type) && completeInventorySnapshot) {
             if (items.isEmpty()) {
                 throw new IllegalArgumentException("A complete inventory snapshot cannot be empty");
             }
         }
-        if ("inventory".equals(type)) validateInventoryTargetConflicts(items, store);
+        if ("inventory".equals(type)) {
+            Map<String, Long> inventoryMappings = validateInventoryTargetConflicts(items, store, outletId);
+            return new BusinessImportPlan(inventoryMappings, Set.of());
+        }
+        return new BusinessImportPlan(Map.of(), Set.of());
     }
 
-    private void validateProductAliasConflicts(JsonNode items, String store, long outletId) {
+    private void validateProductAliasConflicts(JsonNode items, String store, Map<String, Long> resolvedProducts) {
         Map<String, String> incomingSignatures = new LinkedHashMap<>();
         Map<String, String> incomingSources = new LinkedHashMap<>();
         Set<Long> targetIds = new HashSet<>();
@@ -502,7 +509,7 @@ public class ShopfrontIntegrationController {
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             sourceIds.add(sourceId);
-            Long targetId = resolveBusinessProductId(store, item, outletId);
+            Long targetId = resolvedProducts.get(sourceId);
             String targetKey = targetId == null ? productIdentityKey(item) : "product:" + targetId;
             if (targetId != null) targetIds.add(targetId);
             String signature = productBusinessSignature(item);
@@ -515,17 +522,23 @@ public class ShopfrontIntegrationController {
         }
 
         if (targetIds.isEmpty()) return;
-        String placeholders = String.join(",", java.util.Collections.nCopies(targetIds.size(), "?"));
-        List<Object> args = new ArrayList<>();
-        args.add(store);
-        args.addAll(targetIds);
-        String sql = "SELECT m.pos_product_id, sp.source_id, sp.raw_payload FROM shopfront_product_mapping m "
-                + "JOIN shopfront_product sp ON sp.store_key=m.store_key AND sp.source_id=m.source_product_id "
-                + "WHERE m.store_key=? AND m.status='MAPPED' AND m.pos_product_id IN (" + placeholders + ")";
-        for (Map<String, Object> row : jdbc.queryForList(sql, args.toArray())) {
-            String sourceId = String.valueOf(row.get("source_id"));
+        List<Map<String, Object>> mappingRows = queryRowsInChunks(
+                "SELECT pos_product_id, source_product_id FROM shopfront_product_mapping "
+                        + "WHERE store_key=? AND status='MAPPED' AND pos_product_id IN (%s)",
+                List.of(store), new ArrayList<>(targetIds));
+        Map<String, Long> existingAliases = new LinkedHashMap<>();
+        for (Map<String, Object> row : mappingRows) {
+            String sourceId = String.valueOf(row.get("source_product_id"));
             if (sourceIds.contains(sourceId)) continue;
-            long targetId = longValue(row.get("pos_product_id"));
+            existingAliases.put(sourceId, longValue(row.get("pos_product_id")));
+        }
+        if (existingAliases.isEmpty()) return;
+        List<Map<String, Object>> sourceRows = queryRowsInChunks(
+                "SELECT source_id, raw_payload FROM shopfront_product WHERE store_key=? AND source_id IN (%s)",
+                List.of(store), new ArrayList<>(existingAliases.keySet()));
+        for (Map<String, Object> row : sourceRows) {
+            String sourceId = String.valueOf(row.get("source_id"));
+            long targetId = existingAliases.get(sourceId);
             String incomingSignature = incomingSignatures.get("product:" + targetId);
             if (incomingSignature == null) continue;
             try {
@@ -542,11 +555,12 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private void validateInventoryTargetConflicts(JsonNode items, String store) {
+    private Map<String, Long> validateInventoryTargetConflicts(JsonNode items, String store, long outletId) {
         if (!items.isArray()) throw new IllegalArgumentException("Inventory items must be an array");
         Set<String> seenSources = new HashSet<>();
         Map<Long, String> targetSignatures = new LinkedHashMap<>();
         Map<Long, String> targetSources = new LinkedHashMap<>();
+        List<String> sourceIds = new ArrayList<>();
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             if (sourceId == null || sourceId.isBlank() || !seenSources.add(sourceId)) {
@@ -555,7 +569,12 @@ public class ShopfrontIntegrationController {
             if (decimal(item, "quantity") == null) {
                 throw new IllegalArgumentException("Inventory product " + sourceId + " has no quantity");
             }
-            Long targetId = mappedProductId(store, sourceId);
+            sourceIds.add(sourceId);
+        }
+        Map<String, Long> mappings = resolveInventoryProductIds(store, outletId, sourceIds);
+        for (JsonNode item : items) {
+            String sourceId = text(item, "source_id");
+            Long targetId = mappings.get(sourceId);
             if (targetId == null || targetId <= 0) {
                 throw new IllegalArgumentException("Inventory product " + sourceId + " has no Orithos product mapping");
             }
@@ -567,36 +586,111 @@ public class ShopfrontIntegrationController {
             }
             targetSources.putIfAbsent(targetId, sourceId);
         }
+        return mappings;
     }
 
-    private Long resolveBusinessProductId(String store, JsonNode item, long outletId) {
-        String sourceId = text(item, "source_id");
-        Long productId = mappedProductId(store, sourceId);
-        if (productId != null) {
-            Long mappedOutlet = findLong("SELECT outlet_id FROM product WHERE id=? AND deleted_at IS NULL LIMIT 1", productId);
-            if (mappedOutlet == null || mappedOutlet != outletId) {
-                productId = null;
-            }
+    private BusinessImportPlan resolveBusinessProductIds(String store, long outletId, JsonNode items) {
+        List<String> sourceIds = new ArrayList<>();
+        Map<String, JsonNode> itemBySource = new LinkedHashMap<>();
+        for (JsonNode item : items) {
+            String sourceId = text(item, "source_id");
+            sourceIds.add(sourceId);
+            itemBySource.put(sourceId, item);
         }
-        String barcode = firstBarcode(item);
-        if (productId == null && barcode != null) {
-            productId = findLong(
-                    "SELECT product_id FROM product_barcode WHERE code=? AND outlet_id=? LIMIT 1",
-                    barcode, outletId);
+
+        Map<String, Long> productIds = new LinkedHashMap<>();
+        Set<String> existingMappings = new HashSet<>();
+        List<Map<String, Object>> mappedRows = queryRowsInChunks(
+                "SELECT m.source_product_id, m.pos_product_id FROM shopfront_product_mapping m "
+                        + "JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                        + "WHERE m.store_key=? AND m.status='MAPPED' AND m.source_product_id IN (%s)",
+                List.of(outletId, store), sourceIds);
+        for (Map<String, Object> row : mappedRows) {
+            String sourceId = String.valueOf(row.get("source_product_id"));
+            productIds.put(sourceId, longValue(row.get("pos_product_id")));
+            existingMappings.add(sourceId);
         }
-        Integer mdbId = integerValue(item.get("sku"));
-        if (productId == null && mdbId != null) {
-            productId = findLong(
-                    "SELECT id FROM product WHERE mdb_id=? AND outlet_id=? AND deleted_at IS NULL LIMIT 1",
-                    mdbId, outletId);
+
+        Set<String> barcodes = new java.util.LinkedHashSet<>();
+        Set<Integer> skus = new java.util.LinkedHashSet<>();
+        Set<String> names = new java.util.LinkedHashSet<>();
+        for (String sourceId : sourceIds) {
+            if (productIds.containsKey(sourceId)) continue;
+            JsonNode item = itemBySource.get(sourceId);
+            String barcode = firstBarcode(item);
+            if (barcode != null && !barcode.isBlank()) barcodes.add(barcode);
+            Integer sku = integerValue(item.get("sku"));
+            if (sku != null) skus.add(sku);
+            String name = text(item, "name");
+            if (name != null && !name.isBlank()) names.add(name.trim().toLowerCase(Locale.ROOT));
         }
-        String name = text(item, "name");
-        if (productId == null && name != null) {
-            productId = findLong(
-                    "SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND outlet_id=? AND deleted_at IS NULL LIMIT 1",
-                    name, outletId);
+
+        Map<String, Long> barcodeOwners = new LinkedHashMap<>();
+        for (Map<String, Object> row : queryRowsInChunks(
+                "SELECT code, product_id FROM product_barcode WHERE outlet_id=? AND code IN (%s)",
+                List.of(outletId), new ArrayList<>(barcodes))) {
+            barcodeOwners.putIfAbsent(String.valueOf(row.get("code")), longValue(row.get("product_id")));
         }
-        return productId != null && productId > 0 ? productId : null;
+        for (String sourceId : sourceIds) {
+            if (productIds.containsKey(sourceId)) continue;
+            String barcode = firstBarcode(itemBySource.get(sourceId));
+            Long targetId = barcode == null ? null : barcodeOwners.get(barcode);
+            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
+        }
+
+        Map<String, Long> skuOwners = new LinkedHashMap<>();
+        for (Map<String, Object> row : queryRowsInChunks(
+                "SELECT mdb_id, id FROM product WHERE outlet_id=? AND deleted_at IS NULL AND mdb_id IN (%s) ORDER BY id",
+                List.of(outletId), new ArrayList<>(skus))) {
+            skuOwners.putIfAbsent(String.valueOf(row.get("mdb_id")), longValue(row.get("id")));
+        }
+        for (String sourceId : sourceIds) {
+            if (productIds.containsKey(sourceId)) continue;
+            Integer sku = integerValue(itemBySource.get(sourceId).get("sku"));
+            Long targetId = sku == null ? null : skuOwners.get(String.valueOf(sku));
+            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
+        }
+
+        Map<String, Long> nameOwners = new LinkedHashMap<>();
+        for (Map<String, Object> row : queryRowsInChunks(
+                "SELECT lower(trim(name)) AS normalized_name, id FROM product "
+                        + "WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name)) IN (%s) ORDER BY id",
+                List.of(outletId), new ArrayList<>(names))) {
+            nameOwners.putIfAbsent(String.valueOf(row.get("normalized_name")), longValue(row.get("id")));
+        }
+        for (String sourceId : sourceIds) {
+            if (productIds.containsKey(sourceId)) continue;
+            String name = text(itemBySource.get(sourceId), "name");
+            Long targetId = name == null ? null : nameOwners.get(name.trim().toLowerCase(Locale.ROOT));
+            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
+        }
+        for (String sourceId : sourceIds) productIds.putIfAbsent(sourceId, null);
+        return new BusinessImportPlan(productIds, existingMappings);
+    }
+
+    private Map<String, Long> resolveInventoryProductIds(String store, long outletId, List<String> sourceIds) {
+        Map<String, Long> mappings = new LinkedHashMap<>();
+        for (Map<String, Object> row : queryRowsInChunks(
+                "SELECT m.source_product_id, m.pos_product_id FROM shopfront_product_mapping m "
+                        + "JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                        + "WHERE m.store_key=? AND m.status='MAPPED' AND m.source_product_id IN (%s)",
+                List.of(outletId, store), sourceIds)) {
+            mappings.put(String.valueOf(row.get("source_product_id")), longValue(row.get("pos_product_id")));
+        }
+        return mappings;
+    }
+
+    private List<Map<String, Object>> queryRowsInChunks(String sqlPattern, List<?> fixedArgs, List<?> values) {
+        if (values.isEmpty()) return List.of();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int start = 0; start < values.size(); start += 400) {
+            List<?> chunk = values.subList(start, Math.min(start + 400, values.size()));
+            String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
+            List<Object> args = new ArrayList<>(fixedArgs);
+            args.addAll(chunk);
+            rows.addAll(jdbc.queryForList(sqlPattern.formatted(placeholders), args.toArray()));
+        }
+        return rows;
     }
 
     private String productIdentityKey(JsonNode item) {
@@ -610,11 +704,31 @@ public class ShopfrontIntegrationController {
 
     private String productBusinessSignature(JsonNode item) {
         List<String> values = new ArrayList<>();
-        for (String field : List.of("name", "source_type", "category", "brand", "family", "tax_rate_name", "cost_tax_rate_name",
+        JsonNode raw = item.path("raw_payload");
+        for (String field : List.of("source_type", "category", "brand", "family", "tax_rate_name", "cost_tax_rate_name",
                 "cost", "case_quantity", "cost_percentage", "track_inventory", "use_scales", "use_barcode_templates",
-                "prevent_manual_discounts", "request_price", "request_quantity", "source_status", "source_deleted",
-                "description", "image", "sku")) {
+                "prevent_manual_discounts", "request_price", "request_quantity", "source_status")) {
             String value = text(item, field);
+            if ((value == null || value.isBlank()) && raw.isObject()) {
+                String rawField = switch (field) {
+                    case "source_type" -> "type";
+                    case "track_inventory" -> "trackInventory";
+                    case "use_scales" -> "useScales";
+                    case "use_barcode_templates" -> "useBarcodeTemplates";
+                    case "prevent_manual_discounts" -> "preventManualDiscounts";
+                    case "request_price" -> "requestPrice";
+                    case "request_quantity" -> "requestQuantity";
+                    case "cost_percentage" -> "costPercentage";
+                    case "case_quantity" -> "caseQuantity";
+                    case "tax_rate_name" -> "taxRate";
+                    case "cost_tax_rate_name" -> "costTaxRate";
+                    case "source_status" -> "status";
+                    default -> field;
+                };
+                JsonNode rawValue = raw.path(rawField);
+                if (rawValue.isObject() && rawValue.has("name")) value = rawValue.path("name").asText();
+                else if (!rawValue.isMissingNode() && !rawValue.isNull()) value = rawValue.asText();
+            }
             if ("tax_rate_name".equals(field) || "cost_tax_rate_name".equals(field) || "source_type".equals(field)
                     || "source_status".equals(field) || "category".equals(field) || "brand".equals(field) || "family".equals(field)) {
                 value = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
@@ -623,14 +737,18 @@ public class ShopfrontIntegrationController {
                 value = number == null ? "" : number.stripTrailingZeros().toPlainString();
             }
             if (List.of("track_inventory", "use_scales", "use_barcode_templates", "prevent_manual_discounts",
-                    "request_price", "request_quantity", "source_deleted").contains(field)) {
+                    "request_price", "request_quantity", "cost_percentage").contains(field)) {
                 boolean fallback = "track_inventory".equals(field);
-                value = String.valueOf(flag(item, field, fallback));
+                JsonNode rawValue = raw.path(field.equals("track_inventory") ? "trackInventory" : field);
+                value = value == null && rawValue.isBoolean()
+                        ? String.valueOf(rawValue.asBoolean() ? 1 : 0)
+                        : String.valueOf(flag(item, field, fallback));
             }
             values.add(field + "=" + (value == null ? "" : value));
         }
-        values.add("alternate_images=" + item.path("alternate_images"));
-        values.add("tags=" + item.path("tags"));
+        boolean deleted = flag(item, "source_deleted", false) == 1 || raw.path("deleted").asBoolean(false)
+                || !raw.path("deletedAt").isMissingNode() && !raw.path("deletedAt").isNull();
+        values.add("source_deleted=" + deleted);
         List<String> prices = new ArrayList<>();
         JsonNode tiers = item.path("prices");
         if (tiers.isArray()) {
@@ -641,11 +759,13 @@ public class ShopfrontIntegrationController {
                         + decimal(tier, "price", BigDecimal.ZERO).stripTrailingZeros().toPlainString() + ":"
                         + (priceEx == null ? "" : priceEx.stripTrailingZeros().toPlainString()));
             }
-            java.util.Collections.sort(prices);
         }
+        if (prices.isEmpty()) {
+            BigDecimal basePrice = decimal(item, "price");
+            if (basePrice != null) prices.add("1:" + basePrice.stripTrailingZeros().toPlainString() + ":");
+        }
+        java.util.Collections.sort(prices);
         values.add("prices=" + String.join(",", prices));
-        BigDecimal unitPrice = decimal(item, "price");
-        values.add("price=" + (unitPrice == null ? "" : unitPrice.stripTrailingZeros().toPlainString()));
         return String.join("|", values);
     }
 
@@ -680,12 +800,12 @@ public class ShopfrontIntegrationController {
         return false;
     }
 
-    private long upsertBusinessProduct(String store, JsonNode item, long outletId,
-                                       Map<String, Long> taxRates) throws Exception {
+    private long upsertBusinessProduct(JsonNode item, long outletId, Map<String, Long> taxRates,
+                                       Long resolvedProductId) throws Exception {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
-        Long productId = resolveBusinessProductId(store, item, outletId);
+        Long productId = resolvedProductId;
         Integer mdbId = integerValue(item.get("sku"));
         Long categoryId = ensureLookup("category", text(item, "category"), outletId);
         Long brandId = ensureLookup("brand", text(item, "brand"), outletId);

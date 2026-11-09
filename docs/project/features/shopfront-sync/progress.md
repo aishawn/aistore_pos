@@ -4,9 +4,10 @@ Updated: 2026-11-09. Owner: TBD.
 
 ## Reject conflicting product and inventory aliases (2026-11-09)
 
-- The formal importer now groups incoming products by their resolved Orithos product identity and rejects divergent prices, GST rates, case quantity, status, cost, and related catalog fields. Existing Shopfront source mappings to the same POS product are checked as well, so a later page cannot overwrite a conflict missed by an earlier page.
+- The formal importer now groups incoming products by their resolved Orithos product identity and rejects divergent prices, GST rates, case quantity, status, cost, and related catalog fields. Source raw payload fields are normalized with the crawler's outgoing DTO shape; descriptive names and media do not block valid aliases. Existing Shopfront source mappings to the same POS product are checked as well, so a later page cannot overwrite a conflict missed by an earlier page.
 - Inventory rows that map to the same POS product must agree on quantity and replenishment values before the import can update stock. Complete snapshot checks still run before inventory is cleared.
-- Added regression coverage for conflicting same-barcode product aliases and conflicting inventory aliases. Exact-SHA CI and deployment verification are pending; this code is not yet a production cutover authorization.
+- Added regression coverage for conflicting same-barcode product aliases, valid equivalent aliases, and conflicting inventory aliases. Exact-SHA CI and deployment verification are pending; this code is not yet a production cutover authorization.
+- Mapping and outlet resolution now use parameterized batches (up to 400 IDs per query) and reuse the validated targets during writes. This avoids per-row product/inventory mapping lookups on the ~11k row SKR snapshots while preserving outlet ownership checks. The safety review also found the default crawler payload only includes base `price`/`prices` in a sale-item fallback; alias conflict grouping therefore needs complete, consistently normalized source fields before any full import can pass. Follow-up CI/deployment evidence is pending.
 
 ## Orithos business import guards (2026-11-09)
 

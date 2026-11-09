@@ -273,10 +273,29 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void businessProductImportAllowsAliasesWhenLedgerAttributesMatch() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateProductAliasConflicts", com.fasterxml.jackson.databind.JsonNode.class, String.class, Map.class);
+        validate.setAccessible(true);
+        Map<String, Long> resolved = Map.of("p1", 77L, "p2", 77L);
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> validate.invoke(controller, new ObjectMapper().readTree("""
+                [
+                  {"source_id":"p1","name":"First name","case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE","description":"first"},
+                  {"source_id":"p2","name":"Second name","case_quantity":6,"prices":[{"quantity":1,"price":5}],"tax_rate_name":"gst","source_status":"ACTIVE","description":"second"}
+                ]
+                """), "skr", resolved));
+    }
+
+    @Test
     void inventoryImportRejectsConflictingAliasesForOnePosProduct() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject(contains("SELECT pos_product_id"), eq(Long.class), any(Object[].class)))
-                .thenReturn(77L);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("source_product_id", "p1", "pos_product_id", 77L),
+                        Map.of("source_product_id", "p2", "pos_product_id", 77L)));
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
