@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -361,6 +362,10 @@ public class ShopfrontIntegrationController {
             result.put("business", business);
             return ApiResult.ok(result);
         } catch (Exception e) {
+            if (e instanceof ResponseStatusException responseStatusException) throw responseStatusException;
+            if (e instanceof IllegalArgumentException) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+            }
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
             String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : "";
@@ -403,40 +408,28 @@ public class ShopfrontIntegrationController {
     private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
+        Map<String, Long> taxRates = new LinkedHashMap<>();
+        validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
         int created = 0;
         int updated = 0;
         int skipped = 0;
-        Set<String> errors = new HashSet<>();
         if ("products".equals(type)) {
             for (JsonNode item : items) {
-                try {
-                    long productId = upsertBusinessProduct(store, item, outletId);
-                    if (productId > 0) {
-                        boolean existed = jdbc.queryForObject(
-                                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key=? AND source_product_id=? AND pos_product_id=?",
-                                Integer.class, store, text(item, "source_id"), productId) > 0;
-                        upsertSourceMapping(store, text(item, "source_id"), productId);
-                        if (existed) updated++; else created++;
-                    } else skipped++;
-                } catch (Exception e) {
-                    skipped++;
-                    errors.add(text(item, "source_id") + ": " + e.getMessage());
-                }
+                long productId = upsertBusinessProduct(store, item, outletId, taxRates);
+                boolean existed = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key=? AND source_product_id=? AND pos_product_id=?",
+                        Integer.class, store, text(item, "source_id"), productId) > 0;
+                upsertSourceMapping(store, text(item, "source_id"), productId);
+                if (existed) updated++; else created++;
             }
         } else if ("inventory".equals(type)) {
             if (completeInventorySnapshot) {
                 jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
             }
             for (JsonNode item : items) {
-                try {
-                    Long productId = mappedProductId(store, text(item, "source_id"));
-                    if (productId == null) { skipped++; continue; }
-                    upsertBusinessInventory(productId, outletId, item);
-                    updated++;
-                } catch (Exception e) {
-                    skipped++;
-                    errors.add(text(item, "source_id") + ": " + e.getMessage());
-                }
+                Long productId = mappedProductId(store, text(item, "source_id"));
+                upsertBusinessInventory(productId, outletId, item);
+                updated++;
             }
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -444,11 +437,85 @@ public class ShopfrontIntegrationController {
         result.put("created", created);
         result.put("updated", updated);
         result.put("skipped", skipped);
-        result.put("errors", errors.stream().limit(20).toList());
+        result.put("errors", List.of());
         return result;
     }
 
-    private long upsertBusinessProduct(String store, JsonNode item, long outletId) throws Exception {
+    private void validateBusinessImport(String type, JsonNode items, String store, long outletId,
+                                        boolean completeInventorySnapshot, Map<String, Long> taxRates) {
+        if ("products".equals(type)) {
+            for (JsonNode item : items) {
+                String sourceId = text(item, "source_id");
+                String name = text(item, "name");
+                BigDecimal caseQuantity = decimal(item, "case_quantity");
+                BigDecimal price = decimal(item, "price");
+                String taxRateName = text(item, "tax_rate_name");
+                String sourceStatus = text(item, "source_status");
+                if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) {
+                    throw new IllegalArgumentException("Product source_id and name are required");
+                }
+                if (caseQuantity == null || caseQuantity.signum() <= 0) {
+                    throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
+                }
+                if ((price == null || price.signum() < 0) && !hasUnitPrice(item)) {
+                    throw new IllegalArgumentException("Product " + sourceId + " has no valid shelf price");
+                }
+                if (taxRateName == null || taxRateName.isBlank()) {
+                    throw new IllegalArgumentException("Product " + sourceId + " has no mapped GST rate");
+                }
+                if (sourceStatus == null || sourceStatus.isBlank()) {
+                    throw new IllegalArgumentException("Product " + sourceId + " has no source status");
+                }
+                requireTaxRate(taxRateName, outletId, sourceId, taxRates);
+                String costTaxRateName = text(item, "cost_tax_rate_name");
+                if (costTaxRateName != null && !costTaxRateName.isBlank()) {
+                    requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
+                }
+            }
+        } else if ("inventory".equals(type) && completeInventorySnapshot) {
+            if (items.isEmpty()) {
+                throw new IllegalArgumentException("A complete inventory snapshot cannot be empty");
+            }
+            Set<String> seen = new HashSet<>();
+            for (JsonNode item : items) {
+                String sourceId = text(item, "source_id");
+                if (sourceId == null || sourceId.isBlank() || !seen.add(sourceId)) {
+                    throw new IllegalArgumentException("Inventory snapshot has a missing or duplicate source product id");
+                }
+                if (decimal(item, "quantity") == null) {
+                    throw new IllegalArgumentException("Inventory product " + sourceId + " has no quantity");
+                }
+                if (mappedProductId(store, sourceId) == null) {
+                    throw new IllegalArgumentException("Inventory product " + sourceId + " has no Orithos product mapping");
+                }
+            }
+        }
+    }
+
+    private void requireTaxRate(String taxRateName, long outletId, String sourceId, Map<String, Long> taxRates) {
+        String key = taxRateName.trim().toLowerCase(Locale.ROOT);
+        if (taxRates.containsKey(key)) return;
+        Long taxRateId = findTaxRateId(taxRateName, outletId);
+        if (taxRateId == null) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no matching Orithos GST rate: " + taxRateName);
+        }
+        taxRates.put(key, taxRateId);
+    }
+
+    private boolean hasUnitPrice(JsonNode item) {
+        JsonNode prices = item.path("prices");
+        if (!prices.isArray()) return false;
+        for (JsonNode price : prices) {
+            BigDecimal quantity = decimal(price, "quantity");
+            BigDecimal value = decimal(price, "price");
+            if (quantity != null && quantity.compareTo(BigDecimal.ONE) == 0
+                    && value != null && value.signum() >= 0) return true;
+        }
+        return false;
+    }
+
+    private long upsertBusinessProduct(String store, JsonNode item, long outletId,
+                                       Map<String, Long> taxRates) throws Exception {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
@@ -470,21 +537,26 @@ public class ShopfrontIntegrationController {
         Long brandId = ensureLookup("brand", text(item, "brand"), outletId);
         JsonNode family = item.get("family");
         Long familyId = ensureLookup("family", family == null ? null : family.asText(null), outletId);
-        Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), outletId);
-        Long costTaxRateId = ensureTaxRate(text(item, "cost_tax_rate_name"), outletId);
+        Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), taxRates);
+        Long costTaxRateId = ensureTaxRate(text(item, "cost_tax_rate_name"), taxRates);
         BigDecimal caseQuantity = decimal(item, "case_quantity");
-        if (caseQuantity == null || caseQuantity.signum() <= 0) caseQuantity = BigDecimal.ONE;
         BigDecimal cost = decimal(item, "cost");
         String type = text(item, "source_type");
         if (type == null || type.isBlank()) type = "STANDARD";
         String description = text(item, "description");
         String image = text(item, "image");
+        String sourceStatus = text(item, "source_status");
+        JsonNode rawPayload = item.path("raw_payload");
+        boolean sourceDeleted = flag(item, "source_deleted", false) == 1
+                || rawPayload.path("deleted").asBoolean(false)
+                || !rawPayload.path("deletedAt").isMissingNode() && !rawPayload.path("deletedAt").isNull();
+        String productStatus = "ACTIVE".equalsIgnoreCase(sourceStatus) && !sourceDeleted ? "ACTIVE" : "INACTIVE";
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
             String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, name, type, "ACTIVE", description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            productId = jdbc.queryForObject(sql, Long.class, name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
-            jdbc.update("UPDATE product SET name=?,type=?,status='ACTIVE',description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, type, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId);
+            jdbc.update("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId);
         }
         upsertPrices(productId, item, outletId);
         upsertBarcodes(productId, item, outletId);
@@ -498,12 +570,23 @@ public class ShopfrontIntegrationController {
 
     private void upsertPrices(long productId, JsonNode item, long outletId) {
         JsonNode prices = item.get("prices");
-        if (prices == null || !prices.isArray() || prices.size() == 0) return;
-        jdbc.update("DELETE FROM product_price WHERE product_id=?", productId);
-        for (JsonNode price : prices) {
-            BigDecimal quantity = decimal(price, "quantity", BigDecimal.ONE);
-            BigDecimal value = decimal(price, "price");
-            if (quantity != null && quantity.signum() > 0 && value != null) jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex) VALUES (?,?,?,?)", productId, quantity, value, decimal(price, "price_ex") != null ? decimal(price, "price_ex") : decimal(price, "priceEx"));
+        jdbc.update("DELETE FROM product_price WHERE product_id=? AND outlet_id=?", productId, outletId);
+        boolean hasUnitPrice = false;
+        if (prices != null && prices.isArray()) {
+            for (JsonNode price : prices) {
+                BigDecimal quantity = decimal(price, "quantity");
+                BigDecimal value = decimal(price, "price");
+                if (quantity == null || quantity.signum() <= 0 || value == null) continue;
+                jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)",
+                        productId, quantity, value,
+                        decimal(price, "price_ex") != null ? decimal(price, "price_ex") : decimal(price, "priceEx"), outletId);
+                if (quantity.compareTo(BigDecimal.ONE) == 0) hasUnitPrice = true;
+            }
+        }
+        BigDecimal shelfPrice = decimal(item, "price");
+        if (!hasUnitPrice && shelfPrice != null && shelfPrice.signum() >= 0) {
+            jdbc.update("INSERT INTO product_price (product_id,quantity,price,outlet_id) VALUES (?,?,?,?)",
+                    productId, BigDecimal.ONE, shelfPrice, outletId);
         }
     }
 
@@ -559,10 +642,19 @@ public class ShopfrontIntegrationController {
         return jdbc.queryForObject("INSERT INTO " + table + " (name) VALUES (?) RETURNING id", Long.class, name);
     }
 
-    private Long ensureTaxRate(String name, long outletId) {
+    private Long ensureTaxRate(String name, Map<String, Long> taxRates) {
         if (name == null || name.isBlank()) return null;
-        try { return jdbc.queryForObject("SELECT id FROM tax_rate WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", Long.class, name); }
-        catch (Exception ignored) { return null; }
+        Long taxRateId = taxRates.get(name.trim().toLowerCase(Locale.ROOT));
+        if (taxRateId == null) throw new IllegalArgumentException("No matching Orithos tax rate for source tax code: " + name);
+        return taxRateId;
+    }
+
+    private Long findTaxRateId(String name, long outletId) {
+        if (name == null || name.isBlank()) return null;
+        List<Long> matches = jdbc.queryForList(
+                "SELECT id FROM tax_rate WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND outlet_id IN (?,1) ORDER BY CASE WHEN outlet_id=? THEN 0 ELSE 1 END LIMIT 1",
+                Long.class, name, outletId, outletId);
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     private Long findLong(String sql, Object... args) {

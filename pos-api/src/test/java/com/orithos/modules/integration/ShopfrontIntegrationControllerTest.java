@@ -12,7 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -206,6 +208,78 @@ class ShopfrontIntegrationControllerTest {
 
         assertEquals(expected, result.data().get("mapping_ready"));
         assertEquals(expected ? "STAGED" : "BLOCKED_MAPPING", result.data().get("status"));
+    }
+
+    @Test
+    void businessProductImportRejectsMissingCaseQuantityPriceOrTax() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, boolean.class, Map.class);
+        validate.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        String[] blockedProducts = {
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"price\":5,\"tax_rate_name\":\"GST\"}",
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\"}",
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5}"
+        };
+
+        for (String product : blockedProducts) {
+            InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                    () -> validate.invoke(controller, "products", mapper.readTree("[" + product + "]"), "skr", 48L, false, new java.util.HashMap<>()));
+            org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
+        }
+    }
+
+    @Test
+    void completeInventoryImportRejectsEmptyOrIncompleteSnapshotBeforeReplacement() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, boolean.class, Map.class);
+        validate.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        InvocationTargetException empty = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(controller, "inventory", mapper.readTree("[]"), "skr", 48L, true, new java.util.HashMap<>()));
+        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, empty.getCause());
+
+        InvocationTargetException missingQuantity = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(controller, "inventory", mapper.readTree("[{\"source_id\":\"p1\"}]"), "skr", 48L, true, new java.util.HashMap<>()));
+        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, missingQuantity.getCause());
+    }
+
+    @Test
+    void businessProductImportRequiresAnExistingOrithosTaxRate() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of(7L));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, boolean.class, Map.class);
+        validate.setAccessible(true);
+        Map<String, Long> taxRates = new java.util.HashMap<>();
+
+        validate.invoke(controller, "products", new ObjectMapper().readTree(
+                "[{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}]"),
+                "skr", 48L, false, taxRates);
+
+        assertEquals(7L, taxRates.get("gst"));
+    }
+
+    @Test
+    void baseShelfPriceIsWrittenToTheMappedOutlet() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method upsertPrices = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "upsertPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class);
+        upsertPrices.setAccessible(true);
+        upsertPrices.invoke(controller, 17L, new ObjectMapper().readTree("{\"price\":9.95,\"prices\":[]}"), 48L);
+
+        verify(jdbc).update(contains("DELETE FROM product_price WHERE product_id=? AND outlet_id=?"), eq(17L), eq(48L));
+        verify(jdbc).update(contains("INSERT INTO product_price (product_id,quantity,price,outlet_id) VALUES (?,?,?,?)"),
+                eq(17L), eq(BigDecimal.ONE), eq(new BigDecimal("9.95")), eq(48L));
     }
 
     private static Stream<Arguments> mappingFlags() {
