@@ -16,9 +16,9 @@ Shared project brief for **Cursor** and **Codex** (and any other coding agent). 
 
 Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashiers sell, stock, purchase, and report in one UI. Optional AI (cashier assistant, sommelier, invoice OCR) stays off in production until budgeted.
 
-- **Business data source of truth:** Odoo (via `pos-ui` `/api/odoo/*`).
-- **Classic Spring/MySQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write Classic ↔ Odoo.
-- **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → MySQL 8 + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
+- **Migration target:** Orithos (`pos-api` and its PostgreSQL database) becomes the sole operational business ledger. Odoo remains the active ledger for each store until that store passes reconciliation and an authorized cutover; never dual-write. After cutover, remove Odoo BFF/session dependencies domain by domain and retain Odoo read-only for agreed history.
+- **Classic Spring/MySQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write with Orithos or Odoo.
+- **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → PostgreSQL + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
 
 ## Hosts (production)
 
@@ -184,7 +184,7 @@ UAT evidence lives as `docs/UAT_*.json` — prefer those over chat recall for �
 ## When finishing a task
 
 1. Read the relevant status/runbook docs before changing production-facing behavior.
-2. Prefer small, reviewable diffs; match existing style and keep Odoo as the live business source.
+2. Prefer small, reviewable diffs; match existing style and move business domains to Orithos only with tenant isolation, migration reconciliation, and domain acceptance evidence. Do not turn off Odoo writes for a store before its cutover gate passes.
 3. Run the narrowest applicable checks while iterating, then report command, environment, result, and limitations. Do not call a mock or read-only pass a business acceptance.
 4. Follow the no-local-build preference. Use typecheck, targeted lint, and script syntax checks locally; use Dokploy for application builds and backend `mvn -B clean verify`, then record SHA-specific results.
 5. Update the relevant handoff / capability / readiness doc if behavior or pilot status changed.
