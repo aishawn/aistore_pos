@@ -149,12 +149,19 @@ export function ShopfrontReportsOverviewPage() {
         to: compare.to,
         size: "600",
       });
+      if (refresh) {
+        salesQuery.set("refresh", "true");
+        inventoryQuery.set("refresh", "true");
+        compareQuery.set("refresh", "true");
+      }
       const weekEnd = salesDate(new Date().toISOString(), TIMEZONE);
       const weekStart = shiftDay(weekEnd, -6);
       const cache = refresh ? "no-store" : "default";
-      const weekTrendRequest = fetch(`/api/shopfront-source?${new URLSearchParams({
+      const weekTrendQuery = new URLSearchParams({
         resource: "report-sales", from: weekStart, to: weekEnd, dashboard: "true", size: "600",
-      })}`, { credentials: "same-origin", cache })
+      });
+      if (refresh) weekTrendQuery.set("refresh", "true");
+      const weekTrendRequest = fetch(`/api/shopfront-source?${weekTrendQuery}`, { credentials: "same-origin", cache })
         .then((response) => response.ok ? response.json().catch(() => null) : null)
         .catch(() => null);
       const [salesRes, inventoryRes, compareRes, weekTrendBody] = await Promise.all([
@@ -172,6 +179,9 @@ export function ShopfrontReportsOverviewPage() {
       const inventoryBody = await inventoryRes.json().catch(() => null);
       const compareBody = await compareRes.json().catch(() => null);
       if (!salesRes.ok || !salesBody) throw new Error(salesBody?.message ?? "Shopfront sales are unavailable.");
+      if (refresh && (salesBody.refresh_error || salesBody.cache === "stale" || salesBody.freshness === "stale_fallback")) {
+        throw new Error("Shopfront could not refresh sales. The previous report was not shown as current.");
+      }
       const metrics = parseShopfrontSalesReport(salesBody);
       if (!metrics) throw new Error("Shopfront returned an incomplete sales summary.");
       setRevenue(metrics.revenue);
@@ -180,6 +190,9 @@ export function ShopfrontReportsOverviewPage() {
       setFetchedAt(metrics.fetchedAt ?? new Date().toISOString());
       const compareMetrics = compareRes.ok ? parseShopfrontSalesReport(compareBody) : null;
       setCompareRevenue(compareMetrics?.revenue ?? null);
+      if (refresh && inventoryRes.ok && inventoryBody && (inventoryBody.refresh_error || inventoryBody.freshness === "stale_fallback")) {
+        throw new Error("Shopfront could not refresh inventory. The previous snapshot was not shown as current.");
+      }
       const inventory = parseShopfrontInventoryReport(inventoryBody);
       setSellableUnits(inventory?.sellableUnits ?? null);
       const metricBlock = salesBody.metrics as Record<string, unknown> | undefined;

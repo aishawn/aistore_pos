@@ -1,5 +1,11 @@
 # Shopfront Sync Validation
 
+## Explicit report refresh propagation (2026-11-10)
+
+- Change: POS report proxy forwards `refresh=true` for Shopfront Sales, Inventory, Purchase and Dashboard inventory. Manual report-page refreshes request the upstream Shopfront report; product-page refresh remains snapshot-backed. A failed forced refresh is not rendered as a current report.
+- Crawler regression test verifies the Dashboard inventory endpoint forwards the explicit refresh flag to the report loader. Full crawler suite: `python -m pytest -q`, 261 passed. POS `npm run typecheck` passed on Node 24.22.1; `npm run test:unit` passed, 213 tests; targeted ESLint had 0 errors and 3 existing React effect warnings in the two modified page components; `git diff --check` passed.
+- Runtime evidence before this change: both SKR and Demo report frontend/backend SHA `db30205559b4d531435b5b9e7ea0e626910e558f`; crawler `/healthz` is `ok`. Deployment of this change is pending. Live crawler catalog job `#197` was at `8250/11033` products (`2026-11-09T18:56:55Z`), so no deployment or additional sync was triggered.
+
 ## Orithos import guards (2026-11-09)
 
 - Source: POS `main` candidate `0184be2201ed58b98cfabfdaba655585c51e0831`, parent `4fc052d22bd14b47db83b5434d8abdf37dd91bf4`.

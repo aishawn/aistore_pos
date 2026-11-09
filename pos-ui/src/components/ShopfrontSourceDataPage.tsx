@@ -10,7 +10,7 @@ export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase"
 type SourceRow = Record<string, unknown>;
 type SourceSnapshot = { complete?: unknown; snapshot_at?: unknown; products?: unknown; source_products?: unknown; [key: string]: unknown };
 type SourceCoverage = { inventory?: SourceSnapshot; catalog?: { checkpoint_at?: unknown; [key: string]: unknown }; products?: Record<string, unknown>; [key: string]: unknown };
-type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; source_version?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow };
+type PagePayload = { data?: SourceRow[]; pagination?: { page?: number; size?: number; total?: number; returned?: number }; snapshot?: SourceSnapshot; coverage?: Record<string, unknown>; source?: string; source_version?: string; fetched_at?: unknown; totals?: SourceRow; metrics?: SourceRow; cache?: string; freshness?: string; refresh_error?: unknown };
 type CoveragePayload = { data?: SourceCoverage };
 
 const PAGE_SIZE = 50;
@@ -172,10 +172,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const pageSize = mode === "products" ? PRODUCTS_PAGE_SIZE : PAGE_SIZE;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
     setRows([]);
@@ -194,6 +193,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     try {
       const resource = mode === "dashboard" || mode === "sales" ? "report-sales" : mode === "products" ? "products" : mode === "inventory" ? "report-inventory" : "report-purchase";
       const params = new URLSearchParams({ resource });
+      if (forceRefresh && mode !== "products") params.set("refresh", "true");
       if (mode === "dashboard" || mode === "sales") {
         params.set("from", range.from);
         params.set("to", range.to);
@@ -225,6 +225,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         throw new Error(payload && "message" in payload ? payload.message : `Shopfront source request failed (${response.status}).`);
       }
       const result = payload as PagePayload;
+      if (forceRefresh && (result.refresh_error || result.cache === "stale" || result.freshness === "stale_fallback")) {
+        throw new Error("Shopfront could not refresh this report. The previous snapshot was not shown as current.");
+      }
       if (mode === "inventory" && !shopfrontInventoryReportSourceAccepted(result as Record<string, unknown>)) {
         throw new Error("The Shopfront inventory report source is outdated. Refresh after the source service has updated.");
       }
@@ -258,7 +261,9 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
       setGeneratedAt(typeof result.fetched_at === "string" ? result.fetched_at : new Date().toISOString());
 
       if (mode === "dashboard") {
-        void fetch("/api/shopfront-source?resource=dashboard-inventory", { cache: "no-store", credentials: "same-origin" })
+        const inventoryParams = new URLSearchParams({ resource: "dashboard-inventory" });
+        if (forceRefresh) inventoryParams.set("refresh", "true");
+        void fetch(`/api/shopfront-source?${inventoryParams}`, { cache: "no-store", credentials: "same-origin" })
           .then(async response => ({ response, payload: await response.json().catch(() => null) as { available?: unknown; sellable_units?: unknown; reason?: unknown } | null }))
           .then(({ response: inventoryResponse, payload: inventoryPayload }) => {
             const value = inventoryResponse.ok && inventoryPayload?.available === true && Number.isFinite(Number(inventoryPayload.sellable_units))
@@ -316,7 +321,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false);
     }
-  }, [mode, inventoryScope, page, pageSize, productFilters, query, range, refreshKey, status]);
+  }, [mode, inventoryScope, page, pageSize, productFilters, query, range, status]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -379,7 +384,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
           {mode === "products" && <p className="mt-1 text-xs text-[var(--oh-muted)]">Inventory snapshot: {snapshot?.complete === true ? snapshot.fresh === true ? "complete" : "complete · stale" : snapshot?.manifest_complete === false ? "incomplete" : "unavailable"}{snapshot?.snapshot_at ? ` · ${dateTimeLabel(snapshot.snapshot_at)} Adelaide` : ""} · Shopfront source data</p>}
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setRefreshKey(value => value + 1)} disabled={loading} aria-label="Refresh Shopfront data" title="Refresh Shopfront data" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] bg-white text-[var(--oh-text)] disabled:opacity-50">
+          <button type="button" onClick={() => void load(mode !== "products")} disabled={loading} aria-label="Refresh Shopfront data" title="Refresh Shopfront data" className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)] bg-white text-[var(--oh-text)] disabled:opacity-50">
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden="true" />
           </button>
         </div>

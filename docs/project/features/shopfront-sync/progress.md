@@ -1,6 +1,12 @@
 # Shopfront Sync Progress
 
-Updated: 2026-11-09. Owner: TBD.
+Updated: 2026-11-10. Owner: TBD.
+
+## Report refresh propagation (2026-11-10)
+
+- POS report refresh now forwards `refresh=true` for Shopfront Sales, Inventory, Purchase and Dashboard inventory. The crawler Dashboard inventory endpoint passes the flag to the same Shopfront Reporting API loader used by the Inventory report.
+- When an explicit refresh falls back to an older cached report, the report UI fails closed with a refresh error rather than implying the stale data is current. Product-page refresh keeps using its durable snapshot and does not trigger a full catalog fetch.
+- Local verification passed: POS Node 24.22.1 TypeScript check and UI unit suite 213/213; focused ESLint has 0 errors and 3 existing React effect warnings; crawler full suite 261/261; `git diff --check` passed. Production rollout is pending. Crawler catalog mirror job `#197` is running; do not deploy a POS restart until that job reaches a terminal state.
 
 ## Reject conflicting product and inventory aliases (2026-11-09)
 
