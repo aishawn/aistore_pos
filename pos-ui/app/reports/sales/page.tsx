@@ -1,5 +1,5 @@
-import { SalesReportPage } from "@/components/admin/SalesReportPage";
+import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
 
 export default function SalesReportsPage() {
-  return <SalesReportPage />;
+  return <ShopfrontSourceDataPage mode="sales" />;
 }

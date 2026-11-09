@@ -1,5 +1,5 @@
-import { PurchaseReportPage } from "@/components/admin/PurchaseReportPage";
+import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
 
 export default function PurchaseReportsPage() {
-  return <PurchaseReportPage />;
+  return <ShopfrontSourceDataPage mode="purchase" />;
 }

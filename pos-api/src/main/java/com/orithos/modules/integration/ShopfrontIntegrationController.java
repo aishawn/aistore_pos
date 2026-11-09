@@ -1099,46 +1099,6 @@ public class ShopfrontIntegrationController {
         jdbc.update("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", productId, outletId, decimal(item, "quantity", BigDecimal.ZERO), decimal(item, "reorder_level"), decimal(item, "reorder_amount"), decimal(item, "reorder_limit"), decimal(item, "max_quantity"), decimal(item, "on_order", BigDecimal.ZERO));
     }
 
-    private void upsertBarcodes(long productId, JsonNode item, long outletId) {
-        JsonNode barcodes = item.get("barcodes");
-        if (!barcodes.isArray()) return;
-        for (JsonNode barcode : barcodes) {
-            String code = text(barcode, "code");
-            if (code == null || code.isBlank()) continue;
-            Long owner = findLong(
-                    "SELECT product_id FROM product_barcode WHERE code=? AND outlet_id=? LIMIT 1",
-                    code, outletId);
-            if (owner != null && !owner.equals(productId)) continue;
-            if (owner == null) {
-                jdbc.update(
-                        "INSERT INTO product_barcode (product_id,code,quantity,outlet_id) VALUES (?,?,?,?)",
-                        productId, code, decimal(barcode, "quantity", BigDecimal.ONE), outletId);
-            } else {
-                jdbc.update(
-                        "UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=? AND outlet_id=?",
-                        decimal(barcode, "quantity", BigDecimal.ONE), productId, code, outletId);
-            }
-        }
-    }
-
-    private void upsertTags(long productId, JsonNode item, long outletId) {
-        JsonNode tags = item.get("tags");
-        if (tags == null || !tags.isArray()) return;
-        try {
-            jdbc.update("DELETE FROM product_tag WHERE product_id=?", productId);
-            for (JsonNode tag : tags) {
-                String name = tag.isTextual() ? tag.asText() : text(tag, "name");
-                if (name == null || name.isBlank()) continue;
-                Long tagId = ensureLookup("tag", name, outletId);
-                if (tagId != null) jdbc.update("INSERT INTO product_tag (product_id,tag_id) VALUES (?,?)", productId, tagId);
-            }
-        } catch (Exception e) {
-            // Tags are optional metadata; a malformed tag must not discard the
-            // product, price, barcode or inventory update.
-            log.warn("Shopfront tag sync skipped for product {}: {}", productId, e.getMessage());
-        }
-    }
-
     private void upsertSourceMapping(String store, String sourceId, long productId) {
         jdbc.update("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type=EXCLUDED.match_type,status='MAPPED',updated_at=CURRENT_TIMESTAMP", store, sourceId, productId);
     }
