@@ -92,12 +92,20 @@ public class ShopfrontIntegrationController {
         }
         ensureMappingTable();
         String shopfrontOutlet = body.path("shopfront_outlet").asText(null);
-        int updated = jdbc.update("UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=1 WHERE store_key=?", shopfrontOutlet, companyId, outletId, storeKey);
+        // Live PG column is boolean; SMALLINT literals like enabled=1 fail on PostgreSQL.
+        Object enabledTrue = isPostgres() ? Boolean.TRUE : 1;
+        int updated = jdbc.update(
+                "UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=? WHERE store_key=?",
+                shopfrontOutlet, companyId, outletId, enabledTrue, storeKey);
         if (updated == 0) {
             try {
-                jdbc.update("INSERT INTO shopfront_store_mapping (store_key, shopfront_outlet, company_id, outlet_id, enabled) VALUES (?, ?, ?, ?, 1)", storeKey, shopfrontOutlet, companyId, outletId);
+                jdbc.update(
+                        "INSERT INTO shopfront_store_mapping (store_key, shopfront_outlet, company_id, outlet_id, enabled) VALUES (?, ?, ?, ?, ?)",
+                        storeKey, shopfrontOutlet, companyId, outletId, enabledTrue);
             } catch (DuplicateKeyException race) {
-                jdbc.update("UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=1 WHERE store_key=?", shopfrontOutlet, companyId, outletId, storeKey);
+                jdbc.update(
+                        "UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=? WHERE store_key=?",
+                        shopfrontOutlet, companyId, outletId, enabledTrue, storeKey);
             }
         }
         return ApiResult.ok(Map.of("store_key", storeKey, "company_id", companyId, "outlet_id", outletId, "enabled", true));

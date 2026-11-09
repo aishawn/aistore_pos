@@ -142,15 +142,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     };
     refreshIfDue(true);
+    const onFocus = () => refreshIfDue(false);
+    const onVisibility = () => refreshIfDue(false);
     const interval = window.setInterval(() => refreshIfDue(false), 5 * 60 * 1000);
-    window.addEventListener("focus", refreshIfDue);
-    document.addEventListener("visibilitychange", refreshIfDue);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       active = false;
       window.clearInterval(interval);
-      window.removeEventListener("focus", refreshIfDue);
-      document.removeEventListener("visibilitychange", refreshIfDue);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [ready, user]);
 
