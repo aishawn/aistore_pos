@@ -153,7 +153,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
   const [costTaxRateInput, setCostTaxRateInput] = useState("");
   const [giftCardInput, setGiftCardInput] = useState("all");
   const [productFilters, setProductFilters] = useState({ brand: "", category: "", family: "", tag: "", supplier: "", type: "", taxRate: "", costTaxRate: "", giftCard: "all" });
-  const [negativeOnly, setNegativeOnly] = useState(false);
+  const [inventoryScope, setInventoryScope] = useState<"positive" | "negative" | "all">("positive");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<SourceRow[]>([]);
   const [performanceById, setPerformanceById] = useState<Record<string, number[]>>({});
@@ -216,7 +216,8 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
           }
           if (productFilters.giftCard !== "all") params.set("gift_card", productFilters.giftCard);
         }
-        if (mode === "inventory" && negativeOnly) params.set("negative_only", "true");
+        if (mode === "inventory" && inventoryScope === "negative") params.set("negative_only", "true");
+        if (mode === "inventory" && inventoryScope === "all") params.set("include_nonpositive", "true");
       }
       const response = await fetch(`/api/shopfront-source?${params}`, { cache: "no-store", credentials: "same-origin" });
       const payload = await response.json().catch(() => null) as PagePayload | { message?: string } | null;
@@ -315,7 +316,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false);
     }
-  }, [mode, negativeOnly, page, pageSize, productFilters, query, range, refreshKey, status]);
+  }, [mode, inventoryScope, page, pageSize, productFilters, query, range, refreshKey, status]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -404,7 +405,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         {mode === "products" && <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="h-9 min-w-36 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]">
           <option value="all">Active products</option><option value="NOT_ACTIVE">Not active</option>
         </select></label>}
-        {mode === "inventory" && <label className="flex h-9 items-center gap-2 px-2 text-sm text-[var(--oh-text)]"><input type="checkbox" checked={negativeOnly} onChange={event => { setNegativeOnly(event.target.checked); setPage(1); }} />Negative stock only</label>}
+        {mode === "inventory" && <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Stock scope<select value={inventoryScope} onChange={event => { setInventoryScope(event.target.value as typeof inventoryScope); setPage(1); }} className="h-9 min-w-48 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]"><option value="positive">Positive on-hand</option><option value="negative">Negative stock only</option><option value="all">All rows, including zero</option></select></label>}
         <button type="button" onClick={applyQuery} className="inline-flex h-9 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white"><Search size={15} aria-hidden="true" /> Search</button>
       </div>}
 
