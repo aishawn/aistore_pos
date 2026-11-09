@@ -6,6 +6,7 @@ import com.orithos.security.AuthUser;
 import com.orithos.security.PermissionAccess;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -35,7 +36,7 @@ class RetailPaymentMethodControllerTest {
         assignment.setRegisterName("Front counter");
         when(mapper.findAssignedForOutlet(3L, 12L)).thenReturn(List.of(assignment));
 
-        var response = new RetailPaymentMethodController(mapper, permissions, new NativePosGate("3")).list();
+        var response = new RetailPaymentMethodController(mapper, permissions, gate("3")).list();
 
         assertEquals(0, response.code());
         assertTrue(response.data().nativePosEnabled());
@@ -49,7 +50,7 @@ class RetailPaymentMethodControllerTest {
     void leavesUncutOverStoresOnTheirExistingPaymentConfiguration() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "manager", false, 12L, 3L), null, List.of()));
-        var response = new RetailPaymentMethodController(mapper, permissions, new NativePosGate("")).list();
+        var response = new RetailPaymentMethodController(mapper, permissions, gate("")).list();
 
         assertEquals(0, response.code());
         assertFalse(response.data().nativePosEnabled());
@@ -59,9 +60,13 @@ class RetailPaymentMethodControllerTest {
 
     @Test
     void rejectsRequestsWithoutAuthenticatedTenantScope() {
-        var controller = new RetailPaymentMethodController(mapper, permissions, new NativePosGate("3"));
+        var controller = new RetailPaymentMethodController(mapper, permissions, gate("3"));
         assertThrows(BusinessException.class, controller::list);
         verify(permissions).requirePermission("settings.view");
         verifyNoInteractions(mapper);
+    }
+
+    private static NativePosGate gate(String vendors) {
+        return new NativePosGate(vendors, "pos_test", "pos_test", "uat", mock(JdbcTemplate.class));
     }
 }

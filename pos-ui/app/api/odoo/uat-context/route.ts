@@ -19,8 +19,11 @@ export async function GET(request: NextRequest) {
     const backend = response.ok ? await response.json() : null;
     const isolated = process.env.RUNTIME_ENVIRONMENT === "uat" && Boolean(database && expected)
       && database === expected && database !== "aipos"
-      && backend?.isolated === true && backend.database === database;
-    if (!isolated) return NextResponse.json({ isolated: false, message: "Both services must explicitly target the same dedicated UAT database." }, { status: 409 });
+      && backend?.isolated === true
+      && backend.odooDatabaseIsolated === true
+      && backend.posDatabaseVerified === true
+      && backend.posDatabaseIsolated === true;
+    if (!isolated) return NextResponse.json({ isolated: false, message: "Both services must attest their dedicated UAT databases." }, { status: 409 });
     return NextResponse.json({ isolated: true, database, frontendCommit: identity.commit, backendCommit: backend.commit }, {
       headers: { "Cache-Control": "no-store" },
     });

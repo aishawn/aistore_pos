@@ -70,6 +70,8 @@ mybatis:
 app:
   native-pos:
     enabled-vendor-ids: ${APP_NATIVE_POS_ENABLED_VENDOR_IDS:}
+    expected-database: ${APP_NATIVE_POS_EXPECTED_DATABASE:}
+    isolation-database: ${ISOLATION_POS_DATABASE:}
   shopfront:
     # Writes require the integration token and an enabled store mapping.
     integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}

@@ -3,9 +3,11 @@ package com.orithos.config;
 import com.orithos.common.BusinessException;
 import com.orithos.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -13,24 +15,59 @@ import java.util.stream.Collectors;
 @Component
 public final class NativePosGate {
     private final Set<Long> enabledVendorIds;
+    private final String expectedDatabase;
+    private final String isolationDatabase;
+    private final String runtimeEnvironment;
+    private final JdbcTemplate jdbcTemplate;
 
-    public NativePosGate(@Value("${app.native-pos.enabled-vendor-ids:}") String vendorIds) {
+    public NativePosGate(
+            @Value("${app.native-pos.enabled-vendor-ids:}") String vendorIds,
+            @Value("${app.native-pos.expected-database:}") String expectedDatabase,
+            @Value("${app.native-pos.isolation-database:}") String isolationDatabase,
+            @Value("${RUNTIME_ENVIRONMENT:}") String runtimeEnvironment,
+            JdbcTemplate jdbcTemplate) {
         this.enabledVendorIds = Arrays.stream(vendorIds == null ? new String[0] : vendorIds.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
                 .map(Long::parseLong)
                 .collect(Collectors.toUnmodifiableSet());
+        this.expectedDatabase = normalize(expectedDatabase);
+        this.isolationDatabase = normalize(isolationDatabase);
+        this.runtimeEnvironment = runtimeEnvironment == null ? "" : runtimeEnvironment.trim();
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public void requireEnabled() {
         Long vendorId = CurrentUser.vendorId();
         if (vendorId == null) throw new BusinessException(40100, "Authenticated tenant is required.");
-        if (!enabledFor(vendorId)) {
+        if (!enabledFor(vendorId) || !databaseAuthorized()) {
             throw new BusinessException(40300, "Native Orithos POS is not enabled for this store.");
+        }
+    }
+
+    public boolean databaseAuthorized() {
+        if (expectedDatabase.isEmpty()) return false;
+        if ("uat".equalsIgnoreCase(runtimeEnvironment)
+                && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase)
+                || isSharedDatabaseName(expectedDatabase))) return false;
+        try {
+            String actualDatabase = normalize(jdbcTemplate.queryForObject("select current_database()", String.class));
+            return expectedDatabase.equals(actualDatabase);
+        } catch (RuntimeException unavailable) {
+            return false;
         }
     }
 
     public boolean enabledFor(Long vendorId) {
         return vendorId != null && enabledVendorIds.contains(vendorId);
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private static boolean isSharedDatabaseName(String value) {
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return Set.of("postgres", "aipos", "orithos", "production", "prod").contains(normalized);
     }
 }
