@@ -85,7 +85,7 @@ app:
   jwt:
     # 生产环境务必修改；HS256 要求密钥长度 >= 32 字节
     secret: ${JWT_SECRET:shopfront-dev-secret-key-change-me-please-0123456789}
-    access-token-ttl-minutes: 120   # 访问令牌有效期（分钟）
+    access-token-ttl-minutes: ${JWT_ACCESS_TOKEN_TTL_MINUTES:120}
     refresh-token-ttl-days: ${JWT_REFRESH_TOKEN_TTL_DAYS:365} # 开发阶段延长会话；可通过环境变量调整
     issuer: shopfront
   cors:

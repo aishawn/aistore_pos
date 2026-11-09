@@ -132,13 +132,22 @@ export function clearAuthCookies(response: NextResponse) {
   response.cookies.set(REFRESH_COOKIE, "", { httpOnly: true, path: "/api/auth", maxAge: 0 });
 }
 
+const TRANSIENT_AUTH_HTTP = new Set([408, 425, 429, 502, 503, 504]);
+
+/** Clear cookies only on definitive auth failure, not during deploy/gateway blips. */
+export function authFailureShouldClearSession(status: number, code: unknown): boolean {
+  if (TRANSIENT_AUTH_HTTP.has(status)) return false;
+  if (status === 401) return true;
+  const numeric = typeof code === "number" ? code : NaN;
+  return numeric === 40100 || numeric === 40102 || numeric === 40103 || numeric === 40323;
+}
+
 export async function respondWithAuthTokens(backendResponse: Response, clearOnFailure = false) {
   let payload: Record<string, unknown>;
   try {
     payload = await backendResponse.json() as Record<string, unknown>;
   } catch {
     const response = NextResponse.json({ code: 50200, message: "Authentication service returned an invalid response", data: null }, { status: 502 });
-    if (clearOnFailure) clearAuthCookies(response);
     return response;
   }
 
@@ -160,7 +169,9 @@ export async function respondWithAuthTokens(backendResponse: Response, clearOnFa
   const response = NextResponse.json(payload, { status: backendResponse.status });
   if (accessToken) setAccessCookie(response, accessToken, accessMaxAge);
   if (refreshToken) setRefreshCookie(response, refreshToken);
-  else if (clearOnFailure) clearAuthCookies(response);
+  else if (clearOnFailure && authFailureShouldClearSession(backendResponse.status, payload.code)) {
+    clearAuthCookies(response);
+  }
   return response;
 }
 

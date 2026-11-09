@@ -161,7 +161,9 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return url.toString();
 }
 
-let refreshInFlight: Promise<boolean> | null = null;
+export type RefreshAccessResult = "ok" | "transient" | "expired";
+
+let refreshInFlight: Promise<RefreshAccessResult> | null = null;
 let odooRecoveryInFlight: Promise<boolean> | null = null;
 
 async function recoverOdooSession(): Promise<boolean> {
@@ -184,8 +186,8 @@ async function recoverOdooSession(): Promise<boolean> {
   return odooRecoveryInFlight;
 }
 
-export async function refreshAccessToken(): Promise<boolean> {
-  if (typeof window === "undefined" || isLocalPreviewSession()) return false;
+export async function refreshAccessToken(): Promise<RefreshAccessResult> {
+  if (typeof window === "undefined" || isLocalPreviewSession()) return "expired";
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     try {
@@ -197,9 +199,12 @@ export async function refreshAccessToken(): Promise<boolean> {
       const payload = await response.json().catch(() => null) as
         | { code?: number }
         | null;
-      return response.ok && payload?.code === 0;
+      if (response.ok && payload?.code === 0) return "ok";
+      if ([502, 503, 504].includes(response.status) || payload?.code === 50200) return "transient";
+      if (response.status === 401 || payload?.code === 40100 || payload?.code === 40103) return "expired";
+      return "transient";
     } catch {
-      return false;
+      return "transient";
     }
   })().finally(() => { refreshInFlight = null; });
   return refreshInFlight;
@@ -238,21 +243,28 @@ async function request<T>(
     && (res.status === 401 || json?.code === 40100 || json?.code === 40103);
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   let sessionRecovered = false;
+  let refreshDeferred = false;
   const isOdooRead = canReplay && path.startsWith("/api/odoo/") && path !== "/api/odoo/session";
   if (authExpired && isOdooRead && !retriedAfterRefresh && await recoverOdooSession()) {
     return request<T>(method, path, opts, true, retriedAfterRoute);
   }
   // Never replay a write after an auth refresh: the server may have accepted
   // the original request before the response was interrupted.
-  if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
-    return request<T>(method, path, opts, true, retriedAfterRoute);
+  if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path)) {
+    const refreshResult = await refreshAccessToken();
+    refreshDeferred = refreshResult === "transient";
+    if (refreshResult === "ok") {
+      return request<T>(method, path, opts, true, retriedAfterRoute);
+    }
   }
   if (authExpired && !canReplay && !retriedAfterRefresh && !isAuthExemptPath(path)) {
-    sessionRecovered = await refreshAccessToken();
+    const refreshResult = await refreshAccessToken();
+    refreshDeferred = refreshResult === "transient";
+    sessionRecovered = refreshResult === "ok";
   }
 
   if (!res.ok || !json) {
-    if (!sessionRecovered) handleAuthFailure(path, res.status, json?.code ?? -1);
+    if (!sessionRecovered && !refreshDeferred) handleAuthFailure(path, res.status, json?.code ?? -1);
     throw new ApiError(
       json?.message ?? gatewayFailureMessage(res.status, `Request failed (${res.status})`),
       json?.code ?? -1,
@@ -261,7 +273,7 @@ async function request<T>(
     );
   }
   if (json.code !== 0) {
-    if (!sessionRecovered) handleAuthFailure(path, res.status, json.code);
+    if (!sessionRecovered && !refreshDeferred) handleAuthFailure(path, res.status, json.code);
     throw new ApiError(json.message, json.code, res.status, res.headers.get("x-correlation-id"));
   }
   if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !path.startsWith("/api/auth/refresh")) clearOdooReadCache();
@@ -284,7 +296,12 @@ async function downloadFile(path: string, filename: string, query?: Record<strin
     credentials: "same-origin",
   });
   let res = await requestFile();
-  if ((res.status === 401) && await refreshAccessToken()) res = await requestFile();
+  let refreshDeferred = false;
+  if (res.status === 401) {
+    const refreshResult = await refreshAccessToken();
+    refreshDeferred = refreshResult === "transient";
+    if (refreshResult === "ok") res = await requestFile();
+  }
 
   if (!res.ok) {
     let message = `Download failed (${res.status})`;
@@ -296,7 +313,7 @@ async function downloadFile(path: string, filename: string, query?: Record<strin
     } catch {
       // Keep the HTTP fallback for non-JSON proxy errors.
     }
-    handleAuthFailure(path, res.status, code);
+    if (!refreshDeferred) handleAuthFailure(path, res.status, code);
     throw new ApiError(message, code, res.status);
   }
 

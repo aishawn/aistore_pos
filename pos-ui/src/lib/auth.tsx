@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const refreshIfDue = () => {
       if (document.visibilityState !== "visible" || Date.now() - lastRefreshAt < 60 * 60 * 1000) return;
       void refreshAccessToken().then((refreshed) => {
-        if (active && refreshed) lastRefreshAt = Date.now();
+        if (active && refreshed === "ok") lastRefreshAt = Date.now();
       });
     };
     const interval = window.setInterval(refreshIfDue, 5 * 60 * 1000);
