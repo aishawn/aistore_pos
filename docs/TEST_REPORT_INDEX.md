@@ -107,6 +107,8 @@ This index is the cross-session view. The detailed report for each session lives
 
 Latest targeted follow-up: [2026-11-02 replenishment timeout / safe snapshot probes](test-sessions/2026-11-02-assistant-replenishment-timeout.md), source `860c1d2e`: local static checks and 33 targeted tests PASS. Live SKR/runtime acceptance and the exact vendor 141/142 snapshot failures remain BLOCKED; this does not replace prior UI fixture evidence.
 
+Latest native purchases route cutover (`2026-11-09`): Orithos `/api/orders` now backs `/purchases`, the old Odoo route redirects, and historical Shopfront purchasing reads the crawler without an Odoo session. UI typecheck, targeted ESLint, 211 frontend tests and the 81-file project docs check pass; online route acceptance awaits deployment. No purchase or stock writes. [Session](test-sessions/2026-11-09-purchase-page-native-route.md) [Progress](project/features/purchasing/progress.md).
+
 ## How to maintain
 
 1. Copy [TEST_SESSION_TEMPLATE.md](TEST_SESSION_TEMPLATE.md) for every meaningful test session.

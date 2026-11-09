@@ -7,7 +7,7 @@
 | CAP-AI | [AI 能力](ai/README.md) | 已实现；各子能力验证层级不同，见七个完整样板 | AI/后端 owner 待指定 | [AI 验证总览](ai/README.md#验证与效果) |
 | CAP-POS | [收银与退款](checkout/README.md) | Orithos checkout/班次 API 本地候选通过 541 项后端回归；POS UI 仍依赖 Odoo，未部署/未做隔离业务验收 | POS owner 待指定 | [收银验证](checkout/validation.md) / [班次验证](register-session/validation.md) |
 | CAP-INV | [商品、库存与盘点](inventory/README.md) | 待盘点，已有修复与报表记录 | 库存 owner 待指定 | INV-001 |
-| CAP-PUR | [采购与收货](purchasing/README.md) | 待盘点，业务写入需独立验收 | 采购 owner 待指定 | PUR-001 |
+| CAP-PUR | [采购与收货](purchasing/README.md) | `/purchases` 候选切到 Orithos 列表和 crawler 只读历史；部署及采购/收货闭环待验收 | 采购 owner 待指定 | [进展](purchasing/progress.md) / PUR-001 |
 | CAP-CUS | [客户与价格表](customers/README.md) | 待盘点，已有角色和定价方案 | 客户模块 owner 待指定 | CUS-001 |
 | CAP-RPT | [报表与经营看板](reporting/README.md) | 已建立销售、采购、交班与库存报表事实记录；候选源码未完成线上验收 | 报表 owner 待指定 | [专题](reporting/README.md) / RPT-001 |
 | CAP-PLT | [平台、租户与集成](platform/README.md) | 待盘点，共享试用库不等于生产隔离 | 平台 owner 待指定 | TEN-001 / OPS-001 / R2-001 |

@@ -1,29 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
-import { fetchTenantOdooBinding } from "@/lib/odoo-tenant-company";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
-import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
-import { loadPurchasingLedger, mergePurchasingSources } from "@/lib/shopfront-purchasing-ledger";
+import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 import { filterPurchasingRows, normalizePurchasingRow, type PurchasingKind, type ShopfrontPurchasingRecord } from "@/lib/shopfront-purchasing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const cache = new Map<PurchasingKind, { expires: number; rows: ShopfrontPurchasingRecord[] }>();
-const pending = new Map<PurchasingKind, Promise<ShopfrontPurchasingRecord[]>>();
+const cache = new Map<string, { expires: number; rows: ShopfrontPurchasingRecord[] }>();
+const pending = new Map<string, Promise<ShopfrontPurchasingRecord[]>>();
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
 const crawlerBase = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
 const integrationToken = process.env.SHOPFRONT_INTEGRATION_TOKEN?.trim() ?? "";
 
-async function loadRows(kind: PurchasingKind) {
-  const cached = cache.get(kind);
+async function loadRows(kind: PurchasingKind, store: string) {
+  const key = `${store}:${kind}`;
+  const cached = cache.get(key);
   if (cached && cached.expires > Date.now()) return cached.rows;
-  const inFlight = pending.get(kind);
+  const inFlight = pending.get(key);
   if (inFlight) return inFlight;
   const loading = (async () => {
     const page = async (number: number) => {
       // Fixed internal destination and store: neither can be supplied by the caller.
-      const response = await fetch(`${crawlerBase}/api/${kind}?store=skr&page=${number}&size=500`, {
+      const response = await fetch(`${crawlerBase}/api/${kind}?store=${encodeURIComponent(store)}&page=${number}&size=500`, {
         cache: "no-store", signal: AbortSignal.timeout(25_000),
         headers: { Authorization: `Bearer ${integrationToken}` },
       });
@@ -43,11 +42,11 @@ async function loadRows(kind: PurchasingKind) {
     }
     if (rows.length !== first.pagination.total || new Set(rows.map((row) => row.id)).size !== rows.length) throw new Error("Incomplete source snapshot");
     rows.sort((a, b) => kind === "suppliers" ? a.name.localeCompare(b.name) : b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-    cache.set(kind, { rows, expires: Date.now() + 60_000 });
+    cache.set(key, { rows, expires: Date.now() + 60_000 });
     return rows;
   })();
-  pending.set(kind, loading);
-  try { return await loading; } finally { pending.delete(kind); }
+  pending.set(key, loading);
+  try { return await loading; } finally { pending.delete(key); }
 }
 
 export async function GET(request: NextRequest) {
@@ -57,30 +56,20 @@ export async function GET(request: NextRequest) {
   if (kind !== "suppliers" && kind !== "purchase-orders") return json({ message: "Invalid directory type" }, 400);
   try {
     await requirePermission(request, kind === "suppliers" ? "stock.suppliers" : "stock.purchases");
-    const binding = await fetchTenantOdooBinding(request);
-    if (!binding) return json({ message: "Could not verify this store's data source" }, 503);
-    // SKR has a verified Shopfront archive. Do not infer a source from a query or
-    // allow other tenants to see SKR through a shared service account.
-    const enabled = binding.subdomain === "skr" && binding.r2Prefix === "shopfront/skr/" && binding.odooProvisionStatus === "ready";
-    if (params.get("config") === "1") return json({ enabled });
-    if (!enabled) return json({ message: "This store has no Shopfront purchasing directory" }, 404);
+    const store = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
+    if (!store) return json({ message: "Shopfront source is not mapped to this store" }, 409);
+    if (params.get("config") === "1") return json({ enabled: Boolean(integrationToken) });
+    if (!integrationToken) return json({ message: "Shopfront source access is not configured" }, 503);
     const offset = Number(params.get("offset") ?? 0);
     if (!Number.isSafeInteger(offset) || offset < 0) return json({ message: "Invalid pagination" }, 400);
-    const scope = await scopedOdoo(request);
-    const companyId = binding.odooCompanyId;
-    if (!companyId || scope.binding?.vendorId !== binding.vendorId || !scope.companyIds.includes(companyId)) return json({ message: "Could not verify purchasing company" }, 403);
-    const ledger = await loadPurchasingLedger(scope.rpc, companyId, binding.subdomain, kind);
-    let crawler: ShopfrontPurchasingRecord[];
-    try { crawler = await loadRows(kind); } catch {
-      if (!ledger.length) throw new Error("Purchasing sources unavailable");
-      crawler = [];
-    }
-    const rows = mergePurchasingSources(ledger, crawler, kind);
-    const items = filterPurchasingRows(rows, (params.get("query") ?? "").slice(0, 120), params.get("status") ?? "all");
+    const query = (params.get("query") ?? "").slice(0, 120);
+    const status = (params.get("status") ?? "all").slice(0, 64);
+    const rows = await loadRows(kind, store);
+    const items = filterPurchasingRows(rows, query, status);
     return json({ enabled: true, source: "Shopfront", readOnly: true, sourceTotal: rows.length, total: items.length,
       statuses: [...new Set(rows.map((row) => row.status))].sort(), items: items.slice(offset, offset + 40), offset, hasNext: offset + 40 < items.length });
   } catch (error) {
-    const scopedError = error instanceof StoreAccessError || error instanceof OdooScopeError;
-    return json({ message: scopedError ? error.message : "Could not load Shopfront purchasing data. Please retry." }, scopedError ? error.status : 502);
+    const accessError = error instanceof StoreAccessError;
+    return json({ message: accessError ? error.message : "Could not load Shopfront purchasing data. Please retry." }, accessError ? error.status : 502);
   }
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import { fetchOdooRoute } from "@/lib/odoo-api";
 import type { PurchasingKind, ShopfrontPurchasingRecord } from "@/lib/shopfront-purchasing";
 
 const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium disabled:opacity-50";
@@ -67,7 +66,7 @@ function ShopfrontPurchasingDirectory({ kind }: { kind: PurchasingKind }) {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ type: kind, query: search, status, offset: String(offset) });
-    void fetchOdooRoute(`/api/shopfront/purchasing?${params}`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
+    void fetch(`/api/shopfront/purchasing?${params}`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
       const body = await response.json();
       if (!response.ok || !Array.isArray(body.items)) throw new Error(body.message || "Could not load Shopfront data.");
       if (!controller.signal.aborted) { setPage(body); setLoadedKey(requestKey); }

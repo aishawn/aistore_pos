@@ -91,7 +91,7 @@ Updated: 2026-11-07. Owner: TBD.
 | Scoped report table/column TypeScript check | PASS | Sales, purchase, closure API/page, and shared column chooser; [session](../../../test-sessions/2026-11-05-report-columns.md) |
 | Shopfront margin, inventory totals, report cache, source margin tests | PASS | 25/25 focused unit tests; [session](../../../test-sessions/2026-11-05-store-data-scope.md) |
 | `git diff --check` | PASS | No whitespace errors; Git emitted line-ending normalization notices for three route wrappers |
-| Report date, closure summary, sales reconciliation unit tests | PASS | 10/10 local tests; no Odoo data; [session](../../../test-sessions/2026-11-05-report-optimization.md) |
+| Report date, closure summary, sales reconciliation unit tests | PASS | Focused report/date/inventory suites passed 39/39 with no Odoo data; [follow-up session](../../../test-sessions/2026-11-05-report-optimization-follow-up.md) |
 | Inventory column/filter URL implementation | INFO | Source inspection confirms query/category/stock/sort/columns are URL-backed and inventory CSV/print reuse the snapshot; refresh/back behavior and full export parity still require browser verification |
 | Sales and purchase source drill-down implementation | INFO | Scoped API domains and amount summaries are implemented; browser interaction and source-to-group reconciliation remain NOT RUN |
 | Source inspection of report routes and UI | INFO | Current working-tree source reviewed; this does not identify the deployed SHA |
