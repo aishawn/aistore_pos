@@ -11,18 +11,18 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 ## Current State
 
 **Working:**
-- Live POS Compose SHA: `b58b6ee60214ad2c53b591b9f591ede45c2fdcab` on both `https://demo.orithos.com.au` and `https://skr.orithos.com.au`.
+- Live POS Compose SHA target: `9e9b4643` (Store pulse accepts fresh GraphQL inventory KPI; Shopfront product business import skips incomplete rows instead of 422ing the batch). Prior UI-only SHA `a5ffcccd` already restored sellable-units parsing.
 - Native write gate: `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1,55`, `APP_NATIVE_POS_EXPECTED_DATABASE=postgres`, `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`, `RUNTIME_ENVIRONMENT=production`.
 - Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
 - SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).
 - Shopfront store mappings on POS: `skr→company 55 / outlet 87`, `demo→company 1 / outlet 1`.
 - Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=http://backend:8080`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
-- Crawler code for secondary store_key pushed to `aishawn/shopfront-crawler` SHA `c00da848d1e8680b3933b4cebd325e86757ea2bf`; deploy was queued.
+- Crawler `main` includes secondary inventory mirror (`8ba7f94`); live `/healthz` fingerprint matches local tree after deploy.
 
 **Broken / incomplete:**
 - Pilot remains **NO-GO for formal production** until backup/Xero/Odoo-retire acceptance (owner’s earlier readiness bar).
 - SKR **PO receive** UAT not re-run in this cutover session (sell-loop only).
-- Dual-outlet catalogue sync is configured; post-deploy **parity evidence after a real catalog/inventory job** is still outstanding.
+- Dual-outlet catalogue/inventory parity still open: `shopfront` shadow for `store_key=demo` was **0/0** before the skip-import fix; job `#184` catalog_snapshot failed earlier on products:upsert 422. Re-run after `9e9b4643` deploy and prove Demo outlet 1 vs SKR outlet 87.
 - Shared DB name `postgres` will never attest `isolated=true`; long-term should move to a dedicated DB name.
 - Local `.gitignore` contains `/docs/`, so dated evidence under `docs/test-sessions/` may stay untracked unless force-added.
 
