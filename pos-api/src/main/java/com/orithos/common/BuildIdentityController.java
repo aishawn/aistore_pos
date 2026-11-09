@@ -63,7 +63,7 @@ public class BuildIdentityController {
         if (expectedPosDatabase == null || expectedPosDatabase.isBlank()) return false;
         try {
             String actualDatabase = jdbcTemplate.queryForObject("select current_database()", String.class);
-            return expectedPosDatabase.equals(actualDatabase);
+            return PosDatabaseIdentity.matchesIsolatedDatabase(actualDatabase, expectedPosDatabase);
         } catch (RuntimeException unavailable) {
             return false;
         }

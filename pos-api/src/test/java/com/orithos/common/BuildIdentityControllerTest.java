@@ -58,7 +58,7 @@ class BuildIdentityControllerTest {
     }
 
     @Test
-    void sharedPostgresDatabaseCanAttestOnlyItsAllowlistedTestTenant() {
+    void sharedPostgresDatabaseCannotAttestAsIsolatedEvenForAnAllowlistedTenant() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
@@ -72,9 +72,9 @@ class BuildIdentityControllerTest {
 
         Map<String, Object> result = controller.uatContext().getBody();
         assertNotNull(result);
-        assertEquals(true, result.get("isolated"));
-        assertEquals(true, result.get("posDatabaseVerified"));
-        assertEquals(true, result.get("posTenantIsolated"));
+        assertEquals(false, result.get("isolated"));
+        assertEquals(false, result.get("posDatabaseVerified"));
+        assertEquals(false, result.get("posTenantIsolated"));
         ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,55");
         assertEquals(false, controller.uatContext().getBody().get("posTenantIsolated"));
     }

@@ -1,6 +1,7 @@
 package com.orithos.config;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.PosDatabaseIdentity;
 import com.orithos.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,12 +46,12 @@ public final class NativePosGate {
     }
 
     public boolean databaseAuthorized() {
-        if (expectedDatabase.isEmpty()) return false;
+        if (!PosDatabaseIdentity.matchesIsolatedDatabase(expectedDatabase, expectedDatabase)) return false;
         if ("uat".equalsIgnoreCase(runtimeEnvironment)
                 && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase))) return false;
         try {
             String actualDatabase = normalize(jdbcTemplate.queryForObject("select current_database()", String.class));
-            return expectedDatabase.equals(actualDatabase);
+            return PosDatabaseIdentity.matchesIsolatedDatabase(actualDatabase, expectedDatabase);
         } catch (RuntimeException unavailable) {
             return false;
         }

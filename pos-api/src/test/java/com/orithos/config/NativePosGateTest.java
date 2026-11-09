@@ -19,8 +19,8 @@ class NativePosGateTest {
     @Test
     void onlyExplicitlyEnabledVendorMayUseNativeWrites() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
-        NativePosGate gate = new NativePosGate("1", "postgres", "postgres", "uat", jdbc);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_demo_uat");
+        NativePosGate gate = new NativePosGate("1", "pos_demo_uat", "pos_demo_uat", "uat", jdbc);
         authenticate(1L);
         assertDoesNotThrow(gate::requireEnabled);
 
@@ -51,7 +51,24 @@ class NativePosGateTest {
         NativePosGate sharedPostgresDatabaseForAllowlistedTenant = new NativePosGate(
                 "1", "postgres", "postgres", "uat", jdbc);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
-        assertDoesNotThrow(sharedPostgresDatabaseForAllowlistedTenant::requireEnabled);
+        assertEquals(40300, assertThrows(BusinessException.class,
+                sharedPostgresDatabaseForAllowlistedTenant::requireEnabled).getCode());
+    }
+
+    @Test
+    void databaseNamesAreTrimmedButSharedDefaultsAreNeverAuthorized() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn(" pos_demo_uat ");
+        NativePosGate isolated = new NativePosGate("1", " pos_demo_uat ", "pos_demo_uat", "uat", jdbc);
+        authenticate(1L);
+        assertDoesNotThrow(isolated::requireEnabled);
+
+        for (String sharedName : new String[]{"postgres", "aipos", "orithos", "production", "prod"}) {
+            when(jdbc.queryForObject("select current_database()", String.class)).thenReturn(sharedName.toUpperCase());
+            String configuredName = sharedName.toUpperCase();
+            NativePosGate shared = new NativePosGate("1", configuredName, configuredName, "uat", jdbc);
+            assertEquals(40300, assertThrows(BusinessException.class, shared::requireEnabled).getCode());
+        }
     }
 
     @Test
