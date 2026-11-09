@@ -14,7 +14,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.math.BigDecimal;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -356,17 +356,23 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void baseShelfPriceIsWrittenToTheMappedOutlet() throws Exception {
+    void baseShelfPriceIsWrittenThroughTheBatchImportPath() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
-        Method upsertPrices = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "upsertPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class);
-        upsertPrices.setAccessible(true);
-        upsertPrices.invoke(controller, 17L, new ObjectMapper().readTree("{\"price\":9.95,\"prices\":[]}"), 48L);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 17L, new ObjectMapper().readTree("{\"price\":9.95,\"prices\":[]}"), 48L, batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+        flush.invoke(controller, batch, 48L);
 
-        verify(jdbc).update(contains("DELETE FROM product_price WHERE product_id=? AND outlet_id=?"), eq(17L), eq(48L));
-        verify(jdbc).update(contains("INSERT INTO product_price (product_id,quantity,price,outlet_id) VALUES (?,?,?,?)"),
-                eq(17L), eq(BigDecimal.ONE), eq(new BigDecimal("9.95")), eq(48L));
+        verify(jdbc).update(contains("DELETE FROM product_price WHERE outlet_id=? AND product_id IN"), any(Object[].class));
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)"), any(List.class));
     }
 
     private static Stream<Arguments> mappingFlags() {

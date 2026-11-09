@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -27,14 +28,26 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Fail-closed staging boundary for the standalone Shopfront crawler.
- * It never writes Odoo or the classic POS business tables.
+ * Staging boundary for Shopfront imports. Business catalogue and inventory
+ * writes remain gated by the dedicated business-write setting.
  */
 @RestController
 @RequestMapping("/api/integrations/shopfront")
 public class ShopfrontIntegrationController {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
     private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
+    private record BarcodeWrite(long productId, String code, BigDecimal quantity) {}
+
+    private static final class ProductImportBatch {
+        private final Map<String, Long> lookupIds = new HashMap<>();
+        private final Map<String, Long> productIdsByIdentity = new HashMap<>();
+        private final Map<Long, Object[]> productUpdates = new LinkedHashMap<>();
+        private final Map<Long, List<Object[]>> pricesByProduct = new LinkedHashMap<>();
+        private final List<BarcodeWrite> barcodes = new ArrayList<>();
+        private final Set<Long> productsWithTags = new LinkedHashSet<>();
+        private final Map<Long, Map<Long, Object[]>> tagsByProduct = new LinkedHashMap<>();
+        private final Map<String, Object[]> sourceMappings = new LinkedHashMap<>();
+    }
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
@@ -462,18 +475,29 @@ public class ShopfrontIntegrationController {
                 if (!importable.isEmpty()) {
                     plan = resolveBusinessProductIds(store, outletId, importable);
                 }
+                ProductImportBatch batch = new ProductImportBatch();
                 for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
                     try {
-                        long productId = upsertBusinessProduct(item, outletId, taxRates, plan.productIds().get(sourceId));
-                        boolean existed = plan.existingProductMappings().contains(sourceId);
-                        upsertSourceMapping(store, sourceId, productId);
-                        if (existed) updated++; else created++;
+                        Long resolvedProductId = plan.productIds().get(sourceId);
+                        String identity = productIdentityKey(item);
+                        if (resolvedProductId == null) {
+                            resolvedProductId = batch.productIdsByIdentity.get(identity);
+                        }
+                        boolean mappingExisted = plan.existingProductMappings().contains(sourceId);
+                        boolean productExisted = mappingExisted || resolvedProductId != null;
+                        long productId = upsertBusinessProduct(item, outletId, taxRates, resolvedProductId, batch);
+                        batch.productIdsByIdentity.putIfAbsent(identity, productId);
+                        if (!mappingExisted) {
+                            batch.sourceMappings.put(sourceId, new Object[]{store, sourceId, productId});
+                        }
+                        if (productExisted) updated++; else created++;
                     } catch (IllegalArgumentException ex) {
                         skipped++;
                         if (errors.size() < 25) errors.add(ex.getMessage());
                     }
                 }
+                flushBusinessProductBatch(batch, outletId);
             }
         } else if ("inventory".equals(type)) {
             if (completeInventorySnapshot && items.isEmpty()) {
@@ -900,16 +924,16 @@ public class ShopfrontIntegrationController {
     }
 
     private long upsertBusinessProduct(JsonNode item, long outletId, Map<String, Long> taxRates,
-                                       Long resolvedProductId) throws Exception {
+                                       Long resolvedProductId, ProductImportBatch batch) throws Exception {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
         Long productId = resolvedProductId;
         Integer mdbId = integerValue(item.get("sku"));
-        Long categoryId = ensureLookup("category", text(item, "category"), outletId);
-        Long brandId = ensureLookup("brand", text(item, "brand"), outletId);
+        Long categoryId = ensureLookup("category", text(item, "category"), outletId, batch.lookupIds);
+        Long brandId = ensureLookup("brand", text(item, "brand"), outletId, batch.lookupIds);
         JsonNode family = item.get("family");
-        Long familyId = ensureLookup("family", family == null ? null : family.asText(null), outletId);
+        Long familyId = ensureLookup("family", family == null ? null : family.asText(null), outletId, batch.lookupIds);
         Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), taxRates);
         Long costTaxRateId = ensureTaxRate(text(item, "cost_tax_rate_name"), taxRates);
         BigDecimal caseQuantity = decimal(item, "case_quantity");
@@ -929,38 +953,150 @@ public class ShopfrontIntegrationController {
             String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
             productId = jdbc.queryForObject(sql, Long.class, name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
-            jdbc.update("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?", name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId);
+            batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
         }
-        upsertPrices(productId, item, outletId);
-        upsertBarcodes(productId, item, outletId);
-        upsertTags(productId, item, outletId);
+        collectProductPrices(productId, item, outletId, batch);
+        collectProductBarcodes(productId, item, batch);
+        collectProductTags(productId, item, outletId, batch);
         return productId;
     }
 
-    private void upsertBusinessInventory(long productId, long outletId, JsonNode item) {
-        jdbc.update("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", productId, outletId, decimal(item, "quantity", BigDecimal.ZERO), decimal(item, "reorder_level"), decimal(item, "reorder_amount"), decimal(item, "reorder_limit"), decimal(item, "max_quantity"), decimal(item, "on_order", BigDecimal.ZERO));
+    private void flushBusinessProductBatch(ProductImportBatch batch, long outletId) {
+        if (!batch.productUpdates.isEmpty()) {
+            jdbc.batchUpdate("UPDATE product SET name=?,type=?,status=?,description=?,category_id=?,brand_id=?,family_id=?,tax_rate_id=?,cost_tax_rate_id=?,cost=?,case_quantity=?,cost_percentage=?,track_inventory=?,use_scales=?,use_barcode_templates=?,prevent_manual_discounts=?,request_price=?,request_quantity=?,order_notes=?,invoice_notes=?,image=COALESCE(?,image),alternate_images=?::jsonb,mdb_id=?,outlet_id=? WHERE id=?",
+                    new ArrayList<>(batch.productUpdates.values()));
+        }
+
+        if (!batch.pricesByProduct.isEmpty()) {
+            deleteProductPrices(new ArrayList<>(batch.pricesByProduct.keySet()), outletId);
+            List<Object[]> prices = batch.pricesByProduct.values().stream().flatMap(List::stream).toList();
+            if (!prices.isEmpty()) {
+                jdbc.batchUpdate("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)", prices);
+            }
+        }
+
+        if (!batch.barcodes.isEmpty()) {
+            Set<String> codes = new LinkedHashSet<>();
+            for (BarcodeWrite barcode : batch.barcodes) codes.add(barcode.code());
+            Map<String, Long> owners = new LinkedHashMap<>();
+            for (Map<String, Object> row : queryRowsInChunks(
+                    "SELECT code, product_id FROM product_barcode WHERE outlet_id=? AND code IN (%s)",
+                    List.of(outletId), new ArrayList<>(codes))) {
+                owners.put(String.valueOf(row.get("code")), longValue(row.get("product_id")));
+            }
+            Map<String, BarcodeWrite> inserts = new LinkedHashMap<>();
+            Map<String, BarcodeWrite> updates = new LinkedHashMap<>();
+            for (BarcodeWrite barcode : batch.barcodes) {
+                Long owner = owners.get(barcode.code());
+                if (owner != null && owner != barcode.productId()) continue;
+                if (owner == null) {
+                    owners.put(barcode.code(), barcode.productId());
+                    inserts.put(barcode.code(), barcode);
+                } else if (inserts.containsKey(barcode.code())) {
+                    inserts.put(barcode.code(), barcode);
+                } else {
+                    updates.put(barcode.code(), barcode);
+                }
+            }
+            if (!inserts.isEmpty()) {
+                jdbc.batchUpdate("INSERT INTO product_barcode (product_id,code,quantity,outlet_id) VALUES (?,?,?,?)",
+                        inserts.values().stream().map(value -> new Object[]{value.productId(), value.code(), value.quantity(), outletId}).toList());
+            }
+            if (!updates.isEmpty()) {
+                jdbc.batchUpdate("UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=? AND outlet_id=?",
+                        updates.values().stream().map(value -> new Object[]{value.quantity(), value.productId(), value.code(), outletId}).toList());
+            }
+        }
+
+        if (!batch.productsWithTags.isEmpty()) {
+            deleteProductTags(new ArrayList<>(batch.productsWithTags));
+            List<Object[]> tags = batch.tagsByProduct.values().stream()
+                    .flatMap(byTag -> byTag.values().stream()).toList();
+            if (!tags.isEmpty()) {
+                jdbc.batchUpdate("INSERT INTO product_tag (product_id,tag_id) VALUES (?,?)", tags);
+            }
+        }
+
+        if (!batch.sourceMappings.isEmpty()) {
+            jdbc.batchUpdate("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type='SHOPFRONT',status='MAPPED',updated_at=CURRENT_TIMESTAMP",
+                    new ArrayList<>(batch.sourceMappings.values()));
+        }
     }
 
-    private void upsertPrices(long productId, JsonNode item, long outletId) {
-        JsonNode prices = item.get("prices");
-        jdbc.update("DELETE FROM product_price WHERE product_id=? AND outlet_id=?", productId, outletId);
+    private void collectProductPrices(long productId, JsonNode item, long outletId, ProductImportBatch batch) {
+        List<Object[]> prices = new ArrayList<>();
         boolean hasUnitPrice = false;
-        if (prices != null && prices.isArray()) {
-            for (JsonNode price : prices) {
+        JsonNode sourcePrices = item.get("prices");
+        if (sourcePrices != null && sourcePrices.isArray()) {
+            for (JsonNode price : sourcePrices) {
                 BigDecimal quantity = decimal(price, "quantity");
                 BigDecimal value = decimal(price, "price");
                 if (quantity == null || quantity.signum() <= 0 || value == null) continue;
-                jdbc.update("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)",
-                        productId, quantity, value,
-                        decimal(price, "price_ex") != null ? decimal(price, "price_ex") : decimal(price, "priceEx"), outletId);
+                BigDecimal priceEx = decimal(price, "price_ex");
+                if (priceEx == null) priceEx = decimal(price, "priceEx");
+                prices.add(new Object[]{productId, quantity, value, priceEx, outletId});
                 if (quantity.compareTo(BigDecimal.ONE) == 0) hasUnitPrice = true;
             }
         }
         BigDecimal shelfPrice = decimal(item, "price");
         if (!hasUnitPrice && shelfPrice != null && shelfPrice.signum() >= 0) {
-            jdbc.update("INSERT INTO product_price (product_id,quantity,price,outlet_id) VALUES (?,?,?,?)",
-                    productId, BigDecimal.ONE, shelfPrice, outletId);
+            prices.add(new Object[]{productId, BigDecimal.ONE, shelfPrice, null, outletId});
         }
+        batch.pricesByProduct.put(productId, prices);
+    }
+
+    private void collectProductBarcodes(long productId, JsonNode item, ProductImportBatch batch) {
+        JsonNode barcodes = item.get("barcodes");
+        if (barcodes == null || !barcodes.isArray()) return;
+        for (JsonNode barcode : barcodes) {
+            String code = text(barcode, "code");
+            if (code != null && !code.isBlank()) {
+                batch.barcodes.add(new BarcodeWrite(productId, code, decimal(barcode, "quantity", BigDecimal.ONE)));
+            }
+        }
+    }
+
+    private void collectProductTags(long productId, JsonNode item, long outletId, ProductImportBatch batch) {
+        JsonNode tags = item.get("tags");
+        if (tags == null || !tags.isArray()) return;
+        batch.productsWithTags.add(productId);
+        Map<Long, Object[]> values = new LinkedHashMap<>();
+        try {
+            for (JsonNode tag : tags) {
+                String name = tag.isTextual() ? tag.asText() : text(tag, "name");
+                if (name == null || name.isBlank()) continue;
+                Long tagId = ensureLookup("tag", name, outletId, batch.lookupIds);
+                if (tagId != null) values.put(tagId, new Object[]{productId, tagId});
+            }
+            batch.tagsByProduct.put(productId, values);
+        } catch (Exception e) {
+            log.warn("Shopfront tag sync skipped for product {}: {}", productId, e.getMessage());
+        }
+    }
+
+    private void deleteProductPrices(List<Long> productIds, long outletId) {
+        deleteByProductIds("product_price", productIds, outletId);
+    }
+
+    private void deleteProductTags(List<Long> productIds) {
+        deleteByProductIds("product_tag", productIds, null);
+    }
+
+    private void deleteByProductIds(String table, List<Long> productIds, Long outletId) {
+        for (int start = 0; start < productIds.size(); start += 400) {
+            List<Long> chunk = productIds.subList(start, Math.min(start + 400, productIds.size()));
+            String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
+            List<Object> args = new ArrayList<>();
+            if (outletId != null) args.add(outletId);
+            args.addAll(chunk);
+            String sql = "DELETE FROM " + table + (outletId == null ? " WHERE product_id IN (" : " WHERE outlet_id=? AND product_id IN (")
+                    + placeholders + ")";
+            jdbc.update(sql, args.toArray());
+        }
+    }
+
+    private void upsertBusinessInventory(long productId, long outletId, JsonNode item) {
+        jdbc.update("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", productId, outletId, decimal(item, "quantity", BigDecimal.ZERO), decimal(item, "reorder_level"), decimal(item, "reorder_amount"), decimal(item, "reorder_limit"), decimal(item, "max_quantity"), decimal(item, "on_order", BigDecimal.ZERO));
     }
 
     private void upsertBarcodes(long productId, JsonNode item, long outletId) {
@@ -1022,6 +1158,15 @@ public class ShopfrontIntegrationController {
             if (id != null) return id;
         } catch (Exception ignored) { }
         return jdbc.queryForObject("INSERT INTO " + table + " (name) VALUES (?) RETURNING id", Long.class, name);
+    }
+
+    private Long ensureLookup(String table, String name, long outletId, Map<String, Long> cache) {
+        if (name == null || name.isBlank()) return null;
+        String key = table + ":" + name.trim().toLowerCase(Locale.ROOT);
+        if (cache.containsKey(key)) return cache.get(key);
+        Long id = ensureLookup(table, name, outletId);
+        cache.put(key, id);
+        return id;
     }
 
     private Long ensureTaxRate(String name, Map<String, Long> taxRates) {
