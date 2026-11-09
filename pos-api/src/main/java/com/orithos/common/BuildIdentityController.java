@@ -43,7 +43,8 @@ public class BuildIdentityController {
     public ResponseEntity<Map<String, Object>> uatContext() {
         boolean odooIsolated = "uat".equals(environment) && !database.isBlank()
                 && database.equals(isolationOdooDatabase) && !"aipos".equals(database);
-        boolean posDatabaseVerified = posDatabaseMatchesExpectation();
+        PosDatabaseIdentity.VerificationStatus posDatabaseStatus = posDatabaseStatus();
+        boolean posDatabaseVerified = posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED;
         boolean posTenantIsolated = "uat".equals(runtimeEnvironment) && posDatabaseVerified
                 && !isolationPosDatabase.isBlank() && isolationPosDatabase.equals(expectedPosDatabase)
                 && enabledPosVendorIds != null
@@ -54,18 +55,21 @@ public class BuildIdentityController {
         result.put("isolated", isolated);
         result.put("odooDatabaseIsolated", odooIsolated);
         result.put("posDatabaseVerified", posDatabaseVerified);
+        result.put("posDatabaseStatus", posDatabaseStatus.name());
         result.put("posTenantIsolated", posTenantIsolated);
         if (isolated) result.put("commit", version().getBody().get("commit"));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
     }
 
-    private boolean posDatabaseMatchesExpectation() {
-        if (expectedPosDatabase == null || expectedPosDatabase.isBlank()) return false;
+    private PosDatabaseIdentity.VerificationStatus posDatabaseStatus() {
+        if (expectedPosDatabase == null || expectedPosDatabase.isBlank()) {
+            return PosDatabaseIdentity.VerificationStatus.EXPECTED_DATABASE_UNSET;
+        }
         try {
             String actualDatabase = jdbcTemplate.queryForObject("select current_database()", String.class);
-            return PosDatabaseIdentity.matchesIsolatedDatabase(actualDatabase, expectedPosDatabase);
+            return PosDatabaseIdentity.verify(actualDatabase, expectedPosDatabase);
         } catch (RuntimeException unavailable) {
-            return false;
+            return PosDatabaseIdentity.VerificationStatus.ACTUAL_DATABASE_UNAVAILABLE;
         }
     }
 

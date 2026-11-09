@@ -27,6 +27,7 @@ class BuildIdentityControllerTest {
         assertNotNull(verified);
         assertEquals(true, verified.get("isolated"));
         assertEquals(true, verified.get("posDatabaseVerified"));
+        assertEquals("VERIFIED", verified.get("posDatabaseStatus"));
         assertEquals(true, verified.get("posTenantIsolated"));
         assertFalse(verified.containsKey("database"));
 
@@ -35,6 +36,7 @@ class BuildIdentityControllerTest {
         assertNotNull(wrongDatabase);
         assertEquals(false, wrongDatabase.get("isolated"));
         assertEquals(false, wrongDatabase.get("posDatabaseVerified"));
+        assertEquals("DATABASE_NAME_MISMATCH", wrongDatabase.get("posDatabaseStatus"));
     }
 
     @Test
@@ -75,6 +77,7 @@ class BuildIdentityControllerTest {
         assertEquals(false, result.get("isolated"));
         assertEquals(false, result.get("posDatabaseVerified"));
         assertEquals(false, result.get("posTenantIsolated"));
+        assertEquals("SHARED_DATABASE_NAME", result.get("posDatabaseStatus"));
         ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,55");
         assertEquals(false, controller.uatContext().getBody().get("posTenantIsolated"));
     }

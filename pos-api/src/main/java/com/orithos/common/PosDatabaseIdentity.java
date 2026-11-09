@@ -11,14 +11,30 @@ public final class PosDatabaseIdentity {
     private PosDatabaseIdentity() { }
 
     public static boolean matchesIsolatedDatabase(String actual, String expected) {
+        return verify(actual, expected) == VerificationStatus.VERIFIED;
+    }
+
+    public static VerificationStatus verify(String actual, String expected) {
         String actualName = normalize(actual);
         String expectedName = normalize(expected);
-        return !actualName.isEmpty()
-                && actualName.equals(expectedName)
-                && !SHARED_DATABASE_NAMES.contains(actualName.toLowerCase(Locale.ROOT));
+        if (expectedName.isEmpty()) return VerificationStatus.EXPECTED_DATABASE_UNSET;
+        if (actualName.isEmpty()) return VerificationStatus.ACTUAL_DATABASE_UNAVAILABLE;
+        if (!actualName.equals(expectedName)) return VerificationStatus.DATABASE_NAME_MISMATCH;
+        if (SHARED_DATABASE_NAMES.contains(actualName.toLowerCase(Locale.ROOT))) {
+            return VerificationStatus.SHARED_DATABASE_NAME;
+        }
+        return VerificationStatus.VERIFIED;
     }
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    public enum VerificationStatus {
+        EXPECTED_DATABASE_UNSET,
+        ACTUAL_DATABASE_UNAVAILABLE,
+        DATABASE_NAME_MISMATCH,
+        SHARED_DATABASE_NAME,
+        VERIFIED
     }
 }
