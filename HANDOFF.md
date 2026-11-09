@@ -11,7 +11,7 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 ## Current State
 
 **Working:**
-- Live POS Compose SHA target: `9e9b4643` (Store pulse accepts fresh GraphQL inventory KPI; Shopfront product business import skips incomplete rows instead of 422ing the batch). Prior UI-only SHA `a5ffcccd` already restored sellable-units parsing.
+- Live POS Compose SHA target: pending deploy of soft alias-conflict skip (incomplete product rows already skip since `9e9b4643`; Store pulse GraphQL accept since `a5ffcccd`).
 - Native write gate: `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1,55`, `APP_NATIVE_POS_EXPECTED_DATABASE=postgres`, `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`, `RUNTIME_ENVIRONMENT=production`.
 - Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
 - SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).

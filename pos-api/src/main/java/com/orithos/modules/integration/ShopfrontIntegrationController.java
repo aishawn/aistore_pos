@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import java.util.LinkedHashMap;
@@ -447,8 +448,21 @@ public class ShopfrontIntegrationController {
                 }
             }
             if (!eligible.isEmpty()) {
-                BusinessImportPlan plan = validateBusinessImport("products", eligible, store, outletId, false, taxRates);
+                BusinessImportPlan plan = resolveBusinessProductIds(store, outletId, eligible);
+                Set<String> rejected = collectProductAliasConflicts(eligible, store, plan.productIds(), errors);
+                com.fasterxml.jackson.databind.node.ArrayNode importable = objectMapper.createArrayNode();
                 for (JsonNode item : eligible) {
+                    String sourceId = text(item, "source_id");
+                    if (rejected.contains(sourceId)) {
+                        skipped++;
+                        continue;
+                    }
+                    importable.add(item);
+                }
+                if (!importable.isEmpty()) {
+                    plan = resolveBusinessProductIds(store, outletId, importable);
+                }
+                for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
                     try {
                         long productId = upsertBusinessProduct(item, outletId, taxRates, plan.productIds().get(sourceId));
@@ -540,10 +554,27 @@ public class ShopfrontIntegrationController {
     }
 
     private void validateProductAliasConflicts(JsonNode items, String store, Map<String, Long> resolvedProducts) {
+        List<String> errors = new ArrayList<>();
+        Set<String> rejected = collectProductAliasConflicts(items, store, resolvedProducts, errors);
+        if (!rejected.isEmpty()) {
+            throw new IllegalArgumentException(errors.isEmpty()
+                    ? "Shopfront products resolve to the same Orithos product with conflicting business attributes"
+                    : errors.get(0));
+        }
+    }
+
+    /**
+     * Soft alias-conflict collector for business import. Conflicting source rows are
+     * skipped instead of 422-ing the whole upsert batch so Demo/SKR catalogue sync
+     * can continue while owner data is cleaned up.
+     */
+    private Set<String> collectProductAliasConflicts(JsonNode items, String store, Map<String, Long> resolvedProducts,
+                                                     List<String> errors) {
         Map<String, String> incomingSignatures = new LinkedHashMap<>();
         Map<String, String> incomingSources = new LinkedHashMap<>();
         Set<Long> targetIds = new HashSet<>();
         Set<String> sourceIds = new HashSet<>();
+        Set<String> rejected = new LinkedHashSet<>();
 
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
@@ -554,13 +585,19 @@ public class ShopfrontIntegrationController {
             String signature = productBusinessSignature(item);
             String existing = incomingSignatures.putIfAbsent(targetKey, signature);
             if (existing != null && !existing.equals(signature)) {
-                throw new IllegalArgumentException("Shopfront products " + incomingSources.get(targetKey) + " and " + sourceId
-                        + " resolve to the same Orithos product with conflicting business attributes");
+                String prior = incomingSources.get(targetKey);
+                rejected.add(prior);
+                rejected.add(sourceId);
+                if (errors != null && errors.size() < 25) {
+                    errors.add("Shopfront products " + prior + " and " + sourceId
+                            + " resolve to the same Orithos product with conflicting business attributes");
+                }
+                continue;
             }
             incomingSources.putIfAbsent(targetKey, sourceId);
         }
 
-        if (targetIds.isEmpty()) return;
+        if (targetIds.isEmpty()) return rejected;
         List<Map<String, Object>> mappingRows = queryRowsInChunks(
                 "SELECT pos_product_id, source_product_id FROM shopfront_product_mapping "
                         + "WHERE store_key=? AND status='MAPPED' AND pos_product_id IN (%s)",
@@ -571,7 +608,7 @@ public class ShopfrontIntegrationController {
             if (sourceIds.contains(sourceId)) continue;
             existingAliases.put(sourceId, longValue(row.get("pos_product_id")));
         }
-        if (existingAliases.isEmpty()) return;
+        if (existingAliases.isEmpty()) return rejected;
         List<Map<String, Object>> sourceRows = queryRowsInChunks(
                 "SELECT source_id, raw_payload FROM shopfront_product WHERE store_key=? AND source_id IN (%s)",
                 List.of(store), new ArrayList<>(existingAliases.keySet()));
@@ -579,19 +616,28 @@ public class ShopfrontIntegrationController {
             String sourceId = String.valueOf(row.get("source_id"));
             long targetId = existingAliases.get(sourceId);
             String incomingSignature = incomingSignatures.get("product:" + targetId);
-            if (incomingSignature == null) continue;
+            String incomingSource = incomingSources.get("product:" + targetId);
+            if (incomingSignature == null || incomingSource == null || rejected.contains(incomingSource)) continue;
             try {
                 JsonNode existing = objectMapper.readTree(String.valueOf(row.get("raw_payload")));
                 if (!incomingSignature.equals(productBusinessSignature(existing))) {
-                    throw new IllegalArgumentException("Shopfront product " + sourceId + " is already mapped to Orithos product "
-                            + targetId + " with conflicting business attributes");
+                    rejected.add(incomingSource);
+                    if (errors != null && errors.size() < 25) {
+                        errors.add("Shopfront product " + sourceId + " is already mapped to Orithos product "
+                                + targetId + " with conflicting business attributes");
+                    }
                 }
             } catch (IllegalArgumentException e) {
-                throw e;
+                rejected.add(incomingSource);
+                if (errors != null && errors.size() < 25) errors.add(e.getMessage());
             } catch (Exception e) {
-                throw new IllegalArgumentException("Unable to verify attributes for mapped Shopfront product " + sourceId, e);
+                rejected.add(incomingSource);
+                if (errors != null && errors.size() < 25) {
+                    errors.add("Unable to verify attributes for mapped Shopfront product " + sourceId);
+                }
             }
         }
+        return rejected;
     }
 
     private Map<String, Long> validateInventoryTargetConflicts(JsonNode items, String store, long outletId, List<String> errors) {

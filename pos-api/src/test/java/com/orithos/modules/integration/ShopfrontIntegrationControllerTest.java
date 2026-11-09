@@ -15,8 +15,10 @@ import java.sql.DatabaseMetaData;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -269,6 +271,26 @@ class ShopfrontIntegrationControllerTest {
 
         org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
         org.junit.jupiter.api.Assertions.assertTrue(failure.getCause().getMessage().contains("conflicting business attributes"));
+    }
+
+    @Test
+    void businessProductImportSoftSkipsConflictingAliasesInsteadOfFailingBatch() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductAliasConflicts", com.fasterxml.jackson.databind.JsonNode.class, String.class, Map.class, List.class);
+        collect.setAccessible(true);
+        List<String> errors = new ArrayList<>();
+        @SuppressWarnings("unchecked")
+        Set<String> rejected = (Set<String>) collect.invoke(controller, new ObjectMapper().readTree("""
+                [
+                  {"source_id":"p1","name":"First name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE"},
+                  {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
+                ]
+                """), "skr", Map.of(), errors);
+        org.junit.jupiter.api.Assertions.assertEquals(Set.of("p1", "p2"), rejected);
+        org.junit.jupiter.api.Assertions.assertFalse(errors.isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(errors.get(0).contains("conflicting business attributes"));
     }
 
     @Test
