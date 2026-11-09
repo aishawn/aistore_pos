@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest Orithos Shopfront import guards (`2026-11-09`): exact candidate `0184be22` passed remote Java 21 `mvn -B clean verify` (575 tests, 0 failures/errors), push verification passed, and SKR/Demo frontend/backend runtime SHAs match. Import was not invoked; no business writes. [Session](test-sessions/2026-11-09-shopfront-orithos-import-guards.md) [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
+
 Latest crawler source-only / Orithos ledger readiness (`2026-11-09`): crawler `75c84c6` deployed; `/healthz` fingerprint `9c8e1ab0…` matches. Supply-chain retries after failed/partial; default POS mirror cleared. Authenticated live status blocked by Cloudflare from this workstation. No ledger env flip or business writes. [Session](test-sessions/2026-11-09-crawler-source-only-status.md) [Progress](project/features/shopfront-sync/progress.md).
 
 Latest Shopfront SKR source reconciliation recheck (`2026-11-09`): crawler `9cd7745` deployed; fingerprint `4bc51b09…` matches `/healthz`. Live sales report for `2026-11-08` returns 114 transactions (matches GraphQL archive); job #37 completed; supply-chain failures #41/#45 explained (pre-fetch transaction + deploy AdminShutdown). Crawler local pytest 229/229 PASS; no ledger writes. [Session](test-sessions/2026-11-09-shopfront-skr-source-reconciliation.md) [Progress](project/features/shopfront-sync/progress.md).

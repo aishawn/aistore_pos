@@ -1,5 +1,13 @@
 # Shopfront Sync Validation
 
+## Orithos import guards (2026-11-09)
+
+- Source: POS `main` candidate `0184be2201ed58b98cfabfdaba655585c51e0831`, parent `4fc052d22bd14b47db83b5434d8abdf37dd91bf4`.
+- Exact-candidate GitHub Actions Java 21 workflow: [run 42573888903](https://github.com/aishawn/aistore_pos/actions/runs/42573888903), `mvn -B clean verify` PASS, 575 tests, 0 failures/errors. The candidate bundle workflow checked out and verified the exact candidate SHA before running Maven.
+- Push to `main` and GitHub push workflow: PASS. Dokploy runtime verification: SKR and Demo `/api/public/version` both report frontend and backend SHA `0184be2201ed58b98cfabfdaba655585c51e0831`. `/api/openapi.json` also returns `200 application/json` on both hosts.
+- Added unit coverage for missing product case quantity/price/tax, empty or incomplete inventory snapshots, existing Orithos tax-rate resolution, and base price scoping to the mapped outlet. `git diff --check` passed before commit.
+- Business writes: 0. No Shopfront sync was enqueued, no Odoo write was made, and no POS import was invoked. Runtime code identity is verified; live importer behavior and data migration remain NOT RUN.
+
 ## Dashboard sellable-units coverage (2026-11-09)
 
 - Crawler full local fixture suite: `python -m pytest -q` in `shopfront-crawler`, 167 passed. Focused `tests/test_source_reporting.py`: 19 passed.

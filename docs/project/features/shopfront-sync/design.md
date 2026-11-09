@@ -26,6 +26,14 @@ Catalogue counts must identify their scope: Shopfront ACTIVE products are source
 
 Product enrichment reports cost and inventory status independently. A numeric zero is a valid source value; a missing source row, failed read, or restricted cost permission must remain distinguishable. Failed optional source reads must not silently become an empty successful result or replace Shopfront values with Odoo values.
 
+## Orithos business import safety
+
+Shopfront source records are mirrored independently from formal POS business tables. Formal product imports must have a source ID, name, positive case quantity, shelf price (including a quantity-one tier), source status, and a matching Orithos tax rate before writing. Unknown source tax codes must not become a null tax assignment. Only source-active, non-deleted products may be active in Orithos; other source states are imported inactive.
+
+A complete inventory replacement must be non-empty, contain unique source product IDs and explicit quantities, and resolve every source product to an Orithos product before clearing the current outlet snapshot. Formal imports run atomically: row failures abort the batch. Product prices are stored against the mapped outlet and the base shelf price is materialized at quantity one when the source provides only tier prices.
+
+Shopfront sales, suppliers, customers, and purchase orders remain source mirrors until each domain has an explicit Orithos business-ledger importer and reconciliation contract. A crawler ledger route to Orithos alone does not mean those source records have been posted as POS sales, receipts, or payments.
+
 ## Completion evidence
 
 For each store and selected business date, record source query/report, timezone, source row/count totals, unique IDs, crawler rows, downstream acknowledgement counts, snapshot timestamp and completeness, job status, and sampled field comparisons. Local fixtures and deployment health are not source-to-POS parity evidence.

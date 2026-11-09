@@ -2,6 +2,13 @@
 
 Updated: 2026-11-09. Owner: TBD.
 
+## Orithos business import guards (2026-11-09)
+
+- POS `main` commit `0184be2201ed58b98cfabfdaba655585c51e0831` adds fail-closed validation for formal Shopfront product and complete inventory writes. Missing price, case quantity, source status, GST mapping, inventory quantity, source-ID uniqueness, or Orithos inventory mapping prevents the batch from replacing/writing business records. Per-row database failures now abort the transaction rather than being counted as skipped successes.
+- Product shelf prices are written to `product_price` for the mapped outlet; a quantity-one shelf price is added when the source sends tiers without a base row. Unknown target tax names block import, source-deleted/non-active products become inactive, and case quantity is no longer guessed as one.
+- Exact candidate Java 21 workflow passed `mvn -B clean verify` (575 tests, 0 failures/errors) before push; GitHub push workflow passed. Dokploy auto-deployed the commit: SKR and Demo `/api/public/version` now both report frontend/backend SHA `0184be2201ed58b98cfabfdaba655585c51e0831`. This is runtime identity evidence only; no live import was called.
+- This closes importer input/atomicity defects in source only. It does not complete Shopfront sales posting, prove source-to-Orithos data parity, or authorize SKR cutover. Keep Odoo active for SKR until full migration acceptance.
+
 ## Ledger flip to Orithos (2026-11-09)
 
 - After Demo PG attestation, checkout loop, and partial-receive UAT, Dokploy crawler env set `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos` with `POS_IMPORT_ENABLED=true` (compose `JHfNJMWCJGqpq0_5aovzZ`). `ODOO_IMPORT_ENABLED` may remain true in env, but per-store ledger routing blocks Odoo writes while mode is `orithos` (no dual-write).
