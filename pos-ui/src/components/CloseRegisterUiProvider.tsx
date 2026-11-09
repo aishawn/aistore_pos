@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { OdooCloseRegisterModal } from "@/components/OdooCloseRegisterModal";
+import { isNativePosHost } from "@/lib/native-pos-host";
 
 type CloseRegisterUiContextValue = {
   openCloseRegister: () => void;
@@ -13,8 +15,15 @@ const CloseRegisterUiContext = createContext<CloseRegisterUiContextValue | null>
 /** App-wide Close Register modal host (POS icon + admin menu). */
 export function CloseRegisterUiProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
-  const openCloseRegister = useCallback(() => setOpen(true), []);
+  const openCloseRegister = useCallback(() => {
+    if (typeof window !== "undefined" && isNativePosHost(window.location.hostname)) {
+      router.push("/close");
+      return;
+    }
+    setOpen(true);
+  }, [router]);
   const closeCloseRegister = useCallback(() => setOpen(false), []);
 
   const value = useMemo(
