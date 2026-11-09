@@ -285,10 +285,11 @@ class ShopfrontIntegrationControllerTest {
         Set<String> rejected = (Set<String>) collect.invoke(controller, new ObjectMapper().readTree("""
                 [
                   {"source_id":"p1","name":"First name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE"},
-                  {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
+                  {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"},
+                  {"source_id":"p3","name":"Third name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
                 ]
                 """), "skr", Map.of(), errors);
-        org.junit.jupiter.api.Assertions.assertEquals(Set.of("p1", "p2"), rejected);
+        org.junit.jupiter.api.Assertions.assertEquals(Set.of("p1", "p2", "p3"), rejected);
         org.junit.jupiter.api.Assertions.assertFalse(errors.isEmpty());
         org.junit.jupiter.api.Assertions.assertTrue(errors.get(0).contains("conflicting business attributes"));
     }

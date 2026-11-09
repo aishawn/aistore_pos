@@ -571,7 +571,7 @@ public class ShopfrontIntegrationController {
     private Set<String> collectProductAliasConflicts(JsonNode items, String store, Map<String, Long> resolvedProducts,
                                                      List<String> errors) {
         Map<String, String> incomingSignatures = new LinkedHashMap<>();
-        Map<String, String> incomingSources = new LinkedHashMap<>();
+        Map<String, Set<String>> incomingSources = new LinkedHashMap<>();
         Set<Long> targetIds = new HashSet<>();
         Set<String> sourceIds = new HashSet<>();
         Set<String> rejected = new LinkedHashSet<>();
@@ -584,17 +584,15 @@ public class ShopfrontIntegrationController {
             if (targetId != null) targetIds.add(targetId);
             String signature = productBusinessSignature(item);
             String existing = incomingSignatures.putIfAbsent(targetKey, signature);
+            Set<String> targetSources = incomingSources.computeIfAbsent(targetKey, ignored -> new LinkedHashSet<>());
+            targetSources.add(sourceId);
             if (existing != null && !existing.equals(signature)) {
-                String prior = incomingSources.get(targetKey);
-                rejected.add(prior);
-                rejected.add(sourceId);
+                rejected.addAll(targetSources);
                 if (errors != null && errors.size() < 25) {
-                    errors.add("Shopfront products " + prior + " and " + sourceId
-                            + " resolve to the same Orithos product with conflicting business attributes");
+                    errors.add("Shopfront products resolving to " + targetKey
+                            + " have conflicting business attributes");
                 }
-                continue;
             }
-            incomingSources.putIfAbsent(targetKey, sourceId);
         }
 
         if (targetIds.isEmpty()) return rejected;
@@ -616,22 +614,22 @@ public class ShopfrontIntegrationController {
             String sourceId = String.valueOf(row.get("source_id"));
             long targetId = existingAliases.get(sourceId);
             String incomingSignature = incomingSignatures.get("product:" + targetId);
-            String incomingSource = incomingSources.get("product:" + targetId);
-            if (incomingSignature == null || incomingSource == null || rejected.contains(incomingSource)) continue;
+            Set<String> incomingTargetSources = incomingSources.get("product:" + targetId);
+            if (incomingSignature == null || incomingTargetSources == null || incomingTargetSources.stream().anyMatch(rejected::contains)) continue;
             try {
                 JsonNode existing = objectMapper.readTree(String.valueOf(row.get("raw_payload")));
                 if (!incomingSignature.equals(productBusinessSignature(existing))) {
-                    rejected.add(incomingSource);
+                    rejected.addAll(incomingTargetSources);
                     if (errors != null && errors.size() < 25) {
                         errors.add("Shopfront product " + sourceId + " is already mapped to Orithos product "
                                 + targetId + " with conflicting business attributes");
                     }
                 }
             } catch (IllegalArgumentException e) {
-                rejected.add(incomingSource);
+                rejected.addAll(incomingTargetSources);
                 if (errors != null && errors.size() < 25) errors.add(e.getMessage());
             } catch (Exception e) {
-                rejected.add(incomingSource);
+                rejected.addAll(incomingTargetSources);
                 if (errors != null && errors.size() < 25) {
                     errors.add("Unable to verify attributes for mapped Shopfront product " + sourceId);
                 }
