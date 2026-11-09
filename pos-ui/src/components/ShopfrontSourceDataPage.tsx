@@ -16,8 +16,8 @@ type CoveragePayload = { data?: SourceCoverage };
 const PAGE_SIZE = 50;
 const PRODUCTS_PAGE_SIZE = 100;
 const MODE_META: Record<Mode, { title: string; odooHref: string; odooLabel: string }> = {
-  dashboard: { title: "Shopfront dashboard", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
-  sales: { title: "Shopfront sales", odooHref: "/reports/dashboard/odoo", odooLabel: "Orithos dashboard" },
+  dashboard: { title: "Shopfront dashboard", odooHref: "/reports/dashboard", odooLabel: "Overview" },
+  sales: { title: "Shopfront sales", odooHref: "/reports/sales", odooLabel: "Sales report" },
   inventory: { title: "Shopfront inventory", odooHref: "/reports/inventory/odoo", odooLabel: "Orithos inventory" },
   products: { title: "Products", odooHref: "/products/odoo", odooLabel: "Orithos products" },
   purchase: { title: "Shopfront purchase report", odooHref: "/reports/purchase/odoo", odooLabel: "Orithos purchasing" },

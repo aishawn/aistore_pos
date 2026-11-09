@@ -171,6 +171,7 @@ export async function serveReport(request: NextRequest, deadStock = false) {
     }
     if (calendar && access.shared && client) {
       snapshot = await readSnapshot(access.scope, period as SnapshotPeriod);
+      if (snapshot && !summary && !Array.isArray(snapshot.body.trend)) snapshot = null;
       const fresh = snapshot && snapshotFresh(snapshot, revision);
       if ((force && !task) || !fresh) {
         const job = await enqueueReport(access.scope, period as SnapshotPeriod, true, true, force);

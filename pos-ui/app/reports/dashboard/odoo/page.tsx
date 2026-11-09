@@ -1,7 +1,7 @@
-import { OrithosReportsDashboardPage } from "@/components/OrithosReportsDashboardPage";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default function OrithosReportingDashboardPage() {
-  return <OrithosReportsDashboardPage />;
+export default function LegacyOdooDashboardPage() {
+  redirect("/reports/dashboard");
 }
