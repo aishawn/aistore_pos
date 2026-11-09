@@ -67,6 +67,12 @@ mybatis:
     map-underscore-to-camel-case: true
     default-fetch-size: 100
 
+springdoc:
+  api-docs:
+    path: /api/openapi.json
+  swagger-ui:
+    enabled: false
+
 app:
   native-pos:
     enabled-vendor-ids: ${APP_NATIVE_POS_ENABLED_VENDOR_IDS:}
