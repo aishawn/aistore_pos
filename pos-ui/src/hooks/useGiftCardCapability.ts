@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { getOdooGiftCards } from "@/lib/odoo-api";
 import { useAuth } from "@/lib/auth";
+import { isNativePosHost } from "@/lib/native-pos-host";
 
 export function useGiftCardCapability() {
   const { hasPermission } = useAuth();
@@ -17,7 +18,7 @@ export function useGiftCardCapability() {
   }, []);
   useEffect(() => {
     let cancelled = false;
-    if (!permitted) return;
+    if (!permitted || (typeof window !== "undefined" && isNativePosHost(window.location.hostname))) return;
     void Promise.resolve().then(() => {
       if (cancelled) return null;
       setLoading(true); setError(null);
