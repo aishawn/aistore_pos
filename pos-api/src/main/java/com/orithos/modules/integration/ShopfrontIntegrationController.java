@@ -431,67 +431,98 @@ public class ShopfrontIntegrationController {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
         Map<String, Long> taxRates = new LinkedHashMap<>();
-        BusinessImportPlan plan = validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
+        List<String> errors = new ArrayList<>();
         int created = 0;
         int updated = 0;
         int skipped = 0;
         if ("products".equals(type)) {
+            com.fasterxml.jackson.databind.node.ArrayNode eligible = objectMapper.createArrayNode();
             for (JsonNode item : items) {
-                String sourceId = text(item, "source_id");
-                long productId = upsertBusinessProduct(item, outletId, taxRates, plan.productIds().get(sourceId));
-                boolean existed = plan.existingProductMappings().contains(sourceId);
-                upsertSourceMapping(store, text(item, "source_id"), productId);
-                if (existed) updated++; else created++;
+                try {
+                    validateProductBusinessFields(item, outletId, taxRates);
+                    eligible.add(item);
+                } catch (IllegalArgumentException ex) {
+                    skipped++;
+                    if (errors.size() < 25) errors.add(ex.getMessage());
+                }
+            }
+            if (!eligible.isEmpty()) {
+                BusinessImportPlan plan = validateBusinessImport("products", eligible, store, outletId, false, taxRates);
+                for (JsonNode item : eligible) {
+                    String sourceId = text(item, "source_id");
+                    try {
+                        long productId = upsertBusinessProduct(item, outletId, taxRates, plan.productIds().get(sourceId));
+                        boolean existed = plan.existingProductMappings().contains(sourceId);
+                        upsertSourceMapping(store, sourceId, productId);
+                        if (existed) updated++; else created++;
+                    } catch (IllegalArgumentException ex) {
+                        skipped++;
+                        if (errors.size() < 25) errors.add(ex.getMessage());
+                    }
+                }
             }
         } else if ("inventory".equals(type)) {
+            if (completeInventorySnapshot && items.isEmpty()) {
+                throw new IllegalArgumentException("A complete inventory snapshot cannot be empty");
+            }
+            Map<String, Long> inventoryMappings = validateInventoryTargetConflicts(items, store, outletId, errors);
+            skipped += Math.max(0, items.size() - inventoryMappings.size());
             if (completeInventorySnapshot) {
                 jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
             }
             for (JsonNode item : items) {
-                Long productId = plan.productIds().get(text(item, "source_id"));
+                String sourceId = text(item, "source_id");
+                Long productId = inventoryMappings.get(sourceId);
+                if (productId == null || productId <= 0) continue;
                 upsertBusinessInventory(productId, outletId, item);
                 updated++;
             }
+        } else {
+            validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("enabled", true);
         result.put("created", created);
         result.put("updated", updated);
         result.put("skipped", skipped);
-        result.put("errors", List.of());
+        result.put("errors", errors);
         return result;
+    }
+
+    private void validateProductBusinessFields(JsonNode item, long outletId, Map<String, Long> taxRates) {
+        String sourceId = text(item, "source_id");
+        String name = text(item, "name");
+        BigDecimal caseQuantity = decimal(item, "case_quantity");
+        BigDecimal price = decimal(item, "price");
+        String taxRateName = text(item, "tax_rate_name");
+        String sourceStatus = text(item, "source_status");
+        if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Product source_id and name are required");
+        }
+        if (caseQuantity == null || caseQuantity.signum() <= 0) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
+        }
+        if ((price == null || price.signum() < 0) && !hasUnitPrice(item)) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no valid shelf price");
+        }
+        if (taxRateName == null || taxRateName.isBlank()) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no mapped GST rate");
+        }
+        if (sourceStatus == null || sourceStatus.isBlank()) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no source status");
+        }
+        requireTaxRate(taxRateName, outletId, sourceId, taxRates);
+        String costTaxRateName = text(item, "cost_tax_rate_name");
+        if (costTaxRateName != null && !costTaxRateName.isBlank()) {
+            requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
+        }
     }
 
     private BusinessImportPlan validateBusinessImport(String type, JsonNode items, String store, long outletId,
                                                       boolean completeInventorySnapshot, Map<String, Long> taxRates) {
         if ("products".equals(type)) {
             for (JsonNode item : items) {
-                String sourceId = text(item, "source_id");
-                String name = text(item, "name");
-                BigDecimal caseQuantity = decimal(item, "case_quantity");
-                BigDecimal price = decimal(item, "price");
-                String taxRateName = text(item, "tax_rate_name");
-                String sourceStatus = text(item, "source_status");
-                if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) {
-                    throw new IllegalArgumentException("Product source_id and name are required");
-                }
-                if (caseQuantity == null || caseQuantity.signum() <= 0) {
-                    throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
-                }
-                if ((price == null || price.signum() < 0) && !hasUnitPrice(item)) {
-                    throw new IllegalArgumentException("Product " + sourceId + " has no valid shelf price");
-                }
-                if (taxRateName == null || taxRateName.isBlank()) {
-                    throw new IllegalArgumentException("Product " + sourceId + " has no mapped GST rate");
-                }
-                if (sourceStatus == null || sourceStatus.isBlank()) {
-                    throw new IllegalArgumentException("Product " + sourceId + " has no source status");
-                }
-                requireTaxRate(taxRateName, outletId, sourceId, taxRates);
-                String costTaxRateName = text(item, "cost_tax_rate_name");
-                if (costTaxRateName != null && !costTaxRateName.isBlank()) {
-                    requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
-                }
+                validateProductBusinessFields(item, outletId, taxRates);
             }
             BusinessImportPlan plan = resolveBusinessProductIds(store, outletId, items);
             validateProductAliasConflicts(items, store, plan.productIds());
@@ -502,7 +533,7 @@ public class ShopfrontIntegrationController {
             }
         }
         if ("inventory".equals(type)) {
-            Map<String, Long> inventoryMappings = validateInventoryTargetConflicts(items, store, outletId);
+            Map<String, Long> inventoryMappings = validateInventoryTargetConflicts(items, store, outletId, null);
             return new BusinessImportPlan(inventoryMappings, Set.of());
         }
         return new BusinessImportPlan(Map.of(), Set.of());
@@ -563,7 +594,7 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private Map<String, Long> validateInventoryTargetConflicts(JsonNode items, String store, long outletId) {
+    private Map<String, Long> validateInventoryTargetConflicts(JsonNode items, String store, long outletId, List<String> errors) {
         if (!items.isArray()) throw new IllegalArgumentException("Inventory items must be an array");
         Set<String> seenSources = new HashSet<>();
         Map<Long, String> targetSignatures = new LinkedHashMap<>();
@@ -572,29 +603,45 @@ public class ShopfrontIntegrationController {
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             if (sourceId == null || sourceId.isBlank() || !seenSources.add(sourceId)) {
-                throw new IllegalArgumentException("Inventory snapshot has a missing or duplicate source product id");
+                String message = "Inventory snapshot has a missing or duplicate source product id";
+                if (errors == null) throw new IllegalArgumentException(message);
+                if (errors.size() < 25) errors.add(message);
+                continue;
             }
             if (decimal(item, "quantity") == null) {
-                throw new IllegalArgumentException("Inventory product " + sourceId + " has no quantity");
+                String message = "Inventory product " + sourceId + " has no quantity";
+                if (errors == null) throw new IllegalArgumentException(message);
+                if (errors.size() < 25) errors.add(message);
+                continue;
             }
             sourceIds.add(sourceId);
         }
         Map<String, Long> mappings = resolveInventoryProductIds(store, outletId, sourceIds);
+        Map<String, Long> accepted = new LinkedHashMap<>();
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
+            if (sourceId == null || !sourceIds.contains(sourceId)) continue;
             Long targetId = mappings.get(sourceId);
             if (targetId == null || targetId <= 0) {
-                throw new IllegalArgumentException("Inventory product " + sourceId + " has no Orithos product mapping");
+                String message = "Inventory product " + sourceId + " has no Orithos product mapping";
+                if (errors == null) throw new IllegalArgumentException(message);
+                if (errors.size() < 25) errors.add(message);
+                continue;
             }
             String signature = inventoryBusinessSignature(item);
             String prior = targetSignatures.putIfAbsent(targetId, signature);
             if (prior != null && !prior.equals(signature)) {
-                throw new IllegalArgumentException("Shopfront inventory products " + targetSources.get(targetId) + " and " + sourceId
-                        + " map to Orithos product " + targetId + " with conflicting stock attributes");
+                String message = "Shopfront inventory products " + targetSources.get(targetId) + " and " + sourceId
+                        + " map to Orithos product " + targetId + " with conflicting stock attributes";
+                if (errors == null) throw new IllegalArgumentException(message);
+                if (errors.size() < 25) errors.add(message);
+                accepted.remove(targetSources.get(targetId));
+                continue;
             }
             targetSources.putIfAbsent(targetId, sourceId);
+            accepted.put(sourceId, targetId);
         }
-        return mappings;
+        return accepted;
     }
 
     private BusinessImportPlan resolveBusinessProductIds(String store, long outletId, JsonNode items) {

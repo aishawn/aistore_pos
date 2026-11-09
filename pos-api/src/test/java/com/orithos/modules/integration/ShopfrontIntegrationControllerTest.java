@@ -214,8 +214,7 @@ class ShopfrontIntegrationControllerTest {
     void businessProductImportRejectsMissingCaseQuantityPriceOrTax() throws Exception {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
-                String.class, long.class, boolean.class, Map.class);
+                "validateProductBusinessFields", com.fasterxml.jackson.databind.JsonNode.class, long.class, Map.class);
         validate.setAccessible(true);
         ObjectMapper mapper = new ObjectMapper();
         String[] blockedProducts = {
@@ -226,7 +225,7 @@ class ShopfrontIntegrationControllerTest {
 
         for (String product : blockedProducts) {
             InvocationTargetException failure = assertThrows(InvocationTargetException.class,
-                    () -> validate.invoke(controller, "products", mapper.readTree("[" + product + "]"), "skr", 48L, false, new java.util.HashMap<>()));
+                    () -> validate.invoke(controller, mapper.readTree(product), 48L, new java.util.HashMap<>()));
             org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
         }
     }
