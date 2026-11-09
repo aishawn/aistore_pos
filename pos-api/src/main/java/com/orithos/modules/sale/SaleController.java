@@ -12,8 +12,8 @@ import com.orithos.security.PermissionAccess;
 import com.orithos.security.CurrentUser;
 import com.orithos.common.BusinessException;
 import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/sales")
@@ -79,38 +79,27 @@ public class SaleController {
 
     @PostMapping
     public ApiResult<Sale> create(@RequestBody Sale sale) {
-        sale.setOutletId(requireOutlet());
-        if (sale.getStatus() == null) sale.setStatus("ACTIVE");
-        if (sale.getTotalQuantity() == null) sale.setTotalQuantity(0);
-        if (sale.getTotalPrice() == null) sale.setTotalPrice(BigDecimal.ZERO);
-        if (sale.getOutstanding() == null) sale.setOutstanding(BigDecimal.ZERO);
-        mapper.insert(sale);
-        if (sale.getItems() != null) {
-            for (SaleItem item : sale.getItems()) {
-                item.setSaleId(sale.getId());
-                mapper.insertItem(item);
-            }
-        }
-        return ApiResult.ok(sale);
+        throw retiredSaleMutation();
     }
 
     @PutMapping("/{id}")
     public ApiResult<Sale> update(@PathVariable Long id, @RequestBody Sale sale) {
-        sale.setId(id);
-        if (mapper.update(sale, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
-        return ApiResult.ok(sale);
+        throw retiredSaleMutation();
     }
 
     @PutMapping("/{id}/void")
     public ApiResult<Void> voidSale(@PathVariable Long id) {
-        if (mapper.markVoid(id, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
-        return ApiResult.ok();
+        throw retiredSaleMutation();
     }
 
     @PutMapping("/{id}/unpark")
     public ApiResult<Void> unpark(@PathVariable Long id) {
-        if (mapper.unpark(id, requireVendor(), CurrentUser.outletId()) == 0) throw new BusinessException("Sale not found.");
-        return ApiResult.ok();
+        throw retiredSaleMutation();
+    }
+
+    private static ResponseStatusException retiredSaleMutation() {
+        return new ResponseStatusException(HttpStatus.GONE,
+                "Direct sale mutations are retired. Use the tendered checkout or refund workflow.");
     }
 
     private Long requireVendor() {
@@ -119,9 +108,4 @@ public class SaleController {
         return vendorId;
     }
 
-    private Long requireOutlet() {
-        Long outletId = CurrentUser.outletId();
-        if (outletId == null) throw new BusinessException(40000, "An outlet must be selected.");
-        return outletId;
-    }
 }
