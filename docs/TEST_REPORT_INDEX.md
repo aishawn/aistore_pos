@@ -1,5 +1,7 @@
 # Test Report Index
 
+Latest native supplier directory cutover (`2026-11-10`): exact source/runtime SHA `36713d45` is live on SKR and Demo; Java 21 `mvn -B clean verify` 586/586 PASS, POS UI typecheck and production build PASS, targeted ESLint 0 errors / 3 existing warnings. `/enapi.json`, `/openapi.json`, and supplier API schema are readable; supplier business records were not read, supplier writes 0. Other Odoo domains remain active. [Session](test-sessions/2026-11-10-native-supplier-directory-cutover.md) [Validation](project/features/purchasing/validation.md) [Progress](project/features/purchasing/progress.md).
+
 Latest Shopfront report refresh propagation (`2026-11-10`): POS local `main` candidate based on `db302055` and crawler commit `d980cf5` pass local crawler tests (261/261), POS UI tests (213/213), Node 24.22.1 typecheck, and targeted ESLint (0 errors). Neither candidate is deployed. Existing mirror job #197 is active; SKR product ID reconciliation passes 11,033/11,033 with 0 missing/extra, while inventory and Demo mirroring remain in progress and 164 sales / 320 lines remain unreconciled. Browser page acceptance is open. [Session](test-sessions/2026-11-10-shopfront-report-refresh-propagation.md) [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
 
 Latest Orithos Shopfront import guards (`2026-11-09`): exact candidate `0184be22` passed remote Java 21 `mvn -B clean verify` (575 tests, 0 failures/errors), push verification passed, and SKR/Demo frontend/backend runtime SHAs match. Import was not invoked; no business writes. [Session](test-sessions/2026-11-09-shopfront-orithos-import-guards.md) [Validation](project/features/shopfront-sync/validation.md) [Progress](project/features/shopfront-sync/progress.md).
@@ -173,6 +175,7 @@ Latest native purchases route cutover (`2026-11-09`): Orithos `/api/orders` now 
 
 | Session ID | Date | Scope | Result summary | Report |
 |---|---|---|---|---|
+| 2026-11-10-native-supplier-directory-cutover | 2026-11-10 | Orithos supplier list/create API, ABN tenant check, deployment and OpenAPI routes | Java 21 suite 586/586; UI typecheck/build PASS; SKR/Demo runtime SHA match; no supplier data reads or business writes | [Report](test-sessions/2026-11-10-native-supplier-directory-cutover.md) |
 | 2026-11-03-source-tax-batch | 2026-11-03 | Demo tax transaction rollback / crawler integration | INFO: 37 orders rehearsed,125 review; 48 local tests PASS | [Report](test-sessions/2026-11-03-source-tax-batch.md) |
 | 2026-11-03-source-purchase-full | 2026-11-03 | Shopfront readonly 48-page procurement read | INFO: 2358 orders / 32925 lines; cost verification pending | [Report](test-sessions/2026-11-03-source-purchase-full.md) |
 | 2026-11-03-margin-inventory-moves | 2026-11-03 | SKR readonly inventory movement arithmetic | INFO: 10968 quant review; no stock repair | [Report](test-sessions/2026-11-03-margin-inventory-moves.md) |

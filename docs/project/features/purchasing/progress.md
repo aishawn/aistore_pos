@@ -1,6 +1,6 @@
 # 采购迁移进展
 
-更新日期：2026-11-09。负责人：采购 owner 待指定。
+更新日期：2026-11-10。负责人：采购 owner 待指定。
 
 ## 已完成
 
@@ -13,6 +13,8 @@
 - UI typecheck 和完整单测已运行；结果与边界见 [validation](validation.md)。
 - 2026-11-09：线上 `POST /api/orders` 因 PostgreSQL `include_freight smallint` 与布尔参数类型不匹配返回 500；`OrderMapper` 改为写入 `0/1`（`f858bbbf`）。
 - Demo 部分收货 UAT：创建 PO `#1`、两次部分收货、同 key 幂等 `replayed=true`；状态保持 `PARTIALLY_RECEIVED`，received qty=2/4。证据 [partial receive session](../../../test-sessions/2026-11-09-demo-migration-partial-receive.md)。
+- 2026-11-10：供应商目录与采购工作区切换到 Orithos `/api/suppliers`；原生列表补齐联系人字段及多字段搜索，创建接口按认证租户阻止重复 ABN；旧 `/suppliers/odoo` 路径转到原生目录。精确提交 `36713d45507618816add439a9a3fcf6cba160288` 已部署到 SKR、Demo。
+- 线上只读探针确认两店 frontend/backend runtime SHA 一致，`/enapi.json`、`/openapi.json` 返回 200，OpenAPI 含 suppliers 列表/创建/详情/更新接口。未登录页面按 middleware 跳转登录；没有读取供应商业务数据，也没有业务写入。
 
 ## 问题与下一步
 
@@ -27,3 +29,5 @@
 ## 发布边界
 
 本次仅迁移采购列表和历史来源读取路径。未执行真实下单、收货或库存写入；Odoo 仍是尚未逐店切换域的旧账本，不得把列表上线视作采购账本完成迁移。
+
+2026-11-10 供应商目录已迁移，但采购收货/库存对账、供应商来源映射、迁移差异与 Xero 导出仍未验收。其他 POS 域仍保留 Odoo BFF 调用；本次交付不代表 Odoo 已退役。

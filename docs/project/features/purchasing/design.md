@@ -1,6 +1,6 @@
 # 采购与收货设计
 
-更新日期：2026-11-09。负责人：待指定。
+更新日期：2026-11-10。负责人：待指定。
 
 ## 目标
 
@@ -9,6 +9,8 @@ Orithos 是采购单、收货和库存变更的唯一可写账本。Shopfront �
 ## 页面与接口
 
 - `/purchases` 读取 Orithos `GET /api/orders`，由认证主体限定 vendor，门店用户再限定 outlet。
+- `/suppliers` 和采购工作区的 Suppliers 标签读取、创建供应商均使用 Orithos `/api/suppliers`；目录按名称、电话、邮箱、ABN 和供应商账号搜索，ABN 重复检查限定在认证租户内。
+- 旧 `/suppliers/odoo` 路径重定向到 `/suppliers`，不再依赖 Odoo session 或 `/api/odoo/suppliers`。
 - 创建和编辑通过 Orithos `/orders/*` 页面和 `/api/orders` 接口完成；采购单收货必须逐行记录，不能以整个订单状态更新代替数量。
 - `/api/shopfront/purchasing` 只代理固定 crawler 域名和经 host 映射确认的 `skr` 来源。请求体或查询参数不能改变租户、来源门店或上游主机。
 - crawler 历史单据保留来源状态、来源 ID、明细和采集时间；来源采购单不得自动增加现存库存。

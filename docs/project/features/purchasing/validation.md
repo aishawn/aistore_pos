@@ -1,6 +1,17 @@
 # 采购迁移验证
 
-更新日期：2026-11-09。负责人：采购 owner 待指定。
+更新日期：2026-11-10。负责人：采购 owner 待指定。
+
+## 2026-11-10 原生供应商目录部署验证
+
+- Source/runtime SHA：`36713d45507618816add439a9a3fcf6cba160288`；SKR、Demo frontend/backend 均匹配。
+- GitHub `Backend Java 21 Verify`：精确 SHA `36713d45`，`mvn -B clean verify` PASS，586 tests，0 failures/errors；完整日志见 workflow run `42694462448`。
+- POS UI `npm run typecheck`：PASS。Next 生产构建 PASS。定向 ESLint 0 errors / 3 warnings，均为原有 effect 同步状态规则。
+- SKR、Demo `/enapi.json` 与 `/openapi.json` HTTP 200；SKR OpenAPI 列出 `/api/suppliers` 的 GET/POST，以及详情 GET/PUT/DELETE。供应商页面未登录时按预期跳转登录。
+- 线上范围是公开版本、OpenAPI 与未登录路由探针；未用员工身份读取供应商记录，未调用创建/更新/删除接口，业务写入 0。ABN 搜索/拒重由同提交 Java 回归覆盖，不宣称线上供应商数据验收。
+- 原 `/suppliers/odoo` 的实际组件跳转未在已登录会话中验证；未关闭 Odoo URL，约 40 个其他页面/API 仍使用 `/api/odoo/*`。
+
+完整记录：[2026-11-10 native supplier directory cutover](../../../test-sessions/2026-11-10-native-supplier-directory-cutover.md)。
 
 ## 最近适用结果
 
