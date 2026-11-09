@@ -14,6 +14,13 @@ public final class PosDatabaseIdentity {
         return verify(actual, expected) == VerificationStatus.VERIFIED;
     }
 
+    /** Owner-authorized cutover may write on a shared database name when the live name still matches. */
+    public static boolean matchesAuthorizedDatabase(String actual, String expected, boolean allowSharedDatabase) {
+        VerificationStatus status = verify(actual, expected);
+        return status == VerificationStatus.VERIFIED
+                || (allowSharedDatabase && status == VerificationStatus.SHARED_DATABASE_NAME);
+    }
+
     public static VerificationStatus verify(String actual, String expected) {
         String actualName = normalize(actual);
         String expectedName = normalize(expected);
@@ -24,6 +31,11 @@ public final class PosDatabaseIdentity {
             return VerificationStatus.SHARED_DATABASE_NAME;
         }
         return VerificationStatus.VERIFIED;
+    }
+
+    public static boolean isSharedDatabaseName(String database) {
+        String name = normalize(database);
+        return !name.isEmpty() && SHARED_DATABASE_NAMES.contains(name.toLowerCase(Locale.ROOT));
     }
 
     private static String normalize(String value) {

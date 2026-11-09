@@ -2966,15 +2966,33 @@ async def push_pos_snapshot(
         product_result = {}
         inventory_result = {}
         catalog_error: Exception | None = None
+        catalog_store_keys = [store_key]
+        secondary_store_key = (settings.pos_api_secondary_store_key or "").strip()
+        if secondary_store_key and secondary_store_key != store_key:
+            catalog_store_keys.append(secondary_store_key)
         try:
             for target_name, client in clients.items():
-                product_responses = []
-                for offset in range(0, len(product_items), 250):
-                    product_responses.append(await client.upsert_products(jsonable_encoder({"store_key": store_key, "items": product_items[offset:offset + 250]})))
-                if product_responses:
-                    product_result[target_name] = product_responses[0] if len(product_responses) == 1 else {"batches": len(product_responses), "last": product_responses[-1]}
-                if include_catalog or include_inventory_snapshot:
-                    inventory_result[target_name] = await client.replace_inventory(jsonable_encoder({"store_key": store_key, "replace": True, "snapshot_complete": True, "items": inventory_items}))
+                for catalog_store in catalog_store_keys:
+                    result_key = target_name if catalog_store == store_key else f"{target_name}:{catalog_store}"
+                    product_responses = []
+                    for offset in range(0, len(product_items), 250):
+                        product_responses.append(await client.upsert_products(jsonable_encoder({
+                            "store_key": catalog_store,
+                            "items": product_items[offset:offset + 250],
+                        })))
+                    if product_responses:
+                        product_result[result_key] = (
+                            product_responses[0]
+                            if len(product_responses) == 1
+                            else {"batches": len(product_responses), "last": product_responses[-1]}
+                        )
+                    if include_catalog or include_inventory_snapshot:
+                        inventory_result[result_key] = await client.replace_inventory(jsonable_encoder({
+                            "store_key": catalog_store,
+                            "replace": True,
+                            "snapshot_complete": True,
+                            "items": inventory_items,
+                        }))
         except Exception as exc:
             catalog_error = exc
             result["mirror_errors"].append(f"catalog: {exc!r}")
@@ -3845,8 +3863,20 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
         if settings.pos_import_enabled:
             result = await client.upsert_products(payload)
             receipt = validate_pos_import_receipt(result, len(products), "product")
+            secondary = (settings.pos_api_secondary_store_key or "").strip()
+            secondary_receipt = None
+            if secondary and secondary != store:
+                secondary_result = await client.upsert_products(jsonable_encoder({
+                    "store_key": secondary,
+                    "items": payload["items"],
+                }))
+                secondary_receipt = validate_pos_import_receipt(secondary_result, len(products), "product")
             run.status = "completed"
-            run.counts = receipt
+            run.counts = receipt if secondary_receipt is None else {
+                "primary": receipt,
+                "secondary": secondary_receipt,
+                "secondary_store_key": secondary,
+            }
         else:
             run.counts = {"staged": len(products), "ready": len(products), "import_enabled": False}
             run.status = "staged"
@@ -3896,8 +3926,22 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
         if settings.pos_import_enabled:
             result = await client.replace_inventory(payload)
             receipt = validate_pos_import_receipt(result, len(rows), "inventory")
+            secondary = (settings.pos_api_secondary_store_key or "").strip()
+            secondary_receipt = None
+            if secondary and secondary != store:
+                secondary_result = await client.replace_inventory(jsonable_encoder({
+                    "store_key": secondary,
+                    "replace": True,
+                    "snapshot_complete": True,
+                    "items": payload["items"],
+                }))
+                secondary_receipt = validate_pos_import_receipt(secondary_result, len(rows), "inventory")
             run.status = "completed"
-            run.counts = receipt
+            run.counts = receipt if secondary_receipt is None else {
+                "primary": receipt,
+                "secondary": secondary_receipt,
+                "secondary_store_key": secondary,
+            }
         else:
             run.counts = {"staged": len(rows), "import_enabled": False}
         db.commit()

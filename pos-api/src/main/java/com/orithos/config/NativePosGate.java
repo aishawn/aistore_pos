@@ -18,6 +18,7 @@ public final class NativePosGate {
     private final String expectedDatabase;
     private final String isolationDatabase;
     private final String runtimeEnvironment;
+    private final boolean allowSharedDatabase;
     private final JdbcTemplate jdbcTemplate;
 
     public NativePosGate(
@@ -25,6 +26,7 @@ public final class NativePosGate {
             @Value("${app.native-pos.expected-database:}") String expectedDatabase,
             @Value("${app.native-pos.isolation-database:}") String isolationDatabase,
             @Value("${RUNTIME_ENVIRONMENT:}") String runtimeEnvironment,
+            @Value("${app.native-pos.allow-shared-database:false}") boolean allowSharedDatabase,
             JdbcTemplate jdbcTemplate) {
         this.enabledVendorIds = Arrays.stream(vendorIds == null ? new String[0] : vendorIds.split(","))
                 .map(String::trim)
@@ -34,6 +36,7 @@ public final class NativePosGate {
         this.expectedDatabase = normalize(expectedDatabase);
         this.isolationDatabase = normalize(isolationDatabase);
         this.runtimeEnvironment = runtimeEnvironment == null ? "" : runtimeEnvironment.trim();
+        this.allowSharedDatabase = allowSharedDatabase;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -46,12 +49,18 @@ public final class NativePosGate {
     }
 
     public boolean databaseAuthorized() {
-        if (!PosDatabaseIdentity.matchesIsolatedDatabase(expectedDatabase, expectedDatabase)) return false;
+        if (!PosDatabaseIdentity.matchesAuthorizedDatabase(
+                expectedDatabase, expectedDatabase, allowSharedDatabase)) {
+            return false;
+        }
         if ("uat".equalsIgnoreCase(runtimeEnvironment)
-                && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase))) return false;
+                && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase))) {
+            return false;
+        }
         try {
             String actualDatabase = normalize(jdbcTemplate.queryForObject("select current_database()", String.class));
-            return PosDatabaseIdentity.matchesIsolatedDatabase(actualDatabase, expectedDatabase);
+            return PosDatabaseIdentity.matchesAuthorizedDatabase(
+                    actualDatabase, expectedDatabase, allowSharedDatabase);
         } catch (RuntimeException unavailable) {
             return false;
         }
@@ -59,6 +68,10 @@ public final class NativePosGate {
 
     public boolean enabledFor(Long vendorId) {
         return vendorId != null && enabledVendorIds.contains(vendorId);
+    }
+
+    public boolean allowSharedDatabase() {
+        return allowSharedDatabase;
     }
 
     private static String normalize(String value) {

@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     pos_api_token: str = ""
     pos_api_mirror_base_url: str = "https://skr.orithos.com.au"
     pos_api_mirror_token: str = ""
+    # Optional second POS store_key for catalogue/inventory only (shared-DB dual outlet).
+    # Example: primary skr→outlet 87, secondary demo→outlet 1 via shopfront_store_mapping.
+    pos_api_secondary_store_key: str = ""
     shopfront_integration_token: str = ""
     pos_company_id: str = ""
     pos_outlet_id: str = ""

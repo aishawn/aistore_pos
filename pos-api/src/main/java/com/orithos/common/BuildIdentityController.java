@@ -32,6 +32,8 @@ public class BuildIdentityController {
     private String isolationPosDatabase;
     @Value("${app.native-pos.enabled-vendor-ids:}")
     private String enabledPosVendorIds;
+    @Value("${app.native-pos.allow-shared-database:false}")
+    private boolean allowSharedPosDatabase;
     private final JdbcTemplate jdbcTemplate;
 
     public BuildIdentityController(JdbcTemplate jdbcTemplate) {
@@ -44,8 +46,13 @@ public class BuildIdentityController {
         boolean odooIsolated = "uat".equals(environment) && !database.isBlank()
                 && database.equals(isolationOdooDatabase) && !"aipos".equals(database);
         PosDatabaseIdentity.VerificationStatus posDatabaseStatus = posDatabaseStatus();
-        boolean posDatabaseVerified = posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED;
-        boolean posTenantIsolated = "uat".equals(runtimeEnvironment) && posDatabaseVerified
+        boolean sharedAuthorized = allowSharedPosDatabase
+                && posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.SHARED_DATABASE_NAME;
+        boolean posDatabaseVerified = posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED
+                || sharedAuthorized;
+        // Shared-database cutover can authorize writes, but never claims tenant isolation.
+        boolean posTenantIsolated = "uat".equals(runtimeEnvironment)
+                && posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED
                 && !isolationPosDatabase.isBlank() && isolationPosDatabase.equals(expectedPosDatabase)
                 && enabledPosVendorIds != null
                 && Arrays.stream(enabledPosVendorIds.split(","))
@@ -56,6 +63,7 @@ public class BuildIdentityController {
         result.put("odooDatabaseIsolated", odooIsolated);
         result.put("posDatabaseVerified", posDatabaseVerified);
         result.put("posDatabaseStatus", posDatabaseStatus.name());
+        result.put("posSharedDatabaseAuthorized", sharedAuthorized);
         result.put("posTenantIsolated", posTenantIsolated);
         if (isolated) result.put("commit", version().getBody().get("commit"));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);

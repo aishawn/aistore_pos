@@ -78,6 +78,8 @@ app:
     enabled-vendor-ids: ${APP_NATIVE_POS_ENABLED_VENDOR_IDS:}
     expected-database: ${APP_NATIVE_POS_EXPECTED_DATABASE:}
     isolation-database: ${ISOLATION_POS_DATABASE:}
+    # Owner-authorized multi-tenant cutover only. Still requires exact name match.
+    allow-shared-database: ${APP_NATIVE_POS_ALLOW_SHARED_DATABASE:false}
   shopfront:
     # Writes require the integration token and an enabled store mapping.
     integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}

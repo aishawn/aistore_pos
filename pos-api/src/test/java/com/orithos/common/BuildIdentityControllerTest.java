@@ -78,7 +78,31 @@ class BuildIdentityControllerTest {
         assertEquals(false, result.get("posDatabaseVerified"));
         assertEquals(false, result.get("posTenantIsolated"));
         assertEquals("SHARED_DATABASE_NAME", result.get("posDatabaseStatus"));
+        assertEquals(false, result.get("posSharedDatabaseAuthorized"));
         ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,55");
         assertEquals(false, controller.uatContext().getBody().get("posTenantIsolated"));
+    }
+
+    @Test
+    void sharedDatabaseMayAuthorizeWritesWithoutClaimingIsolation() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
+        BuildIdentityController controller = new BuildIdentityController(jdbc);
+        ReflectionTestUtils.setField(controller, "environment", "production");
+        ReflectionTestUtils.setField(controller, "database", "aipos_uat");
+        ReflectionTestUtils.setField(controller, "isolationOdooDatabase", "aipos_uat");
+        ReflectionTestUtils.setField(controller, "runtimeEnvironment", "production");
+        ReflectionTestUtils.setField(controller, "expectedPosDatabase", "postgres");
+        ReflectionTestUtils.setField(controller, "isolationPosDatabase", "");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,55");
+        ReflectionTestUtils.setField(controller, "allowSharedPosDatabase", true);
+
+        Map<String, Object> result = controller.uatContext().getBody();
+        assertNotNull(result);
+        assertEquals(false, result.get("isolated"));
+        assertEquals(true, result.get("posDatabaseVerified"));
+        assertEquals(true, result.get("posSharedDatabaseAuthorized"));
+        assertEquals(false, result.get("posTenantIsolated"));
+        assertEquals("SHARED_DATABASE_NAME", result.get("posDatabaseStatus"));
     }
 }

@@ -18,7 +18,7 @@ class SaleControllerWriteSurfaceTest {
         SaleController controller = new SaleController(
                 mapper,
                 mock(CheckoutService.class),
-                new NativePosGate("1", "postgres", "postgres", "uat", mock(JdbcTemplate.class)),
+                new NativePosGate("1", "postgres", "postgres", "uat", false, mock(JdbcTemplate.class)),
                 mock(RefundService.class),
                 mock(PermissionAccess.class));
 

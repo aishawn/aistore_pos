@@ -67,6 +67,6 @@ class RetailPaymentMethodControllerTest {
     }
 
     private static NativePosGate gate(String vendors) {
-        return new NativePosGate(vendors, "pos_test", "pos_test", "uat", mock(JdbcTemplate.class));
+        return new NativePosGate(vendors, "pos_test", "pos_test", "uat", false, mock(JdbcTemplate.class));
     }
 }
