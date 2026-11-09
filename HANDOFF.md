@@ -1,8 +1,26 @@
 # Handoff
 
-> Generated: 2026-11-09 (Australia/Adelaide business context; wall clock UTC+8)  
+> Generated: 2026-11-10 (Australia/Adelaide business context; wall clock UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Owner-authorized Odoo→Orithos native cutover for Demo+SKR on shared PostgreSQL, with SKR sell-loop proof and dual-outlet Shopfront catalogue sync.
+> Session summary: Owner-authorized Odoo→Orithos native cutover for Demo+SKR on shared PostgreSQL; Shopfront POS writes are being checked for two-store completeness, source report parity, signed inventory and sales gaps.
+
+## Shopfront Alignment Update (2026-11-10)
+
+- POS commit `3ed7ffcd7e96ba666f6a17999aa0c3cb2ae1177d` is pushed to `main`; exact-SHA GitHub Java 21 `mvn -B clean verify` passed (workflow run `42647599802`), and SKR/Demo public runtime version endpoints both report that SHA.
+- Crawler catalog job `#195` is still running. Latest read-only status: `pos_products:skr:6000/11030`; Demo staging still has 0 products/inventory/sales, so do not start another snapshot or deploy a POS restart until this durable job reaches a terminal state.
+- Crawler source coverage: products `11,030` (current catalog `10,852`, active `10,849`), inventory snapshot `10,852`, sales `156,588` / `306,934` lines. POS `skr` staging: sales `156,424` / `306,614` lines, a difference of `164` sales / `320` lines. Sales reconciliation remains open.
+- Shopfront Inventory report's default positive-on-hand scope returns `3,056` rows, while the complete GraphQL snapshot contains `10,852` rows: `5,374` negative products are excluded from the default positive view and remain available in the signed snapshot. Example raw levels: case `-503`, item `-9`, case size `12`, derived units `-6,045`; crawler preserves the signed source value. Full-snapshot signed units are `-257,000`, positive sellable units are `50,278`, and the negative cost valuation is not a sellable-stock value.
+- Shopfront Sales report for Adelaide business date `2026-11-09`: revenue `$5,038.48`, COGS `$3,620.12`, Profit `$1,418.36`, profit percentage `28.15%`; `Revenue - COGS` matches Profit exactly and GraphQL transaction reconciliation is `162/162` with zero revenue/COGS variance.
+- Local frontend candidate changes Store Pulse to read Shopfront source reports without first requiring `/api/odoo/reporting-dashboard`; if Shopfront is mapped but reports fail, the metrics show unavailable instead of silently retaining Odoo values. TypeScript check passed on Node 24; targeted ESLint has 0 errors and 2 pre-existing effect warnings. This UI change is not committed or deployed yet.
+- Browser page-by-page acceptance is still open; Windows browser automation could not establish the current URL with sufficient confidence. Inventory/Sales source API reconciliation is evidence of report data, not a substitute for visual acceptance of Shopfront and Orithos pages.
+
+### Next Steps
+
+1. Continue polling job `#195`; after it finishes, verify `skr` and `demo` staging product/inventory counts and quantity reconciliation. Record terminal run/job counts before triggering anything else.
+2. Reconcile the `164` sale / `320` line gap using immutable Shopfront sale IDs. Prefer a bounded, idempotent repair or an explicit mirror-only reconciliation; verify source and both POS store keys afterward.
+3. Complete a Shopfront-source UI and report audit by fixed Adelaide business dates. Confirm default Inventory is the positive-only `3,056` row view and negative inventory remains separately inspectable.
+4. Push the Dashboard source-only fallback candidate after the active catalog job completes; then verify runtime SHA and the three Store Pulse values on SKR and Demo.
+5. Keep pilot production readiness **NO-GO** until backup restore, Xero and Odoo-retirement acceptance are documented.
 
 ## Goal
 
@@ -11,7 +29,7 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 ## Current State
 
 **Working:**
-- Live POS Compose SHA target: pending deploy of soft alias-conflict skip (incomplete product rows already skip since `9e9b4643`; Store pulse GraphQL accept since `a5ffcccd`).
+- Live POS Compose SHA: `3ed7ffcd7e96ba666f6a17999aa0c3cb2ae1177d` (batch Shopfront product writes); both SKR and Demo public runtime endpoints match.
 - Native write gate: `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1,55`, `APP_NATIVE_POS_EXPECTED_DATABASE=postgres`, `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`, `RUNTIME_ENVIRONMENT=production`.
 - Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
 - SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).
@@ -22,7 +40,7 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 **Broken / incomplete:**
 - Pilot remains **NO-GO for formal production** until backup/Xero/Odoo-retire acceptance (owner’s earlier readiness bar).
 - SKR **PO receive** UAT not re-run in this cutover session (sell-loop only).
-- Dual-outlet catalogue/inventory parity still open: after network fix, job `#192` reached POS but failed products:upsert 422 on alias conflicts; soft-skip patch pending deploy, then re-run catalog-snapshot and prove Demo≈SKR.
+- Dual-outlet catalogue/inventory parity still open: job `#195` is syncing the catalog; latest phase is `skr:6000/11030`, and Demo staging is still empty. Earlier jobs `#193`/`#194` were cancelled before completion.
 - Shared DB name `postgres` will never attest `isolated=true`; long-term should move to a dedicated DB name.
 - Local `.gitignore` contains `/docs/`, so dated evidence under `docs/test-sessions/` may stay untracked unless force-added.
 

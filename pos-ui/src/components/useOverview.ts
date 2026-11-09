@@ -162,11 +162,27 @@ function businessDay(value: unknown, timezone: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(result) ? result : null;
 }
 
-async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
+function currentBusinessDay(timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function previousBusinessDay(day: string): string {
+  const previous = new Date(`${day}T12:00:00Z`);
+  previous.setUTCDate(previous.getUTCDate() - 1);
+  return previous.toISOString().slice(0, 10);
+}
+
+async function loadShopfrontDashboardMetrics(payload: Record<string, unknown> = {}) {
   const timezone = typeof payload.timezone === "string" ? payload.timezone : "Australia/Adelaide";
-  const today = businessDay(payload.from, timezone);
-  const yesterday = businessDay(payload.yesterdayFrom, timezone);
-  if (!today) return { mapped: true as const, salesToday: null, salesYesterday: null, inventory: null, inventoryStale: false, inventorySnapshotAt: null };
+  const today = businessDay(payload.from, timezone) ?? currentBusinessDay(timezone);
+  const yesterday = businessDay(payload.yesterdayFrom, timezone) ?? previousBusinessDay(today);
   const todaySalesPath = `/api/shopfront-source?resource=report-sales&from=${today}&to=${today}&size=600`;
   const yesterdaySalesPath = yesterday ? `/api/shopfront-source?resource=report-sales&from=${yesterday}&to=${yesterday}&size=600` : null;
   const inventoryPath = "/api/shopfront-source?resource=dashboard-inventory";
@@ -202,6 +218,26 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown>) {
   };
 }
 
+function sourceDashboardPulse(source: Awaited<ReturnType<typeof loadShopfrontDashboardMetrics>>): OverviewPulse | null {
+  if (!source.mapped) return null;
+  const today = currentBusinessDay("Australia/Adelaide");
+  const yesterday = previousBusinessDay(today);
+  const base: OverviewPulse = {
+    company: "Shopfront",
+    currency: "AUD",
+    timezone: "Australia/Adelaide",
+    revenue: 0,
+    yesterdaySales: 0,
+    yesterdaySalesAvailable: false,
+    yesterdayFrom: yesterday,
+    yesterdayTo: yesterday,
+    inventoryAvailable: false,
+    inventoryStatus: source.inventoryStale ? "stale" : "unavailable",
+    shopfrontReportsMode: "source",
+  };
+  return applyShopfrontDashboardMetrics(base, source);
+}
+
 function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<ReturnType<typeof loadShopfrontDashboardMetrics>>): OverviewPulse {
   if (!source.mapped) return data;
   const salesToday = source.salesToday;
@@ -218,7 +254,9 @@ function applyShopfrontDashboardMetrics(data: OverviewPulse, source: Awaited<Ret
     next.revenue = salesToday.revenue;
     next.transactions = salesToday.transactionCount;
     next.todayShopfrontSalesAvailable = true;
-    next.todaySalesReconciliation = reconcileShopfrontSales(salesToday, odooRevenue, odooTransactions);
+    next.todaySalesReconciliation = data.shopfrontReportsMode === "source"
+      ? "unavailable"
+      : reconcileShopfrontSales(salesToday, odooRevenue, odooTransactions);
     next.todaySourceFetchedAt = salesToday.fetchedAt;
   }
   if (salesYesterday) {
@@ -282,7 +320,9 @@ export function useOverview() {
   const revision = useRef(0);
   const lastFetchAt = useRef(0);
   const pulseRef = useRef<OverviewPulse | null>(null);
-  pulseRef.current = data;
+  useEffect(() => {
+    pulseRef.current = data;
+  }, [data]);
   const load = useCallback(async (refresh = false, revalidate = false) => {
     const current = ++revision.current;
     const scope = pulseScope(user?.vendorId);
@@ -321,6 +361,16 @@ export function useOverview() {
     let checkingSession = true;
     try {
       checkingSession = false;
+      const source = await loadShopfrontDashboardMetrics();
+      const sourcePulse = sourceDashboardPulse(source);
+      if (sourcePulse) {
+        if (current !== revision.current) return;
+        setConnection(false);
+        setData(sourcePulse);
+        writePulse(scope, sourcePulse);
+        lastFetchAt.current = Date.now();
+        return;
+      }
       const response = await fetchPreparedReport("/api/odoo/reporting-dashboard?period=today&view=summary", { refresh });
       const payload = await response.json();
       if (current !== revision.current) return;
@@ -333,8 +383,8 @@ export function useOverview() {
       if (!Number.isFinite(payload?.revenue))
         throw new Error("The store summary is incomplete. Please retry.");
       let next = mapPayload(payload as Record<string, unknown>);
-      const source = await loadShopfrontDashboardMetrics(payload as Record<string, unknown>);
-      next = applyShopfrontDashboardMetrics(next, source);
+      const enrichedSource = await loadShopfrontDashboardMetrics(payload as Record<string, unknown>);
+      next = applyShopfrontDashboardMetrics(next, enrichedSource);
       if (current !== revision.current) return;
       setData(next);
       writePulse(scope, next);
