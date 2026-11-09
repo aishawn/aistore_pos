@@ -2,6 +2,14 @@
 
 Updated: 2026-11-09. Owner: TBD.
 
+## Per-store ledger routing deployment (2026-11-09)
+
+- Crawler `main` now routes each store's regular imports to exactly one configured ledger (`odoo` or `orithos`); unconfigured stores retain the legacy Odoo route. `source_only=true` jobs skip both ledgers, and manual Orithos imports reject stores not explicitly selected for Orithos. Commit `78ca442` and follow-up sales-report query fix `99e5b51` are deployed; crawler source fingerprint matches the running `/healthz` response.
+- Full crawler fixture suite: 226/226 PASS. This verifies local routing and parsing only; it does not validate a production ledger switch or business-data parity.
+- Read-only authenticated SKR sync status: job #37 is a `source_only=true` repair at `supply_chain`, last heartbeat `2026-11-09T02:39:19Z`. A later status read showed the same heartbeat, so job completion is unconfirmed. Job #36 is partial because the Shopfront sales report returned unavailable (0 report rows against 114 archived sales).
+- POS staging coverage and row-level product/inventory reconciliation exceeded 20 seconds. POS database read-only connection also timed out after the TCP port probe succeeded. Therefore current Orithos source identity, live ledger mode environment and source-to-Orithos reconciliation remain unverified. No manual job was started and no business write or ledger environment change was performed.
+- Next: diagnose the stalled source-only worker and Shopfront daily report availability; once complete source snapshots and count parity are proven, validate the Orithos test tenant and then authorize one store at a time. Do not disable Odoo or switch SKR based on this deployment alone.
+
 ## Dashboard sellable-units coverage (2026-11-09)
 
 - The crawler previously returned `available: false` whenever any Inventory Reporting API row lacked case level, item level, or a positive case quantity. The source aggregation already computed valid rows, but the API discarded that subtotal and the Dashboard showed `—`.
