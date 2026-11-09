@@ -4,26 +4,39 @@
 |---|---|
 | Session ID | `2026-11-09-skr-orithos-cutover-status` |
 | Environment | Live Orithos PG `postgres` + crawler `skr:orithos` |
-| Catalogue | SKR vendor `55` / outlet `87`: **10801** products; Shopfront archive ~11030 / inventory ~10852 |
-| Demo | vendor `1` / outlet `1`: still **1** seed product (Demo fill blocked) |
+| Catalogue | **Demo outlet 1 and SKR outlet 87 both 10801 products / 10681 inventory / 13251 barcodes / 10865 unit prices** |
 | Native write gate | `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1` only — SKR `55` **not** allowlisted |
+| POS SHA | `03ef24c6` (product GET reads opened under Odoo-only mode) |
+| Crawler SHA | `6ac47dd` (chunked Orithos imports) |
 
-## Parity vs ~10849
+## Parity
 
 | Source | Count |
 |---|---|
-| Prior SKR source inventory sessions | ~10849 active |
-| Crawler archive products | 11030 |
+| Orithos Demo outlet products | 10801 |
 | Orithos SKR outlet products | 10801 |
-| Gap vs 10849 | ~48 short (near-parity; not exact) |
+| Inventory both outlets | 10681 |
+| Shopfront shadow products (skr) | 11030 |
+| Prior active inventory reference | ~10849 |
 
-## Blockers before authorizing SKR writes
+Gap vs historical ~10849 active SKUs is residual source/status filtering, not a Demo/SKR split.
 
-1. `SHOPFRONT_BUSINESS_WRITE_ENABLED` was `false` on POS — product/inventory business import into Demo did not land; enable + redeploy required.
-2. Full inventory replace returned HTTP 500 (`/api/integrations/shopfront/inventory:replace`) under large payloads — compact audit payload fix pending deploy.
-3. Shared crawler store key `skr` has one mapping row; Demo and SKR need coordinated primary/mirror hosts **or** separate store keys so both outlets receive catalogue.
-4. Xero CSV, backup/restore rehearsal, and Odoo retire are **not** run in this session.
+## Blockers cleared this session
+
+1. `SHOPFRONT_BUSINESS_WRITE_ENABLED` enabled on POS.
+2. Inventory replace compact audit deployed earlier (`58a2959c`).
+3. Global product name/barcode uniqueness scoped to outlet so Demo can hold a parallel catalogue.
+4. Crawler `POS_API_BASE_URL` restored to `http://backend:8080` (public hosts caused Cloudflare 524).
+5. Demo catalogue filled by SQL clone from SKR + price seed from `shopfront_product`.
+6. Crawler mapping remapped to SKR outlet `87`.
+
+## Remaining before authorizing SKR writes
+
+1. Owner authorization to set `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1,55`.
+2. Durable dual-outlet sync (second store key or outlet-aware mapping) so daily Shopfront jobs refresh Demo and SKR without manual clone.
+3. Xero CSV, backup/restore rehearsal, Odoo retire.
+4. Confirm Demo/SKR UI product pages after `03ef24c6` deploy (GET `/api/products` now allowed).
 
 ## Authorization stance
 
-SKR Orithos catalogue is close enough to proceed with **owner-authorized** `NativePosGate` allowlist of vendor `55` after business-write + inventory replace fixes are deployed and Demo fill is re-attempted. Do not treat current state as Odoo-retired.
+Catalogue parity is good enough for **owner-authorized** NativePosGate allowlist of vendor `55`. Do not treat current state as Odoo-retired.

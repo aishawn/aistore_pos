@@ -1,0 +1,37 @@
+{
+  "after": {
+    "products": [
+      [
+        1,
+        10801
+      ],
+      [
+        87,
+        10801
+      ]
+    ],
+    "inventory": [
+      [
+        1,
+        10681
+      ],
+      [
+        87,
+        10681
+      ]
+    ],
+    "barcodes": [
+      [
+        1,
+        13251
+      ],
+      [
+        87,
+        13251
+      ]
+    ],
+    "prices": []
+  },
+  "tail": "Docker Terminal\n\nEasy way to access to docker container\n\nSelect way to connect to af7bc850309a\nBash\n/bin/sh\nroot@af7bc850309a:/# printf '%s\\n' 'dF9pZCwgY291bnQoKikgZnJvbSBwcm9kdWN0X3ByaWNlIGdyb3VwIGJ5IDEgb3JkZXIgYnkgMiBkZXNjIikKcHJpY2VzPWN1\nci5m' >> /tmp/children.b64\nroot@af7bc850309a:/# printf '%s\\n' 'ZXRjaGFsbCgpCnByaW50KCJBRlRFUj0iK2pzb24uZHVtcHMoeyJwcm9kdWN0cyI6cHJvZHVjdHMsImludmVudG9yeSI6aW52\nZW50' >> /tmp/children.b64\nroot@af7bc850309a:/# printf '%s\\n' 'b3J5LCJiYXJjb2RlcyI6YmFyY29kZXMsInByaWNlcyI6cHJpY2VzfSwgZGVmYXVsdD1zdHIpLCBmbHVzaD1UcnVlKQpwcmlu\ndCgi' >> /tmp/children.b64\nroot@af7bc850309a:/# printf '%s\\n' 'RE9ORV9DSElMRFJFTiIsIGZsdXNoPVRydWUpCmNvbm4uY2xvc2UoKQ==' >> /tmp/children.b64\nroot@af7bc850309a:/# base64 -d /tmp/children.b64 > /tmp/children.py && python /tmp/children.py\nSTART_CHILDREN\nCLEARED\nBARCODES=13251\nPRICES=0\nINVENTORY=10681\nAFTER={\"products\": [[1, 10801], [87, 10801]], \"inventory\": [[1, 10681], [87, 10681]], \"barcodes\": [[1, 13251], [87, 13251]], \"prices\n\": []}\nDONE_CHILDREN\nroot@af7bc850309a:/#  \nClose",
+  "at": "2026-11-09T10:14:29.191Z"
+}

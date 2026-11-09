@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "has_shopfront_product": 1,
+    "price_rows_before": 0
+  },
+  "inserted": 21730,
+  "after": [
+    [
+      1,
+      10865
+    ],
+    [
+      87,
+      10865
+    ]
+  ],
+  "tail": "Docker Terminal\n\nEasy way to access to docker container\n\nSelect way to connect to af7bc850309a\nBash\n/bin/sh\n>       select 1 from product_price pp where pp.product_id=p.id and pp.outlet_id=p.outlet_id and pp.quantity=1\n>     )\n>   ''')\n>   print('INSERTED='+str(cur.rowcount), flush=True)\n>   c.commit()\n> cur.execute('select outlet_id, count(*) from product_price group by 1 order by 1')\n> print('AFTER='+json.dumps(cur.fetchall(), default=str), flush=True)\n> print('DONE_SQL', flush=True)\n> c.close()\n> PY\nMETA={\"has_shopfront_product\": 1, \"price_rows_before\": 0}\nSF=[11030, 10994]\nINSERTED=21730\nAFTER=[[1, 10865], [87, 10865]]\nDONE_SQL\nroot@af7bc850309a:/# unset PGPASSWORD\nroot@af7bc850309a:/#  \nClose",
+  "at": "2026-11-09T10:19:28.231Z"
+}
