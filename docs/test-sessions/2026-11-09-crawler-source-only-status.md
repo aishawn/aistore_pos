@@ -35,7 +35,7 @@ Inspect shopfront-crawler ledger routing, source-only archival, and report/sync 
 
 | Check | Result | Notes |
 |---|---|---|
-| `GET https://crawler.orithos.com.au/healthz` | PASS `200` | `status=ok`; fingerprint matched pre-change tree |
+| `GET https://crawler.orithos.com.au/healthz` | PASS `200` | Pre-change fingerprint `4bc51b09…`; after Dokploy deploy, fingerprint `9c8e1ab0…` matches local `75c84c6` |
 | `GET /api/sync/status?store=skr` without token | `401` | FastAPI auth gate alive |
 | Authenticated `/api/*` from this workstation | BLOCKED | Cloudflare Error 1010 / gateway 404 depending on client; local integration token not treated as proof of deployed auth. Prior same-day authenticated evidence remains in `2026-11-09-shopfront-skr-source-reconciliation.md`. |
 | Ledger env flip / sync enqueue | NOT RUN | Deliberately not changed |
@@ -47,8 +47,8 @@ Inspect shopfront-crawler ledger routing, source-only archival, and report/sync 
 3. **PostgreSQL isolation / tenant attestation for Demo** remains unverified for write authorization (see POS isolation sessions). Do not treat native POS enabled flags as cutover proof.
 4. **Source→Orithos count parity** (products/inventory/sales) needs authenticated crawler + POS staging reconciliation after the first non-`source_only` orithos sync.
 5. **Retry source-only supply-chain** outside a deploy window if purchase-order archive freshness is required before cutover; extended-data GraphQL `403` scope gaps remain informational for brands/categories etc.
-6. **Post-deploy fingerprint:** after Dokploy picks up `75c84c6`, confirm `/healthz` source fingerprint changes from the prior `4bc51b09…` value.
+6. **Post-deploy fingerprint:** confirmed — live `/healthz` is `9c8e1ab0…` for `75c84c6`.
 
 ## Verdict
 
-Crawler code can archive with `source_only` and can route regular syncs to Orithos without Odoo dual-write once env is flipped. This session fixed daily supply-chain retry after failures and removed the implied Orithos mirror default. **Cutover remains blocked on Dokploy ledger env, POS mapping/isolation attestation, and post-flip reconciliation — not on missing crawler ledger routing code.**
+Crawler code can archive with `source_only` and can route regular syncs to Orithos without Odoo dual-write once env is flipped. This session fixed daily supply-chain retry after failures, removed the implied Orithos mirror default, and Dokploy has deployed `75c84c6` (`9c8e1ab0…`). **Cutover remains blocked on Dokploy ledger env, POS mapping/isolation attestation, and post-flip reconciliation — not on missing crawler ledger routing code.**
