@@ -1,0 +1,61 @@
+{
+  "runtime": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "f858bbbfde44aee3ec28907440306cad0877a8dd",
+      "builtAt": "2026-11-09T05:54:38.826Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "f858bbbfde44aee3ec28907440306cad0877a8dd",
+      "builtAt": "2026-11-09T05:54:38Z"
+    }
+  },
+  "uat": {
+    "isolated": true,
+    "odooDatabaseIsolated": true,
+    "posDatabaseVerified": true,
+    "posTenantIsolated": true,
+    "commit": "f858bbbfde44aee3ec28907440306cad0877a8dd"
+  },
+  "postgresDatabase": "postgres",
+  "demoDiff": {
+    "sellSearchCount": 1,
+    "ordersTotal": 0,
+    "suppliersTotal": 3,
+    "sqlProducts": 1,
+    "sqlInventoryRows": 1,
+    "shopfrontReferenceSkuTarget": 10849
+  },
+  "purchaseOrder": {
+    "orderId": 1,
+    "invoiceNumber": "UAT-PO-1794203903848",
+    "lineId": 1,
+    "beforeQty": 101,
+    "first": {
+      "receiptId": 1,
+      "orderId": 1,
+      "status": "PARTIALLY_RECEIVED",
+      "receivedAt": "2026-11-09T05:59:02.806435",
+      "replayed": false
+    },
+    "replay": {
+      "receiptId": 1,
+      "orderId": 1,
+      "status": "PARTIALLY_RECEIVED",
+      "receivedAt": "2026-11-09T05:59:02.806435",
+      "replayed": true
+    },
+    "second": {
+      "receiptId": 2,
+      "orderId": 1,
+      "status": "PARTIALLY_RECEIVED",
+      "receivedAt": "2026-11-09T05:59:07.213731",
+      "replayed": false
+    },
+    "afterStatus": "PARTIALLY_RECEIVED",
+    "afterReceived": 2,
+    "firstReplaySameId": true,
+    "firstReplayFlag": false
+  }
+}

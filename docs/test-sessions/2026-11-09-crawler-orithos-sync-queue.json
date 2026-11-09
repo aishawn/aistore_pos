@@ -1,0 +1,283 @@
+{
+  "mapping": [
+    {
+      "store_key": "skr",
+      "shopfront_outlet": "Savvy Cellars Altona",
+      "pos_company_id": "1",
+      "pos_outlet_id": "1",
+      "enabled": true
+    }
+  ],
+  "coverage": {
+    "data": {
+      "store": "skr",
+      "snapshot": {
+        "store_key": "skr",
+        "products": 11030,
+        "inventory": 10852,
+        "sales": 156424,
+        "sale_items": 306614,
+        "payments": 188493,
+        "suppliers": 109,
+        "customers": 20,
+        "purchase_orders": 2366,
+        "extended_records": 1956
+      },
+      "matching": {
+        "store_key": "skr",
+        "products": 11030,
+        "products_missing_name": 0,
+        "barcode_matched": 10968,
+        "barcode_unmatched": 62,
+        "manually_mapped": 11030,
+        "sales_with_unmatched_items": 0,
+        "sale_items_missing_name": 0,
+        "sale_items_missing_source_product": 0,
+        "inventory_outlets": 1
+      },
+      "targets": {
+        "primary": {
+          "snapshot": {
+            "store_key": "skr",
+            "products": 11030,
+            "inventory": 10852,
+            "sales": 156424,
+            "sale_items": 306614,
+            "payments": 188493,
+            "suppliers": 109,
+            "customers": 20,
+            "purchase_orders": 2366,
+            "extended_records": 1956
+          },
+          "matching": {
+            "store_key": "skr",
+            "products": 11030,
+            "products_missing_name": 0,
+            "barcode_matched": 10968,
+            "barcode_unmatched": 62,
+            "manually_mapped": 11030,
+            "sales_with_unmatched_items": 0,
+            "sale_items_missing_name": 0,
+            "sale_items_missing_source_product": 0,
+            "inventory_outlets": 1
+          }
+        }
+      }
+    },
+    "source": "orithos_shopfront_staging"
+  },
+  "sync": {
+    "status": "queued",
+    "job_id": 52,
+    "store": "skr",
+    "from": "2026-11-09",
+    "to": "2026-11-09",
+    "full_inventory_snapshot": false,
+    "source_only": false
+  },
+  "recentJobs": [
+    {
+      "id": 52,
+      "store": "skr",
+      "type": "daily_sync",
+      "status": "running",
+      "phase": "sales:fetched:20",
+      "attempts": 1,
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "cursor": "2026-11-09",
+      "heartbeat_at": "2026-11-09T06:04:01.122864",
+      "error": null,
+      "created_at": "2026-11-09T06:03:55.578949Z",
+      "started_at": "2026-11-09T06:03:57.173890Z",
+      "finished_at": null,
+      "payload": {
+        "include_supply_chain": false,
+        "full_inventory_snapshot": false,
+        "source_only": false,
+        "manual_repair": true
+      }
+    },
+    {
+      "id": 51,
+      "store": "skr",
+      "type": "extended_data",
+      "status": "partial",
+      "phase": "completed_with_warnings",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T05:14:45.048067",
+      "error": "brands: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"brands\"],\"code\":\"403\"}]); categories: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"categories\"],\"code\":\"403\"}]); families: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"families\"],\"code\":\"403\"}]); tags: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"tags\"],\"code\":\"403\"}]); promotions: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"promotions\"],\"code\":\"403\"}]); product_backorders: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"productBackorders\"],\"code\":\"403\"}]); stocktakes: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"stocktakes\"],\"code\":\"403\"}]); external_stocktakes: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"externalStocktakes\"],\"code\":\"403\"}]); closures: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"closures\"],\"code\":\"403\"}]); price_lists: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"priceLists\"],\"code\":\"403\"}])",
+      "created_at": "2026-11-09T05:12:20.897438Z",
+      "started_at": "2026-11-09T05:12:37.671046Z",
+      "finished_at": "2026-11-09T05:14:49.643592Z",
+      "payload": {
+        "status": "partial",
+        "counts": {
+          "outlets": 1,
+          "registers": 2,
+          "customer_groups": 7,
+          "saved_reports": 0,
+          "customer_payments": 2
+        },
+        "errors": {
+          "brands": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"brands\"],\"code\":\"403\"}])",
+          "categories": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"categories\"],\"code\":\"403\"}])",
+          "families": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"families\"],\"code\":\"403\"}])",
+          "tags": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"tags\"],\"code\":\"403\"}])",
+          "promotions": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"promotions\"],\"code\":\"403\"}])",
+          "product_backorders": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"productBackorders\"],\"code\":\"403\"}])",
+          "stocktakes": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"stocktakes\"],\"code\":\"403\"}])",
+          "external_stocktakes": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"externalStocktakes\"],\"code\":\"403\"}])",
+          "closures": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"closures\"],\"code\":\"403\"}])",
+          "price_lists": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"priceLists\"],\"code\":\"403\"}])"
+        },
+        "pos_staged": 0
+      }
+    },
+    {
+      "id": 50,
+      "store": "skr",
+      "type": "customers",
+      "status": "completed",
+      "phase": "completed",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T05:12:25.676591",
+      "error": null,
+      "created_at": "2026-11-09T05:12:20.897429Z",
+      "started_at": "2026-11-09T05:12:25.676591Z",
+      "finished_at": "2026-11-09T05:12:34.308616Z",
+      "payload": {
+        "customers": 20
+      }
+    },
+    {
+      "id": 49,
+      "store": "skr",
+      "type": "supply_chain",
+      "status": "completed",
+      "phase": "completed",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T05:19:50.116430",
+      "error": null,
+      "created_at": "2026-11-09T05:12:19.833517Z",
+      "started_at": "2026-11-09T05:12:22.451638Z",
+      "finished_at": "2026-11-09T05:26:43.017879Z",
+      "payload": {
+        "status": "completed",
+        "suppliers": 109,
+        "purchase_orders": 2368,
+        "errors": []
+      }
+    },
+    {
+      "id": 48,
+      "store": "skr",
+      "type": "daily_sync",
+      "status": "completed",
+      "phase": "completed",
+      "attempts": 1,
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "cursor": "2026-11-10",
+      "heartbeat_at": "2026-11-09T05:12:18.882707",
+      "error": null,
+      "created_at": "2026-11-09T05:10:58.828633Z",
+      "started_at": "2026-11-09T05:11:00.390727Z",
+      "finished_at": "2026-11-09T05:12:20.597927Z",
+      "payload": {
+        "include_supply_chain": true,
+        "full_inventory_snapshot": false,
+        "source_only": true,
+        "manual_repair": true
+      }
+    },
+    {
+      "id": 47,
+      "store": "skr",
+      "type": "extended_data",
+      "status": "partial",
+      "phase": "completed_with_warnings",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T04:40:47.745397",
+      "error": "brands: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"brands\"],\"code\":\"403\"}]); categories: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"categories\"],\"code\":\"403\"}]); families: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"families\"],\"code\":\"403\"}]); tags: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"tags\"],\"code\":\"403\"}]); promotions: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"promotions\"],\"code\":\"403\"}]); product_backorders: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"productBackorders\"],\"code\":\"403\"}]); stocktakes: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"stocktakes\"],\"code\":\"403\"}]); external_stocktakes: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"externalStocktakes\"],\"code\":\"403\"}]); closures: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"closures\"],\"code\":\"403\"}]); price_lists: Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"priceLists\"],\"code\":\"403\"}])",
+      "created_at": "2026-11-09T04:38:40.680414Z",
+      "started_at": "2026-11-09T04:38:56.246745Z",
+      "finished_at": "2026-11-09T04:41:05.135977Z",
+      "payload": {
+        "status": "partial",
+        "counts": {
+          "outlets": 1,
+          "registers": 2,
+          "customer_groups": 7,
+          "saved_reports": 0,
+          "customer_payments": 2
+        },
+        "errors": {
+          "brands": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"brands\"],\"code\":\"403\"}])",
+          "categories": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"categories\"],\"code\":\"403\"}])",
+          "families": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"families\"],\"code\":\"403\"}])",
+          "tags": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"tags\"],\"code\":\"403\"}])",
+          "promotions": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"promotions\"],\"code\":\"403\"}])",
+          "product_backorders": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"productBackorders\"],\"code\":\"403\"}])",
+          "stocktakes": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"stocktakes\"],\"code\":\"403\"}])",
+          "external_stocktakes": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"externalStocktakes\"],\"code\":\"403\"}])",
+          "closures": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"closures\"],\"code\":\"403\"}])",
+          "price_lists": "Shopfront GraphQL returned errors ([{\"category\":\"permission_denied\",\"subject\":null,\"path\":[\"priceLists\"],\"code\":\"403\"}])"
+        },
+        "pos_staged": 0
+      }
+    },
+    {
+      "id": 46,
+      "store": "skr",
+      "type": "customers",
+      "status": "completed",
+      "phase": "completed",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T04:38:44.945223",
+      "error": null,
+      "created_at": "2026-11-09T04:38:40.680410Z",
+      "started_at": "2026-11-09T04:38:44.945223Z",
+      "finished_at": "2026-11-09T04:38:53.846664Z",
+      "payload": {
+        "customers": 20
+      }
+    },
+    {
+      "id": 45,
+      "store": "skr",
+      "type": "supply_chain",
+      "status": "failed",
+      "phase": "supply_chain",
+      "attempts": 1,
+      "from": null,
+      "to": null,
+      "cursor": null,
+      "heartbeat_at": "2026-11-09T04:38:42.209209",
+      "error": "(psycopg.errors.AdminShutdown) terminating connection due to administrator command\n[SQL: SELECT shopfront_purchase_orders.id, shopfront_purchase_orders.store_key, shopfront_purchase_orders.source_id, shopfront_purchase_orders.supplier_source_id, shopfront_purchase_orders.status, shopfront_purchase_orders.order_date, shopfront_purchase_orders.total_cost, shopfront_purchase_orders.raw_payload, shopfront_purchase_orders.synced_at \nFROM shopfront_purchase_orders \nWHERE shopfront_purchase_orders.store_key = %(store_key_1)s::VARCHAR AND shopfront_purchase_orders.source_id = %(source_id_1)s::VARCHAR]\n[parameters: {'store_key_1': 'skr', 'source_id_1': '11f07eed1655fbb2bea202d8357272e1'}]\n(Background on this error at: https://sqlalche.me/e/21/e3q8)",
+      "created_at": "2026-11-09T04:38:39.621835Z",
+      "started_at": "2026-11-09T04:38:42.209209Z",
+      "finished_at": "2026-11-09T04:50:55.435495Z",
+      "payload": {
+        "after_daily_job": 44,
+        "source_only": true
+      }
+    }
+  ],
+  "queuedAt": "2026-11-09T06:04:01.889Z"
+}

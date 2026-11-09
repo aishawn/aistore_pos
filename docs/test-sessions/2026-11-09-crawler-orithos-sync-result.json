@@ -1,0 +1,53 @@
+{
+  "job": {
+    "id": 52,
+    "status": "completed",
+    "phase": "completed",
+    "source_only": false,
+    "error": null,
+    "counts": null
+  },
+  "demoProductsTotal": null,
+  "demoSellSearchCount": 1,
+  "coverageTargets": {
+    "primary": {
+      "snapshot": {
+        "store_key": "skr",
+        "products": 11030,
+        "inventory": 10852,
+        "sales": 156424,
+        "sale_items": 306614,
+        "payments": 188493,
+        "suppliers": 109,
+        "customers": 20,
+        "purchase_orders": 2366,
+        "extended_records": 1956
+      },
+      "matching": {
+        "store_key": "skr",
+        "products": 11030,
+        "products_missing_name": 0,
+        "barcode_matched": 10968,
+        "barcode_unmatched": 62,
+        "manually_mapped": 11030,
+        "sales_with_unmatched_items": 0,
+        "sale_items_missing_name": 0,
+        "sale_items_missing_source_product": 0,
+        "inventory_outlets": 1
+      }
+    }
+  },
+  "runtime": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "9325571a9034660f57c84d9cfcc2c15f5da1f227",
+      "builtAt": "2026-11-09T06:05:58.696Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "9325571a9034660f57c84d9cfcc2c15f5da1f227",
+      "builtAt": "2026-11-09T06:06:22Z"
+    }
+  },
+  "checkedAt": "2026-11-09T06:12:03.257Z"
+}

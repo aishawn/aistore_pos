@@ -1,0 +1,11 @@
+{
+  "mappingOutlet": 87,
+  "mappingVendor": 55,
+  "after": {
+    "ledger": "skr:orithos",
+    "posImport": "true",
+    "odooImport": "false",
+    "posBase": "https://skr.orithos.com.au",
+    "mirrorBase": "https://demo.orithos.com.au"
+  }
+}

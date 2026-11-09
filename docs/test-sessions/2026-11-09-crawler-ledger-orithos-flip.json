@@ -1,0 +1,10 @@
+{
+  "target": "skr:orithos",
+  "updateStatus": 200,
+  "deployStatus": 200,
+  "after": {
+    "ledger": "skr:orithos",
+    "posImport": "true",
+    "odooImport": "true"
+  }
+}

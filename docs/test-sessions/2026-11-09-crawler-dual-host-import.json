@@ -1,0 +1,22 @@
+{
+  "map": {
+    "status": 200,
+    "body": {
+      "status": "saved",
+      "store_key": "skr"
+    }
+  },
+  "products": {
+    "status": 409,
+    "body": {
+      "detail": "This store is not configured to write to the Orithos ledger"
+    }
+  },
+  "inventory": {
+    "status": 409,
+    "body": {
+      "detail": "This store is not configured to write to the Orithos ledger"
+    }
+  },
+  "at": "2026-11-09T06:22:49.910Z"
+}

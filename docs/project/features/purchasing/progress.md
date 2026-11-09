@@ -11,14 +11,15 @@
 - `9703508f92c762c7f02ce9bd79f1790bc96678c1` 已部署到 Demo、SKR、App；三个 host 的 frontend/backend runtime SHA 均匹配。
 - Demo 登录后只读验收：`/purchases` 200；`/api/orders` 返回成功（当前未结采购数为 0）；Shopfront 历史采购返回 2,366/2,366 条、40 条首屏且标记只读；旧 `/purchases/odoo` 返回 307 到 `/purchases`。无采购、收货或库存写入。
 - UI typecheck 和完整单测已运行；结果与边界见 [validation](validation.md)。
-- 2026-11-09：线上 `POST /api/orders` 因 PostgreSQL `include_freight smallint` 与布尔参数类型不匹配返回 500；`OrderMapper` 改为写入 `0/1`。待部署后再完成 Demo 部分收货幂等 UAT（PUR-MIG-002）。
+- 2026-11-09：线上 `POST /api/orders` 因 PostgreSQL `include_freight smallint` 与布尔参数类型不匹配返回 500；`OrderMapper` 改为写入 `0/1`（`f858bbbf`）。
+- Demo 部分收货 UAT：创建 PO `#1`、两次部分收货、同 key 幂等 `replayed=true`；状态保持 `PARTIALLY_RECEIVED`，received qty=2/4。证据 [partial receive session](../../../test-sessions/2026-11-09-demo-migration-partial-receive.md)。
 
 ## 问题与下一步
 
 | 问题 ID | 优先级 | 问题 / 证据 | 状态 | 负责人 | 下一步 / 关闭条件 |
 |---|---|---|---|---|---|
 | PUR-MIG-001 | DONE | 原生采购列表已部署，runtime 与 `9703508f` 匹配；Demo 登录只读检查页面、订单 API、Shopfront 归档和旧路由跳转通过 | CLOSED | POS owner | 采购正式写入闭环仍由 PUR-MIG-002 跟踪 |
-| PUR-MIG-002 | P0 | 原生采购创建/逐行收货的 PostgreSQL/生产数据库集成和完整回执未核验 | OPEN | POS/API owner | 部署 include_freight 修复后，在 Demo 完成下单、部分收货、幂等重放与库存回读 |
+| PUR-MIG-002 | P0 | 原生采购创建/逐行收货的 PostgreSQL/生产数据库集成和完整回执未核验 | CLOSED | POS/API owner | Demo 部分收货 + 幂等已通过；SKU 全量与 SKR 切换仍待 PUR-MIG-003 |
 | PUR-MIG-003 | P0 | Odoo 未结采购、商品/供应商映射和期初库存未迁移对账 | OPEN | Migration owner | 生成逐行差异；所有未知价、税、数量、箱规均人工清零后再批准切换 |
 | PUR-MIG-004 | P1 | Shopfront 归档与 Orithos 正式采购之间尚无完整来源/差异报表 | OPEN | Integration owner | 按来源 ID 比对覆盖、缺失和重复，明确历史单据不影响库存 |
 | PUR-MIG-005 | P1 | Xero GST 采购摘要导出未验收 | OPEN | Finance/POS owner | 按营业日核对供应商、含税/税额、来源单号及防重复导出 |

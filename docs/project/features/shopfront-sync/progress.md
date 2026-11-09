@@ -2,11 +2,17 @@
 
 Updated: 2026-11-09. Owner: TBD.
 
+## Ledger flip to Orithos (2026-11-09)
+
+- After Demo PG attestation, checkout loop, and partial-receive UAT, Dokploy crawler env set `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos` with `POS_IMPORT_ENABLED=true` (compose `JHfNJMWCJGqpq0_5aovzZ`). `ODOO_IMPORT_ENABLED` may remain true in env, but per-store ledger routing blocks Odoo writes while mode is `orithos` (no dual-write).
+- Demo Orithos still holds seed catalogue (1 product / 1 inventory row) vs Shopfront ~10849 — first non-`source_only` sync must raise Orithos coverage before SKR native write allowlist.
+- Evidence: [partial receive](../../../test-sessions/2026-11-09-demo-migration-partial-receive.md), [ledger flip json](../../../test-sessions/2026-11-09-crawler-ledger-orithos-flip.json).
+
 ## Source-only accuracy + Orithos flip prep (2026-11-09)
 
 - Crawler `main` `75c84c6` deployed: daily sync now requeues supply-chain after `partial`/`failed` (previously waited on the last successful interval only); supply-chain persistence resets the DB session after long Shopfront reads; default `POS_API_MIRROR_BASE_URL` is empty so `ledger=orithos` does not imply a second push to the SKR UI host.
-- Focused local pytest for ledger/source-only/supply-chain cases PASS. Public `/healthz` fingerprint `9c8e1ab0…` matches clean `75c84c6`. Authenticated crawler API probes from this workstation were Cloudflare-blocked; no sync job or Dokploy ledger env change was made.
-- Remaining Demo cutover blockers: set `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos` in Dokploy after POS mapping + PostgreSQL isolation attestation; run source→Orithos count parity on the first non-`source_only` sync. Evidence: [2026-11-09-crawler-source-only-status](../../../test-sessions/2026-11-09-crawler-source-only-status.md).
+- Focused local pytest for ledger/source-only/supply-chain cases PASS. Public `/healthz` fingerprint `9c8e1ab0…` matches clean `75c84c6`. Authenticated crawler API probes from this workstation were Cloudflare-blocked during the earlier prep session.
+- Evidence: [2026-11-09-crawler-source-only-status](../../../test-sessions/2026-11-09-crawler-source-only-status.md).
 
 ## Per-store ledger routing deployment (2026-11-09)
 
