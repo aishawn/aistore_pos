@@ -250,6 +250,52 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void businessProductImportRejectsConflictingAliasesInTheSameBatch() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of(7L));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, boolean.class, Map.class);
+        validate.setAccessible(true);
+
+        InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(controller, "products", new ObjectMapper().readTree("""
+                        [
+                          {"source_id":"p1","name":"First name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE"},
+                          {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
+                        ]
+                        """), "skr", 48L, false, new java.util.HashMap<>()));
+
+        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
+        org.junit.jupiter.api.Assertions.assertTrue(failure.getCause().getMessage().contains("conflicting business attributes"));
+    }
+
+    @Test
+    void inventoryImportRejectsConflictingAliasesForOnePosProduct() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject(contains("SELECT pos_product_id"), eq(Long.class), any(Object[].class)))
+                .thenReturn(77L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, boolean.class, Map.class);
+        validate.setAccessible(true);
+
+        InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(controller, "inventory", new ObjectMapper().readTree("""
+                        [
+                          {"source_id":"p1","quantity":10},
+                          {"source_id":"p2","quantity":12}
+                        ]
+                        """), "skr", 48L, true, new java.util.HashMap<>()));
+
+        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
+        org.junit.jupiter.api.Assertions.assertTrue(failure.getCause().getMessage().contains("conflicting stock attributes"));
+    }
+
+    @Test
     void businessProductImportRequiresAnExistingOrithosTaxRate() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))

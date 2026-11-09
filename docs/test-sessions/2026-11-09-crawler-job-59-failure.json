@@ -1,0 +1,586 @@
+{
+  "job": {
+    "id": 59,
+    "status": "failed",
+    "phase": "pos_import",
+    "error": "history chunk failed: 2026-11-09..2026-11-09",
+    "from": "2026-11-09",
+    "to": "2026-11-09",
+    "payloadKeys": [
+      "include_supply_chain",
+      "full_inventory_snapshot",
+      "source_only",
+      "manual_repair"
+    ],
+    "counts": null
+  },
+  "runs": [
+    {
+      "id": 70,
+      "store": "skr",
+      "status": "failed",
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "counts": {
+        "summaries": 1,
+        "sales": 100,
+        "products": 0,
+        "products_from_sales": 0,
+        "inventory": 0,
+        "warnings": [],
+        "outlets": 1,
+        "sales_fetched": 120,
+        "sales_processed": 100,
+        "stage": "sales",
+        "current_sale_index": 101,
+        "current_sale_id": "11f1dc06ccb0f4ee9e0c02ffec1e2971",
+        "phase": "sale_skipped_unchanged",
+        "sales_skipped_unchanged": 100
+      },
+      "error": "Orithos API failed (500): {\"timestamp\":\"2026-11-09T07:16:26.409+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"path\":\"/api/integrations/shopfront/inventory:replace\"}",
+      "started_at": "2026-11-09T07:11:38.105442Z",
+      "finished_at": null
+    },
+    {
+      "id": 69,
+      "store": "skr",
+      "status": "cancelled",
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "counts": {
+        "summaries": 1,
+        "sales": 100,
+        "products": 0,
+        "products_from_sales": 0,
+        "inventory": 0,
+        "warnings": [],
+        "outlets": 1,
+        "sales_fetched": 119,
+        "sales_processed": 100,
+        "stage": "sales",
+        "current_sale_index": 101,
+        "current_sale_id": "11f1dc06ccb0f4ee9e0c02ffec1e2971",
+        "phase": "sale_skipped_unchanged",
+        "sales_skipped_unchanged": 100
+      },
+      "error": "cancelled by operator",
+      "started_at": "2026-11-09T07:00:38.625219Z",
+      "finished_at": "2026-11-09T07:11:14.966505Z"
+    },
+    {
+      "id": 68,
+      "store": "skr",
+      "status": "failed",
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "counts": {
+        "summaries": 1,
+        "sales": 100,
+        "products": 0,
+        "products_from_sales": 0,
+        "inventory": 0,
+        "warnings": [],
+        "outlets": 1,
+        "sales_fetched": 103,
+        "sales_processed": 100,
+        "stage": "sales",
+        "current_sale_index": 101,
+        "current_sale_id": "11f1dc06ccb0f4ee9e0c02ffec1e2971",
+        "phase": "sale_processed",
+        "sales_skipped_unchanged": 95
+      },
+      "error": "Orithos connection failed: ReadTimeout('')",
+      "started_at": "2026-11-09T06:32:06.726306Z",
+      "finished_at": null
+    },
+    {
+      "id": 67,
+      "store": "skr",
+      "status": "completed",
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "counts": {
+        "sync": {
+          "summaries": 1,
+          "sales": 95,
+          "products": 38,
+          "products_from_sales": 38,
+          "inventory": 38,
+          "warnings": [],
+          "outlets": 1,
+          "sales_fetched": 95,
+          "sales_processed": 95,
+          "stage": "sales",
+          "current_sale_index": 96,
+          "current_sale_id": null,
+          "phase": "sale_processed",
+          "sales_skipped_unchanged": 79,
+          "inventory_manifest_delta_products": 0,
+          "inventory_manifest_extended": true,
+          "catalog_sync_complete": true,
+          "catalog_full_snapshot": false,
+          "catalog_cursor": "2026-11-09T06:04:00.013731+00:00",
+          "product_source_id_count": 38,
+          "pos_products_skipped_unchanged": false,
+          "catalog_source_id_count": 38,
+          "catalog_source_ids_sha256": "ee76063544d411ecbe29a1b9c290323198caabf29796dd2ecc89f5d22e873f4b"
+        },
+        "pos_import": {
+          "status": "completed",
+          "products": 38,
+          "inventory": 38,
+          "sales": 97,
+          "sales_imported": 97,
+          "error": null,
+          "mirror_errors": [],
+          "inventory_unmatched": [],
+          "inventory_reconciliation_required": false,
+          "inventory_legacy_duplicates_cleared": 0,
+          "sales_batch_audit": [],
+          "odoo_sales": {
+            "imported": 94,
+            "updated_orders": 0,
+            "skipped": 3,
+            "refund_skipped": 0,
+            "mirrored": 0,
+            "batches": 2
+          },
+          "sales_selection_diagnostics": {
+            "store_key": "skr",
+            "run_started_at": "2026-11-09T06:03:59.677201+00:00",
+            "window_start": "2026-11-09T00:00:00+10:30",
+            "window_end": "2026-11-10T00:00:00+10:30",
+            "total_local": 156521,
+            "synced_at_count": 95,
+            "created_window_count": 97,
+            "updated_window_count": 97,
+            "union_count": 97,
+            "synced_at_null_count": 0,
+            "min_synced_at": "2026-11-06T09:42:26.679687+00:00",
+            "max_synced_at": "2026-11-09T06:04:31.350432+00:00"
+          },
+          "sale_batches": 2,
+          "odoo_sale_batches": 2,
+          "product_response": {},
+          "inventory_response": {},
+          "targets": [],
+          "target_sale_batches": {},
+          "odoo_business_write": true,
+          "odoo_product_response": {
+            "jsonrpc": "2.0",
+            "id": null,
+            "result": {
+              "ok": true,
+              "run_id": 811543,
+              "type": "products",
+              "item_count": 38,
+              "sale_lines_repaired": 0,
+              "business": {
+                "created": 0,
+                "updated": 38,
+                "unmatched": [],
+                "barcode_conflicts": [
+                  {
+                    "source_id": "11eeaa99e95cb04894420261eda38a85",
+                    "barcode": "5901041003003",
+                    "existing_product_id": 493484
+                  },
+                  {
+                    "source_id": "11eeaa99e9671704a8050261eda38a85",
+                    "barcode": "9310441003005",
+                    "existing_product_id": 494961
+                  },
+                  {
+                    "source_id": "11eeaa99e97b451cb1ce0261eda38a85",
+                    "barcode": "9300605042360",
+                    "existing_product_id": 501397
+                  },
+                  {
+                    "source_id": "11eeaa99e98478da90fd0261eda38a85",
+                    "barcode": "9300605094697",
+                    "existing_product_id": 500838
+                  },
+                  {
+                    "source_id": "11eeaa99e9848104b0440261eda38a85",
+                    "barcode": "94314205",
+                    "existing_product_id": 502616
+                  },
+                  {
+                    "source_id": "11eeaa99e984934c8d9e0261eda38a85",
+                    "barcode": "9310015241895",
+                    "existing_product_id": 494630
+                  },
+                  {
+                    "source_id": "11eeaa99e98eb7649d280261eda38a85",
+                    "barcode": "9002490212094",
+                    "existing_product_id": 492562
+                  },
+                  {
+                    "source_id": "11eeaa99e98ebf3eaad60261eda38a85",
+                    "barcode": "9300624017585",
+                    "existing_product_id": 498299
+                  },
+                  {
+                    "source_id": "11eeaa99e98ecb469c890261eda38a85",
+                    "barcode": "9300624005377",
+                    "existing_product_id": 496076
+                  },
+                  {
+                    "source_id": "11eeaa99e98f156a91440261eda38a85",
+                    "barcode": "49814521",
+                    "existing_product_id": 501673
+                  },
+                  {
+                    "source_id": "11eeaa99e9989a40b18c0261eda38a85",
+                    "barcode": "9300830025350",
+                    "existing_product_id": 494823
+                  },
+                  {
+                    "source_id": "11eeaa99e998d186b8880261eda38a85",
+                    "barcode": "9310232954356",
+                    "existing_product_id": 494491
+                  },
+                  {
+                    "source_id": "11eeaa99e998fcec85640261eda38a85",
+                    "barcode": "9314620000663",
+                    "existing_product_id": 501053
+                  },
+                  {
+                    "source_id": "11eeaa99e9990f2080440261eda38a85",
+                    "barcode": "9320000100755",
+                    "existing_product_id": 502226
+                  },
+                  {
+                    "source_id": "11eeaa99e9c03c0881010261eda38a85",
+                    "barcode": "9352042000540",
+                    "existing_product_id": 500091
+                  },
+                  {
+                    "source_id": "11eeaa99e9c0a18e97560261eda38a85",
+                    "barcode": "8999999056193",
+                    "existing_product_id": 493843
+                  },
+                  {
+                    "source_id": "11eeaa99e9d463ccb7700261eda38a85",
+                    "barcode": "93553452",
+                    "existing_product_id": 500658
+                  },
+                  {
+                    "source_id": "11eeaa99e9e86daeab2d0261eda38a85",
+                    "barcode": "9344154013754",
+                    "existing_product_id": 491141
+                  },
+                  {
+                    "source_id": "11eeaa99e9e8ac38bcdd0261eda38a85",
+                    "barcode": "9300694001347",
+                    "existing_product_id": 500422
+                  },
+                  {
+                    "source_id": "11eeaa99e9e8d4ce8b030261eda38a85",
+                    "barcode": "9400581045628",
+                    "existing_product_id": 496029
+                  },
+                  {
+                    "source_id": "11eeaa99e9f299e68d970261eda38a85",
+                    "barcode": "9310088005271",
+                    "existing_product_id": 499678
+                  },
+                  {
+                    "source_id": "11eeaa99e9fcb2d2ae640261eda38a85",
+                    "barcode": "9310077314643",
+                    "existing_product_id": 502008
+                  },
+                  {
+                    "source_id": "11eeaa99e9fcbdfe95ec0261eda38a85",
+                    "barcode": "9310415017878",
+                    "existing_product_id": 495871
+                  },
+                  {
+                    "source_id": "11eeaa99ea065580aa400261eda38a85",
+                    "barcode": "9325344001690",
+                    "existing_product_id": 501840
+                  },
+                  {
+                    "source_id": "11eeaa99ea069b30af3a0261eda38a85",
+                    "barcode": "9310179006682",
+                    "existing_product_id": 501514
+                  },
+                  {
+                    "source_id": "11eeaa99ea24a6d4a0c40261eda38a85",
+                    "barcode": "9310088002836",
+                    "existing_product_id": 495061
+                  },
+                  {
+                    "source_id": "11eed5bc82a2e77a97ea0a3a568b5305",
+                    "barcode": "9344154015765",
+                    "existing_product_id": 502329
+                  },
+                  {
+                    "source_id": "11ef0746d8c3fe6ca48802fcb794ce09",
+                    "barcode": "9339423003482",
+                    "existing_product_id": 500423
+                  },
+                  {
+                    "source_id": "11ef196db4bd8cc085d102b3e0dfb43d",
+                    "barcode": "9400581045611",
+                    "existing_product_id": 491415
+                  },
+                  {
+                    "source_id": "11ef4e42d793dec0881e02500da7cfa7",
+                    "barcode": "9351105000121",
+                    "existing_product_id": 501405
+                  },
+                  {
+                    "source_id": "11ef4ed0fc2e740a973b0a87e9cf02bb",
+                    "barcode": "9346863003125",
+                    "existing_product_id": 497762
+                  },
+                  {
+                    "source_id": "11efcd4ac9039a94949f02ec110acb33",
+                    "barcode": "9325528002529",
+                    "existing_product_id": 490961
+                  },
+                  {
+                    "source_id": "11efe8a1aee8e70a95870651a8c1c893",
+                    "barcode": "9313181001126",
+                    "existing_product_id": 491995
+                  },
+                  {
+                    "source_id": "11effa81e4cc0e96b4280689953af5d5",
+                    "barcode": "8711327658233",
+                    "existing_product_id": 500329
+                  },
+                  {
+                    "source_id": "11effee995646d82ba3306ba8fd91253",
+                    "barcode": "9329982025728",
+                    "existing_product_id": 497087
+                  },
+                  {
+                    "source_id": "11f102f45bca5c348d600a09fb63f9d7",
+                    "barcode": "8721274807721",
+                    "existing_product_id": 501822
+                  },
+                  {
+                    "source_id": "11f196b8748843a09e5e0a56d476fdfb",
+                    "barcode": "8721274618723",
+                    "existing_product_id": 493546
+                  },
+                  {
+                    "source_id": "11f1d400c48bf9709d0a0affed4bca65",
+                    "barcode": "9310015255908",
+                    "existing_product_id": 490635
+                  }
+                ],
+                "cost_reviews": [],
+                "ignored_archived_duplicates": 0,
+                "tax_review_counts": {
+                  "GST": 33,
+                  "Excluding GST": 5
+                },
+                "tax_review_samples": [
+                  {
+                    "source_id": "11eeaa99e95cb04894420261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9671704a8050261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e97b451cb1ce0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e98478da90fd0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9848104b0440261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e984934c8d9e0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e98eb7649d280261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e98ebf3eaad60261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e98ecb469c890261eda38a85",
+                    "tax_rate_name": "Excluding GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e98f156a91440261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9989a40b18c0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e998d186b8880261eda38a85",
+                    "tax_rate_name": "Excluding GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e998fcec85640261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9990f2080440261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9c03c0881010261eda38a85",
+                    "tax_rate_name": "Excluding GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9c0a18e97560261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9d463ccb7700261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9e86daeab2d0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9e8ac38bcdd0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9e8d4ce8b030261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9f299e68d970261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9fcb2d2ae640261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99e9fcbdfe95ec0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99ea065580aa400261eda38a85",
+                    "tax_rate_name": "Excluding GST"
+                  },
+                  {
+                    "source_id": "11eeaa99ea069b30af3a0261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eeaa99ea24a6d4a0c40261eda38a85",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11eed5bc82a2e77a97ea0a3a568b5305",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11ef0746d8c3fe6ca48802fcb794ce09",
+                    "tax_rate_name": "Excluding GST"
+                  },
+                  {
+                    "source_id": "11ef196db4bd8cc085d102b3e0dfb43d",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11ef4e42d793dec0881e02500da7cfa7",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11ef4ed0fc2e740a973b0a87e9cf02bb",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11efcd4ac9039a94949f02ec110acb33",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11efe8a1aee8e70a95870651a8c1c893",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11effa81e4cc0e96b4280689953af5d5",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11effee995646d82ba3306ba8fd91253",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11f102f45bca5c348d600a09fb63f9d7",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11f196b8748843a09e5e0a56d476fdfb",
+                    "tax_rate_name": "GST"
+                  },
+                  {
+                    "source_id": "11f1d400c48bf9709d0a0affed4bca65",
+                    "tax_rate_name": "GST"
+                  }
+                ]
+              }
+            }
+          },
+          "odoo_inventory_response": null
+        }
+      },
+      "error": null,
+      "started_at": "2026-11-09T06:03:59.677201Z",
+      "finished_at": "2026-11-09T06:11:17.189244Z"
+    },
+    {
+      "id": 66,
+      "store": "skr",
+      "status": "completed",
+      "from": "2026-11-09",
+      "to": "2026-11-09",
+      "counts": {
+        "sync": {
+          "summaries": 1,
+          "sales": 80,
+          "products": 15,
+          "products_from_sales": 15,
+          "inventory": 15,
+          "warnings": [],
+          "outlets": 1,
+          "sales_report_excluded_statuses": {
+            "PARKED": 1
+          },
+          "sales_fetched": 80,
+          "sales_processed": 80,
+          "stage": "sales",
+          "current_sale_index": 81,
+          "current_sale_id": null,
+          "phase": "sale_processed",
+          "sales_skipped_unchanged": 72,
+          "inventory_manifest_delta_products": 0,
+          "inventory_manifest_extended": true,
+          "catalog_sync_complete": true,
+          "catalog_full_snapshot": false,
+          "catalog_cursor": "2026-11-09T05:11:04.162143+00:00",
+          "product_source_id_count": 15,
+          "product_source_ids_sha256": "16644c87f7fcb122cc5ba1c93db3fc9b82cf048f7ef10a442f01e37556af1295",
+          "catalog_source_id_count": 15,
+          "catalog_source_ids_sha256": "16644c87f7fcb122cc5ba1c93db3fc9b82cf048f7ef10a442f01e37556af1295"
+        },
+        "source_only": true
+      },
+      "error": null,
+      "started_at": "2026-11-09T05:11:03.823057Z",
+      "finished_at": "2026-11-09T05:12:17.218503Z"
+    }
+  ]
+}

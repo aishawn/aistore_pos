@@ -2,6 +2,12 @@
 
 Updated: 2026-11-09. Owner: TBD.
 
+## Reject conflicting product and inventory aliases (2026-11-09)
+
+- The formal importer now groups incoming products by their resolved Orithos product identity and rejects divergent prices, GST rates, case quantity, status, cost, and related catalog fields. Existing Shopfront source mappings to the same POS product are checked as well, so a later page cannot overwrite a conflict missed by an earlier page.
+- Inventory rows that map to the same POS product must agree on quantity and replenishment values before the import can update stock. Complete snapshot checks still run before inventory is cleared.
+- Added regression coverage for conflicting same-barcode product aliases and conflicting inventory aliases. Exact-SHA CI and deployment verification are pending; this code is not yet a production cutover authorization.
+
 ## Orithos business import guards (2026-11-09)
 
 - POS `main` commit `0184be2201ed58b98cfabfdaba655585c51e0831` adds fail-closed validation for formal Shopfront product and complete inventory writes. Missing price, case quantity, source status, GST mapping, inventory quantity, source-ID uniqueness, or Orithos inventory mapping prevents the batch from replacing/writing business records. Per-row database failures now abort the transaction rather than being counted as skipped successes.

@@ -1,0 +1,23 @@
+{
+  "job": {
+    "id": 61,
+    "status": "failed",
+    "phase": "pos_import",
+    "error": "history chunk failed: 2026-11-09..2026-11-09"
+  },
+  "topOutlets": [
+    [
+      87,
+      55,
+      "skr",
+      10801
+    ],
+    [
+      1,
+      1,
+      "Savvy Cellars Altona",
+      1
+    ]
+  ],
+  "at": "2026-11-09T07:17:35.109Z"
+}
