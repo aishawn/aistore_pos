@@ -10,6 +10,7 @@ public final class SqlConstraintUtils {
             String message = current.getMessage();
             if (message == null) continue;
             if (message.contains("uq_product_active_name")
+                    || message.contains("uq_product_outlet_active_name")
                     || message.contains("idx_product_name")) {
                 return true;
             }
@@ -47,7 +48,8 @@ public final class SqlConstraintUtils {
         for (Throwable current = throwable; current != null; current = current.getCause()) {
             String message = current.getMessage();
             if (message == null) continue;
-            if (message.contains("uq_barcode_code")) {
+            if (message.contains("uq_barcode_code")
+                    || message.contains("uq_barcode_outlet_code")) {
                 return true;
             }
             if (message.contains("Duplicate entry") && message.contains("product_barcode")) {

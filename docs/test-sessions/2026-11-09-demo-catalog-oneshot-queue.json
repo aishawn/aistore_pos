@@ -1,12 +1,6 @@
 {
   "sync": {
-    "status": "queued",
-    "job_id": 61,
-    "store": "skr",
-    "from": "2026-11-09",
-    "to": "2026-11-09",
-    "full_inventory_snapshot": true,
-    "source_only": false
+    "detail": "A query_scan job is already active for this store"
   },
-  "at": "2026-11-09T07:00:38.733Z"
+  "at": "2026-11-09T07:29:41.997Z"
 }

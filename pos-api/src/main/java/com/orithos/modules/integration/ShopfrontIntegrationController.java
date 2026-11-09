@@ -484,7 +484,7 @@ public class ShopfrontIntegrationController {
                     requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
                 }
             }
-            validateProductAliasConflicts(items, store);
+            validateProductAliasConflicts(items, store, outletId);
         } else if ("inventory".equals(type) && completeInventorySnapshot) {
             if (items.isEmpty()) {
                 throw new IllegalArgumentException("A complete inventory snapshot cannot be empty");
@@ -493,7 +493,7 @@ public class ShopfrontIntegrationController {
         if ("inventory".equals(type)) validateInventoryTargetConflicts(items, store);
     }
 
-    private void validateProductAliasConflicts(JsonNode items, String store) {
+    private void validateProductAliasConflicts(JsonNode items, String store, long outletId) {
         Map<String, String> incomingSignatures = new LinkedHashMap<>();
         Map<String, String> incomingSources = new LinkedHashMap<>();
         Set<Long> targetIds = new HashSet<>();
@@ -502,7 +502,7 @@ public class ShopfrontIntegrationController {
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             sourceIds.add(sourceId);
-            Long targetId = resolveBusinessProductId(store, item);
+            Long targetId = resolveBusinessProductId(store, item, outletId);
             String targetKey = targetId == null ? productIdentityKey(item) : "product:" + targetId;
             if (targetId != null) targetIds.add(targetId);
             String signature = productBusinessSignature(item);
@@ -569,16 +569,32 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private Long resolveBusinessProductId(String store, JsonNode item) {
+    private Long resolveBusinessProductId(String store, JsonNode item, long outletId) {
         String sourceId = text(item, "source_id");
         Long productId = mappedProductId(store, sourceId);
+        if (productId != null) {
+            Long mappedOutlet = findLong("SELECT outlet_id FROM product WHERE id=? AND deleted_at IS NULL LIMIT 1", productId);
+            if (mappedOutlet == null || mappedOutlet != outletId) {
+                productId = null;
+            }
+        }
         String barcode = firstBarcode(item);
-        if (productId == null && barcode != null) productId = findLong("SELECT product_id FROM product_barcode WHERE code=? LIMIT 1", barcode);
+        if (productId == null && barcode != null) {
+            productId = findLong(
+                    "SELECT product_id FROM product_barcode WHERE code=? AND outlet_id=? LIMIT 1",
+                    barcode, outletId);
+        }
         Integer mdbId = integerValue(item.get("sku"));
-        if (productId == null && mdbId != null) productId = findLong("SELECT id FROM product WHERE mdb_id=? AND deleted_at IS NULL LIMIT 1", mdbId);
+        if (productId == null && mdbId != null) {
+            productId = findLong(
+                    "SELECT id FROM product WHERE mdb_id=? AND outlet_id=? AND deleted_at IS NULL LIMIT 1",
+                    mdbId, outletId);
+        }
         String name = text(item, "name");
         if (productId == null && name != null) {
-            productId = findLong("SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", name);
+            productId = findLong(
+                    "SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND outlet_id=? AND deleted_at IS NULL LIMIT 1",
+                    name, outletId);
         }
         return productId != null && productId > 0 ? productId : null;
     }
@@ -669,20 +685,8 @@ public class ShopfrontIntegrationController {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
-        Long productId = mappedProductId(store, sourceId);
-        String barcode = firstBarcode(item);
-        if (productId == null && barcode != null) {
-            productId = findLong("SELECT product_id FROM product_barcode WHERE code=? LIMIT 1", barcode);
-        }
+        Long productId = resolveBusinessProductId(store, item, outletId);
         Integer mdbId = integerValue(item.get("sku"));
-        if (productId == null && mdbId != null) {
-            productId = findLong("SELECT id FROM product WHERE mdb_id=? AND deleted_at IS NULL LIMIT 1", mdbId);
-        }
-        if (productId == null) {
-            // active_name is globally unique in PostgreSQL, so an outlet-scoped
-            // lookup would still try to insert a duplicate for another outlet.
-            productId = findLong("SELECT id FROM product WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", name);
-        }
         Long categoryId = ensureLookup("category", text(item, "category"), outletId);
         Long brandId = ensureLookup("brand", text(item, "brand"), outletId);
         JsonNode family = item.get("family");
@@ -746,10 +750,19 @@ public class ShopfrontIntegrationController {
         for (JsonNode barcode : barcodes) {
             String code = text(barcode, "code");
             if (code == null || code.isBlank()) continue;
-            Long owner = findLong("SELECT product_id FROM product_barcode WHERE code=? LIMIT 1", code);
+            Long owner = findLong(
+                    "SELECT product_id FROM product_barcode WHERE code=? AND outlet_id=? LIMIT 1",
+                    code, outletId);
             if (owner != null && !owner.equals(productId)) continue;
-            if (owner == null) jdbc.update("INSERT INTO product_barcode (product_id,code,quantity) VALUES (?,?,?)", productId, code, decimal(barcode, "quantity", BigDecimal.ONE));
-            else jdbc.update("UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=?", decimal(barcode, "quantity", BigDecimal.ONE), productId, code);
+            if (owner == null) {
+                jdbc.update(
+                        "INSERT INTO product_barcode (product_id,code,quantity,outlet_id) VALUES (?,?,?,?)",
+                        productId, code, decimal(barcode, "quantity", BigDecimal.ONE), outletId);
+            } else {
+                jdbc.update(
+                        "UPDATE product_barcode SET quantity=? WHERE product_id=? AND code=? AND outlet_id=?",
+                        decimal(barcode, "quantity", BigDecimal.ONE), productId, code, outletId);
+            }
         }
     }
 
