@@ -77,6 +77,16 @@ const nextConfig: NextConfig = {
   // Browser calls same-origin /api/*; Next.js proxies to the Spring Boot backend.
   async rewrites() {
     return {
+      beforeFiles: [
+        {
+          source: "/enapi.json",
+          destination: `${backendUrl}/api/openapi.json`,
+        },
+        {
+          source: "/openapi.json",
+          destination: `${backendUrl}/api/openapi.json`,
+        },
+      ],
       fallback: [
         {
           source: "/api/:path*",
