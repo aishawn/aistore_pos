@@ -181,7 +181,7 @@ export function ShopfrontReportsOverviewPage() {
       const compareMetrics = compareRes.ok ? parseShopfrontSalesReport(compareBody) : null;
       setCompareRevenue(compareMetrics?.revenue ?? null);
       const inventory = parseShopfrontInventoryReport(inventoryBody);
-      setSellableUnits(inventory?.sellableUnits ?? (Number.isFinite(Number(inventoryBody?.sellable_units)) ? Number(inventoryBody.sellable_units) : null));
+      setSellableUnits(inventory?.sellableUnits ?? null);
       setTrend(parseTrendRows(trendBody));
       setMarginWeek(parseTrendRows(weekTrendBody));
       setMissingTrendDays(Array.isArray(trendBody?.coverage?.missing_dates) ? trendBody.coverage.missing_dates.length : 0);

@@ -107,6 +107,20 @@ test("inventory KPI rejects a stale or future snapshot", () => {
   }, now), null);
 });
 
+test("inventory KPI rejects an explicit stale fallback even when its snapshot is recent", () => {
+  const now = Date.parse("2026-11-09T04:30:00Z");
+  const payload = {
+    available: true, sellable_units: 50677, negative_stock_products: 5374,
+    record_count: 10852, outlet_count: 1, covered_record_count: 10852,
+    incomplete_record_count: 0, coverage: 1, completeness: "complete",
+    snapshot_at: "2026-11-09T01:49:05Z",
+    source: "shopfront_reporting_api", source_version: "shopfront_reporting_api_v1",
+    freshness: "stale_fallback", refresh_error: { upstream_status: 400 },
+  };
+  assert.equal(shopfrontInventorySnapshotIsFresh(payload.snapshot_at, now), true);
+  assert.equal(parseShopfrontInventoryReport(payload, now), null);
+});
+
 test("inventory KPI rejects legacy snapshot responses even when marked available", () => {
   assert.equal(parseShopfrontInventoryReport({
     available: true, sellable_units: 100, negative_stock_products: 0,
