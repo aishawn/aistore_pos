@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
+import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
 
 test("Shopfront sales KPI validates source Profit and computes margin from Revenue minus COGS", () => {
   const result = parseShopfrontSalesReport({
@@ -127,6 +127,23 @@ test("inventory KPI rejects legacy snapshot responses even when marked available
     record_count: 1, outlet_count: 1, snapshot_at: "2026-11-06T11:59:59Z",
     source: "shopfront_inventory_snapshot",
   }), null);
+});
+
+test("inventory KPI accepts a fresh GraphQL complete snapshot when Reporting API is not the active path", () => {
+  const now = Date.parse("2026-11-09T12:00:00Z");
+  const payload = {
+    available: true, sellable_units: 50278, negative_stock_products: 5374,
+    record_count: 10852, covered_record_count: 10852, incomplete_record_count: 0,
+    coverage: 1, completeness: "complete", outlet_count: 1,
+    snapshot_at: "2026-11-09T11:10:28Z", freshness: "fresh", refresh_error: null,
+    source: "shopfront_graphql_inventory_snapshot_v1",
+    source_version: "shopfront_graphql_inventory_snapshot_v1",
+  };
+  assert.equal(shopfrontInventoryReportSourceAccepted(payload), true);
+  const result = parseShopfrontInventoryReport(payload, now);
+  assert.equal(result?.sellableUnits, 50278);
+  assert.equal(result?.negativeStockProducts, 5374);
+  assert.equal(result?.completeness, "complete");
 });
 
 test("dashboard reconciliation compares Shopfront sales with Odoo gross totals and transactions", () => {

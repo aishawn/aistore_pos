@@ -44,6 +44,18 @@ export type ShopfrontInventoryMetrics = {
 
 export const SHOPFRONT_INVENTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+/** Accepted inventory KPI contracts from the crawler. GraphQL is the live
+ * complete snapshot preferred by the crawler; Reporting API remains accepted
+ * when that path succeeds. Legacy unlabeled snapshots stay rejected. */
+export function shopfrontInventoryReportSourceAccepted(report: RecordValue | null | undefined): boolean {
+  if (!report) return false;
+  const source = report.source;
+  const version = report.source_version;
+  if (source === "shopfront_reporting_api" && version === "shopfront_reporting_api_v1") return true;
+  if (source === "shopfront_graphql_inventory_snapshot_v1" && version === "shopfront_graphql_inventory_snapshot_v1") return true;
+  return false;
+}
+
 export function calculateShopfrontRowProfit(row: unknown) {
   const value = object(row);
   if (!value) return null;
@@ -144,8 +156,7 @@ export function parseShopfrontSalesReport(payload: unknown): ShopfrontSalesMetri
 
 export function parseShopfrontInventoryReport(payload: unknown, nowMs = Date.now()): ShopfrontInventoryMetrics | null {
   const report = object(payload);
-  if (report?.available !== true || report.source !== "shopfront_reporting_api"
-    || report.source_version !== "shopfront_reporting_api_v1"
+  if (report?.available !== true || !shopfrontInventoryReportSourceAccepted(report)
     || report.freshness === "stale_fallback" || report.refresh_error != null) return null;
   if (!shopfrontInventorySnapshotIsFresh(report.snapshot_at, nowMs)) return null;
   const sellableUnits = numeric(report.sellable_units);

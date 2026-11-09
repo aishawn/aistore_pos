@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight, ExternalLink, Eye, Pencil, RefreshCw, Search, X } from "lucide-react";
-import { calculateShopfrontRowProfit, parseShopfrontSalesReport, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
+import { calculateShopfrontRowProfit, parseShopfrontSalesReport, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
 import { Sparkline } from "@/components/admin/Sparkline";
 
 export type Mode = "dashboard" | "sales" | "inventory" | "products" | "purchase";
@@ -224,7 +224,7 @@ export function ShopfrontSourceDataPage({ mode }: { mode: Mode }) {
         throw new Error(payload && "message" in payload ? payload.message : `Shopfront source request failed (${response.status}).`);
       }
       const result = payload as PagePayload;
-      if (mode === "inventory" && (result.source !== "shopfront_reporting_api" || result.source_version !== "shopfront_reporting_api_v1")) {
+      if (mode === "inventory" && !shopfrontInventoryReportSourceAccepted(result as Record<string, unknown>)) {
         throw new Error("The Shopfront inventory report source is outdated. Refresh after the source service has updated.");
       }
       const parsedSalesMetrics = mode === "sales" || mode === "dashboard" ? parseShopfrontSalesReport(result) : null;
