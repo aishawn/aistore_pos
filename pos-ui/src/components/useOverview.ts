@@ -9,7 +9,7 @@ import {
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
 import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
-import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
+import { parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontDashboardMetricPaths, shopfrontInventorySnapshotIsFresh } from "@/lib/shopfront-dashboard-metrics";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -179,13 +179,11 @@ function previousBusinessDay(day: string): string {
   return previous.toISOString().slice(0, 10);
 }
 
-async function loadShopfrontDashboardMetrics(payload: Record<string, unknown> = {}) {
+async function loadShopfrontDashboardMetrics(payload: Record<string, unknown> = {}, forceRefresh = false) {
   const timezone = typeof payload.timezone === "string" ? payload.timezone : "Australia/Adelaide";
   const today = businessDay(payload.from, timezone) ?? currentBusinessDay(timezone);
   const yesterday = businessDay(payload.yesterdayFrom, timezone) ?? previousBusinessDay(today);
-  const todaySalesPath = `/api/shopfront-source?resource=report-sales&from=${today}&to=${today}&size=600`;
-  const yesterdaySalesPath = yesterday ? `/api/shopfront-source?resource=report-sales&from=${yesterday}&to=${yesterday}&size=600` : null;
-  const inventoryPath = "/api/shopfront-source?resource=dashboard-inventory";
+  const paths = shopfrontDashboardMetricPaths(today, yesterday, forceRefresh);
   const read = async (path: string) => {
     try {
       const response = await fetchPreparedReport(path);
@@ -197,9 +195,9 @@ async function loadShopfrontDashboardMetrics(payload: Record<string, unknown> = 
     }
   };
   const [todaySalesResponse, yesterdaySalesResponse, inventoryResponse] = await Promise.all([
-    read(todaySalesPath),
-    yesterdaySalesPath ? read(yesterdaySalesPath) : Promise.resolve({ mapped: true as const, report: null }),
-    read(inventoryPath),
+    read(paths.todaySales),
+    paths.yesterdaySales ? read(paths.yesterdaySales) : Promise.resolve({ mapped: true as const, report: null }),
+    read(paths.inventory),
   ]);
   if (!todaySalesResponse.mapped || !yesterdaySalesResponse.mapped || !inventoryResponse.mapped) {
     return { mapped: false as const, salesToday: null, salesYesterday: null, inventory: null, inventoryStale: false, inventorySnapshotAt: null };
@@ -361,7 +359,7 @@ export function useOverview() {
     let checkingSession = true;
     try {
       checkingSession = false;
-      const source = await loadShopfrontDashboardMetrics();
+      const source = await loadShopfrontDashboardMetrics({}, refresh);
       const sourcePulse = sourceDashboardPulse(source);
       if (sourcePulse) {
         if (current !== revision.current) return;
@@ -383,7 +381,7 @@ export function useOverview() {
       if (!Number.isFinite(payload?.revenue))
         throw new Error("The store summary is incomplete. Please retry.");
       let next = mapPayload(payload as Record<string, unknown>);
-      const enrichedSource = await loadShopfrontDashboardMetrics(payload as Record<string, unknown>);
+      const enrichedSource = await loadShopfrontDashboardMetrics(payload as Record<string, unknown>, refresh);
       next = applyShopfrontDashboardMetrics(next, enrichedSource);
       if (current !== revision.current) return;
       setData(next);
