@@ -14,6 +14,10 @@ export type OverviewPulse = {
   timezone: string;
   revenue: number;
   transactions?: number;
+  openRegisters?: number;
+  opportunities?: number;
+  lowStockCount?: number;
+  newCustomers?: number;
   yesterdaySales?: number;
   yesterdaySalesAvailable?: boolean;
   yesterdayGrossMargin?: number | null;
