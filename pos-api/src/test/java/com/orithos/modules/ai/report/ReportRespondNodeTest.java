@@ -99,7 +99,7 @@ class ReportRespondNodeTest {
         when(deadStock.value("question", String.class)).thenReturn(Optional.of("连续30天没有销售的商品有哪些？"));
         String deadAnswer = (String) node.apply(deadStock).get("answer");
         org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("滞销商品"));
-        org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("Odoo"));
+        org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("Orithos"));
         org.junit.jupiter.api.Assertions.assertTrue(deadAnswer.contains("2026-10-20"));
 
         OverAllState stockValue = state("", List.of(Map.of("name", "Wine", "inventory_value", 12.5)));
@@ -128,7 +128,7 @@ class ReportRespondNodeTest {
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("全店有记录成本的现有库存估值 AUD 550.00"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("前 8 个商品小计 AUD 360.00"));
         org.junit.jupiter.api.Assertions.assertFalse(answer.contains("前 8 个合计 AUD 550.00"));
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Odoo"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Orithos"));
     }
 
     @Test

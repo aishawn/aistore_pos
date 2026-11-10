@@ -40,6 +40,15 @@ SELECT
   pi.on_order
 FROM product_inventory pi;
 
+-- Cost is exposed through a separately guarded view. Application report and
+-- SQL guard permissions must authorize access before this view is queried.
+CREATE OR REPLACE VIEW ai_rpt_inventory_cost AS
+SELECT
+  pc.product_id,
+  pc.outlet_id,
+  pc.cost
+FROM product_cost pc;
+
 -- One row per completed sale (average ticket / customer-sale).
 CREATE OR REPLACE VIEW ai_rpt_customer_sale AS
 SELECT

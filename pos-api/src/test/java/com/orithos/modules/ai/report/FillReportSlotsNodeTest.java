@@ -18,9 +18,8 @@ class FillReportSlotsNodeTest {
     @Test
     void yesterdayFollowUpClearsPriorRangeLengthAndKeepsProductFilters() {
         ReportPeriodResolver resolver = new ReportPeriodResolver();
-        OdooReportQueryService reportQueryService = mock(OdooReportQueryService.class);
         AiReportQuotaService quotaService = mock(AiReportQuotaService.class);
-        FillReportSlotsNode node = new FillReportSlotsNode(resolver, reportQueryService, quotaService);
+        FillReportSlotsNode node = new FillReportSlotsNode(resolver, quotaService);
         OverAllState state = mock(OverAllState.class);
         LocalDate today = AustraliaTime.today();
         String yesterday = today.minusDays(1).toString();
@@ -47,9 +46,8 @@ class FillReportSlotsNodeTest {
     @Test
     void dayBeforeFollowUpUsesThePreviousReportsDateAsItsAnchor() {
         ReportPeriodResolver resolver = new ReportPeriodResolver();
-        OdooReportQueryService reportQueryService = mock(OdooReportQueryService.class);
         AiReportQuotaService quotaService = mock(AiReportQuotaService.class);
-        FillReportSlotsNode node = new FillReportSlotsNode(resolver, reportQueryService, quotaService);
+        FillReportSlotsNode node = new FillReportSlotsNode(resolver, quotaService);
         OverAllState state = mock(OverAllState.class);
         LocalDate today = AustraliaTime.today();
         String yesterday = today.minusDays(1).toString();

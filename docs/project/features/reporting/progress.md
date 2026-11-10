@@ -1,6 +1,14 @@
 # Reporting Progress
 
-Updated: 2026-11-10. Owner: TBD.
+Updated: 2026-11-11. Owner: TBD.
+
+## AI report query retirement (2026-11-11)
+
+- Implemented in the local candidate based on `ba4c72cf`: fixed AI report intents now use `NativeAiReportQueryService` and the outlet-specific Orithos read-only views instead of `OdooReportQueryService`. Report period resolution uses the Adelaide business timezone without looking up an Odoo company.
+- Added `ai_rpt_inventory_cost` as a separate read-only view and an Orithos stock-value template. The query service requires `ai.report.cost` before opening the tenant data source; the SQL guard recognizes the cost view as permission-gated.
+- Changed AI report provenance and answer text to Orithos. UI files were not changed.
+- Local Java 21 targeted Maven run: 23 tests passed after updating two legacy source-label assertions. This is not the repository's required remote pre-push `mvn -B clean verify`; source SHA is an uncommitted candidate based on `ba4c72cf`, runtime is not deployed, and live value parity is NOT RUN.
+- Remaining Odoo AI paths include product count/search and recommendation catalogue lookups, pricing and replenishment clients/snapshots, wine catalogue, tenant provisioning, legacy audit, and report/inventory worker configuration. Next: migrate or remove each consumer, then run the exact-SHA remote Java 21 gate before pushing.
 
 ## Native ledger cutover (2026-11-10)
 

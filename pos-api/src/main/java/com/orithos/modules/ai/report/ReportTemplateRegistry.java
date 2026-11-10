@@ -90,7 +90,21 @@ public class ReportTemplateRegistry {
                     ORDER BY i.quantity DESC
                     LIMIT 50
                     """, List.of(outletId, fromDay, toDay, outletId, outletId));
-            case "report_stock_value" -> BoundSql.fail("COST_DATA_UNAVAILABLE");
+            case "report_stock_value" -> BoundSql.ok("""
+                    SELECT p.id, p.name, i.quantity AS on_hand,
+                           CASE WHEN COALESCE(c.cost, 0) > 0
+                                THEN i.quantity * c.cost ELSE NULL END AS inventory_value,
+                           SUM(CASE WHEN COALESCE(c.cost, 0) > 0
+                                    THEN i.quantity * c.cost ELSE 0 END) OVER () AS store_inventory_value_total,
+                           COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) > 0) OVER () AS valued_product_count,
+                           COUNT(*) FILTER (WHERE COALESCE(c.cost, 0) <= 0) OVER () AS excluded_product_count
+                    FROM ai_rpt_inventory i
+                    JOIN ai_rpt_product p ON p.id = i.product_id AND p.outlet_id = i.outlet_id
+                    LEFT JOIN ai_rpt_inventory_cost c ON c.product_id = i.product_id AND c.outlet_id = i.outlet_id
+                    WHERE i.outlet_id = ? AND i.quantity > 0
+                    ORDER BY inventory_value DESC NULLS LAST, p.name
+                    LIMIT 50
+                    """, List.of(outletId));
             default -> BoundSql.fail("UNKNOWN_TEMPLATE");
         };
     }

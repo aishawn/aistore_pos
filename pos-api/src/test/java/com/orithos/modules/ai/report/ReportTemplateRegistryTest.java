@@ -53,4 +53,21 @@ class ReportTemplateRegistryTest {
         assertTrue(likes.stream().anyMatch(p -> String.valueOf(p).equalsIgnoreCase("%beer%")));
         assertTrue(likes.stream().anyMatch(p -> String.valueOf(p).equals("%啤酒%")));
     }
+
+    @Test
+    void stockValueUsesTenantScopedOrithosCostView() {
+        TenantContext tenant = new TenantContext(
+                55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY, TenantContext.PERM_COST));
+        LocalDate day = LocalDate.of(2026, 11, 10);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        ReportTemplateRegistry.BoundSql bound = registry.bind(
+                "report_stock_value", tenant, Map.of(), window);
+
+        assertNull(bound.error());
+        assertTrue(bound.sql().contains("ai_rpt_inventory_cost"));
+        assertTrue(bound.sql().contains("i.outlet_id = ?"));
+        assertEquals(List.of(87L), bound.params());
+    }
 }

@@ -13,10 +13,10 @@ import java.util.Map;
 @Component
 public class OdooReportQueryNode implements NodeAction {
 
-    private final OdooReportQueryService queryService;
+    private final NativeAiReportQueryService queryService;
     private final ReportPeriodResolver periodResolver;
 
-    public OdooReportQueryNode(OdooReportQueryService queryService, ReportPeriodResolver periodResolver) {
+    public OdooReportQueryNode(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver) {
         this.queryService = queryService;
         this.periodResolver = periodResolver;
     }
@@ -24,24 +24,24 @@ public class OdooReportQueryNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
-        // Ad-hoc NL2SQL is not wired; skip Odoo entirely and surface a guided refusal.
+        // Ad-hoc NL2SQL is not wired; surface a guided refusal.
         if ("report_adhoc".equals(intent)) {
             Map<String, Object> refused = new HashMap<>();
             refused.put("sql_path", "unsupported");
             refused.put("sql", "");
             refused.put("sql_raw", "");
             refused.put("sql_params", List.of());
-            refused.put("sql_error", "ODOO_REPORT_UNSUPPORTED");
+            refused.put("sql_error", "NATIVE_REPORT_UNSUPPORTED");
             refused.put("report_rows", List.of());
             refused.put("report_columns", List.of());
             return refused;
         }
         ReportPeriodResolver.Window window = windowFromState(state);
-        OdooReportQueryService.Result result = queryService.query(
+        NativeAiReportQueryService.Result result = queryService.query(
                 ReportGraphState.tenant(state), intent, ReportGraphState.slots(state), window);
 
         Map<String, Object> out = new HashMap<>();
-        out.put("sql_path", "odoo");
+        out.put("sql_path", "orithos_template");
         out.put("sql", "");
         out.put("sql_raw", "");
         out.put("sql_params", List.of());
@@ -49,9 +49,9 @@ public class OdooReportQueryNode implements NodeAction {
         out.put("report_rows", result.rows());
         out.put("report_columns", result.rows().isEmpty()
                 ? List.of() : List.copyOf(result.rows().get(0).keySet()));
-        ZoneId timezone = queryService.businessTimezone(ReportGraphState.tenant(state));
+        ZoneId timezone = com.orithos.common.AustraliaTime.ZONE;
         out.put("report_data_as_of", window.toExclusive().atZone(timezone).toOffsetDateTime().toString());
-        out.put("report_data_source", "odoo");
+        out.put("report_data_source", "orithos");
         out.put("report_store_scope", "current_authenticated_store");
         return out;
     }

@@ -16,7 +16,7 @@ final class AiReportIntentSeeder {
             For Inventory/Customer lookup (list/search/view product, supplier, customer, etc.) use entity_action with entity+op+query.
             Any create/edit/delete/import/merge/receive/save/confirm/price or inventory change → guided_action with a page route. The assistant never writes business data and writeRequests stays empty.
             For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
-            For inventory cash usage/value questions (inventory value, stock value, cash tied up in stock, inventory that ties up the most cash, 库存资金占用) use report_stock_value. This is read-only and must use the trusted Odoo cost field; if cost data is unavailable, explain that instead of inventing a value.
+            For inventory cash usage/value questions (inventory value, stock value, cash tied up in stock, inventory that ties up the most cash, 库存资金占用) use report_stock_value. This is read-only, requires the user's cost-report permission, and uses Orithos product cost; never invent a value.
             For future stockout/low-stock risk questions (which products may stock out, running out in the next N days, 未来 N 天可能断货/缺货), use navigate with route /stock/replenishment so the user can review the read-only risk queue. Never create or confirm a purchase order from this question.
             For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; grocery/beer/snack/BBQ recommend → /recommend/grocery; vague product recommend → /recommend; invoice scan/发票识别 → /invoices.
             Use report_adhoc (NOT report_qty/report_sales) for: ticket/order counts (几笔订单, how many tickets), mixed metrics (销量和金额分别), rankings (哪个商品卖得最多), day-vs-day comparisons.
@@ -51,7 +51,7 @@ final class AiReportIntentSeeder {
                 56);
         ensureIntent(intentMapper, "report_stock_value", "Report inventory cash value",
                 "Products ranked by on-hand inventory value using trusted product cost",
-                "User asks which inventory ties up the most cash, highest inventory value, or 库存资金占用. Read-only; use trusted Odoo cost data and explain exclusions.",
+                "User asks which inventory ties up the most cash, highest inventory value, or 库存资金占用. Read-only; require cost-report permission, use Orithos cost data and explain exclusions.",
                 57);
         ensureIntent(intentMapper, "report_adhoc", "Report ad-hoc",
                 "Looks like a numbers question but no template fits",

@@ -122,11 +122,11 @@ public class ReportRespondNode implements NodeAction {
         if (chinese) {
             String count = rows.size() == 50 ? "前 50 个" : rows.size() + " 个";
             return "最近" + days + "天有" + count + "滞销商品（当前库存大于 0，销量为 0）。"
-                    + "数据来源：Odoo 原生库存数量和 POS 销售；销售区间：" + rangeText(from, to) + "。";
+                    + "数据来源：Orithos 当前库存和 POS 销售；销售区间：" + rangeText(from, to) + "。";
         }
         return prefix + "dead-stock item(s) in the last " + days
                 + " days (on hand > 0, qty sold = 0)."
-                + " Source: native Odoo stock quantities and POS sales; sales period: " + rangeText(from, to) + ".";
+                + " Source: Orithos on-hand stock and POS sales; sales period: " + rangeText(from, to) + ".";
     }
 
     private String formatStockValue(List<Map<String, Object>> rows, boolean chinese) {
@@ -153,14 +153,14 @@ public class ReportRespondNode implements NodeAction {
                         .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
                         .append(excludedCount).append(" 个商品因库存或成本条件未计入。前 ")
                         .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal))
-                        .append("。数据来源：Odoo 原生现有库存数量和标准成本当前快照。");
+                        .append("。数据来源：Orithos 当前库存和商品成本快照。");
             } else {
                 sb.append(". Storewide on-hand inventory value for products with recorded positive costs: AUD ")
                         .append(money(storeTotal)).append(" across ").append(valuedCount)
                         .append(" products; ").append(excludedCount)
                         .append(" products were excluded because stock or cost was not positive. Top ")
                         .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal))
-                        .append(" Source: native Odoo on-hand quantities and standard product costs; current snapshot.");
+                        .append(" Source: Orithos on-hand quantities and product costs; current snapshot.");
             }
             return sb.toString();
         }
@@ -199,6 +199,13 @@ public class ReportRespondNode implements NodeAction {
             case "ODOO_REPORT_NOT_CONFIGURED" -> isStockIntent(intent)
                     ? "Live stock lookup is not configured for this store. Contact your administrator."
                     : "Live sales reporting is not configured for this store. Contact your administrator.";
+            case "NO_COST_PERMISSION" -> "You do not have permission to query inventory cost.";
+            case "NATIVE_REPORT_UNAVAILABLE" -> isStockIntent(intent)
+                    ? "I could not read Orithos stock data right now. Open the stock list to check manually, or try again shortly."
+                    : "Orithos reporting is temporarily unavailable. Please try again.";
+            case "NATIVE_REPORT_UNSUPPORTED" ->
+                    "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
+                            + "how much [product] is in stock, or dead stock last 30 days.";
             case "ODOO_REPORT_STORE_UNLINKED" -> isStockIntent(intent)
                     ? "This store is not linked to an Odoo company for live stock lookup. Contact your administrator."
                     : "This store is not linked to an Odoo company for live reporting. Contact your administrator.";

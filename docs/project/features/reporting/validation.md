@@ -1,6 +1,13 @@
 # Reporting Validation
 
-Updated: 2026-11-07. Owner: TBD.
+Updated: 2026-11-11. Owner: TBD.
+
+## AI report query Orithos-source candidate (2026-11-11)
+
+- Candidate based on POS `main` `ba4c72cf`; the AI fixed-template report graph now queries the outlet-scoped Orithos PostgreSQL read views. Stock-value uses a separate cost view and is denied before data-source access without `ai.report.cost`.
+- Local Java 21 focused command passed 23/23 tests, including SQL template scope, cost-permission denial, report node provenance, slot period resolution, and localized response tests. The first run found two stale Odoo source-label assertions; after correction the rerun passed.
+- This is fixture/unit evidence only. Per repository policy, no local build substitutes for the remote exact-candidate Java 21 `mvn -B clean verify` gate. That gate, PostgreSQL execution against real tenant views, deployment, browser, SKR/Demo numerical parity, and no-Odoo network-block acceptance are NOT RUN.
+- No business data was written and no UI source was changed. See [test session](../../../test-sessions/2026-11-11-ai-report-orithos-source.md) and [progress](progress.md).
 
 ## Product catalogue read cache (2026-11-08)
 
