@@ -200,13 +200,27 @@ public class ShopfrontIntegrationController {
             long outletId = longValue(mapping.get("outlet_id"));
             List<Map<String, Object>> rows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
-                           COALESCE(SUM(total_price), 0) AS revenue
+                           COALESCE(SUM(total_price), 0) AS revenue,
+                           COUNT(*) FILTER (WHERE source_system = 'shopfront') AS shopfront_transactions,
+                           COALESCE(SUM(total_price) FILTER (WHERE source_system = 'shopfront'), 0) AS shopfront_revenue,
+                           COUNT(*) FILTER (WHERE source_system IS DISTINCT FROM 'shopfront') AS other_transactions,
+                           COALESCE(SUM(total_price) FILTER (WHERE source_system IS DISTINCT FROM 'shopfront'), 0) AS other_revenue
                     FROM sale
                     WHERE outlet_id = ?
                       AND status = 'COMPLETED'
                       AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
                     """, outletId, day);
             Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
+            List<Map<String, Object>> otherSales = jdbc.queryForList("""
+                    SELECT id, external_id, source_system, invoice_id, total_price, business_date::text AS business_date
+                    FROM sale
+                    WHERE outlet_id = ?
+                      AND status = 'COMPLETED'
+                      AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
+                      AND source_system IS DISTINCT FROM 'shopfront'
+                    ORDER BY id
+                    LIMIT 20
+                    """, outletId, day);
             List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
                            COALESCE(SUM(total_price), 0) AS revenue,
@@ -230,6 +244,11 @@ public class ShopfrontIntegrationController {
             entry.put("outlet_id", outletId);
             entry.put("transactions", row.get("transactions"));
             entry.put("revenue", row.get("revenue"));
+            entry.put("shopfront_transactions", row.get("shopfront_transactions"));
+            entry.put("shopfront_revenue", row.get("shopfront_revenue"));
+            entry.put("other_transactions", row.get("other_transactions"));
+            entry.put("other_revenue", row.get("other_revenue"));
+            entry.put("other_sales", otherSales);
             entry.put("mirror_transactions", mirror.get("transactions"));
             entry.put("mirror_revenue", mirror.get("revenue"));
             entry.put("mirror_payload_revenue", mirror.get("payload_revenue"));
