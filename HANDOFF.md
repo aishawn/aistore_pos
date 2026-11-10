@@ -1,8 +1,8 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-10 ~23:20 (UTC+8)  
+> Generated: 2026-11-11 ~00:30 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
-> Session: Clear remaining live Odoo/Shopfront browser callers → Orithos  
+> Session: Retire unused `/api/odoo` BFF tree → catch-all 410 + cache/nav cleanup  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
 > Tip SHA: see `git log -1` after this retirement push
 
@@ -17,8 +17,9 @@ The owner has confirmed that Orithos/Shopfront-synced data is sufficient and Odo
 Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/version` after Dokploy):
 
 - Live `pos-ui` components/app pages no longer call `/api/odoo/*` or `/api/shopfront*` for data (grep gate on `src/components` + `odoo-api.ts` clean). Workspace panels, settings company/tax/registers/export, PO list/confirm/receive, invoice→PO, price suggestions/bulk edit, daily sales history, assistant ops preview, and sync stamp all use Orithos APIs.
-- Dead unmounted report/Shopfront page components removed. `/api/shopfront-source` remains 410. Next `app/api/odoo/*` BFF routes may still exist on disk but have no live UI callers — safe to delete in a follow-up after deploy smoke.
-- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; physical Odoo decommission; optional delete of unused BFF route files.
+- Dead unmounted report/Shopfront page components removed. `/api/shopfront-source` remains 410.
+- **BFF retirement (this slice):** deleted concrete `pos-ui/app/api/odoo/**` route handlers; left `app/api/odoo/[...path]/route.ts` returning **410**. Sales History nav → `/history` (redirects to reports ledger). `odoo-read-cache` no longer TTLs `/api/odoo/*`. SellAiPanel ops preview uses default `fetch` to Orithos routes.
+- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; compose `report-worker` still Odoo-credentialed (not browser); physical Odoo decommission.
 - Cashiers on NativePosGate vendors `1,55` can list `/api/retail/payment-methods` without `settings.view`.
 
 ## Page audit (this follow-up)
@@ -126,8 +127,8 @@ Done: live UI callers cleared (workspace, settings, PO/invoice, price tools, dai
 Still open:
 
 1. **Checkout parity** — member price / promotions / gift tenders after cash happy path.
-2. **Delete unused Next `app/api/odoo/*` BFF files** after deploy smoke confirms zero traffic.
-3. **Cache/test leftovers** — `odoo-read-cache` / `report-cache.test` still mention historical Odoo paths (no runtime fetch).
+2. **Compose `report-worker`** — still requires `ODOO_*` env; retire or stub once native report snapshots own the schedule.
+3. **Write UAT** — Demo cash open→sell→close (owner OK required for prod writes).
 
 ### P1 — Data / sync quality
 8. Triage unmatched barcodes / products (do **not** invent GST/prices).

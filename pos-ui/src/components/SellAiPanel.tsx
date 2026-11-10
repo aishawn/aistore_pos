@@ -1,6 +1,5 @@
 "use client";
 
-import { fetchOdooRoute } from "@/lib/odoo-api";
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
@@ -1078,7 +1077,7 @@ export function SellAiPanel({
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const hardTimeout = window.setTimeout(() => controller?.abort(), assistantRequestTimeoutMs(text));
     try {
-      const result = await readOperationsPreview(text, threadId, controller?.signal, fetchOdooRoute)
+      const result = await readOperationsPreview(text, threadId, controller?.signal)
         ?? await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
       if (result.threadId) {
         setThreadId(result.threadId);

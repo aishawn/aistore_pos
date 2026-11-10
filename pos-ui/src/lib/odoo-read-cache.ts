@@ -19,27 +19,19 @@ export function setOdooReadIdentity(value: string | null) {
   clearOdooReadCache("identity");
 }
 
+/**
+ * Browser Odoo BFF routes are retired (410). No `/api/odoo/*` TTLs remain.
+ * `/api/cached-read/*` keeps a small GET coalescing helper for unit tests and
+ * any future Orithos browser-read transport that opts in explicitly.
+ */
 function policy(path: string, init?: RequestInit): number | null {
   const url = new URL(path, "https://cache.invalid");
   const method = init?.method?.toUpperCase() ?? "GET";
-  if (method === "POST" && url.pathname === "/api/odoo/sales-daily") return 30_000;
-  if (method === "POST" && url.pathname === "/api/odoo/records") {
-    try {
-      const body = JSON.parse(String(init?.body));
-      if (body.refresh === true && body.type === "products" && !body.inventoryReport) return 0;
-      if (body.inventoryReport) return null; // The server's immutable inventory snapshot owns pagination.
-      return ["sales", "customers", "suppliers", "products", "purchaseProducts"].includes(body.type) ? 30_000 : null;
-    } catch { return null; }
-  }
+  if (url.pathname.startsWith("/api/odoo/")) return null;
   if (method !== "GET") return null;
+  if (!url.pathname.startsWith("/api/cached-read/")) return null;
   if (url.searchParams.get("refresh") === "true" || url.searchParams.has("task")) return 0;
-  if (url.pathname === "/api/odoo/session") return 15_000;
-  if (url.pathname === "/api/odoo/pos-bootstrap") return 15_000;
-  if (url.pathname === "/api/odoo/reporting-dashboard") return url.searchParams.has("period") ? 300_000 : 30_000;
-  if (["/api/odoo/dead-stock", "/api/odoo/price-suggestions", "/api/odoo/replenishment", "/api/odoo/categories", "/api/odoo/customer-groups", "/api/odoo/pricelists", "/api/odoo/pricelist-items"].includes(url.pathname)) return 300_000;
-  if (["/api/odoo/purchase-orders", "/api/odoo/suppliers", "/api/odoo/transfers"].includes(url.pathname)) return 30_000;
-  if (url.pathname === "/api/odoo/sales-report" && !url.searchParams.has("export") && !url.searchParams.has("detailKey") && url.searchParams.get("refresh") !== "true") return 90_000;
-  return null;
+  return 30_000;
 }
 
 function abortError() { return new DOMException("The request was aborted", "AbortError"); }
@@ -54,16 +46,6 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
     const ordinaryKey = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, requested.pathname + requested.search, init?.method ?? "GET", init?.body ?? null]);
     entries.delete(ordinaryKey);
     flights.get(ordinaryKey)?.controller.abort();
-  } else if ((init?.method?.toUpperCase() ?? "GET") === "POST" && requested.pathname === "/api/odoo/records") {
-    try {
-      const body = JSON.parse(String(init?.body));
-      if (body.type === "products" && body.refresh === true && !body.inventoryReport) {
-        delete body.refresh;
-        const ordinaryKey = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, requested.pathname + requested.search, init?.method ?? "GET", JSON.stringify(body)]);
-        entries.delete(ordinaryKey);
-        flights.get(ordinaryKey)?.controller.abort();
-      }
-    } catch { /* The route validates malformed request bodies. */ }
   }
   const key = JSON.stringify([identity, typeof location === "undefined" ? "test" : location.host, path, init?.method ?? "GET", init?.body ?? null]);
   if (init?.signal?.aborted) throw abortError();
@@ -86,20 +68,16 @@ export async function cachedOdooRead(path: string, init: RequestInit | undefined
           headers.delete("content-length"); headers.delete("content-encoding");
           response = new Response(JSON.stringify({ ...payload, generatedAt: payload.generatedAt ?? new Date().toISOString() }), { status: response.status, headers });
         }
-        // Stale snapshots must reach the server again so background completion becomes visible.
-        const endpoint = new URL(path, "https://cache.invalid").pathname;
         const complete = payload && typeof payload === "object" && !payload.message
-          && (endpoint !== "/api/odoo/reporting-dashboard" || (Number.isFinite(payload.revenue) && (new URL(path, "https://cache.invalid").searchParams.get("view") === "summary" || Array.isArray(payload.trend))))
-          && (endpoint !== "/api/odoo/records" || Array.isArray(payload.items))
-          && (endpoint !== "/api/odoo/sales-report" || Array.isArray(payload.rows));
+          && (Array.isArray(payload.items) || Number.isFinite(payload.revenue) || Array.isArray(payload.rows) || payload.ok === true);
         if (complete && payload.cacheStatus !== "STALE") {
-          let expires = Date.now() + ttl;
-          if (payload?.timezone && ["yesterday", "last_7_days", "last_week", "last_month"].includes(payload.period)) {
-            // Store business date is rechecked on every lookup below via the response metadata.
-            expires = Date.now() + 300_000;
-          }
           if (entries.size >= 200) entries.delete(entries.keys().next().value!);
-          entries.set(key, { response: response.clone(), expires, timezone: payload?.timezone, businessDay: payload?.timezone ? new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) : undefined });
+          entries.set(key, {
+            response: response.clone(),
+            expires: Date.now() + ttl,
+            timezone: payload?.timezone,
+            businessDay: payload?.timezone ? new Intl.DateTimeFormat("en-CA", { timeZone: payload.timezone }).format(new Date()) : undefined,
+          });
         }
       }
       return response;

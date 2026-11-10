@@ -108,7 +108,7 @@ function isAuthExemptPath(path: string): boolean {
 
 function canRetryTransientRoute(method: string, path: string): boolean {
   const normalizedMethod = method.toUpperCase();
-  if (normalizedMethod === "GET" && (path === "/api/auth/me" || path.startsWith("/api/odoo/"))) return true;
+  if (normalizedMethod === "GET" && path === "/api/auth/me") return true;
   // Login only creates a new token and is safe to replay when an old route
   // returns a transient gateway/route response.
   return normalizedMethod === "POST" && path === "/api/auth/login";

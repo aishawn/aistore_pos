@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasRecoverableOrithosSession } from "@/lib/server-auth";
 import { isControlPlanePageAllowed, parseTenantSlugFromHost } from "@/lib/tenant-host";
 
 const ACCESS_COOKIE = "orithos_access_token";
@@ -136,17 +135,9 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !localPreview && !hasRecoverableOrithosSession(request)) {
-    return withHeaders(
-      NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
-      tenantSlug,
-      pathname,
-      correlationId,
-    );
-  }
-
-  // API routes other than public auth still need a token, but the BFF returns 401;
-  // only page navigations are redirected here.
+  // Retired `/api/odoo/*` catch-all returns 410 from the route handler.
+  // API routes other than public auth still need a token; the BFF returns 401.
+  // Only page navigations are redirected here.
   if (pathname.startsWith("/api/")) {
     return withHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),

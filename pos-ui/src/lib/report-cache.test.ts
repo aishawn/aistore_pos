@@ -67,20 +67,25 @@ test("Shopfront completeness is evaluated per requested business day and exposes
   assert.equal(summarizeShopfrontSyncDays(days, "2026-11-03", "2026-11-03"), null);
 });
 
-test("only whitelisted reads are cached; financial validation and immutable pagination remain live", () => {
-  for (const path of ["/api/odoo/checkout/quote", "/api/odoo/checkout/status", "/api/odoo/customer-balances", "/api/odoo/sales/5"]) assert.equal(cachedReadPolicy(path), null);
-  assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", inventoryReport: true }) }), null);
-  assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", refresh: true }) }), 0);
-  assert.equal(cachedReadPolicy("/api/odoo/purchase-orders"), 30_000);
-  assert.equal(cachedReadPolicy("/api/odoo/sales-daily", { method: "POST", body: JSON.stringify({ offset: 40 }) }), 30_000);
-  assert.equal(cachedReadPolicy("/api/odoo/customer-groups"), 300_000);
+test("retired Odoo BFF paths are never cached; only opt-in cached-read helpers are", () => {
+  for (const path of [
+    "/api/odoo/checkout/quote",
+    "/api/odoo/purchase-orders",
+    "/api/odoo/customer-groups",
+    "/api/odoo/records",
+    "/api/odoo/sales-daily",
+  ]) assert.equal(cachedReadPolicy(path), null);
+  assert.equal(cachedReadPolicy("/api/odoo/records", { method: "POST", body: JSON.stringify({ type: "products", refresh: true }) }), null);
+  assert.equal(cachedReadPolicy("/api/cached-read/items"), 30_000);
+  assert.equal(cachedReadPolicy("/api/cached-read/items?refresh=true"), 0);
+  assert.equal(cachedReadPolicy("/api/products"), null);
 });
 
 test("read cache coalesces requests, isolates parameters and identity, and forces refresh", async () => {
   setOdooReadIdentity("user-one");
   let calls = 0;
   const read = () => { calls++; return Promise.resolve(Response.json({ items: [calls] })); };
-  const path = "/api/odoo/purchase-orders?offset=0";
+  const path = "/api/cached-read/items?offset=0";
   const result = await Promise.all([cachedOdooRead(path, undefined, read), cachedOdooRead(path, undefined, read)]);
   assert.equal(calls, 1); assert.deepEqual(await result[0].json(), await result[1].json());
   await cachedOdooRead(path, undefined, read); assert.equal(calls, 1);
@@ -89,19 +94,6 @@ test("read cache coalesces requests, isolates parameters and identity, and force
   await cachedOdooRead(path.replace("offset=0", "offset=1"), undefined, read); assert.equal(calls, 4);
   setOdooReadIdentity("user-two");
   await cachedOdooRead(path, undefined, read); assert.equal(calls, 5);
-  clearOdooReadCache();
-});
-
-test("forced product refresh evicts the ordinary browser entry", async () => {
-  setOdooReadIdentity("product-refresh-user");
-  let calls = 0;
-  const read = () => { calls++; return Promise.resolve(Response.json({ items: [calls] })); };
-  const path = "/api/odoo/records";
-  const body = JSON.stringify({ type: "products", query: "lager", limit: 100, offset: 0 });
-  await cachedOdooRead(path, { method: "POST", body }, read);
-  await cachedOdooRead(path, { method: "POST", body: JSON.stringify({ type: "products", query: "lager", limit: 100, offset: 0, refresh: true }) }, read);
-  await cachedOdooRead(path, { method: "POST", body }, read);
-  assert.equal(calls, 3, "the request after refresh must not restore the pre-refresh browser response");
   clearOdooReadCache();
 });
 
@@ -124,11 +116,12 @@ test("server scoped read cache coalesces, isolates, force refreshes, and follows
     const request = (session: string) => ({
       headers: new Headers({ host: "skr-cache-fixture.invalid" }),
       cookies: { get: (name: string) => name === "orithos_odoo_session" ? { value: session } : name === "orithos_access_token" ? { value: `access-${session}` } : undefined },
-      nextUrl: new URL("https://skr-cache-fixture.invalid/api/odoo/records"),
+      nextUrl: new URL("https://skr-cache-fixture.invalid/api/products"),
     }) as unknown as NextRequest;
     const parameters = { type: "products", query: "red wine", limit: 100, offset: 0 };
     const options = { localTtlMs: 30_000, persistentTtlMs: 0 };
     let calls = 0;
+    let coalesced = 0;
     let release!: (value: { items: number[] }) => void;
     const first = scopedReadCache(request("one"), binding, parameters, () => {
       calls++;
@@ -143,6 +136,7 @@ test("server scoped read cache coalesces, isolates, force refreshes, and follows
     release({ items: [1] });
     assert.deepEqual(await first, { items: [1] });
     assert.deepEqual(await concurrent, { items: [1] });
+    assert.equal(coalesced, 1);
 
     let cacheHit = false;
     assert.deepEqual(await scopedReadCache(request("one"), binding, parameters, async () => {
@@ -183,13 +177,13 @@ test("one cancelled subscriber does not abort another, and invalidation rejects 
   let transportSignal: AbortSignal | null | undefined;
   const read = (init?: RequestInit) => { transportSignal = init?.signal; return new Promise<Response>(resolve => { release = resolve; }); };
   const controller = new AbortController();
-  const first = cachedOdooRead("/api/odoo/categories", { signal: controller.signal }, read);
-  const second = cachedOdooRead("/api/odoo/categories", undefined, read);
+  const first = cachedOdooRead("/api/cached-read/categories", { signal: controller.signal }, read);
+  const second = cachedOdooRead("/api/cached-read/categories", undefined, read);
   controller.abort();
   await assert.rejects(first, { name: "AbortError" });
   assert.equal(transportSignal?.aborted, false);
   release(Response.json({ items: [] })); assert.equal((await second).status, 200);
-  const stale = cachedOdooRead("/api/odoo/pricelists", undefined, read);
+  const stale = cachedOdooRead("/api/cached-read/pricelists", undefined, read);
   clearOdooReadCache(); release(Response.json({ items: [] }));
   await assert.rejects(stale, { name: "AbortError" });
 });
