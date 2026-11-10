@@ -44,8 +44,13 @@ public class NativeCustomerImportService {
             }
             try {
                 Long existing = findMapping(storeKey, sourceId, outletId);
+                // Keep codes outlet-unique across Demo/SKR mirrors of the same Shopfront source ids.
                 String code = text(item, "code", "client_id");
-                if (code == null || code.isBlank()) code = "SF-" + sourceId;
+                if (code == null || code.isBlank()) {
+                    code = "SF-" + storeKey + "-" + sourceId;
+                } else if (!code.startsWith("SF-" + storeKey + "-")) {
+                    code = "SF-" + storeKey + "-" + code;
+                }
                 JsonNode source = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
                 String firstName = text(source, "firstName", "first_name");
                 String lastName = text(source, "lastName", "last_name");
