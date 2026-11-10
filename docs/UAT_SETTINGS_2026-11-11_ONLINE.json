@@ -1,0 +1,27 @@
+{
+  "id": "UAT_SETTINGS_2026-11-11_ONLINE",
+  "date": "2026-11-11",
+  "feature": "CAP-SET",
+  "environment": "demo.orithos.com.au",
+  "target": "https://demo.orithos.com.au",
+  "write_scope": "tax_rate_merge_only",
+  "result": "PARTIAL",
+  "summary": "Post-deploy Settings online UAT: Setup sidebar reachable, company/enterprise/push APIs 200, tax catalogue cleaned from 203→2 via existing merge API. Payment methods still 204 duplicate Cash rows pending catalogue dedupe deploy.",
+  "checks": [
+    {"name": "setup_sidebar_routes", "result": "PASS", "detail": "Setup expanded with 23 settings links including General, Tax, Payment, Integrations, Enterprise, Push"},
+    {"name": "company_settings_api", "result": "PASS", "detail": "GET /api/settings/company code=0 after OdooOnly allowlist"},
+    {"name": "enterprise_push_api", "result": "PASS", "detail": "GET /api/settings/enterprise and /api/settings/push code=0"},
+    {"name": "tax_rates_catalogue", "result": "PASS", "detail": "After merge keeper id=1: GST + GST Free only (2 items)"},
+    {"name": "payment_methods_catalogue", "result": "FAIL", "detail": "204 rows with Cash×202; promote MyBatis/session-cache skip failed; fix + dedupe API pending deploy"},
+    {"name": "settings_import_skips_owned", "result": "PASS", "detail": "Prior SKR save→orithosOwned then promote skipped owned keys (pre-dedupe session)"},
+    {"name": "cash_round_to_engine", "result": "NOT_RUN"}
+  ],
+  "source_sha": "e2a9a015",
+  "runtime_sha": null,
+  "fix_candidate": "settings catalogue promote in-memory dedupe + POST /api/settings/import/dedupe",
+  "limitations": [
+    "Payment-method cleanup requires new dedupe endpoint (not available on current runtime)",
+    "settings_import crawler may still be blocked while daily_sync is active",
+    "Did not exercise Sell/register writes"
+  ]
+}
