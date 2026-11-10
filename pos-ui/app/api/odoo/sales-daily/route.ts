@@ -5,7 +5,8 @@ import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
 import { odooCompanyContext } from "@/lib/odoo-tenant-company";
 import { requirePermission } from "@/lib/store-access";
-import { parseDailySalesGroup, mergeDailySalesGroups } from "@/lib/sales-daily";
+import { parseDailySalesGroup, mergeDailySalesGroups, mapShopfrontSalesTrend, shopfrontSalesHistoryWindow } from "@/lib/sales-daily";
+import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LIMIT = 100;
 const PERIOD_HOURS: Record<string, number> = { "24h": 24, "7d": 168, "30d": 720, "90d": 2160, "180d": 4320 };
 const FINAL_STATES = ["paid", "done", "invoiced"];
+const STORE_TIMEZONE = "Australia/Adelaide";
 
 type Status = "all" | "completed" | "refunded" | "cancelled" | "draft";
 
@@ -83,10 +85,27 @@ function statusDomain(status: Status) {
   return [];
 }
 
+async function fetchShopfrontSalesTrend(store: string, from: string, to: string) {
+  const base = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+  const token = (process.env.SHOPFRONT_INTEGRATION_TOKEN || process.env.APP_SHOPFRONT_INTEGRATION_TOKEN || "").trim();
+  if (!token) throw Object.assign(new Error("Shopfront source access is not configured."), { status: 503 });
+  const target = new URL("/api/reports/sales-trend", `${base}/`);
+  target.searchParams.set("store", store);
+  target.searchParams.set("from", from);
+  target.searchParams.set("to", to);
+  const upstream = await fetch(target, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!upstream.ok) throw Object.assign(new Error("Shopfront daily sales are unavailable."), { status: upstream.status >= 500 ? 503 : upstream.status });
+  const payload = await upstream.json() as { data?: unknown };
+  if (!Array.isArray(payload.data)) throw Object.assign(new Error("Shopfront daily sales are unavailable."), { status: 502 });
+  return payload.data;
+}
+
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return errorResponse("Cross-origin requests are not allowed", 403);
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return errorResponse("Orithos session expired", 401);
 
   try {
     await requirePermission(request, "sell.checkout", "sell.refund", "reports.dashboard");
@@ -99,6 +118,33 @@ export async function POST(request: NextRequest) {
     const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(Number(body.limit ?? 40))));
     const offset = Math.max(0, Math.floor(Number(body.offset ?? 0)));
     if (!Number.isFinite(limit) || !Number.isFinite(offset)) return errorResponse("Sales pagination values are invalid", 400);
+
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const shopfrontStore = verifiedShopfrontSourceStoreFromHost(host);
+    if (shopfrontStore) {
+      // Demo/SKR cutover: Dashboard already uses Shopfront Sales report. Sales
+      // History must use the same daily summaries instead of abandoned Odoo pos.order.
+      const window = shopfrontSalesHistoryWindow({
+        timezone: STORE_TIMEZONE,
+        period: body.period,
+        fromDate: body.fromDate,
+        toDate: body.toDate,
+      });
+      const trend = await fetchShopfrontSalesTrend(shopfrontStore, window.from, window.to);
+      const page = mapShopfrontSalesTrend(trend, { status, offset, limit });
+      return NextResponse.json({
+        items: page.items,
+        hasNext: offset + limit < page.total,
+        limit,
+        offset,
+        timezone: STORE_TIMEZONE,
+        currency: "AUD",
+        source: "shopfront_sales_trend",
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+    if (!sessionId) return errorResponse("Orithos session expired", 401);
 
     const sessionResponse = await fetch(`${baseUrl()}/web/session/get_session_info`, {
       method: "POST",
@@ -139,7 +185,7 @@ export async function POST(request: NextRequest) {
     ]);
     const allItems = mergeDailySalesGroups([...sales, ...refunds].map((row) => parseDailySalesGroup(row, timezone)));
     const items = allItems.slice(offset, offset + limit);
-    return NextResponse.json({ items, hasNext: offset + limit < allItems.length, limit, offset, timezone, currency: Array.isArray(company[0]?.currency_id) ? company[0].currency_id[1] : "AUD" }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ items, hasNext: offset + limit < allItems.length, limit, offset, timezone, currency: Array.isArray(company[0]?.currency_id) ? company[0].currency_id[1] : "AUD", source: "odoo_pos_order" }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Orithos daily sales are unavailable";
     return errorResponse("Could not load daily sales. Please refresh and try again.", error && typeof error === "object" && "status" in error ? Number(error.status) : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502);

@@ -4,9 +4,110 @@ import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import type { WorkspaceRecords } from "@/lib/workspace-records";
+import { verifiedShopfrontSourceStoreFromHost } from "@/lib/shopfront-store-scope";
+import { businessDayToday, shiftBusinessDay } from "@/lib/sales-daily";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const STORE_TIMEZONE = "Australia/Adelaide";
+const LINE_COLUMNS: WorkspaceRecords["columns"] = [
+  { key: "date", label: "Date", format: "date" },
+  { key: "receipt", label: "Receipt" },
+  { key: "product_id", label: "Items" },
+  { key: "qty", label: "Line count" },
+  { key: "price_unit", label: "Avg unit", format: "money" },
+  { key: "discount", label: "Discount" },
+  { key: "price_subtotal_incl", label: "Total incl. tax", format: "money" },
+];
+const PAYMENT_COLUMNS: WorkspaceRecords["columns"] = [
+  { key: "payment_date", label: "Date", format: "date" },
+  { key: "receipt", label: "Receipt" },
+  { key: "payment_method_id", label: "Status" },
+  { key: "amount", label: "Amount", format: "money" },
+  { key: "session", label: "Sale id" },
+];
+
+function periodFromDay(period: string) {
+  const today = businessDayToday(STORE_TIMEZONE);
+  if (period === "24h") return shiftBusinessDay(today, -1);
+  if (period === "7d") return shiftBusinessDay(today, -6);
+  if (period === "30d") return shiftBusinessDay(today, -29);
+  return shiftBusinessDay(today, -89);
+}
+
+async function shopfrontSalesRecords(store: string, type: "lines" | "payments", offset: number, period: string, query: string): Promise<WorkspaceRecords> {
+  const base = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+  const token = (process.env.SHOPFRONT_INTEGRATION_TOKEN || process.env.APP_SHOPFRONT_INTEGRATION_TOKEN || "").trim();
+  if (!token) throw Object.assign(new Error("Shopfront source access is not configured."), { status: 503 });
+  const pageSize = 40;
+  const page = Math.floor(offset / pageSize) + 1;
+  const target = new URL("/api/sales", `${base}/`);
+  target.searchParams.set("store", store);
+  target.searchParams.set("page", String(page));
+  target.searchParams.set("size", String(pageSize));
+  if (period !== "all") {
+    target.searchParams.set("from", periodFromDay(period));
+    target.searchParams.set("to", businessDayToday(STORE_TIMEZONE));
+  }
+  const upstream = await fetch(target, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!upstream.ok) throw Object.assign(new Error("Shopfront sales are unavailable."), { status: upstream.status >= 500 ? 503 : upstream.status });
+  const payload = await upstream.json() as {
+    data?: Array<Record<string, unknown>>;
+    pagination?: { total?: number; page?: number; size?: number; returned?: number };
+  };
+  if (!Array.isArray(payload.data) || !payload.pagination || !Number.isSafeInteger(payload.pagination.total)) {
+    throw Object.assign(new Error("Shopfront sales are unavailable."), { status: 502 });
+  }
+  const needle = query.trim().toLowerCase();
+  const filtered = needle
+    ? payload.data.filter((row) => {
+      const invoice = String(row.invoice_id ?? "").toLowerCase();
+      const saleId = String(row.shopfront_sale_id ?? "").toLowerCase();
+      const status = String(row.status ?? "").toLowerCase();
+      return invoice.includes(needle) || saleId.includes(needle) || status.includes(needle);
+    })
+    : payload.data;
+  const items = filtered.map((row, index) => {
+    const total = Number(row.total_price ?? 0);
+    const tax = Number(row.total_tax ?? 0);
+    const discount = Number(row.total_discount ?? 0);
+    const lineCount = Array.isArray(row.sale_item_ids) ? row.sale_item_ids.length : null;
+    const createdAt = typeof row.created_at === "string" ? row.created_at : null;
+    if (type === "payments") {
+      return {
+        id: offset + index + 1,
+        payment_date: createdAt,
+        receipt: row.invoice_id || row.shopfront_sale_id || "—",
+        payment_method_id: row.status || "—",
+        amount: total,
+        session: row.shopfront_sale_id || "—",
+      };
+    }
+    return {
+      id: offset + index + 1,
+      date: createdAt,
+      receipt: row.invoice_id || row.shopfront_sale_id || "—",
+      product_id: lineCount == null ? "Sale" : `${lineCount} line${lineCount === 1 ? "" : "s"}`,
+      qty: lineCount,
+      price_unit: lineCount && lineCount > 0 ? Math.round((total / lineCount) * 100) / 100 : total,
+      discount,
+      price_subtotal_incl: total,
+      tax,
+    };
+  });
+  return {
+    columns: type === "payments" ? PAYMENT_COLUMNS : LINE_COLUMNS,
+    items,
+    hasNext: offset + pageSize < Number(payload.pagination.total),
+    currency: "AUD",
+    timezone: STORE_TIMEZONE,
+  };
+}
 
 // Fixed read-only datasets. Browser input never selects an arbitrary model or field.
 const datasets = {
@@ -64,6 +165,14 @@ export async function GET(request: NextRequest) {
   const query = (request.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 120);
   try {
     await requirePermission(request, ...(stock ? ["stock.products.view"] : ["sell.checkout", "sell.refund", "reports.dashboard"]));
+    const shopfrontStore = verifiedShopfrontSourceStoreFromHost(request.headers.get("x-forwarded-host") || request.headers.get("host"));
+    if (!stock && shopfrontStore) {
+      // Demo/SKR cutover: abandoned Odoo pos.order lines undercount after write-off.
+      // Sales lines/payments must read the same Shopfront sale mirror as daily history.
+      return NextResponse.json(await shopfrontSalesRecords(shopfrontStore, type, offset, period, query), {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     const scope = await scopedOdoo(request);
     const config = datasets[type];
     const domain: unknown[] = [[stock ? "company_id" : `${config.orderField}.company_id`, "in", scope.companyIds]];

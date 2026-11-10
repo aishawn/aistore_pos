@@ -5,6 +5,7 @@ import { readShopfrontSyncState } from "@/lib/report-snapshots";
 import { reconcileSalesAmounts } from "@/lib/sales-report-reconciliation";
 import { summarizeSalesTotals } from "@/lib/sales-report-totals";
 import { isValidBusinessDay, localMidnightUtc, shiftDay } from "@/lib/replenishment-safety";
+import { mapShopfrontSalesTrend } from "@/lib/sales-daily";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,6 +148,135 @@ export async function GET(request: NextRequest) {
     }
     const rpc = companyReportRpc(scope.companyId, undefined, binding.odooWarehouseId, 60_000);
     const refresh = request.nextUrl.searchParams.get("refresh") === "true";
+
+    if (scope.shopfrontStore && group === "day") {
+      // Demo/SKR cutover: day sales report must match Shopfront Sales report / Dashboard.
+      const base = (process.env.SHOPFRONT_CRAWLER_URL || "https://crawler.orithos.com.au").trim().replace(/\/+$/, "");
+      const token = (process.env.SHOPFRONT_INTEGRATION_TOKEN || process.env.APP_SHOPFRONT_INTEGRATION_TOKEN || "").trim();
+      if (!token) return NextResponse.json({ message: "Shopfront source access is not configured." }, { status: 503 });
+      if (detailKey !== null) {
+        if (!isValidBusinessDay(detailKey) || detailKey < from || detailKey > to) {
+          return NextResponse.json({ message: "Choose a date within the report range." }, { status: 400 });
+        }
+        const detailPageSize = 100;
+        const page = Math.floor(detailOffset / detailPageSize) + 1;
+        const target = new URL("/api/sales", `${base}/`);
+        target.searchParams.set("store", scope.shopfrontStore);
+        target.searchParams.set("from", detailKey);
+        target.searchParams.set("to", detailKey);
+        target.searchParams.set("page", String(page));
+        target.searchParams.set("size", String(detailPageSize));
+        const upstream = await fetch(target, {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (!upstream.ok) return NextResponse.json({ message: "Shopfront sales are unavailable." }, { status: upstream.status >= 500 ? 503 : upstream.status });
+        const payload = await upstream.json() as {
+          data?: Array<Record<string, unknown>>;
+          pagination?: { total?: number };
+        };
+        if (!Array.isArray(payload.data) || !Number.isSafeInteger(payload.pagination?.total)) {
+          return NextResponse.json({ message: "Shopfront sales are unavailable." }, { status: 502 });
+        }
+        const totalAmount = payload.data.reduce((sum, row) => sum + Number(row.total_price ?? 0), 0);
+        return NextResponse.json({
+          detailType: "orders",
+          total: Number(payload.pagination?.total ?? 0),
+          totalAmount: Math.round(totalAmount * 100) / 100,
+          offset: detailOffset,
+          hasNext: detailOffset + payload.data.length < Number(payload.pagination?.total ?? 0),
+          rows: payload.data.map((item, index) => ({
+            id: detailOffset + index + 1,
+            order: String(item.invoice_id ?? item.shopfront_sale_id ?? ""),
+            date: String(item.created_at ?? ""),
+            customer: "Walk-in",
+            cashier: "—",
+            amount: Number(item.total_price ?? 0),
+          })),
+        }, { headers: { "Cache-Control": "no-store" } });
+      }
+      const trendUrl = new URL("/api/reports/sales-trend", `${base}/`);
+      trendUrl.searchParams.set("store", scope.shopfrontStore);
+      trendUrl.searchParams.set("from", from);
+      trendUrl.searchParams.set("to", to);
+      const trendResponse = await fetch(trendUrl, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!trendResponse.ok) return NextResponse.json({ message: "Shopfront daily sales are unavailable." }, { status: trendResponse.status >= 500 ? 503 : trendResponse.status });
+      const trendPayload = await trendResponse.json() as { data?: unknown[] };
+      if (!Array.isArray(trendPayload.data)) return NextResponse.json({ message: "Shopfront daily sales are unavailable." }, { status: 502 });
+      const daily = mapShopfrontSalesTrend(trendPayload.data, { limit: 10_000, offset: 0 }).items;
+      const rows: Row[] = daily.map((row) => ({
+        key: row.date,
+        label: row.date,
+        count: row.salesTransactions,
+        quantity: null,
+        amount: row.netSales,
+      }));
+      const orderGross = rows.reduce((sum, row) => sum + row.amount, 0);
+      const orderCount = rows.reduce((sum, row) => sum + row.count, 0);
+      const salesTotals = summarizeSalesTotals(orderGross, 0);
+      const reconciliation = reconcileSalesAmounts(orderGross, orderGross);
+      const shopfrontSync = await readShopfrontSyncState(scope, from, to);
+      const pageSize = 100;
+      const result = {
+        company: company.name,
+        currency: company.currency,
+        timezone: scope.timezone,
+        source: "Shopfront Sales report daily summaries (same source as Dashboard)",
+        shopfrontSync,
+        from,
+        to,
+        generatedAt: new Date().toISOString(),
+        group,
+        totalRows: rows.length,
+        totalAmount: reconciliation.groupedAmount,
+        orderGrossAmount: reconciliation.orderGrossAmount,
+        refundOrderTotal: 0,
+        refundAmount: salesTotals.refunds,
+        refundOrderCount: 0,
+        netSalesAmount: salesTotals.netSales,
+        reconciliationDifference: reconciliation.difference,
+        reconcilesToCent: reconciliation.reconcilesToCent,
+        orderCount,
+        totalCount: orderCount,
+        totalQuantity: null,
+        offset: printAll ? 0 : offset,
+        hasNext: printAll ? false : offset + pageSize < rows.length,
+        rows: printAll ? rows : rows.slice(offset, offset + pageSize),
+      };
+      if (exportCsv) {
+        const labels: Record<typeof EXPORT_COLUMNS[number], string> = {
+          label: "Date",
+          count: "Transactions",
+          quantity: "Quantity",
+          amount: `Grouped amount (${company.currency})`,
+        };
+        const values: Record<typeof EXPORT_COLUMNS[number], (row: Row) => string | number> = {
+          label: (row) => row.label,
+          count: (row) => row.count,
+          quantity: (row) => row.quantity ?? "",
+          amount: (row) => row.amount.toFixed(2),
+        };
+        const csvRows: Array<Array<string | number>> = [
+          exportColumns.map((column) => labels[column as typeof EXPORT_COLUMNS[number]]),
+          ...rows.map((row) => exportColumns.map((column) => values[column as typeof EXPORT_COLUMNS[number]](row))),
+        ];
+        const csv = `\uFEFF${csvRows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+        return new NextResponse(csv, {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": `attachment; filename="sales-report-${from}-${to}.csv"`,
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+      return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    }
+
     if (detailKey !== null) {
       const detailPageSize = 100;
       if (group === "day") {

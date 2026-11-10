@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeDailySalesGroups, parseDailySalesGroup } from "./sales-daily.ts";
+import {
+  mapShopfrontSalesTrend,
+  mergeDailySalesGroups,
+  parseDailySalesGroup,
+  parseShopfrontDailyTrendRow,
+  shopfrontSalesHistoryWindow,
+} from "./sales-daily.ts";
 
 test("merges sales and refunds for the same day", () => {
   assert.deepEqual(mergeDailySalesGroups([
@@ -32,4 +38,49 @@ test("handles daylight-saving date boundaries", () => {
     assert.equal(parseDailySalesGroup({ __range: { "date_order:day": { from } } }, "Australia/Adelaide").date, expected);
   }
   assert.deepEqual(mergeDailySalesGroups([]), []);
+});
+
+test("maps Shopfront sales-trend revenue to Sales History daily rows", () => {
+  assert.deepEqual(parseShopfrontDailyTrendRow({
+    date: "2026-11-09",
+    revenue: "5038.4800",
+    tax: "432.9300",
+    transaction_count: 162,
+  }), {
+    date: "2026-11-09",
+    salesTransactions: 162,
+    refundTransactions: 0,
+    salesAmount: 5038.48,
+    refundAmount: 0,
+    netSales: 5038.48,
+    tax: 432.93,
+  });
+});
+
+test("Shopfront daily history paginates newest-first and hides non-completed statuses", () => {
+  const page = mapShopfrontSalesTrend([
+    { date: "2026-11-08", revenue: 3652.71, tax: 312.5, transaction_count: 114 },
+    { date: "2026-11-09", revenue: 5038.48, tax: 432.93, transaction_count: 162 },
+  ], { limit: 1, offset: 0 });
+  assert.equal(page.total, 2);
+  assert.equal(page.items[0]?.date, "2026-11-09");
+  assert.equal(page.items[0]?.netSales, 5038.48);
+  assert.deepEqual(mapShopfrontSalesTrend([{ date: "2026-11-09", revenue: 1, tax: 0, transaction_count: 1 }], { status: "refunded" }), {
+    items: [],
+    total: 0,
+  });
+});
+
+test("Shopfront history windows use store business days", () => {
+  const now = new Date("2026-11-10T06:00:00Z");
+  assert.deepEqual(shopfrontSalesHistoryWindow({ timezone: "Australia/Adelaide", period: "7d", now }), {
+    from: "2026-11-04",
+    to: "2026-11-10",
+  });
+  assert.deepEqual(shopfrontSalesHistoryWindow({
+    timezone: "Australia/Adelaide",
+    fromDate: "2026-11-09",
+    toDate: "2026-11-09",
+    now,
+  }), { from: "2026-11-09", to: "2026-11-09" });
 });
