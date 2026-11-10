@@ -114,7 +114,16 @@ public class ShopfrontNativeSaleImporter {
             args.add(afterExternalId);
         }
         if (businessDay != null && !businessDay.isBlank()) {
-            sql.append(" AND (timezone('Australia/Adelaide', NULLIF(created_at, '')::timestamptz))::date = CAST(? AS date)");
+            // Match SoldAt parsing: offset/Z timestamps convert to Adelaide; naive timestamps are Adelaide local.
+            sql.append("""
+                     AND (
+                       CASE
+                         WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                           THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                         ELSE DATE(created_at::timestamp)
+                       END
+                     ) = CAST(? AS date)
+                    """);
             args.add(businessDay);
         }
         sql.append(" ORDER BY external_id LIMIT ?");
@@ -149,20 +158,26 @@ public class ShopfrontNativeSaleImporter {
         String externalId = stringValue(row.get("external_id"));
         saleNode.put("external_id", externalId);
         saleNode.put("source_complete", true);
-        putText(saleNode, "invoice_id", firstNonBlank(text(payload, "invoice_id"), stringValue(row.get("invoice_id"))));
+        putText(saleNode, "invoice_id", firstNonBlank(
+                text(payload, "invoice_id"), text(payload, "invoiceId"), stringValue(row.get("invoice_id"))));
         putText(saleNode, "status", firstNonBlank(text(payload, "status"), stringValue(row.get("status"))));
-        putText(saleNode, "created_at", firstNonBlank(text(payload, "created_at"), stringValue(row.get("created_at"))));
-        putText(saleNode, "updated_at", firstNonBlank(text(payload, "updated_at"), stringValue(row.get("updated_at"))));
+        putText(saleNode, "created_at", firstNonBlank(
+                text(payload, "created_at"), text(payload, "createdAt"), stringValue(row.get("created_at"))));
+        putText(saleNode, "updated_at", firstNonBlank(
+                text(payload, "updated_at"), text(payload, "updatedAt"), stringValue(row.get("updated_at"))));
         BigDecimal columnTotal = decimal(row.get("total_price"));
-        BigDecimal payloadTotal = decimalNode(payload, "total_price");
-        BigDecimal totalPrice = columnTotal.signum() == 0 && payloadTotal != null ? payloadTotal : columnTotal;
-        if (payloadTotal != null && payloadTotal.subtract(columnTotal).abs().compareTo(new BigDecimal("0.009")) > 0) {
-            totalPrice = payloadTotal;
+        BigDecimal payloadTotal = firstDecimal(payload, "total_price", "totalPrice");
+        BigDecimal totalPrice = firstNonNullDecimal(payloadTotal, columnTotal);
+        if (totalPrice == null) {
+            totalPrice = BigDecimal.ZERO;
         }
         saleNode.put("total_price", totalPrice);
-        BigDecimal tax = firstNonNullDecimal(decimalNode(payload, "total_tax"), decimal(row.get("total_tax")));
-        BigDecimal discount = firstNonNullDecimal(decimalNode(payload, "total_discount"), decimal(row.get("total_discount")));
-        BigDecimal cost = firstNonNullDecimal(decimalNode(payload, "total_cost"), decimal(row.get("total_cost")));
+        BigDecimal tax = firstNonNullDecimal(
+                firstDecimal(payload, "total_tax", "totalTax"), decimal(row.get("total_tax")));
+        BigDecimal discount = firstNonNullDecimal(
+                firstDecimal(payload, "total_discount", "totalDiscount"), decimal(row.get("total_discount")));
+        BigDecimal cost = firstNonNullDecimal(
+                firstDecimal(payload, "total_cost", "totalCost"), decimal(row.get("total_cost")));
         if (tax != null) saleNode.put("total_tax", tax);
         if (discount != null) saleNode.put("total_discount", discount);
         if (cost != null) saleNode.put("total_cost", cost);
@@ -554,7 +569,11 @@ public class ShopfrontNativeSaleImporter {
             return null;
         }
         try {
-            return value.isNumber() ? value.decimalValue() : new BigDecimal(value.asText().trim());
+            String text = value.asText();
+            if (text != null && !text.isBlank()) {
+                return new BigDecimal(text.trim());
+            }
+            return value.isNumber() ? value.decimalValue() : null;
         } catch (Exception e) {
             return null;
         }

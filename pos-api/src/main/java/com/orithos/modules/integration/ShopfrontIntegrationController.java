@@ -209,11 +209,21 @@ public class ShopfrontIntegrationController {
             Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
             List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
-                           COALESCE(SUM(total_price), 0) AS revenue
+                           COALESCE(SUM(total_price), 0) AS revenue,
+                           COALESCE(SUM(COALESCE(
+                               NULLIF(raw_payload::jsonb ->> 'total_price', '')::numeric,
+                               NULLIF(raw_payload::jsonb ->> 'totalPrice', '')::numeric,
+                               total_price)), 0) AS payload_revenue
                     FROM shopfront_sale
                     WHERE store_key = ?
                       AND UPPER(COALESCE(status, '')) IN ('COMPLETED', 'CLOSED', 'PAID', 'FINALISED', 'FINALIZED')
-                      AND (timezone('Australia/Adelaide', NULLIF(created_at, '')::timestamptz))::date = CAST(? AS date)
+                      AND (
+                        CASE
+                          WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                            THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                          ELSE DATE(created_at::timestamp)
+                        END
+                      ) = CAST(? AS date)
                     """, storeKey, day);
             Map<String, Object> mirror = mirrorRows.isEmpty() ? Map.of() : mirrorRows.get(0);
             Map<String, Object> entry = new LinkedHashMap<>();
@@ -222,6 +232,7 @@ public class ShopfrontIntegrationController {
             entry.put("revenue", row.get("revenue"));
             entry.put("mirror_transactions", mirror.get("transactions"));
             entry.put("mirror_revenue", mirror.get("revenue"));
+            entry.put("mirror_payload_revenue", mirror.get("payload_revenue"));
             byStore.put(storeKey, entry);
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -229,6 +240,191 @@ public class ShopfrontIntegrationController {
         result.put("source", "orithos_ledger");
         result.put("by_store", byStore);
         return ApiResult.ok(result);
+    }
+
+    /**
+     * Diagnose Adelaide-day parity between mirror {@code shopfront_sale} and native {@code sale}.
+     */
+    @GetMapping("/sales:native-day-diff")
+    public ApiResult<Map<String, Object>> nativeDayDiff(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String day,
+            @RequestParam(required = false) String store_key) {
+        authorize(supplied);
+        if (!day.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "day must be YYYY-MM-DD");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
+        Map<String, Object> byStore = new LinkedHashMap<>();
+        for (Map<String, Object> mapping : mappings) {
+            if (!isEnabled(mapping.get("enabled"))) continue;
+            String storeKey = String.valueOf(mapping.get("store_key"));
+            if (store_key != null && !store_key.isBlank() && !store_key.equals(storeKey)) continue;
+            long outletId = longValue(mapping.get("outlet_id"));
+            List<Map<String, Object>> nativeRows = jdbc.queryForList("""
+                    SELECT external_id, status, total_price, business_date::text AS business_date,
+                           local_sold_at::text AS local_sold_at
+                    FROM sale
+                    WHERE outlet_id = ?
+                      AND source_system = 'shopfront'
+                      AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
+                    ORDER BY external_id
+                    """, outletId, day);
+            List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
+                    SELECT external_id, status, total_price, created_at,
+                           COALESCE(
+                               NULLIF(raw_payload::jsonb ->> 'total_price', '')::numeric,
+                               NULLIF(raw_payload::jsonb ->> 'totalPrice', '')::numeric,
+                               total_price) AS payload_total,
+                           (
+                             CASE
+                               WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                                 THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                               ELSE DATE(created_at::timestamp)
+                             END
+                           )::text AS adelaide_day
+                    FROM shopfront_sale
+                    WHERE store_key = ?
+                      AND (
+                        (
+                          CASE
+                            WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                              THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                            ELSE DATE(created_at::timestamp)
+                          END
+                        ) = CAST(? AS date)
+                        OR EXISTS (
+                          SELECT 1 FROM sale s
+                          WHERE s.outlet_id = ?
+                            AND s.source_system = 'shopfront'
+                            AND s.external_id = shopfront_sale.external_id
+                            AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) = CAST(? AS date)
+                        )
+                      )
+                    ORDER BY external_id
+                    """, storeKey, day, outletId, day);
+            Map<String, Map<String, Object>> nativeById = new LinkedHashMap<>();
+            for (Map<String, Object> row : nativeRows) {
+                nativeById.put(String.valueOf(row.get("external_id")), row);
+            }
+            Map<String, Map<String, Object>> mirrorById = new LinkedHashMap<>();
+            for (Map<String, Object> row : mirrorRows) {
+                mirrorById.put(String.valueOf(row.get("external_id")), row);
+            }
+            List<Map<String, Object>> onlyNative = new ArrayList<>();
+            List<Map<String, Object>> onlyMirror = new ArrayList<>();
+            List<Map<String, Object>> amountMismatch = new ArrayList<>();
+            List<Map<String, Object>> statusMismatch = new ArrayList<>();
+            BigDecimal nativeSum = BigDecimal.ZERO;
+            BigDecimal mirrorSum = BigDecimal.ZERO;
+            BigDecimal payloadSum = BigDecimal.ZERO;
+            int nativeCompleted = 0;
+            int mirrorCompleted = 0;
+            for (Map.Entry<String, Map<String, Object>> entry : nativeById.entrySet()) {
+                Map<String, Object> nativeRow = entry.getValue();
+                BigDecimal nativeTotal = decimalObject(nativeRow.get("total_price"));
+                if ("COMPLETED".equalsIgnoreCase(String.valueOf(nativeRow.get("status")))) {
+                    nativeCompleted++;
+                    nativeSum = nativeSum.add(nativeTotal);
+                }
+                Map<String, Object> mirrorRow = mirrorById.get(entry.getKey());
+                if (mirrorRow == null) {
+                    Map<String, Object> miss = new LinkedHashMap<>(nativeRow);
+                    onlyNative.add(miss);
+                    continue;
+                }
+                BigDecimal mirrorTotal = decimalObject(mirrorRow.get("total_price"));
+                BigDecimal payloadTotal = decimalObject(mirrorRow.get("payload_total"));
+                if (isMirrorCompleted(mirrorRow.get("status"))) {
+                    mirrorCompleted++;
+                    mirrorSum = mirrorSum.add(mirrorTotal);
+                    payloadSum = payloadSum.add(payloadTotal);
+                }
+                if (nativeTotal.subtract(payloadTotal).abs().compareTo(new BigDecimal("0.009")) > 0
+                        || nativeTotal.subtract(mirrorTotal).abs().compareTo(new BigDecimal("0.009")) > 0) {
+                    Map<String, Object> mismatch = new LinkedHashMap<>();
+                    mismatch.put("external_id", entry.getKey());
+                    mismatch.put("native_total", nativeTotal);
+                    mismatch.put("mirror_total", mirrorTotal);
+                    mismatch.put("payload_total", payloadTotal);
+                    mismatch.put("native_status", nativeRow.get("status"));
+                    mismatch.put("mirror_status", mirrorRow.get("status"));
+                    amountMismatch.add(mismatch);
+                }
+                String nativeStatus = String.valueOf(nativeRow.get("status"));
+                String mappedMirror = mapMirrorStatus(String.valueOf(mirrorRow.get("status")));
+                if (!nativeStatus.equalsIgnoreCase(mappedMirror)) {
+                    Map<String, Object> mismatch = new LinkedHashMap<>();
+                    mismatch.put("external_id", entry.getKey());
+                    mismatch.put("native_status", nativeStatus);
+                    mismatch.put("mirror_status", mirrorRow.get("status"));
+                    mismatch.put("mapped_mirror_status", mappedMirror);
+                    statusMismatch.add(mismatch);
+                }
+            }
+            for (Map.Entry<String, Map<String, Object>> entry : mirrorById.entrySet()) {
+                if (!nativeById.containsKey(entry.getKey())) {
+                    onlyMirror.add(entry.getValue());
+                    if (isMirrorCompleted(entry.getValue().get("status"))) {
+                        mirrorCompleted++;
+                        mirrorSum = mirrorSum.add(decimalObject(entry.getValue().get("total_price")));
+                        payloadSum = payloadSum.add(decimalObject(entry.getValue().get("payload_total")));
+                    }
+                }
+            }
+            Map<String, Object> entryOut = new LinkedHashMap<>();
+            entryOut.put("outlet_id", outletId);
+            entryOut.put("native_count", nativeRows.size());
+            entryOut.put("mirror_count", mirrorRows.size());
+            entryOut.put("native_completed", nativeCompleted);
+            entryOut.put("mirror_completed", mirrorCompleted);
+            entryOut.put("native_revenue", nativeSum);
+            entryOut.put("mirror_revenue", mirrorSum);
+            entryOut.put("payload_revenue", payloadSum);
+            entryOut.put("only_native_count", onlyNative.size());
+            entryOut.put("only_mirror_count", onlyMirror.size());
+            entryOut.put("amount_mismatch_count", amountMismatch.size());
+            entryOut.put("status_mismatch_count", statusMismatch.size());
+            entryOut.put("only_native", onlyNative.stream().limit(20).toList());
+            entryOut.put("only_mirror", onlyMirror.stream().limit(20).toList());
+            entryOut.put("amount_mismatch", amountMismatch.stream().limit(30).toList());
+            entryOut.put("status_mismatch", statusMismatch.stream().limit(20).toList());
+            byStore.put(storeKey, entryOut);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("day", day);
+        result.put("by_store", byStore);
+        return ApiResult.ok(result);
+    }
+
+    private static boolean isMirrorCompleted(Object status) {
+        if (status == null) return false;
+        String value = String.valueOf(status).trim().toUpperCase(Locale.ROOT);
+        return Set.of("COMPLETED", "CLOSED", "PAID", "FINALISED", "FINALIZED").contains(value);
+    }
+
+    private static String mapMirrorStatus(String raw) {
+        if (raw == null || raw.isBlank()) return "UNKNOWN";
+        return switch (raw.trim().toUpperCase(Locale.ROOT)) {
+            case "COMPLETED", "CLOSED", "PAID", "FINALISED", "FINALIZED" -> "COMPLETED";
+            case "PARKED", "INCOMPLETE", "OPEN", "SAVED" -> "PARKED";
+            case "VOIDED", "VOID", "CANCELLED", "CANCELED" -> "VOIDED";
+            case "REFUNDED" -> "REFUNDED";
+            default -> "UNKNOWN";
+        };
+    }
+
+    private static BigDecimal decimalObject(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
+        if (value instanceof Number number) return new BigDecimal(number.toString());
+        try {
+            return new BigDecimal(String.valueOf(value).trim());
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
     }
 
     @PostMapping("/sales:promote-native")
@@ -1509,8 +1705,49 @@ public class ShopfrontIntegrationController {
     private long longValue(Object value) { try { return value == null ? 0 : Long.parseLong(String.valueOf(value)); } catch (Exception e) { return 0; } }
     private Integer integerValue(Object value) { try { return value == null || String.valueOf(value).isBlank() ? null : Integer.valueOf(String.valueOf(value)); } catch (Exception e) { return null; } }
     private int flag(JsonNode node, String key, boolean fallback) { return node.has(key) && !node.get(key).isNull() ? (node.get(key).asBoolean() ? 1 : 0) : (fallback ? 1 : 0); }
+    private String firstText(JsonNode node, String... keys) {
+        for (String key : keys) {
+            String value = text(node, key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private BigDecimal firstDecimal(JsonNode node, String... keys) {
+        for (String key : keys) {
+            BigDecimal value = decimal(node, key, null);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private BigDecimal decimal(JsonNode node, String key) { return decimal(node, key, null); }
-    private BigDecimal decimal(JsonNode node, String key, BigDecimal fallback) { try { JsonNode value=node.get(key); return value == null || value.isNull() || value.asText().isBlank() ? fallback : value.decimalValue(); } catch (Exception e) { return fallback; } }
+    private BigDecimal decimal(JsonNode node, String key, BigDecimal fallback) {
+        try {
+            JsonNode value = node.get(key);
+            if (value == null || value.isNull()) return fallback;
+            if (value.isTextual()) {
+                String text = value.asText().trim();
+                return text.isBlank() ? fallback : new BigDecimal(text);
+            }
+            if (value.isNumber()) {
+                // Prefer textual JSON digits when present to avoid Double binary drift.
+                String text = value.asText();
+                if (text != null && !text.isBlank()) {
+                    return new BigDecimal(text);
+                }
+                return value.decimalValue();
+            }
+            String text = value.asText();
+            return text == null || text.isBlank() ? fallback : new BigDecimal(text.trim());
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
 
     private int count(String table, String store) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE store_key = ?", Integer.class, store);
@@ -1562,7 +1799,17 @@ public class ShopfrontIntegrationController {
                 String sql = postgres
                         ? "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,external_id) DO UPDATE SET invoice_id=EXCLUDED.invoice_id,status=EXCLUDED.status,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,total_price=EXCLUDED.total_price,total_tax=EXCLUDED.total_tax,total_discount=EXCLUDED.total_discount,total_cost=EXCLUDED.total_cost,customer_reference=EXCLUDED.customer_reference,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
                         : "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE invoice_id=VALUES(invoice_id),status=VALUES(status),created_at=VALUES(created_at),updated_at=VALUES(updated_at),total_price=VALUES(total_price),total_tax=VALUES(total_tax),total_discount=VALUES(total_discount),total_cost=VALUES(total_cost),customer_reference=VALUES(customer_reference),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
-                jdbc.update(sql, store, external, text(sale,"invoice_id"), text(sale,"status"), text(sale,"created_at"), text(sale,"updated_at"), decimal(sale,"total_price"), decimal(sale,"total_tax"), decimal(sale,"total_discount"), decimal(sale,"total_cost"), text(sale,"customer_reference"), objectMapper.writeValueAsString(sale));
+                jdbc.update(sql, store, external,
+                        firstText(sale, "invoice_id", "invoiceId"),
+                        firstText(sale, "status"),
+                        firstText(sale, "created_at", "createdAt"),
+                        firstText(sale, "updated_at", "updatedAt"),
+                        firstDecimal(sale, "total_price", "totalPrice"),
+                        firstDecimal(sale, "total_tax", "totalTax"),
+                        firstDecimal(sale, "total_discount", "totalDiscount"),
+                        firstDecimal(sale, "total_cost", "totalCost"),
+                        firstText(sale, "customer_reference", "customerReference"),
+                        objectMapper.writeValueAsString(sale));
                 JsonNode saleItems = sale.path("items");
                 Set<String> currentLineKeys = new HashSet<>();
                 if (saleItems.isArray()) {
