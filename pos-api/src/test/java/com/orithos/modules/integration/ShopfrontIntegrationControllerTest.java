@@ -131,6 +131,69 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void importsShopfrontSuppliersIdempotentlyWithinTheMappedTenantOutlet() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
+                .thenReturn(55L);
+        when(jdbc.queryForList(contains("SELECT id,name,business_number FROM supplier"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of(), List.of(Map.of("supplier_id", 901L)));
+        when(jdbc.queryForObject(contains("INSERT INTO supplier"), eq(Long.class), any(Object[].class)))
+                .thenReturn(901L);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusiness", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        importBusiness.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        var items = mapper.readTree("[{\"source_id\":\"shopfront-supplier-1\",\"name\":\"Supplier One\",\"business_number\":\"12 345 678 901\",\"status\":\"ACTIVE\",\"raw_payload\":{\"orderNotes\":\"Morning delivery\"}}]");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = (Map<String, Object>) importBusiness.invoke(controller, "suppliers", "skr",
+                Map.of("company_id", "55", "outlet_id", "87"), items, false);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> replay = (Map<String, Object>) importBusiness.invoke(controller, "suppliers", "skr",
+                Map.of("company_id", "55", "outlet_id", "87"), items, false);
+
+        assertEquals(1, first.get("created"));
+        assertEquals(0, first.get("skipped"));
+        assertEquals(0, replay.get("created"));
+        assertEquals(1, replay.get("skipped"));
+        verify(jdbc).queryForObject(contains("INSERT INTO supplier"), eq(Long.class), any(Object[].class));
+        verify(jdbc).update(contains("INSERT INTO shopfront_supplier_business_mapping"),
+                eq("skr"), eq("shopfront-supplier-1"), eq(87L), eq(901L));
+    }
+
+    @Test
+    void rejectsSupplierImportWhenStoreMappingCompanyDoesNotOwnOutlet() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
+                .thenReturn(55L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusiness", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+        importBusiness.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+
+        InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                () -> importBusiness.invoke(controller, "suppliers", "demo", Map.of("company_id", "56", "outlet_id", "87"),
+                        mapper.readTree("[{\"source_id\":\"s1\",\"name\":\"Supplier\"}]"), false));
+
+        assertEquals(IllegalArgumentException.class, failure.getCause().getClass());
+        assertEquals("Shopfront supplier mapping does not match the outlet tenant", failure.getCause().getMessage());
+    }
+
+    @Test
     void pagesProductMirrorByImmutableSourceId() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
