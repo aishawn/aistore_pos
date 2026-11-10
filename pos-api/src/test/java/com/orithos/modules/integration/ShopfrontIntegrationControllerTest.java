@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,6 +36,69 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ShopfrontIntegrationControllerTest {
+
+    @Test
+    void copiesOnlyShopfrontMirrorTablesBetweenDistinctMappedOutlets() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("SELECT store_key, outlet_id, enabled"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("store_key", "skr", "outlet_id", "87", "enabled", true),
+                        Map.of("store_key", "demo", "outlet_id", "1", "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(*) FROM"), eq(Integer.class), any(Object[].class)))
+                .thenReturn(2);
+        when(jdbc.queryForObject(contains("INSERT INTO shopfront_mirror_run"), eq(Long.class), any(Object[].class)))
+                .thenReturn(42L);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        var result = controller.copyShopfrontMirror("token", new ObjectMapper().readTree(
+                "{\"source_store_key\":\"skr\",\"target_store_key\":\"demo\"}"));
+
+        assertEquals("skr", result.data().get("source_store_key"));
+        assertEquals("demo", result.data().get("target_store_key"));
+        assertEquals(false, result.data().get("business_write"));
+        @SuppressWarnings("unchecked")
+        Map<String, Integer> counts = (Map<String, Integer>) result.data().get("record_counts");
+        assertEquals(9, counts.size());
+        assertEquals(2, counts.get("shopfront_sale"));
+        assertTrue(counts.containsKey("shopfront_extended_record"));
+        verify(jdbc).update(contains("LOCK TABLE shopfront_sale_payment"));
+        verify(jdbc).update(contains("INSERT INTO shopfront_sale (store_key"), eq("demo"), eq("skr"));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("shopfront_product_mapping"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("shopfront_supplier_business_mapping"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("inventory_movement"), any(Object[].class));
+    }
+
+    @Test
+    void rejectsMirrorCopyWhenSourceAndTargetResolveToSameOutlet() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("SELECT store_key, outlet_id, enabled"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("store_key", "skr", "outlet_id", "87", "enabled", true),
+                        Map.of("store_key", "demo", "outlet_id", "87", "enabled", true)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        ResponseStatusException failure = assertThrows(ResponseStatusException.class,
+                () -> controller.copyShopfrontMirror("token", new ObjectMapper().readTree(
+                        "{\"source_store_key\":\"skr\",\"target_store_key\":\"demo\"}")));
+
+        assertEquals(HttpStatus.CONFLICT, failure.getStatusCode());
+        assertEquals("Source and target must map to different POS outlets", failure.getReason());
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM shopfront_sale"), any(Object[].class));
+    }
 
     @Test
     void stagingFailureDoesNotExposeDatabaseErrorDetails() throws Exception {

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Staging boundary for Shopfront imports. Business catalogue and inventory
@@ -35,6 +36,19 @@ import java.util.Map;
 @RequestMapping("/api/integrations/shopfront")
 public class ShopfrontIntegrationController {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
+    private static final Pattern STORE_KEY = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
+    private static final List<ShopfrontMirrorTable> MIRROR_TABLES = List.of(
+            new ShopfrontMirrorTable("shopfront_product", "source_id,name,sku,barcode,category,brand,cost,price,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_inventory", "source_product_id,outlet_id,quantity,snapshot_at,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_sale", "external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_sale_item", "external_sale_id,line_key,source_product_id,product_name,quantity,unit_price,line_total,cost,tax,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_sale_payment", "external_sale_id,payment_key,amount,status,subtype,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_supplier", "source_id,name,business_number,status,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_customer", "source_id,client_id,code,name,email,phone,mobile,deleted,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_purchase_order", "source_id,supplier_source_id,status,order_date,total_cost,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_extended_record", "entity_type,source_id,raw_payload,synced_at")
+    );
+    private record ShopfrontMirrorTable(String name, String columns) {}
     private record BusinessImportPlan(Map<String, Long> productIds, Set<String> existingProductMappings) {}
     private record BarcodeWrite(long productId, String code, BigDecimal quantity) {}
 
@@ -165,6 +179,82 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> purchaseOrders(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                           @RequestBody JsonNode body) {
         return stage(supplied, "purchase_orders", body);
+    }
+
+    @PostMapping("/mirror:copy")
+    @Transactional
+    public ApiResult<Map<String, Object>> copyShopfrontMirror(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        String source = body.path("source_store_key").asText("").trim();
+        String target = body.path("target_store_key").asText("").trim();
+        if (!STORE_KEY.matcher(source).matches() || !STORE_KEY.matcher(target).matches() || source.equals(target)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distinct valid source_store_key and target_store_key are required");
+        }
+        if (!isPostgres()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mirror copy requires PostgreSQL transactional table locks");
+        }
+
+        ensureMappingTable();
+        ensureShadowTables();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key IN (?, ?)", source, target);
+        Map<String, Map<String, Object>> byStore = new HashMap<>();
+        for (Map<String, Object> mapping : mappings) {
+            byStore.put(String.valueOf(mapping.get("store_key")), mapping);
+        }
+        Map<String, Object> sourceMapping = byStore.get(source);
+        Map<String, Object> targetMapping = byStore.get(target);
+        if (sourceMapping == null || targetMapping == null
+                || !isEnabled(sourceMapping.get("enabled")) || !isEnabled(targetMapping.get("enabled"))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Both source and target must have enabled Shopfront store mappings");
+        }
+        if (String.valueOf(sourceMapping.get("outlet_id")).equals(String.valueOf(targetMapping.get("outlet_id")))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Source and target must map to different POS outlets");
+        }
+
+        jdbc.update("LOCK TABLE shopfront_sale_payment, shopfront_sale_item, shopfront_sale, shopfront_inventory, "
+                + "shopfront_product, shopfront_supplier, shopfront_customer, shopfront_purchase_order, "
+                + "shopfront_extended_record IN SHARE ROW EXCLUSIVE MODE");
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (ShopfrontMirrorTable table : MIRROR_TABLES) {
+            int sourceCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM " + table.name() + " WHERE store_key = ?", Integer.class, source);
+            counts.put(table.name(), sourceCount);
+        }
+        for (ShopfrontMirrorTable table : List.of(
+                MIRROR_TABLES.get(4), MIRROR_TABLES.get(3), MIRROR_TABLES.get(2),
+                MIRROR_TABLES.get(1), MIRROR_TABLES.get(0), MIRROR_TABLES.get(5),
+                MIRROR_TABLES.get(6), MIRROR_TABLES.get(7), MIRROR_TABLES.get(8))) {
+            jdbc.update("DELETE FROM " + table.name() + " WHERE store_key = ?", target);
+        }
+        for (ShopfrontMirrorTable table : MIRROR_TABLES) {
+            jdbc.update("INSERT INTO " + table.name() + " (store_key," + table.columns() + ") "
+                    + "SELECT ?," + table.columns() + " FROM " + table.name() + " WHERE store_key = ?", target, source);
+            int targetCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM " + table.name() + " WHERE store_key = ?", Integer.class, target);
+            if (targetCount != counts.get(table.name())) {
+                throw new IllegalStateException("Shopfront mirror copy count mismatch for " + table.name());
+            }
+        }
+
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_mirror_run (id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, "
+                + "source_store_key VARCHAR(64) NOT NULL, target_store_key VARCHAR(64) NOT NULL, "
+                + "record_counts TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+        String serializedCounts;
+        try {
+            serializedCounts = objectMapper.writeValueAsString(counts);
+        } catch (Exception e) {
+            throw new IllegalStateException("Shopfront mirror counts could not be serialized", e);
+        }
+        Long auditId = jdbc.queryForObject("INSERT INTO shopfront_mirror_run "
+                + "(source_store_key,target_store_key,record_counts) VALUES (?,?,?) RETURNING id",
+                Long.class, source, target, serializedCounts);
+        log.info("Shopfront staging mirror copied: source={}, target={}, counts={}", source, target, counts);
+        return ApiResult.ok(Map.of("source_store_key", source, "target_store_key", target,
+                "record_counts", counts, "audit_id", auditId, "business_write", false));
     }
 
     @PostMapping("/extended:upsert")
