@@ -1,8 +1,8 @@
 # Handoff
 
-> Generated: 2026-11-10 ~16:55 (UTC+8)  
+> Generated: 2026-11-10 ~19:50 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only.  
+> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only; Nov-9 row parity closed.  
 > Canonical Chinese cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
 ## Goal
@@ -12,10 +12,10 @@ Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SK
 ## Current State
 
 **Shipped to `origin/main` (2026-11-10 native ledger cutover):**
-- POS `4b6f2624`; crawler `e142bd5`. Java 21 `mvn -B clean verify` PASS before push.
+- POS head `e4b6f031` (prior cutover chain includes `8b75ae3a` Adelaide-day/money fixes); crawler `e142bd5`. Java 21 `mvn -B verify` PASS (601 tests).
 - Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
 - UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
-- Post-deploy: call `POST /api/integrations/shopfront/sales:promote-native` for skr+demo, then confirm Adelaide `2026-11-09` native totals = `$5,038.48` / 162 and dashboard `source=orithos_ledger`.
+- Adelaide `2026-11-09` **sale-row** parity (SKR+Demo): native shopfront COMPLETED = mirror = crawler headers = **`$5,035.80` / 161** (`sales:native-day-diff` zero mismatches). Shopfront sales-report DSL still **`$5,038.48` / 162** (upstream +`$2.68` / +1 vs sale headers; not an Orithos import loss). Use `sales:native-day-totals` `shopfront_revenue` for import checks.
 
 **Still true from prior cutover:**
 - Staging parity SKR = Demo mirror counts; Odoo business writes off; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` expected.
