@@ -1102,10 +1102,14 @@ public class ShopfrontIntegrationController {
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
             String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : "";
-            log.error("SHOPFRONT_STAGING_DIAG type={} store={} exception={} sqlState={}", type, store,
-                    root.getClass().getSimpleName(), sqlState);
+            log.error("SHOPFRONT_STAGING_DIAG type={} store={} exception={} sqlState={} message={}", type, store,
+                    root.getClass().getSimpleName(), sqlState, root.getMessage());
             log.error("Shopfront staging failed: type={}, store={}, message={}", type, store, e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront import", e);
+            // Keep the client message free of raw DB text (passwords, connection URLs).
+            String safeDetail = root.getClass().getSimpleName()
+                    + (sqlState == null || sqlState.isBlank() ? "" : (" sqlState=" + sqlState));
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to stage Shopfront import (" + type + "): " + safeDetail, e);
         }
     }
 
@@ -1413,17 +1417,26 @@ public class ShopfrontIntegrationController {
         ensurePurchaseOrderBusinessMappingTable();
         int created = 0;
         int updated = 0;
+        int skipped = 0;
         List<String> errors = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
             if (sourceId == null || sourceId.isBlank() || !seen.add(sourceId)) {
-                throw new IllegalArgumentException("Purchase-order source IDs must be present and unique");
+                skipped++;
+                if (errors.size() < 25) {
+                    errors.add("Purchase-order source IDs must be present and unique");
+                }
+                continue;
             }
             JsonNode sourceLines = raw.path("products");
             if (!sourceLines.isArray()) {
-                throw new IllegalArgumentException("Purchase order " + sourceId + " has no source products array");
+                skipped++;
+                if (errors.size() < 25) {
+                    errors.add("Purchase order " + sourceId + " has no source products array");
+                }
+                continue;
             }
             String supplierSourceId = text(item, "supplier_source_id");
             if (supplierSourceId == null || supplierSourceId.isBlank()) {
@@ -1437,30 +1450,47 @@ public class ShopfrontIntegrationController {
             }
             Long supplierId = mappedSupplierId(store, supplierSourceId, outletId);
             if (supplierId == null) {
-                throw new IllegalArgumentException("Purchase order " + sourceId + " has no mapped Orithos supplier");
+                skipped++;
+                if (errors.size() < 25) {
+                    errors.add("Purchase order " + sourceId + " has no mapped Orithos supplier");
+                }
+                continue;
             }
 
             List<Object[]> lineRows = new ArrayList<>();
             BigDecimal orderedTotal = BigDecimal.ZERO;
             BigDecimal receivedTotal = BigDecimal.ZERO;
             boolean allReceived = sourceLines.size() > 0;
+            boolean lineError = false;
             for (JsonNode line : sourceLines) {
                 String lineSupplierSourceId = text(line.path("supplier"), "id");
                 Long lineSupplierId = mappedSupplierId(store,
                         lineSupplierSourceId == null || lineSupplierSourceId.isBlank() ? supplierSourceId : lineSupplierSourceId,
                         outletId);
                 if (lineSupplierId == null || !supplierId.equals(lineSupplierId)) {
-                    throw new IllegalArgumentException("Purchase order " + sourceId + " has a line with an unmapped or different supplier");
+                    if (errors.size() < 25) {
+                        errors.add("Purchase order " + sourceId + " has a line with an unmapped or different supplier");
+                    }
+                    lineError = true;
+                    break;
                 }
                 String productSourceId = text(line.path("item"), "id");
                 Long productId = mappedProductId(store, productSourceId, outletId);
                 if (productId == null) {
-                    throw new IllegalArgumentException("Purchase order " + sourceId + " has an unmapped product " + productSourceId);
+                    if (errors.size() < 25) {
+                        errors.add("Purchase order " + sourceId + " has an unmapped product " + productSourceId);
+                    }
+                    lineError = true;
+                    break;
                 }
                 BigDecimal ordered = decimal(line, "orderedQuantity");
                 BigDecimal received = decimal(line, "receivedQuantity");
                 if (ordered == null || ordered.signum() < 0 || (received != null && received.signum() < 0)) {
-                    throw new IllegalArgumentException("Purchase order " + sourceId + " has an invalid quantity");
+                    if (errors.size() < 25) {
+                        errors.add("Purchase order " + sourceId + " has an invalid quantity");
+                    }
+                    lineError = true;
+                    break;
                 }
                 received = received == null ? BigDecimal.ZERO : received;
                 orderedTotal = orderedTotal.add(ordered);
@@ -1469,6 +1499,10 @@ public class ShopfrontIntegrationController {
                 lineRows.add(new Object[]{productId, lineSupplierId, text(line.path("item"), "mdbId"),
                         decimal(line, "caseQuantity"), ordered, received, decimal(line, "baseCost"),
                         decimal(line, "orderedCost"), outletId});
+            }
+            if (lineError) {
+                skipped++;
+                continue;
             }
 
             String hash = purchaseOrderSourceHash(raw);
@@ -1499,7 +1533,8 @@ public class ShopfrontIntegrationController {
             BigDecimal totalCost = decimal(raw, "totalCost");
             BigDecimal expectedTotal = decimal(raw, "expectedTotal");
             if (expectedTotal == null) expectedTotal = totalCost;
-            boolean includeFreight = raw.path("includeFreight").asBoolean(false);
+            // purchase_order.include_freight is SMALLINT/INT2 in Orithos schemas.
+            int includeFreight = raw.path("includeFreight").asBoolean(false) ? 1 : 0;
             String notes = text(raw, "notes");
             if (orderId == null) {
                 String sql = isPostgres()
@@ -1536,7 +1571,7 @@ public class ShopfrontIntegrationController {
         result.put("enabled", true);
         result.put("created", created);
         result.put("updated", updated);
-        result.put("skipped", 0);
+        result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
     }

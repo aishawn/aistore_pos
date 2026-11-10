@@ -111,7 +111,9 @@ class ShopfrontIntegrationControllerTest {
                 () -> controller.products("token", body));
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failure.getStatusCode());
-        assertEquals("Unable to stage Shopfront import", failure.getReason());
+        assertTrue(failure.getReason() != null && failure.getReason().startsWith("Unable to stage Shopfront import"));
+        assertTrue(failure.getReason().contains("IllegalStateException"));
+        assertFalse(failure.getReason().contains("password=secret"));
         assertFalse(failure.getMessage().contains("password=secret"));
     }
 
