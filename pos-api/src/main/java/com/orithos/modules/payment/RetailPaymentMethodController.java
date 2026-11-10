@@ -27,13 +27,16 @@ public class RetailPaymentMethodController {
 
     @GetMapping
     public ApiResult<RetailPaymentMethodResponse> list() {
-        permissions.requirePermission("settings.view");
         Long vendorId = CurrentUser.vendorId();
         Long outletId = CurrentUser.outletId();
         if (vendorId == null || outletId == null) {
             throw new BusinessException(40100, "Authenticated store and outlet are required.");
         }
         boolean nativePosEnabled = nativePosGate.enabledFor(vendorId);
+        // Native sell needs payment methods for cashiers; settings-only when native POS is off.
+        if (!nativePosEnabled) {
+            permissions.requirePermission("settings.view");
+        }
         List<RegisterPaymentMethodView> assignments = nativePosEnabled
                 ? mapper.findAssignedForOutlet(vendorId, outletId)
                 : List.of();

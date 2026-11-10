@@ -41,7 +41,7 @@ class RetailPaymentMethodControllerTest {
         assertEquals(0, response.code());
         assertTrue(response.data().nativePosEnabled());
         assertEquals(List.of(assignment), response.data().assignments());
-        verify(permissions).requirePermission("settings.view");
+        verify(permissions, never()).requirePermission("settings.view");
         verify(mapper).findAssignedForOutlet(3L, 12L);
         verifyNoMoreInteractions(mapper);
     }
@@ -55,6 +55,7 @@ class RetailPaymentMethodControllerTest {
         assertEquals(0, response.code());
         assertFalse(response.data().nativePosEnabled());
         assertTrue(response.data().assignments().isEmpty());
+        verify(permissions).requirePermission("settings.view");
         verify(mapper, never()).findAssignedForOutlet(anyLong(), anyLong());
     }
 
@@ -62,7 +63,7 @@ class RetailPaymentMethodControllerTest {
     void rejectsRequestsWithoutAuthenticatedTenantScope() {
         var controller = new RetailPaymentMethodController(mapper, permissions, gate("3"));
         assertThrows(BusinessException.class, controller::list);
-        verify(permissions).requirePermission("settings.view");
+        verify(permissions, never()).requirePermission("settings.view");
         verifyNoInteractions(mapper);
     }
 

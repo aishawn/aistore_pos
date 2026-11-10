@@ -90,6 +90,19 @@ class OdooOnlyModeFilterTest {
         MockHttpServletResponse legacyResponse = new MockHttpServletResponse();
         filter.doFilter(legacy, legacyResponse, new MockFilterChain());
         assertEquals(410, legacyResponse.getStatus());
+
+        for (String[] route : new String[][]{
+                {"GET", "/api/register-closures"},
+                {"GET", "/api/register-closures/9"},
+                {"PUT", "/api/register-closures/9/note"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus(), route[0] + " " + route[1]);
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
     }
 
     @Test

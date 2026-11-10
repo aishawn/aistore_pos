@@ -119,7 +119,7 @@ public class RegisterSessionService {
         RegisterSession replay = sessions.findCloseReplay(registerId, scope.vendorId(), scope.outletId(), key);
         if (replay != null) {
             if (!closeRequestHash.equals(replay.getCloseRequestHash())) throw conflict("Close key was reused with different totals.");
-            RegisterClosure previous = closures.findById(replay.getClosureId());
+            RegisterClosure previous = closures.findByIdUnscoped(replay.getClosureId());
             if (previous != null) previous.setPayments(closures.findPaymentsByClosureId(previous.getId()));
             return previous;
         }

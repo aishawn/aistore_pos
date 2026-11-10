@@ -103,6 +103,14 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if (path.equals("/api/retail/registers") || path.startsWith("/api/retail/registers/")) {
             return false;
         }
+        // Orithos retail close writes register_closure rows; history/detail are outlet-scoped reads.
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/register-closures") || path.matches("/api/register-closures/[0-9]+"))) {
+            return false;
+        }
+        if ("PUT".equalsIgnoreCase(method) && path.matches("/api/register-closures/[0-9]+/note")) {
+            return false;
+        }
         // Shopfront is an isolated, token-authenticated staging boundary. It
         // never writes Odoo or Classic POS business tables.
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {

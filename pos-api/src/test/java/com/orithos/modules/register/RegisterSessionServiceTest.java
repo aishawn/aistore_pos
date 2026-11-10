@@ -110,7 +110,7 @@ class RegisterSessionServiceTest {
         when(closures.findPaymentsByClosureId(81L)).thenReturn(List.of());
         when(sessions.closeSession(session)).thenReturn(1);
         RegisterClosure stored = new RegisterClosure(); stored.setId(81L);
-        when(closures.findById(81L)).thenReturn(stored);
+        when(closures.findByIdUnscoped(81L)).thenReturn(stored);
 
         Map<Long, BigDecimal> counted = Map.of(2L, new BigDecimal("55.00"));
         RegisterClosure result = service.close(11L, "close-1", new BigDecimal("190.00"), counted, null);

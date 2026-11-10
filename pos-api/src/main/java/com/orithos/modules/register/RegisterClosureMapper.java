@@ -7,17 +7,23 @@ import java.util.List;
 public interface RegisterClosureMapper {
 
     @Select("SELECT * FROM register_closure "
-            + "WHERE (#{registerId} IS NULL OR register_id = #{registerId}) "
+            + "WHERE outlet_id = #{outletId} "
+            + "AND (#{registerId} IS NULL OR register_id = #{registerId}) "
             + "ORDER BY closed_at DESC LIMIT #{size} OFFSET #{offset}")
-    List<RegisterClosure> page(@Param("registerId") Long registerId,
+    List<RegisterClosure> page(@Param("outletId") Long outletId,
+                               @Param("registerId") Long registerId,
                                @Param("size") int size, @Param("offset") int offset);
 
     @Select("SELECT COUNT(*) FROM register_closure "
-            + "WHERE (#{registerId} IS NULL OR register_id = #{registerId})")
-    long count(@Param("registerId") Long registerId);
+            + "WHERE outlet_id = #{outletId} "
+            + "AND (#{registerId} IS NULL OR register_id = #{registerId})")
+    long count(@Param("outletId") Long outletId, @Param("registerId") Long registerId);
+
+    @Select("SELECT * FROM register_closure WHERE id = #{id} AND outlet_id = #{outletId}")
+    RegisterClosure findById(@Param("id") Long id, @Param("outletId") Long outletId);
 
     @Select("SELECT * FROM register_closure WHERE id = #{id}")
-    RegisterClosure findById(Long id);
+    RegisterClosure findByIdUnscoped(Long id);
 
     @Select("SELECT * FROM register_closure_payment WHERE closure_id = #{closureId}")
     List<RegisterClosurePayment> findPaymentsByClosureId(Long closureId);
@@ -33,6 +39,6 @@ public interface RegisterClosureMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertPayment(RegisterClosurePayment payment);
 
-    @Update("UPDATE register_closure SET note=#{note} WHERE id=#{id}")
-    int updateNote(@Param("id") Long id, @Param("note") String note);
+    @Update("UPDATE register_closure SET note=#{note} WHERE id=#{id} AND outlet_id=#{outletId}")
+    int updateNote(@Param("id") Long id, @Param("outletId") Long outletId, @Param("note") String note);
 }

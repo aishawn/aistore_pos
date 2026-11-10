@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, FileUp, LoaderCircle, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Tag, X } from "lucide-react";
 import {
   createOdooProduct,
-  fetchOdooRoute,
+  exportOdooProductsCsv,
   getOdooPosBootstrap,
   getOrithosSession,
   importOdooProducts,
@@ -239,18 +239,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }, [debouncedQuery, inventoryReport, router, searchParams]);
   useEffect(() => {
     if (!inventoryReport) return;
-    let cancelled = false;
-    void fetchOdooRoute("/api/odoo/inventory-report", { credentials: "same-origin", cache: "no-store" })
-      .then(async (response) => {
-        const body = await response.json() as typeof inventorySource & { message?: string };
-        if (!response.ok || !body || typeof body.company !== "string") throw new Error(body?.message || "Inventory source metadata is unavailable.");
-        if (!cancelled) {
-          setInventorySource(body);
-          setStoreTimezone(body.timezone || "Australia/Adelaide");
-        }
-      })
-      .catch(() => { if (!cancelled) setInventorySource(null); });
-    return () => { cancelled = true; };
+    setInventorySource({
+      company: "Orithos store",
+      timezone: "Australia/Adelaide",
+      source: "orithos_product_inventory",
+      generatedAt: new Date().toISOString(),
+      shopfrontSync: null,
+    });
+    setStoreTimezone("Australia/Adelaide");
   }, [inventoryReport, refreshKey]);
   useShopfrontSyncRefresh(() => {
     setShopfrontSyncBanner(true);
@@ -395,21 +391,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         downloadInventoryCsv(await loadAllInventoryMatches());
         return;
       }
-      // Keep exports on the same Orithos session recovery path as list reads.
-      const response = await fetchOdooRoute("/api/odoo/products/export", { credentials: "same-origin", cache: "no-store" });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { message?: string } | null;
-        throw new Error(payload?.message || `Export failed (${response.status})`);
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      const disposition = response.headers.get("Content-Disposition") || "";
-      const match = /filename="([^"]+)"/.exec(disposition);
-      anchor.href = url;
-      anchor.download = match?.[1] || "products.csv";
-      anchor.click();
-      URL.revokeObjectURL(url);
+      await exportOdooProductsCsv();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not export products.");
     } finally {

@@ -29,7 +29,9 @@ export function ProductImage({
   refreshToken?: number;
 }) {
   const id = typeof productId === "number" || /^\d+$/.test(String(productId ?? "")) ? String(productId) : "";
-  const src = id ? `/api/odoo/products/${id}/image${refreshToken === undefined ? "" : `?v=${refreshToken}`}` : "";
+  // Orithos catalogue images are not served via the retired Odoo image BFF.
+  const src = id ? "" : "";
+  void refreshToken;
   const [failedSrc, setFailedSrc] = useState("");
   const [loadedSrc, setLoadedSrc] = useState("");
   const category = CATEGORIES.find((item) => item.words.some((word) => name.toLocaleLowerCase().includes(word)));

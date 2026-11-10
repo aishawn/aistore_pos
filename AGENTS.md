@@ -16,7 +16,7 @@ Shared project brief for **Cursor** and **Codex** (and any other coding agent). 
 
 Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashiers sell, stock, purchase, and report in one UI. Optional AI (cashier assistant, sommelier, invoice OCR) stays off in production until budgeted.
 
-- **Migration target:** Orithos (`pos-api` and its PostgreSQL database) becomes the sole operational business ledger. Odoo remains the active ledger for each store until that store passes reconciliation and an authorized cutover; never dual-write. After cutover, remove Odoo BFF/session dependencies domain by domain and retain Odoo read-only for agreed history.
+- **Migration target (owner-directed 2026-11-10):** Orithos (`pos-api` and its PostgreSQL database) is the sole operational business ledger for SKR and Demo. Fully retire Odoo dependencies, including read-only runtime paths; do not add Odoo fallbacks or migrate Odoo history unless the owner changes this scope. Shopfront may feed the crawler sync into Orithos, while browser pages read Orithos APIs only.
 - **Classic Spring/MySQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write with Orithos or Odoo.
 - **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → PostgreSQL + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
 
@@ -27,7 +27,7 @@ Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashie
 | `https://app.orithos.com.au` | Control plane — `PlatformShell`, `/platform/*`, signup. **No** store Sidebar / Sell. |
 | `https://demo.orithos.com.au` | Pilot store — full POS shell. Default UAT target. |
 | `https://{slug}.orithos.com.au` | Other tenant stores (same POS shell as demo). |
-| `https://odoo.orithos.com.au` | Odoo; database default `aipos` (pilot/test). |
+| `https://odoo.orithos.com.au` | Legacy Odoo endpoint pending full retirement; application runtime must not depend on it. |
 
 Login uses username/password only (no subdomain field). Host → vendor. Pilot admin username: `admin`. Demo credentials have been supplied in the current owner conversation; never copy the password into this file, handoffs, UAT artifacts, command logs, or Git. For repeatable browser checks, place it in an ignored local env file as `DEMO_ADMIN_PASSWORD` and read it without printing it.
 
@@ -94,14 +94,14 @@ Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` 
 
 ## Hard rules for agents
 
-1. **Odoo is SoT** for pilot sell / stock / purchase / reporting. Do not revive Classic MySQL as the live path.
-2. **Do not write production `aipos`** for sell/refund/receive/close-register UAT unless the user explicitly approves. Prefer isolated DB (`aipos_uat` or approved TEST company) — see [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md). Isolation scripts must keep `ODOO_DATABASE` = `ISOLATION_ODOO_DATABASE`.
-3. **R2 / Shopfront history** is no longer a runtime synchronization path. The R2 worker, shared archive volume, and admin trigger have been removed. Historical R2 import scripts and policies remain only as audit artifacts; do not import historical receipts into a production Odoo database or use R2 data as a second live source of truth. The active test path is the direct `shopfront-crawler` → POS/Odoo pipeline. See [docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md](docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md).
+1. **Orithos PostgreSQL is the sole SoT** for sell / stock / purchase / customer / reporting. No Odoo runtime fallback, browser request, BFF call, scheduled read, or AI query may remain after its domain is migrated. Do not revive Classic MySQL as the live path.
+2. **Business writes use Orithos APIs** with authenticated vendor/outlet scope and idempotency where applicable. Historical Odoo isolation procedures are archival only and do not authorize runtime Odoo dependencies.
+3. **Shopfront synchronization boundary:** the active source-ingest path is `shopfront-crawler` → POS integrations → Orithos PostgreSQL. Browser pages and AI queries read Orithos only. R2 history remains an audit artifact, not a runtime ledger or fallback. Do not introduce Shopfront or Odoo online reads into store pages. See [docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md](docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md).
 4. **Do not invent GST, prices, ABN, or stock.** Missing source price/tax → keep product unsaleable; leave for owner/accountant.
 5. **AI** (`AI_ENABLED`) stays false in production until DashScope is configured and budgeted.
 6. **Pages:** change UI under `pos-ui/app` (not a duplicate tree under `pos-ui/src/app` if both exist). API client: `pos-ui/src/lib/api.ts`.
 7. **Backend pre-push gate (remote Java 21):** do not run local builds. Do not push any change touching `pos-api/` until `mvn -B clean verify` has completed successfully on Java 21 for that exact candidate SHA. A normal branch webhook that only builds an already-pushed branch is not a pre-push gate. If Dokploy/CI cannot build an unpushed candidate and expose its full log, leave the `pos-api` changes unpushed; never claim the requirement was met by a post-push build.
-8. **Writes need an explicit environment gate:** read-only browser/UAT checks may target production; sell, refund, receive, stock, cash, register-close, role, supplier, or import writes must target an approved isolated Odoo database/test company unless the user explicitly approves production. Keep `ODOO_DATABASE` equal to `ISOLATION_ODOO_DATABASE`; use [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md).
+8. **Writes need an explicit environment gate:** read-only browser/UAT checks may target production; sell, refund, receive, stock, cash, register-close, role, supplier, or import writes must use an approved Orithos test environment unless the user explicitly approves production. Never use Odoo as a fallback write target.
 9. **Do not infer acceptance from mocks or page reachability:** fixture/intercepted-request UAT proves UI behavior only. For pilot claims, cite the relevant `docs/UAT_*.json`, deployment SHA, and whether the action was read-only or wrote business data.
 10. **Git:** do not force-push `main`/`master`; do not commit secrets. This repo’s Cursor rule defaults to commit + push when a change set is finished (unless the user says keep local-only).
 11. **Do not switch the backend language/stack** to “fix” Dokploy test failures. Repeated red builds have been compile/test hygiene and pre-push skips, not a Spring Boot problem. Keep Java 21 / Spring Boot 3.3.

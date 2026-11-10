@@ -3,7 +3,11 @@ description: Do not swap owner-locked POS page shells without explicit approval
 alwaysApply: true
 ---
 
-# Owner-locked UI shells
+# UI migration scope
+
+## Owner direction superseding historical shell locks (2026-11-10)
+
+The owner authorized complete Odoo retirement. The historical Odoo shell locks below are superseded: migrate each route to Orithos-native APIs while preserving its existing workflow and permissions. Do not keep Odoo as a runtime fallback. Do not remove a route's workflow until its Orithos replacement is implemented and accepted.
 
 The owner repeatedly asked to keep the full operational shells for Sell / Stock. Do **not** replace these route targets with `Native*` or stripped pages unless the owner explicitly asks in the current chat.
 

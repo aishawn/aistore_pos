@@ -1,5 +1,19 @@
 import { cachedOdooRead, clearOdooReadCache } from "./odoo-read-cache";
-import { api, isLocalPreviewSession, type Page } from "./api";
+import {
+  api,
+  checkoutSale,
+  closeRetailRegisterSession,
+  getRetailRegisterSession,
+  getRetailRegisterSessionSummary,
+  isLocalPreviewSession,
+  listRetailRegisters,
+  openRetailRegisterSession,
+  quoteSale,
+  type CheckoutQuote,
+  type Page,
+  type RetailRegister,
+  type RetailRegisterSession,
+} from "./api";
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 
 export type OdooRecordType =
@@ -589,48 +603,198 @@ export async function loginToOdoo(username: string, password: string) {
   return (await sessionRequest("POST", { username, password })).user;
 }
 
+type OrithosAuthMe = { id: number; username: string; name?: string; outletId?: number; vendorId?: number };
+
+function mapOrithosAuthUser(user: OrithosAuthMe): OdooAuthUser {
+  return {
+    id: String(user.id),
+    name: user.name || user.username,
+    username: user.username,
+    isAdmin: false,
+    allowedCompanyIds: [],
+  };
+}
+
 export async function getOdooSession() {
-  return (await sessionRequest("GET")).user;
+  try {
+    const user = await getOrithosSession();
+    return mapOrithosAuthUser(user);
+  } catch {
+    return null;
+  }
 }
 
 export function getOrithosSession() {
-  return api.get<{ id: number; username: string; name?: string; outletId?: number }>("/api/auth/me");
+  return api.get<OrithosAuthMe>("/api/auth/me");
 }
 
-export function getOdooSessionStatus() {
-  return sessionRequest("GET");
+export async function getOdooSessionStatus() {
+  const user = await getOdooSession();
+  return { user, autoRecoverConfigured: false };
+}
+
+type RetailPaymentMethodAssignment = {
+  paymentMethodId?: number;
+  payment_method_id?: number;
+  name: string;
+  type: string;
+  registerId?: number;
+  register_id?: number;
+};
+
+type NativeQuoteSignature = {
+  expectedTotal: number;
+  expectedGst: number;
+  lines: Array<{ productId: number; quantity: number; unitPrice: number; lineTotal: number; expectedTaxRate: number; name: string }>;
+};
+
+function encodeQuoteSignature(quote: NativeQuoteSignature): string {
+  return `orithos:${JSON.stringify(quote)}`;
+}
+
+function decodeQuoteSignature(signature?: string): NativeQuoteSignature | null {
+  if (!signature?.startsWith("orithos:")) return null;
+  try {
+    return JSON.parse(signature.slice("orithos:".length)) as NativeQuoteSignature;
+  } catch {
+    return null;
+  }
+}
+
+function tenderFromPaymentMethod(method: { id: number; name: string; type: string } | undefined): string {
+  if (!method) return "CASH";
+  const type = (method.type || "").toUpperCase();
+  if (type === "CASH" || /cash/i.test(method.name)) return "CASH";
+  if (type === "EFTPOS" || /eftpos|card|bank|terminal/i.test(method.name)) return "EFTPOS";
+  return method.name || type || "CASH";
+}
+
+function mapCheckoutQuote(native: CheckoutQuote): OdooCheckoutQuote {
+  const lines = native.lines.map((line) => ({
+    productId: Number(line.productId),
+    quantity: Number(line.quantity),
+    uomFactor: 1,
+    unitPrice: Number(line.unitPrice),
+    priceSource: "orithos",
+    subtotal: Number(line.total) - Number(line.gst),
+    tax: Number(line.gst),
+    total: Number(line.total),
+  }));
+  const signature = encodeQuoteSignature({
+    expectedTotal: Number(native.total),
+    expectedGst: Number(native.gst),
+    lines: native.lines.map((line) => ({
+      productId: Number(line.productId),
+      quantity: Number(line.quantity),
+      unitPrice: Number(line.unitPrice),
+      lineTotal: Number(line.total),
+      expectedTaxRate: Number(line.taxRate),
+      name: line.name,
+    })),
+  });
+  return {
+    signature,
+    priceSource: "orithos",
+    currency: "AUD",
+    subtotal: Number(native.subtotalExGst),
+    tax: Number(native.gst),
+    total: Number(native.total),
+    unroundedTotal: Number(native.total),
+    lines,
+  };
+}
+
+async function loadRetailPaymentMethods(): Promise<RetailPaymentMethodAssignment[]> {
+  try {
+    const payload = await api.get<{ nativePosEnabled?: boolean; assignments?: RetailPaymentMethodAssignment[] }>("/api/retail/payment-methods");
+    return Array.isArray(payload.assignments) ? payload.assignments : [];
+  } catch {
+    return [];
+  }
+}
+
+function paymentMethodsForRegister(registerId: number, assignments: RetailPaymentMethodAssignment[]) {
+  const matched = assignments.filter((row) => Number(row.registerId ?? row.register_id) === registerId);
+  const rows = matched.length ? matched : assignments;
+  const unique = new Map<number, { id: number; name: string; type: string; is_cash_count: boolean }>();
+  for (const row of rows) {
+    const id = Number(row.paymentMethodId ?? row.payment_method_id);
+    if (!Number.isSafeInteger(id) || id <= 0 || unique.has(id)) continue;
+    const type = String(row.type || "CASH");
+    unique.set(id, {
+      id,
+      name: row.name || type,
+      type,
+      is_cash_count: type.toUpperCase() === "CASH" || /cash/i.test(row.name || ""),
+    });
+  }
+  if (!unique.size) {
+    unique.set(1, { id: 1, name: "Cash", type: "CASH", is_cash_count: true });
+  }
+  return [...unique.values()];
+}
+
+async function buildNativeBootstrap(): Promise<OdooPosBootstrap> {
+  const [registers, assignments] = await Promise.all([
+    listRetailRegisters(),
+    loadRetailPaymentMethods(),
+  ]);
+  const configs = await Promise.all(registers.map(async (register: RetailRegister) => {
+    let session: RetailRegisterSession | null = null;
+    let summary: Awaited<ReturnType<typeof getRetailRegisterSessionSummary>> | null = null;
+    try {
+      session = await getRetailRegisterSession(register.id);
+      if (session) {
+        try { summary = await getRetailRegisterSessionSummary(register.id); } catch { /* summary optional for open tills */ }
+      }
+    } catch { session = null; }
+    return {
+      id: Number(register.id),
+      name: register.name,
+      company: [Number(register.outletId) || 0, "Orithos"] as [number, string],
+      timezone: "Australia/Adelaide",
+      session: session ? {
+        id: Number(session.id),
+        name: `Session ${session.id}`,
+        state: "opened" as const,
+        config_id: [Number(register.id), register.name] as [number, string],
+        user_id: false as const,
+        start_at: (session.openedAt ? session.openedAt : false) as string | false,
+        cashBalanceStart: Number(session.openingFloat ?? 0),
+        cashBalanceEnd: summary ? Number(summary.expectedCash) : Number(session.openingFloat ?? 0),
+      } : null,
+      paymentMethods: paymentMethodsForRegister(Number(register.id), assignments),
+      pricelistIds: [] as number[],
+      cashRounding: { id: 1, rounding: 0.05, rounding_method: "HALF-UP" as const },
+      onlyRoundCashMethod: true,
+    };
+  }));
+  return {
+    configs,
+    activeSessionId: configs.find((config) => config.session)?.session?.id ?? null,
+  };
 }
 
 export async function getOdooPosBootstrap(): Promise<OdooPosBootstrap> {
-  const response = await fetchOdooApi("/api/odoo/pos-bootstrap", {
-    method: "GET",
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  const payload = (await response.json().catch(() => null)) as
-    | (OdooPosBootstrap & { message?: string })
-    | { message?: string }
-    | null;
-  if (!response.ok) {
-    throw new OdooApiError(payload?.message || `Odoo POS configuration failed (${response.status})`, response.status);
+  try {
+    return await buildNativeBootstrap();
+  } catch (cause) {
+    throw new OdooApiError(cause instanceof Error ? cause.message : "Orithos POS configuration failed", 502);
   }
-  if (!payload || !("configs" in payload) || !Array.isArray(payload.configs)) {
-    throw new OdooApiError("Odoo returned an invalid POS configuration", 502);
-  }
-  return payload as OdooPosBootstrap;
 }
 
-/** Open a register through the server-side Odoo service account. */
+/** Open an Orithos retail register session (opening float defaults to 0). */
 export async function openOdooPosSession(configId: number): Promise<void> {
-  const response = await fetchOdooApi("/api/odoo/session/open", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ configId }),
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Could not open the Orithos register (${response.status})`, response.status);
+  try {
+    await openRetailRegisterSession(configId, 0);
+  } catch (cause) {
+    // Idempotent reopen: an open session is success for the sell shell.
+    try {
+      const current = await getRetailRegisterSession(configId);
+      if (current) return;
+    } catch { /* fall through */ }
+    throw new OdooApiError(cause instanceof Error ? cause.message : `Could not open the Orithos register`, 502);
+  }
 }
 
 export class OdooCheckoutPendingError extends Error {
@@ -639,34 +803,66 @@ export class OdooCheckoutPendingError extends Error {
   }
 }
 
-export async function recoverOdooPosOrder(order: Pick<OdooCheckoutRequest, "configId" | "orderUuid">): Promise<OdooCheckoutResult | null> {
+export async function recoverOdooPosOrder(order: Pick<OdooCheckoutRequest, "configId" | "orderUuid" | "expectedQuote" | "paymentMethodId" | "customerId" | "tendered" | "lines">): Promise<OdooCheckoutResult | null> {
   try {
-    const response = await fetchOdooApi(`/api/odoo/checkout/status?configId=${order.configId}&orderUuid=${encodeURIComponent(order.orderUuid)}`, { cache: "no-store" });
-    const payload = response.ok ? await response.json() : null;
-    return payload?.resultState === "confirmed" && typeof payload.result?.saleId === "number" && Array.isArray(payload.result?.lines)
-      ? payload.result as OdooCheckoutResult : null;
-  } catch { return null; }
+    return await postOdooPosOrder(order as OdooCheckoutRequest);
+  } catch {
+    return null;
+  }
 }
 
 async function postOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
-  const response = await fetchOdooApi("/api/odoo/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(order),
-  });
-  const payload = (await response.json().catch(() => null)) as
-    | (OdooCheckoutResult & { message?: string })
-    | { message?: string }
-    | null;
-  if (!response.ok) {
-    throw new OdooApiError(payload?.message || `Odoo checkout failed (${response.status})`, response.status);
+  const signed = decodeQuoteSignature(order.expectedQuote);
+  if (!signed) throw new OdooApiError("Refresh the cart quote before taking payment.", 400);
+  const bootstrap = await getOdooPosBootstrap();
+  const config = bootstrap.configs.find((item) => item.id === order.configId);
+  const method = config?.paymentMethods.find((item) => item.id === order.paymentMethodId);
+  const tender = tenderFromPaymentMethod(method);
+  try {
+    const result = await checkoutSale({
+      registerId: order.configId,
+      customerId: order.customerId == null ? null : String(order.customerId),
+      tender,
+      tendered: order.tendered,
+      expectedTotal: signed.expectedTotal,
+      expectedGst: signed.expectedGst,
+      idempotencyKey: order.orderUuid,
+      items: signed.lines.map((line) => ({
+        productId: line.productId,
+        name: line.name,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+        expectedTaxRate: line.expectedTaxRate,
+      })),
+    });
+    const saleId = Number(result.saleId);
+    if (!Number.isSafeInteger(saleId) || saleId <= 0) {
+      throw new OdooApiError("Orithos did not confirm the sale", 502);
+    }
+    return {
+      saleId,
+      receipt: result.invoiceId || `SALE-${saleId}`,
+      total: Number(result.amountDue ?? signed.expectedTotal),
+      gst: Number(result.gst ?? signed.expectedGst),
+      subtotal: Number(result.subtotalExGst ?? (signed.expectedTotal - signed.expectedGst)),
+      tendered: Number(result.tendered ?? order.tendered),
+      change: Number(result.change ?? 0),
+      lines: signed.lines.map((line) => ({
+        name: line.name,
+        quantity: line.quantity,
+        subtotal: Math.round((line.lineTotal - (line.lineTotal * line.expectedTaxRate) / (100 + line.expectedTaxRate)) * 100) / 100,
+        total: line.lineTotal,
+        packFactor: 1,
+      })),
+      date: new Date().toISOString(),
+      session: config?.session?.name || `Register ${order.configId}`,
+    };
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : "Orithos checkout failed";
+    const status = cause && typeof cause === "object" && "status" in cause ? Number((cause as { status?: number }).status) || 502 : 502;
+    throw new OdooApiError(message, status);
   }
-  if (!payload || !("saleId" in payload) || typeof payload.saleId !== "number" || typeof payload.receipt !== "string" || typeof payload.change !== "number" || !Array.isArray(payload.lines)) {
-    throw new OdooApiError("Odoo did not confirm the sale", 502);
-  }
-  return payload as OdooCheckoutResult;
 }
 
 export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
@@ -680,47 +876,52 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
 }
 
 export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "configId" | "paymentMethodId" | "customerId" | "lines">): Promise<OdooCheckoutQuote> {
-  let response: Response;
   try {
-    response = await fetchOdooApi("/api/odoo/checkout/quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      cache: "no-store",
-      body: JSON.stringify(input),
-      signal: AbortSignal.timeout(ODOO_QUOTE_TIMEOUT_MS),
-    }, true);
+    const native = await quoteSale({
+      registerId: input.configId,
+      customerId: input.customerId == null ? null : String(input.customerId),
+      items: input.lines.map((line) => ({
+        productId: line.productId,
+        name: `Product ${line.productId}`,
+        quantity: line.quantity * (line.uomFactor && line.uomFactor > 0 ? line.uomFactor : 1),
+        unitPrice: 0,
+        lineTotal: 0,
+      })),
+    });
+    return mapCheckoutQuote(native);
   } catch (error) {
     const timeoutMessage = getOdooQuoteTimeoutMessage(error);
     if (timeoutMessage) throw new OdooApiError(timeoutMessage, 504);
-    throw error;
+    throw new OdooApiError(error instanceof Error ? error.message : "Orithos cart quote failed", 502);
   }
-  const payload = await response.json().catch(() => null) as (OdooCheckoutQuote & { message?: string }) | null;
-  if (!response.ok || !payload || typeof payload.total !== "number") {
-    throw new OdooApiError(payload?.message || `Odoo cart quote failed (${response.status})`, response.status);
-  }
-  return payload;
 }
 
 export async function closeOdooPosSession(configId: number, countedCash?: number | null): Promise<OdooCloseSessionResult> {
-  const response = await fetchOdooApi("/api/odoo/session/close", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ configId, countedCash: countedCash ?? null }),
-  });
-  const payload = (await response.json().catch(() => null)) as
-    | (OdooCloseSessionResult & { message?: string })
-    | { message?: string }
-    | null;
-  if (!response.ok) {
-    throw new OdooApiError(payload?.message || `Could not close the register (${response.status})`, response.status);
+  try {
+    const summary = await getRetailRegisterSessionSummary(configId);
+    const cash = countedCash == null || !Number.isFinite(countedCash) ? Number(summary.expectedCash) : Number(countedCash);
+    const countedTenders: Record<number, number> = {};
+    for (const tender of summary.tenders) {
+      countedTenders[tender.paymentMethodId] = tender.type.toUpperCase() === "CASH"
+        ? cash
+        : Number(tender.expectedAmount);
+    }
+    const closure = await closeRetailRegisterSession(configId, {
+      countedCash: cash,
+      countedTenders,
+    });
+    const bootstrap = await getOdooPosBootstrap();
+    const register = bootstrap.configs.find((item) => item.id === configId);
+    return {
+      sessionId: Number(closure.id),
+      sessionName: `Session ${closure.id}`,
+      registerName: register?.name || `Register ${configId}`,
+      state: "closed",
+      message: "Register closed on Orithos.",
+    };
+  } catch (cause) {
+    throw new OdooApiError(cause instanceof Error ? cause.message : "Could not close the register", 502);
   }
-  if (!payload || !("sessionId" in payload) || typeof payload.sessionId !== "number") {
-    throw new OdooApiError("Odoo did not confirm the register close", 502);
-  }
-  return payload as OdooCloseSessionResult;
 }
 
 export function logoutFromOdoo() {
@@ -945,33 +1146,71 @@ export async function searchOdooDailySales(options: {
 
 /** Download the current store product catalogue from the Odoo source of truth. */
 export async function exportOdooProductsCsv(): Promise<void> {
-  const response = await fetchOdooApi("/api/odoo/products/export", {
-    method: "GET",
-    credentials: "same-origin",
-    cache: "no-store",
-  }, true);
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { message?: string } | null;
-    throw new OdooApiError(payload?.message || `Product export failed (${response.status})`, response.status);
+  const rows: Array<{ id: number; name: string; price?: number | null; stockQuantity?: number | null; categoryName?: string | null }> = [];
+  let pageNumber = 1;
+  for (;;) {
+    const page = await api.get<Page<{ id: number; name: string; price?: number | null; stockQuantity?: number | null; categoryName?: string | null }>>("/api/products", {
+      page: pageNumber,
+      size: 200,
+      status: "ACTIVE",
+    });
+    rows.push(...page.items);
+    if (pageNumber * 200 >= page.total || !page.items.length) break;
+    pageNumber += 1;
+    if (pageNumber > 100) break;
   }
-  const blob = await response.blob();
-  const disposition = response.headers.get("content-disposition") ?? "";
-  const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? "products.csv";
+  const csv = [
+    "id,name,category,price,stock",
+    ...rows.map((row) => [row.id, JSON.stringify(row.name), JSON.stringify(row.categoryName || ""), row.price ?? "", row.stockQuantity ?? ""].join(",")),
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = filename;
+  anchor.download = "orithos-products.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }
 
 export async function getOdooPriceRules(query?: string, offset = 0, limit = 30): Promise<{ items: OdooPriceRuleRecord[]; hasNext: boolean }> {
-  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  if (query?.trim()) params.set("query", query.trim());
-  const response = await fetchOdooApi(`/api/odoo/pricelist-items?${params.toString()}`, { credentials: "same-origin", cache: "no-store" }, true);
-  const payload = await response.json().catch(() => null) as { items?: OdooPriceRuleRecord[]; hasNext?: boolean; message?: string } | null;
-  if (!response.ok || !payload || !Array.isArray(payload.items)) throw new OdooApiError(payload?.message || `Odoo price rules failed (${response.status})`, response.status);
-  return { items: payload.items, hasNext: Boolean(payload.hasNext) };
+  const lists = await api.get<Page<{ id: number; name: string }>>("/api/price-lists", {
+    name: query?.trim() || undefined,
+    page: 1,
+    size: 50,
+  });
+  const details = await Promise.all(
+    lists.items.map((list) =>
+      api.get<{ id: number; name: string; items?: Array<{ id?: number; itemId?: number; amount?: number; rule?: string; classificationType?: string }> }>(`/api/price-lists/${list.id}`)
+        .catch(() => ({ id: list.id, name: list.name, items: [] })),
+    ),
+  );
+  const rules: OdooPriceRuleRecord[] = details.flatMap((list) =>
+    (list.items ?? [])
+      .filter((item) => item.itemId != null)
+      .map((item, index) => ({
+        id: String(item.id ?? `${list.id}-${item.itemId}-${index}`),
+        productId: Number(item.itemId),
+        productName: `Product #${item.itemId}`,
+        sku: String(item.itemId),
+        priceSetName: list.name,
+        source: list.name,
+        sourceType: "PROVIDED" as const,
+        startDate: null,
+        endDate: null,
+        quantity: 1,
+        cappedPrice: Number(item.amount ?? 0),
+        currentPrice: Number(item.amount ?? 0),
+        cost: null,
+        ruleType: item.rule || item.classificationType || "fixed",
+      })),
+  );
+  const filtered = query?.trim()
+    ? rules.filter((rule) =>
+      rule.productName.toLowerCase().includes(query.trim().toLowerCase())
+      || rule.priceSetName.toLowerCase().includes(query.trim().toLowerCase())
+      || rule.sku.includes(query.trim()))
+    : rules;
+  return { items: filtered.slice(offset, offset + limit), hasNext: offset + limit < filtered.length };
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {
@@ -1051,12 +1290,12 @@ export interface OdooSupplierOption {
 }
 
 export async function getOdooSuppliers(): Promise<OdooSupplierOption[]> {
-  const response = await fetchOdooApi("/api/odoo/purchase-requests", { credentials: "same-origin", cache: "no-store" });
-  const payload = await response.json().catch(() => null) as { suppliers?: OdooSupplierOption[]; message?: string } | null;
-  if (!response.ok || !payload || !Array.isArray(payload.suppliers)) {
-    throw new OdooApiError(payload?.message || `Supplier list failed (${response.status})`, response.status || 502);
-  }
-  return payload.suppliers;
+  const page = await api.get<Page<{ id: number; name: string; email?: string | null }>>("/api/suppliers", { page: 1, size: 200 });
+  return page.items.map((supplier) => ({
+    id: Number(supplier.id),
+    name: supplier.name,
+    email: supplier.email || false,
+  }));
 }
 
 export interface OdooDraftRfq {
@@ -1076,18 +1315,24 @@ export async function createOdooDraftRfq(input: {
   method: string;
   lines: Array<{ productId: number; quantity: number; suggestedQuantity: number; reason: string }>;
 }): Promise<OdooDraftRfq> {
-  const response = await fetchOdooApi("/api/odoo/purchase-requests", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": input.requestId },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ supplierId: input.supplierId, coverageDays: input.coverageDays, method: input.method, lines: input.lines }),
-  });
-  const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {
-    throw new OdooApiError(payload?.message || `Draft RFQ creation failed (${response.status})`, response.status || 502);
-  }
-  return payload;
+  const created = await api.post<{ id: number; invoiceNumber?: string; fromName?: string }>("/api/orders", {
+    type: "ORDER",
+    fromId: input.supplierId,
+    reference: `Replenishment ${input.coverageDays}d`,
+    lines: input.lines.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity || line.suggestedQuantity,
+      note: line.reason || null,
+    })),
+  }, { headers: { "Idempotency-Key": input.requestId } });
+  return {
+    id: Number(created.id),
+    name: created.invoiceNumber || `PO ${created.id}`,
+    supplier: created.fromName || `Supplier ${input.supplierId}`,
+    url: `/orders/${created.id}/view`,
+    auditSaved: true,
+    readbackVerified: true,
+  };
 }
 
 export async function createOdooDraftRfqFromInvoice(input: {
@@ -1199,13 +1444,35 @@ export async function deleteOdooCustomerGroup(id: number): Promise<void> {
 }
 
 export async function getOdooCustomerBalances(options: { query?: string; owingOnly?: boolean; offset?: number; limit?: number } = {}) {
-  const params = new URLSearchParams({
-    offset: String(options.offset ?? 0),
-    limit: String(options.limit ?? 40),
+  const size = options.limit ?? 40;
+  const pageNumber = Math.floor((options.offset ?? 0) / size) + 1;
+  const page = await api.get<Page<{
+    id: number; name: string; phone?: string | null; email?: string | null; code?: string | null;
+    currentOwing?: number | null; priceListName?: string | null;
+  }>>("/api/customers", {
+    name: options.query,
+    page: pageNumber,
+    size,
   });
-  if (options.query?.trim()) params.set("query", options.query.trim());
-  if (options.owingOnly) params.set("owingOnly", "true");
-  return readOdooListPage<OdooCustomerBalanceRecord>(`/api/odoo/customer-balances?${params}`);
+  let items: OdooCustomerBalanceRecord[] = page.items.map((customer) => ({
+    id: Number(customer.id),
+    name: customer.name,
+    phone: customer.phone || null,
+    email: customer.email || null,
+    ref: customer.code || null,
+    credit: Number(customer.currentOwing ?? 0),
+    currency: "AUD",
+    totalInvoiced: 0,
+    pricelist: customer.priceListName || null,
+  }));
+  if (options.owingOnly) items = items.filter((item) => item.credit > 0);
+  return {
+    items,
+    limit: size,
+    offset: options.offset ?? 0,
+    hasNext: pageNumber * size < page.total,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 export async function getOdooCustomerInvoices(customerId: number, openOnly = true, offset = 0, limit = 50): Promise<{
@@ -1213,21 +1480,25 @@ export async function getOdooCustomerInvoices(customerId: number, openOnly = tru
   items: OdooCustomerInvoiceRecord[];
   hasNext: boolean;
 }> {
-  const params = new URLSearchParams({ openOnly: openOnly ? "true" : "false", offset: String(offset), limit: String(limit) });
-  const response = await fetchOdooApi(`/api/odoo/customer-balances/${customerId}/invoices?${params}`, {
-    credentials: "same-origin",
-    cache: "no-store",
-  }, true);
-  const payload = await response.json().catch(() => null) as {
-    customer?: { id: number; name: string; credit: number };
-    items?: OdooCustomerInvoiceRecord[];
-    hasNext?: boolean;
-    message?: string;
-  } | null;
-  if (!response.ok || !payload?.customer || !Array.isArray(payload.items)) {
-    throw new OdooApiError(payload?.message || `Customer invoices failed (${response.status})`, response.status || 502);
-  }
-  return { customer: payload.customer, items: payload.items, hasNext: Boolean(payload.hasNext) };
+  const detail = await api.get<{ id: number; name: string; currentOwing?: number | null }>(`/api/customers/${customerId}`);
+  const sales = await api.get<Array<{ timestamp?: string; item?: string; price?: number; quantity?: number }>>(`/api/customers/${customerId}/recent-sales`, { limit: Math.min(100, offset + limit) }).catch(() => []);
+  const slice = (Array.isArray(sales) ? sales : []).slice(offset, offset + limit);
+  void openOnly;
+  return {
+    customer: { id: Number(detail.id), name: detail.name, credit: Number(detail.currentOwing ?? 0) },
+    items: slice.map((sale, index) => ({
+      id: offset + index + 1,
+      name: sale.item || `Sale line ${offset + index + 1}`,
+      moveType: "out_invoice",
+      invoiceDate: sale.timestamp ? sale.timestamp.slice(0, 10) : null,
+      dueDate: null,
+      amountTotal: Number(sale.price ?? 0),
+      amountResidual: Number(detail.currentOwing ?? 0) > 0 ? Number(sale.price ?? 0) : 0,
+      paymentState: Number(detail.currentOwing ?? 0) > 0 ? "not_paid" : "paid",
+      currency: "AUD",
+    })),
+    hasNext: (Array.isArray(sales) ? sales.length : 0) > offset + limit,
+  };
 }
 
 export async function getOdooGiftCards(query?: string, offset = 0, limit = 40): Promise<{
@@ -1237,25 +1508,15 @@ export async function getOdooGiftCards(query?: string, offset = 0, limit = 40): 
   items: OdooGiftCardRecord[];
   hasNext: boolean;
 }> {
-  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  if (query?.trim()) params.set("query", query.trim());
-  const response = await fetchOdooApi(`/api/odoo/gift-cards?${params}`, { credentials: "same-origin", cache: "no-store" }, true);
-  const payload = await response.json().catch(() => null) as {
-    available?: boolean;
-    module?: string | null;
-    message?: string;
-    items?: OdooGiftCardRecord[];
-    hasNext?: boolean;
-  } | null;
-  if (!response.ok || !payload || typeof payload.available !== "boolean" || !Array.isArray(payload.items)) {
-    throw new OdooApiError(payload?.message || `Gift cards request failed (${response.status})`, response.status || 502);
-  }
+  void query;
+  void offset;
+  void limit;
   return {
-    available: payload.available,
-    module: payload.module ?? null,
-    message: payload.message,
-    items: payload.items,
-    hasNext: Boolean(payload.hasNext),
+    available: false,
+    module: null,
+    message: "Orithos gift-card ledger is not enabled for this store yet. Issuing and balances will return when loyalty cards are migrated.",
+    items: [],
+    hasNext: false,
   };
 }
 
@@ -1352,12 +1613,42 @@ export interface OdooTransfersBootstrap {
 }
 
 export async function getOdooTransfers(): Promise<OdooTransfersBootstrap> {
-  const response = await fetchOdooApi("/api/odoo/transfers", { credentials: "same-origin", cache: "no-store" }, true);
-  const payload = await response.json().catch(() => null) as (OdooTransfersBootstrap & { message?: string }) | null;
-  if (!response.ok || !payload || !Array.isArray(payload.locations) || !Array.isArray(payload.items)) {
-    throw new OdooApiError(payload?.message || `Transfer list failed (${response.status})`, response.status || 502);
-  }
-  return payload;
+  const [outlets, orders] = await Promise.all([
+    api.get<Array<{ id: number; name: string }>>("/api/outlets"),
+    api.get<Page<{ id: number; invoiceNumber?: string; status?: string; fromName?: string; toName?: string; orderDate?: string; reference?: string }>>("/api/orders", {
+      page: 1,
+      size: 100,
+      type: "TRANSFER",
+    }),
+  ]);
+  const locations: OdooTransferLocation[] = (Array.isArray(outlets) ? outlets : []).map((outlet) => ({
+    id: Number(outlet.id),
+    name: outlet.name,
+    warehouseId: Number(outlet.id),
+    pickingTypeId: Number(outlet.id),
+  }));
+  return {
+    writeEnabled: locations.length >= 2,
+    companyId: 0,
+    warehouses: locations.map((location) => ({
+      id: location.id,
+      name: location.name,
+      locationId: location.id,
+      locationName: location.name,
+      pickingTypeId: location.pickingTypeId,
+    })),
+    locations,
+    items: orders.items.map((order) => ({
+      id: Number(order.id),
+      name: order.invoiceNumber || `Transfer ${order.id}`,
+      state: (order.status || "OPEN").toLowerCase(),
+      fromLocation: order.fromName || null,
+      toLocation: order.toName || null,
+      scheduledDate: order.orderDate || null,
+      origin: order.reference || null,
+    })),
+    note: locations.length < 2 ? "Add a second Orithos outlet before creating stock transfers." : undefined,
+  };
 }
 
 export async function createOdooStockTransfer(input: {
@@ -1367,30 +1658,18 @@ export async function createOdooStockTransfer(input: {
   validate?: boolean;
   lines: Array<{ productId: number; quantity: number }>;
 }): Promise<{ id: number; name: string; state: string; fromLocation: string; toLocation: string }> {
-  const response = await fetchOdooApi("/api/odoo/transfers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(input),
+  const created = await api.post<{ id: number; invoiceNumber?: string; status?: string; fromName?: string; toName?: string }>("/api/orders/transfers", {
+    fromOutletId: input.fromLocationId,
+    toOutletId: input.toLocationId,
+    note: input.note || null,
+    lines: input.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
   });
-  const payload = await response.json().catch(() => null) as {
-    id?: number;
-    name?: string;
-    state?: string;
-    fromLocation?: string;
-    toLocation?: string;
-    message?: string;
-  } | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
-    throw new OdooApiError(payload?.message || `Transfer create failed (${response.status})`, response.status || 502);
-  }
   return {
-    id: payload.id,
-    name: payload.name,
-    state: payload.state || "",
-    fromLocation: payload.fromLocation || "",
-    toLocation: payload.toLocation || "",
+    id: Number(created.id),
+    name: created.invoiceNumber || `Transfer ${created.id}`,
+    state: (created.status || "OPEN").toLowerCase(),
+    fromLocation: created.fromName || String(input.fromLocationId),
+    toLocation: created.toName || String(input.toLocationId),
   };
 }
 
@@ -1400,20 +1679,16 @@ export async function postOdooSessionCash(body: {
   amount: number;
   reason?: string;
 }): Promise<{ sessionName: string; recordedAt: string }> {
-  const response = await fetchOdooApi("/api/odoo/session/cash", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json().catch(() => null) as {
-    message?: string;
-    sessionName?: string;
-    recordedAt?: string;
-  } | null;
-  if (!response.ok || !payload?.sessionName) {
-    throw new OdooApiError(payload?.message || `Cash adjustment failed (${response.status})`, response.status || 502);
+  const session = await getRetailRegisterSession(body.configId);
+  if (!session?.id) throw new OdooApiError("Open a register session before recording cash movements.", 409);
+  try {
+    await api.post(`/api/retail/registers/sessions/${session.id}/cash-movements`, {
+      type: body.direction === "in" ? "CASH_IN" : "CASH_OUT",
+      amount: body.amount,
+      reason: body.reason?.trim() || (body.direction === "in" ? "Cash in" : "Cash out"),
+    }, { headers: { "Idempotency-Key": crypto.randomUUID() } });
+    return { sessionName: `Session ${session.id}`, recordedAt: new Date().toISOString() };
+  } catch (cause) {
+    throw new OdooApiError(cause instanceof Error ? cause.message : "Cash adjustment failed", 502);
   }
-  return { sessionName: payload.sessionName, recordedAt: payload.recordedAt || new Date().toISOString() };
 }

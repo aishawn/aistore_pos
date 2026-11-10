@@ -16,7 +16,7 @@ import {
   Store,
   X,
 } from "lucide-react";
-import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
+import { createOdooDraftRfq, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import {
@@ -264,21 +264,76 @@ export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean
     else setLoading(true);
     setError(null);
     try {
-      const mode = exceptionOnly ? "&mode=exceptions" : "";
-      const force = refresh ? "&refresh=true" : "";
-      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}${mode}${force}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-      const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
+      const response = await fetch(`/api/supply-chain/plan`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+      const body = await response.json().catch(() => null) as {
+        data?: {
+          weekStart?: string;
+          weekEnd?: string;
+          productCount?: number;
+          lines?: Array<{
+            productId?: number;
+            productName?: string;
+            supplierName?: string;
+            lastWeekSales?: number;
+            currentStock?: number;
+            expectedDemand?: number;
+            orderQty?: number;
+            unitCost?: number;
+            reason?: string;
+            confidenceLabel?: string;
+            status?: string;
+          }>;
+        };
+        message?: string;
+      } | null;
       if (revision !== requestRevision.current) return;
-      if (!response.ok) {
-        const message = payload && "message" in payload ? payload.message : undefined;
+      if (!response.ok || !body?.data) {
         setNeedsConnection(response.status === 401);
-        throw new Error(message || `Could not load the replenishment plan (${response.status}).`);
+        throw new Error(body?.message || `Could not load the replenishment plan (${response.status}).`);
       }
-      if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Orithos returned an incomplete replenishment plan.");
+      const lines = Array.isArray(body.data.lines) ? body.data.lines : [];
+      const products: ReplenishmentProduct[] = lines
+        .filter((line) => line.productId != null)
+        .map((line) => {
+          const onHand = Number(line.currentStock ?? 0);
+          const suggested = Math.max(0, Number(line.orderQty ?? 0));
+          const sold = Number(line.lastWeekSales ?? 0);
+          return {
+            id: Number(line.productId),
+            name: line.productName || `Product ${line.productId}`,
+            sku: "",
+            unit: "Units",
+            soldUnits: sold,
+            recentUnits: sold,
+            previousUnits: 0,
+            unitsPerDay: sold / 7,
+            trendPercent: null,
+            trend: null,
+            onHand,
+            forecastStock: onHand,
+            daysOfStock: sold > 0 ? onHand / (sold / 7) : null,
+            suggestedQuantity: suggested,
+            reason: line.reason || line.supplierName || undefined,
+            unitCost: line.unitCost == null ? null : Number(line.unitCost),
+            recommendationStatus: (suggested > 0 ? "READY" : "NO_DEMAND") as ReplenishmentProduct["recommendationStatus"],
+            confidence: (line.confidenceLabel as ReplenishmentProduct["confidence"]) || "MEDIUM",
+          };
+        })
+        .filter((product) => !exceptionOnly || product.suggestedQuantity > 0 || product.onHand <= 0);
+      const payload: ReplenishmentData = {
+        company: "Orithos",
+        historyDays: 7,
+        periodDays: coverageDays,
+        coverageDays,
+        products,
+        truncated: false,
+        generatedAt: new Date().toISOString(),
+        salesHistory: { timezone: "Australia/Adelaide", timezoneVerified: true },
+      };
       setNeedsConnection(false);
       setData(payload);
-      if (payload.salesHistory?.timezone) setStoreTimezone(payload.salesHistory.timezone);
-      try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.parse(payload.generatedAt), data: payload })); } catch { /* Storage is optional. */ }
+      setStoreTimezone("Australia/Adelaide");
+      try { window.localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload })); } catch { /* Storage is optional. */ }
       setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
     } catch (cause) {
       if (revision === requestRevision.current) {
