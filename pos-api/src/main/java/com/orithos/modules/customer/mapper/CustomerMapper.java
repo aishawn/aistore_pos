@@ -272,10 +272,10 @@ public interface CustomerMapper {
     @Insert("""
         INSERT INTO customer (name, first_name, last_name, code, company, email, phone, mobile,
                               customer_group_id, loyalty_enabled, loyalty_points, price_list_id,
-                              account_limit, current_owing, birthday, allow_marketing_emails)
+                              account_limit, current_owing, birthday, allow_marketing_emails, outlet_id)
         VALUES (#{name}, #{firstName}, #{lastName}, #{code}, #{company}, #{email}, #{phone}, #{mobile},
                 #{customerGroupId}, #{loyaltyEnabled}, #{loyaltyPoints}, #{priceListId},
-                #{accountLimit}, #{currentOwing}, #{birthday}, #{allowMarketingEmails})
+                #{accountLimit}, #{currentOwing}, #{birthday}, #{allowMarketingEmails}, #{outletId})
         """)
     int insert(Customer c);
 

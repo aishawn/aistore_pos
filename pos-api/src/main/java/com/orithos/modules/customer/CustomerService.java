@@ -7,6 +7,7 @@ import com.orithos.modules.customer.mapper.ContactMapper;
 import com.orithos.modules.customer.mapper.CustomerEmailMapper;
 import com.orithos.modules.customer.mapper.CustomerMapper;
 import com.orithos.modules.sale.SaleMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

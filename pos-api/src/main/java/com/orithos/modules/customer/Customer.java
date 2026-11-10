@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class Customer {
+    private Long outletId;
     private Long id;
     private String name;
     private String firstName;

@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.orithos.security.CurrentUser;
 
 @Service
 public class CustomerImportService {
@@ -55,6 +56,8 @@ public class CustomerImportService {
     }
 
     public CustomerImportResult importCsv(MultipartFile file) throws IOException {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
         if (file == null || file.isEmpty()) {
             throw new BusinessException("Please select a file to import.");
         }
@@ -83,6 +86,7 @@ public class CustomerImportService {
                     skipped++;
                     continue;
                 }
+                customer.setOutletId(outletId);
                 customerMapper.insert(customer);
                 imported++;
             } catch (BusinessException e) {
