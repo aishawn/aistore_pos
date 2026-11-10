@@ -18,14 +18,14 @@ public interface CustomerGroupMapper {
             ) AS customer_count
             FROM customer_group g
             WHERE g.deleted_at IS NULL AND g.outlet_id = #{outletId}
-              AND (#{name} IS NULL OR g.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!')
+              AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR g.name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!')
             ORDER BY g.created_at DESC, g.id DESC
             LIMIT #{size} OFFSET #{offset}
             """)
     List<CustomerGroup> page(@Param("name") String name, @Param("outletId") Long outletId, @Param("size") int size, @Param("offset") int offset);
 
     @Select("SELECT COUNT(*) FROM customer_group WHERE deleted_at IS NULL AND outlet_id=#{outletId} "
-            + "AND (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%') ESCAPE '!')")
+            + "AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!')")
     long count(@Param("name") String name, @Param("outletId") Long outletId);
 
     @Select("SELECT outlet_id FROM customer_group WHERE id=#{id} AND deleted_at IS NULL")
