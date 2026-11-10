@@ -1,8 +1,8 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-11 ~00:30 (UTC+8)  
+> Generated: 2026-11-11 ~01:20 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
-> Session: Retire unused `/api/odoo` BFF tree → catch-all 410 + cache/nav cleanup  
+> Session: Post-deploy verify `1e06a9c0` + leftover `/customers/odoo` / dead report-client cleanup  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
 > Tip SHA: see `git log -1` after this retirement push
 
@@ -18,8 +18,10 @@ Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/vers
 
 - Live `pos-ui` components/app pages no longer call `/api/odoo/*` or `/api/shopfront*` for data (grep gate on `src/components` + `odoo-api.ts` clean). Workspace panels, settings company/tax/registers/export, PO list/confirm/receive, invoice→PO, price suggestions/bulk edit, daily sales history, assistant ops preview, and sync stamp all use Orithos APIs.
 - Dead unmounted report/Shopfront page components removed. `/api/shopfront-source` remains 410.
-- **BFF retirement (this slice):** deleted concrete `pos-ui/app/api/odoo/**` route handlers; left `app/api/odoo/[...path]/route.ts` returning **410**. Sales History nav → `/history` (redirects to reports ledger). `odoo-read-cache` no longer TTLs `/api/odoo/*`. SellAiPanel ops preview uses default `fetch` to Orithos routes.
-- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; compose `report-worker` still Odoo-credentialed (not browser); physical Odoo decommission.
+- **BFF retirement:** deleted concrete `pos-ui/app/api/odoo/**` route handlers; left `app/api/odoo/[...path]/route.ts` returning **410**. Sales History nav → `/history` (redirects to reports ledger). `odoo-read-cache` no longer TTLs `/api/odoo/*`.
+- **Post-deploy verify (2026-11-11, live SHA `1e06a9c0` Demo+SKR):** `/api/odoo/*` and `/api/shopfront-source` → **410**; auth native products/customers/suppliers/orders/sales/payment-methods → **200**; `native-overview?from=&to=` → `orithos_ledger` Demo **$4,865.86 / 206** for Adelaide **2026-11-10**. Day-totals both hosts expose `demo`+`skr` (demo 206/$4865.86, skr 205/$4861.06; small `other_*` non-shopfront INV rows remain).
+- **This follow-up:** `/customers/odoo` redirects to `/customers` (was still mounting directory); remove unused `report-client` / `report-request` / `OdooPosConnectionCard`.
+- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; compose `report-worker` still Odoo-credentialed (not browser); physical Odoo decommission; triage day-totals `other_sales` INV orphans.
 - Cashiers on NativePosGate vendors `1,55` can list `/api/retail/payment-methods` without `settings.view`.
 
 ## Page audit (this follow-up)

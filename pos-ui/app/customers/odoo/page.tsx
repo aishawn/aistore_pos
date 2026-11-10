@@ -1,13 +1,9 @@
+import { redirect } from "next/navigation";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { Suspense } from "react";
-import { OdooCustomerDirectoryPage } from "@/components/OdooCustomerDirectoryPage";
-
+/** Legacy Odoo customers path — Orithos directory lives at /customers. */
 export default function OdooCustomerDirectoryRoute() {
-  return (
-    <Suspense fallback={<div role="status" className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading customers...</div>}>
-      <OdooCustomerDirectoryPage />
-    </Suspense>
-  );
+  redirect("/customers");
 }
