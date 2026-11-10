@@ -129,6 +129,30 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if (path.equals("/api/tax-rates") || path.startsWith("/api/tax-rates/")) {
             return false;
         }
+        // Orithos Settings 1:1 — company KV, catalogues, enterprise/push, import promote.
+        // Controllers require authenticated vendor scope / settings.* permissions.
+        if (path.equals("/api/settings") || path.startsWith("/api/settings/")) {
+            return false;
+        }
+        if (path.equals("/api/payment-methods") || path.startsWith("/api/payment-methods/")) {
+            return false;
+        }
+        if (path.equals("/api/outlets") || path.startsWith("/api/outlets/")) {
+            return false;
+        }
+        if (path.equals("/api/registers") || path.startsWith("/api/registers/")) {
+            return false;
+        }
+        if (path.equals("/api/receipts") || path.startsWith("/api/receipts/")
+                || path.equals("/api/statements") || path.startsWith("/api/statements/")
+                || path.equals("/api/sale-keys") || path.startsWith("/api/sale-keys/")
+                || path.equals("/api/transferees") || path.startsWith("/api/transferees/")
+                || path.equals("/api/customer-displays") || path.startsWith("/api/customer-displays/")
+                || path.equals("/api/barcode-templates") || path.startsWith("/api/barcode-templates/")
+                || path.equals("/api/price-sets") || path.startsWith("/api/price-sets/")
+                || path.equals("/api/promotion-categories") || path.startsWith("/api/promotion-categories/")) {
+            return false;
+        }
         if (path.equals("/api/customers")
                 || path.matches("/api/customers/[0-9]+")
                 || path.matches("/api/customers/[0-9]+/(recent-sales|revisions)")

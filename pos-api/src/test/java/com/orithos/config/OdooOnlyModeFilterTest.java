@@ -86,10 +86,13 @@ class OdooOnlyModeFilterTest {
             assertEquals(200, response.getStatus());
             assertSame(request, (ServletRequest) chain.getRequest());
         }
-        MockHttpServletRequest legacy = new MockHttpServletRequest("GET", "/api/registers");
-        MockHttpServletResponse legacyResponse = new MockHttpServletResponse();
-        filter.doFilter(legacy, legacyResponse, new MockFilterChain());
-        assertEquals(410, legacyResponse.getStatus());
+        // /api/registers is live for Orithos Settings (Registers & Outlets / surcharging).
+        MockHttpServletRequest registers = new MockHttpServletRequest("GET", "/api/registers");
+        MockHttpServletResponse registersResponse = new MockHttpServletResponse();
+        MockFilterChain registersChain = new MockFilterChain();
+        filter.doFilter(registers, registersResponse, registersChain);
+        assertEquals(200, registersResponse.getStatus());
+        assertSame(registers, (ServletRequest) registersChain.getRequest());
 
         for (String[] route : new String[][]{
                 {"GET", "/api/register-closures"},
@@ -249,6 +252,42 @@ class OdooOnlyModeFilterTest {
                 {"DELETE", "/api/tax-rates/3"},
                 {"PUT", "/api/tax-rates/3/set-default"},
                 {"PUT", "/api/tax-rates/3/merge"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus(), route[0] + " " + route[1]);
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+    }
+
+    @Test
+    void nativeSettingsRoutesPassThroughInOdooOnlyMode() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (var route : new String[][]{
+                {"GET", "/api/settings"},
+                {"GET", "/api/settings/company"},
+                {"PUT", "/api/settings/company"},
+                {"GET", "/api/settings/enterprise"},
+                {"PUT", "/api/settings/enterprise"},
+                {"GET", "/api/settings/push"},
+                {"PUT", "/api/settings/push"},
+                {"POST", "/api/settings/import/promote"},
+                {"GET", "/api/payment-methods"},
+                {"POST", "/api/payment-methods"},
+                {"GET", "/api/outlets"},
+                {"POST", "/api/outlets"},
+                {"GET", "/api/registers"},
+                {"PUT", "/api/registers/3/surcharging"},
+                {"GET", "/api/receipts"},
+                {"GET", "/api/statements"},
+                {"GET", "/api/sale-keys"},
+                {"GET", "/api/transferees"},
+                {"GET", "/api/customer-displays"},
+                {"GET", "/api/barcode-templates"},
+                {"GET", "/api/price-sets"},
+                {"GET", "/api/promotion-categories"}
         }) {
             MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
             MockHttpServletResponse response = new MockHttpServletResponse();
