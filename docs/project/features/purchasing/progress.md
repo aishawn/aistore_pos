@@ -4,8 +4,9 @@
 
 ## 已完成
 
-- 主采购页改为渲染 Orithos `OrithosPurchaseOrdersPage`，正式列表读取 `/api/orders`。
+- 主采购页 `/purchases` 恢复 `PurchasingWorkspace` 外壳（Orders / Invoices / Suppliers / Replenishment tabs）；Orders 标签仍嵌入 Orithos `OrithosPurchaseOrdersPage` 并读取 `/api/orders`。
 - 旧 `/purchases/odoo` 地址重定向到 `/purchases`。
+- 2026-11-10：所有者要求恢复采购 tabs；此前单独渲染 `OrithosPurchaseOrdersPage` 会丢掉工作区导航，已改回 workspace。
 - Shopfront 采购历史 API 改为用认证门店 host 映射到固定 `skr` crawler 来源；不再读取 Odoo company binding 或 Odoo purchasing ledger。
 - 历史来源读取校验页数、总行数和唯一来源 ID；失败时不返回部分结果。历史记录保持只读，不写库存。
 - `9703508f92c762c7f02ce9bd79f1790bc96678c1` 已部署到 Demo、SKR、App；三个 host 的 frontend/backend runtime SHA 均匹配。

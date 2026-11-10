@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-import { OrithosRegisterRoute } from "@/components/OrithosRegisterRoute";
+
+import { OdooRegisterPage } from "@/components/OdooRegisterPage";
 
 export default function RegisterRoute() {
-  return <OrithosRegisterRoute />;
+  return <OdooRegisterPage />;
 }

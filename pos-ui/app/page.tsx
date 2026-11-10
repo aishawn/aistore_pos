@@ -1,5 +1,5 @@
-import { OrithosRegisterRoute } from "@/components/OrithosRegisterRoute";
+import { OdooRegisterPage } from "@/components/OdooRegisterPage";
 
 export default function Home() {
-  return <OrithosRegisterRoute />;
+  return <OdooRegisterPage />;
 }
