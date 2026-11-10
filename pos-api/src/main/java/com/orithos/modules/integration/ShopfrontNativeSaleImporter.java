@@ -153,10 +153,19 @@ public class ShopfrontNativeSaleImporter {
         putText(saleNode, "status", firstNonBlank(text(payload, "status"), stringValue(row.get("status"))));
         putText(saleNode, "created_at", firstNonBlank(text(payload, "created_at"), stringValue(row.get("created_at"))));
         putText(saleNode, "updated_at", firstNonBlank(text(payload, "updated_at"), stringValue(row.get("updated_at"))));
-        saleNode.put("total_price", decimal(row.get("total_price")));
-        saleNode.put("total_tax", decimal(row.get("total_tax")));
-        saleNode.put("total_discount", decimal(row.get("total_discount")));
-        saleNode.put("total_cost", decimal(row.get("total_cost")));
+        BigDecimal columnTotal = decimal(row.get("total_price"));
+        BigDecimal payloadTotal = decimalNode(payload, "total_price");
+        BigDecimal totalPrice = columnTotal.signum() == 0 && payloadTotal != null ? payloadTotal : columnTotal;
+        if (payloadTotal != null && payloadTotal.subtract(columnTotal).abs().compareTo(new BigDecimal("0.009")) > 0) {
+            totalPrice = payloadTotal;
+        }
+        saleNode.put("total_price", totalPrice);
+        BigDecimal tax = firstNonNullDecimal(decimalNode(payload, "total_tax"), decimal(row.get("total_tax")));
+        BigDecimal discount = firstNonNullDecimal(decimalNode(payload, "total_discount"), decimal(row.get("total_discount")));
+        BigDecimal cost = firstNonNullDecimal(decimalNode(payload, "total_cost"), decimal(row.get("total_cost")));
+        if (tax != null) saleNode.put("total_tax", tax);
+        if (discount != null) saleNode.put("total_discount", discount);
+        if (cost != null) saleNode.put("total_cost", cost);
         putText(saleNode, "customer_reference", stringValue(row.get("customer_reference")));
 
         var lineItems = objectMapper.createArrayNode();
@@ -569,13 +578,17 @@ public class ShopfrontNativeSaleImporter {
             return bd;
         }
         if (value instanceof Number number) {
-            return BigDecimal.valueOf(number.doubleValue());
+            return new BigDecimal(number.toString());
         }
         try {
             return new BigDecimal(String.valueOf(value).trim());
         } catch (Exception e) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private static BigDecimal firstNonNullDecimal(BigDecimal primary, BigDecimal fallback) {
+        return primary != null ? primary : fallback;
     }
 
     private static BigDecimal money(BigDecimal value) {
