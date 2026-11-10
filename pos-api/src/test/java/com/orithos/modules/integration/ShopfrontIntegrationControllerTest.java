@@ -310,6 +310,87 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void purchaseOrderImportLazilyMapsProductsByShopfrontBarcode() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(1L)))
+                .thenReturn(1L);
+        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("supplier_id", 221L)));
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForList(contains("FROM shopfront_product sp"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("pos_product_id", 501L)));
+        when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
+                .thenReturn(601L);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importer = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusinessPurchaseOrders", String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class);
+        importer.setAccessible(true);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-order-demo-1","supplier_source_id":"sf-supplier-1","raw_payload":{
+                  "status":"OPEN","orderDate":"2026-11-10","invoiceNumber":"PO-1",
+                  "totalCost":10,"expectedTotal":10,"products":[{
+                    "caseQuantity":1,"orderedQuantity":1,"receivedQuantity":0,"baseCost":10,"orderedCost":10,
+                    "supplier":{"id":"sf-supplier-1"},"item":{"id":"sf-product-1","mdbId":"SKU-1"}
+                  }]
+                }}]
+                """);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) importer.invoke(controller, "demo",
+                Map.of("company_id", "1", "outlet_id", "1"), items);
+
+        assertEquals(1, result.get("created"));
+        assertEquals(0, result.get("skipped"));
+        verify(jdbc).update(contains("BARCODE_LAZY"), any(Object[].class));
+    }
+
+    @Test
+    void clonesProductMappingsInBoundedPhases() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("store_key", "skr", "outlet_id", 87, "enabled", 1),
+                        Map.of("store_key", "demo", "outlet_id", 1, "enabled", 1)));
+        when(jdbc.update(contains("BARCODE"), any(Object[].class))).thenReturn(1500);
+        when(jdbc.queryForObject(contains("shopfront_product_mapping WHERE store_key"), eq(Integer.class), eq("skr")))
+                .thenReturn(11000);
+        when(jdbc.queryForObject(contains("shopfront_product_mapping WHERE store_key"), eq(Integer.class), eq("demo")))
+                .thenReturn(1500);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var body = new ObjectMapper().createObjectNode()
+                .put("source_store_key", "skr")
+                .put("target_store_key", "demo")
+                .put("phase", "target_barcodes")
+                .put("limit", 1500);
+
+        Map<String, Object> result = controller.cloneProductMappings("token", body).data();
+        assertEquals("CLONED", result.get("status"));
+        assertEquals(true, result.get("more"));
+        assertEquals(1500, result.get("inserted"));
+        assertEquals("target_barcodes", result.get("phase"));
+    }
+
+    @Test
     void pagesProductMirrorByImmutableSourceId() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);

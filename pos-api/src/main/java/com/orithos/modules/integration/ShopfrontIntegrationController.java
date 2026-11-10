@@ -799,7 +799,36 @@ public class ShopfrontIntegrationController {
                       AND pm.status = 'MAPPED'
                   )
                 """, Integer.class, storeKey));
-        result.put("sales_with_unmatched_items", jdbc.queryForObject("SELECT COUNT(DISTINCT ss.external_id) FROM shopfront_sale ss JOIN shopfront_sale_item si ON si.store_key = ss.store_key AND si.external_sale_id = ss.external_id LEFT JOIN shopfront_product sp ON sp.store_key = ss.store_key AND sp.source_id = si.source_product_id WHERE ss.store_key = ? AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping pm WHERE pm.store_key = ss.store_key AND pm.source_product_id = si.source_product_id AND pm.status = 'MAPPED') AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
+        result.put("sales_with_unmatched_items", jdbc.queryForObject("""
+                WITH unmatched_products AS (
+                    SELECT sp.source_id
+                    FROM shopfront_product sp
+                    WHERE sp.store_key = ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM shopfront_product_mapping pm
+                          WHERE pm.store_key = sp.store_key
+                            AND pm.source_product_id = sp.source_id
+                            AND pm.status = 'MAPPED'
+                      )
+                      AND (sp.barcode IS NULL OR NOT EXISTS (
+                          SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
+                      ))
+                ), unmatched_sales AS (
+                    SELECT DISTINCT si.external_sale_id
+                    FROM shopfront_sale_item si
+                    JOIN unmatched_products up ON up.source_id = si.source_product_id
+                    WHERE si.store_key = ?
+                    UNION
+                    SELECT DISTINCT si.external_sale_id
+                    FROM shopfront_sale_item si
+                    WHERE si.store_key = ?
+                      AND (si.source_product_id IS NULL OR TRIM(si.source_product_id) = '')
+                )
+                SELECT COUNT(*)
+                FROM unmatched_sales us
+                JOIN shopfront_sale ss
+                  ON ss.store_key = ? AND ss.external_id = us.external_sale_id
+                """, Integer.class, storeKey, storeKey, storeKey, storeKey));
         result.put("sale_items_missing_name", jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (product_name IS NULL OR TRIM(product_name) = '')",
                 Integer.class, storeKey));
@@ -828,9 +857,13 @@ public class ShopfrontIntegrationController {
      * Clone missing {@code shopfront_product_mapping} rows from one enabled store
      * onto another by matching barcodes on the target outlet. Used to repair
      * Demo/SKR dual-tenant drift without rewriting catalogue rows.
+     *
+     * <p>Cloudflare/proxy timeouts kill the historical all-at-once SQL, so callers
+     * should pass {@code phase} ({@code target_barcodes}, {@code source_mappings},
+     * {@code source_barcodes}) and {@code limit} (default 1500) and loop until
+     * {@code more=false} for each phase.
      */
     @PostMapping("/product-mappings:clone")
-    @Transactional
     public ApiResult<Map<String, Object>> cloneProductMappings(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) {
@@ -842,6 +875,15 @@ public class ShopfrontIntegrationController {
         if (!STORE_KEY.matcher(source).matches() || !STORE_KEY.matcher(target).matches() || source.equals(target)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Distinct valid source_store_key and target_store_key are required");
+        }
+        String phase = body.path("phase").asText("target_barcodes").trim().toLowerCase(Locale.ROOT);
+        if (!Set.of("target_barcodes", "source_mappings", "source_barcodes").contains(phase)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "phase must be target_barcodes, source_mappings, or source_barcodes");
+        }
+        int limit = body.path("limit").asInt(1500);
+        if (limit < 1 || limit > 5000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be between 1 and 5000");
         }
         List<Map<String, Object>> mappings = jdbc.queryForList(
                 "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key IN (?, ?)",
@@ -862,9 +904,109 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Target Shopfront mapping has no numeric POS outlet_id");
         }
+        int inserted = switch (phase) {
+            case "source_mappings" -> cloneSourceMappingsBatch(source, target, targetOutletId, limit);
+            case "source_barcodes" -> cloneSourceBarcodesBatch(source, target, targetOutletId, limit);
+            default -> cloneTargetBarcodesBatch(target, targetOutletId, limit);
+        };
+        Integer sourceCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
+                Integer.class, source);
+        Integer targetCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
+                Integer.class, target);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "CLONED");
+        result.put("phase", phase);
+        result.put("limit", limit);
+        result.put("inserted", inserted);
+        result.put("more", inserted >= limit);
+        result.put("source_store_key", source);
+        result.put("target_store_key", target);
+        result.put("target_outlet_id", targetOutletId);
+        result.put("cloned_from_source_mappings", "source_mappings".equals(phase) ? inserted : 0);
+        result.put("mapped_from_target_barcodes", "target_barcodes".equals(phase) ? inserted : 0);
+        result.put("mapped_from_source_barcodes", "source_barcodes".equals(phase) ? inserted : 0);
+        result.put("source_mapped_count", sourceCount == null ? 0 : sourceCount);
+        result.put("target_mapped_count", targetCount == null ? 0 : targetCount);
+        return ApiResult.ok(result);
+    }
+
+    @GetMapping("/mapping-counts")
+    public ApiResult<Map<String, Object>> mappingCounts(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String storeKey) {
+        authorize(supplied);
+        ensureMappingTable();
+        ensureShadowTables();
+        ensurePurchaseOrderBusinessMappingTable();
+        if (!STORE_KEY.matcher(storeKey).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid storeKey");
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", storeKey);
+        result.put("products", count("shopfront_product", storeKey));
+        Integer mapped = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
+                Integer.class, storeKey);
+        result.put("products_mapped", mapped == null ? 0 : mapped);
+        Integer unmapped = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM shopfront_product sp
+                WHERE sp.store_key = ?
+                  AND NOT EXISTS (
+                    SELECT 1 FROM shopfront_product_mapping pm
+                    WHERE pm.store_key = sp.store_key
+                      AND pm.source_product_id = sp.source_id
+                      AND pm.status = 'MAPPED'
+                  )
+                """, Integer.class, storeKey);
+        result.put("products_unmapped", unmapped == null ? 0 : unmapped);
+        Integer suppliersMapped = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_supplier_business_mapping WHERE store_key = ?",
+                Integer.class, storeKey);
+        result.put("suppliers_mapped", suppliersMapped == null ? 0 : suppliersMapped);
+        Integer ordersMapped = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key = ?",
+                Integer.class, storeKey);
+        result.put("purchase_orders_mapped", ordersMapped == null ? 0 : ordersMapped);
+        return ApiResult.ok(result);
+    }
+
+    private int cloneTargetBarcodesBatch(String target, long targetOutletId, int limit) {
+        return jdbc.update("""
+                INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
+                SELECT ?, source_id, pos_product_id, 'BARCODE', 'MAPPED'
+                FROM (
+                    SELECT DISTINCT ON (sp.source_id)
+                           sp.source_id,
+                           pb.product_id AS pos_product_id
+                    FROM shopfront_product sp
+                    JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
+                    JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                    WHERE sp.store_key = ?
+                      AND sp.barcode IS NOT NULL
+                      AND TRIM(sp.barcode) <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM shopfront_product_mapping existing
+                          WHERE existing.store_key = ?
+                            AND existing.source_product_id = sp.source_id
+                            AND existing.status = 'MAPPED'
+                      )
+                    ORDER BY sp.source_id, pb.product_id
+                    LIMIT ?
+                ) resolved
+                ON CONFLICT (store_key, source_product_id) DO UPDATE
+                SET pos_product_id = EXCLUDED.pos_product_id,
+                    match_type = 'BARCODE',
+                    status = 'MAPPED',
+                    updated_at = CURRENT_TIMESTAMP
+                """, target, targetOutletId, targetOutletId, target, target, limit);
+    }
+
+    private int cloneSourceMappingsBatch(String source, String target, long targetOutletId, int limit) {
         // DISTINCT ON avoids "ON CONFLICT cannot affect row a second time" when a
         // source product has multiple barcodes that all resolve on the target outlet.
-        int inserted = jdbc.update("""
+        return jdbc.update("""
                 INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
                 SELECT ?, source_product_id, pos_product_id, 'CLONE', 'MAPPED'
                 FROM (
@@ -887,44 +1029,20 @@ public class ShopfrontIntegrationController {
                             AND existing.status = 'MAPPED'
                       )
                     ORDER BY m.source_product_id, pb_target.product_id
+                    LIMIT ?
                 ) resolved
                 ON CONFLICT (store_key, source_product_id) DO UPDATE
                 SET pos_product_id = EXCLUDED.pos_product_id,
                     match_type = 'CLONE',
                     status = 'MAPPED',
                     updated_at = CURRENT_TIMESTAMP
-                """, target, targetOutletId, targetOutletId, source, target);
-        // Also map target-store shadow products by barcode when source mapping is absent.
-        int barcodeInserted = jdbc.update("""
-                INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
-                SELECT ?, source_id, pos_product_id, 'BARCODE', 'MAPPED'
-                FROM (
-                    SELECT DISTINCT ON (sp.source_id)
-                           sp.source_id,
-                           pb.product_id AS pos_product_id
-                    FROM shopfront_product sp
-                    JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
-                    JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
-                    WHERE sp.store_key = ?
-                      AND sp.barcode IS NOT NULL
-                      AND TRIM(sp.barcode) <> ''
-                      AND NOT EXISTS (
-                          SELECT 1 FROM shopfront_product_mapping existing
-                          WHERE existing.store_key = ?
-                            AND existing.source_product_id = sp.source_id
-                            AND existing.status = 'MAPPED'
-                      )
-                    ORDER BY sp.source_id, pb.product_id
-                ) resolved
-                ON CONFLICT (store_key, source_product_id) DO UPDATE
-                SET pos_product_id = EXCLUDED.pos_product_id,
-                    match_type = 'BARCODE',
-                    status = 'MAPPED',
-                    updated_at = CURRENT_TIMESTAMP
-                """, target, targetOutletId, targetOutletId, target, target);
+                """, target, targetOutletId, targetOutletId, source, target, limit);
+    }
+
+    private int cloneSourceBarcodesBatch(String source, String target, long targetOutletId, int limit) {
         // Shared Shopfront catalog: use the source-store shadow barcode (same
         // source_id) when the target POS product already carries that code.
-        int sourceBarcodeInserted = jdbc.update("""
+        return jdbc.update("""
                 INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
                 SELECT ?, source_product_id, pos_product_id, 'CLONE_SOURCE_BARCODE', 'MAPPED'
                 FROM (
@@ -948,30 +1066,14 @@ public class ShopfrontIntegrationController {
                             AND existing.status = 'MAPPED'
                       )
                     ORDER BY m.source_product_id, pb_target.product_id
+                    LIMIT ?
                 ) resolved
                 ON CONFLICT (store_key, source_product_id) DO UPDATE
                 SET pos_product_id = EXCLUDED.pos_product_id,
                     match_type = 'CLONE_SOURCE_BARCODE',
                     status = 'MAPPED',
                     updated_at = CURRENT_TIMESTAMP
-                """, target, source, targetOutletId, targetOutletId, source, target);
-        Integer sourceCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
-                Integer.class, source);
-        Integer targetCount = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
-                Integer.class, target);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "CLONED");
-        result.put("source_store_key", source);
-        result.put("target_store_key", target);
-        result.put("target_outlet_id", targetOutletId);
-        result.put("cloned_from_source_mappings", inserted);
-        result.put("mapped_from_target_barcodes", barcodeInserted);
-        result.put("mapped_from_source_barcodes", sourceBarcodeInserted);
-        result.put("source_mapped_count", sourceCount == null ? 0 : sourceCount);
-        result.put("target_mapped_count", targetCount == null ? 0 : targetCount);
-        return ApiResult.ok(result);
+                """, target, source, targetOutletId, targetOutletId, source, target, limit);
     }
 
     @PutMapping("/product-mappings/{sourceProductId}")
@@ -1136,6 +1238,7 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_extended_record (store_key VARCHAR(64) NOT NULL, entity_type VARCHAR(64) NOT NULL, source_id VARCHAR(192) NOT NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, entity_type, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
         if (postgres) {
+            jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_item_store_product_sale ON shopfront_sale_item (store_key, source_product_id, external_sale_id)");
             jdbc.update("ALTER TABLE shopfront_sale ADD COLUMN IF NOT EXISTS business_date DATE");
             jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_store_biz_ext ON shopfront_sale (store_key, business_date, external_id)");
         } else {
@@ -1591,7 +1694,34 @@ public class ShopfrontIntegrationController {
         if (sourceId == null || sourceId.isBlank()) return null;
         List<Map<String, Object>> rows = jdbc.queryForList("SELECT m.pos_product_id FROM shopfront_product_mapping m JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL WHERE m.store_key=? AND m.source_product_id=? AND m.status='MAPPED'",
                 outletId, store, sourceId);
-        return rows.isEmpty() ? null : longValue(rows.getFirst().get("pos_product_id"));
+        if (!rows.isEmpty()) {
+            return longValue(rows.getFirst().get("pos_product_id"));
+        }
+        // Lazy barcode resolve so Demo dual-write POs do not hard-skip while
+        // product-mappings:clone is still catching up behind the proxy timeout.
+        List<Map<String, Object>> byBarcode = jdbc.queryForList("""
+                SELECT pb.product_id AS pos_product_id
+                FROM shopfront_product sp
+                JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
+                JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                WHERE sp.source_id = ?
+                  AND sp.barcode IS NOT NULL
+                  AND TRIM(sp.barcode) <> ''
+                ORDER BY CASE WHEN sp.store_key = ? THEN 0 ELSE 1 END, sp.store_key
+                LIMIT 1
+                """, outletId, outletId, sourceId, store);
+        if (byBarcode.isEmpty()) {
+            return null;
+        }
+        Long productId = longValue(byBarcode.getFirst().get("pos_product_id"));
+        if (productId == null || productId <= 0) {
+            return null;
+        }
+        String sql = isPostgres()
+                ? "INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?, 'BARCODE_LAZY', 'MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type='BARCODE_LAZY',status='MAPPED',updated_at=CURRENT_TIMESTAMP"
+                : "INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?, 'BARCODE_LAZY', 'MAPPED') ON DUPLICATE KEY UPDATE pos_product_id=VALUES(pos_product_id),match_type='BARCODE_LAZY',status='MAPPED',updated_at=CURRENT_TIMESTAMP";
+        jdbc.update(sql, store, sourceId, productId);
+        return productId;
     }
 
     private String purchaseOrderSourceHash(JsonNode raw) {
