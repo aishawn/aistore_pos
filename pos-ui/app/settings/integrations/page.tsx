@@ -40,6 +40,21 @@ export default function IntegrationsSettingsPage() {
     }
   }
 
+  async function dedupe() {
+    if (!canImport) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.post<Record<string, unknown>>("/api/settings/import/dedupe", {});
+      setResult(JSON.stringify(data, null, 2));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Catalogue dedupe failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <AdminPageLayout title="Integrations" subtitle="Shopfront import and connection tools">
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
@@ -53,9 +68,14 @@ export default function IntegrationsSettingsPage() {
           <input className="h-10 rounded-lg border px-3" value={storeKey} onChange={(e) => setStoreKey(e.target.value)} disabled={!canImport || busy} />
         </label>
         {canImport ? (
-          <button type="button" disabled={busy} onClick={() => void promote()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {busy ? "Importing…" : "Re-import settings from staged Shopfront data"}
-          </button>
+          <>
+            <button type="button" disabled={busy} onClick={() => void promote()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {busy ? "Working…" : "Re-import settings from staged Shopfront data"}
+            </button>
+            <button type="button" disabled={busy} onClick={() => void dedupe()} className="rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50">
+              Deduplicate tax rates &amp; payment methods
+            </button>
+          </>
         ) : (
           <p className="text-sm text-[var(--oh-muted)]">Integrations permission required to promote settings.</p>
         )}

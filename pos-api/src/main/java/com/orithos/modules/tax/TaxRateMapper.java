@@ -26,6 +26,12 @@ public interface TaxRateMapper {
     @Select("SELECT * FROM tax_rate WHERE id = #{id}")
     TaxRate findById(Long id);
 
+    @Select("SELECT * FROM tax_rate WHERE deleted_at IS NULL ORDER BY id ASC")
+    List<TaxRate> findAllActiveAsc();
+
+    @Select("SELECT * FROM tax_rate WHERE LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
+    TaxRate findByNameIgnoreCase(String name);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO tax_rate (name, amount, mdb_id, is_default, outlet_id) "
             + "VALUES (#{name}, #{amount}, #{mdbId}, CASE WHEN #{isDefault} THEN 1 ELSE 0 END, #{outletId})")

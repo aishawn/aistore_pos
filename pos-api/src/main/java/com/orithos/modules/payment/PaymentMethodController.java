@@ -28,6 +28,9 @@ public class PaymentMethodController {
 
     @PostMapping
     public ApiResult<PaymentMethod> create(@RequestBody PaymentMethod p) {
+        if (p.getName() != null && !p.getName().isBlank() && mapper.findByName(p.getName()) != null) {
+            throw new IllegalArgumentException("payment_method_name_exists");
+        }
         if (p.getOutletId() == null) {
             Long outletId = CurrentUser.outletId();
             p.setOutletId(outletId != null ? outletId : 1L);

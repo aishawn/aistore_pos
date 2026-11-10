@@ -61,6 +61,30 @@ export function SettingsCatalogCrud({
     return next;
   }, [columns, createDefaults]);
 
+  const duplicateNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      const key = String(row.name ?? "").trim().toLowerCase();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()].filter(([, count]) => count > 1).map(([name, count]) => ({ name, count }));
+  }, [rows]);
+
+  async function dedupeCatalogues() {
+    if (!canEdit) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post("/api/settings/import/dedupe", {});
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Dedupe failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save() {
     if (!draft || !canEdit) return;
     setBusy(true);
@@ -116,6 +140,18 @@ export function SettingsCatalogCrud({
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         Orithos-owned catalogue. Shopfront import only fills empty rows; daily sync does not overwrite these settings.
       </section>
+      {duplicateNames.length > 0 && (
+        <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          <span>
+            Duplicate names detected ({duplicateNames.map((row) => `${row.name}×${row.count}`).join(", ")}). Keep the oldest row and merge the rest.
+          </span>
+          {canEdit && (
+            <button type="button" disabled={busy} onClick={() => void dedupeCatalogues()} className="rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+              Deduplicate now
+            </button>
+          )}
+        </div>
+      )}
       {error && <div role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">{error}</div>}
       {draft && (
         <div className="mb-4 grid gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 sm:grid-cols-2">

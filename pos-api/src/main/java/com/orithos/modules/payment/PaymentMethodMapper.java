@@ -15,8 +15,28 @@ public interface PaymentMethodMapper {
     @Select("SELECT * FROM payment_method WHERE type = #{type} AND deleted_at IS NULL ORDER BY name LIMIT 1")
     PaymentMethod findByType(String type);
 
-    @Select("SELECT * FROM payment_method WHERE name = #{name} AND deleted_at IS NULL ORDER BY id LIMIT 1")
+    @Select("SELECT * FROM payment_method WHERE LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
     PaymentMethod findByName(String name);
+
+    @Select("SELECT * FROM payment_method WHERE deleted_at IS NULL ORDER BY id ASC")
+    List<PaymentMethod> findAllActiveAsc();
+
+    @Update("UPDATE sale_payment SET payment_method_id=#{target} WHERE payment_method_id=#{source}")
+    int reassignSalePayment(@Param("target") Long target, @Param("source") Long source);
+
+    @Update("UPDATE customer_payment SET payment_method_id=#{target} WHERE payment_method_id=#{source}")
+    int reassignCustomerPayment(@Param("target") Long target, @Param("source") Long source);
+
+    @Update("UPDATE register_closure_payment SET payment_method_id=#{target} WHERE payment_method_id=#{source}")
+    int reassignRegisterClosurePayment(@Param("target") Long target, @Param("source") Long source);
+
+    @Delete("DELETE FROM register_payment_method WHERE payment_method_id=#{source} AND EXISTS ("
+            + "SELECT 1 FROM register_payment_method keeper WHERE keeper.register_id=register_payment_method.register_id "
+            + "AND keeper.outlet_id=register_payment_method.outlet_id AND keeper.payment_method_id=#{target})")
+    int dropConflictingRegisterAssignments(@Param("target") Long target, @Param("source") Long source);
+
+    @Update("UPDATE register_payment_method SET payment_method_id=#{target} WHERE payment_method_id=#{source}")
+    int reassignRegisterPaymentMethod(@Param("target") Long target, @Param("source") Long source);
 
     @Select("SELECT pm.* FROM register_payment_method rpm "
             + "JOIN payment_method pm ON pm.id=rpm.payment_method_id AND pm.outlet_id=rpm.outlet_id "

@@ -38,6 +38,14 @@ public class SettingsPromoteController {
         return ApiResult.ok(importService.promote(storeKey, true));
     }
 
+    @PostMapping("/dedupe")
+    public ApiResult<Map<String, Object>> dedupe() {
+        if (!permissions.hasPermission("settings.store") && !permissions.hasPermission("settings.integrations")) {
+            permissions.requirePermission("settings.store");
+        }
+        return ApiResult.ok(importService.dedupeCatalogues());
+    }
+
     @GetMapping("/status")
     public ApiResult<Map<String, String>> status() {
         permissions.requirePermission("settings.view");

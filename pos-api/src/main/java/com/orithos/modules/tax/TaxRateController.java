@@ -29,6 +29,9 @@ public class TaxRateController {
 
     @PostMapping
     public ApiResult<TaxRate> create(@RequestBody TaxRate t) {
+        if (t.getName() != null && !t.getName().isBlank() && mapper.findByNameIgnoreCase(t.getName()) != null) {
+            throw new IllegalArgumentException("tax_rate_name_exists");
+        }
         if (t.getIsDefault() == null) t.setIsDefault(false);
         if (t.getOutletId() == null) {
             Long outletId = CurrentUser.outletId();

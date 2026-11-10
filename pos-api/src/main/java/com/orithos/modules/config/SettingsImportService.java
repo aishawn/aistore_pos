@@ -17,9 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * One-shot / on-demand Shopfront → Orithos settings promote.
@@ -65,6 +69,7 @@ public class SettingsImportService {
         counts.put("registers", promoteRegisters(storeKey));
         counts.put("enterprise", promoteJsonSetting(storeKey, "enterprise_policies", "enterprise."));
         counts.put("push", promoteJsonSetting(storeKey, "push_notifications", "push."));
+        counts.put("dedupe", dedupeCatalogues());
         companySettings.putOwned("settings.import.last_store_key", storeKey, "string");
         companySettings.putOwned("settings.import.last_at", java.time.Instant.now().toString(), "string");
         companySettings.putOwned("settings.import.force_empty_only", String.valueOf(forceEmptyOnly), "boolean");
@@ -74,6 +79,18 @@ public class SettingsImportService {
         result.put("business_write", true);
         result.put("overwrite_owned", false);
         result.put("counts", counts);
+        return result;
+    }
+
+    /**
+     * Merge duplicate active tax rates / payment methods by case-insensitive name.
+     * Keeps the lowest id, reassigns FK references, then soft-deletes extras.
+     */
+    @Transactional
+    public Map<String, Object> dedupeCatalogues() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("tax_rates_removed", dedupeTaxRates());
+        result.put("payment_methods_removed", dedupePaymentMethods());
         return result;
     }
 
@@ -99,7 +116,6 @@ public class SettingsImportService {
                 }
             }
         }
-        // Also accept flat KV entity_type=settings
         for (Map<String, Object> row : loadExtended(storeKey, "settings")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null || !raw.isObject()) continue;
@@ -118,15 +134,20 @@ public class SettingsImportService {
 
     private int promoteTaxRates(String storeKey) {
         int written = 0;
+        Set<String> seen = new HashSet<>();
+        for (TaxRate existing : taxRates.findAllActiveAsc()) {
+            if (existing.getName() != null) {
+                seen.add(normalizeName(existing.getName()));
+            }
+        }
         for (Map<String, Object> row : loadExtended(storeKey, "tax_rates")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
-            TaxRate existing = taxRates.findAll().stream()
-                    .filter(t -> name.equalsIgnoreCase(t.getName()))
-                    .findFirst().orElse(null);
-            if (existing != null) continue;
+            String key = normalizeName(name);
+            if (!seen.add(key)) continue;
+            if (taxRates.findByNameIgnoreCase(name) != null) continue;
             TaxRate t = new TaxRate();
             t.setName(name);
             t.setAmount(decimal(raw, "amount", raw.has("rate") ? raw.get("rate").decimalValue() : BigDecimal.TEN));
@@ -140,11 +161,19 @@ public class SettingsImportService {
 
     private int promotePaymentMethods(String storeKey) {
         int written = 0;
+        Set<String> seen = new HashSet<>();
+        for (PaymentMethod existing : paymentMethods.findAllActiveAsc()) {
+            if (existing.getName() != null) {
+                seen.add(normalizeName(existing.getName()));
+            }
+        }
         for (Map<String, Object> row : loadExtended(storeKey, "payment_methods")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
+            String key = normalizeName(name);
+            if (!seen.add(key)) continue;
             if (paymentMethods.findByName(name) != null) continue;
             PaymentMethod p = new PaymentMethod();
             p.setName(name);
@@ -163,14 +192,17 @@ public class SettingsImportService {
 
     private int promoteOutlets(String storeKey) {
         int written = 0;
+        Set<String> seen = new HashSet<>();
         List<Outlet> existing = outlets.findAll();
+        for (Outlet o : existing) {
+            if (o.getName() != null) seen.add(normalizeName(o.getName()));
+        }
         for (Map<String, Object> row : loadExtended(storeKey, "outlets")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
-            boolean found = existing.stream().anyMatch(o -> name.equalsIgnoreCase(o.getName()));
-            if (found) continue;
+            if (!seen.add(normalizeName(name))) continue;
             Outlet o = new Outlet();
             o.setName(name);
             o.setVendorId(1L);
@@ -182,7 +214,11 @@ public class SettingsImportService {
 
     private int promoteRegisters(String storeKey) {
         int written = 0;
+        Set<String> seen = new HashSet<>();
         List<Register> existing = registers.findAll();
+        for (Register r : existing) {
+            if (r.getName() != null) seen.add(normalizeName(r.getName()));
+        }
         List<Outlet> outletList = outlets.findAll();
         Long defaultOutletId = outletList.isEmpty() ? 1L : outletList.get(0).getId();
         for (Map<String, Object> row : loadExtended(storeKey, "registers")) {
@@ -190,8 +226,7 @@ public class SettingsImportService {
             if (raw == null) continue;
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
-            boolean found = existing.stream().anyMatch(r -> name.equalsIgnoreCase(r.getName()));
-            if (found) continue;
+            if (!seen.add(normalizeName(name))) continue;
             Register r = new Register();
             r.setName(name);
             r.setOutletId(defaultOutletId);
@@ -220,6 +255,55 @@ public class SettingsImportService {
             }
         }
         return written;
+    }
+
+    private int dedupeTaxRates() {
+        Map<String, List<TaxRate>> groups = new LinkedHashMap<>();
+        for (TaxRate rate : taxRates.findAllActiveAsc()) {
+            if (rate.getName() == null || rate.getName().isBlank()) continue;
+            groups.computeIfAbsent(normalizeName(rate.getName()), ignored -> new ArrayList<>()).add(rate);
+        }
+        int removed = 0;
+        for (List<TaxRate> group : groups.values()) {
+            if (group.size() < 2) continue;
+            Long keeper = group.get(0).getId();
+            for (int i = 1; i < group.size(); i++) {
+                Long source = group.get(i).getId();
+                if (source == null || source.equals(keeper)) continue;
+                taxRates.reassignProductTaxRate(keeper, source);
+                taxRates.reassignProductCostTaxRate(keeper, source);
+                taxRates.reassignVendorDefaultTaxRate(keeper, source);
+                taxRates.reassignSaleItemTaxRate(keeper, source);
+                taxRates.softDelete(source);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private int dedupePaymentMethods() {
+        Map<String, List<PaymentMethod>> groups = new LinkedHashMap<>();
+        for (PaymentMethod method : paymentMethods.findAllActiveAsc()) {
+            if (method.getName() == null || method.getName().isBlank()) continue;
+            groups.computeIfAbsent(normalizeName(method.getName()), ignored -> new ArrayList<>()).add(method);
+        }
+        int removed = 0;
+        for (List<PaymentMethod> group : groups.values()) {
+            if (group.size() < 2) continue;
+            Long keeper = group.get(0).getId();
+            for (int i = 1; i < group.size(); i++) {
+                Long source = group.get(i).getId();
+                if (source == null || source.equals(keeper)) continue;
+                paymentMethods.reassignSalePayment(keeper, source);
+                paymentMethods.reassignCustomerPayment(keeper, source);
+                paymentMethods.reassignRegisterClosurePayment(keeper, source);
+                paymentMethods.dropConflictingRegisterAssignments(keeper, source);
+                paymentMethods.reassignRegisterPaymentMethod(keeper, source);
+                paymentMethods.softDelete(source);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     private List<Map<String, Object>> loadExtended(String storeKey, String entityType) {
@@ -251,6 +335,10 @@ public class SettingsImportService {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private static String normalizeName(String name) {
+        return name.trim().toLowerCase(Locale.ROOT);
     }
 
     private static String text(JsonNode node, String field) {
