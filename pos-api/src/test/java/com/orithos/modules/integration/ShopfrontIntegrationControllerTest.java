@@ -212,6 +212,7 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(List.of(), List.of(Map.of("supplier_id", 901L)));
         when(jdbc.queryForObject(contains("INSERT INTO supplier"), eq(Long.class), any(Object[].class)))
                 .thenReturn(901L);
+        when(jdbc.update(contains("UPDATE supplier SET"), any(Object[].class))).thenReturn(1);
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
@@ -231,9 +232,11 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(1, first.get("created"));
         assertEquals(0, first.get("skipped"));
         assertEquals(0, replay.get("created"));
-        assertEquals(1, replay.get("skipped"));
+        assertEquals(1, replay.get("updated"));
+        assertEquals(0, replay.get("skipped"));
         verify(jdbc).queryForObject(contains("INSERT INTO supplier"), eq(Long.class), any(Object[].class));
-        verify(jdbc).update(contains("INSERT INTO shopfront_supplier_business_mapping"),
+        verify(jdbc).update(contains("UPDATE supplier SET"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.times(2)).update(contains("INSERT INTO shopfront_supplier_business_mapping"),
                 eq("skr"), eq("shopfront-supplier-1"), eq(87L), eq(901L));
     }
 

@@ -114,16 +114,10 @@ public class ShopfrontNativeSaleImporter {
             args.add(afterExternalId);
         }
         if (businessDay != null && !businessDay.isBlank()) {
-            // Match SoldAt parsing: offset/Z timestamps convert to Adelaide; naive timestamps are Adelaide local.
-            sql.append("""
-                     AND (
-                       CASE
-                         WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                           THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
-                         ELSE DATE(created_at::timestamp)
-                       END
-                     ) = CAST(? AS date)
-                    """);
+            // Prefer indexed business_date (maintained on mirror upsert/backfill).
+            // UUID external_id order + created_at CASE expression previously
+            // forced full-table scans and gateway 502s on day-scoped promote.
+            sql.append(" AND business_date = CAST(? AS date)");
             args.add(businessDay);
         }
         sql.append(" ORDER BY external_id LIMIT ?");

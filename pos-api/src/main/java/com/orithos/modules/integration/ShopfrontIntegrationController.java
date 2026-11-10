@@ -41,7 +41,7 @@ public class ShopfrontIntegrationController {
     private static final List<ShopfrontMirrorTable> MIRROR_TABLES = List.of(
             new ShopfrontMirrorTable("shopfront_product", "source_id,name,sku,barcode,category,brand,cost,price,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_inventory", "source_product_id,outlet_id,quantity,snapshot_at,raw_payload,synced_at"),
-            new ShopfrontMirrorTable("shopfront_sale", "external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload,synced_at"),
+            new ShopfrontMirrorTable("shopfront_sale", "external_id,invoice_id,status,created_at,updated_at,business_date,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_sale_item", "external_sale_id,line_key,source_product_id,product_name,quantity,unit_price,line_total,cost,tax,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_sale_payment", "external_sale_id,payment_key,amount,status,subtype,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_supplier", "source_id,name,business_number,status,raw_payload,synced_at"),
@@ -191,6 +191,7 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "day must be YYYY-MM-DD");
         }
         ensureMappingTable();
+        ensureShadowTables();
         List<Map<String, Object>> mappings = jdbc.queryForList(
                 "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
         Map<String, Object> byStore = new LinkedHashMap<>();
@@ -221,15 +222,6 @@ public class ShopfrontIntegrationController {
                     ORDER BY id
                     LIMIT 20
                     """, outletId, day);
-            String adelaideDaySql = """
-                    (
-                      CASE
-                        WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                          THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
-                        ELSE DATE(created_at::timestamp)
-                      END
-                    ) = CAST(? AS date)
-                    """;
             List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
                            COALESCE(SUM(total_price), 0) AS revenue,
@@ -240,7 +232,8 @@ public class ShopfrontIntegrationController {
                     FROM shopfront_sale
                     WHERE store_key = ?
                       AND UPPER(COALESCE(status, '')) IN ('COMPLETED', 'CLOSED', 'PAID', 'FINALISED', 'FINALIZED')
-                      AND """ + adelaideDaySql, storeKey, day);
+                      AND business_date = CAST(? AS date)
+                    """, storeKey, day);
             Map<String, Object> mirror = mirrorRows.isEmpty() ? Map.of() : mirrorRows.get(0);
             List<Map<String, Object>> incompleteRows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
@@ -248,7 +241,8 @@ public class ShopfrontIntegrationController {
                     FROM shopfront_sale
                     WHERE store_key = ?
                       AND UPPER(COALESCE(status, '')) = 'INCOMPLETE'
-                      AND """ + adelaideDaySql, storeKey, day);
+                      AND business_date = CAST(? AS date)
+                    """, storeKey, day);
             Map<String, Object> incomplete = incompleteRows.isEmpty() ? Map.of() : incompleteRows.get(0);
             BigDecimal shopfrontRevenue = decimalObject(row.get("shopfront_revenue"));
             BigDecimal incompleteRevenue = decimalObject(incomplete.get("revenue"));
@@ -292,6 +286,7 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "day must be YYYY-MM-DD");
         }
         ensureMappingTable();
+        ensureShadowTables();
         List<Map<String, Object>> mappings = jdbc.queryForList(
                 "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
         Map<String, Object> byStore = new LinkedHashMap<>();
@@ -310,28 +305,15 @@ public class ShopfrontIntegrationController {
                     ORDER BY external_id
                     """, outletId, day);
             List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
-                    SELECT external_id, status, total_price, created_at,
+                    SELECT external_id, status, total_price, created_at, business_date::text AS adelaide_day,
                            COALESCE(
                                NULLIF(raw_payload::jsonb ->> 'total_price', '')::numeric,
                                NULLIF(raw_payload::jsonb ->> 'totalPrice', '')::numeric,
-                               total_price) AS payload_total,
-                           (
-                             CASE
-                               WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                                 THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
-                               ELSE DATE(created_at::timestamp)
-                             END
-                           )::text AS adelaide_day
+                               total_price) AS payload_total
                     FROM shopfront_sale
                     WHERE store_key = ?
                       AND (
-                        (
-                          CASE
-                            WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                              THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
-                            ELSE DATE(created_at::timestamp)
-                          END
-                        ) = CAST(? AS date)
+                        business_date = CAST(? AS date)
                         OR EXISTS (
                           SELECT 1 FROM sale s
                           WHERE s.outlet_id = ?
@@ -804,6 +786,16 @@ public class ShopfrontIntegrationController {
         result.put("barcode_matched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND sp.barcode IS NOT NULL AND EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode)", Integer.class, storeKey));
         result.put("barcode_unmatched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
         result.put("manually_mapped", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'", Integer.class, storeKey));
+        result.put("products_unmapped", jdbc.queryForObject("""
+                SELECT COUNT(*) FROM shopfront_product sp
+                WHERE sp.store_key = ?
+                  AND NOT EXISTS (
+                    SELECT 1 FROM shopfront_product_mapping pm
+                    WHERE pm.store_key = sp.store_key
+                      AND pm.source_product_id = sp.source_id
+                      AND pm.status = 'MAPPED'
+                  )
+                """, Integer.class, storeKey));
         result.put("sales_with_unmatched_items", jdbc.queryForObject("SELECT COUNT(DISTINCT ss.external_id) FROM shopfront_sale ss JOIN shopfront_sale_item si ON si.store_key = ss.store_key AND si.external_sale_id = ss.external_id LEFT JOIN shopfront_product sp ON sp.store_key = ss.store_key AND sp.source_id = si.source_product_id WHERE ss.store_key = ? AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping pm WHERE pm.store_key = ss.store_key AND pm.source_product_id = si.source_product_id AND pm.status = 'MAPPED') AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
         result.put("sale_items_missing_name", jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (product_name IS NULL OR TRIM(product_name) = '')",
@@ -927,6 +919,39 @@ public class ShopfrontIntegrationController {
                     status = 'MAPPED',
                     updated_at = CURRENT_TIMESTAMP
                 """, target, targetOutletId, targetOutletId, target, target);
+        // Shared Shopfront catalog: use the source-store shadow barcode (same
+        // source_id) when the target POS product already carries that code.
+        int sourceBarcodeInserted = jdbc.update("""
+                INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
+                SELECT ?, source_product_id, pos_product_id, 'CLONE_SOURCE_BARCODE', 'MAPPED'
+                FROM (
+                    SELECT DISTINCT ON (m.source_product_id)
+                           m.source_product_id,
+                           pb_target.product_id AS pos_product_id
+                    FROM shopfront_product_mapping m
+                    JOIN shopfront_product sp ON sp.store_key = ? AND sp.source_id = m.source_product_id
+                    JOIN product_barcode pb_target ON pb_target.code = sp.barcode AND pb_target.outlet_id = ?
+                    JOIN product p_target ON p_target.id = pb_target.product_id
+                        AND p_target.outlet_id = ?
+                        AND p_target.deleted_at IS NULL
+                    WHERE m.store_key = ?
+                      AND m.status = 'MAPPED'
+                      AND sp.barcode IS NOT NULL
+                      AND TRIM(sp.barcode) <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM shopfront_product_mapping existing
+                          WHERE existing.store_key = ?
+                            AND existing.source_product_id = m.source_product_id
+                            AND existing.status = 'MAPPED'
+                      )
+                    ORDER BY m.source_product_id, pb_target.product_id
+                ) resolved
+                ON CONFLICT (store_key, source_product_id) DO UPDATE
+                SET pos_product_id = EXCLUDED.pos_product_id,
+                    match_type = 'CLONE_SOURCE_BARCODE',
+                    status = 'MAPPED',
+                    updated_at = CURRENT_TIMESTAMP
+                """, target, source, targetOutletId, targetOutletId, source, target);
         Integer sourceCount = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
                 Integer.class, source);
@@ -940,6 +965,7 @@ public class ShopfrontIntegrationController {
         result.put("target_outlet_id", targetOutletId);
         result.put("cloned_from_source_mappings", inserted);
         result.put("mapped_from_target_barcodes", barcodeInserted);
+        result.put("mapped_from_source_barcodes", sourceBarcodeInserted);
         result.put("source_mapped_count", sourceCount == null ? 0 : sourceCount);
         result.put("target_mapped_count", targetCount == null ? 0 : targetCount);
         return ApiResult.ok(result);
@@ -1094,6 +1120,32 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, supplier_source_id " + key + ", status VARCHAR(64), order_date VARCHAR(64), total_cost DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_extended_record (store_key VARCHAR(64) NOT NULL, entity_type VARCHAR(64) NOT NULL, source_id VARCHAR(192) NOT NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, entity_type, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
+        if (postgres) {
+            jdbc.update("ALTER TABLE shopfront_sale ADD COLUMN IF NOT EXISTS business_date DATE");
+            jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_store_biz_ext ON shopfront_sale (store_key, business_date, external_id)");
+            // One-shot backfill for rows written before business_date existed.
+            // Idempotent: only touches NULL business_date rows.
+            jdbc.update("""
+                    UPDATE shopfront_sale SET business_date = (
+                      CASE
+                        WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                          THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                        WHEN NULLIF(TRIM(created_at), '') IS NOT NULL
+                          THEN DATE(created_at::timestamp)
+                        ELSE NULL
+                      END
+                    )
+                    WHERE business_date IS NULL
+                      AND created_at IS NOT NULL
+                      AND TRIM(created_at) <> ''
+                    """);
+        } else {
+            try {
+                jdbc.update("ALTER TABLE shopfront_sale ADD COLUMN business_date DATE NULL");
+            } catch (Exception ignored) {
+                // Column already present on MySQL reference schemas.
+            }
+        }
     }
 
     /**
@@ -1216,7 +1268,7 @@ public class ShopfrontIntegrationController {
         }
 
         int created = 0;
-        int mappedExisting = 0;
+        int updated = 0;
         int skipped = 0;
         List<String> errors = new ArrayList<>();
         for (JsonNode item : items) {
@@ -1230,10 +1282,6 @@ public class ShopfrontIntegrationController {
             List<Map<String, Object>> priorMappings = jdbc.queryForList(
                     "SELECT supplier_id FROM shopfront_supplier_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
                     store, sourceId, outletId);
-            if (!priorMappings.isEmpty()) {
-                skipped++;
-                continue;
-            }
 
             JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
             String businessNumber = text(item, "business_number");
@@ -1250,9 +1298,13 @@ public class ShopfrontIntegrationController {
             }
 
             Long supplierId;
-            if (matches.size() == 1) {
+            boolean existingSupplier;
+            if (!priorMappings.isEmpty()) {
+                supplierId = longValue(priorMappings.getFirst().get("supplier_id"));
+                existingSupplier = true;
+            } else if (matches.size() == 1) {
                 supplierId = matches.getFirst();
-                mappedExisting++;
+                existingSupplier = true;
             } else {
                 JsonNode contact = raw.path("contact");
                 Long contactId = null;
@@ -1273,8 +1325,29 @@ public class ShopfrontIntegrationController {
                     throw new IllegalStateException("Orithos did not return a supplier id for " + sourceId);
                 }
                 created++;
+                existingSupplier = false;
                 if (!normalizedBusinessNumber.isBlank()) byBusinessNumber.computeIfAbsent(normalizedBusinessNumber, ignored -> new ArrayList<>()).add(supplierId);
                 byName.computeIfAbsent(normalizedName, ignored -> new ArrayList<>()).add(supplierId);
+            }
+            if (existingSupplier) {
+                int changed = jdbc.update("UPDATE supplier SET name=?,status=COALESCE(?,status),business_number=COALESCE(?,business_number),order_notes=COALESCE(?,order_notes),default_order_tax=COALESCE(?,default_order_tax),comments=COALESCE(?,comments),minimum_order_value=COALESCE(?,minimum_order_value),maximum_order_value=COALESCE(?,maximum_order_value),default_days_until_due=COALESCE(?,default_days_until_due) WHERE id=? AND outlet_id=? AND deleted_at IS NULL",
+                        name, text(item, "status") == null ? text(raw, "status") : text(item, "status"), businessNumber,
+                        text(raw, "orderNotes"), text(raw, "defaultOrderTax"), text(raw, "comments"),
+                        decimal(raw, "minimumOrderValue"), decimal(raw, "maximumOrderValue"),
+                        integerValue(raw, "defaultDaysUntilDue"), supplierId, outletId);
+                if (changed != 1) {
+                    throw new IllegalArgumentException("Mapped Shopfront supplier does not belong to the mapped outlet");
+                }
+                JsonNode contact = raw.path("contact");
+                if (contact.isObject() && hasSupplierContact(contact)) {
+                    jdbc.update("UPDATE contact SET email=COALESCE(?,email),phone=COALESCE(?,phone),mobile=COALESCE(?,mobile),fax=COALESCE(?,fax),website=COALESCE(?,website),address_street1=COALESCE(?,address_street1),address_street2=COALESCE(?,address_street2),address_suburb=COALESCE(?,address_suburb),address_city=COALESCE(?,address_city),address_postcode=COALESCE(?,address_postcode),address_region=COALESCE(?,address_region),address_country=COALESCE(?,address_country),twitter=COALESCE(?,twitter),facebook=COALESCE(?,facebook) WHERE id=(SELECT contact_id FROM supplier WHERE id=? AND outlet_id=? AND deleted_at IS NULL) AND outlet_id=?",
+                            text(contact, "email"), text(contact, "phone"), text(contact, "mobile"), text(contact, "fax"),
+                            text(contact, "website"), text(contact, "addressStreet1"), text(contact, "addressStreet2"),
+                            text(contact, "addressSuburb"), text(contact, "addressCity"), text(contact, "addressPostcode"),
+                            text(contact, "addressRegion"), text(contact, "addressCountry"), text(contact, "twitter"),
+                            text(contact, "facebook"), supplierId, outletId, outletId);
+                }
+                updated++;
             }
             String mappingSql = isPostgres()
                     ? "INSERT INTO shopfront_supplier_business_mapping (store_key,source_id,outlet_id,supplier_id) VALUES (?,?,?,?) ON CONFLICT (store_key,source_id,outlet_id) DO UPDATE SET supplier_id=EXCLUDED.supplier_id,updated_at=CURRENT_TIMESTAMP"
@@ -1284,7 +1357,7 @@ public class ShopfrontIntegrationController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("enabled", true);
         result.put("created", created);
-        result.put("updated", mappedExisting);
+        result.put("updated", updated);
         result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
@@ -2029,14 +2102,21 @@ public class ShopfrontIntegrationController {
                 String external = text(sale, "external_id");
                 if (external.isBlank()) continue;
                 boolean sourceComplete = sale.path("source_complete").asBoolean(false);
+                String createdAt = firstText(sale, "created_at", "createdAt");
+                java.sql.Date businessDate = null;
+                ShopfrontNativeSaleImporter.SoldAt soldAt = ShopfrontNativeSaleImporter.parseSoldAt(createdAt);
+                if (soldAt != null) {
+                    businessDate = java.sql.Date.valueOf(soldAt.businessDate());
+                }
                 String sql = postgres
-                        ? "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,external_id) DO UPDATE SET invoice_id=EXCLUDED.invoice_id,status=EXCLUDED.status,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,total_price=EXCLUDED.total_price,total_tax=EXCLUDED.total_tax,total_discount=EXCLUDED.total_discount,total_cost=EXCLUDED.total_cost,customer_reference=EXCLUDED.customer_reference,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
-                        : "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE invoice_id=VALUES(invoice_id),status=VALUES(status),created_at=VALUES(created_at),updated_at=VALUES(updated_at),total_price=VALUES(total_price),total_tax=VALUES(total_tax),total_discount=VALUES(total_discount),total_cost=VALUES(total_cost),customer_reference=VALUES(customer_reference),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
+                        ? "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,business_date,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (store_key,external_id) DO UPDATE SET invoice_id=EXCLUDED.invoice_id,status=EXCLUDED.status,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at,business_date=EXCLUDED.business_date,total_price=EXCLUDED.total_price,total_tax=EXCLUDED.total_tax,total_discount=EXCLUDED.total_discount,total_cost=EXCLUDED.total_cost,customer_reference=EXCLUDED.customer_reference,raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
+                        : "INSERT INTO shopfront_sale (store_key,external_id,invoice_id,status,created_at,updated_at,business_date,total_price,total_tax,total_discount,total_cost,customer_reference,raw_payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE invoice_id=VALUES(invoice_id),status=VALUES(status),created_at=VALUES(created_at),updated_at=VALUES(updated_at),business_date=VALUES(business_date),total_price=VALUES(total_price),total_tax=VALUES(total_tax),total_discount=VALUES(total_discount),total_cost=VALUES(total_cost),customer_reference=VALUES(customer_reference),raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
                 jdbc.update(sql, store, external,
                         firstText(sale, "invoice_id", "invoiceId"),
                         firstText(sale, "status"),
-                        firstText(sale, "created_at", "createdAt"),
+                        createdAt,
                         firstText(sale, "updated_at", "updatedAt"),
+                        businessDate,
                         firstDecimal(sale, "total_price", "totalPrice"),
                         firstDecimal(sale, "total_tax", "totalTax"),
                         firstDecimal(sale, "total_discount", "totalDiscount"),

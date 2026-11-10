@@ -1,10 +1,10 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-11 ~01:20 (UTC+8)  
+> Generated: 2026-11-11 ~01:35 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
-> Session: Post-deploy verify `1e06a9c0` + leftover `/customers/odoo` / dead report-client cleanup  
+> Session: Post-deploy Demo/SKR parity check + promote `business_date` fix + leftover UI cleanup  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
-> Tip SHA: see `git log -1` after this retirement push
+> Tip SHA: see `git log -1` after this iterate push
 
 ## Goal
 
@@ -19,9 +19,10 @@ Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/vers
 - Live `pos-ui` components/app pages no longer call `/api/odoo/*` or `/api/shopfront*` for data (grep gate on `src/components` + `odoo-api.ts` clean). Workspace panels, settings company/tax/registers/export, PO list/confirm/receive, invoice→PO, price suggestions/bulk edit, daily sales history, assistant ops preview, and sync stamp all use Orithos APIs.
 - Dead unmounted report/Shopfront page components removed. `/api/shopfront-source` remains 410.
 - **BFF retirement:** deleted concrete `pos-ui/app/api/odoo/**` route handlers; left `app/api/odoo/[...path]/route.ts` returning **410**. Sales History nav → `/history` (redirects to reports ledger). `odoo-read-cache` no longer TTLs `/api/odoo/*`.
-- **Post-deploy verify (2026-11-11, live SHA `1e06a9c0` Demo+SKR):** `/api/odoo/*` and `/api/shopfront-source` → **410**; auth native products/customers/suppliers/orders/sales/payment-methods → **200**; `native-overview?from=&to=` → `orithos_ledger` Demo **$4,865.86 / 206** for Adelaide **2026-11-10**. Day-totals both hosts expose `demo`+`skr` (demo 206/$4865.86, skr 205/$4861.06; small `other_*` non-shopfront INV rows remain).
-- **This follow-up:** `/customers/odoo` redirects to `/customers` (was still mounting directory); remove unused `report-client` / `report-request` / `OdooPosConnectionCard`.
-- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; compose `report-worker` still Odoo-credentialed (not browser); physical Odoo decommission; triage day-totals `other_sales` INV orphans.
+- **Post-deploy verify (2026-11-11, live SHA `1e06a9c0` / Dokploy Done for `01d413de` clone fix):** Shopfront day-totals **sf_match=True** for Adelaide **2026-11-08..10** (demo/skr shopfront revenue identical). Native revenue gap on Nov-10 is local `other_sales` only (demo 2×$4.80 vs skr 1×$4.80). `product-mappings:clone` skr→demo **CLONED** (mapped 3204→10996; 37 products still unmapped / ~3023 historical sales_unmatched). Crawler job **206** still `running/pos_import` at check time (soft secondary sales validate is in sibling crawler repo).
+- **Iterate fix (this push):** mirror `shopfront_sale.business_date` + index; day-scoped `promote-native` uses it (UUID+created_at CASE previously full-scanned → gateway **502**). Clone also maps via source-store shopfront barcodes. match-status adds `products_unmapped`.
+- **UI cleanup:** `/customers/odoo` redirects to `/customers`; remove unused `report-client` / `report-request` / `OdooPosConnectionCard`.
+- **Still open:** finish crawler job 206 + re-clone remaining 37; rematch/promote unmatched Demo sale lines; member pricelist / promotions / gift tenders; Demo cash open→sell→close write UAT; compose `report-worker` Odoo credentials; physical Odoo decommission; triage day-totals `other_sales` INV orphans.
 - Cashiers on NativePosGate vendors `1,55` can list `/api/retail/payment-methods` without `settings.view`.
 
 ## Page audit (this follow-up)

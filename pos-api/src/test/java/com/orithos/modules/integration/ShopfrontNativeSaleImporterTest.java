@@ -38,6 +38,18 @@ class ShopfrontNativeSaleImporterTest {
     }
 
     @Test
+    void promoteFromMirrorFiltersOnIndexedBusinessDate() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(java.util.List.of());
+        var importer = new ShopfrontNativeSaleImporter(jdbc, new ObjectMapper());
+
+        importer.promoteFromMirror("demo", 1L, null, 40, "2026-11-10");
+
+        verify(jdbc).queryForList(contains("business_date = CAST(? AS date)"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("created_at::timestamptz"), any(Object[].class));
+    }
+
+    @Test
     void upsertsNativeSaleWithoutStockMovement() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
