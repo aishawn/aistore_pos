@@ -11,7 +11,7 @@ import {
   createOdooProduct,
   fetchOdooRoute,
   getOdooPosBootstrap,
-  getOdooSession,
+  getOrithosSession,
   importOdooProducts,
   OdooApiError,
   searchOdooRecords,
@@ -158,12 +158,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     return selected?.length ? selected : INVENTORY_COLUMNS.map((column) => column.key);
   });
   const [totals, setTotals] = useState<InventoryTotals | null>(null);
-  const [shopfrontCoverage, setShopfrontCoverage] = useState<OdooPage<OdooProductRecord>["shopfrontCoverage"] | null>(null);
-  const shopfrontCoverageNeedsReview = useMemo(() => Boolean(shopfrontCoverage && (
-    shopfrontCoverage.unmappedProducts > 0
-    || shopfrontCoverage.ambiguousReferences > 0
-    || shopfrontCoverage.inventoryProductRows < shopfrontCoverage.activeProducts
-  )), [shopfrontCoverage]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expired, setExpired] = useState(false);
   const snapshotId = useRef<string | undefined>(undefined);
@@ -316,7 +310,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     if (dialog === "cost-reconciliation") { setCheckingConnection(false); return; }
     let cancelled = false;
     setCheckingConnection(true);
-    void getOdooSession().then((user) => {
+    void getOrithosSession().then((user) => {
       if (!cancelled) setConnected(Boolean(user));
     }).catch((cause) => {
       if (!cancelled) {
@@ -449,7 +443,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       setLoadingMore(false);
       setHasNext(false);
       setTotals(null);
-      if (!inventoryReport) setShopfrontCoverage(null);
       snapshotId.current = undefined;
       nextOffset.current = 0;
     }
@@ -479,7 +472,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       snapshotId.current = page.snapshotId;
       nextOffset.current = page.offset + page.items.length;
       setTotals({ totalItems: page.totalItems ?? page.total ?? 0, totalQty: page.totalQty ?? null, negativeStockItems: page.negativeStockItems ?? 0, totalStockValue: page.totalStockValue ?? null, missingCostItems: page.missingCostItems ?? 0, mixedUnits: page.mixedUnits ?? false });
-      setShopfrontCoverage(page.shopfrontCoverage ?? null);
       setHasNext(page.hasNext === true);
       if (!append) setLastLoadedAt(page.generatedAt ? Date.parse(page.generatedAt) : Date.now());
     } catch (cause) {
@@ -841,19 +833,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
             {inventoryReport
-              ? `Store scope: ${inventorySource?.company ?? "signed-in store's mapped Odoo company"} · ${inventorySource?.source ?? "Odoo inventory snapshot"}.`
-              : "Shopfront catalogue with Odoo pricing and stock links."}
-            {!inventoryReport && shopfrontCoverage && <span className="ml-1">· {quantity(shopfrontCoverage.mappedProducts)} mapped · {quantity(shopfrontCoverage.positiveInventoryUnits)} Shopfront units{shopfrontCoverage.inventorySnapshotAt ? ` · snapshot ${formatStoreEpoch(Date.parse(shopfrontCoverage.inventorySnapshotAt), storeTimezone)}` : ""}</span>}
+              ? `Store scope: Orithos on-hand · ${inventorySource?.source ?? "product inventory"}.`
+              : "Orithos ledger catalogue with shelf prices and on-hand stock."}
             {inventoryReport && <span className="ml-1">· Prepared {lastLoadedAt !== null ? formatStoreEpoch(lastLoadedAt, storeTimezone) : "—"}</span>}
-            {!inventoryReport && shopfrontCoverageNeedsReview && <span className="ml-1">· <Link href="/reports/inventory?sort=shopfront_quantity&direction=desc" className="font-semibold text-[var(--oh-primary)] hover:underline">Review sync</Link></span>}
           </p>
           {shopfrontSyncBanner && (
             <p role="status" className="shrink-0 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">Shopfront sync finished · catalogue and stock were refreshed.</p>
-          )}
-          {!inventoryReport && shopfrontCoverage && shopfrontCoverageNeedsReview && (
-            <p role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              {quantity(shopfrontCoverage.unmappedProducts)} Shopfront products are not linked to Odoo; {quantity(shopfrontCoverage.ambiguousReferences)} links need review; inventory rows cover {quantity(shopfrontCoverage.inventoryProductRows)} of {quantity(shopfrontCoverage.activeProducts)} active products.
-            </p>
           )}
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && items.length > 0 && (!inventoryReport || Boolean(snapshotId.current)))} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
@@ -971,25 +956,17 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
         </>
       )}
-      {connected === true && tab !== "stocktake" && (inventoryReport ? <ShopfrontInventorySummary odooProductCount={totals?.totalItems} coverage={shopfrontCoverage} /> : tab === "catalogue" ? <ShopfrontProductHistorySection /> : null)}
+      {connected === true && tab !== "stocktake" && (inventoryReport ? <ShopfrontInventorySummary productCount={totals?.totalItems} /> : tab === "catalogue" ? <ShopfrontProductHistorySection /> : null)}
       </div>
       {connected === true && tab !== "stocktake" && (
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label={inventoryReport ? "Totals for all matching Odoo inventory variants" : "Shopfront catalogue and inventory totals"}>
-            <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading products…" : totals ? `Loaded ${renderedProductCount} / ${totals.totalItems} Odoo variants` : "Totals unavailable"}</span>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pr-24 md:px-6 md:pr-24 text-sm shadow-[0_-2px_8px_#0000000a]" aria-label={inventoryReport ? "Totals for matching Orithos inventory products" : "Orithos catalogue totals"}>
+            <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading products…" : totals ? `Loaded ${renderedProductCount} / ${totals.totalItems} Orithos products` : "Totals unavailable"}</span>
             {hasNext && !resultsPending && !error && <button type="button" onClick={() => void loadProducts(true)} disabled={loadingMore} className="print:hidden min-h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
-            {!inventoryReport && shopfrontCoverage && !resultsPending ? <>
-              {shopfrontCoverageNeedsReview ? <>
-                <span>Shopfront active products <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.activeProducts)}</strong></span>
-                <span>Mapped to Odoo <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.mappedProducts)} / {quantity(shopfrontCoverage.activeProducts)}</strong></span>
-                <span>Shopfront positive stock units <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.positiveInventoryUnits)}</strong></span>
-                <span>Inventory-covered products <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.inventoryProductRows)} / {quantity(shopfrontCoverage.activeProducts)}</strong></span>
-              </> : <span>Shopfront sync <strong className="ml-2 tabular-nums">{quantity(shopfrontCoverage.mappedProducts)} / {quantity(shopfrontCoverage.activeProducts)}</strong> mapped · <strong className="tabular-nums">{quantity(shopfrontCoverage.positiveInventoryUnits)}</strong> positive units</span>}
-              {shopfrontCoverage.negativeInventoryRows > 0 && <span className="basis-full text-xs text-amber-800">{quantity(shopfrontCoverage.negativeInventoryRows)} source inventory rows have negative balances; those signed quantities remain visible on each product.</span>}
-            </> : totals && !resultsPending && <>
-              <span>Odoo active saleable variants <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
-              <span>Odoo positive on-hand units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
-              <span className="basis-full text-xs text-[var(--oh-muted)]">Unit total is the sum of positive Odoo qty_available balances for these variants; it is not Shopfront stock or free-to-sell quantity.</span>
-              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} variants have negative stock. The positive on-hand total excludes negative balances; review those variants in the list.</span>}
+            {totals && !resultsPending && <>
+              <span>Orithos active products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>Positive on-hand units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
+              <span className="basis-full text-xs text-[var(--oh-muted)]">Unit total is the sum of positive Orithos on-hand balances for these products.</span>
+              {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} products have negative stock. The positive on-hand total excludes negative balances.</span>}
               {totals.mixedUnits && <span className="basis-full text-xs text-[var(--oh-muted)]">Different stock units cannot be added together.</span>}
             </>}
           </footer>

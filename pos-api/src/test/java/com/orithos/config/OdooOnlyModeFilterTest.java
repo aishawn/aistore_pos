@@ -131,7 +131,7 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeProductReadsPassThroughWhileProductWritesRemainRetired() throws Exception {
+    void nativeProductRoutesPassThroughAfterCatalogueCutover() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         for (String path : new String[]{"/api/products", "/api/products/filter-options", "/api/products/12", "/api/products/12/prices"}) {
             MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
@@ -141,10 +141,18 @@ class OdooOnlyModeFilterTest {
             assertEquals(200, response.getStatus());
             assertSame(request, (ServletRequest) chain.getRequest());
         }
-        MockHttpServletRequest write = new MockHttpServletRequest("POST", "/api/products");
-        MockHttpServletResponse writeResponse = new MockHttpServletResponse();
-        filter.doFilter(write, writeResponse, new MockFilterChain());
-        assertEquals(410, writeResponse.getStatus());
+        for (var route : new String[][]{
+                {"POST", "/api/products"},
+                {"PUT", "/api/products/12"},
+                {"POST", "/api/products/import"}
+        }) {
+            MockHttpServletRequest write = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse writeResponse = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(write, writeResponse, chain);
+            assertEquals(200, writeResponse.getStatus());
+            assertSame(write, (ServletRequest) chain.getRequest());
+        }
     }
 
     @Test

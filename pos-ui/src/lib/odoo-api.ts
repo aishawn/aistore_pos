@@ -727,7 +727,58 @@ export function logoutFromOdoo() {
   return sessionRequest("DELETE");
 }
 
-/** Read a named, server-allowlisted dataset through the user's Odoo session. */
+type NativeProductRow = {
+  id: number;
+  name: string;
+  status?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
+  brandName?: string | null;
+  price?: number | null;
+  cost?: number | null;
+  caseQuantity?: number | null;
+  stockQuantity?: number | null;
+  trackInventory?: boolean | null;
+  barcodes?: Array<{ code?: string | null }> | null;
+};
+
+function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
+  const barcode = product.barcodes?.find((row) => row.code)?.code || false;
+  const price = Number(product.price ?? 0);
+  const cost = product.cost == null ? null : Number(product.cost);
+  const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
+  const categoryId = product.categoryId == null ? null : Number(product.categoryId);
+  return {
+    id: Number(product.id),
+    name: product.name,
+    display_name: product.name,
+    active: (product.status || "ACTIVE").toUpperCase() === "ACTIVE",
+    barcode,
+    default_code: false,
+    list_price: price,
+    standard_price: cost ?? false,
+    shopfront_cost: cost,
+    shopfront_cost_status: cost == null ? "missing" : "available",
+    shopfront_case_quantity: product.caseQuantity == null ? null : Number(product.caseQuantity),
+    shopfront_price: price,
+    shopfront_quantity: qty,
+    shopfront_inventory_status: product.stockQuantity == null ? "missing" : "available",
+    shopfront_data_status: product.stockQuantity == null ? "missing" : "available",
+    shopfront_source_name: product.name,
+    shopfront_source_category: product.categoryName || false,
+    shopfront_track_inventory: product.trackInventory ?? true,
+    taxes_id: [],
+    price_included: null,
+    price_tax: null,
+    qty_available: qty,
+    free_qty: qty,
+    uom_id: false,
+    pos_categ_ids: categoryId ? [categoryId] : [],
+    available_in_pos: (product.status || "ACTIVE").toUpperCase() === "ACTIVE",
+  };
+}
+
+/** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
   options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
@@ -753,6 +804,82 @@ export async function searchOdooRecords<T>(
       credit: Number(customer.currentOwing ?? 0), active: true,
     } as OdooCustomerRecord));
     return { items: items as T[], total: page.total, limit: size, offset: options.offset ?? 0, hasNext: pageNumber * size < page.total, generatedAt: new Date().toISOString() };
+  }
+  if (type === "products" || type === "purchaseProducts") {
+    const size = options.limit ?? 40;
+    const pageNumber = Math.floor((options.offset ?? 0) / size) + 1;
+    const page = await api.get<Page<NativeProductRow>>("/api/products", {
+      name: options.query,
+      categoryId: options.categoryId ?? options.categoryIds?.[0],
+      page: pageNumber,
+      size,
+      status: "ACTIVE",
+    });
+    const items = page.items.map(mapNativeProduct);
+    return {
+      items: items as T[],
+      total: page.total,
+      limit: size,
+      offset: options.offset ?? 0,
+      hasNext: pageNumber * size < page.total,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+  if (type === "posCategories") {
+    const filters = await api.get<{ categories?: Array<{ id: string | number; name: string }> }>("/api/products/filter-options");
+    const all = (filters.categories || []).map((category) => ({
+      id: Number(category.id),
+      name: category.name,
+      parent_id: false as const,
+    } satisfies OdooPosCategoryRecord));
+    const size = options.limit ?? all.length;
+    const offset = options.offset ?? 0;
+    const items = all.slice(offset, offset + size);
+    return {
+      items: items as T[],
+      total: all.length,
+      limit: size,
+      offset,
+      hasNext: offset + size < all.length,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+  if (type === "suppliers") {
+    const size = options.limit ?? 40;
+    const pageNumber = Math.floor((options.offset ?? 0) / size) + 1;
+    const page = await api.get<Page<{ id: number; name: string; phone?: string | null; email?: string | null }>>("/api/suppliers", {
+      name: options.query,
+      page: pageNumber,
+      size,
+    });
+    const items = page.items.map((supplier) => ({
+      id: Number(supplier.id),
+      name: supplier.name,
+      phone: supplier.phone || false,
+      email: supplier.email || false,
+    }));
+    return {
+      items: items as T[],
+      total: page.total,
+      limit: size,
+      offset: options.offset ?? 0,
+      hasNext: pageNumber * size < page.total,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+  if (type === "outlets") {
+    const rows = await api.get<Array<{ id: number; name: string }>>("/api/outlets");
+    const offset = options.offset ?? 0;
+    const size = options.limit ?? rows.length;
+    const slice = rows.slice(offset, offset + size).map((outlet) => ({ id: Number(outlet.id), name: outlet.name }));
+    return {
+      items: slice as T[],
+      total: rows.length,
+      limit: size,
+      offset,
+      hasNext: offset + size < rows.length,
+      generatedAt: new Date().toISOString(),
+    };
   }
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -848,15 +975,19 @@ export async function getOdooPriceRules(query?: string, offset = 0, limit = 30):
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/products/${productId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(values),
+  const current = await api.get<NativeProductRow & { image?: string | null; type?: string | null }>(`/api/products/${productId}`);
+  await api.put(`/api/products/${productId}`, {
+    ...current,
+    name: values.name ?? current.name,
+    price: values.list_price ?? current.price,
+    categoryId: values.pos_categ_ids?.[0] ?? current.categoryId,
+    status: values.available_in_pos === false ? "INACTIVE" : values.available_in_pos === true ? "ACTIVE" : (current.status || "ACTIVE"),
+    image: values.image_1920 ?? current.image ?? null,
   });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Product update failed (${response.status})`, response.status);
+  const barcode = typeof values.barcode === "string" ? values.barcode.trim() : "";
+  if (barcode) {
+    await api.post(`/api/products/${productId}/barcodes`, { barcode }).catch(() => undefined);
+  }
 }
 
 export async function createOdooProduct(values: {
@@ -868,18 +999,19 @@ export async function createOdooProduct(values: {
   available_in_pos: boolean;
   image_1920?: string;
 }): Promise<{ id: number; name: string }> {
-  const response = await fetchOdooApi("/api/odoo/products", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(values),
+  const created = await api.post<{ id: number; name: string }>("/api/products", {
+    name: values.name,
+    price: values.list_price,
+    categoryId: values.pos_categ_ids[0] ?? null,
+    status: values.available_in_pos ? "ACTIVE" : "INACTIVE",
+    type: "STANDARD",
+    trackInventory: true,
+    image: values.image_1920 ?? null,
   });
-  const payload = await response.json().catch(() => null) as { id?: number; name?: string; message?: string } | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
-    throw new OdooApiError(payload?.message || `Product creation failed (${response.status})`, response.status || 502);
+  if (values.barcode.trim()) {
+    await api.post(`/api/products/${created.id}/barcodes`, { barcode: values.barcode.trim() }).catch(() => undefined);
   }
-  return { id: payload.id, name: payload.name };
+  return { id: Number(created.id), name: created.name };
 }
 
 export interface OdooProductImportRow {

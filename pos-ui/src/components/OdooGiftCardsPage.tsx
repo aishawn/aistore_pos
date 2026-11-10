@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { AlertCircle, Gift, LoaderCircle, RefreshCw, Search } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
-import { getOdooGiftCards, getOdooSession, type OdooGiftCardRecord } from "@/lib/odoo-api";
+import { getOdooGiftCards, getOrithosSession, type OdooGiftCardRecord } from "@/lib/odoo-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
@@ -25,7 +25,7 @@ export function OdooGiftCardsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    void getOdooSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
+    void getOrithosSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
   }, [refreshKey]);
 
   const load = useCallback(async () => {

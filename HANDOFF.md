@@ -4,7 +4,7 @@
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
 > Session: Orithos Native Ledger Cutover (Shopfront sales → native `sale`/`sale_item`; reports/UI Orithos-only)  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
-> Tip SHA: `31bd78b0` (dashboard Store Pulse + native history/inventory + customer/price-list Orithos routes; customer code store-prefix)
+> Tip SHA: see `git log -1` after catalogue/search + Shopfront-section retirement batch
 
 ## Goal
 
@@ -17,8 +17,12 @@ Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (ve
 | `/dashboard` Store Pulse | Stuck on “Shopfront reports unavailable” (old `/api/shopfront-source`) | `useOverview` → `GET /api/reports/native-overview`; pulse shows Orithos sales/margin/inventory |
 | `/reports/dashboard` | Already OK (`$5,035.80` / 161 yesterday) | Inventory metric now from `product_inventory` |
 | `/history` + Sales History modal | `native-sales-history` HTTP 500 | Adelaide business-day SQL + safe date mapping |
-| `/customers` | Odoo session gate; native `/api/customers` empty (1 row total) | UI routes to Orithos auth + `/api/customers`; **Shopfront customer import still missing** |
+| `/customers` | Odoo session gate; native `/api/customers` empty (1 row total) | UI routes to Orithos auth + `/api/customers`; SKR/Demo promote has rows |
+| `/customers/[id]/view` | Odoo workspace + Shopfront history tabs | Native `/api/customers/{id}` + recent-sales + revisions |
+| `/products` (owner-locked shell) | Odoo BFF records + Shopfront sections → 410 | `searchOdooRecords` → `/api/products` etc.; Orithos summary sections; create/update via `/api/products` |
+| `/purchases` | Shopfront purchasing archive 403/410 | Removed `ShopfrontPurchasingSection`; Orithos `/api/orders` + `/api/suppliers` |
 | `/api/price-lists` | Classic filter 410 | Allowlisted + outlet-scoped controller |
+| Product writes Classic gate | POST `/api/products` → 410 | `OdooOnlyModeFilter` allows full product routes |
 
 ## Completed this session
 
@@ -37,8 +41,9 @@ Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (ve
 - `/api/shopfront-source` → HTTP **410**.
 
 ### Phase 3 — Domain cutover (partial ship)
-- Sell / register / close / customers / suppliers / inventory report surfaces moved toward Orithos where already present.
-- **Not fully cleared:** products catalogue (still Odoo-primary in main nav), transfers/replenishment, customer satellites (balances/gift cards), `/sell` classic Odoo register, some settings/AI Odoo reads. See “Next plan” below.
+- Sell / register / close / customers / suppliers / inventory report / catalogue **reads** moved toward Orithos (owner-locked shells kept; data adapters under `odoo-api.searchOdooRecords`).
+- Live probe (SKR+Demo): native-overview / products / customers / suppliers / orders / sales **200**; `/api/shopfront-source` **410**; `/api/odoo/purchase-orders` **403** (expected retired).
+- **Not fully cleared:** transfers/replenishment Odoo RFQ, customer balances/gift cards still Odoo BFF reads, `/sell` classic Odoo register, some settings/AI Odoo reads. See “Next plan” below.
 
 ### Phase 4 — Verify / parity / deploy
 - Java 21 `mvn -B verify` green (601 tests) on promote/day-totals work.
@@ -106,11 +111,11 @@ Uncommitted local edits may exist under `pos-ui/app/reports/*`, `suppliers`, `Na
 ### P1 — Finish Odoo / Shopfront UI retirement (by domain)
 Priority from live inventory (migrate writes before leftover report mirrors):
 
-1. **Products + stocktake + categories** (`/products` still Odoo-primary).
+1. **Stocktake + categories dialogs** still hit `/api/odoo/*` from the products shell.
 2. **Purchasing leftovers** — transfers, replenishment RFQ, invoice→PO confirm/receive.
-3. **Customer satellites** — balances, gift cards, pricelists, `/customers/odoo`.
+3. **Customer satellites** — balances, gift cards still Odoo BFF; pricelists native.
 4. **Cash / `/sell` classic Odoo register / manage-cash** — retire once Orithos register is sole path.
-5. **Shopfront report pages** — `/reports/inventory`, `/reports/purchase`, shopfront dashboard redirects already partly done; ensure no callers of `/api/shopfront-source`.
+5. **Dead Shopfront UI files** — `ShopfrontPurchasingDirectory`, `ShopfrontSourceDataPage` unused; delete after zero imports.
 6. **Settings + AI Odoo reads** — company, payment fallback, assistant ops preview.
 7. **Delete dead `/api/odoo/*` BFF** only after zero callers + Java 21 verify.
 

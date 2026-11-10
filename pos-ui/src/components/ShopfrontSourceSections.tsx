@@ -2,161 +2,174 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, RefreshCw } from "lucide-react";
-import { parseShopfrontSalesReport } from "@/lib/shopfront-dashboard-metrics";
+import { api, type Page } from "@/lib/api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
-import type { InventoryShopfrontCoverage } from "@/lib/inventory-snapshot";
 
-type SourceRow = Record<string, unknown>;
-type SourceResponse = {
-  data?: SourceRow[];
-  pagination?: { total?: number };
-  totals?: SourceRow;
-  coverage?: {
-    catalog?: { active_records?: number; current_records?: number };
-    inventory?: {
-      complete?: boolean;
-      snapshot_at?: string;
-      positive_quantity_total?: number | string;
-      negative_records?: number;
-    };
-  };
-  fetched_at?: string;
-  source?: string;
-  source_version?: string;
-  message?: string;
+type ProductRow = {
+  id: number;
+  name: string;
+  categoryName?: string | null;
+  status?: string | null;
+  price?: number | null;
+  stockQuantity?: number | null;
 };
 
-function useSourceSection(resource: string, extra = "", initiallyExpanded = false) {
-  const [expanded, setExpandedState] = useState(initiallyExpanded);
-  const [requestId, setRequestId] = useState(0);
-  const [resolvedId, setResolvedId] = useState(-1);
-  const [data, setData] = useState<SourceResponse | null>(null);
-  const [requestError, setRequestError] = useState<{ id: number; message: string } | null>(null);
-  const error = requestError?.id === requestId ? requestError.message : "";
-  const loading = expanded && resolvedId !== requestId && !error;
-
-  function setExpanded(open: boolean) {
-    setExpandedState(open);
-    if (open) {
-      setRequestError(null);
-      setRequestId((value) => value + 1);
-    }
-  }
-
-  function refresh() {
-    setRequestError(null);
-    setRequestId((value) => value + 1);
-  }
-
-  useEffect(() => {
-    if (!expanded) return;
-    const controller = new AbortController();
-    const activeRequest = requestId;
-    const query = new URLSearchParams({ resource, page: "1", size: resource === "report-products" ? "25" : resource === "report-sales" ? "600" : "1" });
-    new URLSearchParams(extra).forEach((value, key) => query.set(key, value));
-    void fetch(`/api/shopfront-source?${query}`, { cache: "no-store", credentials: "same-origin", signal: controller.signal })
-      .then(async (response) => {
-        const body = await response.json().catch(() => null) as SourceResponse | null;
-        if (!response.ok || !body || !Array.isArray(body.data)) throw new Error(body?.message || "Shopfront source data is unavailable.");
-        if (resource === "report-inventory") {
-          const coverageResponse = await fetch("/api/shopfront-source?resource=coverage", { cache: "no-store", credentials: "same-origin", signal: controller.signal });
-          const coverageBody = await coverageResponse.json().catch(() => null) as { data?: SourceResponse["coverage"] } | null;
-          if (coverageResponse.ok && coverageBody?.data) body.coverage = coverageBody.data;
-        }
-        if (!controller.signal.aborted) { setData(body); setResolvedId(activeRequest); }
-      })
-      .catch((cause) => { if (!controller.signal.aborted) setRequestError({ id: activeRequest, message: cause instanceof Error ? cause.message : "Shopfront source data is unavailable." }); });
-    return () => controller.abort();
-  }, [expanded, extra, requestId, resource]);
-
-  return { expanded, setExpanded, refresh, data, loading, error };
-}
+type NativeOverview = {
+  source: "orithos_ledger";
+  from: string;
+  to: string;
+  revenue: number;
+  tax: number | null;
+  grossProfit: number | null;
+  costAvailable: boolean;
+  taxAvailable: boolean;
+  transactions: number;
+  inventoryAvailable?: boolean;
+  inventoryUnits?: number | null;
+  inventoryStatus?: string | null;
+  negativeStockProducts?: number | null;
+};
 
 const buttonClass = "inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]";
 const number = (value: unknown) => Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(Number(value)) : "—";
 const money = (value: unknown) => Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(Number(value)) : "—";
 
-function SectionFrame({ title, expanded, setExpanded, children }: { title: string; expanded: boolean; setExpanded: (value: boolean) => void; children: ReactNode }) {
+function SectionFrame({ title, subtitle, expanded, setExpanded, children }: { title: string; subtitle: string; expanded: boolean; setExpanded: (value: boolean) => void; children: ReactNode }) {
   return <section className="shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
     <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Shopfront · read-only source records</p></div>
-      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className={buttonClass}>{expanded ? "Hide history" : "View history"} <ChevronDown size={15} aria-hidden="true" /></button>
+      <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">{subtitle}</p></div>
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)} className={buttonClass}>{expanded ? "Hide" : "View"} <ChevronDown size={15} aria-hidden="true" /></button>
     </header>
     {expanded && <div className="border-t border-[var(--oh-border)] p-4">{children}</div>}
   </section>;
 }
 
 function SourceState({ loading, error, onRetry, children }: { loading: boolean; error: string; onRetry: () => void; children: ReactNode }) {
-  if (loading) return <p role="status" className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" /> Loading Shopfront source data…</p>;
+  if (loading) return <p role="status" className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" /> Loading Orithos ledger…</p>;
   if (error) return <div role="status" className="flex flex-wrap items-center justify-between gap-3 text-sm"><span className="text-[var(--oh-muted)]">{error}</span><button type="button" onClick={onRetry} className={buttonClass}><RefreshCw size={15} /> Retry</button></div>;
   return <>{children}</>;
 }
 
-export function ShopfrontInventorySummary({ odooProductCount, coverage }: { odooProductCount?: number; coverage?: InventoryShopfrontCoverage | null }) {
-  const sourceCoverage = coverage ?? null;
+function dayInAdelaide(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+async function readNativeOverview(from: string, to: string, signal?: AbortSignal): Promise<NativeOverview> {
+  const params = new URLSearchParams({ from, to });
+  const response = await fetch(`/api/reports/native-overview?${params}`, { credentials: "same-origin", cache: "no-store", signal });
+  const body = await response.json().catch(() => null) as { data?: NativeOverview; message?: string } | null;
+  if (!response.ok || !body?.data || body.data.source !== "orithos_ledger") {
+    throw new Error(body?.message || "Orithos sales data is unavailable.");
+  }
+  return body.data;
+}
+
+/** Catalogue inventory strip after Shopfront source retirement — Orithos on-hand. */
+export function ShopfrontInventorySummary({ productCount }: { productCount?: number }) {
+  const [overview, setOverview] = useState<NativeOverview | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const controller = new AbortController();
+    const today = dayInAdelaide();
+    setLoading(true);
+    setError("");
+    void readNativeOverview(today, today, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setOverview(data); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Orithos inventory summary unavailable."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, []);
   return <section className="shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
     <header className="px-4 py-3">
-      <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront inventory snapshot</h2>
-      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Shopfront · read-only source mirror · separate from Odoo balances</p>
+      <h2 className="text-sm font-semibold text-[var(--oh-text)]">Orithos inventory snapshot</h2>
+      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Orithos ledger · on-hand quantities for this store</p>
     </header>
-    {sourceCoverage && <div className="flex flex-wrap gap-x-8 gap-y-3 p-4 text-sm">
-      <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront active products</span><strong>{number(sourceCoverage.activeProducts)}</strong></p>
-      {typeof odooProductCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Odoo saleable variants</span><strong>{number(odooProductCount)}</strong></p>}
-      <p><span className="block text-xs text-[var(--oh-muted)]">Shopfront positive units</span><strong>{number(sourceCoverage.positiveInventoryUnits)}</strong></p>
-      <p><span className="block text-xs text-[var(--oh-muted)]">Inventory-covered products</span><strong>{number(sourceCoverage.inventoryProductRows)} / {number(sourceCoverage.activeProducts)}</strong></p>
-      {typeof sourceCoverage.productsWithCost === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Products with source cost</span><strong>{number(sourceCoverage.productsWithCost)}</strong></p>}
-      {typeof sourceCoverage.zeroCostProducts === "number" && sourceCoverage.zeroCostProducts > 0 && <p><span className="block text-xs text-[var(--oh-muted)]">Source-reported $0 cost</span><strong>{number(sourceCoverage.zeroCostProducts)}</strong></p>}
-      <p className="basis-full text-xs text-[var(--oh-muted)]">Snapshot {sourceCoverage.inventorySnapshotAt ? formatStoreEpoch(Date.parse(sourceCoverage.inventorySnapshotAt), "Australia/Adelaide") : "time unavailable"}. Product rows and coverage use the same canonical Shopfront-linked products; source stock is separate from signed Odoo on-hand balances.</p>
-    </div>}
-    {!sourceCoverage && <p role="status" className="px-4 pb-4 text-sm text-amber-800">Shopfront coverage is unavailable; the rows remain marked by source status.</p>}
+    <div className="px-4 pb-4">
+      <SourceState loading={loading} error={error} onRetry={() => { setLoading(true); setError(""); void readNativeOverview(dayInAdelaide(), dayInAdelaide()).then(setOverview).catch((cause) => setError(cause instanceof Error ? cause.message : "Orithos inventory summary unavailable.")).finally(() => setLoading(false)); }}>
+        {(overview || typeof productCount === "number") && <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          {typeof productCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Catalogue products</span><strong>{number(productCount)}</strong></p>}
+          {overview?.inventoryUnits != null && <p><span className="block text-xs text-[var(--oh-muted)]">On-hand units</span><strong>{number(overview.inventoryUnits)}</strong></p>}
+          {overview?.negativeStockProducts != null && overview.negativeStockProducts > 0 && <p><span className="block text-xs text-[var(--oh-muted)]">Negative stock products</span><strong>{number(overview.negativeStockProducts)}</strong></p>}
+          <p className="basis-full text-xs text-[var(--oh-muted)]">{overview?.inventoryStatus ? `Inventory ${overview.inventoryStatus}` : "Inventory from Orithos product on-hand"}{overview ? ` · refreshed ${formatStoreEpoch(Date.now(), "Australia/Adelaide")}` : ""}.</p>
+        </div>}
+      </SourceState>
+    </div>
   </section>;
 }
 
+/** Product sample list from Orithos catalogue (replaces retired Shopfront history). */
 export function ShopfrontProductHistorySection() {
-  const state = useSourceSection("report-products", "status=ACTIVE");
-  const rows = state.data?.data ?? [];
-  return <SectionFrame title="Shopfront product history" expanded={state.expanded} setExpanded={state.setExpanded}>
-    <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
-      {state.data && <>
-        <p className="mb-3 text-xs text-[var(--oh-muted)]">{number(state.data.pagination?.total)} active Shopfront products · archived catalog snapshots · {state.data.fetched_at || "source timestamp unavailable"}. This catalog count is not directly comparable to Odoo saleable product variants.</p>
-        {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="text-xs text-[var(--oh-muted)]"><th className="border-b px-2 py-2">Product</th><th className="border-b px-2 py-2">Category</th><th className="border-b px-2 py-2">Status</th><th className="border-b px-2 py-2 text-right">Source price</th></tr></thead><tbody>{rows.map((row, index) => <tr key={`${String(row.shopfront_product_id ?? row.id ?? "source")}-${index}`}><td className="border-b px-2 py-2">{String(row.name ?? "Unnamed product")}</td><td className="border-b px-2 py-2">{String(row.category ?? "—")}</td><td className="border-b px-2 py-2">{String(row.status ?? "Unknown")}</td><td className="border-b px-2 py-2 text-right">{money(row.price)}</td></tr>)}</tbody></table></div> : <p role="status" className="text-sm text-[var(--oh-muted)]">No matching Shopfront product records are available.</p>}
-      </>}
+  const [expanded, setExpanded] = useState(false);
+  const [requestId, setRequestId] = useState(0);
+  const [resolvedId, setResolvedId] = useState(-1);
+  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState("");
+  const loading = expanded && resolvedId !== requestId && !error;
+
+  useEffect(() => {
+    if (!expanded) return;
+    const controller = new AbortController();
+    const active = requestId;
+    setError("");
+    void api.get<Page<ProductRow>>("/api/products", { page: 1, size: 25, status: "ACTIVE" })
+      .then((page) => {
+        if (controller.signal.aborted) return;
+        setRows(page.items);
+        setTotal(page.total);
+        setResolvedId(active);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Orithos products unavailable.");
+      });
+    return () => controller.abort();
+  }, [expanded, requestId]);
+
+  return <SectionFrame title="Orithos product catalogue" subtitle="Orithos ledger · active products" expanded={expanded} setExpanded={(open) => { setExpanded(open); if (open) setRequestId((value) => value + 1); }}>
+    <SourceState loading={loading} error={error} onRetry={() => setRequestId((value) => value + 1)}>
+      <p className="mb-3 text-xs text-[var(--oh-muted)]">{number(total)} active Orithos products · showing first {rows.length}.</p>
+      {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="text-xs text-[var(--oh-muted)]"><th className="border-b px-2 py-2">Product</th><th className="border-b px-2 py-2">Category</th><th className="border-b px-2 py-2">Status</th><th className="border-b px-2 py-2 text-right">Shelf price</th><th className="border-b px-2 py-2 text-right">On hand</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td className="border-b px-2 py-2">{row.name}</td><td className="border-b px-2 py-2">{row.categoryName || "—"}</td><td className="border-b px-2 py-2">{row.status || "ACTIVE"}</td><td className="border-b px-2 py-2 text-right">{money(row.price)}</td><td className="border-b px-2 py-2 text-right">{number(row.stockQuantity)}</td></tr>)}</tbody></table></div> : !loading && !error ? <p role="status" className="text-sm text-[var(--oh-muted)]">No Orithos products found.</p> : null}
     </SourceState>
   </SectionFrame>;
 }
 
-function shopfrontSalesRangeQuery(from: string, to: string) {
-  const daySpan = Math.max(1, Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) + 1);
-  return `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&size=${Math.min(600, daySpan)}`;
-}
+/** Period sales strip from Orithos native-overview (replaces retired Shopfront source sales). */
+export function ShopfrontSalesSummary({ from, to, enabled = true }: { from: string; to: string; enabled?: boolean }) {
+  const [data, setData] = useState<NativeOverview | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const lastKey = useRef("");
 
-export function ShopfrontSalesSummary({ from, to, enabled = false }: { from: string; to: string; enabled?: boolean }) {
-  const state = useSourceSection("report-sales", shopfrontSalesRangeQuery(from, to), false);
-  const lastFetchRef = useRef("");
   useEffect(() => {
     if (!enabled) return;
-    const key = `${from}:${to}`;
-    if (lastFetchRef.current === key && state.data) return;
-    lastFetchRef.current = key;
-    if (!state.expanded) state.setExpanded(true);
-    else state.refresh();
-  }, [enabled, from, to, state.data, state.expanded]);
-  const metrics = state.data ? parseShopfrontSalesReport(state.data) : null;
-  const coverage = state.data?.coverage as { missing_dates?: unknown[] } | undefined;
-  const missingDays = Array.isArray(coverage?.missing_dates) ? coverage.missing_dates.length : null;
+    const key = `${from}:${to}:${refreshKey}`;
+    if (lastKey.current === key) return;
+    lastKey.current = key;
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    void readNativeOverview(from, to, controller.signal)
+      .then((overview) => { if (!controller.signal.aborted) setData(overview); })
+      .catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Orithos sales unavailable."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [enabled, from, to, refreshKey]);
+
   return <section className="rounded-lg border border-[var(--oh-border)] bg-white">
     <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront source sales</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">{from} to {to} · read-only · separate from Odoo totals</p></div>
-      <button type="button" onClick={state.refresh} disabled={state.loading} className={buttonClass}><RefreshCw size={15} /> Refresh</button>
+      <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Orithos ledger sales</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">{from} to {to} · Australia/Adelaide</p></div>
+      <button type="button" onClick={() => { lastKey.current = ""; setRefreshKey((value) => value + 1); }} disabled={loading} className={buttonClass}><RefreshCw size={15} /> Refresh</button>
     </header>
     <div className="border-t border-[var(--oh-border)] px-4 py-3">
-      <SourceState loading={state.loading} error={state.error} onRetry={state.refresh}>
-        {metrics ? <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-          <p><span className="block text-xs text-[var(--oh-muted)]">Source revenue</span><strong>{money(metrics.revenue)}</strong></p>
-          <p><span className="block text-xs text-[var(--oh-muted)]">Source gross margin</span><strong>{metrics.grossMargin === null ? "—" : `${(metrics.grossMargin * 100).toFixed(1)}%`}</strong></p>
-          <p><span className="block text-xs text-[var(--oh-muted)]">Transactions</span><strong>{number(metrics.transactionCount)}</strong></p>
-          <p className="basis-full text-xs text-[var(--oh-muted)]">{missingDays === null ? "Source sync coverage unknown" : missingDays ? `Partial source coverage · ${missingDays} date(s) missing` : "Source report rows reconciled"} · not ledger-audited{metrics.fetchedAt ? ` · fetched ${metrics.fetchedAt}` : ""}</p>
-        </div> : state.data ? <p role="status" className="text-sm text-amber-900">Shopfront returned incomplete or inconsistent source rows. No totals are shown.</p> : !state.loading && !state.error ? <p role="status" className="text-sm text-[var(--oh-muted)]">Shopfront source data is unavailable.</p> : null}
+      <SourceState loading={loading} error={error} onRetry={() => { lastKey.current = ""; setRefreshKey((value) => value + 1); }}>
+        {data ? <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          <p><span className="block text-xs text-[var(--oh-muted)]">Revenue</span><strong>{money(data.revenue)}</strong></p>
+          <p><span className="block text-xs text-[var(--oh-muted)]">Gross profit</span><strong>{data.grossProfit == null ? "—" : money(data.grossProfit)}</strong></p>
+          <p><span className="block text-xs text-[var(--oh-muted)]">Transactions</span><strong>{number(data.transactions)}</strong></p>
+          <p className="basis-full text-xs text-[var(--oh-muted)]">Orithos sale ledger · {data.costAvailable ? "cost covered" : "cost incomplete"} · {data.taxAvailable ? `tax ${money(data.tax)}` : "tax incomplete"}</p>
+        </div> : !loading && !error ? <p role="status" className="text-sm text-[var(--oh-muted)]">Orithos sales data is unavailable.</p> : null}
       </SourceState>
     </div>
   </section>;

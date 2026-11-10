@@ -11,7 +11,7 @@ import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminP
 import {
   getOdooCustomerBalances,
   getOdooCustomerInvoices,
-  getOdooSession,
+  getOrithosSession,
   type OdooCustomerBalanceRecord,
   type OdooCustomerInvoiceRecord,
 } from "@/lib/odoo-api";
@@ -49,7 +49,7 @@ export function OdooCustomerBalancesPage() {
   }, []);
 
   useEffect(() => {
-    void getOdooSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
+    void getOrithosSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
   }, [refreshKey]);
 
   const load = useCallback(async () => {
