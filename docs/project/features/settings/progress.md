@@ -13,10 +13,16 @@
 - `mvn -B clean verify`（Java 21）PASS，含 `CompanySettingsServiceTest` 与 CashRounding `roundTo` 断言。
 - `pos-ui` `npm run typecheck` PASS。
 
+## 线上核对（2026-11-11）
+
+- SKR login OK（cookie session）。
+- `/api/settings/company` 曾返回 **410 Classic retired** — 根因 `OdooOnlyModeFilter` 将 `/api/settings` 等列入 legacy；已放行 Settings 1:1 原生路由并补回归测试。
+- 修复候选待 push 后复测 company/enterprise/push/tax/payment。
+
 ## 下一步
 
-1. push `main`（POS + crawler）→ Dokploy 自动部署。
-2. 触发 `settings_import` for `skr`，再在 Demo Integrations promote；更新 UAT_SETTINGS 为线上结果。
+1. 部署本修复后复测 Settings API + Setup 页。
+2. 触发 `settings_import` for `skr`，再在 Demo Integrations promote。
 3. 定价算法（High Mix / Family / Redistribute）单独验收。
 
 ## 阻塞
