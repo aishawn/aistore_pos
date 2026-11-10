@@ -27,7 +27,7 @@ Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SK
 ## Current State
 
 **Shipped to `origin/main` (2026-11-10 native ledger cutover):**
-- POS head `e4b6f031` (prior cutover chain includes `8b75ae3a` Adelaide-day/money fixes); crawler `e142bd5`. Java 21 `mvn -B verify` PASS (601 tests).
+- POS head `d6c0a187` (report-comparable totals + void orphan REF refunds); crawler `e142bd5`. Java 21 `mvn -B verify` PASS (601 tests).
 - Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
 - UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
 - Adelaide `2026-11-09` **sale-row** parity (SKR+Demo): native shopfront COMPLETED = mirror = crawler headers = **`$5,035.80` / 161** (`sales:native-day-diff` zero mismatches). Shopfront sales-report DSL **`$5,038.48` / 162** = completed + one **INCOMPLETE** sale `00081327` / `$2.68` (open ticket; native status PARKED). `sales:native-day-totals` exposes `shopfront_report_comparable_*`. Void UAT `REF-%` orphans with `sales:void-orphan-ref-refunds` so outlet-wide overview matches shopfront completed.
