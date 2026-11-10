@@ -207,10 +207,21 @@ public class ShopfrontIntegrationController {
                       AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
                     """, outletId, day);
             Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
+            List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
+                    SELECT COUNT(*) AS transactions,
+                           COALESCE(SUM(total_price), 0) AS revenue
+                    FROM shopfront_sale
+                    WHERE store_key = ?
+                      AND UPPER(COALESCE(status, '')) IN ('COMPLETED', 'CLOSED', 'PAID', 'FINALISED', 'FINALIZED')
+                      AND (timezone('Australia/Adelaide', NULLIF(created_at, '')::timestamptz))::date = CAST(? AS date)
+                    """, storeKey, day);
+            Map<String, Object> mirror = mirrorRows.isEmpty() ? Map.of() : mirrorRows.get(0);
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("outlet_id", outletId);
             entry.put("transactions", row.get("transactions"));
             entry.put("revenue", row.get("revenue"));
+            entry.put("mirror_transactions", mirror.get("transactions"));
+            entry.put("mirror_revenue", mirror.get("revenue"));
             byStore.put(storeKey, entry);
         }
         Map<String, Object> result = new LinkedHashMap<>();
