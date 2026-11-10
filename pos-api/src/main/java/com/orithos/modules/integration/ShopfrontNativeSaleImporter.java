@@ -92,89 +92,119 @@ public class ShopfrontNativeSaleImporter {
 
     /**
      * Promote durable {@code shopfront_sale*} mirror rows into the native ledger
-     * for one store mapping. No inventory movements.
+     * for one store mapping. No inventory movements. Processes a bounded page so
+     * callers can loop without gateway timeouts.
      */
     public Map<String, Object> promoteFromMirror(String storeKey, long outletId) {
+        return promoteFromMirror(storeKey, outletId, null, 500, null);
+    }
+
+    public Map<String, Object> promoteFromMirror(String storeKey, long outletId, String afterExternalId,
+                                                 int limit, String businessDay) {
         ensureExternalIdentityColumns();
-        List<Map<String, Object>> sales = jdbc.queryForList(
+        int pageSize = Math.max(1, Math.min(limit <= 0 ? 500 : limit, 2000));
+        StringBuilder sql = new StringBuilder(
                 "SELECT external_id, invoice_id, status, created_at, updated_at, total_price, total_tax, "
                         + "total_discount, total_cost, customer_reference, raw_payload "
-                        + "FROM shopfront_sale WHERE store_key = ? ORDER BY external_id",
-                storeKey);
+                        + "FROM shopfront_sale WHERE store_key = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(storeKey);
+        if (afterExternalId != null && !afterExternalId.isBlank()) {
+            sql.append(" AND external_id > ?");
+            args.add(afterExternalId);
+        }
+        if (businessDay != null && !businessDay.isBlank()) {
+            sql.append(" AND (timezone('Australia/Adelaide', NULLIF(created_at, '')::timestamptz))::date = CAST(? AS date)");
+            args.add(businessDay);
+        }
+        sql.append(" ORDER BY external_id LIMIT ?");
+        args.add(pageSize);
+        List<Map<String, Object>> sales = jdbc.queryForList(sql.toString(), args.toArray());
         var items = objectMapper.createArrayNode();
-        int unmatchedLines = 0;
+        int rebuildFailures = 0;
+        String lastExternalId = afterExternalId;
         for (Map<String, Object> row : sales) {
             try {
-                JsonNode payload = parsePayload(row.get("raw_payload"));
-                var saleNode = objectMapper.createObjectNode();
                 String externalId = stringValue(row.get("external_id"));
-                saleNode.put("external_id", externalId);
-                saleNode.put("source_complete", true);
-                putText(saleNode, "invoice_id", firstNonBlank(text(payload, "invoice_id"), stringValue(row.get("invoice_id"))));
-                putText(saleNode, "status", firstNonBlank(text(payload, "status"), stringValue(row.get("status"))));
-                putText(saleNode, "created_at", firstNonBlank(text(payload, "created_at"), stringValue(row.get("created_at"))));
-                putText(saleNode, "updated_at", firstNonBlank(text(payload, "updated_at"), stringValue(row.get("updated_at"))));
-                saleNode.put("total_price", decimal(row.get("total_price")));
-                saleNode.put("total_tax", decimal(row.get("total_tax")));
-                saleNode.put("total_discount", decimal(row.get("total_discount")));
-                saleNode.put("total_cost", decimal(row.get("total_cost")));
-                putText(saleNode, "customer_reference", stringValue(row.get("customer_reference")));
-
-                var lineItems = objectMapper.createArrayNode();
-                List<Map<String, Object>> mirrorItems = jdbc.queryForList(
-                        "SELECT line_key, source_product_id, product_name, quantity, unit_price, line_total, cost, tax, raw_payload "
-                                + "FROM shopfront_sale_item WHERE store_key = ? AND external_sale_id = ? ORDER BY line_key",
-                        storeKey, externalId);
-                if (mirrorItems.isEmpty() && payload.path("items").isArray()) {
-                    lineItems.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("items"));
-                } else {
-                    for (Map<String, Object> item : mirrorItems) {
-                        var line = objectMapper.createObjectNode();
-                        line.put("id", stringValue(item.get("line_key")));
-                        putText(line, "source_product_id", stringValue(item.get("source_product_id")));
-                        putText(line, "name", stringValue(item.get("product_name")));
-                        line.put("quantity", decimal(item.get("quantity")));
-                        line.put("unit_price", decimal(item.get("unit_price")));
-                        line.put("line_total", decimal(item.get("line_total")));
-                        line.put("cost", decimal(item.get("cost")));
-                        line.put("tax", decimal(item.get("tax")));
-                        JsonNode itemPayload = parsePayload(item.get("raw_payload"));
-                        if (!itemPayload.isMissingNode() && !itemPayload.isNull()) {
-                            line.set("raw_payload", itemPayload);
-                        }
-                        lineItems.add(line);
-                    }
-                }
-                saleNode.set("items", lineItems);
-
-                var payments = objectMapper.createArrayNode();
-                List<Map<String, Object>> mirrorPayments = jdbc.queryForList(
-                        "SELECT payment_key, amount, status, subtype, raw_payload "
-                                + "FROM shopfront_sale_payment WHERE store_key = ? AND external_sale_id = ? ORDER BY payment_key",
-                        storeKey, externalId);
-                if (mirrorPayments.isEmpty() && payload.path("payments").isArray()) {
-                    payments.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("payments"));
-                } else {
-                    for (Map<String, Object> payment : mirrorPayments) {
-                        var node = objectMapper.createObjectNode();
-                        node.put("id", stringValue(payment.get("payment_key")));
-                        node.put("amount", decimal(payment.get("amount")));
-                        putText(node, "status", stringValue(payment.get("status")));
-                        putText(node, "subtype", stringValue(payment.get("subtype")));
-                        payments.add(node);
-                    }
-                }
-                saleNode.set("payments", payments);
-                items.add(saleNode);
+                lastExternalId = externalId;
+                items.add(rebuildSaleNode(storeKey, row));
             } catch (Exception ex) {
-                unmatchedLines++;
+                rebuildFailures++;
                 log.warn("Failed to rebuild mirror sale for promote store={} message={}", storeKey, ex.getMessage());
             }
         }
         Map<String, Object> result = upsertSales(storeKey, outletId, items);
         result.put("mirror_sales", sales.size());
-        result.put("rebuild_failures", unmatchedLines);
+        result.put("rebuild_failures", rebuildFailures);
+        result.put("batch_size", pageSize);
+        result.put("last_external_id", lastExternalId);
+        result.put("has_more", sales.size() >= pageSize);
+        result.put("business_day", businessDay);
         return result;
+    }
+
+    private com.fasterxml.jackson.databind.node.ObjectNode rebuildSaleNode(String storeKey, Map<String, Object> row) {
+        JsonNode payload = parsePayload(row.get("raw_payload"));
+        var saleNode = objectMapper.createObjectNode();
+        String externalId = stringValue(row.get("external_id"));
+        saleNode.put("external_id", externalId);
+        saleNode.put("source_complete", true);
+        putText(saleNode, "invoice_id", firstNonBlank(text(payload, "invoice_id"), stringValue(row.get("invoice_id"))));
+        putText(saleNode, "status", firstNonBlank(text(payload, "status"), stringValue(row.get("status"))));
+        putText(saleNode, "created_at", firstNonBlank(text(payload, "created_at"), stringValue(row.get("created_at"))));
+        putText(saleNode, "updated_at", firstNonBlank(text(payload, "updated_at"), stringValue(row.get("updated_at"))));
+        saleNode.put("total_price", decimal(row.get("total_price")));
+        saleNode.put("total_tax", decimal(row.get("total_tax")));
+        saleNode.put("total_discount", decimal(row.get("total_discount")));
+        saleNode.put("total_cost", decimal(row.get("total_cost")));
+        putText(saleNode, "customer_reference", stringValue(row.get("customer_reference")));
+
+        var lineItems = objectMapper.createArrayNode();
+        List<Map<String, Object>> mirrorItems = jdbc.queryForList(
+                "SELECT line_key, source_product_id, product_name, quantity, unit_price, line_total, cost, tax, raw_payload "
+                        + "FROM shopfront_sale_item WHERE store_key = ? AND external_sale_id = ? ORDER BY line_key",
+                storeKey, externalId);
+        if (mirrorItems.isEmpty() && payload.path("items").isArray()) {
+            lineItems.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("items"));
+        } else {
+            for (Map<String, Object> item : mirrorItems) {
+                var line = objectMapper.createObjectNode();
+                line.put("id", stringValue(item.get("line_key")));
+                putText(line, "source_product_id", stringValue(item.get("source_product_id")));
+                putText(line, "name", stringValue(item.get("product_name")));
+                line.put("quantity", decimal(item.get("quantity")));
+                line.put("unit_price", decimal(item.get("unit_price")));
+                line.put("line_total", decimal(item.get("line_total")));
+                line.put("cost", decimal(item.get("cost")));
+                line.put("tax", decimal(item.get("tax")));
+                JsonNode itemPayload = parsePayload(item.get("raw_payload"));
+                if (!itemPayload.isMissingNode() && !itemPayload.isNull()) {
+                    line.set("raw_payload", itemPayload);
+                }
+                lineItems.add(line);
+            }
+        }
+        saleNode.set("items", lineItems);
+
+        var payments = objectMapper.createArrayNode();
+        List<Map<String, Object>> mirrorPayments = jdbc.queryForList(
+                "SELECT payment_key, amount, status, subtype, raw_payload "
+                        + "FROM shopfront_sale_payment WHERE store_key = ? AND external_sale_id = ? ORDER BY payment_key",
+                storeKey, externalId);
+        if (mirrorPayments.isEmpty() && payload.path("payments").isArray()) {
+            payments.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("payments"));
+        } else {
+            for (Map<String, Object> payment : mirrorPayments) {
+                var node = objectMapper.createObjectNode();
+                node.put("id", stringValue(payment.get("payment_key")));
+                node.put("amount", decimal(payment.get("amount")));
+                putText(node, "status", stringValue(payment.get("status")));
+                putText(node, "subtype", stringValue(payment.get("subtype")));
+                payments.add(node);
+            }
+        }
+        saleNode.set("payments", payments);
+        return saleNode;
     }
 
     private UpsertOutcome upsertOne(String storeKey, long outletId, JsonNode sale, String externalId,

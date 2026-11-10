@@ -177,7 +177,6 @@ public class ShopfrontIntegrationController {
      * {@code sale}/{@code sale_item} ledger for mapped outlets (no stock moves).
      */
     @PostMapping("/sales:promote-native")
-    @Transactional
     public ApiResult<Map<String, Object>> promoteNativeSales(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody(required = false) JsonNode body) {
@@ -185,10 +184,14 @@ public class ShopfrontIntegrationController {
         ensureMappingTable();
         ensureShadowTables();
         String requestedStore = body == null ? "" : body.path("store_key").asText("").trim();
+        String afterExternalId = body == null ? "" : body.path("after_external_id").asText("").trim();
+        String businessDay = body == null ? "" : body.path("business_day").asText("").trim();
+        int limit = body == null ? 500 : body.path("limit").asInt(500);
         List<Map<String, Object>> mappings = jdbc.queryForList(
                 "SELECT store_key, company_id, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
         Map<String, Object> byStore = new LinkedHashMap<>();
         int stores = 0;
+        boolean hasMore = false;
         for (Map<String, Object> mapping : mappings) {
             if (!isEnabled(mapping.get("enabled"))) {
                 continue;
@@ -202,7 +205,13 @@ public class ShopfrontIntegrationController {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                         "Shopfront mapping has no numeric POS outlet_id for store " + storeKey);
             }
-            byStore.put(storeKey, nativeSaleImporter.promoteFromMirror(storeKey, outletId));
+            Map<String, Object> batch = nativeSaleImporter.promoteFromMirror(
+                    storeKey, outletId,
+                    afterExternalId.isBlank() ? null : afterExternalId,
+                    limit,
+                    businessDay.isBlank() ? null : businessDay);
+            byStore.put(storeKey, batch);
+            hasMore = hasMore || Boolean.TRUE.equals(batch.get("has_more"));
             stores++;
         }
         if (stores == 0) {
@@ -214,6 +223,7 @@ public class ShopfrontIntegrationController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", "PROMOTED");
         result.put("stores", stores);
+        result.put("has_more", hasMore);
         result.put("by_store", byStore);
         return ApiResult.ok(result);
     }
