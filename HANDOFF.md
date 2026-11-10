@@ -1,26 +1,23 @@
 # Handoff
 
-> Generated: 2026-11-10 (Australia/Adelaide business context; wall clock UTC+8)  
+> Generated: 2026-11-10 ~14:50 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Owner-authorized Odoo→Orithos native cutover for Demo+SKR on shared PostgreSQL; Shopfront POS writes are being checked for two-store completeness, source report parity, signed inventory and sales gaps.
+> Canonical cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
-## Shopfront Alignment Update (2026-11-10)
+## Shopfront Alignment Update (2026-11-10 14:50)
 
-- POS `main` and the SKR/Demo runtime are currently at `db30205559b4d531435b5b9e7ea0e626910e558f`. The last recorded exact-SHA GitHub Java 21 `mvn -B clean verify` result is for `3ed7ffcd7e96ba666f6a17999aa0c3cb2ae1177d` (workflow run `42647599802`); current local changes are frontend and crawler report-refresh propagation.
-- Crawler catalog job `#197` is still running. Latest read-only status at `2026-11-09T19:36:46Z`: `pos_inventory:skr:5000/10852`, heartbeat `19:36:46Z`. Its SyncRun is `#99`. Do not start another snapshot or deploy a POS restart until this durable job reaches a terminal state. Demo staging is still awaiting its mirror phase.
-- Latest crawler coverage: `11,033` source-linked products; current catalog `10,855` (`10,852` ACTIVE, `3` NOT_ACTIVE), plus `178` products referenced by sales but not confirmed in the current catalog; complete inventory snapshot `10,852`; sales `156,588` / `306,934` lines. SKR product ID reconciliation passes exactly: crawler `11,033`, POS `11,033`, missing `0`, extra `0`. POS inventory was still being replaced (`2,000/10,852` at last check); Demo was `0` across mirrored domains before its phase. POS sales remain `156,424` / `306,614`, a difference of `164` sales / `320` lines. Reconcile sales after job `#197` terminates.
-- Shopfront Inventory report's default positive-on-hand scope returns `3,056` rows, while the complete GraphQL snapshot contains `10,852` rows: `5,374` negative products are excluded from the default positive view and remain available in the signed snapshot. Example raw levels: case `-503`, item `-9`, case size `12`, derived units `-6,045`; crawler preserves the signed source value. Full-snapshot signed units are `-257,000`, positive sellable units are `50,278`, and the negative cost valuation is not a sellable-stock value.
-- Shopfront Sales report for Adelaide business date `2026-11-09`: revenue `$5,038.48`, COGS `$3,620.12`, Profit `$1,418.36`, profit percentage `28.15%`; `Revenue - COGS` matches Profit exactly and GraphQL transaction reconciliation is `162/162` with zero revenue/COGS variance.
-- Current Store Pulse code reads Shopfront source reports without first requiring `/api/odoo/reporting-dashboard`; if source reports fail, metrics show unavailable instead of silently retaining Odoo values. This session's local change makes explicit report refreshes reach Shopfront through the crawler and fails closed on stale fallback. It passes POS typecheck and crawler focused tests but is not committed or deployed yet.
-- Browser page-by-page acceptance is still open; Windows browser automation could not establish the current URL with sufficient confidence. Inventory/Sales source API reconciliation is evidence of report data, not a substitute for visual acceptance of Shopfront and Orithos pages.
+- **Operational cutover SKR+Demo: PASS** (staging mirror, Odoo writes off, native sell/receive both tenants). Shared DB `postgres` + `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true` remains expected (`isolated=false`).
+- Staging parity (SKR=Demo): products `11033`, inventory `10852`, sales `156588`, sale_items `306934`, suppliers `109`, PO `2370`.
+- Inventory store-pulse: OAuth Special Report still POST **405**; **staff Misc Inventory At Date + Name→ID enrich** path live → `source-reports/inventory?refresh=true` = `shopfront_reporting_api` / `fresh` (crawler `4faf745`). Unforced reads may still serve GraphQL snapshot cache.
+- Schedule: Adelaide `02:30,23:00`, interval 30m (`GET /api/sync/schedule`).
+- **Page Network Sales/Purchase (AIWEI):** session `POST /graphql` (not `/api/v2`). Purchase `orders(type:ORDER)=2370` ≡ staging PO. Suppliers `109`. Products GraphQL `10855` = catalog current (staging `11033` includes historical). Sales: crawler↔POS `156588` aligned; live GraphQL `sales.totalCount≈14317` is a **UI connection totalCount vs historical archive** gap, not crawler/POS drift. Evidence: `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` (gitignored `/docs/`).
+- Owner **「不用备份」** — durable PG/S3 backup out of this round. Xero interim: `scripts/xero_day_csv_export.py`. Pilot formal production still **NO-GO** until Xero/Odoo-retire acceptance as previously required (backup skipped per owner).
 
 ### Next Steps
 
-1. Continue polling job `#197`; after it finishes, verify `skr` and `demo` staging product/inventory counts and quantity reconciliation. Record terminal run/job counts before triggering anything else.
-2. Reconcile the `164` sale / `320` line gap using immutable Shopfront sale IDs. Prefer a bounded, idempotent repair or an explicit mirror-only reconciliation; verify source and both POS store keys afterward.
-3. Complete a Shopfront-source UI and report audit by fixed Adelaide business dates. Confirm default Inventory is the positive-only `3,056` row view and negative inventory remains separately inspectable.
-4. The explicit report-refresh propagation change is staged locally and passes crawler focused tests, POS typecheck and targeted lint; push and deploy it after the active catalog job completes, then verify runtime SHA and the three Store Pulse values on SKR and Demo.
-5. Keep pilot production readiness **NO-GO** until backup restore, Xero and Odoo-retirement acceptance are documented.
+1. Optional: Dashboard same-day Reporting amount cross-check (non-blocking).
+2. Keep Odoo business/import/stocktake writes false; do not register-scrape Shopfront.
+3. Xero owner acceptance path when ready; backup only if owner reverses skip.
 
 ## Goal
 
@@ -34,8 +31,8 @@ Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vend
 - Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
 - SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).
 - Shopfront store mappings on POS: `skr→company 55 / outlet 87`, `demo→company 1 / outlet 1`.
-- Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=https://api.orithos.com.au`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
-- Crawler `main` `e59e050` joins external Docker network `orithos-pos-qeyai0_default`; the current Dokploy runtime uses the public POS API URL above because the prior container hostname was not resolvable from the crawler.
+- Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=http://backend:8080`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
+- Crawler joins external Docker network `orithos-pos-qeyai0_default` so `backend:8080` resolves (POS backend is only on that project network, not `dokploy-network`). Do not switch back to public `api.orithos.com.au` for large catalog imports (Cloudflare 502/524).
 
 **Broken / incomplete:**
 - Pilot remains **NO-GO for formal production** until backup/Xero/Odoo-retire acceptance (owner’s earlier readiness bar).
