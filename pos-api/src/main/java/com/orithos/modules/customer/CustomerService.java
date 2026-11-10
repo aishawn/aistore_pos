@@ -304,7 +304,7 @@ public class CustomerService {
 
     private void ensureUniqueActiveEmails(List<String> emails, Long excludeCustomerId) {
         for (String email : emails) {
-            long count = customerEmailMapper.countActiveByEmailExcludingCustomer(email, excludeCustomerId);
+            long count = customerEmailMapper.countActiveByEmailExcludingCustomer(email, excludeCustomerId, requireCurrentOutlet());
             if (count > 0) {
                 throw new BusinessException(DUPLICATE_EMAIL, "A customer with this email already exists.");
             }

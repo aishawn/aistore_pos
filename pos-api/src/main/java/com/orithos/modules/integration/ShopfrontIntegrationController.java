@@ -96,7 +96,7 @@ public class ShopfrontIntegrationController {
             String token,
             boolean enabled) {
         this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
-                new NativeCustomerImportService(jdbc, objectMapper), token, enabled, false);
+                new NativeCustomerImportService(jdbc), token, enabled, false);
     }
 
     public ShopfrontIntegrationController(
@@ -106,7 +106,7 @@ public class ShopfrontIntegrationController {
             boolean enabled,
             boolean businessWriteEnabled) {
         this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
-                new NativeCustomerImportService(jdbc, objectMapper), token, enabled, businessWriteEnabled);
+                new NativeCustomerImportService(jdbc), token, enabled, businessWriteEnabled);
     }
 
     @GetMapping("/mappings")

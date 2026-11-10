@@ -146,7 +146,7 @@ public class CustomerImportService {
         c.setCode(trimOrNull(cell(cells, columns.get("code"))));
         c.setEmail(trimOrNull(cell(cells, columns.get("email"))));
         if (c.getEmail() != null
-                && customerEmailMapper.countActiveByEmailExcludingCustomer(c.getEmail(), null) > 0) {
+                && customerEmailMapper.countActiveByEmailExcludingCustomer(c.getEmail(), null, CurrentUser.outletId()) > 0) {
             throw new BusinessException("A customer with this email already exists.");
         }
         c.setPhone(trimOrNull(cell(cells, columns.get("phone"))));

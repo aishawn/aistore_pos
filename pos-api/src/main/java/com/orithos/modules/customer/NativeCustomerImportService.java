@@ -1,15 +1,17 @@
 package com.orithos.modules.customer;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -20,11 +22,9 @@ import java.util.Map;
 @Service
 public class NativeCustomerImportService {
     private final JdbcTemplate jdbc;
-    private final ObjectMapper objectMapper;
 
-    public NativeCustomerImportService(JdbcTemplate jdbc, ObjectMapper objectMapper) {
+    public NativeCustomerImportService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -55,29 +55,67 @@ public class NativeCustomerImportService {
                 String firstName = text(source, "firstName", "first_name");
                 String lastName = text(source, "lastName", "last_name");
                 String company = text(source, "company");
-                String email = text(item, "email");
+                String businessNumber = text(source, "businessNumber", "business_number");
+                LocalDate birthday = date(source, "birthday");
+                String gender = text(source, "gender");
+                List<String> emails = emails(source, text(item, "email"));
+                ensureEmailsAvailable(emails, existing, outletId);
+                String email = emails.isEmpty() ? text(item, "email") : emails.getFirst();
                 String phone = text(item, "phone", "mobile");
                 String mobile = text(item, "mobile");
+                String fax = text(source, "fax");
+                String invoiceMessage = text(source, "invoiceMessage", "invoice_message");
+                String comments = text(source, "comments");
+                BigDecimal loyaltyRate = decimal(source, "loyaltyRate", "loyalty_rate");
+                BigDecimal loyaltyPoints = decimal(source, "loyaltyPoints", "loyalty_points");
+                BigDecimal accountLimit = decimal(source, "accountLimit", "account_limit");
+                BigDecimal currentOwing = decimal(source, "currentOwing", "current_owing");
+                JsonNode customerGroup = source.path("customerGroup").isObject() ? source.path("customerGroup") : source.path("customer_group");
+                JsonNode priceList = source.path("priceList").isObject() ? source.path("priceList") : source.path("price_list");
+                Long customerGroupId = resolveCustomerGroupId(outletId, text(customerGroup, "name"));
+                Long priceListId = resolvePriceListId(outletId, text(priceList, "name"));
+                boolean allowMarketingEmails = bool(source, true, "allowMarketingEmails", "allow_marketing_emails");
+                boolean loyaltyEnabled = bool(source, false, "loyaltyEnabled", "loyalty_enabled");
+                boolean disablePromotions = bool(source, false, "disablePromotions", "disable_promotions");
+                boolean overrideCustomerGroup = bool(source, false, "overrideCustomerGroup", "override_customer_group");
+                boolean requireOrderReference = bool(source, false, "requireOrderReference", "require_order_reference");
                 boolean deleted = item.path("deleted").asBoolean(false);
                 Long customerId;
                 if (existing == null) {
                     customerId = jdbc.queryForObject("""
-                            INSERT INTO customer (name, first_name, last_name, company, code, email, phone, mobile,
-                              deleted_at, outlet_id)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END, ?)
+                            INSERT INTO customer (name, first_name, last_name, company, business_number, birthday,
+                              gender, code, email, phone, mobile, fax, allow_marketing_emails, invoice_message,
+                              comments, customer_group_id, override_customer_group, loyalty_enabled, loyalty_rate,
+                              loyalty_points, disable_promotions, price_list_id, require_order_reference,
+                              account_limit, current_owing, deleted_at, outlet_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                              ?, COALESCE(?, 0), CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END, ?)
                             RETURNING id
-                            """, Long.class, name, firstName, lastName, company, code, email, phone, mobile, deleted, outletId);
+                            """, Long.class, name, firstName, lastName, company, businessNumber, birthday,
+                            gender, code, email, phone, mobile, fax, allowMarketingEmails ? 1 : 0, invoiceMessage, comments,
+                            customerGroupId, overrideCustomerGroup ? 1 : 0, loyaltyEnabled ? 1 : 0, loyaltyRate, loyaltyPoints,
+                            disablePromotions ? 1 : 0, priceListId, requireOrderReference ? 1 : 0, accountLimit, currentOwing,
+                            deleted, outletId);
                     jdbc.update("INSERT INTO shopfront_customer_mapping (store_key, source_id, outlet_id, customer_id) VALUES (?, ?, ?, ?)", storeKey, sourceId, outletId, customerId);
                     created++;
                 } else {
                     customerId = existing;
                     jdbc.update("""
-                        UPDATE customer SET name=?, first_name=?, last_name=?, company=?, email=?, phone=?, mobile=?,
+                        UPDATE customer SET name=?, first_name=?, last_name=?, company=?, business_number=?, birthday=?,
+                          gender=?, email=?, phone=?, mobile=?, fax=?, allow_marketing_emails=?, invoice_message=?,
+                          comments=?, customer_group_id=?, override_customer_group=?, loyalty_enabled=?, loyalty_rate=?,
+                          loyalty_points=COALESCE(?, loyalty_points), disable_promotions=?, price_list_id=?,
+                          require_order_reference=?, account_limit=?, current_owing=COALESCE(?, current_owing),
                           deleted_at=CASE WHEN ? THEN COALESCE(deleted_at, CURRENT_TIMESTAMP) ELSE NULL END
                         WHERE id=? AND outlet_id=?
-                        """, name, firstName, lastName, company, email, phone, mobile, deleted, customerId, outletId);
+                        """, name, firstName, lastName, company, businessNumber, birthday, gender, email, phone,
+                        mobile, fax, allowMarketingEmails ? 1 : 0, invoiceMessage, comments, customerGroupId,
+                        overrideCustomerGroup ? 1 : 0, loyaltyEnabled ? 1 : 0, loyaltyRate, loyaltyPoints,
+                        disablePromotions ? 1 : 0, priceListId, requireOrderReference ? 1 : 0, accountLimit,
+                        currentOwing, deleted, customerId, outletId);
                     updated++;
                 }
+                syncEmails(customerId, outletId, emails, deleted);
             } catch (RuntimeException ex) {
                 skipped++;
                 if (errors.size() < 25) errors.add(sourceId + ": " + (ex.getMessage() == null ? "import failed" : ex.getMessage()));
@@ -96,6 +134,98 @@ public class NativeCustomerImportService {
     private Long findMapping(String storeKey, String sourceId, long outletId) {
         List<Long> ids = jdbc.query("SELECT customer_id FROM shopfront_customer_mapping WHERE store_key=? AND source_id=? AND outlet_id=?", (rs, n) -> rs.getLong(1), storeKey, sourceId, outletId);
         return ids.isEmpty() ? null : ids.getFirst();
+    }
+
+    private Long resolveCustomerGroupId(long outletId, String name) {
+        if (name == null) return null;
+        List<Long> ids = jdbc.query("SELECT id FROM customer_group WHERE outlet_id=? AND deleted_at IS NULL AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
+                (rs, row) -> rs.getLong(1), outletId, name);
+        return ids.size() == 1 ? ids.getFirst() : null;
+    }
+
+    private Long resolvePriceListId(long outletId, String name) {
+        if (name == null) return null;
+        List<Long> ids = jdbc.query("SELECT id FROM price_list WHERE outlet_id=? AND active=TRUE AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
+                (rs, row) -> rs.getLong(1), outletId, name);
+        return ids.size() == 1 ? ids.getFirst() : null;
+    }
+
+    private void syncEmails(Long customerId, long outletId, List<String> emails, boolean deleted) {
+        jdbc.update("DELETE FROM customer_email WHERE customer_id=? AND outlet_id=?", customerId, outletId);
+        int order = 0;
+        for (String email : emails) {
+            jdbc.update("INSERT INTO customer_email (customer_id,email,sort_order,customer_deleted_at,outlet_id) VALUES (?,?,?,?,?)",
+                    customerId, email, order++, deleted ? java.sql.Timestamp.from(java.time.Instant.now()) : null, outletId);
+        }
+    }
+
+    private void ensureEmailsAvailable(List<String> emails, Long customerId, long outletId) {
+        for (String email : emails) {
+            String exclusion = customerId == null ? "" : "AND c.id <> ?";
+            List<Object> args = new ArrayList<>();
+            args.add(outletId);
+            args.add(email);
+            args.add(email);
+            if (customerId != null) args.add(customerId);
+            Long owner = jdbc.query("""
+                    SELECT c.id FROM customer c
+                    WHERE c.deleted_at IS NULL
+                      AND c.outlet_id = ?
+                      AND (EXISTS (SELECT 1 FROM customer_email ce WHERE ce.customer_id=c.id
+                            AND LOWER(TRIM(ce.email))=LOWER(TRIM(?)))
+                        OR (NOT EXISTS (SELECT 1 FROM customer_email ce WHERE ce.customer_id=c.id)
+                            AND LOWER(TRIM(COALESCE(c.email,'')))=LOWER(TRIM(?))))
+                    """ + exclusion + " ORDER BY c.id LIMIT 1", rs -> rs.next() ? rs.getLong(1) : null, args.toArray());
+            if (owner != null) {
+                throw new IllegalArgumentException("Customer email is already assigned to another Orithos customer");
+            }
+        }
+    }
+
+    private static List<String> emails(JsonNode source, String primary) {
+        Map<String, String> values = new LinkedHashMap<>();
+        JsonNode sourceEmails = source.path("emails");
+        if (sourceEmails.isArray()) {
+            for (JsonNode email : sourceEmails) {
+                if (email.isTextual() && !email.asText().isBlank()) addEmail(values, email.asText());
+            }
+        }
+        addEmail(values, source.path("billing").path("email").asText(null));
+        addEmail(values, source.path("delivery").path("email").asText(null));
+        addEmail(values, primary);
+        return List.copyOf(values.values());
+    }
+
+    private static void addEmail(Map<String, String> values, String email) {
+        if (email != null && !email.isBlank()) values.putIfAbsent(email.trim().toLowerCase(Locale.ROOT), email.trim());
+    }
+
+    private static LocalDate date(JsonNode node, String... names) {
+        String value = text(node, names);
+        if (value == null) return null;
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Customer birthday must use YYYY-MM-DD");
+        }
+    }
+
+    private static BigDecimal decimal(JsonNode node, String... names) {
+        String value = text(node, names);
+        if (value == null) return null;
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Customer numeric field is invalid");
+        }
+    }
+
+    private static boolean bool(JsonNode node, boolean fallback, String... names) {
+        for (String name : names) {
+            JsonNode value = node.get(name);
+            if (value != null && !value.isNull()) return value.asBoolean(fallback);
+        }
+        return fallback;
     }
 
     private static String text(JsonNode node, String... names) {

@@ -23,6 +23,7 @@ public interface CustomerEmailMapper {
     @Select("""
         SELECT COUNT(*) FROM customer c
         WHERE c.deleted_at IS NULL
+          AND c.outlet_id = #{outletId}
           AND (#{excludeCustomerId} IS NULL OR c.id != #{excludeCustomerId})
           AND (
             EXISTS (
@@ -39,7 +40,8 @@ public interface CustomerEmailMapper {
           )
         """)
     long countActiveByEmailExcludingCustomer(@Param("email") String email,
-                                             @Param("excludeCustomerId") Long excludeCustomerId);
+                                             @Param("excludeCustomerId") Long excludeCustomerId,
+                                             @Param("outletId") Long outletId);
 
     @Update("""
         UPDATE customer_email ce
