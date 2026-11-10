@@ -1,6 +1,6 @@
 package com.orithos.modules.ai.grocery;
 
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 
@@ -16,13 +16,13 @@ import static org.mockito.Mockito.when;
 
 class GroceryChatBriefTest {
 
-    private final OdooReportQueryService reports = mock(OdooReportQueryService.class);
+    private final NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
     private final GroceryChatBrief brief = new GroceryChatBrief(new GroceryRecommendService(reports));
     private final TenantContext tenant = new TenantContext(7L, 9L, 3L, List.of(3L), Set.of("ROLE_ADMIN"));
 
     @Test
-    void returnsRealOdooRowsAsStructuredItemsAndCompatibleAnswer() {
-        when(reports.listRecommendationProducts(tenant)).thenReturn(new OdooReportQueryService.ProductCatalogResult(List.of(
+    void returnsRealOrithosRowsAsStructuredItemsAndCompatibleAnswer() {
+        when(reports.listRecommendationProducts(tenant)).thenReturn(new NativeAiReportQueryService.ProductCatalogResult(List.of(
                 Map.of("id", 11L, "name", "Harbour Lager", "category", "Beer", "list_price", new BigDecimal("12.50"),
                         "sell_price", new BigDecimal("12.50"), "quantity", new BigDecimal("8"))), null));
 
@@ -38,13 +38,13 @@ class GroceryChatBriefTest {
 
     @Test
     void distinguishesEmptyFromUnavailableWithoutInventingItems() {
-        when(reports.listRecommendationProducts(tenant)).thenReturn(new OdooReportQueryService.ProductCatalogResult(List.of(), null));
+        when(reports.listRecommendationProducts(tenant)).thenReturn(new NativeAiReportQueryService.ProductCatalogResult(List.of(), null));
         GroceryChatBrief.Brief empty = brief.result("Recommend snacks", tenant);
         assertEquals("empty", empty.card().status());
         assertTrue(empty.card().items().isEmpty());
 
         when(reports.listRecommendationProducts(tenant)).thenReturn(
-                new OdooReportQueryService.ProductCatalogResult(List.of(), "ODOO_REPORT_UNAVAILABLE"));
+                new NativeAiReportQueryService.ProductCatalogResult(List.of(), "NATIVE_REPORT_UNAVAILABLE"));
         GroceryChatBrief.Brief unavailable = brief.result("Recommend snacks", tenant);
         assertEquals("unavailable", unavailable.card().status());
         assertTrue(unavailable.card().items().isEmpty());
@@ -53,7 +53,7 @@ class GroceryChatBriefTest {
     @Test
     void keepsPermissionFailureExplicitInEnglishAndChineseCards() {
         when(reports.listRecommendationProducts(tenant)).thenReturn(
-                new OdooReportQueryService.ProductCatalogResult(List.of(), "NO_PERMISSION"));
+                new NativeAiReportQueryService.ProductCatalogResult(List.of(), "NO_PERMISSION"));
 
         GroceryChatBrief.Brief english = brief.result("Recommend beer", tenant);
         GroceryChatBrief.Brief chinese = brief.result("推荐啤酒", tenant);

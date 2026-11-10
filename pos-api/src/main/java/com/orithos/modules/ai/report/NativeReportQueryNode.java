@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class OdooReportQueryNode implements NodeAction {
+public class NativeReportQueryNode implements NodeAction {
 
     private final NativeAiReportQueryService queryService;
     private final ReportPeriodResolver periodResolver;
 
-    public OdooReportQueryNode(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver) {
+    public NativeReportQueryNode(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver) {
         this.queryService = queryService;
         this.periodResolver = periodResolver;
     }
@@ -24,7 +24,6 @@ public class OdooReportQueryNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
-        // Ad-hoc NL2SQL is not wired; surface a guided refusal.
         if ("report_adhoc".equals(intent)) {
             Map<String, Object> refused = new HashMap<>();
             refused.put("sql_path", "unsupported");

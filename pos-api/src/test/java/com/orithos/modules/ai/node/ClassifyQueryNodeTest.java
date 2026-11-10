@@ -5,7 +5,7 @@ import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.AssistantTenantContext;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
@@ -43,16 +43,16 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void productCountFastPathAnswersFromOdooWithoutCallingClassifier() {
+    void productCountFastPathAnswersFromOrithosWithoutCallingClassifier() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
         when(reports.countSellableProducts(tenant))
-                .thenReturn(new OdooReportQueryService.ProductCountResult(286, null));
+                .thenReturn(new NativeAiReportQueryService.ProductCountResult(286, null));
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
                 reports, null);
 
@@ -119,16 +119,16 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void namedProductFastPathReturnsOdooMatchesInTheChatAnswer() {
+    void namedProductFastPathReturnsOrithosMatchesInTheChatAnswer() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
         when(reports.searchProducts(tenant, "Shiraz", 5)).thenReturn(
-                new OdooReportQueryService.ProductSearchResult(List.of(
+                new NativeAiReportQueryService.ProductSearchResult(List.of(
                         Map.of("name", "Shiraz Reserve", "list_price", "24.99", "quantity", "4")), null));
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties, reports, null);
 
@@ -157,12 +157,12 @@ class ClassifyQueryNodeTest {
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
         when(reports.searchProducts(tenant, "Shiraz", 5)).thenReturn(
-                new OdooReportQueryService.ProductSearchResult(List.of(), null),
-                new OdooReportQueryService.ProductSearchResult(List.of(), "ODOO_REPORT_UNAVAILABLE"));
+                new NativeAiReportQueryService.ProductSearchResult(List.of(), null),
+                new NativeAiReportQueryService.ProductSearchResult(List.of(), "NATIVE_REPORT_UNAVAILABLE"));
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties, reports, null);
 
         OverAllState noMatchState = mock(OverAllState.class);
@@ -183,13 +183,13 @@ class ClassifyQueryNodeTest {
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
         when(reports.countSellableProducts(tenant)).thenReturn(
-                new OdooReportQueryService.ProductCountResult(0, null),
-                new OdooReportQueryService.ProductCountResult(null, "NO_PERMISSION"),
-                new OdooReportQueryService.ProductCountResult(null, "ODOO_REPORT_UNAVAILABLE"));
+                new NativeAiReportQueryService.ProductCountResult(0, null),
+                new NativeAiReportQueryService.ProductCountResult(null, "NO_PERMISSION"),
+                new NativeAiReportQueryService.ProductCountResult(null, "NATIVE_REPORT_UNAVAILABLE"));
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
                 reports, null);
 
@@ -206,17 +206,17 @@ class ClassifyQueryNodeTest {
         OverAllState unavailableState = mock(OverAllState.class);
         when(unavailableState.value("question", String.class)).thenReturn(Optional.of("商品总数"));
         Map<String, Object> unavailable = node.apply(unavailableState);
-        assertTrue(String.valueOf(unavailable.get("intent_summary")).contains("暂时无法获取商品总数"));
+        assertTrue(String.valueOf(unavailable.get("intent_summary")).contains("Orithos 商品目录暂时不可用"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     @Test
-    void productCountFastPathExplainsMissingTenantAndPermissionWithoutOdooCall() {
+    void productCountFastPathExplainsMissingTenantAndPermissionWithoutQuery() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
                 reports, null);
         OverAllState state = mock(OverAllState.class);

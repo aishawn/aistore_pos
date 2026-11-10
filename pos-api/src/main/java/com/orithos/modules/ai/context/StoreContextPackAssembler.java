@@ -2,7 +2,7 @@ package com.orithos.modules.ai.context;
 
 import com.orithos.modules.ai.AiConversationMemory;
 import com.orithos.modules.ai.report.CategoryLexicon;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
@@ -29,13 +29,13 @@ public class StoreContextPackAssembler {
     private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Australia/Adelaide");
 
     private final VendorMapper vendorMapper;
-    private final OdooReportQueryService reportQueryService;
+    private final NativeAiReportQueryService reportQueryService;
     private final AiConversationMemory conversationMemory;
     private final ConcurrentMap<Long, CachedMeta> metaCache = new ConcurrentHashMap<>();
 
     public StoreContextPackAssembler(
             VendorMapper vendorMapper,
-            OdooReportQueryService reportQueryService,
+            NativeAiReportQueryService reportQueryService,
             AiConversationMemory conversationMemory) {
         this.vendorMapper = vendorMapper;
         this.reportQueryService = reportQueryService;
@@ -59,7 +59,7 @@ public class StoreContextPackAssembler {
                 zone = resolved;
             }
         } catch (RuntimeException ignored) {
-            // Keep the store-safe default when Odoo metadata cannot be read.
+            // Keep the store-safe default when the native service is unavailable.
         }
         AiConversationMemory.LastSlots last = conversationMemory.loadLastSlots(threadId);
         return new StoreContextPack(

@@ -1,7 +1,7 @@
 package com.orithos.modules.ai.grocery;
 
 import com.orithos.common.BusinessException;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +15,15 @@ import java.util.Map;
 @Service
 public class GroceryRecommendService {
 
-    private final OdooReportQueryService reports;
+    private final NativeAiReportQueryService reports;
 
-    public GroceryRecommendService(OdooReportQueryService reports) {
+    public GroceryRecommendService(NativeAiReportQueryService reports) {
         this.reports = reports;
     }
 
     public GroceryRecommendResponse recommend(GroceryRecommendRequest request, TenantContext tenant) {
         GroceryRecommendRequest profile = normalize(request);
-        OdooReportQueryService.ProductCatalogResult result = reports.listRecommendationProducts(tenant);
+        NativeAiReportQueryService.ProductCatalogResult result = reports.listRecommendationProducts(tenant);
         if (result.error() != null) throw unavailable(result.error());
 
         List<GroceryRecommendCard> candidates = new ArrayList<>();
@@ -129,7 +129,7 @@ public class GroceryRecommendService {
         return switch (error) {
             case "NO_PERMISSION" -> new BusinessException(40300, "You do not have permission to view product recommendations.");
             case "NO_STORE", "NO_OUTLET" -> new BusinessException(40000, "Sign in to a store before requesting recommendations.");
-            case "ODOO_REPORT_STORE_UNLINKED" -> new BusinessException(50312, "This store is not connected to its product catalogue.");
+            case "NATIVE_REPORT_UNAVAILABLE" -> new BusinessException(50312, "The Orithos product catalogue is temporarily unavailable.");
             default -> new BusinessException(50312, "Product recommendations are temporarily unavailable. Please retry.");
         };
     }

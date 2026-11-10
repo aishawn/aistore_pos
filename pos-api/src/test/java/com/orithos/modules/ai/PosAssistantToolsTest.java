@@ -1,6 +1,6 @@
 package com.orithos.modules.ai;
 
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.ReportPeriodResolver;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -26,14 +26,14 @@ class PosAssistantToolsTest {
 
     @Test
     void refusesWhenNoTenantBound() {
-        PosAssistantTools tools = new PosAssistantTools(mock(OdooReportQueryService.class), new ReportPeriodResolver());
+        PosAssistantTools tools = new PosAssistantTools(mock(NativeAiReportQueryService.class), new ReportPeriodResolver());
         assertTrue(tools.lookupSales("today", "today").startsWith("NO_STORE"));
     }
 
     @Test
     void stockRequiresProductName() {
         AssistantTenantContext.set(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of("ROLE_ADMIN")));
-        PosAssistantTools tools = new PosAssistantTools(mock(OdooReportQueryService.class), new ReportPeriodResolver());
+        PosAssistantTools tools = new PosAssistantTools(mock(NativeAiReportQueryService.class), new ReportPeriodResolver());
         assertTrue(tools.lookupStock("  ").startsWith("NEED_PRODUCT"));
     }
 
@@ -41,10 +41,10 @@ class PosAssistantToolsTest {
     void salesUsesTenantFromContextNotModelArgs() {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of("ROLE_ADMIN"));
         AssistantTenantContext.set(tenant);
-        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService query = mock(NativeAiReportQueryService.class);
         when(query.businessTimezone(tenant)).thenReturn(ZoneId.of("Australia/Adelaide"));
         when(query.query(eq(tenant), eq("report_sales"), any(), any()))
-                .thenReturn(new OdooReportQueryService.Result(
+                .thenReturn(new NativeAiReportQueryService.Result(
                         List.of(Map.of("sales", "12.50", "day", "2026-10-20")), null));
         PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
         String body = tools.lookupSales("2026-10-20", "2026-10-20");
@@ -55,9 +55,9 @@ class PosAssistantToolsTest {
     void countProductsUsesTenantContext() {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of("ROLE_ADMIN"));
         AssistantTenantContext.set(tenant);
-        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService query = mock(NativeAiReportQueryService.class);
         when(query.countSellableProducts(tenant))
-                .thenReturn(new OdooReportQueryService.ProductCountResult(42, null));
+                .thenReturn(new NativeAiReportQueryService.ProductCountResult(42, null));
         PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
         assertTrue(tools.countProducts().contains("42"));
     }
@@ -66,9 +66,9 @@ class PosAssistantToolsTest {
     void countProductsExplainsPermissionFailureInsteadOfClaimingSourceUnavailable() {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
-        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService query = mock(NativeAiReportQueryService.class);
         when(query.countSellableProducts(tenant))
-                .thenReturn(new OdooReportQueryService.ProductCountResult(null, "NO_PERMISSION"));
+                .thenReturn(new NativeAiReportQueryService.ProductCountResult(null, "NO_PERMISSION"));
         PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
 
         assertTrue(tools.countProducts().startsWith("NO_PERMISSION"));
@@ -77,7 +77,7 @@ class PosAssistantToolsTest {
     @Test
     void searchProductsRequiresName() {
         AssistantTenantContext.set(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of("ROLE_ADMIN")));
-        PosAssistantTools tools = new PosAssistantTools(mock(OdooReportQueryService.class), new ReportPeriodResolver());
+        PosAssistantTools tools = new PosAssistantTools(mock(NativeAiReportQueryService.class), new ReportPeriodResolver());
         assertTrue(tools.searchProducts(" ").startsWith("NEED_PRODUCT"));
     }
 
@@ -85,13 +85,13 @@ class PosAssistantToolsTest {
     void searchProductsDistinguishesNoMatchFromUnavailableSource() {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
         AssistantTenantContext.set(tenant);
-        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService query = mock(NativeAiReportQueryService.class);
         when(query.searchProducts(tenant, "Shiraz", 8))
-                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), null));
+                .thenReturn(new NativeAiReportQueryService.ProductSearchResult(List.of(), null));
         when(query.searchProducts(tenant, "Merlot", 8))
-                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), "ODOO_REPORT_UNAVAILABLE"));
+                .thenReturn(new NativeAiReportQueryService.ProductSearchResult(List.of(), "NATIVE_REPORT_UNAVAILABLE"));
         when(query.searchProducts(tenant, "Cabernet", 8))
-                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), "NO_PERMISSION"));
+                .thenReturn(new NativeAiReportQueryService.ProductSearchResult(List.of(), "NO_PERMISSION"));
         PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
 
         assertTrue(tools.searchProducts("Shiraz").startsWith("No catalogue matches"));

@@ -28,7 +28,7 @@ public class AiReportTenantProvisioner {
 
     private static final Map<String, String> VIEW_COLUMNS = Map.of(
             "ai_rpt_sale_item", "id, outlet_id, sold_at, product_id, qty, amount, customer_id, sale_id, business_date",
-            "ai_rpt_product", "id, outlet_id, name, status, category_id, category_name",
+            "ai_rpt_product", "id, outlet_id, name, status, category_id, category_name, list_price, barcode",
             "ai_rpt_inventory", "product_id, outlet_id, quantity, reorder_level, on_order",
             "ai_rpt_inventory_cost", "product_id, outlet_id, cost",
             "ai_rpt_customer_sale", "sale_id, outlet_id, sold_at, customer_id, amount, business_date"

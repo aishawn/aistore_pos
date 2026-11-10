@@ -22,7 +22,7 @@ import com.orithos.modules.ai.gateway.AiTenantContext;
 import com.orithos.modules.ai.gateway.PromptVersion;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.ReportAdhocRouter;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.sommelier.SommelierChatBrief;
@@ -58,7 +58,7 @@ public class ClassifyQueryNode implements NodeAction {
     private final IntentConfigService configService;
     private final IntentSanitizeService sanitizeService;
     private final AiProperties properties;
-    private final OdooReportQueryService reportQueryService;
+    private final NativeAiReportQueryService reportQueryService;
     private final ObjectProvider<SommelierChatBrief> sommelierChatBrief;
     private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
     private final ObjectProvider<PricingChatBrief> pricingChatBrief;
@@ -76,7 +76,7 @@ public class ClassifyQueryNode implements NodeAction {
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties,
-                             OdooReportQueryService reportQueryService,
+                             NativeAiReportQueryService reportQueryService,
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief) {
         this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief, null, null);
     }
@@ -85,7 +85,7 @@ public class ClassifyQueryNode implements NodeAction {
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties,
-                             OdooReportQueryService reportQueryService,
+                             NativeAiReportQueryService reportQueryService,
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief,
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief) {
@@ -97,7 +97,7 @@ public class ClassifyQueryNode implements NodeAction {
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties,
-                             OdooReportQueryService reportQueryService,
+                             NativeAiReportQueryService reportQueryService,
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief,
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief,
@@ -119,7 +119,7 @@ public class ClassifyQueryNode implements NodeAction {
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties,
-                             OdooReportQueryService reportQueryService,
+                             NativeAiReportQueryService reportQueryService,
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief,
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief,
@@ -623,12 +623,12 @@ public class ClassifyQueryNode implements NodeAction {
                     message,
                     Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
         }
-        OdooReportQueryService.ProductCountResult result = null;
+        NativeAiReportQueryService.ProductCountResult result = null;
         if (reportQueryService != null) {
             result = reportQueryService.countSellableProducts(tenant);
         }
         boolean chinese = isChinese(question);
-        String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
+        String error = result == null ? "NATIVE_REPORT_UNAVAILABLE" : result.error();
         String summary = result != null && result.count() != null && error == null
                 ? productCountSummary(result.count(), chinese)
                 : productCountFailureMessage(error, chinese);
@@ -638,11 +638,11 @@ public class ClassifyQueryNode implements NodeAction {
     private Map<String, Object> productSearchShortcut(AssistantFastPathRouter.Match fast, String question) {
         String query = fast.slots().get("query").trim();
         TenantContext tenant = AssistantTenantContext.get();
-        OdooReportQueryService.ProductSearchResult result = reportQueryService == null
+        NativeAiReportQueryService.ProductSearchResult result = reportQueryService == null
                 ? null : reportQueryService.searchProducts(tenant, query, 5);
         String summary;
         if (result == null || result.error() != null) {
-            String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
+            String error = result == null ? "NATIVE_REPORT_UNAVAILABLE" : result.error();
             summary = productSearchFailureMessage(error, isChinese(question));
         } else if (result.rows() == null || result.rows().isEmpty()) {
             summary = isChinese(question)
@@ -684,9 +684,9 @@ public class ClassifyQueryNode implements NodeAction {
             case "NEED_PRODUCT" -> chinese
                     ? "请提供商品名称或条码，我再帮你查找。"
                     : "Tell me a product name or barcode to search for.";
-            case "ODOO_REPORT_NOT_CONFIGURED", "ODOO_REPORT_STORE_UNLINKED" -> chinese
-                    ? "当前门店的 Odoo 商品目录不可用，请稍后重试或打开商品目录。"
-                    : "The Odoo product catalogue is unavailable for this store. Please try again or open Products.";
+            case "NATIVE_REPORT_UNAVAILABLE" -> chinese
+                    ? "当前门店的 Orithos 商品目录暂时不可用，请稍后重试或打开商品目录。"
+                    : "The Orithos product catalogue is unavailable right now. Please try again or open Products.";
             default -> chinese
                     ? "暂时无法查询商品目录，请稍后重试或打开商品目录。"
                     : "The product catalogue is unavailable right now. Please try again or open Products.";
@@ -707,12 +707,9 @@ public class ClassifyQueryNode implements NodeAction {
             case "NO_OUTLET" -> chinese
                     ? "当前账号尚未绑定门店，暂时无法查询实时商品总数。"
                     : "Your account is not bound to a store, so the live product total is unavailable.";
-            case "ODOO_REPORT_NOT_CONFIGURED" -> chinese
-                    ? "当前门店尚未配置 Odoo，暂时无法获取商品总数。"
-                    : "Odoo is not configured for this store, so the live product total is unavailable.";
-            case "ODOO_REPORT_STORE_UNLINKED" -> chinese
-                    ? "当前门店尚未连接 Odoo，暂时无法获取商品总数。"
-                    : "This store is not linked to Odoo, so the live product total is unavailable.";
+            case "NATIVE_REPORT_UNAVAILABLE" -> chinese
+                    ? "当前门店的 Orithos 商品目录暂时不可用，无法获取商品总数。"
+                    : "The Orithos catalogue is temporarily unavailable, so the live product total cannot be read.";
             default -> chinese
                     ? "当前暂时无法获取商品总数，请稍后重试。"
                     : "Live product count is unavailable right now. Please try again shortly.";

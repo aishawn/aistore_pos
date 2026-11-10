@@ -1,7 +1,7 @@
 package com.orithos.modules.ai.context;
 
 import com.orithos.modules.ai.AiConversationMemory;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.vendor.VendorMapper;
 import org.junit.jupiter.api.Test;
@@ -21,11 +21,11 @@ class StoreContextPackAssemblerTest {
     @Test
     void metadataOutageFallsBackToSafeContextAndKeepsPermissions() {
         VendorMapper vendors = mock(VendorMapper.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         AiConversationMemory memory = mock(AiConversationMemory.class);
         when(vendors.findById(7L)).thenThrow(new RuntimeException("metadata unavailable"));
         when(reports.businessTimezone(org.mockito.ArgumentMatchers.any()))
-                .thenThrow(new RuntimeException("odoo unavailable"));
+                .thenThrow(new RuntimeException("native source unavailable"));
         when(memory.loadLastSlots("7:11:thread")).thenReturn(
                 new AiConversationMemory.LastSlots("report_sales", Map.of("category", "beer")));
 
@@ -46,7 +46,7 @@ class StoreContextPackAssemblerTest {
     @Test
     void nullTimezoneDoesNotEraseTheDefault() {
         VendorMapper vendors = mock(VendorMapper.class);
-        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
         AiConversationMemory memory = mock(AiConversationMemory.class);
         when(vendors.findById(8L)).thenReturn(null);
         when(reports.businessTimezone(org.mockito.ArgumentMatchers.any())).thenReturn(null);

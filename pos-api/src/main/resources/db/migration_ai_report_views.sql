@@ -25,9 +25,23 @@ SELECT
   p.name,
   p.status,
   p.category_id,
-  c.name AS category_name
+  c.name AS category_name,
+  price.list_price,
+  barcode.codes AS barcode
 FROM product p
 LEFT JOIN category c ON c.id = p.category_id
+LEFT JOIN LATERAL (
+  SELECT pp.price AS list_price
+  FROM product_price pp
+  WHERE pp.product_id = p.id AND pp.outlet_id = p.outlet_id
+  ORDER BY pp.quantity, pp.id
+  LIMIT 1
+) price ON TRUE
+LEFT JOIN LATERAL (
+  SELECT STRING_AGG(pb.code, ' ' ORDER BY pb.code) AS codes
+  FROM product_barcode pb
+  WHERE pb.product_id = p.id AND pb.outlet_id = p.outlet_id
+) barcode ON TRUE
 WHERE p.deleted_at IS NULL;
 
 -- On-hand inventory by outlet.

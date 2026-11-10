@@ -1,6 +1,6 @@
 package com.orithos.modules.ai;
 
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.ReportPeriodResolver;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.ai.tool.annotation.Tool;
@@ -19,10 +19,10 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class PosAssistantTools {
 
-    private final OdooReportQueryService queryService;
+    private final NativeAiReportQueryService queryService;
     private final ReportPeriodResolver periodResolver;
 
-    public PosAssistantTools(OdooReportQueryService queryService, ReportPeriodResolver periodResolver) {
+    public PosAssistantTools(NativeAiReportQueryService queryService, ReportPeriodResolver periodResolver) {
         this.queryService = queryService;
         this.periodResolver = periodResolver;
     }
@@ -62,14 +62,13 @@ public class PosAssistantTools {
         if (tenant == null) {
             return "NO_STORE: sign in to a store first.";
         }
-        OdooReportQueryService.ProductCountResult result = queryService.countSellableProducts(tenant);
+        NativeAiReportQueryService.ProductCountResult result = queryService.countSellableProducts(tenant);
         if (result == null || result.error() != null || result.count() == null) {
-            String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
-            return switch (error == null ? "ODOO_REPORT_UNAVAILABLE" : error) {
+            String error = result == null ? "NATIVE_REPORT_UNAVAILABLE" : result.error();
+            return switch (error == null ? "NATIVE_REPORT_UNAVAILABLE" : error) {
                 case "NO_OUTLET" -> "NO_STORE: this account is not bound to a store.";
                 case "NO_PERMISSION" -> "NO_PERMISSION: product count is not permitted for this account.";
-                case "ODOO_REPORT_NOT_CONFIGURED" -> "Product count unavailable: Odoo is not configured.";
-                case "ODOO_REPORT_STORE_UNLINKED" -> "Product count unavailable: this store is not linked to Odoo.";
+                case "NATIVE_REPORT_UNAVAILABLE" -> "Product count unavailable. Open Products to browse the catalogue.";
                 default -> "Product count unavailable. Open Products to browse the catalogue.";
             };
         }
@@ -86,13 +85,12 @@ public class PosAssistantTools {
         if (tenant == null) {
             return "NO_STORE: sign in to a store first.";
         }
-        OdooReportQueryService.ProductSearchResult result = queryService.searchProducts(tenant, productName.trim(), 8);
+        NativeAiReportQueryService.ProductSearchResult result = queryService.searchProducts(tenant, productName.trim(), 8);
         if (result.error() != null) {
             return switch (result.error()) {
                 case "NO_OUTLET" -> "NO_STORE: this account is not bound to a store.";
                 case "NO_PERMISSION" -> "NO_PERMISSION: product search is not permitted for this account.";
-                case "ODOO_REPORT_NOT_CONFIGURED" -> "Product search unavailable: Odoo is not configured.";
-                case "ODOO_REPORT_STORE_UNLINKED" -> "Product search unavailable: this store is not linked to Odoo.";
+                case "NATIVE_REPORT_UNAVAILABLE" -> "Product search unavailable. Please try again shortly.";
                 case "NEED_PRODUCT" -> "NEED_PRODUCT: tell me which product name to search.";
                 default -> "Product search unavailable. Please try again shortly.";
             };
@@ -113,7 +111,7 @@ public class PosAssistantTools {
             return "NO_STORE: sign in to a store first.";
         }
         var window = periodResolver.resolve(slots, "", 1, queryService.businessTimezone(tenant));
-        OdooReportQueryService.Result result = queryService.query(tenant, intent, slots, window);
+        NativeAiReportQueryService.Result result = queryService.query(tenant, intent, slots, window);
         if (result.error() != null && !result.error().isBlank()) {
             return label + " unavailable: " + result.error();
         }

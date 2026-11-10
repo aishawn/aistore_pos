@@ -21,8 +21,8 @@ import com.orithos.modules.ai.grocery.GroceryChatBrief;
 import com.orithos.modules.ai.node.ClassifyQueryNode;
 import com.orithos.modules.ai.node.GenerateResponseNode;
 import com.orithos.modules.ai.report.FillReportSlotsNode;
-import com.orithos.modules.ai.report.OdooReportQueryNode;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeReportQueryNode;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.ReportRespondNode;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
@@ -62,7 +62,7 @@ public class PosAssistantGraphConfig {
     private static final String RESPOND = "respond";
     private static final String FILL_SLOTS = "fill_slots";
     private static final String REPORT_RESPOND = "report_respond";
-    private static final String ODOO_REPORT = "odoo_report";
+    private static final String NATIVE_REPORT = "native_report";
     private static final String REPORT_ADHOC = "report_adhoc";
 
     @Bean
@@ -125,9 +125,9 @@ public class PosAssistantGraphConfig {
             IntentSanitizeService intentSanitizeService,
             PosAssistantTools posAssistantTools,
             FillReportSlotsNode fillReportSlotsNode,
-            OdooReportQueryNode odooReportQueryNode,
+            NativeReportQueryNode nativeReportQueryNode,
             ReportRespondNode reportRespondNode,
-            OdooReportQueryService odooReportQueryService,
+            NativeAiReportQueryService nativeReportQueryService,
             ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider,
             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBriefProvider,
             ObjectProvider<PricingChatBrief> pricingChatBriefProvider,
@@ -137,7 +137,7 @@ public class PosAssistantGraphConfig {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
-                odooReportQueryService, sommelierChatBriefProvider,
+                nativeReportQueryService, sommelierChatBriefProvider,
                 replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider, aiGateway)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
                 posAssistantChatClient, intentConfigService, properties, posAssistantTools, primaryModel, aiGateway)));
@@ -146,7 +146,7 @@ public class PosAssistantGraphConfig {
                 .addNode(RESPOND, respond)
                 .addNode(FILL_SLOTS, node_async(withCorrelationContext(fillReportSlotsNode)))
                 .addNode(REPORT_RESPOND, node_async(withCorrelationContext(reportRespondNode)))
-                .addNode(ODOO_REPORT, node_async(withCorrelationContext(odooReportQueryNode)))
+                .addNode(NATIVE_REPORT, node_async(withCorrelationContext(nativeReportQueryNode)))
                 .addEdge(START, CLASSIFY)
                 .addConditionalEdges(CLASSIFY, edge_async(state -> {
                     String intent = state.value("intent", String.class).orElse("unknown");
@@ -154,8 +154,8 @@ public class PosAssistantGraphConfig {
                             || REPORT_ADHOC.equals(intent);
                     return report ? "report" : "chat";
                 }), Map.of("report", FILL_SLOTS, "chat", RESPOND))
-                .addEdge(FILL_SLOTS, ODOO_REPORT)
-                .addEdge(ODOO_REPORT, REPORT_RESPOND)
+                .addEdge(FILL_SLOTS, NATIVE_REPORT)
+                .addEdge(NATIVE_REPORT, REPORT_RESPOND)
                 .addEdge(REPORT_RESPOND, END)
                 .addEdge(RESPOND, END);
     }

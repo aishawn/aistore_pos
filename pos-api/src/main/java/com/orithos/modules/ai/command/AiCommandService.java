@@ -11,7 +11,7 @@ import com.orithos.modules.product.Product;
 import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.ProductService;
 import com.orithos.modules.product.mapper.ProductMapper;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
 import com.orithos.modules.ai.replenishment.ReplenishmentPlan;
 import com.orithos.modules.ai.replenishment.ReplenishmentSuggestion;
@@ -43,7 +43,7 @@ public class AiCommandService {
     private final ProductService productService;
     private final CustomerMapper customerMapper;
     private final CustomerService customerService;
-    private final OdooReportQueryService odooReports;
+    private final NativeAiReportQueryService nativeReports;
     private final OdooReplenishmentClient replenishmentClient;
     private final JdbcTemplate jdbc;
     private final AiCommandParser commandParser;
@@ -54,7 +54,7 @@ public class AiCommandService {
                             TenantContextFactory tenantContextFactory, ProductMapper productMapper,
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
-                            OdooReportQueryService odooReports,
+                            NativeAiReportQueryService nativeReports,
                             OdooReplenishmentClient replenishmentClient,
                             AiCommandParser commandParser,
                             @Value("${app.ai.commands.enabled:false}") boolean enabled,
@@ -67,7 +67,7 @@ public class AiCommandService {
         this.customerMapper = customerMapper;
         this.customerService = customerService;
         this.jdbc = jdbc;
-        this.odooReports = odooReports;
+        this.nativeReports = nativeReports;
         this.replenishmentClient = replenishmentClient;
         this.commandParser = commandParser;
         this.enabled = enabled;
@@ -271,7 +271,7 @@ public class AiCommandService {
         if (broadPrice != null) return broadPrice;
         Matcher price = Pattern.compile("(?i)(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?([A-Za-z0-9][A-Za-z0-9 ._-]{1,80}?).*?(\\d+(?:\\.\\d+)?)\\s*%").matcher(text);
         if (price.find()) {
-            OdooProductMatch p = findOdooProduct(tenant, price.group(1).trim());
+            NativeProductMatch p = findNativeProduct(tenant, price.group(1).trim());
             BigDecimal before = p.price();
             if (before == null) throw new BusinessException(40926, "This product has no current price.");
             BigDecimal pct = new BigDecimal(price.group(2)).divide(BigDecimal.valueOf(100));
@@ -294,7 +294,7 @@ public class AiCommandService {
             productMatched = product.find();
         }
         if (productMatched) {
-            OdooProductMatch p = findOdooProduct(tenant, product.group(1).trim());
+            NativeProductMatch p = findNativeProduct(tenant, product.group(1).trim());
             CommandItem item = new CommandItem(p.id(), p.name(), "name", p.name(),
                     product.group(2).trim(), "exact product name match", "READY");
             return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.98),
@@ -302,7 +302,7 @@ public class AiCommandService {
         }
         Matcher barcode = Pattern.compile("(?i)(?:把|将|change|update|set)?\\s*(.+?)\\s*(?:的)?\\s*(?:条码|条形码|barcode|ean)\\s*(?:改成|设置为|to|as)\\s*([0-9A-Za-z-]{4,})").matcher(text);
         if (barcode.find()) {
-            OdooProductMatch p = findOdooProduct(tenant, barcode.group(1).trim());
+            NativeProductMatch p = findNativeProduct(tenant, barcode.group(1).trim());
             CommandItem item = new CommandItem(p.id(), p.name(), "barcode", p.barcode(),
                     barcode.group(2).trim(), "exact product name or barcode match", "READY");
             return new Parsed(AiCommandType.UPDATE_PRODUCT, BigDecimal.valueOf(.98),
@@ -431,7 +431,7 @@ public class AiCommandService {
                 List.of(excluded));
     }
 
-    /** Resolve bounded category/range price requests against the tenant-scoped Odoo catalogue. */
+    /** Resolve bounded category/range price requests against the tenant-scoped Orithos catalogue. */
     private Parsed broadPricePreviewRequest(TenantContext tenant, String text) {
         Matcher percent = Pattern.compile("(?i).*?(?:raise|increase|lower|decrease|提高|降低|上调|下调).*?(\\d+(?:\\.\\d+)?)\\s*%.*").matcher(text.trim());
         if (!percent.matches()) return null;
@@ -450,8 +450,8 @@ public class AiCommandService {
             Matcher category = Pattern.compile("(?i)(red wine|white wine|wine|beer|spirits|liquor)").matcher(text);
             if (category.find()) categoryToken = category.group(1);
         }
-        if (odooReports == null) return unresolvedPricePreviewRequest(text);
-        OdooReportQueryService.ProductCatalogResult catalog = odooReports.searchPriceProducts(
+        if (nativeReports == null) return unresolvedPricePreviewRequest(text);
+        NativeAiReportQueryService.ProductCatalogResult catalog = nativeReports.searchPriceProducts(
                 tenant, threshold, lowerBound, categoryToken);
         if (catalog.error() != null) return unresolvedPricePreviewRequest(text);
         BigDecimal pct = new BigDecimal(percent.group(1)).divide(BigDecimal.valueOf(100));
@@ -470,7 +470,7 @@ public class AiCommandService {
                     .setScale(2, RoundingMode.HALF_UP);
             if (items.size() < MAX_PRODUCTS) {
                 items.add(new CommandItem(id, name, "price", price.toPlainString(), after.toPlainString(),
-                        "current Odoo POS catalogue price; bounded preview", "READY"));
+                        "current Orithos catalogue price; bounded preview", "READY"));
             }
         }
         if (items.isEmpty()) return unresolvedPricePreviewRequest(text);
@@ -528,17 +528,17 @@ public class AiCommandService {
         return prices == null || prices.isEmpty() ? null : prices.getFirst().getPrice();
     }
 
-    private OdooProductMatch findOdooProduct(TenantContext tenant, String query) {
-        if (odooReports == null) throw new BusinessException(50320, "Odoo product source is unavailable.");
-        OdooReportQueryService.ProductSearchResult result = odooReports.searchProducts(tenant, query, 3);
-        if (result.error() != null) throw new BusinessException(50320, "Odoo product source is unavailable.");
+    private NativeProductMatch findNativeProduct(TenantContext tenant, String query) {
+        if (nativeReports == null) throw new BusinessException(50320, "Orithos product source is unavailable.");
+        NativeAiReportQueryService.ProductSearchResult result = nativeReports.searchProducts(tenant, query, 3);
+        if (result.error() != null) throw new BusinessException(50320, "Orithos product source is unavailable.");
         if (result.rows().size() != 1) {
-            throw new BusinessException(40422, "Product name must match exactly one Odoo product.");
+            throw new BusinessException(40422, "Product name must match exactly one Orithos product.");
         }
         Map<String, Object> row = result.rows().getFirst();
         Object id = row.get("id");
         if (!(id instanceof Number number) || number.longValue() <= 0) {
-            throw new BusinessException(40422, "Odoo product has no valid record ID.");
+            throw new BusinessException(40422, "Orithos product has no valid record ID.");
         }
         Object rawPrice = row.get("list_price");
         BigDecimal price = null;
@@ -548,10 +548,10 @@ public class AiCommandService {
         }
         Object rawBarcode = row.get("barcode");
         String barcode = rawBarcode == null || Boolean.FALSE.equals(rawBarcode) ? null : String.valueOf(rawBarcode);
-        return new OdooProductMatch(number.longValue(), String.valueOf(row.getOrDefault("name", query)), price, barcode);
+        return new NativeProductMatch(number.longValue(), String.valueOf(row.getOrDefault("name", query)), price, barcode);
     }
 
-    private record OdooProductMatch(Long id, String name, BigDecimal price, String barcode) { }
+    private record NativeProductMatch(Long id, String name, BigDecimal price, String barcode) { }
 
     private boolean isConfirmation(String text) {
         String value = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);

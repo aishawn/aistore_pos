@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 @Service
 public class SommelierCatalogService {
@@ -21,108 +18,40 @@ public class SommelierCatalogService {
 
     private final SommelierProductMapper mapper;
     private final ObjectMapper objectMapper;
-    private final OdooWineCatalogClient odooWineCatalogClient;
 
     public SommelierCatalogService(
             SommelierProductMapper mapper,
-            ObjectMapper objectMapper,
-            OdooWineCatalogClient odooWineCatalogClient) {
+            ObjectMapper objectMapper) {
         this.mapper = mapper;
         this.objectMapper = objectMapper;
-        this.odooWineCatalogClient = odooWineCatalogClient;
     }
 
     public List<WineCandidate> listWines(Long outletId) {
-        // Once Odoo is configured it is the business source of truth. An empty
-        // result (including a temporary Odoo failure) must not expose stale
-        // legacy PostgreSQL products as if they were current store inventory.
-        if (odooWineCatalogClient.isConfigured()) return odooCatalog();
         return toCandidates(mapper.listCatalog(outletId), true);
     }
 
     public List<WineCandidate> listWines(TenantContext tenant) {
         Long outletId = tenant == null ? null : tenant.requireOutletId();
-        if (odooWineCatalogClient.isConfigured()) {
-            long vendorId = tenant == null ? 0L : tenant.vendorId();
-            return deduplicateDisplayProducts(odooWineCatalogClient.listWines(vendorId));
-        }
         return toCandidates(mapper.listCatalog(outletId), true);
     }
 
     public List<WineCandidate> search(Long outletId, String q) {
         if (q == null || q.isBlank()) return List.of();
-        if (odooWineCatalogClient.isConfigured()) {
-            List<WineCandidate> odoo = odooCatalog();
-            String needle = q.trim().toLowerCase();
-            return odoo.stream()
-                    .filter(w -> w.name() != null && w.name().toLowerCase().contains(needle))
-                    .toList();
-        }
         return toCandidates(mapper.searchCatalog(outletId, q.trim()), false);
     }
 
     public List<WineCandidate> search(TenantContext tenant, String q) {
-        if (q == null || q.isBlank()) return List.of();
-        if (odooWineCatalogClient.isConfigured()) {
-            return listWines(tenant).stream()
-                    .filter(w -> w.name() != null && w.name().toLowerCase(Locale.ROOT).contains(q.trim().toLowerCase(Locale.ROOT)))
-                    .toList();
-        }
         return search(tenant == null ? null : tenant.requireOutletId(), q);
     }
 
     public WineCandidate findById(Long id, Long outletId) {
         if (id == null) return null;
-        if (odooWineCatalogClient.isConfigured()) {
-            List<WineCandidate> odoo = odooCatalog();
-            return odoo.stream().filter(w -> id.equals(w.productId())).findFirst().orElse(null);
-        }
         List<WineCandidate> found = toCandidates(listOf(mapper.findById(id, outletId)), false);
         return found.isEmpty() ? null : found.get(0);
     }
 
     public WineCandidate findById(Long id, TenantContext tenant) {
-        if (id == null) return null;
-        if (odooWineCatalogClient.isConfigured()) {
-            return listWines(tenant).stream().filter(w -> id.equals(w.productId())).findFirst().orElse(null);
-        }
         return findById(id, tenant == null ? null : tenant.requireOutletId());
-    }
-
-    private List<WineCandidate> odooCatalog() {
-        if (!odooWineCatalogClient.isConfigured()) return List.of();
-        return deduplicateDisplayProducts(odooWineCatalogClient.listWines());
-    }
-
-    /**
-     * Odoo can contain repeated demo/product rows after repeated tenant seeds.
-     * The sommelier is a customer-facing catalogue, so show one stable card per
-     * name and price while keeping the real product id of the best stocked row.
-     */
-    private List<WineCandidate> deduplicateDisplayProducts(List<WineCandidate> candidates) {
-        if (candidates == null || candidates.isEmpty()) return List.of();
-        Map<String, WineCandidate> unique = new LinkedHashMap<>();
-        for (WineCandidate candidate : candidates) {
-            if (candidate == null || candidate.name() == null || candidate.name().isBlank()) continue;
-            String key = candidate.name().trim().toLowerCase(Locale.ROOT)
-                    + "|" + candidate.effectivePrice().stripTrailingZeros().toPlainString();
-            WineCandidate existing = unique.get(key);
-            if (existing == null || isBetterDisplayRow(candidate, existing)) {
-                unique.put(key, candidate);
-            }
-        }
-        return List.copyOf(unique.values());
-    }
-
-    private boolean isBetterDisplayRow(WineCandidate candidate, WineCandidate existing) {
-        if (candidate.inStock() != existing.inStock()) return candidate.inStock();
-        BigDecimal candidateStock = candidate.stockQuantity() == null ? BigDecimal.ZERO : candidate.stockQuantity();
-        BigDecimal existingStock = existing.stockQuantity() == null ? BigDecimal.ZERO : existing.stockQuantity();
-        int stock = candidateStock.compareTo(existingStock);
-        if (stock != 0) return stock > 0;
-        Long candidateId = candidate.productId();
-        Long existingId = existing.productId();
-        return candidateId != null && (existingId == null || candidateId < existingId);
     }
 
     private List<WineCandidate> toCandidates(List<CatalogRow> rows, boolean wineOnly) {

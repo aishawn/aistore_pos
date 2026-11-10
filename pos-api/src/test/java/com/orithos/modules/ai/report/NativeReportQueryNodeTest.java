@@ -4,7 +4,6 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,13 +15,13 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class OdooReportQueryNodeTest {
+class NativeReportQueryNodeTest {
 
     @Test
     void reportResultCarriesReadonlyProvenanceMetadata() {
         NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
         ReportPeriodResolver resolver = mock(ReportPeriodResolver.class);
-        OdooReportQueryNode node = new OdooReportQueryNode(queryService, resolver);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, resolver);
         OverAllState state = mock(OverAllState.class);
         LocalDateTime from = LocalDateTime.of(2026, 10, 16, 0, 0);
         LocalDateTime to = LocalDateTime.of(2026, 10, 17, 0, 0);

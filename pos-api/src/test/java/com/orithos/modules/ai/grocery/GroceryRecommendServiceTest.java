@@ -1,7 +1,7 @@
 package com.orithos.modules.ai.grocery;
 
 import com.orithos.common.BusinessException;
-import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 
 class GroceryRecommendServiceTest {
 
-    private final OdooReportQueryService reports = mock(OdooReportQueryService.class);
+    private final NativeAiReportQueryService reports = mock(NativeAiReportQueryService.class);
     private final GroceryRecommendService service = new GroceryRecommendService(reports);
     private final TenantContext tenant = new TenantContext(7L, 9L, 3L, List.of(3L), Set.of("ROLE_ADMIN"));
 
@@ -63,8 +63,8 @@ class GroceryRecommendServiceTest {
     }
 
     @SafeVarargs
-    private static OdooReportQueryService.ProductCatalogResult catalog(Map<String, Object>... rows) {
-        return new OdooReportQueryService.ProductCatalogResult(List.of(rows), null);
+    private static NativeAiReportQueryService.ProductCatalogResult catalog(Map<String, Object>... rows) {
+        return new NativeAiReportQueryService.ProductCatalogResult(List.of(rows), null);
     }
 
     private static Map<String, Object> row(long id, String name, String category, String price, String quantity) {
