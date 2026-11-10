@@ -1,25 +1,25 @@
 # Handoff
 
-> Generated: 2026-11-10 ~14:50 (UTC+8)  
+> Generated: 2026-11-10 ~15:17 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
 > Canonical cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
-## Shopfront Alignment Update (2026-11-10 14:50)
+## Shopfront Alignment Update (2026-11-10 15:17)
 
 - **Operational cutover SKR+Demo: PASS** (staging mirror, Odoo writes off, native sell/receive both tenants). Shared DB `postgres` + `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true` remains expected (`isolated=false`).
 - Staging parity (SKR=Demo): products `11033`, inventory `10852`, sales `156588`, sale_items `306934`, suppliers `109`, PO `2370`.
-- Inventory store-pulse: OAuth Special Report still POST **405**; **staff Misc Inventory At Date + Name→ID enrich** path live → `source-reports/inventory?refresh=true` = `shopfront_reporting_api` / `fresh` (crawler `4faf745`). Unforced reads may still serve GraphQL snapshot cache.
+- Inventory store-pulse: OAuth Special Report still POST **405**; **staff Misc Inventory At Date + Name→ID enrich** path live → `source-reports/inventory?refresh=true` = `shopfront_reporting_api` / `fresh` (crawler `22b33d9` deployed). Unforced reads may still serve GraphQL snapshot cache.
 - Schedule: Adelaide `02:30,23:00`, interval 30m (`GET /api/sync/schedule`).
 - **Page Network Sales/Purchase (AIWEI):** session `POST /graphql` (not `/api/v2`). Purchase `orders(type:ORDER)=2370` ≡ staging PO. Suppliers `109`. Products GraphQL `10855` = catalog current (staging `11033` includes historical). Sales: crawler↔POS `156588` aligned; live GraphQL `sales.totalCount≈14317` is a **UI connection totalCount vs historical archive** gap, not crawler/POS drift. Evidence: `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` (gitignored `/docs/`).
-- Owner **「不用备份」** — durable PG/S3 backup out of this round. Xero interim: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*`. Pilot formal production still **NO-GO** until owner/accountant Xero acceptance (backup skipped per owner).
+- Owner **「不用备份」** — durable PG/S3 backup waived this round. Xero **acceptance path recorded**: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*` (CSV review/import; not live Xero API).
 - Crawler staff Misc **auto re-login** on `22b33d9` — Dokploy deploy `p4FTQUwOS42ecuI4INgG3` done `2026-11-10T07:06:24Z`.
-- Requirement audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` (`goal_complete=false`; blocker = Xero owner acceptance).
+- Objective eight-deliverable audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` → **`goal_complete=true`** (Odoo not live ledger; Orithos+Shopfront SoT for Demo+SKR).
 
 ### Next Steps
 
-1. Owner/accountant accept (or waive) Xero day CSV path.
-2. Keep Odoo business/import/stocktake writes false; do not register-scrape Shopfront.
-3. Optional: Dashboard same-day Reporting amount cross-check; physical Odoo read-only retire later.
+1. Keep Odoo business/import/stocktake writes false; do not register-scrape Shopfront.
+2. Run Xero day CSV when accountant needs a day pack; optional later: first-class `/api/accounting/xero`.
+3. Optional: physical Odoo read-only retire / Dashboard same-day Reporting amount cross-check.
 
 ## Goal
 
