@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { fetchOrithosApi } from "@/lib/orithos-api-fetch";
 
 type NativeOverview = {
   source: "orithos_ledger";
@@ -35,7 +36,7 @@ function money(value: number) {
 
 async function readOverview(from: string, to: string, signal: AbortSignal): Promise<NativeOverview> {
   const params = new URLSearchParams({ from, to });
-  const response = await fetch(`/api/reports/native-overview?${params}`, { credentials: "same-origin", cache: "no-store", signal });
+  const response = await fetchOrithosApi(`/reports/native-overview?${params}`, { signal });
   const body = await response.json().catch(() => null) as { data?: NativeOverview; message?: string } | null;
   if (!response.ok || !body?.data || body.data.source !== "orithos_ledger") {
     throw new Error(body?.message || "Orithos sales data is unavailable.");
