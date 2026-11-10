@@ -24,7 +24,7 @@ class OrithosClient:
     async def close(self) -> None:
         await self.http.aclose()
 
-    async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    async def _post(self, path: str, payload: dict[str, Any], *, retry_read_timeout: bool = True) -> dict[str, Any]:
         if not self.enabled:
             raise PosIntegrationError("Orithos import is disabled; set POS_IMPORT_ENABLED=true after staging validation")
         if not self.base_url or not self.token:
@@ -40,6 +40,10 @@ class OrithosClient:
                 if response.status_code not in {502, 503, 504}:
                     break
             except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                # inventory:replace clears then writes. Retrying a timed-out replace
+                # can wipe a tenant that already finished server-side.
+                if isinstance(exc, httpx.ReadTimeout) and not retry_read_timeout:
+                    raise PosIntegrationError(f"Orithos connection failed: {exc!r}") from exc
                 if attempt == 9:
                     raise PosIntegrationError(f"Orithos connection failed: {exc!r}") from exc
             if attempt < 9:
@@ -80,7 +84,11 @@ class OrithosClient:
         return await self._post("/api/integrations/shopfront/products:upsert", payload)
 
     async def replace_inventory(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return await self._post("/api/integrations/shopfront/inventory:replace", payload)
+        return await self._post(
+            "/api/integrations/shopfront/inventory:replace",
+            payload,
+            retry_read_timeout=False,
+        )
 
     async def upsert_sales(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/sales:upsert", payload)

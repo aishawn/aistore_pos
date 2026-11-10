@@ -449,9 +449,10 @@ public class ShopfrontIntegrationController {
     }
 
     /**
-     * Void leftover native UAT refund rows that are not Shopfront imports
-     * ({@code invoice_id LIKE 'REF-%'} and {@code source_system IS NULL}).
-     * Keeps dashboard COMPLETED totals aligned with the Shopfront sale ledger.
+     * Void leftover native UAT rows that are not Shopfront imports
+     * ({@code source_system IS NULL} with {@code invoice_id} matching {@code REF-%}
+     * or {@code INV-%}). Keeps dashboard COMPLETED totals aligned with the
+     * Shopfront sale ledger when Sell-pad test checkouts or refund probes remain.
      */
     @PostMapping("/sales:void-orphan-ref-refunds")
     public ApiResult<Map<String, Object>> voidOrphanRefRefunds(
@@ -478,7 +479,7 @@ public class ShopfrontIntegrationController {
                     WHERE outlet_id = ?
                       AND status = 'COMPLETED'
                       AND source_system IS NULL
-                      AND invoice_id LIKE 'REF-%'
+                      AND (invoice_id LIKE 'REF-%' OR invoice_id LIKE 'INV-%')
                     """);
             args.add(outletId);
             if (!day.isBlank()) {
