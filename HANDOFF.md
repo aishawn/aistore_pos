@@ -1,9 +1,24 @@
 # Handoff
 
-> Generated: 2026-11-10 ~19:50 (UTC+8)  
+> Generated: 2026-11-10 ~20:10 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only; Nov-9 row parity closed.  
+> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only; Nov-9 row parity closed; report DSL gap = 1 INCOMPLETE.  
 > Canonical Chinese cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
+
+## Ops credentials (names only — values in local `.env` / Dokploy)
+
+| Surface | URL | User / secret name |
+|---------|-----|--------------------|
+| Shopfront (read-only; never Register) | `https://skr.onshopfront.com/` | AIWEI / owner-provided; Misc reports `/reports/misc` |
+| SKR store | `https://skr.orithos.com.au/` | `ORITHOS_SKR_USER` / `ORITHOS_SKR_PASS` |
+| Demo store | `https://demo.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
+| Control plane | `https://app.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
+| Odoo (retired writable SoT) | `https://odoo.orithos.com.au/` | `ODOO_USER` / `ODOO_PASS` |
+| Crawler | `https://crawler.orithos.com.au/` | `SHOPFRONT_INTEGRATION_TOKEN` |
+| Dokploy | `https://dokploy.orithos.com.au/` | `ORTHOS_DOKPLOY_USER` / `ORTHOS_DOKPLOY_PASS` |
+| DB | — | `POSTGRESQL_URL` |
+
+Local repos: `orithopos-master` (POS), `shopfront-crawler`, `orithos-ai-services`, `orithos_odoo`, `shipany-template-dev` — all `main`.
 
 ## Goal
 
@@ -15,7 +30,7 @@ Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SK
 - POS head `e4b6f031` (prior cutover chain includes `8b75ae3a` Adelaide-day/money fixes); crawler `e142bd5`. Java 21 `mvn -B verify` PASS (601 tests).
 - Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
 - UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
-- Adelaide `2026-11-09` **sale-row** parity (SKR+Demo): native shopfront COMPLETED = mirror = crawler headers = **`$5,035.80` / 161** (`sales:native-day-diff` zero mismatches). Shopfront sales-report DSL still **`$5,038.48` / 162** (upstream +`$2.68` / +1 vs sale headers; not an Orithos import loss). Use `sales:native-day-totals` `shopfront_revenue` for import checks.
+- Adelaide `2026-11-09` **sale-row** parity (SKR+Demo): native shopfront COMPLETED = mirror = crawler headers = **`$5,035.80` / 161** (`sales:native-day-diff` zero mismatches). Shopfront sales-report DSL **`$5,038.48` / 162** = completed + one **INCOMPLETE** sale `00081327` / `$2.68` (open ticket; native status PARKED). `sales:native-day-totals` exposes `shopfront_report_comparable_*`. Void UAT `REF-%` orphans with `sales:void-orphan-ref-refunds` so outlet-wide overview matches shopfront completed.
 
 **Still true from prior cutover:**
 - Staging parity SKR = Demo mirror counts; Odoo business writes off; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` expected.

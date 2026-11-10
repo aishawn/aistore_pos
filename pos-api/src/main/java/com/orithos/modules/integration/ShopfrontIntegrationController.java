@@ -221,6 +221,15 @@ public class ShopfrontIntegrationController {
                     ORDER BY id
                     LIMIT 20
                     """, outletId, day);
+            String adelaideDaySql = """
+                    (
+                      CASE
+                        WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
+                          THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
+                        ELSE DATE(created_at::timestamp)
+                      END
+                    ) = CAST(? AS date)
+                    """;
             List<Map<String, Object>> mirrorRows = jdbc.queryForList("""
                     SELECT COUNT(*) AS transactions,
                            COALESCE(SUM(total_price), 0) AS revenue,
@@ -231,15 +240,18 @@ public class ShopfrontIntegrationController {
                     FROM shopfront_sale
                     WHERE store_key = ?
                       AND UPPER(COALESCE(status, '')) IN ('COMPLETED', 'CLOSED', 'PAID', 'FINALISED', 'FINALIZED')
-                      AND (
-                        CASE
-                          WHEN NULLIF(created_at, '') ~* '([zZ]|[+-][0-9]{2}:?[0-9]{2})$'
-                            THEN (timezone('Australia/Adelaide', created_at::timestamptz))::date
-                          ELSE DATE(created_at::timestamp)
-                        END
-                      ) = CAST(? AS date)
-                    """, storeKey, day);
+                      AND """ + adelaideDaySql, storeKey, day);
             Map<String, Object> mirror = mirrorRows.isEmpty() ? Map.of() : mirrorRows.get(0);
+            List<Map<String, Object>> incompleteRows = jdbc.queryForList("""
+                    SELECT COUNT(*) AS transactions,
+                           COALESCE(SUM(total_price), 0) AS revenue
+                    FROM shopfront_sale
+                    WHERE store_key = ?
+                      AND UPPER(COALESCE(status, '')) = 'INCOMPLETE'
+                      AND """ + adelaideDaySql, storeKey, day);
+            Map<String, Object> incomplete = incompleteRows.isEmpty() ? Map.of() : incompleteRows.get(0);
+            BigDecimal shopfrontRevenue = decimalObject(row.get("shopfront_revenue"));
+            BigDecimal incompleteRevenue = decimalObject(incomplete.get("revenue"));
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("outlet_id", outletId);
             entry.put("transactions", row.get("transactions"));
@@ -252,6 +264,12 @@ public class ShopfrontIntegrationController {
             entry.put("mirror_transactions", mirror.get("transactions"));
             entry.put("mirror_revenue", mirror.get("revenue"));
             entry.put("mirror_payload_revenue", mirror.get("payload_revenue"));
+            entry.put("mirror_incomplete_transactions", incomplete.get("transactions"));
+            entry.put("mirror_incomplete_revenue", incomplete.get("revenue"));
+            // Shopfront sales-report DSL counts COMPLETED + INCOMPLETE for this tenant day.
+            entry.put("shopfront_report_comparable_revenue", shopfrontRevenue.add(incompleteRevenue));
+            entry.put("shopfront_report_comparable_transactions",
+                    longValue(row.get("shopfront_transactions")) + longValue(incomplete.get("transactions")));
             byStore.put(storeKey, entry);
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -444,6 +462,59 @@ public class ShopfrontIntegrationController {
         } catch (Exception e) {
             return BigDecimal.ZERO;
         }
+    }
+
+    /**
+     * Void leftover native UAT refund rows that are not Shopfront imports
+     * ({@code invoice_id LIKE 'REF-%'} and {@code source_system IS NULL}).
+     * Keeps dashboard COMPLETED totals aligned with the Shopfront sale ledger.
+     */
+    @PostMapping("/sales:void-orphan-ref-refunds")
+    public ApiResult<Map<String, Object>> voidOrphanRefRefunds(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        String day = body == null ? "" : body.path("day").asText("").trim();
+        if (!day.isBlank() && !day.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "day must be YYYY-MM-DD");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
+        Map<String, Object> byStore = new LinkedHashMap<>();
+        int total = 0;
+        for (Map<String, Object> mapping : mappings) {
+            if (!isEnabled(mapping.get("enabled"))) continue;
+            String storeKey = String.valueOf(mapping.get("store_key"));
+            long outletId = longValue(mapping.get("outlet_id"));
+            List<Object> args = new ArrayList<>();
+            StringBuilder sql = new StringBuilder("""
+                    UPDATE sale
+                    SET status = 'VOIDED', outstanding = 0, updated_at = CURRENT_TIMESTAMP
+                    WHERE outlet_id = ?
+                      AND status = 'COMPLETED'
+                      AND source_system IS NULL
+                      AND invoice_id LIKE 'REF-%'
+                    """);
+            args.add(outletId);
+            if (!day.isBlank()) {
+                sql.append("""
+                         AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
+                        """);
+                args.add(day);
+            }
+            int voided = jdbc.update(sql.toString(), args.toArray());
+            total += voided;
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("outlet_id", outletId);
+            entry.put("voided", voided);
+            byStore.put(storeKey, entry);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("day", day.isBlank() ? null : day);
+        result.put("voided", total);
+        result.put("by_store", byStore);
+        return ApiResult.ok(result);
     }
 
     @PostMapping("/sales:promote-native")
