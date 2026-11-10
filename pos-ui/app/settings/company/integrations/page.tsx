@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function LegacySettingsPage() {
-  redirect("/settings/account?tab=connection");
+import { CompanyKvEditor } from "@/components/admin/CompanyKvEditor";
+import { sectionByHref } from "@/lib/company-settings-catalog";
+
+export default function CompanyIntegrationsSettingsPage() {
+  return <CompanyKvEditor section={sectionByHref("/settings/company/integrations")!} />;
 }

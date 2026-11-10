@@ -1,5 +1,6 @@
 package com.orithos.modules.sale;
 
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.sale.dto.CheckoutRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -8,10 +9,12 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.Mockito.mock;
 
 class CheckoutLineAmountTest {
 
-    private final CheckoutService service = new CheckoutService(null, null, null, null, null, null, new ObjectMapper());
+    private final CheckoutService service = new CheckoutService(null, null, null, null, null, null, new ObjectMapper(),
+            mock(CompanySettingsService.class));
 
     @Test
     void displayedLineTotalIsChargedInsteadOfReconstructedUnitPrice() {

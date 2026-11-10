@@ -114,6 +114,12 @@ Updated: 2026-11-10. Owner: TBD.
 - The SKR Overview hides today's Orithos totals when Shopfront source reports mode is active and its source report is unavailable. Source data remains the display authority; Odoo values are not presented as a fallback.
 - Odoo customer success receipts now include the top-level `item_count` expected by the crawler. This source change is in the separate Odoo `main` repository and needs its own push/deploy verification.
 
+## Settings import (2026-11-10)
+
+- Added crawler `settings_import` job and collectors for tax/payment/sale keys/receipts/users/roles/page rules/barcode templates/price sets/promotion categories/statements/transferees/customer displays.
+- Orithos promote endpoint `POST /api/integrations/shopfront/settings:import` never overwrites Orithos-owned company settings. Not attached to daily overwrite.
+- See CAP-SET feature docs under `docs/project/features/settings/`.
+
 ## Remaining parity work
 
 1. Push and verify both repository SHAs and Dokploy runtime identities.

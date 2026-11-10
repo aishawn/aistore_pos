@@ -24,6 +24,8 @@ class AustraliaComplianceTest {
         assertEquals(new BigDecimal("4.55"), CashRounding.toNearestFiveCents(new BigDecimal("4.57")));
         assertEquals(new BigDecimal("4.60"), CashRounding.toNearestFiveCents(new BigDecimal("4.58")));
         assertEquals(new BigDecimal("0.02"), CashRounding.difference(new BigDecimal("4.53")));
+        assertEquals(new BigDecimal("4.55"), CashRounding.roundTo(new BigDecimal("4.53"), new BigDecimal("0.05")));
+        assertEquals(new BigDecimal("4.53"), CashRounding.roundTo(new BigDecimal("4.53"), new BigDecimal("0.01")));
     }
 
     @Test

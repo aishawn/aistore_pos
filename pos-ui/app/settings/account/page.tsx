@@ -10,7 +10,6 @@ import { SettingsPage, SettingsSubTabs } from "@/components/admin/SettingsPage";
 export default function AccountSecurityPage() {
   const params = useSearchParams();
   const requestedTab = params.get("tab");
-  const tab = requestedTab === "developer" || requestedTab === "connection" ? requestedTab : "security";
   const { user, changePassword } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -52,16 +51,29 @@ export default function AccountSecurityPage() {
 
   const tabs = [
     ["security", "Security"],
+    ["billing", "Billing"],
     ["developer", "Developer & API"],
     ["connection", "Connection status"],
   ] as const;
+  const activeTab = requestedTab === "developer" || requestedTab === "connection" || requestedTab === "billing" ? requestedTab : "security";
   return (
-    <SettingsPage title="Account" subtitle="Manage your profile, security and service access." activeHref="/settings/account" subTabs={<SettingsSubTabs label="Account sections" tabs={tabs.map(([key, label]) => ({ label, href: `/settings/account?tab=${key}`, active: tab === key }))} />}>
+    <SettingsPage title="Account" subtitle="Manage your Orithos profile, security and service access." activeHref="/settings/account" subTabs={<SettingsSubTabs label="Account sections" tabs={tabs.map(([key, label]) => ({ label, href: `/settings/account?tab=${key}`, active: activeTab === key }))} />}>
 
-      {tab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">External API key management is not available in this release. Contact your store administrator about supported data import and export options.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">API key creation is unavailable.</div></section>}
-      {tab === "connection" && <StoreConnectionStatus />}
+      {activeTab === "billing" && (
+        <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
+          <h2 className="text-base font-semibold text-[var(--oh-text)]">Orithos billing</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+            Shopfront subscription billing is not cloned. Orithos billing and invoices will appear here later. Until then, account access is managed by your Orithos administrator.
+          </p>
+          <div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">
+            Coming later — Orithos billing
+          </div>
+        </section>
+      )}
+      {activeTab === "developer" && <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6"><h2 className="text-base font-semibold text-[var(--oh-text)]">Developer &amp; API</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">External API key management is not available in this release. Contact your store administrator about supported data import and export options.</p><div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">API key creation is unavailable.</div></section>}
+      {activeTab === "connection" && <StoreConnectionStatus />}
 
-      {tab !== "security" ? null : <>
+      {activeTab !== "security" ? null : <>
 
       {user?.pendingPasswordReset && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Your administrator asked you to change your password before continuing.</div>}
 

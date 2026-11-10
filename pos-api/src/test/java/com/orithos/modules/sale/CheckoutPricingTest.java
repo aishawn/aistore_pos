@@ -2,6 +2,7 @@ package com.orithos.modules.sale;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
@@ -32,12 +33,14 @@ class CheckoutPricingTest {
     private final PaymentMethodMapper paymentMethodMapper = mock(PaymentMethodMapper.class);
     private final RegisterMapper registerMapper = mock(RegisterMapper.class);
     private final RegisterSessionMapper registerSessionMapper = mock(RegisterSessionMapper.class);
+    private final CompanySettingsService companySettings = mock(CompanySettingsService.class);
     private final CheckoutService service = new CheckoutService(saleMapper, mock(SalePaymentMapper.class),
             paymentMethodMapper, productMapper, registerMapper,
-            registerSessionMapper, new ObjectMapper());
+            registerSessionMapper, new ObjectMapper(), companySettings);
 
     @BeforeEach
     void authenticateOutlet() {
+        when(companySettings.cashRoundTo()).thenReturn(new BigDecimal("0.05"));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "cashier", false, 12L, 3L), null, List.of()));
     }

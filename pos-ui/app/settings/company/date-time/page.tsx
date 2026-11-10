@@ -1,8 +1,8 @@
-import DateTimeSettingsClient from "./client-page";
+"use client";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+import { CompanyKvEditor } from "@/components/admin/CompanyKvEditor";
+import { sectionByHref } from "@/lib/company-settings-catalog";
 
 export default function DateTimeSettingsPage() {
-  return <DateTimeSettingsClient />;
+  return <CompanyKvEditor section={sectionByHref("/settings/company/date-time")!} />;
 }

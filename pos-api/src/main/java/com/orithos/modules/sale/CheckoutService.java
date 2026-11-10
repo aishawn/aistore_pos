@@ -8,6 +8,7 @@ import com.orithos.common.BusinessException;
 import com.orithos.common.CashRounding;
 import com.orithos.common.GstMath;
 import com.orithos.common.Ids;
+import com.orithos.modules.config.CompanySettingsService;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
 import com.orithos.modules.product.Product;
@@ -43,11 +44,12 @@ public class CheckoutService {
     private final RegisterMapper registerMapper;
     private final RegisterSessionMapper registerSessionMapper;
     private final ObjectMapper objectMapper;
+    private final CompanySettingsService companySettings;
 
     public CheckoutService(SaleMapper saleMapper, SalePaymentMapper paymentMapper,
                            PaymentMethodMapper paymentMethodMapper, ProductMapper productMapper,
                            RegisterMapper registerMapper, RegisterSessionMapper registerSessionMapper,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper, CompanySettingsService companySettings) {
         this.saleMapper = saleMapper;
         this.paymentMapper = paymentMapper;
         this.paymentMethodMapper = paymentMethodMapper;
@@ -55,6 +57,7 @@ public class CheckoutService {
         this.registerMapper = registerMapper;
         this.registerSessionMapper = registerSessionMapper;
         this.objectMapper = objectMapper;
+        this.companySettings = companySettings;
     }
 
     public CheckoutQuoteResponse quote(CheckoutRequest req) {
@@ -169,7 +172,7 @@ public class CheckoutService {
         BigDecimal rounding = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         BigDecimal cashDue = null;
         if (cash) {
-            BigDecimal rounded = CashRounding.toNearestFiveCents(outstanding);
+            BigDecimal rounded = CashRounding.roundTo(outstanding, companySettings.cashRoundTo());
             rounding = rounded.subtract(outstanding).setScale(2, RoundingMode.HALF_UP);
             BigDecimal required = rounded.add(cashout);
             boolean exactUnrounded = tendered.compareTo(outstanding.add(cashout)) == 0;

@@ -5,10 +5,18 @@ export interface SettingsNavItem {
   href: string;
 }
 
-/** Company-scoped sub-sections (Company tab). */
+/** Company-scoped sub-sections (Company tab) — Shopfront-aligned. */
 export const COMPANY_SETTINGS_NAV: SettingsNavItem[] = [
   { label: "General", href: "/settings/company/general" },
-  { label: "Locations & currency", href: "/settings/company/date-time" },
+  { label: "General Display", href: "/settings/company/general-display" },
+  { label: "Login", href: "/settings/company/login-after-sale" },
+  { label: "Sell Screen / Register", href: "/settings/company/sell-screen" },
+  { label: "Outlets", href: "/settings/company/outlets" },
+  { label: "Date & Time", href: "/settings/company/date-time" },
+  { label: "Currency", href: "/settings/company/currency" },
+  { label: "Search", href: "/settings/company/search" },
+  { label: "Integrations", href: "/settings/company/integrations" },
+  { label: "Miscellaneous", href: "/settings/company/miscellaneous" },
 ];
 
 /** Outlet-scoped sub-sections (Outlets tab). */

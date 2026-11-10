@@ -1,143 +1,102 @@
 "use client";
-import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Info, RefreshCw } from "lucide-react";
+import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
-import { api, listRetailRegisters, type RetailRegister } from "@/lib/api";
+import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
-type OutletRow = {
-  id: number;
-  name: string;
-};
-
-type RegisterRow = RetailRegister & {
-  outletName: string;
-  sessionLabel: string;
-};
+type Outlet = { id: number; name: string };
+type Register = { id: number; name: string; outletId?: number; invoiceNumber?: string; closed?: boolean };
 
 export default function RegistersOutletsPage() {
-  const [outlets, setOutlets] = useState<OutletRow[]>([]);
-  const [registers, setRegisters] = useState<RegisterRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { hasPermission, ready } = useAuth();
+  const canEdit = ready && hasPermission("settings.store");
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
+  const [registers, setRegisters] = useState<Register[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+  const [outletName, setOutletName] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerOutletId, setRegisterOutletId] = useState<number | "">("");
+
+  async function load() {
+    setError(null);
+    try {
+      const [outletRows, registerRows] = await Promise.all([
+        api.get<Outlet[]>("/api/outlets"),
+        api.get<Register[]>("/api/registers"),
+      ]);
+      setOutlets(Array.isArray(outletRows) ? outletRows : []);
+      setRegisters(Array.isArray(registerRows) ? registerRows : []);
+      if (outletRows?.[0] && registerOutletId === "") setRegisterOutletId(outletRows[0].id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load registers and outlets");
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    void (async () => {
-      try {
-        const [outletRows, registerRows] = await Promise.all([
-          api.get<OutletRow[]>("/api/outlets"),
-          listRetailRegisters(),
-        ]);
-        const outletMap = new Map(outletRows.map((outlet) => [Number(outlet.id), outlet.name]));
-        if (active) {
-          setOutlets(outletRows);
-          setRegisters(registerRows.map((register) => ({
-            ...register,
-            outletName: outletMap.get(Number(register.outletId)) || `Outlet #${register.outletId}`,
-            sessionLabel: register.closed ? "No open session" : "Open",
-          })));
-        }
-      } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos stores and registers.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [retryKey]);
+    void load();
+  }, []);
+
+  async function addOutlet() {
+    if (!canEdit || !outletName.trim()) return;
+    await api.post("/api/outlets", { name: outletName.trim(), vendorId: 1 });
+    setOutletName("");
+    await load();
+  }
+
+  async function addRegister() {
+    if (!canEdit || !registerName.trim() || registerOutletId === "") return;
+    await api.post("/api/registers", { name: registerName.trim(), outletId: registerOutletId, closed: false });
+    setRegisterName("");
+    await load();
+  }
 
   return (
     <AdminPageLayout
       title="Registers & Outlets"
-      subtitle="Stores and POS registers assigned to your Orithos account"
-      count={loading || error ? undefined : outlets.length + registers.length}
-      countLabel="Stores + registers"
-      fullBleed
-      actions={
-        <AdminSecondaryButton onClick={() => setRetryKey((value) => value + 1)} disabled={loading}>
-          <RefreshCw size={15} className={loading ? "animate-spin" : undefined} aria-hidden="true" />
-          Refresh
-        </AdminSecondaryButton>
-      }
+      subtitle="Store locations and POS registers"
+      actions={<AdminSecondaryButton onClick={() => void load()}>Refresh</AdminSecondaryButton>}
       toolbar={<StoreSettingsTabs activeHref="/settings/registers-outlets" />}
     >
-      <section aria-label="Store and register source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
-        <div><p className="font-semibold text-[var(--oh-text)]">Live from Orithos <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
-          <p className="mt-1">Create and configure companies and POS registers in Orithos. These lists never write to Classic MySQL.</p></div>
-      </section>
-
-      {error ? (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          <span>{error}</span>
-          <div className="flex flex-wrap items-center gap-2">
-<button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={loading ? "animate-spin" : undefined} /> {loading ? "Retrying…" : "Retry"}</button>
-            <Link className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]" href="/settings/account?tab=connection">View connection status</Link>
-          </div>
-        </div>
-      ) : loading ? (
-        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Orithos stores and registers" className="grid gap-5">
-          {Array.from({ length: 2 }, (_, section) => <section key={section} className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
-            <div className="h-5 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-16 animate-pulse rounded-lg bg-[var(--oh-surface)]" />)}
+      {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4">
+          <h2 className="font-semibold">Outlets</h2>
+          <ul className="mt-3 divide-y">
+            {outlets.map((outlet) => <li key={outlet.id} className="py-2 text-sm">{outlet.name}</li>)}
+            {outlets.length === 0 && <li className="py-6 text-sm text-[var(--oh-muted)]">No outlets yet.</li>}
+          </ul>
+          {canEdit && (
+            <div className="mt-3 flex gap-2">
+              <input className="h-10 flex-1 rounded-lg border px-3" value={outletName} onChange={(e) => setOutletName(e.target.value)} placeholder="New outlet name" />
+              <button type="button" onClick={() => void addOutlet()} className="rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white">Add</button>
             </div>
-          </section>)}
-        </div>
-      ) : (
-        <div className="grid gap-5">
-          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
-            <h2 className="mb-4 text-base font-semibold text-[var(--oh-text)]">Stores / companies</h2>
-            {outlets.length ? (
-              <>
-                <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
-                  {outlets.map((outlet) => <article key={outlet.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
-                    <h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{outlet.name}</h3>
-                    <p className="mt-2 text-xs text-[var(--oh-muted)]">Orithos outlet</p>
-                  </article>)}
-                </div>
-                <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
-            <table aria-label="Orithos stores and registers" className="w-full border-collapse text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Store</th></tr></thead>
-                    <tbody className="divide-y divide-[var(--oh-border)]">{outlets.map((outlet) => <tr key={outlet.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{outlet.name}</td></tr>)}</tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Orithos companies are available to this account.</p>
-            )}
-          </section>
-
-          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
-            <h2 className="mb-4 text-base font-semibold text-[var(--oh-text)]">POS registers</h2>
-            {registers.length ? (
-              <>
-                <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
-                  {registers.map((register) => <article key={register.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{register.name}</h3><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${register.closed ? "bg-[var(--oh-surface)] text-[var(--oh-muted)]" : "bg-emerald-50 text-emerald-800"}`}>{register.sessionLabel}</span></div>
-                    <div className="mt-3 border-t border-[var(--oh-border)] pt-3"><p className="text-xs font-medium text-[var(--oh-muted)]">Store</p><p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{register.outletName}</p></div>
-                  </article>)}
-                </div>
-                <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
-                  <table className="w-full border-collapse text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Register</th><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Current session</th></tr></thead>
-                    <tbody className="divide-y divide-[var(--oh-border)]">{registers.map((register) => <tr key={register.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{register.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{register.outletName}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{register.sessionLabel}</td></tr>)}</tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No Orithos POS registers are available to this account.</p>
-            )}
-          </section>
-        </div>
-      )}
+          )}
+        </section>
+        <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4">
+          <h2 className="font-semibold">Registers</h2>
+          <ul className="mt-3 divide-y">
+            {registers.map((register) => (
+              <li key={register.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <span>{register.name}</span>
+                <span className="text-[var(--oh-muted)]">{register.closed ? "Closed" : "Openable"}</span>
+              </li>
+            ))}
+            {registers.length === 0 && <li className="py-6 text-sm text-[var(--oh-muted)]">No registers yet.</li>}
+          </ul>
+          {canEdit && (
+            <div className="mt-3 grid gap-2">
+              <input className="h-10 rounded-lg border px-3" value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="New register name" />
+              <select className="h-10 rounded-lg border px-3" value={registerOutletId} onChange={(e) => setRegisterOutletId(Number(e.target.value))}>
+                {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
+              </select>
+              <button type="button" onClick={() => void addRegister()} className="rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-sm font-semibold text-white">Add register</button>
+            </div>
+          )}
+        </section>
+      </div>
     </AdminPageLayout>
   );
 }

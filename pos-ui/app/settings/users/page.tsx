@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function UsersSettingsPage() {
-  redirect("/settings/staff");
-}
+export { default } from "../staff/page";

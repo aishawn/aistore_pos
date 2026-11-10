@@ -1,0 +1,27 @@
+{
+  "id": "UAT_SETTINGS_2026-11-10",
+  "date": "2026-11-10",
+  "feature": "CAP-SET",
+  "environment": "candidate_source",
+  "target": "orithopos-master + shopfront-crawler main candidates",
+  "write_scope": "none_online",
+  "result": "PARTIAL",
+  "summary": "Local Java 21 mvn verify PASS and UI typecheck PASS for Settings 1:1 candidate. Online SKR/Demo UAT pending deploy SHA.",
+  "checks": [
+    {"name": "company_settings_service_unit", "result": "PASS", "environment": "local_mvn_verify"},
+    {"name": "cash_round_to_unit", "result": "PASS", "environment": "local_mvn_verify"},
+    {"name": "pos_ui_typecheck", "result": "PASS", "environment": "local"},
+    {"name": "setup_sidebar_routes", "result": "NOT_RUN"},
+    {"name": "company_kv_save_owned", "result": "NOT_RUN"},
+    {"name": "settings_import_skips_owned", "result": "NOT_RUN"},
+    {"name": "enterprise_push_persist", "result": "NOT_RUN"},
+    {"name": "cash_round_to_engine", "result": "NOT_RUN"}
+  ],
+  "source_sha": null,
+  "runtime_sha": null,
+  "limitations": [
+    "No Dokploy deployment recorded in this file yet",
+    "Shopfront settings GraphQL field depth depends on OAuth scopes",
+    "Pricing algorithm semantics beyond round_to not asserted"
+  ]
+}

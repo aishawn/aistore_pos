@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function LegacySettingsPage() {
-  redirect("/settings/company/date-time");
+import { CompanyKvEditor } from "@/components/admin/CompanyKvEditor";
+import { sectionByHref } from "@/lib/company-settings-catalog";
+
+export default function CurrencySettingsPage() {
+  return <CompanyKvEditor section={sectionByHref("/settings/company/currency")!} />;
 }

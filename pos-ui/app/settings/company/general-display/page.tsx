@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function LegacySettingsPage() {
-  redirect("/settings/company/general");
+import { CompanyKvEditor } from "@/components/admin/CompanyKvEditor";
+import { sectionByHref } from "@/lib/company-settings-catalog";
+
+export default function GeneralDisplaySettingsPage() {
+  return <CompanyKvEditor section={sectionByHref("/settings/company/general-display")!} />;
 }
