@@ -109,6 +109,28 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {
             return false;
         }
+        // Only the new outlet-scoped ledger report is live; keep legacy
+        // reporting routes behind the reference-API protection.
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/reports/native-overview")
+                || path.equals("/api/reports/native-sales-history"))) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/customers")
+                || path.matches("/api/customers/[0-9]+")
+                || path.equals("/api/customers/groups")
+                || path.matches("/api/customers/groups/[0-9]+")
+                || path.matches("/api/customers/groups/[0-9]+/revisions")
+                || path.matches("/api/customers/[0-9]+/(recent-sales|revisions)"))) {
+            return false;
+        }
+        if ("GET".equalsIgnoreCase(method)
+                && (path.equals("/api/customer-payments")
+                || path.matches("/api/customer-payments/[0-9]+")
+                || path.matches("/api/customer-payments/[0-9]+/allocations"))) {
+            return false;
+        }
         if (path.equals("/api/integrations") || path.startsWith("/api/integrations/")) {
             return true;
         }

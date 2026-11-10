@@ -150,8 +150,9 @@ public class CustomerService {
     private void saveEmails(Long customerId, List<String> emails) {
         customerEmailMapper.deleteByCustomerId(customerId);
         int order = 0;
+        Long outletId = requireCurrentOutlet();
         for (String email : emails) {
-            customerEmailMapper.insert(customerId, email, order++);
+            customerEmailMapper.insert(customerId, email, order++, outletId);
         }
     }
 

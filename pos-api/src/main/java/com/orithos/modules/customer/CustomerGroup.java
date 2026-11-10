@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 @Data
 public class CustomerGroup {
+    private Long outletId;
     private Long id;
     private String name;
     /** Populated on list queries only. */

@@ -78,7 +78,8 @@ public class ReportQueryService {
      * Daily Sales History groups from the native ledger only. Refund sales
      * (negative totals / linked refunds) are counted separately when present.
      */
-    public Map<String, Object> nativeSalesHistory(long outletId, LocalDate from, LocalDate to) {
+    public Map<String, Object> nativeSalesHistory(long vendorId, long outletId, LocalDate from, LocalDate to) {
+        requireReportOutlet(vendorId, outletId);
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) AS date,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
@@ -89,7 +90,7 @@ public class ReportQueryService {
                        COALESCE(SUM(s.total_tax), 0) AS tax
                 FROM sale s
                 WHERE s.outlet_id = ?
-                  AND s.status IN ('COMPLETED', 'REFUNDED')
+                  AND s.status = 'COMPLETED'
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
                 GROUP BY COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at))

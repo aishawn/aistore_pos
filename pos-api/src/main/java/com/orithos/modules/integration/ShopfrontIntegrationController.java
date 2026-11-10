@@ -3,6 +3,7 @@ package com.orithos.modules.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
+import com.orithos.modules.customer.NativeCustomerImportService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -66,6 +67,7 @@ public class ShopfrontIntegrationController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final ShopfrontNativeSaleImporter nativeSaleImporter;
+    private final NativeCustomerImportService nativeCustomerImportService;
     private final String token;
     private final boolean enabled;
     private final boolean businessWriteEnabled;
@@ -75,12 +77,14 @@ public class ShopfrontIntegrationController {
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
             ShopfrontNativeSaleImporter nativeSaleImporter,
+            NativeCustomerImportService nativeCustomerImportService,
             @Value("${app.shopfront.integration-token:}") String token,
             @Value("${app.shopfront.integration-enabled:false}") boolean enabled,
             @Value("${app.shopfront.business-write-enabled:false}") boolean businessWriteEnabled) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.nativeSaleImporter = nativeSaleImporter;
+        this.nativeCustomerImportService = nativeCustomerImportService;
         this.token = token;
         this.enabled = enabled;
         this.businessWriteEnabled = businessWriteEnabled;
@@ -91,7 +95,8 @@ public class ShopfrontIntegrationController {
             ObjectMapper objectMapper,
             String token,
             boolean enabled) {
-        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper), token, enabled, false);
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
+                new NativeCustomerImportService(jdbc, objectMapper), token, enabled, false);
     }
 
     public ShopfrontIntegrationController(
@@ -100,7 +105,8 @@ public class ShopfrontIntegrationController {
             String token,
             boolean enabled,
             boolean businessWriteEnabled) {
-        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper), token, enabled, businessWriteEnabled);
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
+                new NativeCustomerImportService(jdbc, objectMapper), token, enabled, businessWriteEnabled);
     }
 
     @GetMapping("/mappings")
@@ -547,6 +553,12 @@ public class ShopfrontIntegrationController {
                     Map<String, Object> nativeResult = new LinkedHashMap<>(upserted);
                     nativeResult.put("enabled", true);
                     nativeLedger = nativeResult;
+                } else if ("customers".equals(type)) {
+                    long outletId = longValue(mappingRows.get(0).get("outlet_id"));
+                    if (outletId <= 0) {
+                        throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
+                    }
+                    nativeLedger = nativeCustomerImportService.importCustomers(store, outletId, items);
                 }
             }
             Long id;

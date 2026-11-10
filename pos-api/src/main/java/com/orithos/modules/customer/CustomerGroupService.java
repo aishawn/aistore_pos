@@ -3,6 +3,7 @@ package com.orithos.modules.customer;
 import com.orithos.common.BusinessException;
 import com.orithos.common.SqlConstraintUtils;
 import com.orithos.modules.customer.mapper.CustomerGroupMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +26,14 @@ public class CustomerGroupService {
     /** Find or create the system default customer group used when none is selected. */
     @Transactional
     public CustomerGroup ensureDefaultGroup() {
-        CustomerGroup existing = groupMapper.findActiveByName(DEFAULT_GROUP_NAME);
+        Long outletId = requireOutlet();
+        CustomerGroup existing = groupMapper.findActiveByName(DEFAULT_GROUP_NAME, outletId);
         if (existing != null) {
             return existing;
         }
-        CustomerGroup legacy = groupMapper.findActiveByName(LEGACY_DEFAULT_GROUP_NAME);
+        CustomerGroup legacy = groupMapper.findActiveByName(LEGACY_DEFAULT_GROUP_NAME, outletId);
         if (legacy != null) {
-            CustomerGroup before = groupMapper.findById(legacy.getId());
+            CustomerGroup before = groupMapper.findByIdAndOutlet(legacy.getId(), outletId);
             legacy.setName(DEFAULT_GROUP_NAME);
             groupMapper.update(legacy);
             if (before != null) {
@@ -41,11 +43,12 @@ public class CustomerGroupService {
         }
         CustomerGroup created = new CustomerGroup();
         created.setName(DEFAULT_GROUP_NAME);
+        created.setOutletId(outletId);
         applyGroupDefaults(created);
         try {
             groupMapper.insert(created);
         } catch (RuntimeException e) {
-            CustomerGroup raced = groupMapper.findActiveByName(DEFAULT_GROUP_NAME);
+            CustomerGroup raced = groupMapper.findActiveByName(DEFAULT_GROUP_NAME, outletId);
             if (raced != null) {
                 return raced;
             }
@@ -62,9 +65,10 @@ public class CustomerGroupService {
             throw new BusinessException("Customer group name is required.");
         }
         String trimmed = name.trim();
+        Long outletId = requireOutlet();
         long count = excludeId == null
-                ? groupMapper.countActiveByName(trimmed)
-                : groupMapper.countActiveByNameExcluding(trimmed, excludeId);
+                ? groupMapper.countActiveByName(trimmed, outletId)
+                : groupMapper.countActiveByNameExcluding(trimmed, excludeId, outletId);
         if (count > 0) {
             throw new BusinessException(
                     DUPLICATE_NAME_CODE,
@@ -74,6 +78,7 @@ public class CustomerGroupService {
 
     @Transactional
     public CustomerGroup create(CustomerGroup g) {
+        g.setOutletId(requireOutlet());
         applyGroupDefaults(g);
         ensureUniqueActiveName(g.getName(), null);
         try {
@@ -87,8 +92,11 @@ public class CustomerGroupService {
 
     @Transactional
     public CustomerGroup update(Long id, CustomerGroup g) {
-        CustomerGroup before = groupMapper.findById(id);
+        Long outletId = requireOutlet();
+        CustomerGroup before = groupMapper.findByIdAndOutlet(id, outletId);
+        if (before == null) throw new BusinessException("Customer group not found.");
         g.setId(id);
+        g.setOutletId(outletId);
         applyGroupDefaults(g);
         if (g.getName() != null) {
             ensureUniqueActiveName(g.getName(), id);
@@ -102,6 +110,12 @@ public class CustomerGroupService {
             groupRevisionService.logUpdated(before, g);
         }
         return g;
+    }
+
+    private static Long requireOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
+        return outletId;
     }
 
     private static void applyGroupDefaults(CustomerGroup g) {

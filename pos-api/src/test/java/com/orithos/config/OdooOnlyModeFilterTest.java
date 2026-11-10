@@ -169,6 +169,43 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeReportAndCustomerReadsPassThroughWhileCustomerWritesRemainRetired() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (String path : new String[]{
+                "/api/reports/native-overview",
+                "/api/customers",
+                "/api/customers/42",
+                "/api/customers/42/recent-sales",
+                "/api/customers/groups",
+                "/api/customers/groups/4",
+                "/api/customers/groups/4/revisions",
+                "/api/customer-payments",
+                "/api/customer-payments/2",
+                "/api/customer-payments/2/allocations"
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus());
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        MockHttpServletResponse writeResponse = new MockHttpServletResponse();
+        filter.doFilter(new MockHttpServletRequest("POST", "/api/customers"), writeResponse, new MockFilterChain());
+        assertEquals(410, writeResponse.getStatus());
+
+        for (String path : new String[]{
+                "/api/customers/statements/preview",
+                "/api/customers/export",
+                "/api/customers/42/payments"
+        }) {
+            MockHttpServletResponse legacyResponse = new MockHttpServletResponse();
+            filter.doFilter(new MockHttpServletRequest("GET", path), legacyResponse, new MockFilterChain());
+            assertEquals(410, legacyResponse.getStatus(), path);
+        }
+    }
+
+    @Test
     void appUserManagementRemainsAvailableInOdooOnlyMode() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users");

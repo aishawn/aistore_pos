@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 /** Maps to table customer_payment. */
 @Data
 public class CustomerPayment {
+    private Long outletId;
     private Long id;
     private Long customerId;
     private Long paymentMethodId;

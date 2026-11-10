@@ -13,11 +13,12 @@ public interface CustomerEmailMapper {
     @Delete("DELETE FROM customer_email WHERE customer_id = #{customerId}")
     int deleteByCustomerId(Long customerId);
 
-    @Insert("INSERT INTO customer_email (customer_id, email, sort_order) "
-            + "VALUES (#{customerId}, #{email}, #{sortOrder})")
+    @Insert("INSERT INTO customer_email (customer_id, email, sort_order, outlet_id) "
+            + "VALUES (#{customerId}, #{email}, #{sortOrder}, #{outletId})")
     int insert(@Param("customerId") Long customerId,
                @Param("email") String email,
-               @Param("sortOrder") int sortOrder);
+               @Param("sortOrder") int sortOrder,
+               @Param("outletId") Long outletId);
 
     @Select("""
         SELECT COUNT(*) FROM customer c

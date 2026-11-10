@@ -47,10 +47,11 @@ type NativeOverview = {
   from: string;
   to: string;
   revenue: number;
-  cost: number;
-  tax: number;
+  cost: number | null;
+  tax: number | null;
   grossProfit: number | null;
   costAvailable: boolean;
+  taxAvailable: boolean;
   transactions: number;
 };
 

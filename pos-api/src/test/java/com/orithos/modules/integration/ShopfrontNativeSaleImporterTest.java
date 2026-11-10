@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -25,7 +26,8 @@ class ShopfrontNativeSaleImporterTest {
         assertEquals("COMPLETED", ShopfrontNativeSaleImporter.mapStatus("closed"));
         assertEquals("PARKED", ShopfrontNativeSaleImporter.mapStatus("INCOMPLETE"));
         assertEquals("VOIDED", ShopfrontNativeSaleImporter.mapStatus("cancelled"));
-        assertEquals("COMPLETED", ShopfrontNativeSaleImporter.mapStatus(null));
+        assertThrows(IllegalArgumentException.class, () -> ShopfrontNativeSaleImporter.mapStatus(null));
+        assertThrows(IllegalArgumentException.class, () -> ShopfrontNativeSaleImporter.mapStatus("mystery"));
     }
 
     @Test
@@ -67,5 +69,23 @@ class ShopfrontNativeSaleImporterTest {
         verify(jdbc).update(contains("INSERT INTO sale_payment"), any(), any(), any(), any(), any());
         verify(jdbc, never()).update(contains("inventory_movement"), any(Object[].class));
         verify(jdbc, never()).update(contains("product_inventory"), any(Object[].class));
+    }
+
+    @Test
+    void skipsSalesWithUnknownStatusBeforeWritingLedgerRows() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(java.util.List.of());
+        var importer = new ShopfrontNativeSaleImporter(jdbc, new ObjectMapper());
+        var payload = new ObjectMapper().readTree("""
+                [{"external_id":"sf-bad","status":"mystery","created_at":"2026-11-09T03:15:00Z",
+                  "total_price":12.50,"total_tax":1.14,"items":[]}]
+                """);
+
+        var result = importer.upsertSales("skr", 87L, payload);
+
+        assertEquals(1, result.get("skipped"));
+        assertEquals(0, result.get("created"));
+        verify(jdbc, never()).update(contains("INSERT INTO sale"), any(Object[].class));
     }
 }

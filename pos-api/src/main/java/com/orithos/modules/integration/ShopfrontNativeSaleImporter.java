@@ -65,6 +65,7 @@ public class ShopfrontNativeSaleImporter {
                     skipped++;
                     continue;
                 }
+                validateImportableSale(sale);
                 UpsertOutcome outcome = upsertOne(storeKey, outletId, sale, externalId, productCache);
                 if (outcome.created()) {
                     created++;
@@ -101,7 +102,6 @@ public class ShopfrontNativeSaleImporter {
 
     public Map<String, Object> promoteFromMirror(String storeKey, long outletId, String afterExternalId,
                                                  int limit, String businessDay) {
-        ensureExternalIdentityColumns();
         int pageSize = Math.max(1, Math.min(limit <= 0 ? 500 : limit, 2000));
         StringBuilder sql = new StringBuilder(
                 "SELECT external_id, invoice_id, status, created_at, updated_at, total_price, total_tax, "
@@ -209,12 +209,11 @@ public class ShopfrontNativeSaleImporter {
 
     private UpsertOutcome upsertOne(String storeKey, long outletId, JsonNode sale, String externalId,
                                     Map<String, Long> productCache) {
-        ensureExternalIdentityColumns();
         String status = mapStatus(text(sale, "status"));
         String invoiceId = text(sale, "invoice_id");
         SoldAt soldAt = parseSoldAt(text(sale, "created_at"));
         BigDecimal totalPrice = money(decimalNode(sale, "total_price"));
-        BigDecimal totalTax = money(decimalNode(sale, "total_tax"));
+        BigDecimal totalTax = nullableMoney(decimalNode(sale, "total_tax"));
         BigDecimal totalDiscount = money(decimalNode(sale, "total_discount"));
         BigDecimal totalCost = nullableMoney(decimalNode(sale, "total_cost"));
         String note = text(sale, "customer_reference");
@@ -255,14 +254,15 @@ public class ShopfrontNativeSaleImporter {
         }
         if (totalCost == null) {
             BigDecimal summed = BigDecimal.ZERO;
-            boolean any = false;
+            boolean complete = !itemRows.isEmpty();
             for (Object[] row : itemRows) {
                 if (row[3] instanceof BigDecimal cost && row[2] instanceof BigDecimal qty) {
                     summed = summed.add(cost.multiply(qty));
-                    any = true;
+                } else {
+                    complete = false;
                 }
             }
-            if (any) {
+            if (complete) {
                 totalCost = money(summed);
             }
         }
@@ -343,13 +343,40 @@ public class ShopfrontNativeSaleImporter {
     }
 
     private Long findExistingSaleId(long outletId, String externalId) {
-        try {
-            return jdbc.queryForObject(
-                    "SELECT id FROM sale WHERE outlet_id = ? AND source_system = ? AND external_id = ? LIMIT 1",
-                    Long.class, outletId, SOURCE_SYSTEM, externalId);
-        } catch (Exception e) {
-            return null;
+        List<Long> ids = jdbc.query(
+                "SELECT id FROM sale WHERE outlet_id = ? AND source_system = ? AND external_id = ? LIMIT 2",
+                (rs, rowNum) -> rs.getLong(1), outletId, SOURCE_SYSTEM, externalId);
+        if (ids.size() > 1) throw new IllegalStateException("Duplicate native sale identity: " + externalId);
+        return ids.isEmpty() ? null : ids.getFirst();
+    }
+
+    private static void validateImportableSale(JsonNode sale) {
+        String externalId = text(sale, "external_id");
+        String rawStatus = text(sale, "status");
+        if (rawStatus == null || !isKnownStatus(rawStatus)) {
+            throw new IllegalArgumentException("Sale " + externalId + " has a missing or unknown status");
         }
+        if (decimalNode(sale, "total_price") == null) {
+            throw new IllegalArgumentException("Sale " + externalId + " is missing total_price");
+        }
+        String createdAt = text(sale, "created_at");
+        if (createdAt == null || parseSoldAt(createdAt) == null) {
+            throw new IllegalArgumentException("Sale " + externalId + " is missing a valid created_at");
+        }
+        if (!sale.path("items").isArray()) {
+            throw new IllegalArgumentException("Sale " + externalId + " has no complete item list");
+        }
+        if (sale.path("source_complete").asBoolean(false) && decimalNode(sale, "total_tax") == null) {
+            throw new IllegalArgumentException("Sale " + externalId + " is missing total_tax");
+        }
+    }
+
+    private static boolean isKnownStatus(String raw) {
+        return switch (raw.trim().toUpperCase(Locale.ROOT)) {
+            case "COMPLETED", "CLOSED", "PAID", "FINALISED", "FINALIZED", "PARKED", "INCOMPLETE",
+                    "OPEN", "SAVED", "VOIDED", "VOID", "CANCELLED", "CANCELED", "REFUNDED" -> true;
+            default -> false;
+        };
     }
 
     private Long resolveProductId(String storeKey, long outletId, String sourceProductId, JsonNode item,
@@ -423,18 +450,9 @@ public class ShopfrontNativeSaleImporter {
         return cache;
     }
 
-    private void ensureExternalIdentityColumns() {
-        try {
-            jdbc.update("ALTER TABLE sale ADD COLUMN IF NOT EXISTS source_system VARCHAR(32) NULL");
-            jdbc.update("ALTER TABLE sale ADD COLUMN IF NOT EXISTS external_id VARCHAR(160) NULL");
-        } catch (Exception ignored) {
-            // Migrator owns the durable DDL; this is a defensive fallback for tests.
-        }
-    }
-
     static String mapStatus(String raw) {
         if (raw == null || raw.isBlank()) {
-            return "COMPLETED";
+            throw new IllegalArgumentException("Sale status is required");
         }
         String status = raw.trim().toUpperCase(Locale.ROOT);
         return switch (status) {
@@ -442,7 +460,7 @@ public class ShopfrontNativeSaleImporter {
             case "PARKED", "INCOMPLETE", "OPEN", "SAVED" -> "PARKED";
             case "VOIDED", "VOID", "CANCELLED", "CANCELED" -> "VOIDED";
             case "REFUNDED" -> "REFUNDED";
-            default -> "COMPLETED";
+            default -> throw new IllegalArgumentException("Unknown sale status: " + raw);
         };
     }
 

@@ -232,19 +232,25 @@ public class CustomerController {
                                                        @RequestParam(defaultValue = "10") int size) {
         int offset = Math.max(0, (page - 1) * size);
         String search = normalizeSearch(name);
-        var items = groupMapper.page(search, size, offset);
-        return ApiResult.ok(PageResult.of(items, groupMapper.count(search), page, size));
+        Long outletId = requireOutlet();
+        var items = groupMapper.page(search, outletId, size, offset);
+        return ApiResult.ok(PageResult.of(items, groupMapper.count(search, outletId), page, size));
     }
 
     @GetMapping("/groups/{id}")
     public ApiResult<CustomerGroup> getGroup(@PathVariable Long id) {
-        return ApiResult.ok(groupMapper.findById(id));
+        CustomerGroup group = groupMapper.findByIdAndOutlet(id, requireOutlet());
+        if (group == null) throw new BusinessException(40410, "Customer group not found.");
+        return ApiResult.ok(group);
     }
 
     @GetMapping("/groups/{id}/revisions")
     public ApiResult<PageResult<CustomerGroupRevision>> groupRevisions(@PathVariable Long id,
                                                                        @RequestParam(defaultValue = "1") int page,
                                                                        @RequestParam(defaultValue = "50") int size) {
+        Long outletId = requireOutlet();
+        CustomerGroup group = groupMapper.findByIdAndOutlet(id, outletId);
+        if (group == null) throw new BusinessException(40410, "Customer group not found.");
         var items = groupRevisionService.list(id, page, size);
         return ApiResult.ok(PageResult.of(items, groupRevisionService.count(id), page, size));
     }
@@ -261,7 +267,8 @@ public class CustomerController {
 
     @DeleteMapping("/groups/{id}")
     public ApiResult<Void> deleteGroup(@PathVariable Long id) {
-        groupMapper.softDelete(id);
+        Long outletId = requireOutlet();
+        if (groupMapper.softDelete(id, outletId) == 0) throw new BusinessException(40410, "Customer group not found.");
         return ApiResult.ok();
     }
 }

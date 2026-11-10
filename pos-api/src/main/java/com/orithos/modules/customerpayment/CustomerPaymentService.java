@@ -28,6 +28,7 @@ public class CustomerPaymentService {
 
     @Transactional
     public CustomerPayment create(CustomerPayment payment) {
+        Long outletId = requireOutlet();
         if (payment.getCustomerId() == null) {
             throw new BusinessException("Customer is required.");
         }
@@ -39,6 +40,10 @@ public class CustomerPaymentService {
         if (customer == null) {
             throw new BusinessException("Customer not found.");
         }
+        if (!outletId.equals(customerMapper.findOutletId(payment.getCustomerId()))) {
+            throw new BusinessException(40410, "Customer not found.");
+        }
+        payment.setOutletId(outletId);
 
         BigDecimal owing = customer.getCurrentOwing() != null ? customer.getCurrentOwing() : BigDecimal.ZERO;
         payment.setStartBalance(owing);
@@ -52,12 +57,12 @@ public class CustomerPaymentService {
 
         paymentMapper.insert(payment);
         revisionService.logPayment(payment.getCustomerId(), payment);
-        return paymentMapper.findById(payment.getId());
+        return paymentMapper.findById(payment.getId(), outletId);
     }
 
     @Transactional
     public void voidPayment(Long id) {
-        CustomerPayment payment = paymentMapper.findById(id);
+        CustomerPayment payment = paymentMapper.findById(id, requireOutlet());
         if (payment == null) {
             throw new BusinessException("Payment not found.");
         }
@@ -76,5 +81,11 @@ public class CustomerPaymentService {
 
         paymentMapper.voidPayment(id);
         revisionService.logPaymentVoided(payment.getCustomerId(), payment);
+    }
+
+    private static Long requireOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
+        return outletId;
     }
 }

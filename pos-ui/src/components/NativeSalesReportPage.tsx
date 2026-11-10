@@ -6,12 +6,13 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 type Report = {
   source: "orithos_ledger";
   revenue: number;
-  cost: number;
-  tax: number;
+  cost: number | null;
+  tax: number | null;
   grossProfit: number | null;
   costAvailable: boolean;
+  taxAvailable: boolean;
   transactions: number;
-  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number; tax: number }>;
+  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number | null; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
   topProducts: Array<{ name: string; revenue: number; quantity: number }>;
 };
 
@@ -70,13 +71,13 @@ export function NativeSalesReportPage() {
     </div>
     {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 md:mx-6"><AlertCircle size={16} />{error}</div>}
     <section aria-busy={loading} className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-      <Metric label="Revenue" value={report ? money(report.revenue) : "—"} /><Metric label="Cost of goods sold" value={report?.costAvailable ? money(report.cost) : "—"} /><Metric label="Gross profit" value={report?.grossProfit != null ? money(report.grossProfit) : "—"} /><Metric label="Tax" value={report ? money(report.tax) : "—"} /><Metric label="Transactions" value={report ? report.transactions.toLocaleString("en-AU") : "—"} />
+      <Metric label="Revenue" value={report ? money(report.revenue) : "—"} /><Metric label="Cost of goods sold" value={report?.costAvailable && report.cost !== null ? money(report.cost) : "—"} /><Metric label="Gross profit (ex tax)" value={report?.grossProfit != null ? money(report.grossProfit) : "—"} /><Metric label="Tax" value={report?.taxAvailable && report.tax !== null ? money(report.tax) : "—"} /><Metric label="Transactions" value={report ? report.transactions.toLocaleString("en-AU") : "—"} />
     </section>
     <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full min-w-[680px] border-collapse text-left text-sm"><thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Business date", "Revenue", "Cost", "Gross profit", "Tax", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{report?.dailyTrend.map(row => <tr key={String(row.date)}><td className="px-3 py-2">{String(row.date)}</td><td className="px-3 py-2">{money(Number(row.revenue))}</td><td className="px-3 py-2">{report.costAvailable ? money(Number(row.cost)) : "—"}</td><td className="px-3 py-2">{report.costAvailable ? money(Number(row.revenue) - Number(row.cost)) : "—"}</td><td className="px-3 py-2">{money(Number(row.tax))}</td><td className="px-3 py-2">{Number(row.transaction_count).toLocaleString("en-AU")}</td></tr>)}</tbody></table>
+      <table className="w-full min-w-[680px] border-collapse text-left text-sm"><thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Business date", "Revenue", "Cost", "Gross profit", "Tax", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{report?.dailyTrend.map(row => <tr key={String(row.date)}><td className="px-3 py-2">{String(row.date)}</td><td className="px-3 py-2">{money(Number(row.revenue))}</td><td className="px-3 py-2">{row.costAvailable && row.cost !== null ? money(Number(row.cost)) : "—"}</td><td className="px-3 py-2">{row.grossProfit !== null ? money(Number(row.grossProfit)) : "—"}</td><td className="px-3 py-2">{row.taxAvailable && row.tax !== null ? money(Number(row.tax)) : "—"}</td><td className="px-3 py-2">{Number(row.transaction_count).toLocaleString("en-AU")}</td></tr>)}</tbody></table>
       {!loading && report?.dailyTrend.length === 0 && <p className="p-6 text-center text-sm text-[var(--oh-muted)]">No Orithos sales in this range.</p>}
     </div>
-    <p className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Totals read the Orithos sale ledger only (Shopfront history is promoted into sale/sale_item).</p>
+    <p className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Completed transactions stored in Orithos only. Tax and historical cost must be complete to show gross profit.</p>
   </main>;
 }
 

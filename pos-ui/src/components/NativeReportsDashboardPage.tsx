@@ -8,12 +8,13 @@ type NativeOverview = {
   from: string;
   to: string;
   revenue: number;
-  cost: number;
-  tax: number;
+  cost: number | null;
+  tax: number | null;
   grossProfit: number | null;
   costAvailable: boolean;
+  taxAvailable: boolean;
   transactions: number;
-  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number }>;
+  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number | null; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
   topProducts: Array<{ id: number; name: string; revenue: number; quantity: number }>;
   inventoryAvailable: false;
 };
@@ -77,7 +78,11 @@ export function NativeReportsDashboardPage() {
         setComparison(previous);
       }
     } catch (cause) {
-      if (!signal.aborted) setError(cause instanceof Error ? cause.message : "Orithos report is unavailable.");
+      if (!signal.aborted) {
+        setData(null);
+        setComparison(null);
+        setError(cause instanceof Error ? cause.message : "Orithos report is unavailable.");
+      }
     } finally {
       if (!signal.aborted) setLoading(false);
     }
@@ -106,9 +111,9 @@ export function NativeReportsDashboardPage() {
     </header>
     {error && <div role="alert" className="flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><AlertCircle size={16} />{error}</div>}
     <section aria-busy={loading} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <Metric label="Sales" value={data ? money(data.revenue) : "—"} detail={delta === null ? "Comparison unavailable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs previous 7 days`} />
+      <Metric label="Sales" value={data ? money(data.revenue) : "—"} detail={delta === null ? "Comparison unavailable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs previous period`} />
       <Metric label="Transactions" value={data ? data.transactions.toLocaleString("en-AU") : "—"} detail="Orithos ledger records" />
-      <Metric label="Gross profit" value={data?.grossProfit != null ? money(data.grossProfit) : "—"} detail={data?.costAvailable ? `Cost ${money(data.cost)}` : "Cost coverage unavailable"} />
+      <Metric label="Gross profit" value={data?.grossProfit != null ? money(data.grossProfit) : "—"} detail={data?.costAvailable && data.cost !== null ? data.taxAvailable ? `Ex-tax sales less cost ${money(data.cost)}` : "Tax coverage unavailable" : "Cost coverage unavailable"} />
       <Metric label="Inventory" value="Unavailable" detail="No native snapshot in this report" />
     </section>
     <section className="grid gap-4 lg:grid-cols-2">
@@ -124,7 +129,7 @@ export function NativeReportsDashboardPage() {
         {data?.topProducts.length ? <ul className="mt-2 divide-y divide-[var(--oh-border)]">{data.topProducts.map(row => <li key={row.id || row.name} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="min-w-0 truncate">{row.name}</span><span className="shrink-0 text-[var(--oh-muted)]">{row.quantity} units</span><strong className="shrink-0">{money(Number(row.revenue))}</strong></li>)}</ul> : <p className="mt-5 text-sm text-[var(--oh-muted)]">{loading ? "Loading…" : "Product detail unavailable."}</p>}
       </section>
     </section>
-    <p className="text-xs text-[var(--oh-muted)]">Only transactions stored in Orithos are included. Historical Shopfront records not present in this ledger are not included.</p>
+    <p className="text-xs text-[var(--oh-muted)]">Includes completed transactions imported into Orithos and completed Orithos sales. Missing tax or historical cost is shown as unavailable.</p>
   </main>;
 }
 

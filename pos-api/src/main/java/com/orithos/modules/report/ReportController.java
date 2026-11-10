@@ -69,9 +69,9 @@ public class ReportController {
     public ApiResult<Map<String, Object>> nativeSalesHistory(@RequestParam LocalDate from,
                                                               @RequestParam LocalDate to) {
         permissionAccess.requirePermission("reports.dashboard");
-        var tenant = tenantContextFactory.fromSecurity();
-        Long outletId = tenant.requireOutletId();
-        if (outletId == null) {
+        Long outletId = CurrentUser.outletId();
+        Long vendorId = CurrentUser.vendorId();
+        if (outletId == null || vendorId == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
         }
@@ -79,7 +79,7 @@ public class ReportController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 801 days.");
         }
-        return ApiResult.ok(reportQueryService.nativeSalesHistory(outletId, from, to));
+        return ApiResult.ok(reportQueryService.nativeSalesHistory(vendorId, outletId, from, to));
     }
 
     @GetMapping("/weekly-sales")
