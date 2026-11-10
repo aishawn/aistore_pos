@@ -11,13 +11,15 @@
 - Inventory store-pulse: OAuth Special Report still POST **405**; **staff Misc Inventory At Date + Name→ID enrich** path live → `source-reports/inventory?refresh=true` = `shopfront_reporting_api` / `fresh` (crawler `4faf745`). Unforced reads may still serve GraphQL snapshot cache.
 - Schedule: Adelaide `02:30,23:00`, interval 30m (`GET /api/sync/schedule`).
 - **Page Network Sales/Purchase (AIWEI):** session `POST /graphql` (not `/api/v2`). Purchase `orders(type:ORDER)=2370` ≡ staging PO. Suppliers `109`. Products GraphQL `10855` = catalog current (staging `11033` includes historical). Sales: crawler↔POS `156588` aligned; live GraphQL `sales.totalCount≈14317` is a **UI connection totalCount vs historical archive** gap, not crawler/POS drift. Evidence: `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` (gitignored `/docs/`).
-- Owner **「不用备份」** — durable PG/S3 backup out of this round. Xero interim: `scripts/xero_day_csv_export.py`. Pilot formal production still **NO-GO** until Xero/Odoo-retire acceptance as previously required (backup skipped per owner).
+- Owner **「不用备份」** — durable PG/S3 backup out of this round. Xero interim: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*`. Pilot formal production still **NO-GO** until owner/accountant Xero acceptance (backup skipped per owner).
+- Crawler staff Misc **auto re-login** on `22b33d9` — Dokploy deploy `p4FTQUwOS42ecuI4INgG3` done `2026-11-10T07:06:24Z`.
+- Requirement audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` (`goal_complete=false`; blocker = Xero owner acceptance).
 
 ### Next Steps
 
-1. Optional: Dashboard same-day Reporting amount cross-check (non-blocking).
+1. Owner/accountant accept (or waive) Xero day CSV path.
 2. Keep Odoo business/import/stocktake writes false; do not register-scrape Shopfront.
-3. Xero owner acceptance path when ready; backup only if owner reverses skip.
+3. Optional: Dashboard same-day Reporting amount cross-check; physical Odoo read-only retire later.
 
 ## Goal
 
