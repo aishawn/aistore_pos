@@ -1,133 +1,139 @@
-# Handoff
+# Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-10 ~20:10 (UTC+8)  
-> Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only; Nov-9 row parity closed; report DSL gap = 1 INCOMPLETE.  
-> Canonical Chinese cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
+> Generated: 2026-11-10 ~20:45 (UTC+8)  
+> Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
+> Session: Orithos Native Ledger Cutover (Shopfront sales → native `sale`/`sale_item`; reports/UI Orithos-only)  
+> Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
-## Ops credentials (names only — values in local `.env` / Dokploy)
+## Goal
 
-| Surface | URL | User / secret name |
-|---------|-----|--------------------|
-| Shopfront (read-only; never Register) | `https://skr.onshopfront.com/` | AIWEI / owner-provided; Misc reports `/reports/misc` |
-| SKR store | `https://skr.orithos.com.au/` | `ORITHOS_SKR_USER` / `ORITHOS_SKR_PASS` |
-| Demo store | `https://demo.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
-| Control plane | `https://app.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
+Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the external SoT; crawler syncs into both tenants. Browser pages read **pos-api only**. Odoo stays non-writable (no dual-write).
+
+## Completed this session
+
+### Phase 1 — Native sales ledger
+- Schema: `sale.source_system` + `sale.external_id` (unique with outlet).
+- `ShopfrontNativeSaleImporter`: upsert Shopfront payloads into `sale` / `sale_item` / payments; **no historical stock moves**.
+- Continuous path: crawler `sales:upsert` → mirror **and** native writer.
+- Backfill: `POST /api/integrations/shopfront/sales:promote-native` (batched: `store_key`, `business_day`, `after_external_id`, `limit`).
+- Adelaide day filter: offset/Z → Adelaide; naive timestamps treated as Adelaide local.
+- Money: prefer payload `total_price` / `totalPrice`; avoid float drift on promote.
+
+### Phase 2 — Reports / UI on pos-api
+- `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history` → native overview / sales history (`source=orithos_ledger`).
+- Overview Store Pulse → `GET /api/reports/native-overview` only.
+- AppShell Sales History modal → `NativeSalesHistoryModal` (no Odoo overlay) — commit `42336225`.
+- `/api/shopfront-source` → HTTP **410**.
+
+### Phase 3 — Domain cutover (partial ship)
+- Sell / register / close / customers / suppliers / inventory report surfaces moved toward Orithos where already present.
+- **Not fully cleared:** products catalogue (still Odoo-primary in main nav), transfers/replenishment, customer satellites (balances/gift cards), `/sell` classic Odoo register, some settings/AI Odoo reads. See “Next plan” below.
+
+### Phase 4 — Verify / parity / deploy
+- Java 21 `mvn -B verify` green (601 tests) on promote/day-totals work.
+- Live Adelaide **2026-11-09** (SKR + Demo, after void orphans):
+
+| Metric | Value |
+|--------|--------|
+| Native shopfront COMPLETED | **$5,035.80 / 161** |
+| Mirror / crawler sale headers | **$5,035.80 / 161** |
+| `sales:native-day-diff` mismatches | **0** |
+| Shopfront sales-report DSL | **$5,038.48 / 162** |
+| Report gap explanation | +1 **INCOMPLETE** invoice `00081327` / **$2.68** (native = PARKED) |
+| `shopfront_report_comparable_*` | **$5,038.48 / 162** |
+| Auth overview (cookie login) | `source=orithos_ledger`, revenue **5035.8 / 161** both stores |
+
+- Cleanup: `POST .../sales:void-orphan-ref-refunds` voided UAT `REF-%` rows (demo −$4.50, skr −$4.80).
+- Pushed to `origin/main`; Dokploy auto-deploys. Tip at handoff write time: see `git log -1` (includes later customer/shell fixes after cutover commits).
+
+### Integration helpers (token = `X-Shopfront-Integration-Token`)
+| Endpoint | Purpose |
+|----------|---------|
+| `GET .../sales:native-day-totals?day=YYYY-MM-DD` | Outlet COMPLETED vs shopfront / incomplete / report-comparable |
+| `GET .../sales:native-day-diff?day=&store_key=` | Per-external_id parity |
+| `POST .../sales:promote-native` | Batched mirror → native |
+| `POST .../sales:void-orphan-ref-refunds` | Void `REF-%` + `source_system IS NULL` |
+
+Local probes (ignored): `.local/probe-day-totals-mirror.cjs`, `probe-day-diff.cjs`, `promote-native-sales-timeout.cjs`, `void-orphan-refs.cjs`, `probe-overview-cookies.cjs`.
+
+## Ops map (secret **names** only)
+
+| Surface | URL | Auth |
+|---------|-----|------|
+| Shopfront (read-only; **never Register**) | `https://skr.onshopfront.com/` | AIWEI / owner password; Misc `/reports/misc` |
+| SKR | `https://skr.orithos.com.au/` | `ORITHOS_SKR_USER` / `ORITHOS_SKR_PASS` |
+| Demo | `https://demo.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
+| App | `https://app.orithos.com.au/` | `admin` / `INITIAL_ADMIN_PASSWORD` |
 | Odoo (retired writable SoT) | `https://odoo.orithos.com.au/` | `ODOO_USER` / `ODOO_PASS` |
 | Crawler | `https://crawler.orithos.com.au/` | `SHOPFRONT_INTEGRATION_TOKEN` |
 | Dokploy | `https://dokploy.orithos.com.au/` | `ORTHOS_DOKPLOY_USER` / `ORTHOS_DOKPLOY_PASS` |
 | DB | — | `POSTGRESQL_URL` |
 
-Local repos: `orithopos-master` (POS), `shopfront-crawler`, `orithos-ai-services`, `orithos_odoo`, `shipany-template-dev` — all `main`.
+Local repos (all `main`): POS `orithopos-master`, `shopfront-crawler`, `orithos-ai-services`, `orithos_odoo`, `shipany-template-dev`.  
+Compose: POS `V3BuMZuSCowVe-OKWIR6J`; crawler `JHfNJMWCJGqpq0_5aovzZ`.
 
-## Goal
+## Still true from prior cutover
+- SKR=Demo staging parity; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` / `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`.
+- Odoo business writes off.
+- Inventory-at-date OAuth still 405 — staff Misc path.
+- Xero = CSV scripts; formal pilot may remain NO-GO until backup/Xero/Odoo-retire bars clear.
+- Owner: no local app builds; Java 21 gate before any `pos-api/` push.
 
-Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the recurring external SoT synced into both tenants. Browser pages read **pos-api only** (no crawler / `/api/shopfront-source` / Odoo report RPCs). Odoo must stay **non-writable** (no dual-write).
+## Working tree caution (at handoff)
+Uncommitted local edits may exist under `pos-ui/app/reports/*`, `suppliers`, `NativeSupplierDirectoryPage` — **do not** mix into unrelated pushes without review. Untracked `.local-*.bundle` / `scripts/pg_restore_rehearsal.py` stay local.
 
-## Current State
+---
 
-**Shipped to `origin/main` (2026-11-10 native ledger cutover):**
-- POS head `d6c0a187` (report-comparable totals + void orphan REF refunds); crawler `e142bd5`. Java 21 `mvn -B verify` PASS (601 tests).
-- Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
-- UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
-- Adelaide `2026-11-09` **sale-row** parity (SKR+Demo): native shopfront COMPLETED = mirror = crawler headers = **`$5,035.80` / 161** (`sales:native-day-diff` zero mismatches). Shopfront sales-report DSL **`$5,038.48` / 162** = completed + one **INCOMPLETE** sale `00081327` / `$2.68` (open ticket; native status PARKED). `sales:native-day-totals` exposes `shopfront_report_comparable_*`. Void UAT `REF-%` orphans with `sales:void-orphan-ref-refunds` so outlet-wide overview matches shopfront completed.
+## Subsequent plan (recommended)
 
-**Still true from prior cutover:**
-- Staging parity SKR = Demo mirror counts; Odoo business writes off; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` expected.
-- OAuth inventory-at-date still 405 — staff Misc path for inventory refresh.
-- Xero remains CSV path; formal pilot GO may still be NO-GO for backup/Xero/Odoo-retire bars.
+### P0 — Keep ledger green
+1. After each Dokploy deploy: confirm `/api/public/version` SHA; re-run day-totals for yesterday Adelaide.
+2. Watch crawler scheduled syncs (`02:30` / `23:00` Adelaide); SKR and Demo must move together.
+3. Never re-enable Odoo writes (`node .local/read-cutover-config.cjs`).
+4. Keep `SHOPFRONT_STAFF_*` in crawler Compose for inventory Misc.
 
-## Files in Play
+### P1 — Finish Odoo / Shopfront UI retirement (by domain)
+Priority from live inventory (migrate writes before leftover report mirrors):
 
-| Path | Why |
-|------|-----|
-| `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md` | Chinese SoT cutover handoff (outside POS git root) |
-| `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` | Eight-deliverable audit (gitignored under `/docs/`) |
-| `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_API_2026-11-10.json` | Native sell/receive + flags evidence |
-| `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` | AIWEI Sales/Purchase Network parity |
-| `scripts/xero_day_csv_export.py` | Owner Xero day CSV acceptance path |
-| `shopfront-crawler` `app/shopfront.py` | Staff login + Misc inventory + session re-login |
-| `pos-ui/app/api/shopfront-source/route.ts` | Demo/SKR host → crawler `store=skr` |
-| `pos-ui/src/lib/shopfront-store-scope.ts` | `demo` subdomain maps source store to `skr` |
-| `.local/read-cutover-config.cjs` | Dokploy env read (Odoo write flags) |
-| `.local/read-crawler-deploy-sha.cjs` | Dokploy crawler deploy titles/SHA proxy |
+1. **Products + stocktake + categories** (`/products` still Odoo-primary).
+2. **Purchasing leftovers** — transfers, replenishment RFQ, invoice→PO confirm/receive.
+3. **Customer satellites** — balances, gift cards, pricelists, `/customers/odoo`.
+4. **Cash / `/sell` classic Odoo register / manage-cash** — retire once Orithos register is sole path.
+5. **Shopfront report pages** — `/reports/inventory`, `/reports/purchase`, shopfront dashboard redirects already partly done; ensure no callers of `/api/shopfront-source`.
+6. **Settings + AI Odoo reads** — company, payment fallback, assistant ops preview.
+7. **Delete dead `/api/odoo/*` BFF** only after zero callers + Java 21 verify.
 
-## What Has Been Tried (and Why It Failed / Was Skipped)
+### P1 — Data / sync quality
+8. Triage unmatched barcodes / products (do **not** invent GST/prices).
+9. Optional: promote full historical `shopfront_sale*` beyond verified days (batched; monitor 502 → smaller `limit`).
+10. Consider surfacing `shopfront_report_comparable_*` on dashboard when comparing to Shopfront Sales report UI.
 
-1. **OAuth Special Report inventory-at-date** — POST 405 / GET 401 on this tenant; cannot be the sole inventory path.
-2. **Bearer token on UI Misc `/reports/misc/inventory-at-date`** — 401; needs staff `laravelsession`.
-3. **Browser `/api/v2/graphql` with cookies only** — 401; page uses session `POST /graphql` instead.
-4. **Full `pg_dump` / S3 durable backup** — hung/failed on large shared DB; owner said skip («不用备份»).
-5. **Crawler `store=demo` source-reports** — 404 `Unknown store`; Demo correctly uses Shopfront source key `skr`.
-6. **Treating live GraphQL sales.totalCount as staging failure** — wrong口径; archive vs live connection.
+### P2 — Pilot bars
+11. Backup / restore drill (owner previously waived).
+12. Xero day CSV acceptance / later live API.
+13. Dedicated PG DB name (drop shared-`postgres` allow flag) when owner schedules window.
+14. Physical Odoo decommission only after domain cutovers + acceptance evidence.
 
-## Current Best Theory
+### Agent-sized slices
 
-Operational SoT is Orithos + Shopfront sync. Keep Odoo writes false forever for these tenants unless a deliberate rollback. Inventory KPI durability depends on **staff credentials + auto re-login** until Shopfront fixes Special Report OAuth. Prefer OAuth GraphQL/Reporting for catalog/sales/PO; use staff only for Misc inventory-at-date.
+| Agent | Task | Forbidden |
+|-------|------|-----------|
+| Ops | Scheduled sync + day-totals smoke SKR/Demo | Fresh Volumes; Odoo writes |
+| Products | Orithos catalogue read/write replacing `/api/odoo/records` products | Invent prices/GST |
+| Purchasing | Transfers/replenishment → Orithos APIs | Dual-write Odoo |
+| UAT | Browser: dashboard `orithos_ledger`; network tab no shopfront-source / odoo report RPCs | Production sell/refund without OK |
 
-## Next Steps (ordered)
+---
 
-### P0 — Stabilize operations (do first)
+## Key constraints
+- Demo credentials / Shopfront AIWEI password: env or owner chat only — never Git/handoff values.
+- `shopfront_outlet` UUID must stay `11eeaa99e8d9de7a92c00261eda38a85`.
+- `/docs/` largely gitignored — UAT JSON may be local-only.
+- Reporting design/progress: `docs/project/features/reporting/{design,progress}.md`.
 
-1. **Watch first Adelaide scheduled syncs after `22b33d9`**  
-   - `GET /api/sync/schedule` and recent completed jobs (not only manual).  
-   - After `02:30` / `23:00` Adelaide: confirm SKR=Demo snapshot still move together; inventory `refresh=true` still `shopfront_reporting_api`.
-2. **Do not re-enable Odoo writes**  
-   - Re-check with `node .local/read-cutover-config.cjs` after any Dokploy env edit.  
-   - Never dual-write Orithos + Odoo.
-3. **Staff credential hygiene**  
-   - Keep `SHOPFRONT_STAFF_*` in crawler Compose whitelist (not Dokploy-only).  
-   - If inventory refresh fails with staff login errors, rotate password in Dokploy + Compose and re-deploy crawler — do not scrape register.
-
-### P1 — Owner / accountant
-
-4. **Xero day pack when needed**  
-   ```text
-   python scripts/xero_day_csv_export.py --store skr --date YYYY-MM-DD
-   python scripts/xero_day_csv_export.py --store demo --date YYYY-MM-DD
-   ```  
-   Review `docs/xero_exports/`. Optional later: first-class `/api/accounting/xero` (new feature, not required for cutover).
-5. **Decide backup policy**  
-   - Owner waived this round. If reversed: schedule restore drill on a non-prod target and record evidence (do not Fresh Volumes production).
-
-### P1 — Multi-agent friendly follow-ons
-
-| Agent | Scope | Concrete task | Forbidden |
-|-------|--------|---------------|-----------|
-| A Ops | read-only API/Dokploy | Log two scheduled job successes; mapping UUID still hex outlet | No code edits; no Fresh Volumes |
-| B Crawler | `shopfront-crawler` | Optional: persist staff cookie TTL metrics; alert on repeated re-login | No POS UI; no register |
-| C Xero | `scripts/xero_*` | Accountant-facing one-pager + sample day | No live Xero API unless owner asks |
-| D UAT | browser SKR+Demo | Store Pulse inventory source chip; Dashboard day totals vs Reporting | Writes need explicit owner OK |
-| E Retire | docs + POS inventory of Odoo BFF | List remaining Odoo read paths; propose removal order | Do not delete Odoo this sprint |
-
-### P2 — Product / tech debt
-
-6. **Dashboard same-day Reporting amount cross-check** (Adelaide business date) vs Shopfront Sales report.  
-7. **62 unmatched barcodes** — triage; do not invent GST/prices.  
-8. **Historical PO → native `purchase_order`** — design only if product needs Orithos PO history beyond staging.  
-9. **Dedicated PG database name** (drop shared `postgres` allow flag) when owner schedules a migration window.  
-10. **Shopfront support ticket** for Special Report POST 405 (non-blocking while staff Misc works).
-
-## Key Constraints and Context
-
-- Hosts: `skr.orithos.com.au`, `demo.orithos.com.au`, `crawler.orithos.com.au`, Shopfront `skr.onshopfront.com` (AIWEI only; **no register**).
-- Compose ids: POS `V3BuMZuSCowVe-OKWIR6J`; crawler `JHfNJMWCJGqpq0_5aovzZ`.
-- Secrets: Dokploy / local `.env` only — never commit. Names: `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, `SHOPFRONT_STAFF_*`, `SHOPFRONT_INTEGRATION_TOKEN`, `DEMO_ADMIN_PASSWORD` / `INITIAL_ADMIN_PASSWORD`.
-- Owner preference: no local app builds; Java 21 gate before pushing `pos-api/` changes.
-- `/docs/` is gitignored — UAT JSON may exist only locally; cite paths anyway.
-- `shopfront_outlet` must be 32-hex UUID `11eeaa99e8d9de7a92c00261eda38a85`, never label `skr`/`demo`.
-
-## Memory Pointers
-
-- Search: `staff Misc inventory-at-date shopfront_reporting_api`
-- Search: `POS_API_SECONDARY_STORE_KEY demo skr:orithos`
-- Search: `orders type ORDER 2370 sales totalCount 14317`
-- Audit file: `UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10`
-
-## Owner-Authorized Odoo Retirement (2026-11-10)
-
-The owner authorized complete Odoo retirement and confirmed that existing Orithos/Shopfront data is sufficient; do not plan an Odoo history backfill. This does not mean the code or service is already retired.
-
-Current source candidate moves `/dashboard`, `/reports/dashboard`, and `/reports/sales` to the Orithos native ledger through `GET /api/reports/native-overview`. It excludes Shopfront mirror history, requires `reports.dashboard`, scopes by authenticated outlet, and reports inventory/cost as unavailable when the native endpoint cannot verify those values. It is not built, deployed, or online-accepted. The former untracked Shopfront fetch helper was renamed/migrated to `pos-ui/src/lib/orithos-api-fetch.ts`; it has no remaining Shopfront URL behavior.
-
-Remaining Odoo dependencies include other product, inventory, purchasing, customer, pricing, register/session and AI flows; Next `/api/odoo/*` BFF/session recovery and clients; Spring Odoo clients/provisioners/bindings and legacy schema; and Compose/Dokploy environment references. Migrate each user-visible function to an outlet-scoped Orithos API and reconcile its data/permissions before deleting its Odoo path. Preserve `APP_ODOO_ONLY_MODE`'s legacy POS API write protection until an equivalent guard is in place. Do not shut down Odoo, remove its network/configuration, push Java changes, or claim zero runtime dependency until the exact candidate passes Java 21 `mvn -B clean verify`, starts with no Odoo settings/network access, and passes SKR/Demo acceptance. Owner preference remains no local application build; no production business writes.
+## Memory search hints
+- `ShopfrontNativeSaleImporter promote-native native-day-totals`
+- `INCOMPLETE 00081327 5038.48 5035.80`
+- `void-orphan-ref-refunds REF-`
+- `NativeSalesHistoryModal SalesHistoryUiProvider`
+- `POS_API_SECONDARY_STORE_KEY demo`
