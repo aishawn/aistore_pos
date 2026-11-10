@@ -34,7 +34,13 @@ function money(value: number) {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(value);
 }
 
-export function NativeSalesHistoryPage() {
+export function NativeSalesHistoryPage({
+  variant = "page",
+  onRequestClose,
+}: {
+  variant?: "page" | "panel";
+  onRequestClose?: () => void;
+} = {}) {
   const today = todayInStore();
   const [from, setFrom] = useState(() => shiftDay(today, -29));
   const [to, setTo] = useState(() => today);
@@ -44,10 +50,11 @@ export function NativeSalesHistoryPage() {
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    if (variant !== "page" || typeof location === "undefined") return;
     const params = new URLSearchParams(location.search);
     if (params.get("from")) setFrom(params.get("from")!);
     if (params.get("to")) setTo(params.get("to")!);
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
@@ -95,9 +102,16 @@ export function NativeSalesHistoryPage() {
           <p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Source: Orithos ledger</p>
           <h1 className="text-xl font-semibold text-[var(--oh-text)]">Sales history</h1>
         </div>
-        <button type="button" onClick={() => setRevision((value) => value + 1)} disabled={loading} title="Refresh history" aria-label="Refresh history" className="grid size-9 place-items-center rounded-md border border-[var(--oh-border)] disabled:opacity-50">
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setRevision((value) => value + 1)} disabled={loading} title="Refresh history" aria-label="Refresh history" className="grid size-9 place-items-center rounded-md border border-[var(--oh-border)] disabled:opacity-50">
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+          {variant === "panel" && onRequestClose ? (
+            <button type="button" onClick={onRequestClose} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm text-[var(--oh-text)]">
+              Close
+            </button>
+          ) : null}
+        </div>
       </header>
       <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <label className="grid gap-1 text-xs text-[var(--oh-muted)]">From<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
