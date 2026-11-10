@@ -867,24 +867,32 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Target Shopfront mapping has no numeric POS outlet_id");
         }
+        // DISTINCT ON avoids "ON CONFLICT cannot affect row a second time" when a
+        // source product has multiple barcodes that all resolve on the target outlet.
         int inserted = jdbc.update("""
                 INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
-                SELECT ?, m.source_product_id, pb_target.product_id, 'CLONE', 'MAPPED'
-                FROM shopfront_product_mapping m
-                JOIN product_barcode pb_source ON pb_source.product_id = m.pos_product_id
-                JOIN product p_source ON p_source.id = pb_source.product_id AND p_source.deleted_at IS NULL
-                JOIN product_barcode pb_target ON pb_target.code = pb_source.code AND pb_target.outlet_id = ?
-                JOIN product p_target ON p_target.id = pb_target.product_id
-                    AND p_target.outlet_id = ?
-                    AND p_target.deleted_at IS NULL
-                WHERE m.store_key = ?
-                  AND m.status = 'MAPPED'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM shopfront_product_mapping existing
-                      WHERE existing.store_key = ?
-                        AND existing.source_product_id = m.source_product_id
-                        AND existing.status = 'MAPPED'
-                  )
+                SELECT ?, source_product_id, pos_product_id, 'CLONE', 'MAPPED'
+                FROM (
+                    SELECT DISTINCT ON (m.source_product_id)
+                           m.source_product_id,
+                           pb_target.product_id AS pos_product_id
+                    FROM shopfront_product_mapping m
+                    JOIN product_barcode pb_source ON pb_source.product_id = m.pos_product_id
+                    JOIN product p_source ON p_source.id = pb_source.product_id AND p_source.deleted_at IS NULL
+                    JOIN product_barcode pb_target ON pb_target.code = pb_source.code AND pb_target.outlet_id = ?
+                    JOIN product p_target ON p_target.id = pb_target.product_id
+                        AND p_target.outlet_id = ?
+                        AND p_target.deleted_at IS NULL
+                    WHERE m.store_key = ?
+                      AND m.status = 'MAPPED'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM shopfront_product_mapping existing
+                          WHERE existing.store_key = ?
+                            AND existing.source_product_id = m.source_product_id
+                            AND existing.status = 'MAPPED'
+                      )
+                    ORDER BY m.source_product_id, pb_target.product_id
+                ) resolved
                 ON CONFLICT (store_key, source_product_id) DO UPDATE
                 SET pos_product_id = EXCLUDED.pos_product_id,
                     match_type = 'CLONE',
@@ -894,19 +902,25 @@ public class ShopfrontIntegrationController {
         // Also map target-store shadow products by barcode when source mapping is absent.
         int barcodeInserted = jdbc.update("""
                 INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
-                SELECT ?, sp.source_id, pb.product_id, 'BARCODE', 'MAPPED'
-                FROM shopfront_product sp
-                JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
-                JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
-                WHERE sp.store_key = ?
-                  AND sp.barcode IS NOT NULL
-                  AND TRIM(sp.barcode) <> ''
-                  AND NOT EXISTS (
-                      SELECT 1 FROM shopfront_product_mapping existing
-                      WHERE existing.store_key = ?
-                        AND existing.source_product_id = sp.source_id
-                        AND existing.status = 'MAPPED'
-                  )
+                SELECT ?, source_id, pos_product_id, 'BARCODE', 'MAPPED'
+                FROM (
+                    SELECT DISTINCT ON (sp.source_id)
+                           sp.source_id,
+                           pb.product_id AS pos_product_id
+                    FROM shopfront_product sp
+                    JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
+                    JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                    WHERE sp.store_key = ?
+                      AND sp.barcode IS NOT NULL
+                      AND TRIM(sp.barcode) <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM shopfront_product_mapping existing
+                          WHERE existing.store_key = ?
+                            AND existing.source_product_id = sp.source_id
+                            AND existing.status = 'MAPPED'
+                      )
+                    ORDER BY sp.source_id, pb.product_id
+                ) resolved
                 ON CONFLICT (store_key, source_product_id) DO UPDATE
                 SET pos_product_id = EXCLUDED.pos_product_id,
                     match_type = 'BARCODE',
