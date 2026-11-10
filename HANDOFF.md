@@ -1,13 +1,24 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-10 ~20:45 (UTC+8)  
+> Generated: 2026-11-10 ~21:30 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
 > Session: Orithos Native Ledger Cutover (Shopfront sales → native `sale`/`sale_item`; reports/UI Orithos-only)  
-> Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
+> Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
+> Tip SHA: `7043eaf0` (dashboard Store Pulse + native history/inventory + customer/price-list Orithos routes)
 
 ## Goal
 
 Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the external SoT; crawler syncs into both tenants. Browser pages read **pos-api only**. Odoo stays non-writable (no dual-write).
+
+## Page audit (this follow-up)
+
+| Page | Live finding before `7043eaf0` | Fix |
+|------|--------------------------------|-----|
+| `/dashboard` Store Pulse | Stuck on “Shopfront reports unavailable” (old `/api/shopfront-source`) | `useOverview` → `GET /api/reports/native-overview`; pulse shows Orithos sales/margin/inventory |
+| `/reports/dashboard` | Already OK (`$5,035.80` / 161 yesterday) | Inventory metric now from `product_inventory` |
+| `/history` + Sales History modal | `native-sales-history` HTTP 500 | Adelaide business-day SQL + safe date mapping |
+| `/customers` | Odoo session gate; native `/api/customers` empty (1 row total) | UI routes to Orithos auth + `/api/customers`; **Shopfront customer import still missing** |
+| `/api/price-lists` | Classic filter 410 | Allowlisted + outlet-scoped controller |
 
 ## Completed this session
 
