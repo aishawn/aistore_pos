@@ -11,10 +11,11 @@ Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SK
 
 ## Current State
 
-**In progress (2026-11-10 native ledger cutover):**
+**Shipped to `origin/main` (2026-11-10 native ledger cutover):**
+- POS `4b6f2624`; crawler `e142bd5`. Java 21 `mvn -B clean verify` PASS before push.
 - Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
 - UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
-- Acceptance pending after deploy: Adelaide `2026-11-09` native totals = `$5,038.48` / 162 for SKR and Demo; dashboard `source=orithos_ledger`.
+- Post-deploy: call `POST /api/integrations/shopfront/sales:promote-native` for skr+demo, then confirm Adelaide `2026-11-09` native totals = `$5,038.48` / 162 and dashboard `source=orithos_ledger`.
 
 **Still true from prior cutover:**
 - Staging parity SKR = Demo mirror counts; Odoo business writes off; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` expected.
