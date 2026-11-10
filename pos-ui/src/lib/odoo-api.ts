@@ -1478,15 +1478,6 @@ function nativeCustomerPayload(values: OdooCustomerWriteValues) {
   };
 }
 
-async function readOdooListPage<T>(path: string): Promise<{ items: T[]; hasNext: boolean }> {
-  const response = await fetchOdooApi(path, { credentials: "same-origin", cache: "no-store" }, true);
-  const payload = await response.json().catch(() => null) as { items?: T[]; hasNext?: boolean; message?: string } | null;
-  if (!response.ok || !payload || !Array.isArray(payload.items)) {
-    throw new OdooApiError(payload?.message || `Odoo request failed (${response.status})`, response.status || 502);
-  }
-  return { items: payload.items, hasNext: Boolean(payload.hasNext) };
-}
-
 export async function getOdooPricelists(query?: string, offset = 0, limit = 50) {
   const pageNumber = Math.floor(offset / limit) + 1;
   const page = await api.get<Page<{ id: number; name: string; outletId: number }>>("/api/price-lists", {

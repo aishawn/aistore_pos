@@ -34,9 +34,7 @@ const liveStatusPages = [
   "/utilities/vendor-connections",
   "/platform/stores/:path*",
   "/close",
-  "/history/odoo",
-  "/register/odoo",
-  "/purchases/odoo",
+  "/history",
   "/reports/dashboard",
   "/reports/closures/:path*",
   "/reports/daily-sales",
@@ -46,8 +44,6 @@ const liveStatusPages = [
   "/reports/weekly-sales",
   "/stock/replenishment",
   "/stock/price-suggestions",
-  "/customers/odoo",
-  "/suppliers/odoo",
 ];
 
 /** Allow phones on the LAN to use `http://<lan-ip>:3000` in `next dev`. */

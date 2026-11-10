@@ -1,11 +1,11 @@
 /**
- * Orithos navigation — Odoo is the sole writable business source of truth.
+ * Orithos navigation — Orithos PostgreSQL is the sole live business ledger.
  * Classic MySQL routes remain in the repo as reference only and are hidden
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
- * Customer sidebar (2026-10-25):
+ * Customer sidebar:
  * - Directory with groups, receivables, price lists and capability-gated gift cards.
- * - Do not confuse those Odoo routes with retired Classic MySQL pages of the same name.
+ * - Legacy `/…/odoo` paths are redirects only; do not revive Classic MySQL pages.
  */
 
 export interface SidebarItem {

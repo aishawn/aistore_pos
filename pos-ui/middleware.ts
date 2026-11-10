@@ -31,9 +31,7 @@ const NO_STORE_PAGES = new Set([
   "/utilities/vendor-connections",
   "/platform/stores",
   "/close",
-  "/history/odoo",
-  "/register/odoo",
-  "/purchases/odoo",
+  "/history",
   "/reports/dashboard",
   "/reports/closures",
   "/reports/daily-sales",
@@ -43,8 +41,6 @@ const NO_STORE_PAGES = new Set([
   "/reports/weekly-sales",
   "/stock/replenishment",
   "/stock/price-suggestions",
-  "/customers/odoo",
-  "/suppliers/odoo",
   "/settings/company/date-time",
 ]);
 

@@ -12,7 +12,7 @@ export function OdooReportUnavailablePage({
     <main className="h-full overflow-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <div className="mx-auto w-full max-w-4xl">
         <header className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Odoo workflow</p>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Orithos reports</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{title}</h1>
         </header>
         <section role="status" className="rounded-xl border border-sky-200 bg-sky-50/70 p-5 text-sky-950 sm:p-6">

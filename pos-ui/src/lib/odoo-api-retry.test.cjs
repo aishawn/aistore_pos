@@ -10,53 +10,70 @@ const compiled = ts.transpileModule(fs.readFileSync(path.join(__dirname, "odoo-a
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-test("expensive replenishment failures wait for explicit Retry; ordinary reads retain recovery", async () => {
+function loadClient(fetchImpl) {
+  const exports = {};
+  vm.runInNewContext(compiled, {
+    exports, Request, Response, URL,
+    fetch: fetchImpl,
+    require: (name) => {
+      if (name === "./api") return { isLocalPreviewSession: () => false, api: {} };
+      if (name === "./odoo-quote-timeout") return {};
+      if (name === "./odoo-read-cache") {
+        return {
+          cachedOdooRead: (_path, init, transport) => transport(init),
+          clearOdooReadCache: () => undefined,
+          setOdooReadIdentity: () => undefined,
+        };
+      }
+      throw new Error("Unexpected dependency: " + name);
+    },
+  });
+  return exports;
+}
+
+test("GET Orithos reads retry once on gateway failures; POST writes do not", async () => {
   for (const status of [404, 502, 503, 504]) {
-    for (const [url, expectedCalls] of [["/api/odoo/replenishment?coverageDays=21", 1], ["/api/odoo/products", 2]]) {
-      let calls = 0;
-      const exports = {};
-      vm.runInNewContext(compiled, {
-        exports, Request, Response, URL,
-        fetch: async () => { calls++; return Response.json({ message: "unavailable" }, { status }); },
-        require: (name) => {
-          if (name === "./api") return { isLocalPreviewSession: () => true };
-          if (name === "./odoo-quote-timeout") return {};
-          if (name === "./odoo-read-cache") return { cachedOdooRead: (_path, init, transport) => transport(init), clearOdooReadCache: () => undefined, setOdooReadIdentity: () => undefined };
-          throw new Error("Unexpected dependency: " + name);
-        },
-      });
-      const result = await exports.fetchOdooRoute(url, { method: "GET" });
-      assert.equal(result.status, status);
-      assert.equal(calls, expectedCalls, `${url}: HTTP ${status}`);
-    }
+    let getCalls = 0;
+    const getClient = loadClient(async () => {
+      getCalls++;
+      return Response.json({ message: "unavailable" }, { status });
+    });
+    const getResult = await getClient.fetchOdooRoute("/api/products?page=1", { method: "GET" });
+    assert.equal(getResult.status, status);
+    assert.equal(getCalls, 2, `GET /api/products: HTTP ${status}`);
+
+    let postCalls = 0;
+    const postClient = loadClient(async () => {
+      postCalls++;
+      return Response.json({ message: "unavailable" }, { status });
+    });
+    const postResult = await postClient.fetchOdooRoute("/api/orders", { method: "POST", body: "{}" });
+    assert.equal(postResult.status, status);
+    assert.equal(postCalls, 1, `POST /api/orders: HTTP ${status}`);
   }
 });
 
-test("only margin report POSTs replay after session recovery; writes and expensive failures do not", async () => {
-  for (const url of ["/api/odoo/shopfront-margin", "/api/odoo/cost-reconciliation", "/api/odoo/checkout", "/api/odoo/cost-reconciliation/apply"]) {
-    for (const initialStatus of [401, 503]) {
-      const calls = [];
-      const exports = {};
-      vm.runInNewContext(compiled, {
-        exports, Request, Response, URL,
-        fetch: async (path) => {
-          calls.push(path);
-          if (path === "/api/odoo/session") return Response.json({ autoRecoverConfigured: true });
-          if (path === "/api/auth/refresh") return Response.json({ code: 0 });
-          return calls.filter(x => x === url).length === 1
-            ? Response.json({ message: "unavailable" }, { status: initialStatus }) : Response.json({ ok: true });
-        },
-        require: (name) => {
-          if (name === "./api") return { isLocalPreviewSession: () => false };
-          if (name === "./odoo-quote-timeout") return {};
-          if (name === "./odoo-read-cache") return { cachedOdooRead: (_path, init, transport) => transport(init), clearOdooReadCache: () => undefined, setOdooReadIdentity: () => undefined };
-          throw new Error("Unexpected dependency: " + name);
-        },
-      });
-      const result = await exports.fetchOdooRoute(url, { method: "POST", body: "{}" });
-      const replay = initialStatus === 401 && ["/api/odoo/shopfront-margin", "/api/odoo/cost-reconciliation"].includes(url);
-      assert.equal(result.status, replay ? 200 : initialStatus, url);
-      assert.equal(calls.filter(x => x === url).length, replay ? 2 : 1, url);
+test("GET 401 refreshes the Orithos session and replays; POST does not", async () => {
+  const calls = [];
+  const client = loadClient(async (path) => {
+    calls.push(path);
+    if (path === "/api/auth/refresh") return Response.json({ code: 0 });
+    if (path === "/api/products") {
+      return calls.filter((value) => value === "/api/products").length === 1
+        ? Response.json({ message: "expired" }, { status: 401 })
+        : Response.json({ ok: true });
     }
-  }
+    if (path === "/api/orders") return Response.json({ message: "expired" }, { status: 401 });
+    return Response.json({ message: "unexpected" }, { status: 500 });
+  });
+
+  const getResult = await client.fetchOdooRoute("/api/products", { method: "GET" });
+  assert.equal(getResult.status, 200);
+  assert.equal(calls.filter((value) => value === "/api/products").length, 2);
+  assert.equal(calls.includes("/api/auth/refresh"), true);
+
+  calls.length = 0;
+  const postResult = await client.fetchOdooRoute("/api/orders", { method: "POST", body: "{}" });
+  assert.equal(postResult.status, 401);
+  assert.equal(calls.filter((value) => value === "/api/orders").length, 1);
 });
