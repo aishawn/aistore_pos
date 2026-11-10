@@ -182,6 +182,44 @@ public class ShopfrontIntegrationController {
      * One-shot promotion of durable {@code shopfront_sale*} rows into the native
      * {@code sale}/{@code sale_item} ledger for mapped outlets (no stock moves).
      */
+    @GetMapping("/sales:native-day-totals")
+    public ApiResult<Map<String, Object>> nativeDayTotals(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String day) {
+        authorize(supplied);
+        if (!day.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "day must be YYYY-MM-DD");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
+        Map<String, Object> byStore = new LinkedHashMap<>();
+        for (Map<String, Object> mapping : mappings) {
+            if (!isEnabled(mapping.get("enabled"))) continue;
+            String storeKey = String.valueOf(mapping.get("store_key"));
+            long outletId = longValue(mapping.get("outlet_id"));
+            List<Map<String, Object>> rows = jdbc.queryForList("""
+                    SELECT COUNT(*) AS transactions,
+                           COALESCE(SUM(total_price), 0) AS revenue
+                    FROM sale
+                    WHERE outlet_id = ?
+                      AND status = 'COMPLETED'
+                      AND COALESCE(business_date, DATE(local_sold_at), DATE(created_at)) = CAST(? AS date)
+                    """, outletId, day);
+            Map<String, Object> row = rows.isEmpty() ? Map.of() : rows.get(0);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("outlet_id", outletId);
+            entry.put("transactions", row.get("transactions"));
+            entry.put("revenue", row.get("revenue"));
+            byStore.put(storeKey, entry);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("day", day);
+        result.put("source", "orithos_ledger");
+        result.put("by_store", byStore);
+        return ApiResult.ok(result);
+    }
+
     @PostMapping("/sales:promote-native")
     public ApiResult<Map<String, Object>> promoteNativeSales(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
