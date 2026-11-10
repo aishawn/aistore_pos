@@ -304,10 +304,18 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
   useEffect(() => {
     if (dialog === "cost-reconciliation") { setCheckingConnection(false); return; }
+    // Shell auth already proves staff access; do not blank the catalogue when
+    // /api/auth/me flakes under API load (previously showed a false "Connect Orithos").
+    if (user) {
+      setConnected(true);
+      setCheckingConnection(false);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setCheckingConnection(true);
-    void getOrithosSession().then((user) => {
-      if (!cancelled) setConnected(Boolean(user));
+    void getOrithosSession().then((sessionUser) => {
+      if (!cancelled) setConnected(Boolean(sessionUser));
     }).catch((cause) => {
       if (!cancelled) {
         setConnected(false);
@@ -317,7 +325,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       if (!cancelled) setCheckingConnection(false);
     });
     return () => { cancelled = true; };
-  }, [connectionRetryKey, dialog]);
+  }, [connectionRetryKey, dialog, user]);
 
   useEffect(() => {
     if (searchParams.get("import") === "1" && connected === true) {
@@ -760,11 +768,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view products</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Orithos staff account to view the POS catalogue and inventory available to that account.</p>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Sign in to view products</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+              {error || "Your staff session is required to load the Orithos catalogue and inventory for this store."}
+            </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
-              <Link href="/settings/integrations" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
+              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry"}</button>
+              <Link href="/login" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Sign in</Link>
             </div>
           </div>
         </section>

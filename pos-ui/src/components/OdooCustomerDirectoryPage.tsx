@@ -52,7 +52,7 @@ function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClea
 
 export function OdooCustomerDirectoryPage() {
   const searchParams = useSearchParams();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canEdit = hasPermission("customers.edit");
   const canBalance = hasPermission("customers.balances");
   const canGroups = hasPermission("customers.groups");
@@ -130,10 +130,16 @@ export function OdooCustomerDirectoryPage() {
   }, [query, debouncedQuery]);
 
   useEffect(() => {
+    if (user) {
+      setConnected(true);
+      setCheckingConnection(false);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setCheckingConnection(true);
-    void getOrithosSession().then((user) => {
-      if (!cancelled) setConnected(Boolean(user));
+    void getOrithosSession().then((sessionUser) => {
+      if (!cancelled) setConnected(Boolean(sessionUser));
     }).catch((cause) => {
       if (!cancelled) {
         setConnected(false);
@@ -143,7 +149,7 @@ export function OdooCustomerDirectoryPage() {
       if (!cancelled) setCheckingConnection(false);
     });
     return () => { cancelled = true; };
-  }, [connectionRetryKey]);
+  }, [connectionRetryKey, user]);
 
   const loadLookups = useCallback(async () => {
     if (connected !== true) return;
@@ -307,11 +313,13 @@ export function OdooCustomerDirectoryPage() {
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view customers</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Orithos staff account to see customers used by the Orithos register.</p>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Sign in to view customers</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+              {error || "Your staff session is required to load the Orithos customer directory for this store."}
+            </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
-              <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
+              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry"}</button>
+              <Link href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Sign in</Link>
             </div>
           </div>
         </section>
