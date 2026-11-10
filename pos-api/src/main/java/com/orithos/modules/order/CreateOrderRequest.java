@@ -3,6 +3,7 @@ package com.orithos.modules.order;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /** Payload for POST /api/orders when creating a stock order from the UI. */
 @Data
@@ -23,4 +24,6 @@ public class CreateOrderRequest {
      * Reserved for future line-generation; not persisted on the order header today.
      */
     private String generateStockFrom;
+    /** Optional purchase lines (product, quantity, unit price) created with the order header. */
+    private List<ReceiveLineRequest> lines;
 }

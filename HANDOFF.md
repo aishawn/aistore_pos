@@ -1,10 +1,10 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-10 ~22:40 (UTC+8)  
+> Generated: 2026-11-10 ~23:20 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
-> Session: Full Orithos web-page cutover (Sell/close + stock leftovers + customer satellites)  
+> Session: Clear remaining live Odoo/Shopfront browser callers → Orithos  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
-> Tip SHA: see `git log -1` after this cutover push
+> Tip SHA: see `git log -1` after this retirement push
 
 ## Goal
 
@@ -14,13 +14,12 @@ Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (ve
 
 The owner has confirmed that Orithos/Shopfront-synced data is sufficient and Odoo history will not be migrated. This supersedes the earlier recommendation to retain Odoo read-only: remove every Odoo runtime dependency, fallback, browser/BFF route, scheduled read, and environment requirement after its Orithos replacement preserves the workflow. Do not decommission the external host until the no-Odoo-config/network-block acceptance passes.
 
-Status after full web-page cutover (pre-push tip; confirm `/api/public/version` after Dokploy):
+Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/version` after Dokploy):
 
-- Owner-locked shells kept (`OdooRegisterPage`, `OdooCloseRegisterPage`, `OdooProductCataloguePage`, `PurchasingWorkspace`, `OdooCustomerDirectoryPage`). Data plane for Sell/close, stocktake, replenishment, transfers, balances, closures, pricelists, and product export now goes through Orithos `pos-api` adapters in `odoo-api.ts` / retail+sales APIs.
-- Gift cards: Orithos empty-state (no Odoo call). Dead unused `ShopfrontSourceDataPage` / `ShopfrontPurchasingDirectory` removed. `/api/shopfront-source` remains 410.
-- **Parity gaps still open:** member pricelist at checkout, promotions, gift-card tenders, grouped sales-report parity, settings/AI Odoo reads, and deletion of remaining `/api/odoo/*` BFF once zero callers.
+- Live `pos-ui` components/app pages no longer call `/api/odoo/*` or `/api/shopfront*` for data (grep gate on `src/components` + `odoo-api.ts` clean). Workspace panels, settings company/tax/registers/export, PO list/confirm/receive, invoice→PO, price suggestions/bulk edit, daily sales history, assistant ops preview, and sync stamp all use Orithos APIs.
+- Dead unmounted report/Shopfront page components removed. `/api/shopfront-source` remains 410. Next `app/api/odoo/*` BFF routes may still exist on disk but have no live UI callers — safe to delete in a follow-up after deploy smoke.
+- **Still open (product parity / ops, not page Odoo reads):** member pricelist / promotions / gift tenders at checkout; Demo cash open→sell→close write UAT; physical Odoo decommission; optional delete of unused BFF route files.
 - Cashiers on NativePosGate vendors `1,55` can list `/api/retail/payment-methods` without `settings.view`.
-- This handoff is implementation status, not formal Demo write UAT acceptance. Cash open→sell→close on Demo still needs owner-approved write evidence.
 
 ## Page audit (this follow-up)
 
@@ -115,21 +114,20 @@ Uncommitted local edits may exist under `pos-ui/app/reports/*`, `suppliers`, `Na
 ## Remaining retirement work (owner-directed)
 
 ### P0 — Keep ledger green
-1. After each Dokploy deploy: confirm `/api/public/version` SHA; re-run day-totals for yesterday Adelaide.
+1. After each Dokploy deploy: confirm `/api/public/version` SHA; re-run day-totals for yesterday Adelaide **on both Demo and SKR**.
 2. Watch crawler scheduled syncs (`02:30` / `23:00` Adelaide); SKR and Demo must move together.
 3. Never re-enable Odoo writes (`node .local/read-cutover-config.cjs`).
 4. Keep `SHOPFRONT_STAFF_*` in crawler Compose for inventory Misc.
+5. **Demo/SKR dashboard parity (2026-11-10):** Store pulse is per-outlet Orithos ledger. Demo lagged because (a) Demo `shopfront_product_mapping` was ~3168 vs SKR 11033, and (b) crawler dual-write sales failed when secondary unmatched/skipped lines were treated as hard errors (job 205 `pos_sales:0/207`). Fix: crawler soft-validates secondary sales; pos-api adds `POST .../product-mappings:clone` + barcode mapping persistence on sale upsert. After deploy, clone mappings then confirm `sales:native-day-totals` Demo≈SKR for yesterday.
 
 ### P1 — Finish Odoo / Shopfront UI retirement (by domain)
-Done in this cutover: Sell/close adapters → retail+sales; stocktake/replenishment/transfers/categories/product image+export; balances + closures + pricelist detail; gift-card empty-state; dead Shopfront page files deleted.
+Done: live UI callers cleared (workspace, settings, PO/invoice, price tools, daily sales, assistant preview, sync stamp); dead report/Shopfront page components deleted; `odoo-api.ts` no longer fetches `/api/odoo/*`.
 
 Still open:
 
 1. **Checkout parity** — member price / promotions / gift tenders after cash happy path.
-2. **Purchasing leftovers** — invoice→PO confirm/receive if any Odoo BFF remains.
-3. **Legacy report components** — unmounted `OrithosReportsDashboardPage` / `SalesReportPage` still reference `/api/odoo/*`; live routes already use Native*.
-4. **Settings + AI Odoo reads** — company, payment fallback, assistant ops preview.
-5. **Delete dead `/api/odoo/*` BFF** only after zero callers + Java 21 verify.
+2. **Delete unused Next `app/api/odoo/*` BFF files** after deploy smoke confirms zero traffic.
+3. **Cache/test leftovers** — `odoo-read-cache` / `report-cache.test` still mention historical Odoo paths (no runtime fetch).
 
 ### P1 — Data / sync quality
 8. Triage unmatched barcodes / products (do **not** invent GST/prices).

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCw, X } from "lucide-react";
-import { fetchOdooRoute, searchOdooRecords, type OdooProductRecord } from "@/lib/odoo-api";
+import { api } from "@/lib/api";
+import { searchOdooRecords, updateOdooProduct, type OdooProductRecord } from "@/lib/odoo-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
@@ -66,24 +67,18 @@ export function OdooBulkPriceEditPage() {
         const next = Number(draft[product.id]);
         let outcome: Outcome;
         try {
-          const response = await fetchOdooRoute(`/api/odoo/products/${product.id}`, {
-            method: "PATCH", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ list_price: next, expectedListPrice: product.list_price }),
-          });
-          const payload = await response.json().catch(() => null);
-          if (!response.ok || payload?.ok !== true) {
-            if (response.status >= 500 || payload?.resultState === "unknown") throw new Error("unconfirmed");
-            outcome = { state: "rejected", message: payload?.message ?? "Price change rejected." };
-          } else outcome = { state: "confirmed", message: "Saved and read back from Orithos." };
-        } catch {
-          // Read only after an uncertain write. Never automatically replay PATCH.
+          await updateOdooProduct(product.id, { list_price: next });
+          outcome = { state: "confirmed", message: "Saved and read back from Orithos." };
+        } catch (cause) {
           try {
-            const response = await fetchOdooRoute(`/api/odoo/products/${product.id}`, { cache: "no-store" });
-            const current = response.ok ? await response.json() : null;
-            outcome = current && Math.abs(current.list_price - next) < 0.000001
+            const current = await api.get<{ price?: number | null }>(`/api/products/${product.id}`);
+            const saved = Number(current.price ?? NaN);
+            outcome = Number.isFinite(saved) && Math.abs(saved - next) < 0.000001
               ? { state: "confirmed", message: "Requested price confirmed by a fresh Orithos read." }
-              : { state: "unknown", message: "Result pending confirmation. Check Orithos before making another change." };
-          } catch { outcome = { state: "unknown", message: "Cannot confirm the result. Check Orithos before retrying." }; }
+              : { state: "unknown", message: cause instanceof Error ? cause.message : "Result pending confirmation. Check Orithos before making another change." };
+          } catch {
+            outcome = { state: "unknown", message: "Cannot confirm the result. Check Orithos before retrying." };
+          }
         }
         setOutcomes((previous) => ({ ...previous, [product.id]: outcome }));
         if (outcome.state === "confirmed") setProducts((previous) => previous.map((item) => item.id === product.id ? { ...item, list_price: next } : item));

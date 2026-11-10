@@ -239,6 +239,27 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void nativeTaxRateRoutesPassThroughInOdooOnlyMode() throws Exception {
+        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        for (var route : new String[][]{
+                {"GET", "/api/tax-rates"},
+                {"GET", "/api/tax-rates/3"},
+                {"POST", "/api/tax-rates"},
+                {"PUT", "/api/tax-rates/3"},
+                {"DELETE", "/api/tax-rates/3"},
+                {"PUT", "/api/tax-rates/3/set-default"},
+                {"PUT", "/api/tax-rates/3/merge"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus(), route[0] + " " + route[1]);
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+    }
+
+    @Test
     void appUserManagementRemainsAvailableInOdooOnlyMode() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users");

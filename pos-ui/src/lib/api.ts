@@ -175,27 +175,6 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
 export type RefreshAccessResult = "ok" | "transient" | "expired";
 
 let refreshInFlight: Promise<RefreshAccessResult> | null = null;
-let odooRecoveryInFlight: Promise<boolean> | null = null;
-
-async function recoverOdooSession(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-  if (odooRecoveryInFlight) return odooRecoveryInFlight;
-  odooRecoveryInFlight = (async () => {
-    try {
-      const response = await fetch(new URL("/api/odoo/session", window.location.origin), {
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      if (!response.ok) return false;
-      const payload = await response.json().catch(() => null) as { user?: unknown } | null;
-      return Boolean(payload?.user);
-    } catch {
-      return false;
-    }
-  })().finally(() => { odooRecoveryInFlight = null; });
-  return odooRecoveryInFlight;
-}
 
 export async function refreshAccessToken(): Promise<RefreshAccessResult> {
   if (typeof window === "undefined" || isLocalPreviewSession()) return "expired";
@@ -255,10 +234,6 @@ async function request<T>(
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   let sessionRecovered = false;
   let refreshDeferred = false;
-  const isOdooRead = canReplay && path.startsWith("/api/odoo/") && path !== "/api/odoo/session";
-  if (authExpired && isOdooRead && !retriedAfterRefresh && await recoverOdooSession()) {
-    return request<T>(method, path, opts, true, retriedAfterRoute);
-  }
   // Never replay a write after an auth refresh: the server may have accepted
   // the original request before the response was interrupted.
   if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path)) {

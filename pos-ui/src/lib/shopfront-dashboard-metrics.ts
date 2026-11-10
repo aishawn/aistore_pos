@@ -44,17 +44,6 @@ export type ShopfrontInventoryMetrics = {
 
 export const SHOPFRONT_INVENTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-export function shopfrontDashboardMetricPaths(today: string, yesterday: string | null, refresh = false) {
-  const refreshQuery = refresh ? "&refresh=true" : "";
-  return {
-    todaySales: `/api/shopfront-source?resource=report-sales&from=${today}&to=${today}&size=600${refreshQuery}`,
-    yesterdaySales: yesterday
-      ? `/api/shopfront-source?resource=report-sales&from=${yesterday}&to=${yesterday}&size=600${refreshQuery}`
-      : null,
-    inventory: `/api/shopfront-source?resource=dashboard-inventory${refresh ? "&refresh=true" : ""}`,
-  };
-}
-
 /** Accepted inventory KPI contracts from the crawler. GraphQL is the live
  * complete snapshot preferred by the crawler; Reporting API remains accepted
  * when that path succeeds. Legacy unlabeled snapshots stay rejected. */

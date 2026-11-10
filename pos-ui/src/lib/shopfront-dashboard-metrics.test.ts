@@ -1,16 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontDashboardMetricPaths, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
-
-test("dashboard refresh forces fresh Shopfront reads for sales and inventory", () => {
-  assert.deepEqual(shopfrontDashboardMetricPaths("2026-11-10", "2026-11-09", true), {
-    todaySales: "/api/shopfront-source?resource=report-sales&from=2026-11-10&to=2026-11-10&size=600&refresh=true",
-    yesterdaySales: "/api/shopfront-source?resource=report-sales&from=2026-11-09&to=2026-11-09&size=600&refresh=true",
-    inventory: "/api/shopfront-source?resource=dashboard-inventory&refresh=true",
-  });
-  assert.equal(shopfrontDashboardMetricPaths("2026-11-10", null).yesterdaySales, null);
-  assert.equal(shopfrontDashboardMetricPaths("2026-11-10", null).inventory, "/api/shopfront-source?resource=dashboard-inventory");
-});
+import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
 
 test("Shopfront sales KPI validates source Profit and computes margin from Revenue minus COGS", () => {
   const result = parseShopfrontSalesReport({

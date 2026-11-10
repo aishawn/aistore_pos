@@ -26,13 +26,27 @@ export function writeShopfrontSyncStamp(at: number) {
   window.dispatchEvent(new CustomEvent("orithos-shopfront-sync", { detail: { at } }));
 }
 
+function storeDay() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Adelaide",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Polls Orithos native overview instead of the retired shopfront sync-stamp route. */
 export async function fetchShopfrontSyncStamp(): Promise<number | null> {
   try {
-    const response = await fetch("/api/shopfront/sync-stamp", { cache: "no-store", credentials: "same-origin" });
+    const day = storeDay();
+    const response = await fetch(`/api/reports/native-overview?from=${day}&to=${day}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
     if (!response.ok) return null;
-    const payload = await response.json() as { at?: unknown };
-    const at = Number(payload.at);
-    if (!Number.isFinite(at) || at <= 0) return null;
+    const body = await response.json().catch(() => null) as { data?: { source?: string } } | null;
+    if (!body?.data || body.data.source !== "orithos_ledger") return null;
+    const at = Date.parse(response.headers.get("date") || "") || Date.now();
     writeShopfrontSyncStamp(at);
     return at;
   } catch {

@@ -6,26 +6,21 @@ import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
 import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
-import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { api, listRetailRegisters, type RetailRegister } from "@/lib/api";
 
-type OdooOutlet = {
+type OutletRow = {
   id: number;
   name: string;
-  currency_id: [number, string] | false;
 };
 
-type OdooRegister = {
-  id: number;
-  name: string;
-  company_id: [number, string] | false;
-  current_session_id: [number, string] | false;
-  payment_method_ids: number[];
-  available_pricelist_ids: number[];
+type RegisterRow = RetailRegister & {
+  outletName: string;
+  sessionLabel: string;
 };
 
 export default function RegistersOutletsPage() {
-  const [outlets, setOutlets] = useState<OdooOutlet[]>([]);
-  const [registers, setRegisters] = useState<OdooRegister[]>([]);
+  const [outlets, setOutlets] = useState<OutletRow[]>([]);
+  const [registers, setRegisters] = useState<RegisterRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -36,15 +31,18 @@ export default function RegistersOutletsPage() {
     setError(null);
     void (async () => {
       try {
-        const session = await getOdooSession();
-        if (!session) throw new Error("Connect your Orithos staff account to view live stores and registers.");
-        const [outletResult, registerResult] = await Promise.all([
-          searchOdooRecords<OdooOutlet>("outlets", { limit: 100 }),
-          searchOdooRecords<OdooRegister>("registers", { limit: 100 }),
+        const [outletRows, registerRows] = await Promise.all([
+          api.get<OutletRow[]>("/api/outlets"),
+          listRetailRegisters(),
         ]);
+        const outletMap = new Map(outletRows.map((outlet) => [Number(outlet.id), outlet.name]));
         if (active) {
-          setOutlets(outletResult.items);
-          setRegisters(registerResult.items);
+          setOutlets(outletRows);
+          setRegisters(registerRows.map((register) => ({
+            ...register,
+            outletName: outletMap.get(Number(register.outletId)) || `Outlet #${register.outletId}`,
+            sessionLabel: register.closed ? "No open session" : "Open",
+          })));
         }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos stores and registers.");
@@ -101,14 +99,14 @@ export default function RegistersOutletsPage() {
               <>
                 <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
                   {outlets.map((outlet) => <article key={outlet.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{outlet.name}</h3><span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">{Array.isArray(outlet.currency_id) ? outlet.currency_id[1] : "No currency"}</span></div>
-                    <p className="mt-2 text-xs text-[var(--oh-muted)]">Orithos company</p>
+                    <h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{outlet.name}</h3>
+                    <p className="mt-2 text-xs text-[var(--oh-muted)]">Orithos outlet</p>
                   </article>)}
                 </div>
                 <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
             <table aria-label="Orithos stores and registers" className="w-full border-collapse text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Currency</th></tr></thead>
-                    <tbody className="divide-y divide-[var(--oh-border)]">{outlets.map((outlet) => <tr key={outlet.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{outlet.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(outlet.currency_id) ? outlet.currency_id[1] : "—"}</td></tr>)}</tbody>
+                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Store</th></tr></thead>
+                    <tbody className="divide-y divide-[var(--oh-border)]">{outlets.map((outlet) => <tr key={outlet.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{outlet.name}</td></tr>)}</tbody>
                   </table>
                 </div>
               </>
@@ -123,15 +121,14 @@ export default function RegistersOutletsPage() {
               <>
                 <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
                   {registers.map((register) => <article key={register.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
-                    <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{register.name}</h3><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${Array.isArray(register.current_session_id) ? "bg-emerald-50 text-emerald-800" : "bg-[var(--oh-surface)] text-[var(--oh-muted)]"}`}>{Array.isArray(register.current_session_id) ? "Open" : "No open session"}</span></div>
-                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3"><div><p className="text-xs font-medium text-[var(--oh-muted)]">Store</p><p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{Array.isArray(register.company_id) ? register.company_id[1] : "—"}</p></div><div><p className="text-xs font-medium text-[var(--oh-muted)]">Payment methods</p><p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text-secondary)]">{register.payment_method_ids.length}</p></div></div>
-                    {Array.isArray(register.current_session_id) && <p className="mt-3 break-words rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs text-[var(--oh-text-secondary)]">Session · {register.current_session_id[1]}</p>}
+                    <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{register.name}</h3><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${register.closed ? "bg-[var(--oh-surface)] text-[var(--oh-muted)]" : "bg-emerald-50 text-emerald-800"}`}>{register.sessionLabel}</span></div>
+                    <div className="mt-3 border-t border-[var(--oh-border)] pt-3"><p className="text-xs font-medium text-[var(--oh-muted)]">Store</p><p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{register.outletName}</p></div>
                   </article>)}
                 </div>
                 <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
                   <table className="w-full border-collapse text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Register</th><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Current session</th><th scope="col" className="px-4 py-3 text-right">Payment methods</th></tr></thead>
-                    <tbody className="divide-y divide-[var(--oh-border)]">{registers.map((register) => <tr key={register.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{register.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(register.company_id) ? register.company_id[1] : "—"}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(register.current_session_id) ? register.current_session_id[1] : "No current session"}</td><td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{register.payment_method_ids.length}</td></tr>)}</tbody>
+                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Register</th><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Current session</th></tr></thead>
+                    <tbody className="divide-y divide-[var(--oh-border)]">{registers.map((register) => <tr key={register.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{register.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{register.outletName}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{register.sessionLabel}</td></tr>)}</tbody>
                   </table>
                 </div>
               </>

@@ -219,7 +219,12 @@ public class OrderService {
         order.setCreatedById(CurrentUser.id());
 
         orderMapper.insert(order);
-        return orderMapper.findById(order.getId());
+        if (request.getLines() != null && !request.getLines().isEmpty()) {
+            persistDraftOrderLines(order.getId(), request.getToId(), request.getFromId(), request.getLines());
+        }
+        Order saved = orderMapper.findById(order.getId());
+        saved.setProducts(orderMapper.findProductsByOrderId(order.getId()));
+        return saved;
     }
 
     @Transactional
@@ -524,6 +529,51 @@ public class OrderService {
         String generateFrom = trimToNull(request.getGenerateStockFrom());
         if (generateFrom != null && !GENERATE_STOCK_SOURCES.contains(generateFrom)) {
             throw new BusinessException("Invalid generate stock source.");
+        }
+    }
+
+    private void persistDraftOrderLines(Long orderId, Long outletId, Long supplierId, List<ReceiveLineRequest> lines) {
+        Long vendorId = requireVendorId();
+        if (supplierId != null && supplierMapper.findByIdAndVendor(supplierId, vendorId) == null) {
+            throw new BusinessException("Supplier not found.");
+        }
+        BigDecimal total = BigDecimal.ZERO;
+        int count = 0;
+        for (ReceiveLineRequest line : lines) {
+            if (line == null || line.getProductId() == null || line.getQuantity() == null
+                    || line.getQuantity().signum() <= 0) {
+                continue;
+            }
+            if (productMapper.findByIdAndVendor(line.getProductId(), vendorId) == null) {
+                throw new BusinessException("Product not found.");
+            }
+            BigDecimal cases = line.getQuantity();
+            BigDecimal pack = line.getCaseQuantity() != null && line.getCaseQuantity().signum() > 0
+                    ? line.getCaseQuantity() : BigDecimal.ONE;
+            BigDecimal unitCost = line.getUnitPrice() != null && line.getUnitPrice().signum() >= 0
+                    ? line.getUnitPrice() : BigDecimal.ZERO;
+            BigDecimal lineTotal = unitCost.multiply(cases);
+            total = total.add(lineTotal);
+            count++;
+
+            OrderProduct row = new OrderProduct();
+            row.setOrderId(orderId);
+            row.setOutletId(outletId);
+            row.setProductId(line.getProductId());
+            row.setSupplierId(supplierId);
+            row.setSupplierCode(trimToNull(line.getDescription()));
+            row.setCaseQuantity(pack);
+            row.setOrderedQuantity(cases);
+            row.setReceivedQuantity(BigDecimal.ZERO);
+            row.setBaseCost(unitCost);
+            row.setOrderedCost(unitCost);
+            row.setFees(BigDecimal.ZERO);
+            row.setFreight(BigDecimal.ZERO);
+            row.setRebate(BigDecimal.ZERO);
+            orderMapper.insertProduct(row);
+        }
+        if (count > 0) {
+            orderMapper.updateTotals(orderId, total, total, count, null);
         }
     }
 

@@ -6,7 +6,7 @@ import { AlertCircle, Download, FileUp, LoaderCircle, Trash2 } from "lucide-reac
 import { SettingsPage } from "@/components/admin/SettingsPage";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { fetchOdooRoute } from "@/lib/odoo-api";
+import { exportOdooProductsCsv } from "@/lib/odoo-api";
 
 type SampleDataStatus = {
   dummyDataRequested: boolean;
@@ -93,23 +93,7 @@ export default function SettingsDataPage() {
     setExportBusy(true);
     setError(null);
     try {
-      const response = await fetchOdooRoute("/api/odoo/products/export", {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { message?: string } | null;
-        throw new Error(payload?.message || `Export failed (${response.status})`);
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      const disposition = response.headers.get("Content-Disposition") || "";
-      const match = /filename="([^"]+)"/.exec(disposition);
-      anchor.href = url;
-      anchor.download = match?.[1] || "products.csv";
-      anchor.click();
-      URL.revokeObjectURL(url);
+      await exportOdooProductsCsv();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not export products.");
     } finally {

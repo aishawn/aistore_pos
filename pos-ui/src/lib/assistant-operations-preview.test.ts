@@ -34,15 +34,16 @@ test("only bounded read questions bypass the model/command parser", async () => 
 
 test("full catalogue suggestions survive unrelated review products", async () => {
   const result = await readOperationsPreview(question, "existing-thread", undefined, mockFetch({
-    company: "Test store", coverageDays: 21, generatedAt: "2026-11-01T00:00:00Z", reviewRequiredCount: 9713,
-    products: [
-      { id: 1, name: "Gift card", recommendationStatus: "REVIEW_DATA", suggestedQuantity: 100 },
-      { id: 501, name: "Beer", recommendationStatus: "READY", suggestedQuantity: 8, unit: "cases" },
-    ],
+    data: {
+      lines: [
+        { productId: 1, productName: "Gift card", orderQty: 100, status: "REVIEW_DATA" },
+        { productId: 501, productName: "Beer", orderQty: 8 },
+      ],
+    },
   }));
   assert.equal(result?.threadId, "existing-thread");
   assert.equal(result?.cards?.[0].status, "partial");
-  assert.match(result?.answer ?? "", /1 product has.*9713 products/);
+  assert.match(result?.answer ?? "", /1 product has.*1 products/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
   assert.deepEqual(result?.writeRequests, []);
   assert.doesNotMatch(result?.answer ?? "", /Gift card/);
@@ -50,7 +51,12 @@ test("full catalogue suggestions survive unrelated review products", async () =>
 
 test("all review is not a claim that no replenishment is needed", async () => {
   const result = await readOperationsPreview(question, null, undefined, mockFetch({
-    company: "Test", products: [], coverageDays: 21, reviewRequiredCount: 2, generatedAt: "2026-11-01T00:00:00Z",
+    data: {
+      lines: [
+        { productId: 1, orderQty: 0, status: "REVIEW" },
+        { productId: 2, orderQty: 0, status: "REVIEW" },
+      ],
+    },
   }));
   assert.equal(result?.cards?.[0].status, "partial");
   assert.match(result?.answer ?? "", /does not mean no replenishment/);
@@ -75,13 +81,14 @@ test("permission errors have no retry loop", async () => {
 
 test("sales are read from the calendar week endpoint, preserving currency/refunds", async () => {
   const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, async (url, init) => {
-    assert.equal(url, "/api/odoo/reporting-dashboard?hours=168&period=this_week");
-    return mockFetch({ company: "Test", period: "this_week", revenue: -15.5, transactions: 2, currency: "AUD",
-      from: "2026-10-25 13:30:00", to: "2026-11-01 00:00:00", timezone: "Australia/Adelaide" })(url, init);
+    assert.ok(String(url).startsWith("/api/reports/native-overview?"));
+    return mockFetch({
+      data: { source: "orithos_ledger", revenue: -15.5, transactions: 2 },
+    })(url, init);
   });
   assert.equal(result?.cards?.[0].status, "ready");
   assert.match(result?.answer ?? "", /-\$15\.50/);
-  assert.match(result?.answer ?? "", /26 Oct 2026/);
+  assert.match(result?.answer ?? "", /Australia\/Adelaide/);
   assert.deepEqual(result?.writeRequests, []);
 });
 

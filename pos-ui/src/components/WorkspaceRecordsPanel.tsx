@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { fetchOdooRoute } from "@/lib/odoo-api";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import type { WorkspaceRecords, WorkspaceRecordType } from "@/lib/workspace-records";
+import { fetchWorkspaceRecords } from "@/lib/workspace-records-native";
 
 /** Paginated read-only inventory, sales-line and payment views inside workspace dialogs. */
 export function WorkspaceRecordsPanel({ type, toolbarStart, embedded = false, fillHeight = embedded, refreshKey = 0 }: { type: WorkspaceRecordType; toolbarStart?: ReactNode; embedded?: boolean; fillHeight?: boolean; refreshKey?: number }) {
@@ -20,12 +20,10 @@ export function WorkspaceRecordsPanel({ type, toolbarStart, embedded = false, fi
     let active = true;
     const controller = new AbortController();
     setLoading(true); setError(null); setData(null);
-    const params = new URLSearchParams({ type, q: search.trim(), period, offset: String(offset) });
     void (async () => {
       try {
-        const response = await fetchOdooRoute(`/api/odoo/workspace-records?${params}`, { cache: "no-store", signal: controller.signal });
-        const payload = await response.json();
-        if (!response.ok || !Array.isArray(payload.items) || !Array.isArray(payload.columns)) throw new Error(payload.message || "Could not load records.");
+        const payload = await fetchWorkspaceRecords(type, { offset, period, query: search.trim() });
+        if (!Array.isArray(payload.items) || !Array.isArray(payload.columns)) throw new Error("Could not load records.");
         if (active) setData(payload);
       } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "Could not load records."); }
       finally { if (active) setLoading(false); }

@@ -3,47 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
-import { fetchOdooRoute, getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { friendlyProductName } from "@/lib/product-display-name";
-
-type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "unsaleable";
-
-type PriceSuggestionProduct = {
-  id: number;
-  name: string;
-  sku: string;
-  unit: string;
-  soldUnits: number;
-  onHand: number;
-  cost: number | null;
-  currentPrice: number | null;
-  currentMargin: number | null;
-  suggestedPrice: number | null;
-  suggestedMargin: number | null;
-  status: SuggestionStatus;
-  reason: string;
-  reasonParts?: string[];
-  method?: string;
-  currentNetPrice?: number | null;
-  currentGst?: number | null;
-  suggestedNetPrice?: number | null;
-  suggestedGst?: number | null;
-  currentListPrice?: number | null;
-  suggestedListPrice?: number | null;
-};
-
-type PriceSuggestionData = {
-  company: string;
-  historyDays: number;
-  marginTarget: number;
-  products: PriceSuggestionProduct[];
-  truncated: boolean;
-  generatedAt: string;
-  writeEnabled: false;
-  nextOffset?: number | null;
-  offset?: number;
-};
+import {
+  fetchPriceSuggestions,
+  type PriceSuggestionData,
+  type PriceSuggestionProduct,
+  type SuggestionStatus,
+} from "@/lib/price-suggestions-native";
+import { loadStoreCompanyProfile } from "@/lib/store-company-settings";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
@@ -127,35 +95,21 @@ export function OdooPriceSuggestionsPage() {
     try {
       const correlationId = crypto.randomUUID();
       setRequestId(correlationId);
-      const response = await fetchOdooRoute(
-        `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}${refresh ? "&refresh=true" : ""}`,
-        { credentials: "same-origin", cache: "no-store", headers: { "X-Correlation-ID": correlationId } },
-      );
+      const payload = await fetchPriceSuggestions(marginTarget, offset);
       if (revision !== requestRevision.current) return;
-      setRequestId(response.headers.get("x-correlation-id") || correlationId);
-      const payload = await response.json().catch(() => null) as PriceSuggestionData | { message?: string } | null;
-      if (revision !== requestRevision.current) return;
-      if (!response.ok) {
-        const message = payload && "message" in payload ? payload.message : undefined;
-        setNeedsConnection(response.status === 401 || response.status === 503);
-        throw new Error(message || `Could not load price suggestions (${response.status}).`);
-      }
-      if (!payload || !("products" in payload) || !Array.isArray(payload.products)) {
-        throw new Error("Orithos returned an incomplete price suggestion list.");
-      }
       setNeedsConnection(false);
       if (payload.nextOffset != null && payload.nextOffset <= offset) throw new Error("Suggestions did not advance. Retry to continue.");
       nextOffset.current = payload.nextOffset ?? null;
       setData((previous) => append && previous ? { ...payload, products: [...previous.products, ...payload.products.filter(row => !previous.products.some(item => item.id === row.id))] } : payload);
-      void getOdooPosBootstrap().then(bootstrap => {
+      void loadStoreCompanyProfile().then((profile) => {
         if (revision !== requestRevision.current) return;
-        const active = bootstrap.configs.find(config => config.session) ?? bootstrap.configs[0];
-        if (active?.timezone) setStoreTimezone(active.timezone);
+        if (profile.timezone) setStoreTimezone(profile.timezone);
       }).catch(() => undefined);
       setLastLoadedAt(payload.generatedAt ? Date.parse(payload.generatedAt) : Date.now());
     } catch (cause) {
       if (revision !== requestRevision.current) return;
       failedAppend.current = append;
+      if (cause && typeof cause === "object" && "needsConnection" in cause && cause.needsConnection) setNeedsConnection(true);
       setError(cause instanceof Error ? cause.message : "Could not load price suggestions.");
     } finally {
       if (revision === requestRevision.current) {

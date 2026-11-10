@@ -6,17 +6,22 @@ import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
 import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
-import { getOdooSession, searchOdooRecords, type OdooTaxRecord } from "@/lib/odoo-api";
+import { api } from "@/lib/api";
 
-function formatRate(tax: OdooTaxRecord) {
-  if (tax.amount_type === "percent" || tax.amount_type === "division") return `${tax.amount}%`;
-  if (tax.amount_type === "fixed") return `$${tax.amount.toFixed(2)} / unit`;
-  if (tax.amount_type === "group") return "Group of taxes";
-  return `${tax.amount} (${tax.amount_type})`;
+type TaxRateRow = {
+  id: number;
+  name: string;
+  amount?: number | null;
+  isDefault?: boolean | null;
+};
+
+function formatRate(tax: TaxRateRow) {
+  const amount = Number(tax.amount ?? 0);
+  return `${amount}%`;
 }
 
 export default function TaxRatesPage() {
-  const [taxes, setTaxes] = useState<OdooTaxRecord[]>([]);
+  const [taxes, setTaxes] = useState<TaxRateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -27,10 +32,8 @@ export default function TaxRatesPage() {
     setError(null);
     void (async () => {
       try {
-        const session = await getOdooSession();
-        if (!session) throw new Error("Connect your Orithos staff account to view live tax rates.");
-        const result = await searchOdooRecords<OdooTaxRecord>("taxes", { limit: 100 });
-        if (active) setTaxes(result.items);
+        const result = await api.get<TaxRateRow[]>("/api/tax-rates");
+        if (active) setTaxes(Array.isArray(result) ? result : []);
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos tax rates.");
       } finally {
@@ -92,18 +95,18 @@ export default function TaxRatesPage() {
                 <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-blue-800">{formatRate(tax)}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3">
-                <div><p className="text-xs font-medium text-[var(--oh-muted)]">Calculation</p><p className="mt-1 text-sm text-[var(--oh-text-secondary)]">{tax.price_include ? "Included in price" : "Added to price"} · Sales</p></div>
-                <div><p className="text-xs font-medium text-[var(--oh-muted)]">Company</p><p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{Array.isArray(tax.company_id) ? tax.company_id[1] : "Shared"}</p></div>
+                <div><p className="text-xs font-medium text-[var(--oh-muted)]">Calculation</p><p className="mt-1 text-sm text-[var(--oh-text-secondary)]">Included in price · Sales</p></div>
+                <div><p className="text-xs font-medium text-[var(--oh-muted)]">Default</p><p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">{tax.isDefault ? "Yes" : "No"}</p></div>
               </div>
             </article>)}
           </div>
           <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white xl:block">
             <table aria-label="Orithos tax rates" className="w-full border-collapse text-left text-sm">
               <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-                <tr><th scope="col" className="px-4 py-3">Tax</th><th scope="col" className="px-4 py-3">Rate</th><th scope="col" className="px-4 py-3">Calculation</th><th scope="col" className="px-4 py-3">Company</th></tr>
+                <tr><th scope="col" className="px-4 py-3">Tax</th><th scope="col" className="px-4 py-3">Rate</th><th scope="col" className="px-4 py-3">Calculation</th><th scope="col" className="px-4 py-3">Default</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {taxes.map((tax) => <tr key={tax.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{tax.name}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{formatRate(tax)}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{tax.price_include ? "Included in price" : "Added to price"} · Sales</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(tax.company_id) ? tax.company_id[1] : "Shared"}</td></tr>)}
+                {taxes.map((tax) => <tr key={tax.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{tax.name}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{formatRate(tax)}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">Included in price · Sales</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{tax.isDefault ? "Yes" : "No"}</td></tr>)}
               </tbody>
             </table>
           </div>

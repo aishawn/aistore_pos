@@ -126,6 +126,9 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         // Customer directory / groups / price lists are native Orithos after
         // Shopfront sync. Controllers scope rows to the authenticated outlet.
         // Keep statements/export/payment side-paths gated until audited.
+        if (path.equals("/api/tax-rates") || path.startsWith("/api/tax-rates/")) {
+            return false;
+        }
         if (path.equals("/api/customers")
                 || path.matches("/api/customers/[0-9]+")
                 || path.matches("/api/customers/[0-9]+/(recent-sales|revisions)")

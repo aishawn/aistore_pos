@@ -1,4 +1,5 @@
 import type { AssistantResponse, AssistantCard } from "./api";
+import { storeWeekStart } from "./assistant-business-period.ts";
 
 export type OperationsPreview = "replenishment" | "sales_week";
 
@@ -41,6 +42,84 @@ function finite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function storeDay(timezone: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+function isoLocalMidnight(value: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
+  return `${parts.replaceAll("/", "-")} 00:00:00`;
+}
+
+async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal): Promise<Plan> {
+  const response = await fetcher("/api/supply-chain/plan", {
+    method: "GET", credentials: "same-origin", cache: "no-store", signal,
+  });
+  if (!response.ok) throw new Error("Business data unavailable");
+  const body = await response.json() as {
+    data?: {
+      weekStart?: string;
+      weekEnd?: string;
+      lines?: Array<{
+        productId?: number;
+        productName?: string;
+        orderQty?: number;
+        status?: string;
+        confidenceLabel?: string;
+      }>;
+    };
+  };
+  const lines = body.data?.lines ?? [];
+  const products = lines
+    .filter((line) => line.productId != null)
+    .map((line) => {
+      const suggested = Math.max(0, Number(line.orderQty ?? 0));
+      const review = String(line.status || "").toUpperCase().includes("REVIEW")
+        || String(line.confidenceLabel || "").toUpperCase().includes("REVIEW");
+      return {
+        id: Number(line.productId),
+        name: line.productName || `Product ${line.productId}`,
+        unit: "units",
+        suggestedQuantity: suggested,
+        recommendationStatus: review ? "REVIEW_DATA" : (suggested > 0 ? "READY" : "NO_DEMAND"),
+        leadTimeDays: null,
+      };
+    });
+  return {
+    company: "Orithos",
+    coverageDays: 21,
+    reviewRequiredCount: products.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
+    products,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promise<Sales> {
+  const timezone = "Australia/Adelaide";
+  const today = storeDay(timezone);
+  const weekStart = storeWeekStart(new Date(), timezone);
+  const from = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(weekStart);
+  const params = new URLSearchParams({ from, to: today });
+  const response = await fetcher(`/api/reports/native-overview?${params}`, {
+    method: "GET", credentials: "same-origin", cache: "no-store", signal,
+  });
+  if (!response.ok) throw new Error("Business data unavailable");
+  const body = await response.json() as { data?: { source?: string; revenue?: number; transactions?: number } };
+  if (!body.data || body.data.source !== "orithos_ledger" || !finite(body.data.revenue) || !finite(body.data.transactions)) {
+    throw new Error("Incomplete sales response");
+  }
+  return {
+    period: "this_week",
+    revenue: Number(body.data.revenue),
+    transactions: Number(body.data.transactions),
+    currency: "AUD",
+    from: isoLocalMidnight(weekStart, timezone),
+    to: `${today} 00:00:00`,
+    timezone,
+    company: "Orithos",
+  };
+}
+
 /** Uses the same tenant/session-scoped read endpoints as the business pages. Never sends a write. */
 export async function readOperationsPreview(
   question: string, threadId?: string | null, signal?: AbortSignal, fetcher: typeof fetch = fetch,
@@ -54,23 +133,12 @@ export async function readOperationsPreview(
     type: intent === "replenishment" ? "replenishment" : "sales",
     title, ctaRoute: route,
     ctaLabel: intent === "replenishment" ? "Review replenishment" : "Open sales dashboard",
-    source: "Odoo", status: "ready",
+    source: "Orithos", status: "ready",
   };
   let dataAsOf: string | undefined;
   try {
-    const response = await fetcher(intent === "replenishment"
-      ? "/api/odoo/replenishment" : "/api/odoo/reporting-dashboard?hours=168&period=this_week", {
-      method: "GET", credentials: "same-origin", cache: "no-store", signal,
-    });
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        card.summary = chinese ? "登录已过期或无权查看，请重新登录或联系管理员。" : "Sign in again or ask your administrator for access to this report.";
-        card.retryable = false;
-      }
-      throw new Error("Business data unavailable");
-    }
     if (intent === "replenishment") {
-      const plan = await response.json() as Plan;
+      const plan = await readReplenishmentPlan(fetcher, signal);
       if (!Array.isArray(plan.products) || !finite(plan.coverageDays) || !finite(plan.reviewRequiredCount)
         || !plan.generatedAt || !plan.company) throw new Error("Incomplete replenishment response");
       const eligible = plan.products.filter((item) => item.recommendationStatus === "READY"
@@ -90,7 +158,7 @@ export async function readOperationsPreview(
       }));
       dataAsOf = plan.generatedAt;
     } else {
-      const sales = await response.json() as Sales;
+      const sales = await readWeekSales(fetcher, signal);
       if (sales.period !== "this_week" || !finite(sales.revenue) || !finite(sales.transactions)
         || !sales.from || !sales.to || !sales.timezone || !sales.company || !sales.currency) {
         throw new Error("Incomplete sales response");
@@ -115,6 +183,6 @@ export async function readOperationsPreview(
   return {
     threadId: threadId ?? "", intent: intent === "sales_week" ? "report_sales" : "navigate",
     intentSummary: title, answer: card.summary ?? title, slots: {}, ui: null, cards: [card],
-    writeRequests: [], source: "Odoo · read-only", dataAsOf, fastPathId: `operations_${intent}`, llmFallback: false,
+    writeRequests: [], source: "Orithos · read-only", dataAsOf, fastPathId: `operations_${intent}`, llmFallback: false,
   };
 }
