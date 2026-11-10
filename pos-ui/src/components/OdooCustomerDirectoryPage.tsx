@@ -15,9 +15,8 @@ import {
   createOdooCustomer,
   archiveOdooCustomer,
   getOdooCustomerGroups,
-  getOdooPosBootstrap,
   getOdooPricelists,
-  getOdooSession,
+  getOrithosSession,
   searchOdooRecords,
   updateOdooCustomer,
   type OdooCustomerGroupRecord,
@@ -133,7 +132,7 @@ export function OdooCustomerDirectoryPage() {
   useEffect(() => {
     let cancelled = false;
     setCheckingConnection(true);
-    void getOdooSession().then((user) => {
+    void getOrithosSession().then((user) => {
       if (!cancelled) setConnected(Boolean(user));
     }).catch((cause) => {
       if (!cancelled) {
@@ -145,19 +144,6 @@ export function OdooCustomerDirectoryPage() {
     });
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
-
-  useEffect(() => {
-    if (connected !== true) return;
-    let cancelled = false;
-    void getOdooPosBootstrap().then((bootstrap) => {
-      if (cancelled) return;
-      const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
-      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
-    }).catch(() => {
-      // Keep Adelaide as the display fallback when bootstrap is unavailable.
-    });
-    return () => { cancelled = true; };
-  }, [connected]);
 
   const loadLookups = useCallback(async () => {
     if (connected !== true) return;

@@ -1,5 +1,5 @@
 import { cachedOdooRead, clearOdooReadCache } from "./odoo-read-cache";
-import { isLocalPreviewSession } from "./api";
+import { api, isLocalPreviewSession, type Page } from "./api";
 import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 
 export type OdooRecordType =
@@ -593,6 +593,10 @@ export async function getOdooSession() {
   return (await sessionRequest("GET")).user;
 }
 
+export function getOrithosSession() {
+  return api.get<{ id: number; username: string; name?: string; outletId?: number }>("/api/auth/me");
+}
+
 export function getOdooSessionStatus() {
   return sessionRequest("GET");
 }
@@ -728,6 +732,28 @@ export async function searchOdooRecords<T>(
   type: OdooRecordType,
   options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
+  if (type === "customers") {
+    const pageNumber = Math.floor((options.offset ?? 0) / (options.limit ?? 40)) + 1;
+    const size = options.limit ?? 40;
+    const page = await api.get<Page<{
+      id: number; name: string; code?: string | null; phone?: string | null; email?: string | null;
+      customerGroupId?: number | null; customerGroupName?: string | null; priceListId?: number | null;
+      currentOwing?: number | null;
+    }>>("/api/customers", {
+      name: options.query, groupId: options.groupId, priceListId: options.pricelistId,
+      page: pageNumber, size,
+    });
+    const priceLists = await getOdooPricelists(undefined, 0, 500).catch(() => ({ items: [] as OdooPricelistRecord[], hasNext: false }));
+    const priceListNames = new Map(priceLists.items.map((item) => [item.id, item.name]));
+    const items = page.items.map((customer) => ({
+      id: Number(customer.id), name: customer.name, phone: customer.phone || false,
+      email: customer.email || false, customer_rank: 0, ref: customer.code || false,
+      category_id: customer.customerGroupId ? [customer.customerGroupId] : [],
+      property_product_pricelist: customer.priceListId ? [customer.priceListId, priceListNames.get(customer.priceListId) ?? `Price list #${customer.priceListId}`] as [number, string] : false,
+      credit: Number(customer.currentOwing ?? 0), active: true,
+    } as OdooCustomerRecord));
+    return { items: items as T[], total: page.total, limit: size, offset: options.offset ?? 0, hasNext: pageNumber * size < page.total, generatedAt: new Date().toISOString() };
+  }
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -954,40 +980,31 @@ export async function createOdooDraftRfqFromInvoice(input: {
 }
 
 export async function createOdooCustomer(values: OdooCustomerWriteValues & { name: string }): Promise<{ id: number; name: string }> {
-  const response = await fetchOdooApi("/api/odoo/customers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(values),
-  });
-  const payload = await response.json().catch(() => null) as { id?: number; name?: string; message?: string } | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
-    throw new OdooApiError(payload?.message || `Customer creation failed (${response.status})`, response.status || 502);
-  }
-  return { id: payload.id, name: payload.name };
+  const payload = await api.post<{ id: number; name: string }>("/api/customers", nativeCustomerPayload(values));
+  return { id: Number(payload.id), name: payload.name };
 }
 
 export async function updateOdooCustomer(customerId: number, values: OdooCustomerWriteValues): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/customers/${customerId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(values),
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Customer update failed (${response.status})`, response.status);
+  await api.put(`/api/customers/${customerId}`, nativeCustomerPayload(values));
 }
 
 export async function archiveOdooCustomer(customerId: number): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/customers/${customerId}`, {
-    method: "DELETE",
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Customer archive failed (${response.status})`, response.status);
+  await api.del(`/api/customers/${customerId}`);
+}
+
+function nativeCustomerPayload(values: OdooCustomerWriteValues) {
+  return {
+    name: values.name,
+    phone: values.phone || null,
+    email: values.email || null,
+    comments: values.comment || null,
+    code: values.ref || null,
+    billingStreetAddress1: values.street || null,
+    billingSuburb: values.city || null,
+    businessNumber: values.vat || null,
+    priceListId: values.property_product_pricelist || null,
+    customerGroupId: values.category_id?.[0] ?? null,
+  };
 }
 
 async function readOdooListPage<T>(path: string): Promise<{ items: T[]; hasNext: boolean }> {
@@ -1000,89 +1017,53 @@ async function readOdooListPage<T>(path: string): Promise<{ items: T[]; hasNext:
 }
 
 export async function getOdooPricelists(query?: string, offset = 0, limit = 50) {
-  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  if (query?.trim()) params.set("query", query.trim());
-  return readOdooListPage<OdooPricelistRecord>(`/api/odoo/pricelists?${params}`);
+  const pageNumber = Math.floor(offset / limit) + 1;
+  const page = await api.get<Page<{ id: number; name: string; outletId: number }>>("/api/price-lists", {
+    name: query?.trim() || undefined, page: pageNumber, size: limit,
+  });
+  return {
+    items: page.items.map((item) => ({ id: Number(item.id), name: item.name, currency: "AUD", currencyId: null, company: "Orithos store", companyId: Number(item.outletId), active: true })),
+    hasNext: pageNumber * limit < page.total,
+  };
 }
 
 export async function createOdooPricelist(name: string): Promise<{ id: number; name: string }> {
-  const response = await fetchOdooApi("/api/odoo/pricelists", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ name }),
-  });
-  const payload = await response.json().catch(() => null) as { id?: number; name?: string; message?: string } | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
-    throw new OdooApiError(payload?.message || `Price list creation failed (${response.status})`, response.status || 502);
-  }
-  return { id: payload.id, name: payload.name };
+  const payload = await api.post<{ id: number; name: string }>("/api/price-lists", { name });
+  return { id: Number(payload.id), name: payload.name };
 }
 
 export async function updateOdooPricelist(id: number, values: { name?: string; active?: boolean }): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/pricelists/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(values),
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Price list update failed (${response.status})`, response.status);
+  if (values.active === false) return archiveOdooPricelist(id);
+  const current = await api.get<{ id: number; name: string; allowHigherPrice?: boolean; allowDiscountingPromotions?: boolean; items?: unknown[] }>(`/api/price-lists/${id}`);
+  await api.put(`/api/price-lists/${id}`, { ...current, ...values, items: current.items ?? [] });
 }
 
 export async function archiveOdooPricelist(id: number): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/pricelists/${id}`, {
-    method: "DELETE",
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Price list archive failed (${response.status})`, response.status);
+  await api.del(`/api/price-lists/${id}`);
 }
 
 export async function getOdooCustomerGroups(query?: string, offset = 0, limit = 50) {
-  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  if (query?.trim()) params.set("query", query.trim());
-  return readOdooListPage<OdooCustomerGroupRecord>(`/api/odoo/customer-groups?${params}`);
+  const pageNumber = Math.floor(offset / limit) + 1;
+  const page = await api.get<Page<{ id: number; name: string; customerCount?: number | null }>>("/api/customers/groups", {
+    name: query?.trim() || undefined, page: pageNumber, size: limit,
+  });
+  return {
+    items: page.items.map((group) => ({ id: Number(group.id), name: group.name, color: 0, parentId: null, parentName: null, customerCount: Number(group.customerCount ?? 0), writable: true })),
+    hasNext: pageNumber * limit < page.total,
+  };
 }
 
 export async function createOdooCustomerGroup(name: string): Promise<{ id: number; name: string }> {
-  const response = await fetchOdooApi("/api/odoo/customer-groups", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ name }),
-  });
-  const payload = await response.json().catch(() => null) as { id?: number; name?: string; message?: string } | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
-    throw new OdooApiError(payload?.message || `Customer group creation failed (${response.status})`, response.status || 502);
-  }
-  return { id: payload.id, name: payload.name };
+  const group = await api.post<{ id: number; name: string }>("/api/customers/groups", { name });
+  return { id: Number(group.id), name: group.name };
 }
 
 export async function updateOdooCustomerGroup(id: number, name: string): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/customer-groups/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify({ name }),
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Customer group update failed (${response.status})`, response.status);
+  await api.put(`/api/customers/groups/${id}`, { name });
 }
 
 export async function deleteOdooCustomerGroup(id: number): Promise<void> {
-  const response = await fetchOdooApi(`/api/odoo/customer-groups/${id}`, {
-    method: "DELETE",
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  const payload = await response.json().catch(() => null) as { message?: string } | null;
-  if (!response.ok) throw new OdooApiError(payload?.message || `Customer group delete failed (${response.status})`, response.status);
+  await api.del(`/api/customers/groups/${id}`);
 }
 
 export async function getOdooCustomerBalances(options: { query?: string; owingOnly?: boolean; offset?: number; limit?: number } = {}) {

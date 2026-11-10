@@ -6,40 +6,40 @@ import java.util.List;
 @Mapper
 public interface PriceListMapper {
 
-    @Select("SELECT * FROM price_list ORDER BY created_at DESC, id DESC")
-    List<PriceList> findAll();
+    @Select("SELECT * FROM price_list WHERE outlet_id = #{outletId} AND active = TRUE ORDER BY created_at DESC, id DESC")
+    List<PriceList> findAll(@Param("outletId") Long outletId);
 
     @Select("SELECT * FROM price_list "
-            + "WHERE (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%') ESCAPE '!') "
+            + "WHERE outlet_id = #{outletId} AND active = TRUE AND (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%') ESCAPE '!') "
             + "ORDER BY created_at DESC, id DESC LIMIT #{size} OFFSET #{offset}")
-    List<PriceList> page(@Param("name") String name, @Param("size") int size, @Param("offset") int offset);
+    List<PriceList> page(@Param("name") String name, @Param("outletId") Long outletId, @Param("size") int size, @Param("offset") int offset);
 
     @Select("SELECT COUNT(*) FROM price_list "
-            + "WHERE (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%'))")
-    long count(@Param("name") String name);
+            + "WHERE outlet_id = #{outletId} AND active = TRUE AND (#{name} IS NULL OR name LIKE CONCAT('%', #{name}, '%'))")
+    long count(@Param("name") String name, @Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM price_list WHERE id = #{id}")
-    PriceList findById(Long id);
+    @Select("SELECT * FROM price_list WHERE id = #{id} AND outlet_id = #{outletId} AND active = TRUE")
+    PriceList findById(@Param("id") Long id, @Param("outletId") Long outletId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO price_list (name, allow_higher_price, allow_discounting_promotions) "
-            + "VALUES (#{name}, #{allowHigherPrice}, #{allowDiscountingPromotions})")
+    @Insert("INSERT INTO price_list (name, allow_higher_price, allow_discounting_promotions, outlet_id) "
+            + "VALUES (#{name}, #{allowHigherPrice}, #{allowDiscountingPromotions}, #{outletId})")
     int insert(PriceList p);
 
     @Update("UPDATE price_list SET name=#{name}, allow_higher_price=#{allowHigherPrice}, "
-            + "allow_discounting_promotions=#{allowDiscountingPromotions} WHERE id=#{id}")
+            + "allow_discounting_promotions=#{allowDiscountingPromotions} WHERE id=#{id} AND outlet_id=#{outletId} AND active=TRUE")
     int update(PriceList p);
 
-    @Delete("DELETE FROM price_list WHERE id=#{id}")
-    int delete(Long id);
+    @Update("UPDATE price_list SET active=FALSE, updated_at=CURRENT_TIMESTAMP WHERE id=#{id} AND outlet_id=#{outletId} AND active=TRUE")
+    int archive(@Param("id") Long id, @Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM price_list_item WHERE price_list_id = #{priceListId} ORDER BY id")
-    List<PriceListItem> findItems(Long priceListId);
+    @Select("SELECT * FROM price_list_item WHERE price_list_id = #{priceListId} AND outlet_id = #{outletId} ORDER BY id")
+    List<PriceListItem> findItems(@Param("priceListId") Long priceListId, @Param("outletId") Long outletId);
 
-    @Insert("INSERT INTO price_list_item (price_list_id, classification_type, item_id, exclude, rule, amount) "
-            + "VALUES (#{priceListId}, #{classificationType}, #{itemId}, #{exclude}, #{rule}, #{amount})")
+    @Insert("INSERT INTO price_list_item (price_list_id, classification_type, item_id, exclude, rule, amount, outlet_id) "
+            + "VALUES (#{priceListId}, #{classificationType}, #{itemId}, #{exclude}, #{rule}, #{amount}, #{outletId})")
     int insertItem(PriceListItem item);
 
-    @Delete("DELETE FROM price_list_item WHERE price_list_id = #{priceListId}")
-    int deleteItems(Long priceListId);
+    @Delete("DELETE FROM price_list_item WHERE price_list_id = #{priceListId} AND outlet_id = #{outletId}")
+    int deleteItems(@Param("priceListId") Long priceListId, @Param("outletId") Long outletId);
 }

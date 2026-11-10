@@ -169,16 +169,19 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeReportAndCustomerReadsPassThroughWhileCustomerWritesRemainRetired() throws Exception {
+    void nativeReportCustomerAndPriceListRoutesPassThroughWhileSidePathsRemainRetired() throws Exception {
         OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
         for (String path : new String[]{
                 "/api/reports/native-overview",
+                "/api/reports/native-sales-history",
                 "/api/customers",
                 "/api/customers/42",
                 "/api/customers/42/recent-sales",
                 "/api/customers/groups",
                 "/api/customers/groups/4",
                 "/api/customers/groups/4/revisions",
+                "/api/price-lists",
+                "/api/price-lists/3",
                 "/api/customer-payments",
                 "/api/customer-payments/2",
                 "/api/customer-payments/2/allocations"
@@ -190,9 +193,18 @@ class OdooOnlyModeFilterTest {
             assertEquals(200, response.getStatus());
             assertSame(request, (ServletRequest) chain.getRequest());
         }
-        MockHttpServletResponse writeResponse = new MockHttpServletResponse();
-        filter.doFilter(new MockHttpServletRequest("POST", "/api/customers"), writeResponse, new MockFilterChain());
-        assertEquals(410, writeResponse.getStatus());
+        for (var route : new String[][]{
+                {"POST", "/api/customers"},
+                {"PUT", "/api/customers/42"},
+                {"DELETE", "/api/customers/42"},
+                {"POST", "/api/customers/groups"},
+                {"POST", "/api/price-lists"},
+                {"PUT", "/api/price-lists/3"}
+        }) {
+            MockHttpServletResponse writeResponse = new MockHttpServletResponse();
+            filter.doFilter(new MockHttpServletRequest(route[0], route[1]), writeResponse, new MockFilterChain());
+            assertEquals(200, writeResponse.getStatus(), route[0] + " " + route[1]);
+        }
 
         for (String path : new String[]{
                 "/api/customers/statements/preview",

@@ -116,13 +116,17 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
                 || path.equals("/api/reports/native-sales-history"))) {
             return false;
         }
-        if ("GET".equalsIgnoreCase(method)
-                && (path.equals("/api/customers")
+        // Customer directory / groups / price lists are native Orithos after
+        // Shopfront sync. Controllers scope rows to the authenticated outlet.
+        // Keep statements/export/payment side-paths gated until audited.
+        if (path.equals("/api/customers")
                 || path.matches("/api/customers/[0-9]+")
+                || path.matches("/api/customers/[0-9]+/(recent-sales|revisions)")
                 || path.equals("/api/customers/groups")
                 || path.matches("/api/customers/groups/[0-9]+")
                 || path.matches("/api/customers/groups/[0-9]+/revisions")
-                || path.matches("/api/customers/[0-9]+/(recent-sales|revisions)"))) {
+                || path.equals("/api/price-lists")
+                || path.matches("/api/price-lists/[0-9]+")) {
             return false;
         }
         if ("GET".equalsIgnoreCase(method)

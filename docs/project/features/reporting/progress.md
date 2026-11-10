@@ -5,8 +5,8 @@ Updated: 2026-11-10. Owner: TBD.
 ## Native ledger cutover (2026-11-10)
 
 - `sale.source_system` / `sale.external_id` plus `ShopfrontNativeSaleImporter` upsert Shopfront payloads into native `sale`/`sale_item` (idempotent; no stock moves). Continuous crawler `sales:upsert` writes the native ledger; `sales:promote-native` backfills from `shopfront_sale*`.
-- Reports/UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, and Overview Store Pulse read `native-overview` / `native-sales-history` only. Products, suppliers, inventory report, and Sell use Orithos APIs; Shopfront report routes redirect; `/api/shopfront-source` returns 410.
-- Java 21 `mvn -B verify` PASS (601 tests). Adelaide `2026-11-09` **sale-row** parity: SKR+Demo native `source_system=shopfront` COMPLETED = mirror/crawler headers = **`$5,035.80` / 161**. Shopfront **sales report** DSL **`$5,038.48` / 162** = completed + INCOMPLETE invoice `00081327` (`$2.68`). Day-totals now expose `shopfront_report_comparable_*` and `sales:void-orphan-ref-refunds` clears UAT `REF-%` noise. Dashboard/history APIs return `source=orithos_ledger`.
+- Reports/UI: `/dashboard` Store Pulse + `/reports/dashboard` + `/reports/sales` + `/history` read `native-overview` / `native-sales-history` only (`source=orithos_ledger`). Overview also surfaces `product_inventory` positive on-hand. `/api/shopfront-source` returns 410.
+- Adelaide `2026-11-09` SKR+Demo: COMPLETED **`$5,035.80` / 161** (exact mirror/header match); report DSL **`$5,038.48` / 162** = +INCOMPLETE `$2.68`. See root `HANDOFF.md` for endpoints, void-orphan cleanup, and remaining Odoo domain retirement order.
 
 ## Product catalogue read latency (2026-11-08)
 

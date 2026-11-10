@@ -17,7 +17,10 @@ type NativeOverview = {
   transactions: number;
   dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number | null; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
   topProducts: Array<{ id: number; name: string; revenue: number; quantity: number }>;
-  inventoryAvailable: false;
+  inventoryAvailable?: boolean;
+  inventoryUnits?: number | null;
+  inventoryStatus?: string | null;
+  negativeStockProducts?: number | null;
 };
 
 function dayInAdelaide(date: Date) {
@@ -115,7 +118,7 @@ export function NativeReportsDashboardPage() {
       <Metric label="Sales" value={data ? money(data.revenue) : "—"} detail={delta === null ? "Comparison unavailable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs previous period`} />
       <Metric label="Transactions" value={data ? data.transactions.toLocaleString("en-AU") : "—"} detail="Orithos ledger records" />
       <Metric label="Gross profit" value={data?.grossProfit != null ? money(data.grossProfit) : "—"} detail={data?.costAvailable && data.cost !== null ? data.taxAvailable ? `Ex-tax sales less cost ${money(data.cost)}` : "Tax coverage unavailable" : "Cost coverage unavailable"} />
-      <Metric label="Inventory" value="Unavailable" detail="No native snapshot in this report" />
+      <Metric label="Inventory" value={data?.inventoryAvailable && data.inventoryUnits != null ? Number(data.inventoryUnits).toLocaleString("en-AU") : "—"} detail={data?.inventoryAvailable ? (data.negativeStockProducts ? `${data.negativeStockProducts.toLocaleString("en-AU")} SKUs below zero` : "Orithos on-hand · positive units") : "No native snapshot in this report"} />
     </section>
     <section className="grid gap-4 lg:grid-cols-2">
       <section className="border border-[var(--oh-border)] bg-white p-4">

@@ -53,4 +53,21 @@ class NativeOverviewPayloadTest {
         assertEquals(new BigDecimal("40.00"), result.get("grossProfit"));
         assertEquals(new BigDecimal("100.00"), result.get("netRevenue"));
     }
+
+    @Test
+    void includesPositiveInventoryUnitsWhenSnapshotIsPresent() {
+        Map<String, Object> inventory = new LinkedHashMap<>();
+        inventory.put("sku_count", 10);
+        inventory.put("positive_skus", 8);
+        inventory.put("negative_skus", 2);
+        inventory.put("positive_units", new BigDecimal("49748.4"));
+
+        Map<String, Object> result = ReportQueryService.nativeOverviewPayload(
+                LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 9), List.of(), List.of(), inventory);
+
+        assertEquals(true, result.get("inventoryAvailable"));
+        assertEquals(49748L, result.get("inventoryUnits"));
+        assertEquals(2L, result.get("negativeStockProducts"));
+        assertEquals("negative_stock", result.get("inventoryStatus"));
+    }
 }

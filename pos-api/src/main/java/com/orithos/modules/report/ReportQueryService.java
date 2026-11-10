@@ -80,8 +80,11 @@ public class ReportQueryService {
      */
     public Map<String, Object> nativeSalesHistory(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
+        // Keep the Adelaide business-day expression aligned with nativeOverview so
+        // Shopfront imports and register sales land on the same civil day.
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) AS date,
+                SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
                        COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL) AS refund_transactions,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
@@ -91,15 +94,21 @@ public class ReportQueryService {
                 FROM sale s
                 WHERE s.outlet_id = ?
                   AND s.status = 'COMPLETED'
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
-                GROUP BY COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at))
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                GROUP BY 1
                 ORDER BY date DESC
                 """, outletId, sqlDate(from), sqlDate(to));
         List<Map<String, Object>> days = new ArrayList<>();
         for (Map<String, Object> row : rows) {
+            LocalDate dayDate = toLocalDate(row.get("date"));
+            if (dayDate == null) {
+                continue;
+            }
             Map<String, Object> day = new LinkedHashMap<>();
-            day.put("date", String.valueOf(row.get("date")));
+            day.put("date", dayDate.toString());
             day.put("salesTransactions", toDecimal(row.get("sales_transactions")).longValue());
             day.put("refundTransactions", toDecimal(row.get("refund_transactions")).longValue());
             day.put("salesAmount", toDecimal(row.get("sales_amount")).setScale(2, RoundingMode.HALF_UP));
@@ -160,7 +169,15 @@ public class ReportQueryService {
                 GROUP BY COALESCE(p.id, 0), COALESCE(p.name, si.note, 'Unknown product')
                 ORDER BY revenue DESC LIMIT 10
                 """, outletId, sqlDate(from), sqlDate(to));
-        return nativeOverviewPayload(from, to, daily, products);
+        Map<String, Object> inventory = jdbc.queryForMap("""
+                SELECT COUNT(*) AS sku_count,
+                       COUNT(*) FILTER (WHERE COALESCE(pi.quantity, 0) > 0) AS positive_skus,
+                       COUNT(*) FILTER (WHERE COALESCE(pi.quantity, 0) < 0) AS negative_skus,
+                       COALESCE(SUM(CASE WHEN pi.quantity > 0 THEN pi.quantity ELSE 0 END), 0) AS positive_units
+                FROM product_inventory pi
+                WHERE pi.outlet_id = ?
+                """, outletId);
+        return nativeOverviewPayload(from, to, daily, products, inventory);
     }
 
     private void requireReportOutlet(long vendorId, long outletId) {
@@ -174,6 +191,13 @@ public class ReportQueryService {
     static Map<String, Object> nativeOverviewPayload(LocalDate from, LocalDate to,
                                                      List<Map<String, Object>> daily,
                                                      List<Map<String, Object>> products) {
+        return nativeOverviewPayload(from, to, daily, products, Map.of());
+    }
+
+    static Map<String, Object> nativeOverviewPayload(LocalDate from, LocalDate to,
+                                                     List<Map<String, Object>> daily,
+                                                     List<Map<String, Object>> products,
+                                                     Map<String, Object> inventory) {
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
         BigDecimal tax = BigDecimal.ZERO;
@@ -215,7 +239,16 @@ public class ReportQueryService {
         result.put("transactions", transactions);
         result.put("dailyTrend", dailyTrend);
         result.put("topProducts", products);
-        result.put("inventoryAvailable", false);
+        boolean inventoryPresent = inventory != null && !inventory.isEmpty();
+        long negativeSkus = inventoryPresent ? toDecimal(inventory.get("negative_skus")).longValue() : 0L;
+        result.put("inventoryAvailable", inventoryPresent);
+        result.put("inventoryUnits", inventoryPresent
+                ? toDecimal(inventory.get("positive_units")).setScale(0, RoundingMode.HALF_UP).longValue()
+                : null);
+        result.put("inventorySkuCount", inventoryPresent ? toDecimal(inventory.get("sku_count")).longValue() : null);
+        result.put("negativeStockProducts", inventoryPresent ? negativeSkus : null);
+        result.put("inventoryStatus", !inventoryPresent ? "unavailable"
+                : negativeSkus > 0 ? "negative_stock" : "complete");
         return result;
     }
 

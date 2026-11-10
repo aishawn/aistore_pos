@@ -13,7 +13,7 @@ import {
   archiveOdooPricelist,
   createOdooPricelist,
   getOdooPricelists,
-  getOdooSession,
+  getOrithosSession,
   updateOdooPricelist,
   type OdooPricelistRecord,
 } from "@/lib/odoo-api";
@@ -46,7 +46,7 @@ export function OdooPricelistsPage({ embedded = false }: { embedded?: boolean } 
   useDialogFocus(Boolean(archiving), () => { if (!busy) setArchiving(null); });
 
   useEffect(() => {
-    void getOdooSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
+    void getOrithosSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
   }, [refreshKey]);
 
   const load = useCallback(async () => {

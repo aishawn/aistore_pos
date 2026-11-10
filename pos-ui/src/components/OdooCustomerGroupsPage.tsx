@@ -10,7 +10,7 @@ import {
   createOdooCustomerGroup,
   deleteOdooCustomerGroup,
   getOdooCustomerGroups,
-  getOdooSession,
+  getOrithosSession,
   updateOdooCustomerGroup,
   type OdooCustomerGroupRecord,
 } from "@/lib/odoo-api";
@@ -51,7 +51,7 @@ export function OdooCustomerGroupsPage() {
 
   useEffect(() => {
     let active = true;
-    void getOdooSession().then((session) => {
+    void getOrithosSession().then((session) => {
       if (active) setConnected(Boolean(session));
     }).catch(() => {
       if (active) setConnected(false);
