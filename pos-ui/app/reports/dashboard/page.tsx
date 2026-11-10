@@ -1,7 +1,8 @@
-import { NativeReportsDashboardPage } from "@/components/NativeReportsDashboardPage";
+import { ShopfrontReportsOverviewPage } from "@/components/ShopfrontReportsOverviewPage";
 
 export const dynamic = "force-dynamic";
 
+/** Owner-locked shell: Shopfront reports overview. */
 export default function ReportingDashboardPage() {
-  return <NativeReportsDashboardPage />;
+  return <ShopfrontReportsOverviewPage />;
 }

@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { redirect } from "next/navigation";
+import { OdooSalesHistoryPage } from "@/components/OdooSalesHistoryPage";
 
 export default function OdooSalesHistoryRoute() {
-  redirect("/reports/sales");
+  return <OdooSalesHistoryPage />;
 }

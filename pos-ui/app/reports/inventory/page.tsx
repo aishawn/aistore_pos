@@ -1,8 +1,14 @@
-import { NativeInventoryReportPage } from "@/components/NativeInventoryReportPage";
+import { Suspense } from "react";
+import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+/** Owner-locked shell: Shopfront source inventory report. */
 export default function InventoryReportsPage() {
-  return <NativeInventoryReportPage />;
+  return (
+    <Suspense fallback={<div className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading inventory…</div>}>
+      <ShopfrontSourceDataPage mode="inventory" />
+    </Suspense>
+  );
 }
