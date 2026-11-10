@@ -18,17 +18,18 @@
 
 - Setup 侧栏 23 项可达；`/settings/company/general` 字段完整。
 - `/api/settings/company`、`/enterprise`、`/push` → code 0（OdooOnly allowlist 修复已生效）。
-- Tax Rates：曾 203 行全是 GST；用既有 `PUT /api/tax-rates/{id}/merge` 清到 **GST + GST Free（2）**。
-- Payment Methods：仍 **204**（Cash×202 + EFTPOS + Gift Card）— 待 dedupe 部署后一键清理。
-- 证据：`docs/UAT_SETTINGS_2026-11-11_ONLINE.json`。
+- Tax Rates：**GST + GST Free（2）**。
+- Payment Methods：部署 `511b3fd4` 后 **Cash + EFTPOS + Gift Card（3）**（原先 Cash×202 / 204）。
+- `POST /api/settings/import/dedupe` 已上线并返回 200。
+- 证据：`docs/UAT_SETTINGS_2026-11-11_ONLINE.json`（PASS）。
 
 ## 下一步
 
-1. 部署 catalogue dedupe 后对 Demo 调 `POST /api/settings/import/dedupe`，确认支付方式约 3 行。
-2. 在 crawler `daily_sync` 空闲时跑 `settings_import`（skr），再 Integrations promote。
-3. 定价算法（High Mix / Family / Redistribute）单独验收。
+1. 在 crawler `daily_sync` 空闲时跑 `settings_import`（skr），再 Integrations promote。
+2. 定价算法（High Mix / Family / Redistribute）单独验收。
+3. 可选：Setup 侧栏分组缩短滚动（功能已齐）。
 
 ## 阻塞
 
 - Shopfront OAuth scopes 可能对部分 settings 根返回 403；导入会记 entity errors，不阻断 Orithos 本地编辑。
-- 当前 runtime 尚无 payment dedupe API（本候选推送后解除）。
+

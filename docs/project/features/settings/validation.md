@@ -8,7 +8,8 @@
 | Setup sidebar 23 routes reachable | Demo 只读 | PASS | `UAT_SETTINGS_2026-11-11_ONLINE.json` |
 | Company / Enterprise / Push APIs | Demo 只读 | PASS | code 0 after OdooOnly allowlist |
 | Tax rates unique after cleanup | Demo write (merge) | PASS | 203→2 via `/api/tax-rates/{id}/merge` |
-| Payment methods unique | Demo | FAIL→fix pending | Cash×202；dedupe candidate ready |
+| Payment methods unique | Demo | PASS | 3 rows after `511b3fd4` dedupe deploy |
+| Catalogue dedupe endpoint | Demo | PASS | `POST /api/settings/import/dedupe` |
 | Import does not overwrite owned keys | SKR | PASS | prior online session |
 | Cash round_to engine online | Demo | NOT_RUN | — |
 
