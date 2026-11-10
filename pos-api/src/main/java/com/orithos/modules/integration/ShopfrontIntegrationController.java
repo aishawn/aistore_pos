@@ -17,9 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -1055,6 +1053,9 @@ public class ShopfrontIntegrationController {
                         nativeLedger = business;
                     } else {
                         business = importBusiness(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                        if ("suppliers".equals(type)) {
+                            nativeLedger = business;
+                        }
                     }
                 }
                 if ("sales".equals(type)) {
@@ -1399,6 +1400,191 @@ public class ShopfrontIntegrationController {
         result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
+    }
+
+    private Map<String, Object> importBusinessPurchaseOrders(String store, Map<String, Object> mapping, JsonNode items) {
+        long outletId = longValue(mapping.get("outlet_id"));
+        Object mappedCompanyId = mapping.get("company_id");
+        Long vendorId = jdbc.queryForObject("SELECT vendor_id FROM outlet WHERE id=? AND deleted_at IS NULL", Long.class, outletId);
+        if (outletId <= 0 || vendorId == null || !String.valueOf(vendorId).equals(String.valueOf(mappedCompanyId))) {
+            throw new IllegalArgumentException("Shopfront purchase-order mapping does not match the outlet tenant");
+        }
+        ensurePurchaseOrderBusinessMappingTable();
+        int created = 0;
+        int updated = 0;
+        List<String> errors = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (JsonNode item : items) {
+            String sourceId = text(item, "source_id");
+            JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
+            if (sourceId == null || sourceId.isBlank() || !seen.add(sourceId)) {
+                throw new IllegalArgumentException("Purchase-order source IDs must be present and unique");
+            }
+            JsonNode sourceLines = raw.path("products");
+            if (!sourceLines.isArray()) {
+                throw new IllegalArgumentException("Purchase order " + sourceId + " has no source products array");
+            }
+            String supplierSourceId = text(item, "supplier_source_id");
+            if (supplierSourceId == null || supplierSourceId.isBlank()) {
+                for (JsonNode line : sourceLines) {
+                    String candidate = text(line.path("supplier"), "id");
+                    if (candidate != null && !candidate.isBlank()) {
+                        supplierSourceId = candidate;
+                        break;
+                    }
+                }
+            }
+            Long supplierId = mappedSupplierId(store, supplierSourceId, outletId);
+            if (supplierId == null) {
+                throw new IllegalArgumentException("Purchase order " + sourceId + " has no mapped Orithos supplier");
+            }
+
+            List<Object[]> lineRows = new ArrayList<>();
+            BigDecimal orderedTotal = BigDecimal.ZERO;
+            BigDecimal receivedTotal = BigDecimal.ZERO;
+            boolean allReceived = sourceLines.size() > 0;
+            for (JsonNode line : sourceLines) {
+                String lineSupplierSourceId = text(line.path("supplier"), "id");
+                Long lineSupplierId = mappedSupplierId(store,
+                        lineSupplierSourceId == null || lineSupplierSourceId.isBlank() ? supplierSourceId : lineSupplierSourceId,
+                        outletId);
+                if (lineSupplierId == null || !supplierId.equals(lineSupplierId)) {
+                    throw new IllegalArgumentException("Purchase order " + sourceId + " has a line with an unmapped or different supplier");
+                }
+                String productSourceId = text(line.path("item"), "id");
+                Long productId = mappedProductId(store, productSourceId, outletId);
+                if (productId == null) {
+                    throw new IllegalArgumentException("Purchase order " + sourceId + " has an unmapped product " + productSourceId);
+                }
+                BigDecimal ordered = decimal(line, "orderedQuantity");
+                BigDecimal received = decimal(line, "receivedQuantity");
+                if (ordered == null || ordered.signum() < 0 || (received != null && received.signum() < 0)) {
+                    throw new IllegalArgumentException("Purchase order " + sourceId + " has an invalid quantity");
+                }
+                received = received == null ? BigDecimal.ZERO : received;
+                orderedTotal = orderedTotal.add(ordered);
+                receivedTotal = receivedTotal.add(received);
+                if (received.compareTo(ordered) < 0) allReceived = false;
+                lineRows.add(new Object[]{productId, lineSupplierId, text(line.path("item"), "mdbId"),
+                        decimal(line, "caseQuantity"), ordered, received, decimal(line, "baseCost"),
+                        decimal(line, "orderedCost"), outletId});
+            }
+
+            String hash = purchaseOrderSourceHash(raw);
+            List<Map<String, Object>> prior = jdbc.queryForList(
+                    "SELECT purchase_order_id,source_hash FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
+                    store, sourceId, outletId);
+            if (!prior.isEmpty() && hash.equals(String.valueOf(prior.getFirst().get("source_hash")))) {
+                updated++;
+                continue;
+            }
+            Long orderId = prior.isEmpty() ? null : longValue(prior.getFirst().get("purchase_order_id"));
+            if (orderId != null) {
+                Integer receipts = jdbc.queryForObject("SELECT COUNT(*) FROM purchase_receipt WHERE order_id=?", Integer.class, orderId);
+                if (receipts != null && receipts > 0) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Shopfront purchase order " + sourceId + " changed after an Orithos receipt was created");
+                }
+            }
+
+            String status = purchaseOrderStatus(raw, sourceLines.size(), receivedTotal, allReceived);
+            String invoiceNumber = text(raw, "invoiceNumber");
+            if (invoiceNumber == null || invoiceNumber.isBlank()) invoiceNumber = sourceId;
+            if (invoiceNumber.length() > 64 || sourceId.length() > 128) {
+                throw new IllegalArgumentException("Purchase order " + sourceId + " has an identifier that exceeds Orithos limits");
+            }
+            java.sql.Date orderDate = sqlDate(text(raw, "orderDate"));
+            java.sql.Date dueDate = sqlDate(text(raw, "dueDate"));
+            BigDecimal totalCost = decimal(raw, "totalCost");
+            BigDecimal expectedTotal = decimal(raw, "expectedTotal");
+            if (expectedTotal == null) expectedTotal = totalCost;
+            boolean includeFreight = raw.path("includeFreight").asBoolean(false);
+            String notes = text(raw, "notes");
+            if (orderId == null) {
+                String sql = isPostgres()
+                        ? "INSERT INTO purchase_order (type,status,from_id,to_id,order_date,due_date,entered_as,invoice_number,reference,notes,internal_notes,include_freight,total_cost,expected_total,line_count,created_by_id,outlet_id) VALUES ('ORDER',?,?,?,?,?,'SHOPFRONT',?,?,?,NULL,?,?,?,?,NULL,?) RETURNING id"
+                        : "INSERT INTO purchase_order (type,status,from_id,to_id,order_date,due_date,entered_as,invoice_number,reference,notes,internal_notes,include_freight,total_cost,expected_total,line_count,created_by_id,outlet_id) VALUES ('ORDER',?,?,?,?,?,'SHOPFRONT',?,?,?,NULL,?,?,?,?,NULL,?)";
+                Object[] args = {status, supplierId, outletId, orderDate, dueDate, invoiceNumber, sourceId, notes,
+                        includeFreight, totalCost, expectedTotal, lineRows.size(), outletId};
+                if (isPostgres()) {
+                    orderId = jdbc.queryForObject(sql, Long.class, args);
+                } else {
+                    jdbc.update(sql, args);
+                    orderId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+                }
+                if (orderId == null || orderId <= 0) throw new IllegalStateException("Orithos did not return a purchase order id");
+                created++;
+            } else {
+                int changed = jdbc.update("UPDATE purchase_order SET status=?,from_id=?,to_id=?,order_date=?,due_date=?,entered_as='SHOPFRONT',invoice_number=?,reference=?,notes=?,include_freight=?,total_cost=?,expected_total=?,line_count=? WHERE id=? AND outlet_id=? AND type='ORDER'",
+                        status, supplierId, outletId, orderDate, dueDate, invoiceNumber, sourceId, notes,
+                        includeFreight, totalCost, expectedTotal, lineRows.size(), orderId, outletId);
+                if (changed != 1) throw new IllegalArgumentException("Mapped Shopfront order does not belong to the mapped outlet");
+                jdbc.update("DELETE FROM order_product WHERE order_id=? AND outlet_id=?", orderId, outletId);
+                updated++;
+            }
+            for (Object[] line : lineRows) {
+                jdbc.update("INSERT INTO order_product (order_id,product_id,supplier_id,supplier_code,case_quantity,ordered_quantity,received_quantity,base_cost,ordered_cost,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        orderId, line[0], line[1], line[2], line[3], line[4], line[5], line[6], line[7], line[8]);
+            }
+            String mappingSql = isPostgres()
+                    ? "INSERT INTO shopfront_purchase_order_business_mapping (store_key,source_id,outlet_id,purchase_order_id,source_hash) VALUES (?,?,?,?,?) ON CONFLICT (store_key,source_id,outlet_id) DO UPDATE SET purchase_order_id=EXCLUDED.purchase_order_id,source_hash=EXCLUDED.source_hash,updated_at=CURRENT_TIMESTAMP"
+                    : "INSERT INTO shopfront_purchase_order_business_mapping (store_key,source_id,outlet_id,purchase_order_id,source_hash) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE purchase_order_id=VALUES(purchase_order_id),source_hash=VALUES(source_hash),updated_at=CURRENT_TIMESTAMP";
+            jdbc.update(mappingSql, store, sourceId, outletId, orderId, hash);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("enabled", true);
+        result.put("created", created);
+        result.put("updated", updated);
+        result.put("skipped", 0);
+        result.put("errors", errors);
+        return result;
+    }
+
+    private void ensurePurchaseOrderBusinessMappingTable() {
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order_business_mapping (store_key VARCHAR(64) NOT NULL,source_id VARCHAR(192) NOT NULL,outlet_id BIGINT NOT NULL,purchase_order_id BIGINT NOT NULL,source_hash VARCHAR(64) NOT NULL,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY (store_key,source_id,outlet_id))");
+    }
+
+    private Long mappedSupplierId(String store, String sourceId, long outletId) {
+        if (sourceId == null || sourceId.isBlank()) return null;
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT m.supplier_id FROM shopfront_supplier_business_mapping m JOIN supplier s ON s.id=m.supplier_id AND s.outlet_id=m.outlet_id AND s.deleted_at IS NULL WHERE m.store_key=? AND m.source_id=? AND m.outlet_id=?",
+                store, sourceId, outletId);
+        return rows.isEmpty() ? null : longValue(rows.getFirst().get("supplier_id"));
+    }
+
+    private Long mappedProductId(String store, String sourceId, long outletId) {
+        if (sourceId == null || sourceId.isBlank()) return null;
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT m.pos_product_id FROM shopfront_product_mapping m JOIN product p ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL WHERE m.store_key=? AND m.source_product_id=? AND m.status='MAPPED'",
+                outletId, store, sourceId);
+        return rows.isEmpty() ? null : longValue(rows.getFirst().get("pos_product_id"));
+    }
+
+    private String purchaseOrderSourceHash(JsonNode raw) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(raw));
+            return HexFormat.of().formatHex(digest);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to fingerprint Shopfront purchase order", ex);
+        }
+    }
+
+    private java.sql.Date sqlDate(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return java.sql.Date.valueOf(java.time.LocalDate.parse(value.substring(0, Math.min(10, value.length()))));
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("Shopfront purchase order contains an invalid date");
+        }
+    }
+
+    private String purchaseOrderStatus(JsonNode raw, int lineCount, BigDecimal received, boolean allReceived) {
+        String status = text(raw, "status");
+        String normalized = status == null ? "" : status.toUpperCase(Locale.ROOT);
+        if (normalized.contains("CANCEL") || normalized.contains("VOID")) return "CANCELLED";
+        if (normalized.contains("RECEIV") || normalized.contains("COMPLET") || normalized.equals("CLOSED")) return "RECEIVED";
+        if (lineCount > 0 && allReceived) return "RECEIVED";
+        if (received.signum() > 0) return "PARTIALLY_RECEIVED";
+        if (text(raw, "sentAt") != null) return "SENT";
+        return "OPEN";
     }
 
     private boolean hasSupplierContact(JsonNode contact) {

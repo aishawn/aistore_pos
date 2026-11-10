@@ -261,6 +261,53 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void importsShopfrontPurchaseOrdersIntoNativeOrdersWithoutCreatingInventoryMovements() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
+                .thenReturn(55L);
+        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("supplier_id", 701L)));
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("pos_product_id", 801L)));
+        when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
+                .thenReturn(901L);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importer = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusinessPurchaseOrders", String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class);
+        importer.setAccessible(true);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-order-1","supplier_source_id":"sf-supplier-1","raw_payload":{
+                  "status":"RECEIVED","orderDate":"2026-10-02","invoiceNumber":"INV-1001",
+                  "totalCost":20,"expectedTotal":20,"products":[{
+                    "caseQuantity":1,"orderedQuantity":2,"receivedQuantity":2,"baseCost":10,"orderedCost":20,
+                    "supplier":{"id":"sf-supplier-1"},"item":{"id":"sf-product-1","mdbId":"SKU-1"}
+                  }]
+                }}]
+                """);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) importer.invoke(controller, "skr",
+                Map.of("company_id", "55", "outlet_id", "87"), items);
+
+        assertEquals(1, result.get("created"));
+        assertEquals(0, result.get("updated"));
+        verify(jdbc).update(contains("INSERT INTO order_product"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("inventory_movement"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("product_inventory"), any(Object[].class));
+    }
+
+    @Test
     void pagesProductMirrorByImmutableSourceId() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
