@@ -15,8 +15,8 @@ public interface CustomerMapper {
             + "FROM customer c LEFT JOIN customer_group g ON g.id=c.customer_group_id "
             + "WHERE c.deleted_at IS NULL AND c.outlet_id=#{outletId} "
             + "AND c.outlet_id IN (SELECT id FROM outlet WHERE vendor_id=#{vendorId} AND deleted_at IS NULL) "
-            + "AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') "
-            + "OR c.code LIKE CONCAT('%', #{name}, '%') OR c.email LIKE CONCAT('%', #{name}, '%')) "
+            + "AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') "
+            + "OR c.code LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') OR c.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%')) "
             + "ORDER BY c.name LIMIT 10")
     List<Customer> searchForSell(@Param("name") String name, @Param("vendorId") Long vendorId,
                                  @Param("outletId") Long outletId);
@@ -40,11 +40,11 @@ public interface CustomerMapper {
                g.name AS customer_group_name
         FROM customer c LEFT JOIN customer_group g ON g.id = c.customer_group_id
         WHERE c.deleted_at IS NULL AND c.outlet_id = #{outletId}
-          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.code LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.code LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             OR EXISTS (SELECT 1 FROM customer_email ce
-              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             ))
           <if test="filterGroups">
             AND (
@@ -111,11 +111,11 @@ public interface CustomerMapper {
     @Select("""
         <script>
         SELECT COUNT(*) FROM customer c WHERE c.deleted_at IS NULL AND c.outlet_id = #{outletId}
-          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.code LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.code LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             OR EXISTS (SELECT 1 FROM customer_email ce
-              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             ))
           <if test="filterGroups">
             AND (
@@ -226,11 +226,11 @@ public interface CustomerMapper {
         FROM customer c
         LEFT JOIN customer_group g ON g.id = c.customer_group_id AND g.deleted_at IS NULL
         WHERE c.deleted_at IS NULL
-          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.code LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
-            OR c.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+          AND (CAST(#{name,jdbcType=VARCHAR} AS text) IS NULL OR c.name LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.code LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
+            OR c.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             OR EXISTS (SELECT 1 FROM customer_email ce
-              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
+              WHERE ce.customer_id = c.id AND ce.email LIKE CONCAT('%', #{name,jdbcType=VARCHAR}, '%') ESCAPE '!'
             ))
           <if test="filterGroups">
             AND (
