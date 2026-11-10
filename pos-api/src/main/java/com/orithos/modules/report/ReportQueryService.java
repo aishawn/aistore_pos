@@ -74,6 +74,154 @@ public class ReportQueryService {
                 toDecimal(row.get("transaction_count")).longValue());
     }
 
+    /**
+     * Daily Sales History groups from the native ledger only. Refund sales
+     * (negative totals / linked refunds) are counted separately when present.
+     */
+    public Map<String, Object> nativeSalesHistory(long outletId, LocalDate from, LocalDate to) {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) AS date,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL) AS sales_transactions,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL) AS refund_transactions,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
+                       COALESCE(SUM(s.total_price), 0) AS net_sales,
+                       COALESCE(SUM(s.total_tax), 0) AS tax
+                FROM sale s
+                WHERE s.outlet_id = ?
+                  AND s.status IN ('COMPLETED', 'REFUNDED')
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
+                GROUP BY COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at))
+                ORDER BY date DESC
+                """, outletId, sqlDate(from), sqlDate(to));
+        List<Map<String, Object>> days = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("date", String.valueOf(row.get("date")));
+            day.put("salesTransactions", toDecimal(row.get("sales_transactions")).longValue());
+            day.put("refundTransactions", toDecimal(row.get("refund_transactions")).longValue());
+            day.put("salesAmount", toDecimal(row.get("sales_amount")).setScale(2, RoundingMode.HALF_UP));
+            day.put("refundAmount", toDecimal(row.get("refund_amount")).setScale(2, RoundingMode.HALF_UP));
+            day.put("netSales", toDecimal(row.get("net_sales")).setScale(2, RoundingMode.HALF_UP));
+            day.put("tax", toDecimal(row.get("tax")).setScale(2, RoundingMode.HALF_UP));
+            days.add(day);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source", "orithos_ledger");
+        result.put("from", from.toString());
+        result.put("to", to.toString());
+        result.put("days", days);
+        return result;
+    }
+
+    /** Native ledger only, including source sales imported into that ledger. No external fallback. */
+    public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
+        requireReportOutlet(vendorId, outletId);
+        List<Map<String, Object>> daily = jdbc.queryForList("""
+                SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
+                       COALESCE(SUM(s.total_price), 0) AS revenue,
+                       COALESCE(SUM(s.total_tax), 0) AS tax,
+                       COUNT(*) AS transaction_count,
+                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
+                       COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
+                         (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
+                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                FROM sale s
+                LEFT JOIN LATERAL (
+                  SELECT COUNT(*) AS line_count,
+                         SUM(si.cost * si.quantity) AS cost,
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count
+                  FROM sale_item si
+                  WHERE si.sale_id = s.id AND si.outlet_id = s.outlet_id
+                ) line ON TRUE
+                WHERE s.outlet_id = ? AND s.status = 'COMPLETED'
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                GROUP BY 1
+                ORDER BY date
+                """, outletId, sqlDate(from), sqlDate(to));
+        List<Map<String, Object>> products = jdbc.queryForList("""
+                SELECT COALESCE(p.id, 0) AS id,
+                       COALESCE(p.name, si.note, 'Unknown product') AS name,
+                       COALESCE(SUM(si.total_price), 0) AS revenue,
+                       COALESCE(SUM(si.quantity), 0) AS quantity
+                FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
+                LEFT JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id
+                WHERE s.outlet_id = ? AND s.status = 'COMPLETED'
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                GROUP BY COALESCE(p.id, 0), COALESCE(p.name, si.note, 'Unknown product')
+                ORDER BY revenue DESC LIMIT 10
+                """, outletId, sqlDate(from), sqlDate(to));
+        return nativeOverviewPayload(from, to, daily, products);
+    }
+
+    private void requireReportOutlet(long vendorId, long outletId) {
+        Integer owned = jdbc.queryForObject("SELECT COUNT(*) FROM outlet WHERE id = ? AND vendor_id = ? AND deleted_at IS NULL",
+                Integer.class, outletId, vendorId);
+        if (owned == null || owned != 1) {
+            throw new com.orithos.common.BusinessException(40300, "The report outlet is not available to this vendor.");
+        }
+    }
+
+    static Map<String, Object> nativeOverviewPayload(LocalDate from, LocalDate to,
+                                                     List<Map<String, Object>> daily,
+                                                     List<Map<String, Object>> products) {
+        BigDecimal revenue = BigDecimal.ZERO;
+        BigDecimal cost = BigDecimal.ZERO;
+        BigDecimal tax = BigDecimal.ZERO;
+        long transactions = 0;
+        long costMissingCount = 0;
+        long taxMissingCount = 0;
+        List<Map<String, Object>> dailyTrend = new ArrayList<>();
+        for (Map<String, Object> row : daily) {
+            revenue = revenue.add(toDecimal(row.get("revenue")));
+            cost = cost.add(toDecimal(row.get("cost")));
+            tax = tax.add(toDecimal(row.get("tax")));
+            transactions += toDecimal(row.get("transaction_count")).longValue();
+            costMissingCount += toDecimal(row.get("cost_missing_count")).longValue();
+            taxMissingCount += toDecimal(row.get("tax_missing_count")).longValue();
+            Map<String, Object> day = new LinkedHashMap<>(row);
+            boolean dayCostAvailable = toDecimal(row.get("cost_missing_count")).signum() == 0;
+            boolean dayTaxAvailable = toDecimal(row.get("tax_missing_count")).signum() == 0;
+            day.put("costAvailable", dayCostAvailable);
+            day.put("taxAvailable", dayTaxAvailable);
+            day.put("cost", dayCostAvailable ? money(row.get("cost")) : null);
+            day.put("tax", dayTaxAvailable ? money(row.get("tax")) : null);
+            day.put("grossProfit", dayCostAvailable && dayTaxAvailable
+                    ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("tax"))).subtract(toDecimal(row.get("cost"))))
+                    : null);
+            dailyTrend.add(day);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source", "orithos_ledger");
+        result.put("from", from.toString());
+        result.put("to", to.toString());
+        result.put("timeZone", AustraliaTime.ZONE.getId());
+        result.put("revenue", money(revenue));
+        result.put("netRevenue", taxMissingCount == 0 ? money(revenue.subtract(tax)) : null);
+        result.put("cost", costMissingCount == 0 ? money(cost) : null);
+        result.put("tax", taxMissingCount == 0 ? money(tax) : null);
+        result.put("taxAvailable", taxMissingCount == 0);
+        result.put("costAvailable", costMissingCount == 0);
+        result.put("grossProfit", costMissingCount == 0 && taxMissingCount == 0 ? money(revenue.subtract(tax).subtract(cost)) : null);
+        result.put("transactions", transactions);
+        result.put("dailyTrend", dailyTrend);
+        result.put("topProducts", products);
+        result.put("inventoryAvailable", false);
+        return result;
+    }
+
+    private static BigDecimal money(Object value) {
+        return toDecimal(value).setScale(2, RoundingMode.HALF_UP);
+    }
+
     public List<DailySalesReport> weeklySales(long outletId, LocalDate date) {
         LocalDate today = date == null ? AustraliaTime.today() : date;
         LocalDate weekStart = today.with(DayOfWeek.MONDAY);

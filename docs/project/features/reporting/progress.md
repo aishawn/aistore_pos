@@ -1,6 +1,12 @@
 # Reporting Progress
 
-Updated: 2026-11-07. Owner: TBD.
+Updated: 2026-11-10. Owner: TBD.
+
+## Native ledger cutover (2026-11-10)
+
+- `sale.source_system` / `sale.external_id` plus `ShopfrontNativeSaleImporter` upsert Shopfront payloads into native `sale`/`sale_item` (idempotent; no stock moves). Continuous crawler `sales:upsert` writes the native ledger; `sales:promote-native` backfills from `shopfront_sale*`.
+- Reports/UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, and Overview Store Pulse read `native-overview` / `native-sales-history` only. Products, suppliers, inventory report, and Sell use Orithos APIs; Shopfront report routes redirect; `/api/shopfront-source` returns 410.
+- Java 21 `mvn -B clean verify` PASS locally (`ShopfrontNativeSaleImporterTest` 3/3; full Surefire green). Remaining online: promote SKR+Demo mirror for Adelaide `2026-11-09` parity (`$5,038.48` / 162), deploy `main`, confirm authenticated dashboard `source=orithos_ledger`.
 
 ## Product catalogue read latency (2026-11-08)
 

@@ -3,11 +3,14 @@ package com.orithos.modules.report;
 import com.orithos.common.ApiResult;
 import com.orithos.common.AustraliaTime;
 import com.orithos.modules.ai.report.TenantContextFactory;
+import com.orithos.security.PermissionAccess;
+import com.orithos.security.CurrentUser;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -22,14 +25,17 @@ public class ReportController {
     private final ReportMapper reportMapper;
     private final ReportQueryService reportQueryService;
     private final TenantContextFactory tenantContextFactory;
+    private final PermissionAccess permissionAccess;
 
     public ReportController(RedisTemplate<String, Object> redis, ReportMapper reportMapper,
                             ReportQueryService reportQueryService,
-                            TenantContextFactory tenantContextFactory) {
+                            TenantContextFactory tenantContextFactory,
+                            PermissionAccess permissionAccess) {
         this.redis = redis;
         this.reportMapper = reportMapper;
         this.reportQueryService = reportQueryService;
         this.tenantContextFactory = tenantContextFactory;
+        this.permissionAccess = permissionAccess;
     }
 
     @GetMapping("/daily-sales")
@@ -40,6 +46,40 @@ public class ReportController {
             return ApiResult.ok(DailySalesReport.of(AustraliaTime.today(), null, null, 0));
         }
         return ApiResult.ok(reportQueryService.dailySales(outletId, AustraliaTime.today()));
+    }
+
+    @GetMapping("/native-overview")
+    public ApiResult<Map<String, Object>> nativeOverview(@RequestParam LocalDate from,
+                                                          @RequestParam LocalDate to) {
+        permissionAccess.requirePermission("reports.dashboard");
+        Long outletId = CurrentUser.outletId();
+        Long vendorId = CurrentUser.vendorId();
+        if (outletId == null || vendorId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
+        }
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 365) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 366 days.");
+        }
+        return ApiResult.ok(reportQueryService.nativeOverview(vendorId, outletId, from, to));
+    }
+
+    @GetMapping("/native-sales-history")
+    public ApiResult<Map<String, Object>> nativeSalesHistory(@RequestParam LocalDate from,
+                                                              @RequestParam LocalDate to) {
+        permissionAccess.requirePermission("reports.dashboard");
+        var tenant = tenantContextFactory.fromSecurity();
+        Long outletId = tenant.requireOutletId();
+        if (outletId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
+        }
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 800) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 801 days.");
+        }
+        return ApiResult.ok(reportQueryService.nativeSalesHistory(outletId, from, to));
     }
 
     @GetMapping("/weekly-sales")

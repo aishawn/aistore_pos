@@ -1,5 +1,5 @@
-import { OrithosOverviewPage } from "@/components/OrithosOverviewPage";
+import { NativeReportsDashboardPage } from "@/components/NativeReportsDashboardPage";
 
 export default function DashboardPage() {
-  return <OrithosOverviewPage />;
+  return <NativeReportsDashboardPage />;
 }

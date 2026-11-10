@@ -65,6 +65,7 @@ public class ShopfrontIntegrationController {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final ShopfrontNativeSaleImporter nativeSaleImporter;
     private final String token;
     private final boolean enabled;
     private final boolean businessWriteEnabled;
@@ -73,11 +74,13 @@ public class ShopfrontIntegrationController {
     public ShopfrontIntegrationController(
             JdbcTemplate jdbc,
             ObjectMapper objectMapper,
+            ShopfrontNativeSaleImporter nativeSaleImporter,
             @Value("${app.shopfront.integration-token:}") String token,
             @Value("${app.shopfront.integration-enabled:false}") boolean enabled,
             @Value("${app.shopfront.business-write-enabled:false}") boolean businessWriteEnabled) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
+        this.nativeSaleImporter = nativeSaleImporter;
         this.token = token;
         this.enabled = enabled;
         this.businessWriteEnabled = businessWriteEnabled;
@@ -88,7 +91,16 @@ public class ShopfrontIntegrationController {
             ObjectMapper objectMapper,
             String token,
             boolean enabled) {
-        this(jdbc, objectMapper, token, enabled, false);
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper), token, enabled, false);
+    }
+
+    public ShopfrontIntegrationController(
+            JdbcTemplate jdbc,
+            ObjectMapper objectMapper,
+            String token,
+            boolean enabled,
+            boolean businessWriteEnabled) {
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper), token, enabled, businessWriteEnabled);
     }
 
     @GetMapping("/mappings")
@@ -158,6 +170,52 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> sales(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                 @RequestBody JsonNode body) {
         return stage(supplied, "sales", body);
+    }
+
+    /**
+     * One-shot promotion of durable {@code shopfront_sale*} rows into the native
+     * {@code sale}/{@code sale_item} ledger for mapped outlets (no stock moves).
+     */
+    @PostMapping("/sales:promote-native")
+    @Transactional
+    public ApiResult<Map<String, Object>> promoteNativeSales(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        ensureMappingTable();
+        ensureShadowTables();
+        String requestedStore = body == null ? "" : body.path("store_key").asText("").trim();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, company_id, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
+        Map<String, Object> byStore = new LinkedHashMap<>();
+        int stores = 0;
+        for (Map<String, Object> mapping : mappings) {
+            if (!isEnabled(mapping.get("enabled"))) {
+                continue;
+            }
+            String storeKey = String.valueOf(mapping.get("store_key"));
+            if (!requestedStore.isBlank() && !requestedStore.equals(storeKey)) {
+                continue;
+            }
+            long outletId = longValue(mapping.get("outlet_id"));
+            if (outletId <= 0) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "Shopfront mapping has no numeric POS outlet_id for store " + storeKey);
+            }
+            byStore.put(storeKey, nativeSaleImporter.promoteFromMirror(storeKey, outletId));
+            stores++;
+        }
+        if (stores == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    requestedStore.isBlank()
+                            ? "No enabled Shopfront store mappings found"
+                            : "No enabled Shopfront store mapping for " + requestedStore);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "PROMOTED");
+        result.put("stores", stores);
+        result.put("by_store", byStore);
+        return ApiResult.ok(result);
     }
 
     @PostMapping("/suppliers:upsert")
@@ -463,11 +521,22 @@ public class ShopfrontIntegrationController {
             var json = objectMapper.writeValueAsString(audit);
             String status = mappingReady ? "STAGED" : "BLOCKED_MAPPING";
             Map<String, Object> business = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
+            Map<String, Object> nativeLedger = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             if (mappingReady) {
                 ensureShadowTables();
                 persistShadow(type, store, mappingRows.get(0), items, completeInventorySnapshot);
                 if (businessWriteForType) {
                     business = importBusiness(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                }
+                if ("sales".equals(type)) {
+                    long outletId = longValue(mappingRows.get(0).get("outlet_id"));
+                    if (outletId <= 0) {
+                        throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
+                    }
+                    Map<String, Object> upserted = nativeSaleImporter.upsertSales(store, outletId, items);
+                    Map<String, Object> nativeResult = new LinkedHashMap<>(upserted);
+                    nativeResult.put("enabled", true);
+                    nativeLedger = nativeResult;
                 }
             }
             Long id;
@@ -485,6 +554,7 @@ public class ShopfrontIntegrationController {
             result.put("mapping_ready", mappingReady);
             result.put("business_write", businessWriteForType && mappingReady);
             result.put("shadow_write", mappingReady);
+            result.put("native_ledger", nativeLedger);
             result.put("business", business);
             return ApiResult.ok(result);
         } catch (Exception e) {

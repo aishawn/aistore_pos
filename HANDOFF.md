@@ -1,37 +1,25 @@
 # Handoff
 
-> Generated: 2026-11-10 ~15:27 (UTC+8)  
+> Generated: 2026-11-10 ~16:55 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Session summary: Demo+SKR Orithos-only cutover closed against eight deliverables; Shopfront is recurring SoT into both stores.  
+> Session summary: Native ledger cutover — Shopfront sales → `sale`/`sale_item`; reports/UI Orithos-only.  
 > Canonical Chinese cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
 ## Goal
 
-Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the recurring external SoT synced into both tenants. Odoo must stay **non-writable** (no dual-write). Do not use Shopfront register scrape.
+Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the recurring external SoT synced into both tenants. Browser pages read **pos-api only** (no crawler / `/api/shopfront-source` / Odoo report RPCs). Odoo must stay **non-writable** (no dual-write).
 
 ## Current State
 
-**Working (verified 2026-11-10):**
-- Staging parity SKR = Demo: products `11033`, inventory `10852`, sales `156588`, sale_items `306934`, suppliers `109`, PO `2370`.
-- Native sell/receive both tenants (API UAT): SKR sale `12` / order `2`; Demo sale `14` (`INV-1794280936903`) / order `3`.
-- Dokploy live: `ODOO_BUSINESS_WRITE_ENABLED=false`, `ODOO_IMPORT_ENABLED=false`, `ODOO_STOCKTAKE_WRITE_ENABLED=false`; crawler ledger `skr:orithos`; `POS_API_SECONDARY_STORE_KEY=demo`; `POS_API_BASE_URL=http://backend:8080`.
-- Inventory store-pulse: `shopfront_reporting_api` / `fresh` via staff Misc Inventory At Date + Name→ID enrich (OAuth Special Report still POST **405**).
-- Crawler staff Misc **auto re-login** on expired session: `shopfront-crawler` `22b33d9`, Dokploy deploy `p4FTQUwOS42ecuI4INgG3` done `2026-11-10T07:06:24Z`.
-- Schedule: Adelaide `02:30,23:00`, interval 30m (`GET https://crawler.orithos.com.au/api/sync/schedule`).
-- AIWEI page Network: `orders(type:ORDER)=2370` ≡ staging PO; suppliers `109`; products GraphQL `10855` = catalog current.
-- Xero interim path recorded: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*` (gitignored `/docs/`).
-- Owner waived durable PG backup this round («不用备份»).
-- Eight-deliverable audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` → `goal_complete=true`.
-- Repos: POS `origin/main` @ `709ac786` (handoff); crawler `origin/main` @ `22b33d9`.
+**In progress (2026-11-10 native ledger cutover):**
+- Schema: `sale.source_system` + `sale.external_id`; importer `ShopfrontNativeSaleImporter`; continuous `sales:upsert` writes native ledger; `sales:promote-native` backfills from mirror (no stock moves).
+- UI: `/dashboard`, `/reports/dashboard`, `/reports/sales`, `/history`, Overview pulse → native report APIs; products/suppliers/inventory/sell → Orithos; Shopfront report routes redirect; `/api/shopfront-source` → 410.
+- Acceptance pending after deploy: Adelaide `2026-11-09` native totals = `$5,038.48` / 162 for SKR and Demo; dashboard `source=orithos_ledger`.
 
-**Known gaps (not blocking day-to-day Orithos):**
-- OAuth `/api/v2/reports/inventory-at-date` still 405 — staff Misc is the operational path.
-- Live Shopfront GraphQL `sales.totalCount≈14317` ≠ staging archive `156588` (crawler↔POS still aligned; do not treat as sync drift).
-- `barcode_unmatched=62`; staging products `11033` includes historical beyond GraphQL current `10855`.
-- Shared DB name `postgres` → `isolated=false` expected while `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`.
-- Odoo host still up for history/BFF remnants — writes off; not physically decommissioned.
-- Xero is CSV import/review path, not live Xero API.
-- Formal pilot GO docs (`PILOT_RELEASE_READINESS`) may still say NO-GO for older unrelated bars; this cutover objective is closed.
+**Still true from prior cutover:**
+- Staging parity SKR = Demo mirror counts; Odoo business writes off; crawler `POS_API_SECONDARY_STORE_KEY=demo`; shared DB `postgres` / `isolated=false` expected.
+- OAuth inventory-at-date still 405 — staff Misc path for inventory refresh.
+- Xero remains CSV path; formal pilot GO may still be NO-GO for backup/Xero/Odoo-retire bars.
 
 ## Files in Play
 
@@ -119,3 +107,11 @@ Operational SoT is Orithos + Shopfront sync. Keep Odoo writes false forever for 
 - Search: `POS_API_SECONDARY_STORE_KEY demo skr:orithos`
 - Search: `orders type ORDER 2370 sales totalCount 14317`
 - Audit file: `UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10`
+
+## Owner-Authorized Odoo Retirement (2026-11-10)
+
+The owner authorized complete Odoo retirement and confirmed that existing Orithos/Shopfront data is sufficient; do not plan an Odoo history backfill. This does not mean the code or service is already retired.
+
+Current source candidate moves `/dashboard`, `/reports/dashboard`, and `/reports/sales` to the Orithos native ledger through `GET /api/reports/native-overview`. It excludes Shopfront mirror history, requires `reports.dashboard`, scopes by authenticated outlet, and reports inventory/cost as unavailable when the native endpoint cannot verify those values. It is not built, deployed, or online-accepted. The former untracked Shopfront fetch helper was renamed/migrated to `pos-ui/src/lib/orithos-api-fetch.ts`; it has no remaining Shopfront URL behavior.
+
+Remaining Odoo dependencies include other product, inventory, purchasing, customer, pricing, register/session and AI flows; Next `/api/odoo/*` BFF/session recovery and clients; Spring Odoo clients/provisioners/bindings and legacy schema; and Compose/Dokploy environment references. Migrate each user-visible function to an outlet-scoped Orithos API and reconcile its data/permissions before deleting its Odoo path. Preserve `APP_ODOO_ONLY_MODE`'s legacy POS API write protection until an equivalent guard is in place. Do not shut down Odoo, remove its network/configuration, push Java changes, or claim zero runtime dependency until the exact candidate passes Java 21 `mvn -B clean verify`, starts with no Odoo settings/network access, and passes SKR/Demo acceptance. Owner preference remains no local application build; no production business writes.

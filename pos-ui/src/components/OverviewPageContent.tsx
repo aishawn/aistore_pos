@@ -243,22 +243,18 @@ export function OverviewPageContent({
               <dl>
                 <div>
                   <dt>Sales</dt>
-                  <dd>{data.shopfrontReportsMode === "source" && !data.todayShopfrontSalesAvailable ? "—" : money(data.revenue, data.currency)}</dd>
+                  <dd>{money(data.revenue, data.currency)}</dd>
                 </div>
                 <div>
                   <dt>Transactions</dt>
-                  <dd>{data.shopfrontReportsMode === "source" && !data.todayShopfrontSalesAvailable ? "—" : data.transactions ?? "—"}</dd>
+                  <dd>{data.transactions ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt>Open registers · Orithos</dt>
-                  <dd>{data.openRegisters ?? "—"}</dd>
+                  <dt>Source</dt>
+                  <dd>Orithos</dd>
                 </div>
               </dl>
-              {data.shopfrontReportsMode === "source" && <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">
-                {data.todayShopfrontSalesAvailable
-                  ? `Sales and transactions from Shopfront${data.todaySourceFetchedAt ? ` · ${new Intl.DateTimeFormat("en-AU", { timeZone: data.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(data.todaySourceFetchedAt))}` : ""}`
-                  : "Shopfront sales report unavailable"}
-              </p>}
+              <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">Sales and transactions from the Orithos ledger</p>
               {canReport ? (
                 <Link className="ov-report-link" href="/reports/dashboard">
                   View reports <ArrowRight size={16} aria-hidden="true" />
@@ -342,7 +338,7 @@ export function OverviewPageContent({
                 </div>
               </div>
               <aside className="ov-radial-side" aria-label="Store summary">
-                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} sandboxNote={demoSandbox} /> : loading ? (
+                {data ? <OverviewStorePulse data={data} loading={loading} canReport={canReport} onRefresh={() => void load(true)} /> : loading ? (
                   <section className="ov-pulse-panel ov-pulse-loading" aria-busy="true" aria-label="Loading store pulse">
                     <div className="ov-pulse-heading">
                       <div>

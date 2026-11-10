@@ -866,8 +866,12 @@ export interface SellSearchResult {
 export interface CustomerListItem {
   id: string | number;
   name: string;
+  code?: string | null;
+  phone?: string | null;
+  email?: string | null;
   customerGroupName?: string | null;
   loyaltyPoints?: number | null;
+  currentOwing?: number | null;
 }
 
 /** Search customers via the dedicated customers API (not sell unified search). */

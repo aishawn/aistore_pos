@@ -5,6 +5,8 @@ import com.orithos.common.PageResult;
 import com.orithos.common.SqlLikeUtils;
 import com.orithos.modules.customer.mapper.CustomerGroupMapper;
 import com.orithos.modules.customer.mapper.CustomerMapper;
+import com.orithos.security.CurrentUser;
+import com.orithos.common.BusinessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +62,7 @@ public class CustomerController {
                                                 @RequestParam(required = false) LocalDate asOf,
                                                 @RequestParam(defaultValue = "1") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
+        Long outletId = requireOutlet();
         GroupFilter filter = parseGroupFilter(groupIds, groupId);
         PriceListFilter priceListFilter = parsePriceListFilter(priceListId);
         String search = normalizeSearch(name);
@@ -67,14 +70,20 @@ public class CustomerController {
         int offset = Math.max(0, (page - 1) * size);
         var items = customerMapper.page(search, filter.ids(), filter.includeNoGroup(), filter.active(),
                 priceListFilter.id(), priceListFilter.noPriceList(), priceListFilter.active(),
-                minOwing, maxOwing, asOfEnd, size, offset);
+                minOwing, maxOwing, asOfEnd, outletId, size, offset);
         return ApiResult.ok(PageResult.of(
                 items,
                 customerMapper.count(search, filter.ids(), filter.includeNoGroup(), filter.active(),
                         priceListFilter.id(), priceListFilter.noPriceList(), priceListFilter.active(),
-                        minOwing, maxOwing, asOfEnd),
+                        minOwing, maxOwing, asOfEnd, outletId),
                 page,
                 size));
+    }
+
+    private static Long requireOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
+        return outletId;
     }
 
     /** Comma-separated group ids; use {@code __none__} to include customers with no group. */

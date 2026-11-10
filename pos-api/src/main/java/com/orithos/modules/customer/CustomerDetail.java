@@ -10,6 +10,8 @@ import java.util.List;
 /** Full customer payload for read/write, including joined contact address data. */
 @Data
 public class CustomerDetail {
+    /** Store scope assigned by the authenticated outlet; never accepted from browser input. */
+    private Long outletId;
     private Long id;
     private String name;
     private String firstName;

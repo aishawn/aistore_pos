@@ -39,7 +39,7 @@ public interface CustomerMapper {
                c.created_at,
                g.name AS customer_group_name
         FROM customer c LEFT JOIN customer_group g ON g.id = c.customer_group_id
-        WHERE c.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL AND c.outlet_id = #{outletId}
           AND (#{name} IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
             OR c.code LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
             OR c.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
@@ -104,12 +104,13 @@ public interface CustomerMapper {
                         @Param("minOwing") BigDecimal minOwing,
                         @Param("maxOwing") BigDecimal maxOwing,
                         @Param("asOfEnd") LocalDateTime asOfEnd,
+                        @Param("outletId") Long outletId,
                         @Param("size") int size,
                         @Param("offset") int offset);
 
     @Select("""
         <script>
-        SELECT COUNT(*) FROM customer c WHERE c.deleted_at IS NULL
+        SELECT COUNT(*) FROM customer c WHERE c.deleted_at IS NULL AND c.outlet_id = #{outletId}
           AND (#{name} IS NULL OR c.name LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
             OR c.code LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
             OR c.email LIKE CONCAT('%', #{name}, '%') ESCAPE '!'
@@ -172,7 +173,11 @@ public interface CustomerMapper {
                @Param("filterPriceList") boolean filterPriceList,
                @Param("minOwing") BigDecimal minOwing,
                @Param("maxOwing") BigDecimal maxOwing,
-               @Param("asOfEnd") LocalDateTime asOfEnd);
+               @Param("asOfEnd") LocalDateTime asOfEnd,
+               @Param("outletId") Long outletId);
+
+    @Select("SELECT outlet_id FROM customer WHERE id = #{id} AND deleted_at IS NULL")
+    Long findOutletId(@Param("id") Long id);
 
     @Select("SELECT * FROM customer WHERE id = #{id}")
     Customer findById(Long id);
@@ -254,12 +259,12 @@ public interface CustomerMapper {
                               gender, email, phone, mobile, fax, allow_marketing_emails, invoice_message,
                               comments, customer_group_id, override_customer_group, billing_contact_id,
                               delivery_contact_id, loyalty_enabled, loyalty_points, disable_promotions,
-                              price_list_id, account_limit, current_owing)
+                              price_list_id, account_limit, current_owing, outlet_id)
         VALUES (#{name}, #{firstName}, #{lastName}, #{code}, #{company}, #{businessNumber}, #{birthday},
                 #{gender}, #{email}, #{phone}, #{mobile}, #{fax}, #{allowMarketingEmails}, #{invoiceMessage},
                 #{comments}, #{customerGroupId}, #{overrideCustomerGroup}, #{billingContactId},
                 #{deliveryContactId}, #{loyaltyEnabled}, #{loyaltyPoints}, #{disablePromotions},
-                #{priceListId}, #{accountLimit}, #{currentOwing})
+                #{priceListId}, #{accountLimit}, #{currentOwing}, #{outletId})
         """)
     int insertDetail(CustomerDetail c);
 

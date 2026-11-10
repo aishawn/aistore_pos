@@ -43,6 +43,7 @@ public class CustomerService {
     }
 
     public CustomerDetail getDetail(Long id) {
+        ensureInCurrentOutlet(id);
         CustomerDetail detail = customerMapper.findDetailById(id);
         if (detail == null) {
             throw new BusinessException("Customer not found.");
@@ -52,6 +53,7 @@ public class CustomerService {
     }
 
     public List<CustomerRecentSaleLine> getRecentSaleLines(Long id, int limit) {
+        ensureInCurrentOutlet(id);
         if (customerMapper.findDetailById(id) == null) {
             throw new BusinessException("Customer not found.");
         }
@@ -59,6 +61,7 @@ public class CustomerService {
     }
 
     public List<CustomerRevision> getRevisions(Long id, int page, int size) {
+        ensureInCurrentOutlet(id);
         if (customerMapper.findDetailById(id) == null) {
             throw new BusinessException("Customer not found.");
         }
@@ -72,6 +75,7 @@ public class CustomerService {
     @Transactional
     public CustomerDetail create(CustomerDetail input) {
         CustomerDetail detail = prepareForSave(input);
+        detail.setOutletId(requireCurrentOutlet());
         if (detail.getCurrentOwing() == null) detail.setCurrentOwing(BigDecimal.ZERO);
 
         detail.setBillingContactId(upsertContact(null, billingContact(detail)));
@@ -93,6 +97,7 @@ public class CustomerService {
 
     @Transactional
     public CustomerDetail update(Long id, CustomerDetail input) {
+        ensureInCurrentOutlet(id);
         CustomerDetail existing = customerMapper.findDetailById(id);
         if (existing == null) {
             throw new BusinessException("Customer not found.");
@@ -306,11 +311,26 @@ public class CustomerService {
 
     @Transactional
     public void softDelete(Long id) {
+        ensureInCurrentOutlet(id);
         if (customerMapper.findDetailById(id) == null) {
             throw new BusinessException("Customer not found.");
         }
         customerMapper.softDelete(id);
         customerEmailMapper.syncDeletedAtByCustomerId(id);
+    }
+
+    private static Long requireCurrentOutlet() {
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new BusinessException(40100, "Authenticated outlet is required.");
+        return outletId;
+    }
+
+    private void ensureInCurrentOutlet(Long id) {
+        Long outletId = requireCurrentOutlet();
+        Long actual = customerMapper.findOutletId(id);
+        if (actual == null || !outletId.equals(actual)) {
+            throw new BusinessException(40410, "Customer not found.");
+        }
     }
 
     private RuntimeException constraintOrRethrow(RuntimeException e) {

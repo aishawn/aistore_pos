@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { OdooRegisterPage } from "@/components/OdooRegisterPage";
+import { OrithosRegisterPage } from "@/components/OrithosRegisterPage";
 
-/** Keep the named Sell URL on the same production register implementation as /. */
+/** Keep the named Sell URL on the same native register as /. */
 export default function SellRoute() {
-  return <OdooRegisterPage />;
+  return <OrithosRegisterPage />;
 }

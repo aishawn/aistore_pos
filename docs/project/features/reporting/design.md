@@ -1,8 +1,10 @@
 # Reporting Design
 
-Updated: 2026-11-07. Owner: TBD.
+Updated: 2026-11-10. Owner: TBD.
 
 ## Scope and data path
+
+Primary reporting reads are Orithos-only. `GET /api/reports/native-overview?from=&to=` powers `/dashboard`, `/reports/dashboard`, and `/reports/sales`. `GET /api/reports/native-sales-history?from=&to=` powers `/history`. Both require `reports.dashboard`, derive the outlet from the authenticated tenant, and query only native `sale` / `sale_item`. Shopfront history is promoted into that ledger via `sales:upsert` / `sales:promote-native` (no historical stock moves). Browser `/api/shopfront-source` reads are retired (HTTP 410). Gross profit/cost are unavailable when any included sale has no known cost; overview returns `inventoryAvailable=false` until a verified native inventory snapshot is wired into the pulse.
 
 The Products cost reconciliation audit captures Odoo POS orders/lines, received Shopfront purchase mirrors, and Shopfront sales evidence using read-only RPCs. Its capture runs as an in-process background job: `POST /api/odoo/cost-reconciliation` returns a job ID immediately, and an authorized same-store `GET ?job=` returns running/completed/failed status. Completed audit and source snapshot remain under the existing ignored `.local/cost-reconciliation/` directory. Job status is process-local and is lost on service restart; clients must handle an unavailable job by starting a new audit. An active-job guard keyed by company and store scope reuses only requests with the same dates and product limit; a different range receives HTTP 409 while the current capture runs. This avoids holding the browser-to-proxy request open while the full evidence set is read.
 

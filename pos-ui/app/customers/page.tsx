@@ -1,8 +1,8 @@
-import { OdooCustomerDirectoryPage } from "@/components/OdooCustomerDirectoryPage";
+import { NativeCustomerDirectoryPage } from "@/components/NativeCustomerDirectoryPage";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default function CustomersPage() {
-  return <OdooCustomerDirectoryPage />;
+  return <NativeCustomerDirectoryPage />;
 }

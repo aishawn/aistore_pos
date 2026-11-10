@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { OdooRegisterPage } from "@/components/OdooRegisterPage";
+import { redirect } from "next/navigation";
 
 export default function OdooRegisterRoute() {
-  return <OdooRegisterPage />;
+  redirect("/register");
 }
