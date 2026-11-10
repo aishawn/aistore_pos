@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Owner-locked UI shells
 
-The owner repeatedly asked to keep the full operational shells. Do **not** replace these route targets with `Native*`, `ShopfrontSourceDataPage` (for Products), or `OrithosRegisterPage` unless the owner explicitly asks in the current chat.
+The owner repeatedly asked to keep the full operational shells for Sell / Stock. Do **not** replace these route targets with `Native*` or stripped pages unless the owner explicitly asks in the current chat.
 
 | Route | Required component |
 |-------|--------------------|
@@ -16,11 +16,19 @@ The owner repeatedly asked to keep the full operational shells. Do **not** repla
 | `/customers` | `OdooCustomerDirectoryPage` |
 | `/suppliers` | `SupplierDirectoryPage` from `OdooSupplierDirectoryPage` |
 | `/dashboard` | `OrithosOverviewPage` |
-| `/reports/sales` | `ShopfrontSourceDataPage mode="sales"` |
-| `/reports/inventory` | `ShopfrontSourceDataPage mode="inventory"` |
-| `/reports/purchase` | `ShopfrontSourceDataPage mode="purchase"` |
-| `/reports/dashboard` | `ShopfrontReportsOverviewPage` |
 
-Also keep `pos-ui/src/lib/native-pos-host.ts` with an **empty** `NATIVE_POS_HOSTS` set while sell uses the Odoo register.
+## Reports exception (Shopfront browser source retired)
 
-Ledger/backend native work may continue, but must not silently rewire these page entrypoints. `Native*Page` components may exist for future cutover; they are not the live Stock/Sell shells.
+`/api/shopfront-source` returns **410**. Do not reintroduce `ShopfrontReportsOverviewPage` or `ShopfrontSourceDataPage` on live report routes unless that API is restored.
+
+| Route | Required component |
+|-------|--------------------|
+| `/reports/dashboard` | `NativeReportsDashboardPage` |
+| `/reports/sales` | `NativeSalesReportPage` |
+| `/reports/inventory` | `NativeInventoryReportPage` |
+| `/reports/purchase` | redirect to `/purchases` |
+| `/reports/shopfront/dashboard` | redirect to `/reports/dashboard` |
+
+Keep `pos-ui/src/lib/native-pos-host.ts` with an **empty** `NATIVE_POS_HOSTS` set while sell uses the Odoo register.
+
+Ledger/backend native work may continue, but must not silently rewire the Sell/Stock/Customers shells above.

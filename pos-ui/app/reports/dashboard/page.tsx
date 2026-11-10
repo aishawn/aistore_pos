@@ -1,8 +1,11 @@
-import { ShopfrontReportsOverviewPage } from "@/components/ShopfrontReportsOverviewPage";
+import { NativeReportsDashboardPage } from "@/components/NativeReportsDashboardPage";
 
 export const dynamic = "force-dynamic";
 
-/** Owner-locked shell: Shopfront reports overview. */
+/**
+ * Reports dashboard uses Orithos ledger APIs.
+ * ShopfrontReportsOverviewPage depended on /api/shopfront-source which is retired (410).
+ */
 export default function ReportingDashboardPage() {
-  return <ShopfrontReportsOverviewPage />;
+  return <NativeReportsDashboardPage />;
 }

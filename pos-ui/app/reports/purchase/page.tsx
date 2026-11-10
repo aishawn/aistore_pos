@@ -1,6 +1,9 @@
-import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
+import { redirect } from "next/navigation";
 
-/** Owner-locked shell: Shopfront source purchase report. */
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+/** Purchase report URL folds into purchasing workspace (Shopfront source report API retired). */
 export default function PurchaseReportsPage() {
-  return <ShopfrontSourceDataPage mode="purchase" />;
+  redirect("/purchases");
 }

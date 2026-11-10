@@ -1,6 +1,6 @@
-import { ShopfrontSourceDataPage } from "@/components/ShopfrontSourceDataPage";
+import { NativeSalesReportPage } from "@/components/NativeSalesReportPage";
 
-/** Owner-locked shell: Shopfront source sales report. Do not swap to Native* without explicit owner approval. */
+/** Sales report reads Orithos ledger. ShopfrontSourceDataPage depends on retired /api/shopfront-source. */
 export default function SalesReportsPage() {
-  return <ShopfrontSourceDataPage mode="sales" />;
+  return <NativeSalesReportPage />;
 }
