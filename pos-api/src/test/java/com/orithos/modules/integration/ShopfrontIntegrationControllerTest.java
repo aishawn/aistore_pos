@@ -38,6 +38,45 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void matchStatusAggregatesProductAndSaleItemCounts() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForMap(contains("FROM shopfront_product sp"), any(Object[].class)))
+                .thenReturn(Map.of(
+                        "products", 11033L,
+                        "products_missing_name", 0L,
+                        "barcode_matched", 10970L,
+                        "barcode_unmatched", 63L,
+                        "manually_mapped", 11033L,
+                        "products_unmapped", 0L));
+        when(jdbc.queryForObject(contains("WITH unmatched_products"), eq(Integer.class), any(Object[].class)))
+                .thenReturn(0);
+        when(jdbc.queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class)))
+                .thenReturn(Map.of("sale_items_missing_name", 0L, "sale_items_missing_source_product", 0L));
+        when(jdbc.queryForObject(contains("COUNT(DISTINCT outlet_id)"), eq(Integer.class), any(Object[].class)))
+                .thenReturn(1);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        var result = controller.matchStatus("token", "demo");
+
+        assertEquals(11033, result.data().get("products"));
+        assertEquals(63, result.data().get("barcode_unmatched"));
+        assertEquals(11033, result.data().get("manually_mapped"));
+        assertEquals(0, result.data().get("products_unmapped"));
+        assertEquals(0, result.data().get("sales_with_unmatched_items"));
+        assertEquals(0, result.data().get("sale_items_missing_name"));
+        assertEquals(0, result.data().get("sale_items_missing_source_product"));
+        verify(jdbc).queryForMap(contains("FROM shopfront_product sp"), any(Object[].class));
+        verify(jdbc).queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class));
+    }
+
+    @Test
     void copiesOnlyShopfrontMirrorTablesBetweenDistinctMappedOutlets() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);

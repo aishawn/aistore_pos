@@ -782,23 +782,32 @@ public class ShopfrontIntegrationController {
         ensureShadowTables();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
-        result.put("products", count("shopfront_product", storeKey));
-        result.put("products_missing_name", jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_product WHERE store_key = ? AND (name IS NULL OR TRIM(name) = '')",
-                Integer.class, storeKey));
-        result.put("barcode_matched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND sp.barcode IS NOT NULL AND EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode)", Integer.class, storeKey));
-        result.put("barcode_unmatched", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product sp WHERE sp.store_key = ? AND (sp.barcode IS NULL OR NOT EXISTS (SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode))", Integer.class, storeKey));
-        result.put("manually_mapped", jdbc.queryForObject("SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'", Integer.class, storeKey));
-        result.put("products_unmapped", jdbc.queryForObject("""
-                SELECT COUNT(*) FROM shopfront_product sp
+        Map<String, Object> productStats = jdbc.queryForMap("""
+                SELECT COUNT(*) AS products,
+                       COALESCE(SUM(CASE WHEN sp.name IS NULL OR TRIM(sp.name) = '' THEN 1 ELSE 0 END), 0) AS products_missing_name,
+                       COALESCE(SUM(CASE WHEN sp.barcode IS NOT NULL AND EXISTS (
+                           SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
+                       ) THEN 1 ELSE 0 END), 0) AS barcode_matched,
+                       COALESCE(SUM(CASE WHEN sp.barcode IS NULL OR NOT EXISTS (
+                           SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
+                       ) THEN 1 ELSE 0 END), 0) AS barcode_unmatched,
+                       (SELECT COUNT(*) FROM shopfront_product_mapping pm
+                        WHERE pm.store_key = ? AND pm.status = 'MAPPED') AS manually_mapped,
+                       COALESCE(SUM(CASE WHEN NOT EXISTS (
+                           SELECT 1 FROM shopfront_product_mapping pm
+                           WHERE pm.store_key = sp.store_key
+                             AND pm.source_product_id = sp.source_id
+                             AND pm.status = 'MAPPED'
+                       ) THEN 1 ELSE 0 END), 0) AS products_unmapped
+                FROM shopfront_product sp
                 WHERE sp.store_key = ?
-                  AND NOT EXISTS (
-                    SELECT 1 FROM shopfront_product_mapping pm
-                    WHERE pm.store_key = sp.store_key
-                      AND pm.source_product_id = sp.source_id
-                      AND pm.status = 'MAPPED'
-                  )
-                """, Integer.class, storeKey));
+                """, storeKey, storeKey);
+        result.put("products", statisticCount(productStats, "products"));
+        result.put("products_missing_name", statisticCount(productStats, "products_missing_name"));
+        result.put("barcode_matched", statisticCount(productStats, "barcode_matched"));
+        result.put("barcode_unmatched", statisticCount(productStats, "barcode_unmatched"));
+        result.put("manually_mapped", statisticCount(productStats, "manually_mapped"));
+        result.put("products_unmapped", statisticCount(productStats, "products_unmapped"));
         result.put("sales_with_unmatched_items", jdbc.queryForObject("""
                 WITH unmatched_products AS (
                     SELECT sp.source_id
@@ -829,16 +838,26 @@ public class ShopfrontIntegrationController {
                 JOIN shopfront_sale ss
                   ON ss.store_key = ? AND ss.external_id = us.external_sale_id
                 """, Integer.class, storeKey, storeKey, storeKey, storeKey));
-        result.put("sale_items_missing_name", jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (product_name IS NULL OR TRIM(product_name) = '')",
-                Integer.class, storeKey));
-        result.put("sale_items_missing_source_product", jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_sale_item WHERE store_key = ? AND (source_product_id IS NULL OR TRIM(source_product_id) = '')",
-                Integer.class, storeKey));
+        Map<String, Object> saleItemStats = jdbc.queryForMap("""
+                SELECT COALESCE(SUM(CASE WHEN product_name IS NULL OR TRIM(product_name) = '' THEN 1 ELSE 0 END), 0) AS sale_items_missing_name,
+                       COALESCE(SUM(CASE WHEN source_product_id IS NULL OR TRIM(source_product_id) = '' THEN 1 ELSE 0 END), 0) AS sale_items_missing_source_product
+                FROM shopfront_sale_item
+                WHERE store_key = ?
+                """, storeKey);
+        result.put("sale_items_missing_name", statisticCount(saleItemStats, "sale_items_missing_name"));
+        result.put("sale_items_missing_source_product", statisticCount(saleItemStats, "sale_items_missing_source_product"));
         result.put("inventory_outlets", jdbc.queryForObject(
                 "SELECT COUNT(DISTINCT outlet_id) FROM shopfront_inventory WHERE store_key = ?",
                 Integer.class, storeKey));
         return ApiResult.ok(result);
+    }
+
+    private static int statisticCount(Map<String, Object> statistics, String name) {
+        Object value = statistics.get(name);
+        if (!(value instanceof Number count)) {
+            throw new IllegalStateException("Missing numeric Shopfront match statistic: " + name);
+        }
+        return count.intValue();
     }
 
     @GetMapping("/product-mappings")
