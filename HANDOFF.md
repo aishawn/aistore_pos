@@ -1,97 +1,121 @@
 # Handoff
 
-> Generated: 2026-11-10 ~15:17 (UTC+8)  
+> Generated: 2026-11-10 ~15:27 (UTC+8)  
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`)  
-> Canonical cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
-
-## Shopfront Alignment Update (2026-11-10 15:17)
-
-- **Operational cutover SKR+Demo: PASS** (staging mirror, Odoo writes off, native sell/receive both tenants). Shared DB `postgres` + `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true` remains expected (`isolated=false`).
-- Staging parity (SKR=Demo): products `11033`, inventory `10852`, sales `156588`, sale_items `306934`, suppliers `109`, PO `2370`.
-- Inventory store-pulse: OAuth Special Report still POST **405**; **staff Misc Inventory At Date + Name→ID enrich** path live → `source-reports/inventory?refresh=true` = `shopfront_reporting_api` / `fresh` (crawler `22b33d9` deployed). Unforced reads may still serve GraphQL snapshot cache.
-- Schedule: Adelaide `02:30,23:00`, interval 30m (`GET /api/sync/schedule`).
-- **Page Network Sales/Purchase (AIWEI):** session `POST /graphql` (not `/api/v2`). Purchase `orders(type:ORDER)=2370` ≡ staging PO. Suppliers `109`. Products GraphQL `10855` = catalog current (staging `11033` includes historical). Sales: crawler↔POS `156588` aligned; live GraphQL `sales.totalCount≈14317` is a **UI connection totalCount vs historical archive** gap, not crawler/POS drift. Evidence: `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` (gitignored `/docs/`).
-- Owner **「不用备份」** — durable PG/S3 backup waived this round. Xero **acceptance path recorded**: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*` (CSV review/import; not live Xero API).
-- Crawler staff Misc **auto re-login** on `22b33d9` — Dokploy deploy `p4FTQUwOS42ecuI4INgG3` done `2026-11-10T07:06:24Z`.
-- Objective eight-deliverable audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` → **`goal_complete=true`** (Odoo not live ledger; Orithos+Shopfront SoT for Demo+SKR).
-
-### Next Steps
-
-1. Keep Odoo business/import/stocktake writes false; do not register-scrape Shopfront.
-2. Run Xero day CSV when accountant needs a day pack; optional later: first-class `/api/accounting/xero`.
-3. Optional: physical Odoo read-only retire / Dashboard same-day Reporting amount cross-check.
+> Session summary: Demo+SKR Orithos-only cutover closed against eight deliverables; Shopfront is recurring SoT into both stores.  
+> Canonical Chinese cutover notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`
 
 ## Goal
 
-Make Orithos the live retail ledger for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87), with Shopfront sync writing Orithos (not Odoo business write), then retire Odoo as SoT after backup/Xero/acceptance. Owner authorized cutover on the existing shared DB named `postgres`.
+Keep Orithos as the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the recurring external SoT synced into both tenants. Odoo must stay **non-writable** (no dual-write). Do not use Shopfront register scrape.
 
 ## Current State
 
-**Working:**
-- Live POS Compose SHA: `db30205559b4d531435b5b9e7ea0e626910e558f`; both SKR and Demo public runtime endpoints match.
-- Native write gate: `APP_NATIVE_POS_ENABLED_VENDOR_IDS=1,55`, `APP_NATIVE_POS_EXPECTED_DATABASE=postgres`, `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`, `RUNTIME_ENVIRONMENT=production`.
-- Public attestation: `posDatabaseVerified=true`, `posSharedDatabaseAuthorized=true`, `posDatabaseStatus=SHARED_DATABASE_NAME`, `isolated=false` (expected on shared DB).
-- SKR open → quote → checkout → idempotent replay → refund → close: **PASS** (`docs/test-sessions/2026-11-09-skr-native-checkout-loop.json`; login used `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, vendorId 55, register 114).
-- Shopfront store mappings on POS: `skr→company 55 / outlet 87`, `demo→company 1 / outlet 1`.
-- Crawler Dokploy env: `SHOPFRONT_STORE_LEDGER_MODES=skr:orithos`, `POS_API_BASE_URL=http://backend:8080`, `POS_API_SECONDARY_STORE_KEY=demo`, `POS_API_MIRROR_BASE_URL=` (empty), `ODOO_IMPORT_ENABLED=false`.
-- Crawler joins external Docker network `orithos-pos-qeyai0_default` so `backend:8080` resolves (POS backend is only on that project network, not `dokploy-network`). Do not switch back to public `api.orithos.com.au` for large catalog imports (Cloudflare 502/524).
+**Working (verified 2026-11-10):**
+- Staging parity SKR = Demo: products `11033`, inventory `10852`, sales `156588`, sale_items `306934`, suppliers `109`, PO `2370`.
+- Native sell/receive both tenants (API UAT): SKR sale `12` / order `2`; Demo sale `14` (`INV-1794280936903`) / order `3`.
+- Dokploy live: `ODOO_BUSINESS_WRITE_ENABLED=false`, `ODOO_IMPORT_ENABLED=false`, `ODOO_STOCKTAKE_WRITE_ENABLED=false`; crawler ledger `skr:orithos`; `POS_API_SECONDARY_STORE_KEY=demo`; `POS_API_BASE_URL=http://backend:8080`.
+- Inventory store-pulse: `shopfront_reporting_api` / `fresh` via staff Misc Inventory At Date + Name→ID enrich (OAuth Special Report still POST **405**).
+- Crawler staff Misc **auto re-login** on expired session: `shopfront-crawler` `22b33d9`, Dokploy deploy `p4FTQUwOS42ecuI4INgG3` done `2026-11-10T07:06:24Z`.
+- Schedule: Adelaide `02:30,23:00`, interval 30m (`GET https://crawler.orithos.com.au/api/sync/schedule`).
+- AIWEI page Network: `orders(type:ORDER)=2370` ≡ staging PO; suppliers `109`; products GraphQL `10855` = catalog current.
+- Xero interim path recorded: `scripts/xero_day_csv_export.py` + `docs/xero_exports/*_2026-11-10*` (gitignored `/docs/`).
+- Owner waived durable PG backup this round («不用备份»).
+- Eight-deliverable audit: `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` → `goal_complete=true`.
+- Repos: POS `origin/main` @ `709ac786` (handoff); crawler `origin/main` @ `22b33d9`.
 
-**Broken / incomplete:**
-- Pilot remains **NO-GO for formal production** until backup/Xero/Odoo-retire acceptance (owner’s earlier readiness bar).
-- SKR **PO receive** UAT not re-run in this cutover session (sell-loop only).
-- Dual-outlet catalogue/inventory parity still open: job `#197` is syncing the catalog; latest phase is `skr:5000/10852` inventory. Product IDs match on SKR; Demo is waiting for its mirror phase. Earlier jobs `#193`/`#194` were cancelled before completion.
-- Shared DB name `postgres` will never attest `isolated=true`; long-term should move to a dedicated DB name.
-- Local `.gitignore` contains `/docs/`, so dated evidence under `docs/test-sessions/` may stay untracked unless force-added.
+**Known gaps (not blocking day-to-day Orithos):**
+- OAuth `/api/v2/reports/inventory-at-date` still 405 — staff Misc is the operational path.
+- Live Shopfront GraphQL `sales.totalCount≈14317` ≠ staging archive `156588` (crawler↔POS still aligned; do not treat as sync drift).
+- `barcode_unmatched=62`; staging products `11033` includes historical beyond GraphQL current `10855`.
+- Shared DB name `postgres` → `isolated=false` expected while `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`.
+- Odoo host still up for history/BFF remnants — writes off; not physically decommissioned.
+- Xero is CSV import/review path, not live Xero API.
+- Formal pilot GO docs (`PILOT_RELEASE_READINESS`) may still say NO-GO for older unrelated bars; this cutover objective is closed.
 
 ## Files in Play
 
-| File | Why it matters |
-|------|----------------|
-| `pos-api/.../NativePosGate.java` | Write gate; shared-DB allow flag |
-| `pos-api/.../PosDatabaseIdentity.java` | `matchesAuthorizedDatabase` / shared-name rules |
-| `pos-api/.../BuildIdentityController.java` | `posSharedDatabaseAuthorized` attestation |
-| `pos-api/.../ShopfrontIntegrationController.java` | Mapping PUT boolean `enabled` fix for PostgreSQL |
-| `pos-ui/src/lib/auth.tsx` | Fixed FocusEvent listener typing that blocked Dokploy frontend build |
-| `docker-compose.yml`, `application.yml`, `.env*.example`, `DEPLOYMENT.md` | Env wiring for allow-shared |
-| `shopfront-crawler` repo `app/config.py`, `app/main.py` | `POS_API_SECONDARY_STORE_KEY` dual catalogue write |
-| `.local/enable-native-pos-cutover.cjs` | Dokploy POS env cutover |
-| `.local/enable-dual-outlet-secondary.cjs` | Mapping + crawler secondary env |
-| `.local/skr-checkout-with-dokploy-pass.cjs` | SKR E2E runner |
+| Path | Why |
+|------|-----|
+| `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md` | Chinese SoT cutover handoff (outside POS git root) |
+| `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10.json` | Eight-deliverable audit (gitignored under `/docs/`) |
+| `docs/UAT_SKR_DEMO_ORITHOS_CUTOVER_API_2026-11-10.json` | Native sell/receive + flags evidence |
+| `docs/UAT_SKR_SHOPFRONT_PAGE_NETWORK_SALES_PURCHASE_2026-11-10.json` | AIWEI Sales/Purchase Network parity |
+| `scripts/xero_day_csv_export.py` | Owner Xero day CSV acceptance path |
+| `shopfront-crawler` `app/shopfront.py` | Staff login + Misc inventory + session re-login |
+| `pos-ui/app/api/shopfront-source/route.ts` | Demo/SKR host → crawler `store=skr` |
+| `pos-ui/src/lib/shopfront-store-scope.ts` | `demo` subdomain maps source store to `skr` |
+| `.local/read-cutover-config.cjs` | Dokploy env read (Odoo write flags) |
+| `.local/read-crawler-deploy-sha.cjs` | Dokploy crawler deploy titles/SHA proxy |
 
-## What Has Been Tried (and Why It Failed)
+## What Has Been Tried (and Why It Failed / Was Skipped)
 
-1. **Only adding vendor 55 without shared-DB allow** — `PosDatabaseIdentity` rejects `postgres`/`aipos`/`orithos`/`production`/`prod` even when names match; `databaseAuthorized()` stayed false.
-2. **Dokploy deploys of `51b2b073` (cutover code alone)** — Frontend build failed: `pos-ui/src/lib/auth.tsx` TS2769 (`addEventListener("focus", refreshIfDue)` where `refreshIfDue` takes `force?: boolean`). Backend jar built; Compose aborted on frontend. Fixed in `b58b6ee6`.
-3. **PUT `/api/integrations/shopfront/mappings/{store}` with `enabled=1`** — PostgreSQL boolean column rejects integer literal → HTTP 500. Fixed to bind `Boolean.TRUE` on Postgres.
-4. **`POS_API_MIRROR_BASE_URL=https://demo...` with same store_key** — Shared DB + one mapping → double-write to the same outlet, not Demo outlet 1. Replaced by secondary store_key `demo`.
-5. **Waiting on `isolated=true` for SKR UAT** — Impossible on authorized shared DB; SKR preflight must use `posDatabaseVerified` / `posSharedDatabaseAuthorized`.
+1. **OAuth Special Report inventory-at-date** — POST 405 / GET 401 on this tenant; cannot be the sole inventory path.
+2. **Bearer token on UI Misc `/reports/misc/inventory-at-date`** — 401; needs staff `laravelsession`.
+3. **Browser `/api/v2/graphql` with cookies only** — 401; page uses session `POST /graphql` instead.
+4. **Full `pg_dump` / S3 durable backup** — hung/failed on large shared DB; owner said skip («不用备份»).
+5. **Crawler `store=demo` source-reports** — 404 `Unknown store`; Demo correctly uses Shopfront source key `skr`.
+6. **Treating live GraphQL sales.totalCount as staging failure** — wrong口径; archive vs live connection.
 
 ## Current Best Theory
 
-Authorized shared-DB cutover is the correct interim SoT for Demo+SKR. Catalogue/inventory stay dual-outlet via `skr` + `demo` mappings; sales ledger for SKR stays on outlet 87. Odoo should stay read-only / non-import until backup + Xero + owner retire checklist clear. Do not “fix” isolation by renaming attestation while still on DB `postgres`.
+Operational SoT is Orithos + Shopfront sync. Keep Odoo writes false forever for these tenants unless a deliberate rollback. Inventory KPI durability depends on **staff credentials + auto re-login** until Shopfront fixes Special Report OAuth. Prefer OAuth GraphQL/Reporting for catalog/sales/PO; use staff only for Misc inventory-at-date.
 
 ## Next Steps (ordered)
 
-1. **Confirm crawler runtime** after `c00da84` deploy: container healthy; env shows `POS_API_SECONDARY_STORE_KEY=demo`; trigger `POST /api/stores/skr/pos/catalog-snapshot` (or daily job) and prove both outlets’ product/inventory counts move together (API counts on Demo outlet 1 vs SKR outlet 87).
-2. **SKR PO receive UAT** on Orithos path (partial receive + idempotency), with write evidence file; reuse Demo PO patterns from earlier session scripts under `.local/demo-migration-po-uat.cjs` / `demo-po-receive-only.cjs` adapted to SKR host/credentials.
-3. **Re-smoke Demo checkout** under the same shared allowlist (vendor 1) so both tenants stay green on `b58b6ee6+`.
-4. **Backup attestation**: successful restore drill of current Orithos PG (not just dump existence); record SHA, restore target, constraint check.
-5. **Xero path**: decide export/sync owner acceptance criteria; do not block sell-loop on Xero unless owner requires it for GO.
-6. **Odoo retire plan**: domain-by-domain stop of Odoo writes for SKR/Demo after Orithos acceptance; keep Odoo read-only history as agreed; never dual-write.
-7. **Optional hardening**: provision dedicated DB name (not `postgres`) and drop `APP_NATIVE_POS_ALLOW_SHARED_DATABASE` once migrated.
-8. Update `docs/CAPABILITY_STATUS.md` / `docs/PILOT_RELEASE_READINESS.md` only with SHA-linked evidence; keep pilot **NO-GO** until steps 4–6 owner-accepted.
+### P0 — Stabilize operations (do first)
+
+1. **Watch first Adelaide scheduled syncs after `22b33d9`**  
+   - `GET /api/sync/schedule` and recent completed jobs (not only manual).  
+   - After `02:30` / `23:00` Adelaide: confirm SKR=Demo snapshot still move together; inventory `refresh=true` still `shopfront_reporting_api`.
+2. **Do not re-enable Odoo writes**  
+   - Re-check with `node .local/read-cutover-config.cjs` after any Dokploy env edit.  
+   - Never dual-write Orithos + Odoo.
+3. **Staff credential hygiene**  
+   - Keep `SHOPFRONT_STAFF_*` in crawler Compose whitelist (not Dokploy-only).  
+   - If inventory refresh fails with staff login errors, rotate password in Dokploy + Compose and re-deploy crawler — do not scrape register.
+
+### P1 — Owner / accountant
+
+4. **Xero day pack when needed**  
+   ```text
+   python scripts/xero_day_csv_export.py --store skr --date YYYY-MM-DD
+   python scripts/xero_day_csv_export.py --store demo --date YYYY-MM-DD
+   ```  
+   Review `docs/xero_exports/`. Optional later: first-class `/api/accounting/xero` (new feature, not required for cutover).
+5. **Decide backup policy**  
+   - Owner waived this round. If reversed: schedule restore drill on a non-prod target and record evidence (do not Fresh Volumes production).
+
+### P1 — Multi-agent friendly follow-ons
+
+| Agent | Scope | Concrete task | Forbidden |
+|-------|--------|---------------|-----------|
+| A Ops | read-only API/Dokploy | Log two scheduled job successes; mapping UUID still hex outlet | No code edits; no Fresh Volumes |
+| B Crawler | `shopfront-crawler` | Optional: persist staff cookie TTL metrics; alert on repeated re-login | No POS UI; no register |
+| C Xero | `scripts/xero_*` | Accountant-facing one-pager + sample day | No live Xero API unless owner asks |
+| D UAT | browser SKR+Demo | Store Pulse inventory source chip; Dashboard day totals vs Reporting | Writes need explicit owner OK |
+| E Retire | docs + POS inventory of Odoo BFF | List remaining Odoo read paths; propose removal order | Do not delete Odoo this sprint |
+
+### P2 — Product / tech debt
+
+6. **Dashboard same-day Reporting amount cross-check** (Adelaide business date) vs Shopfront Sales report.  
+7. **62 unmatched barcodes** — triage; do not invent GST/prices.  
+8. **Historical PO → native `purchase_order`** — design only if product needs Orithos PO history beyond staging.  
+9. **Dedicated PG database name** (drop shared `postgres` allow flag) when owner schedules a migration window.  
+10. **Shopfront support ticket** for Special Report POST 405 (non-blocking while staff Misc works).
 
 ## Key Constraints and Context
 
-- Owner authorized cutover and Dokploy env edits; prefer push to `main` for deploy.
-- No local application builds preference; Java 21 `mvn -B clean verify` was run locally for gate commits before push (machine has JDK 21 at `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1`).
-- Do not write production Odoo `aipos` for sell/receive UAT; current Odoo side remains `aipos_uat` / non-import.
-- Secrets stay in Dokploy / local `.env` only — never commit passwords. SKR login secret names: `ORITHOS_SKR_USER`, `ORITHOS_SKR_PASS`.
-- Crawler deploys from **separate** repo `aishawn/shopfront-crawler`, Compose id `JHfNJMWCJGqpq0_5aovzZ`. POS Compose id `V3BuMZuSCowVe-OKWIR6J`.
-- Product/barcode uniqueness is **outlet-scoped** after earlier migration; Demo catalogue was cloned/seeded from SKR then kept via secondary store_key going forward.
+- Hosts: `skr.orithos.com.au`, `demo.orithos.com.au`, `crawler.orithos.com.au`, Shopfront `skr.onshopfront.com` (AIWEI only; **no register**).
+- Compose ids: POS `V3BuMZuSCowVe-OKWIR6J`; crawler `JHfNJMWCJGqpq0_5aovzZ`.
+- Secrets: Dokploy / local `.env` only — never commit. Names: `ORITHOS_SKR_USER`/`ORITHOS_SKR_PASS`, `SHOPFRONT_STAFF_*`, `SHOPFRONT_INTEGRATION_TOKEN`, `DEMO_ADMIN_PASSWORD` / `INITIAL_ADMIN_PASSWORD`.
+- Owner preference: no local app builds; Java 21 gate before pushing `pos-api/` changes.
+- `/docs/` is gitignored — UAT JSON may exist only locally; cite paths anyway.
+- `shopfront_outlet` must be 32-hex UUID `11eeaa99e8d9de7a92c00261eda38a85`, never label `skr`/`demo`.
 
 ## Memory Pointers
 
-- Search: `NativePosGate allow shared database cutover vendor 55`
-- Search: `POS_API_SECONDARY_STORE_KEY demo outlet`
-- Prior status SoT files (may be gitignored locally): `docs/HANDOFF_2026-10-29_CURRENT.md`, `docs/CAPABILITY_STATUS.md`, `docs/PILOT_RELEASE_READINESS.md`
+- Search: `staff Misc inventory-at-date shopfront_reporting_api`
+- Search: `POS_API_SECONDARY_STORE_KEY demo skr:orithos`
+- Search: `orders type ORDER 2370 sales totalCount 14317`
+- Audit file: `UAT_SKR_DEMO_ORITHOS_CUTOVER_GOAL_AUDIT_2026-11-10`
