@@ -583,6 +583,33 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "customers", body);
     }
 
+    @PostMapping("/customer-payments:upsert-native")
+    @Transactional
+    public ApiResult<Map<String, Object>> customerPayments(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
+                                                           @RequestBody JsonNode body) {
+        authorize(supplied);
+        String storeKey = body.path("store_key").asText("").trim();
+        JsonNode items = body.path("items");
+        if (!STORE_KEY.matcher(storeKey).matches() || !items.isArray() || items.size() > 250) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key and up to 250 items are required");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id FROM shopfront_store_mapping WHERE store_key=? AND enabled=?", storeKey,
+                isPostgres() ? Boolean.TRUE : 1);
+        if (mappings.size() != 1 || longValue(mappings.getFirst().get("outlet_id")) <= 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Enabled Shopfront outlet mapping was not found");
+        }
+        try {
+            return ApiResult.ok(nativeCustomerImportService.importPayments(
+                    storeKey, longValue(mappings.getFirst().get("outlet_id")), items));
+        } catch (Exception ex) {
+            log.error("Shopfront native customer payment import failed store={}", storeKey, ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to import Shopfront customer payments", ex);
+        }
+    }
+
     @PostMapping("/purchase-orders:upsert")
     @Transactional
     public ApiResult<Map<String, Object>> purchaseOrders(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
@@ -799,6 +826,108 @@ public class ShopfrontIntegrationController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
         result.put("data", jdbc.queryForList("SELECT m.store_key, m.source_product_id, m.pos_product_id, m.match_type, m.status, p.name AS pos_product_name FROM shopfront_product_mapping m LEFT JOIN product p ON p.id = m.pos_product_id WHERE m.store_key = ? ORDER BY m.source_product_id", storeKey));
+        return ApiResult.ok(result);
+    }
+
+    /**
+     * Clone missing {@code shopfront_product_mapping} rows from one enabled store
+     * onto another by matching barcodes on the target outlet. Used to repair
+     * Demo/SKR dual-tenant drift without rewriting catalogue rows.
+     */
+    @PostMapping("/product-mappings:clone")
+    @Transactional
+    public ApiResult<Map<String, Object>> cloneProductMappings(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        ensureMappingTable();
+        ensureShadowTables();
+        String source = body.path("source_store_key").asText("").trim();
+        String target = body.path("target_store_key").asText("").trim();
+        if (!STORE_KEY.matcher(source).matches() || !STORE_KEY.matcher(target).matches() || source.equals(target)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Distinct valid source_store_key and target_store_key are required");
+        }
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key IN (?, ?)",
+                source, target);
+        Map<String, Map<String, Object>> byStore = new HashMap<>();
+        for (Map<String, Object> mapping : mappings) {
+            byStore.put(String.valueOf(mapping.get("store_key")), mapping);
+        }
+        Map<String, Object> sourceMapping = byStore.get(source);
+        Map<String, Object> targetMapping = byStore.get(target);
+        if (sourceMapping == null || targetMapping == null
+                || !isEnabled(sourceMapping.get("enabled")) || !isEnabled(targetMapping.get("enabled"))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Both source and target must have enabled Shopfront store mappings");
+        }
+        long targetOutletId = longValue(targetMapping.get("outlet_id"));
+        if (targetOutletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Target Shopfront mapping has no numeric POS outlet_id");
+        }
+        int inserted = jdbc.update("""
+                INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
+                SELECT ?, m.source_product_id, pb_target.product_id, 'CLONE', 'MAPPED'
+                FROM shopfront_product_mapping m
+                JOIN product_barcode pb_source ON pb_source.product_id = m.pos_product_id
+                JOIN product p_source ON p_source.id = pb_source.product_id AND p_source.deleted_at IS NULL
+                JOIN product_barcode pb_target ON pb_target.code = pb_source.code AND pb_target.outlet_id = ?
+                JOIN product p_target ON p_target.id = pb_target.product_id
+                    AND p_target.outlet_id = ?
+                    AND p_target.deleted_at IS NULL
+                WHERE m.store_key = ?
+                  AND m.status = 'MAPPED'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM shopfront_product_mapping existing
+                      WHERE existing.store_key = ?
+                        AND existing.source_product_id = m.source_product_id
+                        AND existing.status = 'MAPPED'
+                  )
+                ON CONFLICT (store_key, source_product_id) DO UPDATE
+                SET pos_product_id = EXCLUDED.pos_product_id,
+                    match_type = 'CLONE',
+                    status = 'MAPPED',
+                    updated_at = CURRENT_TIMESTAMP
+                """, target, targetOutletId, targetOutletId, source, target);
+        // Also map target-store shadow products by barcode when source mapping is absent.
+        int barcodeInserted = jdbc.update("""
+                INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
+                SELECT ?, sp.source_id, pb.product_id, 'BARCODE', 'MAPPED'
+                FROM shopfront_product sp
+                JOIN product_barcode pb ON pb.code = sp.barcode AND pb.outlet_id = ?
+                JOIN product p ON p.id = pb.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                WHERE sp.store_key = ?
+                  AND sp.barcode IS NOT NULL
+                  AND TRIM(sp.barcode) <> ''
+                  AND NOT EXISTS (
+                      SELECT 1 FROM shopfront_product_mapping existing
+                      WHERE existing.store_key = ?
+                        AND existing.source_product_id = sp.source_id
+                        AND existing.status = 'MAPPED'
+                  )
+                ON CONFLICT (store_key, source_product_id) DO UPDATE
+                SET pos_product_id = EXCLUDED.pos_product_id,
+                    match_type = 'BARCODE',
+                    status = 'MAPPED',
+                    updated_at = CURRENT_TIMESTAMP
+                """, target, targetOutletId, targetOutletId, target, target);
+        Integer sourceCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
+                Integer.class, source);
+        Integer targetCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
+                Integer.class, target);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "CLONED");
+        result.put("source_store_key", source);
+        result.put("target_store_key", target);
+        result.put("target_outlet_id", targetOutletId);
+        result.put("cloned_from_source_mappings", inserted);
+        result.put("mapped_from_target_barcodes", barcodeInserted);
+        result.put("source_mapped_count", sourceCount == null ? 0 : sourceCount);
+        result.put("target_mapped_count", targetCount == null ? 0 : targetCount);
         return ApiResult.ok(result);
     }
 

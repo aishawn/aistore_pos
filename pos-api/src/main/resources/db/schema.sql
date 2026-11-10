@@ -568,6 +568,14 @@ CREATE TABLE customer_payment (
   outlet_id BIGINT NOT NULL DEFAULT 1,
 
   PRIMARY KEY (id));
+CREATE TABLE IF NOT EXISTS shopfront_customer_payment_mapping (
+  store_key VARCHAR(64) NOT NULL,
+  source_id VARCHAR(160) NOT NULL,
+  outlet_id BIGINT NOT NULL,
+  customer_payment_id BIGINT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (store_key, source_id, outlet_id)
+);
 -- ---------------------------------------------------------------------
 -- Sales
 -- ---------------------------------------------------------------------

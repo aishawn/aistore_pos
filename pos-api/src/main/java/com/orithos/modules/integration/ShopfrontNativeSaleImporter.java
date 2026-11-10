@@ -428,6 +428,7 @@ public class ShopfrontNativeSaleImporter {
                 Long byBarcode = findProductByBarcode(outletId, barcode);
                 if (byBarcode != null) {
                     productCache.put(sourceProductId, byBarcode);
+                    persistResolvedMapping(storeKey, sourceProductId, byBarcode);
                     return byBarcode;
                 }
             } catch (Exception ignored) {
@@ -472,6 +473,26 @@ public class ShopfrontNativeSaleImporter {
             // Mapping table may not exist yet on fresh installs.
         }
         return cache;
+    }
+
+    private void persistResolvedMapping(String storeKey, String sourceProductId, long productId) {
+        if (storeKey == null || storeKey.isBlank() || sourceProductId == null || sourceProductId.isBlank() || productId <= 0) {
+            return;
+        }
+        try {
+            jdbc.update("""
+                    INSERT INTO shopfront_product_mapping (store_key, source_product_id, pos_product_id, match_type, status)
+                    VALUES (?, ?, ?, 'BARCODE', 'MAPPED')
+                    ON CONFLICT (store_key, source_product_id) DO UPDATE
+                    SET pos_product_id = EXCLUDED.pos_product_id,
+                        match_type = 'BARCODE',
+                        status = 'MAPPED',
+                        updated_at = CURRENT_TIMESTAMP
+                    """, storeKey, sourceProductId, productId);
+        } catch (Exception ex) {
+            log.debug("Unable to persist Shopfront product mapping store={} source={}: {}",
+                    storeKey, sourceProductId, ex.getMessage());
+        }
     }
 
     static String mapStatus(String raw) {

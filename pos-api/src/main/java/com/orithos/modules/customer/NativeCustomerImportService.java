@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -127,8 +129,94 @@ public class NativeCustomerImportService {
         return result;
     }
 
+    /** Imports historical Shopfront account payments without applying them to current owing again. */
+    @Transactional
+    public Map<String, Object> importPayments(String storeKey, long outletId, JsonNode items) {
+        if (storeKey == null || storeKey.isBlank() || outletId <= 0 || items == null || !items.isArray()) {
+            throw new IllegalArgumentException("store_key, outlet_id and payment items are required");
+        }
+        ensurePaymentMappingTable();
+        int created = 0, updated = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+        for (JsonNode item : items) {
+            String sourceId = text(item, "source_id", "id");
+            JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
+            if (sourceId == null) { skipped++; continue; }
+            try {
+                String customerSourceId = text(raw.path("customer"), "id");
+                Long customerId = resolveMappedCustomer(storeKey, customerSourceId, outletId);
+                if (customerId == null) throw new IllegalArgumentException("Shopfront payment customer has no native customer mapping");
+                BigDecimal amount = decimal(raw, "amount");
+                if (amount == null || amount.signum() <= 0) throw new IllegalArgumentException("Shopfront payment amount is invalid");
+                LocalDateTime timestamp = dateTime(raw, "timestamp");
+                if (timestamp == null) throw new IllegalArgumentException("Shopfront payment timestamp is missing");
+                LocalDateTime cancelledAt = dateTime(raw, "cancelledAt", "cancelled_at");
+                String status = cancelledAt != null || "CANCELLED".equalsIgnoreCase(text(raw, "status"))
+                        || "VOIDED".equalsIgnoreCase(text(raw, "status")) ? "VOIDED" : "COMPLETED";
+                Long paymentMethodId = resolvePaymentMethodId(outletId, text(raw.path("paymentMethod"), "name"));
+                BigDecimal startBalance = decimal(raw, "startBalance", "start_balance");
+                BigDecimal rounding = decimal(raw, "rounding");
+                String reference = text(raw, "reference");
+
+                Long paymentId = findPaymentMapping(storeKey, sourceId, outletId);
+                if (paymentId == null) {
+                    paymentId = jdbc.queryForObject("""
+                            INSERT INTO customer_payment (customer_id, payment_method_id, reference, status,
+                              start_balance, amount, rounding, timestamp, cancelled_at, outlet_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            RETURNING id
+                            """, Long.class, customerId, paymentMethodId, reference, status, startBalance,
+                            amount, rounding, timestamp, cancelledAt, outletId);
+                    jdbc.update("INSERT INTO shopfront_customer_payment_mapping (store_key,source_id,outlet_id,customer_payment_id) VALUES (?,?,?,?)",
+                            storeKey, sourceId, outletId, paymentId);
+                    created++;
+                } else {
+                    int changed = jdbc.update("""
+                            UPDATE customer_payment SET customer_id=?, payment_method_id=?, reference=?, status=?,
+                              start_balance=?, amount=?, rounding=?, timestamp=?, cancelled_at=?
+                            WHERE id=? AND outlet_id=?
+                            """, customerId, paymentMethodId, reference, status, startBalance, amount, rounding,
+                            timestamp, cancelledAt, paymentId, outletId);
+                    if (changed != 1) throw new IllegalStateException("Mapped native payment is missing from this outlet");
+                    updated++;
+                }
+            } catch (RuntimeException ex) {
+                skipped++;
+                if (errors.size() < 25) errors.add(sourceId + ": " + (ex.getMessage() == null ? "payment import failed" : ex.getMessage()));
+            }
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("created", created); result.put("updated", updated); result.put("skipped", skipped);
+        result.put("errors", errors); result.put("enabled", true);
+        return result;
+    }
+
     private void ensureMappingTable() {
         jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+    }
+
+    private void ensurePaymentMappingTable() {
+        jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_payment_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_payment_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+    }
+
+    private Long resolveMappedCustomer(String storeKey, String sourceId, long outletId) {
+        if (sourceId == null) return null;
+        List<Long> ids = jdbc.query("SELECT customer_id FROM shopfront_customer_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
+                (rs, row) -> rs.getLong(1), storeKey, sourceId, outletId);
+        return ids.isEmpty() ? null : ids.getFirst();
+    }
+
+    private Long resolvePaymentMethodId(long outletId, String name) {
+        if (name == null) return null;
+        List<Long> ids = jdbc.query("SELECT id FROM payment_method WHERE outlet_id=? AND deleted_at IS NULL AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
+                (rs, row) -> rs.getLong(1), outletId, name);
+        return ids.size() == 1 ? ids.getFirst() : null;
+    }
+
+    private Long findPaymentMapping(String storeKey, String sourceId, long outletId) {
+        List<Long> ids = jdbc.query("SELECT customer_payment_id FROM shopfront_customer_payment_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
+                (rs, row) -> rs.getLong(1), storeKey, sourceId, outletId);
+        return ids.isEmpty() ? null : ids.getFirst();
     }
 
     private Long findMapping(String storeKey, String sourceId, long outletId) {
@@ -207,6 +295,20 @@ public class NativeCustomerImportService {
             return LocalDate.parse(value);
         } catch (DateTimeParseException ex) {
             throw new IllegalArgumentException("Customer birthday must use YYYY-MM-DD");
+        }
+    }
+
+    private static LocalDateTime dateTime(JsonNode node, String... names) {
+        String value = text(node, names);
+        if (value == null) return null;
+        try {
+            return OffsetDateTime.parse(value).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDateTime.parse(value);
+            } catch (DateTimeParseException ex) {
+                throw new IllegalArgumentException("Shopfront payment timestamp is invalid");
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.mockito.invocation.Invocation;
 
@@ -80,5 +81,34 @@ class NativeCustomerImportServiceTest {
         assertEquals(87L, values[26]);
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("primary@example.test"), eq(0), any(), eq(87L));
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("accounts@example.test"), eq(1), any(), eq(87L));
+    }
+
+    @Test
+    void importsHistoricalCustomerPaymentsIdempotentlyWithoutTouchingOwing() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
+            String sql = call.getArgument(0, String.class);
+            return sql.contains("SELECT customer_id FROM shopfront_customer_mapping") ? List.of(321L) : List.of();
+        });
+        when(jdbc.queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class), any(Object[].class)))
+                .thenReturn(654L);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-payment-7","raw_payload":{
+                  "amount":25.50,"rounding":0.01,"startBalance":80.00,
+                  "timestamp":"2026-11-09T12:30:00+10:30","reference":"RCPT-7",
+                  "status":"COMPLETED","customer":{"id":"sf-customer-1"},
+                  "paymentMethod":{"name":"Cash"}
+                }}]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importPayments("skr", 87, items);
+
+        assertEquals(1, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        verify(jdbc).queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class),
+                eq(321L), eq(null), eq("RCPT-7"), eq("COMPLETED"), eq(new BigDecimal("80.0")),
+                eq(new BigDecimal("25.5")), eq(new BigDecimal("0.01")),
+                eq(LocalDateTime.parse("2026-11-09T12:30:00")), eq(null), eq(87L));
+        verify(jdbc).update(contains("INSERT INTO shopfront_customer_payment_mapping"), eq("skr"), eq("sf-payment-7"), eq(87L), eq(654L));
     }
 }
