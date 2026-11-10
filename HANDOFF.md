@@ -4,7 +4,7 @@
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
 > Session: Orithos Native Ledger Cutover (Shopfront sales → native `sale`/`sale_item`; reports/UI Orithos-only)  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
-> Tip SHA: `7043eaf0` (dashboard Store Pulse + native history/inventory + customer/price-list Orithos routes)
+> Tip SHA: `31bd78b0` (dashboard Store Pulse + native history/inventory + customer/price-list Orithos routes; customer code store-prefix)
 
 ## Goal
 
