@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ACCESS_COOKIE,
   applyRefreshedAccess,
+  accessTokenNeedsRefresh,
   backendUrl,
   refreshAccessFromRequest,
   type RefreshedAccess,
@@ -71,7 +72,7 @@ async function resolveAuthorization(
   if (clientAuthorization) return { authorization: clientAuthorization, refreshed: null };
   let accessToken = request.cookies.get(ACCESS_COOKIE)?.value ?? null;
   let refreshed: RefreshedAccess | null = null;
-  if (!accessToken) {
+  if (!accessToken || accessTokenNeedsRefresh(accessToken)) {
     refreshed = await refreshAccessFromRequest(request);
     if (refreshed) accessToken = refreshed.accessToken;
   }

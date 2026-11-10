@@ -20,12 +20,20 @@ public class TokenStore {
         this.redis = redis;
     }
 
+    /** Keep the previous refresh id briefly so parallel tab refresh cannot revoke a still-valid cookie. */
+    private static final Duration REFRESH_GRACE = Duration.ofMinutes(2);
+
     public void saveRefresh(Long userId, String jti, Date expiry) {
+        String current = redis.opsForValue().get("jwt:refresh:" + userId);
+        if (current != null && !current.equals(jti)) {
+            redis.opsForValue().set("jwt:refresh:prev:" + userId, current, REFRESH_GRACE);
+        }
         redis.opsForValue().set("jwt:refresh:" + userId, jti, ttl(expiry));
     }
 
     public boolean refreshValid(Long userId, String jti) {
-        return jti.equals(redis.opsForValue().get("jwt:refresh:" + userId));
+        if (jti.equals(redis.opsForValue().get("jwt:refresh:" + userId))) return true;
+        return jti.equals(redis.opsForValue().get("jwt:refresh:prev:" + userId));
     }
 
     public void revokeRefresh(Long userId) {

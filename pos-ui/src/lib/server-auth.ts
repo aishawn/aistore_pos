@@ -54,9 +54,22 @@ export type RefreshedAccess = {
   accessMaxAge: number;
 };
 
-export async function refreshAccessFromRequest(request: NextRequest): Promise<RefreshedAccess | null> {
-  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
-  if (!refreshToken) return null;
+const refreshFlights = new Map<string, Promise<RefreshedAccess | null>>();
+
+export function accessTokenNeedsRefresh(accessToken: string | null | undefined, skewSeconds = 90): boolean {
+  if (!accessToken) return true;
+  const segment = accessToken.split(".")[1];
+  if (!segment) return true;
+  try {
+    const payload = JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as { exp?: number };
+    if (typeof payload.exp !== "number") return true;
+    return payload.exp * 1000 <= Date.now() + skewSeconds * 1000;
+  } catch {
+    return true;
+  }
+}
+
+async function refreshAccessFromRequestOnce(request: NextRequest, refreshToken: string): Promise<RefreshedAccess | null> {
   const backendResponse = await postAuthBackend("refresh", { refreshToken }, null, request);
   let payload: Record<string, unknown>;
   try {
@@ -76,6 +89,19 @@ export async function refreshAccessFromRequest(request: NextRequest): Promise<Re
     refreshToken: typeof data.refreshToken === "string" ? data.refreshToken : null,
     accessMaxAge,
   };
+}
+
+export async function refreshAccessFromRequest(request: NextRequest): Promise<RefreshedAccess | null> {
+  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  if (!refreshToken) return null;
+  const flightKey = `${request.headers.get("host") ?? "host"}:${refreshToken.slice(-32)}`;
+  const inflight = refreshFlights.get(flightKey);
+  if (inflight) return inflight;
+  const flight = refreshAccessFromRequestOnce(request, refreshToken).finally(() => {
+    refreshFlights.delete(flightKey);
+  });
+  refreshFlights.set(flightKey, flight);
+  return flight;
 }
 
 export function applyRefreshedAccess(response: NextResponse, refreshed: RefreshedAccess) {

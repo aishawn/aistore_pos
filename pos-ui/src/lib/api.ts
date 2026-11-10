@@ -121,6 +121,8 @@ export function isLocalPreviewSession(): boolean {
   return localHost && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
 }
 
+let authLogoutInFlight: Promise<void> | null = null;
+
 function handleAuthFailure(path: string, status: number, code: number) {
   if (isLocalPreviewSession()) return;
   if (isAuthExemptPath(path)) return;
@@ -128,11 +130,20 @@ function handleAuthFailure(path: string, status: number, code: number) {
   if (code === 40101) return;
   const expired = status === 401 || code === 40100 || code === 40103;
   if (!expired) return;
+  if (authLogoutInFlight) return;
 
-  clearSession();
-  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-    window.location.assign("/login");
-  }
+  authLogoutInFlight = (async () => {
+    try {
+      const recovered = await refreshAccessToken();
+      if (recovered === "ok" || recovered === "transient") return;
+      clearSession();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
+    } finally {
+      authLogoutInFlight = null;
+    }
+  })();
 }
 
 type QueryValue = string | number | boolean | null | undefined;

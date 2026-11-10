@@ -75,7 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [uiMode, setUiModeState] = useState<UiMode>("web");
   const pathname = usePathname();
   const router = useRouter();
-  const { user, ready, logout } = useAuth();
+  const { user, ready, logout, recoverSession } = useAuth();
+  const [sessionRecovering, setSessionRecovering] = useState(false);
   const host = useSyncExternalStore(subscribeToHost, () => window.location.host, () => "");
 
   const localPreview =
@@ -124,9 +125,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/platform/stores");
       return;
     }
-    if (!user && !chromeless) {
-      const next = onControlPlane ? "/platform/stores" : `${pathname}${window.location.search}`;
-      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    if (!user && !chromeless && !sessionRecovering) {
+      setSessionRecovering(true);
+      void recoverSession().then((recovered) => {
+        setSessionRecovering(false);
+        if (recovered) return;
+        const next = onControlPlane ? "/platform/stores" : `${pathname}${window.location.search}`;
+        router.replace(`/login?next=${encodeURIComponent(next)}`);
+      });
       return;
     }
     if (user?.pendingPasswordReset && pathname !== "/settings/account") {
@@ -153,13 +159,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user && mode !== "mobile" && pathname === "/m") {
       router.replace(STORE_WEB_LANDING_PATH);
     }
-  }, [ready, user, chromeless, pathname, router, onControlPlaneHost]);
+  }, [ready, user, chromeless, pathname, router, onControlPlaneHost, recoverSession, sessionRecovering]);
 
   if (chromeless) {
     return <>{children}</>;
   }
 
-  if (ready && !user) {
+  if (ready && !user && !sessionRecovering) {
     return null;
   }
 

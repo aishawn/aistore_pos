@@ -52,6 +52,7 @@ interface AuthState {
   user: AuthUser | null;
   ready: boolean;
   hasPermission: (safeName: string) => boolean;
+  recoverSession: () => Promise<boolean>;
   login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -64,10 +65,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    const unregister = registerAuthFailureHandler(() => { setOdooReadIdentity(null); setUser(null); });
-    return unregister;
+  const recoverSession = useCallback(async () => {
+    const refreshed = await refreshAccessToken();
+    if (refreshed !== "ok") return false;
+    try {
+      const current = await api.get<CurrentUserResponse>("/api/auth/me");
+      const normalized = normalizeUser(current);
+      setUser(normalized);
+      if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
+
+  useEffect(() => {
+    const unregister = registerAuthFailureHandler(() => {
+      void recoverSession().then((ok) => {
+        if (!ok) {
+          setOdooReadIdentity(null);
+          setUser(null);
+        }
+      });
+    });
+    return unregister;
+  }, [recoverSession]);
 
   useEffect(() => {
     // Revalidate the HttpOnly-cookie session after mount to avoid an SSR
@@ -132,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!ready || !user || isLocalPreviewSession()) return;
 
     let active = true;
-    const refreshIntervalMs = 45 * 60 * 1000;
+    const refreshIntervalMs = 20 * 60 * 1000;
     let lastRefreshAt = 0;
     const refreshIfDue = (force = false) => {
       if (document.visibilityState !== "visible") return;
@@ -193,8 +215,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ user, ready, hasPermission, login, changePassword, logout }),
-    [user, ready, hasPermission, login, changePassword, logout],
+    () => ({ user, ready, hasPermission, recoverSession, login, changePassword, logout }),
+    [user, ready, hasPermission, recoverSession, login, changePassword, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
