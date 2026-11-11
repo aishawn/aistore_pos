@@ -973,23 +973,59 @@ export function OdooRegisterPage() {
   </main>;
 
   if (loading) return (
-    <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col gap-3 overflow-hidden bg-[var(--oh-surface)] p-3 sm:p-4">
-      <header className="flex h-12 shrink-0 items-center justify-between gap-3">
-        <div className="h-11 w-56 animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
-        <div className="h-4 w-36 animate-pulse rounded bg-[var(--oh-border)]" />
+    <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
+      <header className="odoo-register-header relative z-30 mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="h-7 w-14 animate-pulse rounded bg-[var(--oh-border)]" />
+        <div className="h-11 w-full max-w-xs animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] sm:w-56" />
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
-        <section className="flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3">
-          <div className="h-11 shrink-0 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
-          <div className="mt-3 grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />)}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={`pay-${index}`} className="h-11 w-[5.5rem] animate-pulse rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />
+            ))}
+            <div className="ml-auto h-11 w-24 animate-pulse rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
+          </div>
+        </div>
+        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+          <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
+            <div className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-orange-light)]" />
+            <div className="h-11 w-32 animate-pulse rounded-lg bg-[var(--oh-surface-muted)]" />
+            <div className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-surface-muted)]" />
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--oh-border)]" />
+              <div className="h-4 w-16 animate-pulse rounded bg-[var(--oh-border)]" />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {Array.from({ length: 18 }, (_, index) => (
+                <div key={`key-${index}`} className="min-h-[4.5rem] animate-pulse rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />
+              ))}
+            </div>
           </div>
         </section>
-        <section className="flex min-h-52 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 xl:w-[400px]">
-          <div className="h-11 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
-          <div className="flex-1" />
-          <div className="h-24 animate-pulse rounded-md bg-[var(--oh-surface-muted)]" />
-        </section>
+        <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
+          <div className="border-b border-[var(--oh-border)] px-4 py-3">
+            <div className="h-11 w-full animate-pulse rounded-lg border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface-muted)]" />
+          </div>
+          <div className="border-b border-[var(--oh-border)] px-4 py-3">
+            <div className="h-11 w-full animate-pulse rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)]" />
+          </div>
+          <div className="min-h-[120px] flex-1" />
+          <div className="border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/50 p-4">
+            <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-2">
+              <div className="h-3.5 w-16 animate-pulse rounded bg-[var(--oh-border)]" />
+              <div className="ml-auto h-3.5 w-20 animate-pulse rounded bg-[var(--oh-border)]" />
+              <div className="h-3.5 w-24 animate-pulse rounded bg-[var(--oh-border)]" />
+              <div className="ml-auto h-3.5 w-16 animate-pulse rounded bg-[var(--oh-border)]" />
+            </div>
+            <div className="flex items-end justify-between gap-3">
+              <div className="h-3.5 w-12 animate-pulse rounded bg-[var(--oh-border)]" />
+              <div className="h-8 w-28 animate-pulse rounded bg-[var(--oh-border)]" />
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
   );
