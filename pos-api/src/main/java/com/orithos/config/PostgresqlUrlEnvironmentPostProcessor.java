@@ -10,17 +10,29 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /** Converts the platform-friendly postgresql:// URL into the JDBC URL Spring expects. */
 public final class PostgresqlUrlEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String configured = environment.getProperty("POSTGRESQL_URL");
-        if (configured == null || configured.isBlank() || configured.startsWith("jdbc:postgresql:")) {
+        Map<String, Object> jdbcUrls = new LinkedHashMap<>();
+        normalize(environment.getProperty("POSTGRESQL_URL"), "POSTGRESQL_JDBC_URL", "POSTGRESQL_URL", jdbcUrls);
+        normalize(environment.getProperty("CONTROL_POSTGRESQL_URL"), "CONTROL_POSTGRESQL_JDBC_URL",
+                "CONTROL_POSTGRESQL_URL", jdbcUrls);
+        if (jdbcUrls.isEmpty()) return;
+        environment.getPropertySources().addFirst(new MapPropertySource("postgresqlUrl", jdbcUrls));
+    }
+
+    private static void normalize(String configured, String propertyName, String variableName,
+                                  Map<String, Object> jdbcUrls) {
+        if (configured == null || configured.isBlank()) return;
+        if (configured.startsWith("jdbc:postgresql:")) {
+            jdbcUrls.put(propertyName, configured);
             return;
         }
         if (!configured.startsWith("postgresql://")) {
-            throw new IllegalArgumentException("POSTGRESQL_URL must start with postgresql:// or jdbc:postgresql://");
+            throw new IllegalArgumentException(variableName + " must start with postgresql:// or jdbc:postgresql://");
         }
         URI uri = URI.create(configured);
         String userInfo = uri.getRawUserInfo();
@@ -36,8 +48,7 @@ public final class PostgresqlUrlEnvironmentPostProcessor implements EnvironmentP
         }
         String jdbc = "jdbc:postgresql://" + authority + uri.getRawPath()
                 + (query == null || query.isBlank() ? "" : "?" + query);
-        environment.getPropertySources().addFirst(new MapPropertySource(
-                "postgresqlUrl", Map.of("POSTGRESQL_JDBC_URL", jdbc)));
+        jdbcUrls.put(propertyName, jdbc);
     }
 
     private static String decode(String value) {

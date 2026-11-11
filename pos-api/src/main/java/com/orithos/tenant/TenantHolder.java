@@ -9,13 +9,26 @@ public final class TenantHolder {
 
     private TenantHolder() {}
 
-    public record ResolvedTenant(boolean controlPlane, String slug, Vendor vendor) {
+    public record ResolvedTenant(boolean controlPlane, String slug, Vendor vendor, String shardKey) {
         public static ResolvedTenant controlPlaneTenant() {
-            return new ResolvedTenant(true, null, null);
+            return new ResolvedTenant(true, null, null, null);
         }
 
         public static ResolvedTenant of(String slug, Vendor vendor) {
-            return new ResolvedTenant(false, slug, vendor);
+            return of(slug, vendor, null);
+        }
+
+        public static ResolvedTenant of(String slug, Vendor vendor, String shardKey) {
+            return new ResolvedTenant(false, slug, vendor, shardKey);
+        }
+
+        public static ResolvedTenant forShard(Long vendorId, String shardKey) {
+            Vendor vendor = null;
+            if (vendorId != null) {
+                vendor = new Vendor();
+                vendor.setId(vendorId);
+            }
+            return new ResolvedTenant(false, null, vendor, shardKey);
         }
 
         public Long vendorId() {

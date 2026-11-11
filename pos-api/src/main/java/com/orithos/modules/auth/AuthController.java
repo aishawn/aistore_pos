@@ -24,6 +24,8 @@ import com.orithos.tenant.TenantHolder;
 import com.orithos.tenant.TenantProperties;
 import com.orithos.tenant.TenantResolverFilter;
 import com.orithos.tenant.TenantSlugParser;
+import com.orithos.tenant.TenantShardRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -47,6 +49,7 @@ public class AuthController {
     private final AccountTokenStore accountTokenStore;
     private final PlatformAccessService platformAccess;
     private final PermissionAccess permissionAccess;
+    private TenantShardRegistry tenantShardRegistry;
 
     public AuthController(UserService userService, JwtService jwtService,
                           TokenStore tokenStore, JwtProperties props,
@@ -69,19 +72,25 @@ public class AuthController {
         this.permissionAccess = permissionAccess;
     }
 
+    @Autowired(required = false)
+    public void setTenantShardRegistry(TenantShardRegistry tenantShardRegistry) {
+        this.tenantShardRegistry = tenantShardRegistry;
+    }
+
     @PostMapping("/login")
     public ApiResult<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
+        TenantHolder.ResolvedTenant requestTenant = TenantHolder.get();
+        boolean onControlPlane = requestTenant == null || requestTenant.controlPlane();
         Vendor vendor = resolveLoginVendor(req.subdomain());
         if (TenantResolverFilter.isUnavailable(vendor)) {
             throw new BusinessException(40200, "This trial or store is no longer available");
         }
+        routeToVendor(vendor);
         User u = userService.authenticate(vendor.getId(), req.username(), req.password());
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
         String redirectHost = tenantProperties.storeUrl(vendor.getSubdomain());
-        TenantHolder.ResolvedTenant hostTenant = TenantHolder.get();
-        boolean onControlPlane = hostTenant == null || hostTenant.controlPlane();
         if (onControlPlane && platformAccess.isPlatformOperatorVendor(vendor)
                 && Boolean.TRUE.equals(u.getIsAdmin())) {
             // Platform operators stay on app.* so they can manage all stores.
@@ -105,6 +114,12 @@ public class AuthController {
 
     @PostMapping("/bootstrap")
     public ApiResult<TokenResponse> bootstrap(@RequestBody Map<String, String> body) {
+        if (tenantShardRegistry != null) {
+            TenantHolder.ResolvedTenant requestTenant = TenantHolder.get();
+            if (requestTenant == null || requestTenant.controlPlane() || requestTenant.shardKey() == null) {
+                throw new BusinessException(40001, "Bootstrap must be completed on the assigned store domain");
+            }
+        }
         String token = body == null ? null : body.get("token");
         if (token == null || token.isBlank()) {
             throw new BusinessException(40001, "Missing bootstrap token");
@@ -141,6 +156,7 @@ public class AuthController {
                 || !tokenStore.refreshValid(userId, claims.getId())) {
             throw new BusinessException(40103, "Refresh token expired or revoked");
         }
+        routeRefreshContext();
         User u = userService.require(userId);
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
@@ -285,6 +301,21 @@ public class AuthController {
             return platformAccess.requirePlatformOperatorVendor();
         }
         throw new BusinessException(40001, "Store subdomain is required");
+    }
+
+    private void routeToVendor(Vendor vendor) {
+        if (tenantShardRegistry == null) return;
+        String shardKey = tenantShardRegistry.findShardKey(vendor.getId())
+                .orElseThrow(() -> new BusinessException(50310, "Store database shard is not configured"));
+        TenantHolder.set(TenantHolder.ResolvedTenant.of(vendor.getSubdomain(), vendor, shardKey));
+    }
+
+    private void routeRefreshContext() {
+        if (tenantShardRegistry == null) return;
+        TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        if (tenant != null && !tenant.controlPlane() && tenant.shardKey() != null) return;
+        // Control-plane refresh tokens are issued only to the platform-operator account.
+        routeToVendor(platformAccess.requirePlatformOperatorVendor());
     }
 
     private TokenResponse issueTokens(User u) {
