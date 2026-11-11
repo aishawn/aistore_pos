@@ -466,31 +466,42 @@ class ShopfrontIntegrationControllerTest {
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.getMetaData()).thenReturn(metadata);
         when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForList(contains("shopfront_store_mapping WHERE store_key"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("store_key", "skr", "company_id", "55", "outlet_id", 87L, "enabled", 1)));
-        when(jdbc.queryForList(contains("FROM shopfront_purchase_order WHERE store_key"), any(Object[].class)))
-                .thenReturn(List.of(Map.of(
-                        "source_id", "sf-order-1",
-                        "supplier_source_id", "sf-supplier-1",
-                        "status", "RECEIVED",
-                        "order_date", "2026-10-02",
-                        "total_cost", new BigDecimal("20"),
-                        "raw_payload", """
-                                {"status":"RECEIVED","orderDate":"2026-10-02","invoiceNumber":"INV-1001",
-                                 "totalCost":20,"expectedTotal":20,"products":[{
-                                   "caseQuantity":1,"orderedQuantity":2,"receivedQuantity":2,"baseCost":10,"orderedCost":20,
-                                   "supplier":{"id":"sf-supplier-1"},"item":{"id":"sf-product-1","mdbId":"SKU-1"}
-                                 }]}
-                                """
-                )));
+
+        String rawPayload = "{\"status\":\"RECEIVED\",\"orderDate\":\"2026-10-02\",\"invoiceNumber\":\"INV-1001\","
+                + "\"totalCost\":20,\"expectedTotal\":20,\"products\":[{"
+                + "\"caseQuantity\":1,\"orderedQuantity\":2,\"receivedQuantity\":2,\"baseCost\":10,\"orderedCost\":20,"
+                + "\"supplier\":{\"id\":\"sf-supplier-1\"},\"item\":{\"id\":\"sf-product-1\",\"mdbId\":\"SKU-1\"}}]}";
+        List<Map<String, Object>> mirrorRows = List.of(Map.of(
+                "source_id", "sf-order-1",
+                "supplier_source_id", "sf-supplier-1",
+                "status", "RECEIVED",
+                "order_date", "2026-10-02",
+                "total_cost", new BigDecimal("20"),
+                "raw_payload", rawPayload));
+
+        org.mockito.Mockito.lenient().when(jdbc.queryForList(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(Object[].class)))
+                .thenAnswer(invocation -> {
+                    Object sqlArg = invocation.getArgument(0);
+                    String sql = sqlArg == null ? "" : sqlArg.toString();
+                    if (sql.contains("shopfront_store_mapping WHERE store_key")) {
+                        return List.of(Map.of("store_key", "skr", "company_id", "55", "outlet_id", 87L, "enabled", 1));
+                    }
+                    if (sql.contains("FROM shopfront_purchase_order po")) {
+                        return mirrorRows;
+                    }
+                    if (sql.contains("shopfront_supplier_business_mapping")) {
+                        return List.of(Map.of("supplier_id", 701L));
+                    }
+                    if (sql.contains("shopfront_product_mapping")) {
+                        return List.of(Map.of("pos_product_id", 801L));
+                    }
+                    if (sql.contains("shopfront_purchase_order_business_mapping")) {
+                        return List.of();
+                    }
+                    return List.of();
+                });
         when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
                 .thenReturn(55L);
-        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("supplier_id", 701L)));
-        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("pos_product_id", 801L)));
-        when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of());
         when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
                 .thenReturn(901L);
         when(jdbc.queryForObject(contains("FROM shopfront_purchase_order WHERE store_key"), eq(Integer.class), eq("skr")))
@@ -506,6 +517,7 @@ class ShopfrontIntegrationControllerTest {
 
         assertEquals("PROMOTED", result.get("status"));
         assertEquals("skr", result.get("store_key"));
+        assertEquals(true, result.get("only_unmapped"));
         assertEquals(1, result.get("mirror_batch"));
         assertEquals(false, result.get("has_more"));
         assertEquals(2372, result.get("mirror_total"));

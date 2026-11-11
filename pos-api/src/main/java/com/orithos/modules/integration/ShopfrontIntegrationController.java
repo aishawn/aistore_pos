@@ -624,6 +624,11 @@ public class ShopfrontIntegrationController {
         String storeKey = body == null ? "" : body.path("store_key").asText("").trim();
         String afterSourceId = body == null ? "" : body.path("after_source_id").asText("").trim();
         int limit = body == null ? 100 : body.path("limit").asInt(100);
+        // Default only_unmapped=true so daily/backfill loops skip already-mapped
+        // rows (full line remapping is expensive and gateway-times out).
+        boolean onlyUnmapped = body == null || body.path("only_unmapped").isMissingNode()
+                || body.path("only_unmapped").isNull()
+                || body.path("only_unmapped").asBoolean(true);
         if (!STORE_KEY.matcher(storeKey).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
         }
@@ -645,12 +650,23 @@ public class ShopfrontIntegrationController {
         }
         StringBuilder sql = new StringBuilder(
                 "SELECT source_id, supplier_source_id, status, order_date, total_cost, raw_payload "
-                        + "FROM shopfront_purchase_order WHERE store_key = ?");
+                        + "FROM shopfront_purchase_order po WHERE store_key = ?");
         List<Object> args = new ArrayList<>();
         args.add(storeKey);
         if (!afterSourceId.isBlank()) {
             sql.append(" AND source_id > ?");
             args.add(afterSourceId);
+        }
+        if (onlyUnmapped) {
+            sql.append("""
+                     AND NOT EXISTS (
+                        SELECT 1 FROM shopfront_purchase_order_business_mapping m
+                        WHERE m.store_key = po.store_key
+                          AND m.source_id = po.source_id
+                          AND m.outlet_id = ?
+                    )
+                    """);
+            args.add(outletId);
         }
         sql.append(" ORDER BY source_id ASC LIMIT ?");
         args.add(limit);
@@ -679,6 +695,7 @@ public class ShopfrontIntegrationController {
         result.put("status", "PROMOTED");
         result.put("store_key", storeKey);
         result.put("outlet_id", outletId);
+        result.put("only_unmapped", onlyUnmapped);
         result.put("mirror_batch", rows.size());
         result.put("rebuild_failures", rebuildFailures);
         result.put("batch_size", limit);
