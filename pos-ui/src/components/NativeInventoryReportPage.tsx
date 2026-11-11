@@ -384,7 +384,7 @@ export function NativeInventoryReportPage() {
                               <Link href={`/products/${row.id}/view`} className="hover:text-[var(--oh-primary)] hover:underline">
                                 {friendlyProductName(row.name)}
                               </Link>
-                              {row.deleted ? <span className="ml-2 text-[11px] font-medium uppercase text-red-700">Deleted</span> : null}
+                              {row.deleted ? <span className="ml-2 text-[11px] font-medium uppercase text-red-700">{row.status}</span> : null}
                             </td>
                           );
                         }
