@@ -44,23 +44,29 @@ def req(method: str, url: str, body: dict | None = None, timeout: int = 180) -> 
 
 
 def main() -> None:
+    import os
+
+    target = os.environ.get("PO_CATCHUP_STORE", "skr").strip().lower() or "skr"
+    shadow = os.environ.get("PO_CATCHUP_SHADOW_STORE", target).strip().lower() or target
     for store in ("demo", "skr"):
         counts = req(
             "GET",
             f"https://demo.orithos.com.au/api/integrations/shopfront/mapping-counts?storeKey={store}",
         )
         print("before", store, counts.get("data"), flush=True)
+    print(f"catchup target={target} shadow={shadow}", flush=True)
 
     created = updated = skipped = fails = 0
-    page = 1
-    while page <= 200:
+    page = int(os.environ.get("SKR_PO_CATCHUP_START_PAGE", "1"))
+    page_limit = int(os.environ.get("SKR_PO_CATCHUP_PAGE_LIMIT", "800"))
+    while page <= page_limit:
         ok = False
-        for attempt in range(1, 5):
+        for attempt in range(1, 7):
             try:
                 sample = req(
                     "GET",
                     "https://demo.orithos.com.au/api/integrations/shopfront/data"
-                    f"?storeKey=skr&type=purchase_orders&page={page}&size=3",
+                    f"?storeKey={shadow}&type=purchase_orders&page={page}&size=3",
                 )
                 rows = ((sample.get("data") or {}).get("data")) or []
                 if not rows:
@@ -87,7 +93,7 @@ def main() -> None:
                 up = req(
                     "POST",
                     "https://demo.orithos.com.au/api/integrations/shopfront/purchase-orders:upsert",
-                    {"store_key": "skr", "items": items},
+                    {"store_key": target, "items": items},
                 )
                 native = (
                     (up.get("data") or {}).get("native_ledger")
@@ -123,11 +129,18 @@ def main() -> None:
 
     after = req(
         "GET",
-        "https://demo.orithos.com.au/api/integrations/shopfront/mapping-counts?storeKey=skr",
+        f"https://demo.orithos.com.au/api/integrations/shopfront/mapping-counts?storeKey={target}",
     )
     print(
         "DONE",
-        {"created": created, "updated": updated, "skipped": skipped, "fails": fails, "after": after.get("data")},
+        {
+            "target": target,
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "fails": fails,
+            "after": after.get("data"),
+        },
         flush=True,
     )
 

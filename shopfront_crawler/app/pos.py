@@ -19,7 +19,9 @@ class OrithosClient:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.enabled = enabled
-        self.http = http or httpx.AsyncClient(timeout=60)
+        # Promote batches can take longer than upsert heartbeats; keep a wider
+        # default than the historical 60s client timeout.
+        self.http = http or httpx.AsyncClient(timeout=180)
 
     async def close(self) -> None:
         await self.http.aclose()
@@ -101,6 +103,10 @@ class OrithosClient:
 
     async def upsert_purchase_orders(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/purchase-orders:upsert", payload)
+
+    async def promote_purchase_orders(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Promote durable shopfront_purchase_order rows into native purchase_order."""
+        return await self._post("/api/integrations/shopfront/purchase-orders:promote-native", payload)
 
     async def upsert_extended(self, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._post("/api/integrations/shopfront/extended:upsert", payload)

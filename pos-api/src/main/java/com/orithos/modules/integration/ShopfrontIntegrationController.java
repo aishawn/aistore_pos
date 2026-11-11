@@ -698,7 +698,17 @@ public class ShopfrontIntegrationController {
                         storeKey, sourceId, ex.getMessage());
             }
         }
-        Map<String, Object> imported = importBusinessPurchaseOrders(storeKey, mapping, items);
+        Map<String, Object> imported;
+        try {
+            imported = importBusinessPurchaseOrders(storeKey, mapping, items);
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            log.error("Shopfront purchase-order promote failed store={} batch={} message={}",
+                    storeKey, items.size(), ex.getMessage(), ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Shopfront purchase-order promote failed: " + ex.getMessage(), ex);
+        }
         Integer mirrorTotal = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_purchase_order WHERE store_key = ?", Integer.class, storeKey);
         Integer mappedTotal = jdbc.queryForObject(
@@ -1866,6 +1876,11 @@ public class ShopfrontIntegrationController {
                 continue;
             }
             Long orderId = prior.isEmpty() ? null : longValue(prior.getFirst().get("purchase_order_id"));
+            // Sentinel rows use purchase_order_id=0 ("permanently skipped"). Treat them
+            // as unmapped so retry_skipped promote can create a real order.
+            if (orderId != null && orderId <= 0) {
+                orderId = null;
+            }
             if (orderId != null) {
                 Integer receipts = jdbc.queryForObject("SELECT COUNT(*) FROM purchase_receipt WHERE order_id=?", Integer.class, orderId);
                 if (receipts != null && receipts > 0) {

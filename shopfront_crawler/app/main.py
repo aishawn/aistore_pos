@@ -1815,25 +1815,70 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         try:
             supplier_rows = db.scalars(select(ShopfrontSupplier).where(ShopfrontSupplier.store_key == store.store_key).order_by(ShopfrontSupplier.source_id)).all()
             order_rows = db.scalars(select(ShopfrontPurchaseOrder).where(ShopfrontPurchaseOrder.store_key == store.store_key).order_by(ShopfrontPurchaseOrder.source_id)).all()
-            for offset in range(0, len(supplier_rows), 250):
-                batch = supplier_rows[offset:offset + 250]
-                response = await pos_client.upsert_suppliers(jsonable_encoder({"store_key": store.store_key, "items": [
-                    {"source_id": item.source_id, "name": item.name, "business_number": item.business_number, "status": item.status, "raw_payload": item.raw_payload}
-                    for item in batch
-                ]}))
-                staged = response.get("data", response)
-                if staged.get("status") != "STAGED":
-                    raise PosIntegrationError(f"Supplier mirror batch was not staged: {staged.get('status', 'unknown')}")
-            for offset in range(0, len(order_rows), 250):
-                batch = order_rows[offset:offset + 250]
-                response = await pos_client.upsert_purchase_orders(jsonable_encoder({"store_key": store.store_key, "items": [
-                    {"source_id": item.source_id, "supplier_source_id": item.supplier_source_id, "status": item.status, "order_date": item.order_date, "total_cost": item.total_cost, "raw_payload": item.raw_payload}
-                    for item in batch
-                ]}))
-                staged = response.get("data", response)
-                if staged.get("status") != "STAGED":
-                    raise PosIntegrationError(f"Purchase-order mirror batch was not staged: {staged.get('status', 'unknown')}")
-            result["pos_staged"] = {"suppliers": len(supplier_rows), "purchase_orders": len(order_rows)}
+            # Dual-write catalogue-style: primary store_key plus optional secondary
+            # (Demo) so shared-DB tenants stay on the same Shopfront SoT.
+            target_store_keys = [store.store_key]
+            secondary = (settings.pos_api_secondary_store_key or "").strip()
+            if secondary and secondary != store.store_key:
+                target_store_keys.append(secondary)
+            supplier_items = [
+                {
+                    "source_id": item.source_id,
+                    "name": item.name,
+                    "business_number": item.business_number,
+                    "status": item.status,
+                    "raw_payload": item.raw_payload,
+                }
+                for item in supplier_rows
+            ]
+            order_items = [
+                {
+                    "source_id": item.source_id,
+                    "supplier_source_id": item.supplier_source_id,
+                    "status": item.status,
+                    "order_date": item.order_date,
+                    "total_cost": item.total_cost,
+                    "raw_payload": item.raw_payload,
+                }
+                for item in order_rows
+            ]
+            for target_store in target_store_keys:
+                for offset in range(0, len(supplier_items), 100):
+                    batch = supplier_items[offset:offset + 100]
+                    response = await pos_client.upsert_suppliers(jsonable_encoder({
+                        "store_key": target_store,
+                        "items": batch,
+                    }))
+                    staged = response.get("data", response)
+                    if staged.get("status") != "STAGED":
+                        raise PosIntegrationError(
+                            f"Supplier mirror batch was not staged for {target_store}: {staged.get('status', 'unknown')}"
+                        )
+                for offset in range(0, len(order_items), 50):
+                    batch = order_items[offset:offset + 50]
+                    response = await pos_client.upsert_purchase_orders(jsonable_encoder({
+                        "store_key": target_store,
+                        "items": batch,
+                    }))
+                    staged = response.get("data", response)
+                    if staged.get("status") != "STAGED":
+                        raise PosIntegrationError(
+                            f"Purchase-order mirror batch was not staged for {target_store}: {staged.get('status', 'unknown')}"
+                        )
+            # Library-side promote: pos-api reads shopfront_purchase_order via JDBC
+            # and writes native purchase_order. Small request body, no CF payload bloat.
+            # Uses POS_API_BASE_URL (internal http://backend:8080) — public CF times out.
+            promote_summary: dict[str, Any] = {}
+            for target_store in target_store_keys:
+                promote_summary[target_store] = await _promote_purchase_orders_loop(
+                    pos_client, target_store, limit=100, max_loops=80, retry_skipped=False,
+                )
+            result["pos_staged"] = {
+                "suppliers": len(supplier_rows),
+                "purchase_orders": len(order_rows),
+                "store_keys": target_store_keys,
+            }
+            result["pos_promoted"] = promote_summary
         finally:
             await pos_client.close()
     try:
@@ -1842,6 +1887,99 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
         logger.warning("Shopfront purchase mirror failed: store=%s error=%r", store.store_key, exc)
         result["odoo_purchase_mirror"] = {"status": "failed"}
     return result
+
+
+async def _promote_purchase_orders_loop(
+    pos_client: OrithosClient,
+    store_key: str,
+    *,
+    limit: int = 100,
+    max_loops: int = 80,
+    retry_skipped: bool = False,
+) -> dict[str, Any]:
+    """Call pos-api purchase-orders:promote-native until caught up (internal URL)."""
+    after = ""
+    created = updated = skipped = loops = 0
+    mapped = None
+    while loops < max_loops:
+        loops += 1
+        payload: dict[str, Any] = {
+            "store_key": store_key,
+            "limit": limit,
+            "only_unmapped": True,
+            "retry_skipped": retry_skipped,
+        }
+        if after:
+            payload["after_source_id"] = after
+        response = await pos_client.promote_purchase_orders(payload)
+        data = response.get("data", response)
+        biz = data.get("business") or {}
+        created += int(biz.get("created") or 0)
+        updated += int(biz.get("updated") or 0)
+        skipped += int(biz.get("skipped") or 0)
+        after = str(data.get("last_source_id") or after)
+        mapped = data.get("purchase_orders_mapped", mapped)
+        if not data.get("has_more") or int(data.get("mirror_batch") or 0) == 0:
+            break
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "loops": loops,
+        "mapped": mapped,
+        "last_source_id": after or None,
+    }
+
+
+@app.post("/api/stores/{store_key}/purchase-orders/promote-native")
+async def promote_purchase_orders_native(store_key: str, request: Request) -> dict:
+    """Catch-up promote via crawler→internal pos-api (avoids Cloudflare gateway timeouts)."""
+    expected = (
+        settings.shopfront_integration_token.strip()
+        or settings.pos_api_token.strip()
+    )
+    supplied = request.headers.get("authorization", "")
+    header_token = request.headers.get("x-shopfront-integration-token", "")
+    authed = bool(expected) and (
+        hmac.compare_digest(supplied, f"Bearer {expected}")
+        or hmac.compare_digest(header_token, expected)
+    )
+    if not authed:
+        raise HTTPException(401, "Unauthorized")
+    if not settings.pos_import_enabled:
+        raise HTTPException(409, "POS_IMPORT_ENABLED is false")
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    limit = int(body.get("limit") or 100)
+    max_loops = int(body.get("max_loops") or 80)
+    retry_skipped = bool(body.get("retry_skipped") or False)
+    limit = max(1, min(limit, 250))
+    max_loops = max(1, min(max_loops, 200))
+    targets = [store_key]
+    secondary = (settings.pos_api_secondary_store_key or "").strip()
+    include_secondary = bool(body.get("include_secondary"))
+    if include_secondary and secondary and secondary != store_key:
+        targets.append(secondary)
+    pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
+    try:
+        summary = {}
+        for target in targets:
+            summary[target] = await _promote_purchase_orders_loop(
+                pos_client, target, limit=limit, max_loops=max_loops, retry_skipped=retry_skipped,
+            )
+        return {
+            "status": "promoted",
+            "pos_api_base_url": settings.pos_api_base_url,
+            "targets": targets,
+            "result": summary,
+        }
+    except PosIntegrationError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    finally:
+        await pos_client.close()
 
 
 @app.post("/api/stores/{store_key}/supply-chain/sync")
