@@ -158,7 +158,8 @@ public class ReportQueryService {
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
                        COALESCE(SUM(COALESCE(m.total_cost, s.total_cost, line.cost, 0)), 0) AS cost
                 FROM sale s
-                LEFT JOIN shopfront_store_mapping map ON map.outlet_id = s.outlet_id
+                LEFT JOIN shopfront_store_mapping map
+                  ON map.outlet_id = CAST(s.outlet_id AS VARCHAR)
                 LEFT JOIN shopfront_sale m
                   ON m.store_key = map.store_key AND m.external_id = s.external_id
                 LEFT JOIN LATERAL (
