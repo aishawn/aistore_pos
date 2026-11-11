@@ -338,11 +338,13 @@ export function FormDateRangePicker({
     if (!start || (start && end)) {
       onChange({ start: iso, end: "" });
       setActiveInput("end");
-    } else {
-      onChange(normalizeRange(start, iso));
-      setActiveInput("start");
+      setLeftMonth(startOfMonth(date));
+      return;
     }
+    onChange(normalizeRange(start, iso));
+    setActiveInput("start");
     setLeftMonth(startOfMonth(date));
+    closePicker();
   }
 
   function setCurrentDay() {
@@ -350,6 +352,7 @@ export function FormDateRangePicker({
     onChange({ start: iso, end: iso });
     setLeftMonth(startOfMonth(today));
     setActiveInput("start");
+    closePicker();
   }
 
   useEffect(() => {

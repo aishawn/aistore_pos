@@ -320,14 +320,26 @@ export function RegisterClosureHistoryPage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Closed register sessions. Difference = received cash less expected cash.</p>
         </header>
         <section aria-label="Closure history filters" className="print:hidden flex flex-wrap items-end gap-3 border-y border-[var(--oh-border)] py-3">
-          <ReportDateControls value={draftDates} onChange={setDraftDates} comparison={comparison} onComparisonChange={setComparison} timezone={timezone} />
+          <ReportDateControls
+            value={draftDates}
+            onChange={(range) => {
+              setDraftDates(range);
+              if (range.from && range.to && range.from <= range.to) setDates(range);
+            }}
+            comparison={comparison}
+            onComparisonChange={setComparison}
+            timezone={timezone}
+          />
           <FilterDateRangePicker
             label="Date range"
             start={draftDates.from}
             end={draftDates.to}
-            onChange={(range) => setDraftDates({ from: range.start, to: range.end })}
+            onChange={(range) => {
+              const next = { from: range.start, to: range.end };
+              setDraftDates(next);
+              if (next.from && next.to && next.from <= next.to) setDates(next);
+            }}
           />
-          <button type="button" onClick={() => setDates({ ...draftDates })} disabled={loading || !draftDates.from || !draftDates.to || draftDates.from > draftDates.to} className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">Apply</button>
           <button type="button" aria-pressed={exceptionsOnly} onClick={() => setExceptionsOnly((value) => !value)} className={`min-h-11 rounded-md border px-3 text-sm font-semibold ${exceptionsOnly ? "border-amber-400 bg-amber-50 text-amber-950" : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"}`}><AlertTriangle size={15} className="mr-2 inline" />Differences only</button>
           <button type="button" onClick={() => void exportCsv()} aria-label="Export all matching closure rows to CSV" title="Export CSV" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white"><Download size={16} /></button>
           <button type="button" onClick={() => void printAll()} aria-label="Print all matching register closure rows" title="Print all matching rows" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white"><Printer size={16} /></button>
