@@ -53,8 +53,8 @@ function dayProfitPercent(row: Report["dailyTrend"][number]): string {
 }
 
 export function NativeSalesReportPage() {
-  const defaults = useMemo(() => reportDatePreset("yesterday"), []);
-  const [period, setPeriod] = useState<ReportDatePreset>("yesterday");
+  const defaults = useMemo(() => reportDatePreset("last_7_days"), []);
+  const [period, setPeriod] = useState<ReportDatePreset>("last_7_days");
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [rangeReady, setRangeReady] = useState(false);

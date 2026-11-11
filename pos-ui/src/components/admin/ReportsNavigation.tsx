@@ -22,7 +22,7 @@ const TABS: ReportTab[] = [
   },
   {
     label: "Sales",
-    href: "/reports/sales",
+    href: "/reports/sales?period=last_7_days",
     icon: ReceiptText,
     match: ["/reports/sales", "/history"],
   },
@@ -70,7 +70,7 @@ export function ReportsNavigation() {
         <div className="flex min-w-max items-center gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;
-            const selected = active.href === tab.href;
+            const selected = isActive(pathname, tab);
             return (
               <Link
                 key={tab.href}
