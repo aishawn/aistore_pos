@@ -4,6 +4,14 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const adelaideBusinessDate = (offsetDays = 0) => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + offsetDays))
+    .toISOString().slice(0, 10);
+};
+const yesterdayAdelaide = adelaideBusinessDate(-1);
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const worktreeStatus = execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" });
 const evidenceOnlyPath = (statusLine) => {
@@ -297,6 +305,8 @@ const cases = [
   { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
   { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
+  { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
   { id: "sales-paraphrase-revenue-today", question: "What's our revenue today?", intent: "report_sales" },

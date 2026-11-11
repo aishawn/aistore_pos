@@ -16,6 +16,7 @@ AI report responses include source, authenticated store scope, Adelaide timezone
 ## Acceptance cases
 
 - `昨天利润如何？` and `What was profit yesterday?` route to the authoritative sales overview.
+- Combined revenue and profit questions for one explicit or supported relative period, including `昨天销售额如何？利润如何？`, return both from the same authoritative overview.
 - When sale cost coverage is incomplete, the answer includes revenue and explicitly says gross profit is unavailable.
 - With complete costs, answer revenue and gross profit match the same outlet/date in `/api/reports/native-overview` exactly.
 - A profit query filtered by category currently refuses because the authoritative report does not provide a category-scoped profit aggregate.
