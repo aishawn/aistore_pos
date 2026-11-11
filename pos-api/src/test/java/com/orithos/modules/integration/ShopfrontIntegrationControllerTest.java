@@ -76,6 +76,9 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class));
         verify(jdbc, org.mockito.Mockito.never()).update(
                 contains("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_item_store_product_sale"));
+        verify(jdbc, org.mockito.Mockito.never()).update(
+                contains("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_store_biz_ext"));
+        verify(jdbc).update(contains("updated_at VARCHAR(64), business_date DATE"));
     }
 
     @Test
