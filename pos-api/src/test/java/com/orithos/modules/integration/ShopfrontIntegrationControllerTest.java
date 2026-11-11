@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
@@ -401,6 +402,9 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(1, result.get("created"));
         assertEquals(0, result.get("skipped"));
         verify(jdbc).update(contains("INSERT INTO order_product"), any(Object[].class));
+        verify(jdbc).update(contains("shopfront_purchase_order_business_mapping"),
+                eq("skr"), eq("sf-order-partial"), eq(87L), eq(902L),
+                argThat(hash -> String.valueOf(hash).length() == 64));
         assertTrue(((List<?>) result.get("errors")).stream()
                 .anyMatch(error -> String.valueOf(error).contains("skipped unmapped product sf-product-missing")));
     }

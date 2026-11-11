@@ -1638,9 +1638,10 @@ public class ShopfrontIntegrationController {
             }
 
             // Include imported-line cardinality so newly mapped catalogue rows
-            // can expand a previously partial PO on the next upsert.
-            String hash = purchaseOrderSourceHash(raw) + ":imported=" + lineRows.size()
-                    + ":skipped=" + skippedLines;
+            // can expand a previously partial PO on the next upsert. Re-digest
+            // so the value still fits source_hash VARCHAR(64).
+            String hash = purchaseOrderSourceHash(
+                    purchaseOrderSourceHash(raw) + ":imported=" + lineRows.size() + ":skipped=" + skippedLines);
             List<Map<String, Object>> prior = jdbc.queryForList(
                     "SELECT purchase_order_id,source_hash FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
                     store, sourceId, outletId);
@@ -1758,7 +1759,19 @@ public class ShopfrontIntegrationController {
 
     private String purchaseOrderSourceHash(JsonNode raw) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(raw));
+            return purchaseOrderSourceHash(objectMapper.writeValueAsBytes(raw));
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to fingerprint Shopfront purchase order", ex);
+        }
+    }
+
+    private String purchaseOrderSourceHash(String material) {
+        return purchaseOrderSourceHash(material.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private String purchaseOrderSourceHash(byte[] material) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(material);
             return HexFormat.of().formatHex(digest);
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to fingerprint Shopfront purchase order", ex);
