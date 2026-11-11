@@ -144,17 +144,23 @@ public class ReportQueryService {
     /** Native ledger only, including source sales imported into that ledger. No external fallback. */
     public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
+        // Prefer Shopfront mirror header cost/tax/discount when present so reports match
+        // the Shopfront sales-report DSL even if native promote left stale header costs.
         List<Map<String, Object>> daily = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
-                       COALESCE(SUM(s.total_tax), 0) AS tax,
+                       COALESCE(SUM(COALESCE(m.total_tax, s.total_tax)), 0) AS tax,
+                       COALESCE(SUM(COALESCE(m.total_discount, s.total_discount, 0)), 0) AS discount,
                        COUNT(*) AS transaction_count,
-                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
-                       COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
+                       COUNT(*) FILTER (WHERE COALESCE(m.total_tax, s.total_tax) IS NULL) AS tax_missing_count,
+                       COUNT(*) FILTER (WHERE COALESCE(m.total_cost, s.total_cost) IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(COALESCE(m.total_cost, s.total_cost, line.cost, 0)), 0) AS cost
                 FROM sale s
+                LEFT JOIN shopfront_store_mapping map ON map.outlet_id = s.outlet_id
+                LEFT JOIN shopfront_sale m
+                  ON m.store_key = map.store_key AND m.external_id = s.external_id
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
                          SUM(si.cost * si.quantity) AS cost,
@@ -217,6 +223,7 @@ public class ReportQueryService {
         BigDecimal revenue = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
         BigDecimal tax = BigDecimal.ZERO;
+        BigDecimal discount = BigDecimal.ZERO;
         long transactions = 0;
         long costMissingCount = 0;
         long taxMissingCount = 0;
@@ -225,6 +232,7 @@ public class ReportQueryService {
             revenue = revenue.add(toDecimal(row.get("revenue")));
             cost = cost.add(toDecimal(row.get("cost")));
             tax = tax.add(toDecimal(row.get("tax")));
+            discount = discount.add(toDecimal(row.get("discount")));
             transactions += toDecimal(row.get("transaction_count")).longValue();
             costMissingCount += toDecimal(row.get("cost_missing_count")).longValue();
             taxMissingCount += toDecimal(row.get("tax_missing_count")).longValue();
@@ -235,8 +243,10 @@ public class ReportQueryService {
             day.put("taxAvailable", dayTaxAvailable);
             day.put("cost", dayCostAvailable ? money(row.get("cost")) : null);
             day.put("tax", dayTaxAvailable ? money(row.get("tax")) : null);
-            day.put("grossProfit", dayCostAvailable && dayTaxAvailable
-                    ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("tax"))).subtract(toDecimal(row.get("cost"))))
+            day.put("discount", money(row.get("discount")));
+            // Shopfront sales-report Profit = revenue - cost (tax inclusive).
+            day.put("grossProfit", dayCostAvailable
+                    ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("cost"))))
                     : null);
             dailyTrend.add(day);
         }
@@ -249,9 +259,17 @@ public class ReportQueryService {
         result.put("netRevenue", taxMissingCount == 0 ? money(revenue.subtract(tax)) : null);
         result.put("cost", costMissingCount == 0 ? money(cost) : null);
         result.put("tax", taxMissingCount == 0 ? money(tax) : null);
+        result.put("discount", money(discount));
         result.put("taxAvailable", taxMissingCount == 0);
         result.put("costAvailable", costMissingCount == 0);
-        result.put("grossProfit", costMissingCount == 0 && taxMissingCount == 0 ? money(revenue.subtract(tax).subtract(cost)) : null);
+        result.put("grossProfit", costMissingCount == 0 ? money(revenue.subtract(cost)) : null);
+        result.put("profitMargin", costMissingCount == 0 && revenue.signum() > 0
+                ? revenue.subtract(cost).multiply(new BigDecimal("100"))
+                    .divide(revenue, 2, RoundingMode.HALF_UP)
+                : null);
+        result.put("averageSale", transactions > 0
+                ? money(revenue.divide(BigDecimal.valueOf(transactions), 2, RoundingMode.HALF_UP))
+                : null);
         result.put("transactions", transactions);
         result.put("dailyTrend", dailyTrend);
         result.put("topProducts", products);

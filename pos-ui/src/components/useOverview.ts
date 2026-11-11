@@ -147,7 +147,7 @@ export function useOverview() {
       const result = envelope.data;
       const todayRow = result.dailyTrend.find(row => row.date === today);
       const yesterdayRow = result.dailyTrend.find(row => row.date === yesterday);
-      const marginAvailable = Boolean(yesterdayRow?.costAvailable && yesterdayRow.taxAvailable && yesterdayRow.grossProfit !== null);
+      const marginAvailable = Boolean(yesterdayRow?.costAvailable && yesterdayRow.grossProfit !== null);
       const next: OverviewPulse = {
         generatedAt: new Date().toISOString(),
         queryThrough: new Date().toISOString(),

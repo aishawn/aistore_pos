@@ -37,12 +37,13 @@ class NativeOverviewPayloadTest {
     }
 
     @Test
-    void computesGrossProfitFromExTaxRevenueOnlyWhenCoverageIsComplete() {
+    void computesShopfrontStyleProfitAsRevenueMinusCost() {
         Map<String, Object> day = new LinkedHashMap<>();
         day.put("date", LocalDate.of(2026, 11, 9));
         day.put("revenue", new BigDecimal("110.00"));
         day.put("tax", new BigDecimal("10.00"));
         day.put("cost", new BigDecimal("60.00"));
+        day.put("discount", new BigDecimal("5.00"));
         day.put("transaction_count", 1);
         day.put("cost_missing_count", 0);
         day.put("tax_missing_count", 0);
@@ -50,8 +51,11 @@ class NativeOverviewPayloadTest {
         Map<String, Object> result = ReportQueryService.nativeOverviewPayload(
                 LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 9), List.of(day), List.of());
 
-        assertEquals(new BigDecimal("40.00"), result.get("grossProfit"));
+        assertEquals(new BigDecimal("50.00"), result.get("grossProfit"));
         assertEquals(new BigDecimal("100.00"), result.get("netRevenue"));
+        assertEquals(new BigDecimal("5.00"), result.get("discount"));
+        assertEquals(new BigDecimal("45.45"), result.get("profitMargin"));
+        assertEquals(new BigDecimal("110.00"), result.get("averageSale"));
     }
 
     @Test
