@@ -729,16 +729,22 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void businessProductImportRejectsMissingCaseQuantityPriceOrTax() throws Exception {
-        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+    void businessProductImportRejectsMissingPriceOrTax() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
+                .thenReturn(List.of(7L));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "validateProductBusinessFields", com.fasterxml.jackson.databind.JsonNode.class, long.class, Map.class);
         validate.setAccessible(true);
         ObjectMapper mapper = new ObjectMapper();
+        // Missing case_quantity defaults to 1 and should pass when price + GST are present.
+        validate.invoke(controller, mapper.readTree(
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"price\":5,\"tax_rate_name\":\"Including GST\",\"source_status\":\"ACTIVE\"}"),
+                48L, new java.util.HashMap<>());
         String[] blockedProducts = {
-                "{\"source_id\":\"p1\",\"name\":\"Product\",\"price\":5,\"tax_rate_name\":\"GST\"}",
-                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\"}",
-                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5}"
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}",
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5,\"source_status\":\"ACTIVE\"}"
         };
 
         for (String product : blockedProducts) {
@@ -746,6 +752,17 @@ class ShopfrontIntegrationControllerTest {
                     () -> validate.invoke(controller, mapper.readTree(product), 48L, new java.util.HashMap<>()));
             org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
         }
+    }
+
+    @Test
+    void normalizeTaxRateNameMapsShopfrontLabelsToOrithosGst() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Method normalize = ShopfrontIntegrationController.class.getDeclaredMethod("normalizeTaxRateName", String.class);
+        normalize.setAccessible(true);
+        assertEquals("GST", normalize.invoke(controller, "Including GST"));
+        assertEquals("GST", normalize.invoke(controller, "Excluding GST"));
+        assertEquals("GST", normalize.invoke(controller, "10.0% GST"));
+        assertEquals("GST Free", normalize.invoke(controller, "GST Free"));
     }
 
     @Test

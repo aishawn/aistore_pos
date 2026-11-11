@@ -275,9 +275,11 @@ public class ShopfrontIntegrationController {
             if (raw == null) continue;
             try {
                 JsonNode item = objectMapper.readTree(String.valueOf(raw));
-                if (text(item, "source_id") == null || text(item, "source_id").isBlank()) {
-                    ((com.fasterxml.jackson.databind.node.ObjectNode) item)
-                            .put("source_id", String.valueOf(row.get("source_id")));
+                if (item instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
+                    if (text(item, "source_id") == null || text(item, "source_id").isBlank()) {
+                        objectNode.put("source_id", String.valueOf(row.get("source_id")));
+                    }
+                    hydrateProductFieldsFromNestedRaw(objectNode);
                 }
                 items.add(item);
             } catch (Exception ex) {
@@ -291,6 +293,99 @@ public class ShopfrontIntegrationController {
         result.put("store_key", store);
         result.put("shared_alias_extras", extras.size());
         result.put("unmapped", unmapped);
+        result.put("reimported", items.size());
+        result.put("created", imported.getOrDefault("created", 0));
+        result.put("updated", imported.getOrDefault("updated", 0));
+        result.put("skipped", imported.getOrDefault("skipped", 0));
+        @SuppressWarnings("unchecked")
+        List<String> importErrors = imported.get("errors") instanceof List<?> list
+                ? (List<String>) list
+                : List.of();
+        List<String> allErrors = new ArrayList<>(errors);
+        allErrors.addAll(importErrors);
+        result.put("errors", allErrors.size() > 25 ? allErrors.subList(0, 25) : allErrors);
+        result.put("business_write", true);
+        return ApiResult.ok(result);
+    }
+
+    /**
+     * Re-import UNMAPPED Shopfront products from {@code shopfront_product.raw_payload}
+     * after tax/case validation fixes. Idempotent: already-mapped source ids stay mapped.
+     */
+    @PostMapping("/products:import-unmapped")
+    @Transactional
+    public ApiResult<Map<String, Object>> importUnmappedProducts(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) throws Exception {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        String store = body.path("store_key").asText("").trim();
+        if (!STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        ensureMappingTable();
+        ensureShadowTables();
+        List<Map<String, Object>> mappingRows = jdbc.queryForList(
+                "SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
+        }
+        int limit = Math.max(1, Math.min(body.path("limit").asInt(500), 5000));
+        List<Map<String, Object>> unmapped = jdbc.queryForList("""
+                SELECT m.source_product_id
+                FROM shopfront_product_mapping m
+                WHERE m.store_key = ? AND m.status = 'UNMAPPED'
+                ORDER BY m.source_product_id
+                LIMIT ?
+                """, store, limit);
+        if (unmapped.isEmpty()) {
+            return ApiResult.ok(Map.of(
+                    "store_key", store,
+                    "unmapped", 0,
+                    "reimported", 0,
+                    "created", 0,
+                    "updated", 0,
+                    "skipped", 0,
+                    "errors", List.of()));
+        }
+        List<String> sourceIds = unmapped.stream()
+                .map(row -> String.valueOf(row.get("source_product_id")))
+                .toList();
+        List<Map<String, Object>> shadowRows = queryRowsInChunks(
+                "SELECT source_id, raw_payload FROM shopfront_product WHERE store_key=? AND source_id IN (%s)",
+                List.of(store), sourceIds);
+        com.fasterxml.jackson.databind.node.ArrayNode items = objectMapper.createArrayNode();
+        List<String> errors = new ArrayList<>();
+        for (Map<String, Object> row : shadowRows) {
+            Object raw = row.get("raw_payload");
+            if (raw == null) continue;
+            try {
+                JsonNode item = objectMapper.readTree(String.valueOf(raw));
+                if (item instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
+                    if (text(item, "source_id") == null || text(item, "source_id").isBlank()) {
+                        objectNode.put("source_id", String.valueOf(row.get("source_id")));
+                    }
+                    hydrateProductFieldsFromNestedRaw(objectNode);
+                }
+                items.add(item);
+            } catch (Exception ex) {
+                if (errors.size() < 25) {
+                    errors.add("Invalid raw_payload for " + row.get("source_id") + ": " + ex.getMessage());
+                }
+            }
+        }
+        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", store);
+        result.put("unmapped", unmapped.size());
         result.put("reimported", items.size());
         result.put("created", imported.getOrDefault("created", 0));
         result.put("updated", imported.getOrDefault("updated", 0));
@@ -2396,9 +2491,9 @@ public class ShopfrontIntegrationController {
     private void validateProductBusinessFields(JsonNode item, long outletId, Map<String, Long> taxRates) {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
-        BigDecimal caseQuantity = decimal(item, "case_quantity");
+        BigDecimal caseQuantity = effectiveCaseQuantity(item);
         BigDecimal price = decimal(item, "price");
-        String taxRateName = text(item, "tax_rate_name");
+        String taxRateName = effectiveTaxRateName(item, "tax_rate_name");
         String sourceStatus = text(item, "source_status");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) {
             throw new IllegalArgumentException("Product source_id and name are required");
@@ -2416,7 +2511,7 @@ public class ShopfrontIntegrationController {
             throw new IllegalArgumentException("Product " + sourceId + " has no source status");
         }
         requireTaxRate(taxRateName, outletId, sourceId, taxRates);
-        String costTaxRateName = text(item, "cost_tax_rate_name");
+        String costTaxRateName = effectiveTaxRateName(item, "cost_tax_rate_name");
         if (costTaxRateName != null && !costTaxRateName.isBlank()) {
             requireTaxRate(costTaxRateName, outletId, sourceId, taxRates);
         }
@@ -2735,13 +2830,19 @@ public class ShopfrontIntegrationController {
     }
 
     private void requireTaxRate(String taxRateName, long outletId, String sourceId, Map<String, Long> taxRates) {
-        String key = taxRateName.trim().toLowerCase(Locale.ROOT);
+        String normalized = normalizeTaxRateName(taxRateName);
+        if (normalized == null || normalized.isBlank()) {
+            throw new IllegalArgumentException("Product " + sourceId + " has no matching Orithos GST rate: " + taxRateName);
+        }
+        String key = normalized.trim().toLowerCase(Locale.ROOT);
         if (taxRates.containsKey(key)) return;
-        Long taxRateId = findTaxRateId(taxRateName, outletId);
+        Long taxRateId = findTaxRateId(normalized, outletId);
         if (taxRateId == null) {
             throw new IllegalArgumentException("Product " + sourceId + " has no matching Orithos GST rate: " + taxRateName);
         }
         taxRates.put(key, taxRateId);
+        String originalKey = taxRateName == null ? "" : taxRateName.trim().toLowerCase(Locale.ROOT);
+        if (!originalKey.isBlank()) taxRates.put(originalKey, taxRateId);
     }
 
     private boolean hasUnitPrice(JsonNode item) {
@@ -2766,9 +2867,9 @@ public class ShopfrontIntegrationController {
         Long categoryId = ensureLookup("category", lookupName(item.get("category")), outletId, batch.lookupIds);
         Long brandId = ensureLookup("brand", lookupName(item.get("brand")), outletId, batch.lookupIds);
         Long familyId = ensureLookup("family", lookupName(item.get("family")), outletId, batch.lookupIds);
-        Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), taxRates);
-        Long costTaxRateId = ensureTaxRate(text(item, "cost_tax_rate_name"), taxRates);
-        BigDecimal caseQuantity = decimal(item, "case_quantity");
+        Long taxRateId = ensureTaxRate(effectiveTaxRateName(item, "tax_rate_name"), taxRates);
+        Long costTaxRateId = ensureTaxRate(effectiveTaxRateName(item, "cost_tax_rate_name"), taxRates);
+        BigDecimal caseQuantity = effectiveCaseQuantity(item);
         BigDecimal cost = decimal(item, "cost");
         String type = text(item, "source_type");
         if (type == null || type.isBlank()) type = "STANDARD";
@@ -3047,17 +3148,125 @@ public class ShopfrontIntegrationController {
 
     private Long ensureTaxRate(String name, Map<String, Long> taxRates) {
         if (name == null || name.isBlank()) return null;
-        Long taxRateId = taxRates.get(name.trim().toLowerCase(Locale.ROOT));
+        String normalized = normalizeTaxRateName(name);
+        if (normalized == null || normalized.isBlank()) {
+            throw new IllegalArgumentException("No matching Orithos tax rate for source tax code: " + name);
+        }
+        Long taxRateId = taxRates.get(normalized.trim().toLowerCase(Locale.ROOT));
+        if (taxRateId == null) taxRateId = taxRates.get(name.trim().toLowerCase(Locale.ROOT));
         if (taxRateId == null) throw new IllegalArgumentException("No matching Orithos tax rate for source tax code: " + name);
         return taxRateId;
     }
 
     private Long findTaxRateId(String name, long outletId) {
         if (name == null || name.isBlank()) return null;
+        String normalized = normalizeTaxRateName(name);
+        if (normalized == null || normalized.isBlank()) return null;
         List<Long> matches = jdbc.queryForList(
                 "SELECT id FROM tax_rate WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND outlet_id IN (?,1) ORDER BY CASE WHEN outlet_id=? THEN 0 ELSE 1 END LIMIT 1",
-                Long.class, name, outletId, outletId);
+                Long.class, normalized, outletId, outletId);
         return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    /**
+     * Shopfront uses labels like "Including GST" / "Excluding GST" / "10.0% GST".
+     * Orithos outlets currently carry {@code GST} and {@code GST Free}.
+     */
+    private String normalizeTaxRateName(String name) {
+        if (name == null) return null;
+        String trimmed = name.trim();
+        if (trimmed.isBlank()) return trimmed;
+        String key = trimmed.toLowerCase(Locale.ROOT);
+        if (key.equals("gst") || key.equals("including gst") || key.equals("excluding gst")
+                || key.matches("\\d+(\\.\\d+)?%\\s*gst") || key.contains("gst inclusive")
+                || key.contains("gst exclusive")) {
+            return "GST";
+        }
+        if (key.equals("gst free") || key.equals("gst-free") || key.equals("tax free")
+                || key.equals("tax-free") || key.equals("no gst") || key.equals("free")) {
+            return "GST Free";
+        }
+        return trimmed;
+    }
+
+    private String effectiveTaxRateName(JsonNode item, String field) {
+        String value = text(item, field);
+        if (value != null && !value.isBlank()) return normalizeTaxRateName(value);
+        JsonNode raw = item.path("raw_payload");
+        if (raw.isObject()) {
+            String nestedField = "tax_rate_name".equals(field) ? "taxRate" : "costTaxRate";
+            JsonNode nested = raw.path(nestedField);
+            if (nested.isObject() && nested.has("name")) {
+                return normalizeTaxRateName(nested.path("name").asText());
+            }
+            String camel = "tax_rate_name".equals(field) ? "tax_rate_name" : "cost_tax_rate_name";
+            String fromRaw = text(raw, camel);
+            if (fromRaw != null && !fromRaw.isBlank()) return normalizeTaxRateName(fromRaw);
+        }
+        return null;
+    }
+
+    private BigDecimal effectiveCaseQuantity(JsonNode item) {
+        BigDecimal caseQuantity = decimal(item, "case_quantity");
+        if (caseQuantity != null && caseQuantity.signum() > 0) return caseQuantity;
+        JsonNode raw = item.path("raw_payload");
+        if (raw.isObject()) {
+            BigDecimal nested = decimal(raw, "caseQuantity");
+            if (nested == null) nested = decimal(raw, "case_quantity");
+            if (nested != null && nested.signum() > 0) return nested;
+        }
+        // Retail singles often omit case size; default to 1 so source rows remain saleable.
+        return BigDecimal.ONE;
+    }
+
+    private void hydrateProductFieldsFromNestedRaw(com.fasterxml.jackson.databind.node.ObjectNode item) {
+        JsonNode nested = item.get("raw_payload");
+        if (nested == null || nested.isNull()) return;
+        if (nested.isTextual()) {
+            try {
+                nested = objectMapper.readTree(nested.asText());
+                item.set("raw_payload", nested);
+            } catch (Exception ignored) {
+                return;
+            }
+        }
+        if (!nested.isObject()) return;
+        if (isBlankText(item, "tax_rate_name")) {
+            String tax = firstText(nested, "tax_rate_name");
+            if (tax == null || tax.isBlank()) {
+                JsonNode taxRate = nested.path("taxRate");
+                if (taxRate.isObject()) tax = taxRate.path("name").asText(null);
+            }
+            if (tax != null && !tax.isBlank()) item.put("tax_rate_name", tax);
+        }
+        if (isBlankText(item, "cost_tax_rate_name")) {
+            String tax = firstText(nested, "cost_tax_rate_name");
+            if (tax == null || tax.isBlank()) {
+                JsonNode taxRate = nested.path("costTaxRate");
+                if (taxRate.isObject()) tax = taxRate.path("name").asText(null);
+            }
+            if (tax != null && !tax.isBlank()) item.put("cost_tax_rate_name", tax);
+        }
+        if (decimal(item, "case_quantity") == null || decimal(item, "case_quantity").signum() <= 0) {
+            BigDecimal caseQuantity = decimal(nested, "caseQuantity");
+            if (caseQuantity == null) caseQuantity = decimal(nested, "case_quantity");
+            if (caseQuantity != null && caseQuantity.signum() > 0) {
+                item.put("case_quantity", caseQuantity);
+            }
+        }
+        if (isBlankText(item, "source_status")) {
+            String status = firstText(nested, "status", "source_status");
+            if (status != null && !status.isBlank()) item.put("source_status", status);
+        }
+        if ((decimal(item, "price") == null || decimal(item, "price").signum() < 0) && !hasUnitPrice(item)) {
+            BigDecimal price = decimal(nested, "price");
+            if (price != null && price.signum() >= 0) item.put("price", price);
+        }
+    }
+
+    private boolean isBlankText(JsonNode item, String field) {
+        String value = text(item, field);
+        return value == null || value.isBlank();
     }
 
     private Long findLong(String sql, Object... args) {
