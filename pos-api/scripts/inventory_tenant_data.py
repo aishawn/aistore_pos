@@ -180,6 +180,23 @@ def relation_inventory(
             "indexes": indexes.get(name, []),
         }
         if exact_counts:
+            id_column = next(
+                (
+                    column
+                    for column in table_columns
+                    if column["name"] == "id" and column["type"] in {"int2", "int4", "int8"}
+                ),
+                None,
+            )
+            if id_column:
+                cur.execute(
+                    sql.SQL("SELECT min(id), max(id) FROM {}.{}").format(
+                        sql.Identifier(schema), sql.Identifier(name)
+                    )
+                )
+                id_min, id_max = cur.fetchone()
+                row["id_min"] = int(id_min) if id_min is not None else None
+                row["id_max"] = int(id_max) if id_max is not None else None
             exact_owner_columns = [
                 column
                 for column in ownership
@@ -290,6 +307,40 @@ def tenant_catalog(cur, schema: str) -> dict:
     return result
 
 
+def import_audit_after_id(cur, schema: str, after_id: int) -> list[dict]:
+    cur.execute("SELECT to_regclass(%s)", (f'"{schema}".shopfront_import_run',))
+    if cur.fetchone()[0] is None:
+        return []
+    cur.execute(
+        sql.SQL(
+            """
+            SELECT store_key, import_type, status,
+                   COALESCE(payload_json::jsonb->>'payload_mode', 'legacy') AS payload_mode,
+                   payload_json::jsonb ? 'items' AS contains_source_items,
+                   count(*) AS rows, min(id) AS min_id, max(id) AS max_id
+              FROM {}.shopfront_import_run
+             WHERE id > %s
+             GROUP BY store_key, import_type, status, payload_mode, contains_source_items
+             ORDER BY store_key, import_type, status
+            """
+        ).format(sql.Identifier(schema)),
+        (after_id,),
+    )
+    return [
+        {
+            "store_key": row[0],
+            "import_type": row[1],
+            "status": row[2],
+            "payload_mode": row[3],
+            "contains_source_items": row[4],
+            "rows": int(row[5]),
+            "min_id": int(row[6]),
+            "max_id": int(row[7]),
+        }
+        for row in cur.fetchall()
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url-env", default="POSTGRESQL_URL", help="environment variable holding the PostgreSQL DSN")
@@ -297,6 +348,11 @@ def main() -> None:
     parser.add_argument("--exact-counts", action="store_true", help="run exact counts and tenant-key groupings; can scan large tables")
     parser.add_argument("--tables", help="comma-separated relation names to report; combines with --exact-counts for targeted scans")
     parser.add_argument("--group-by", help="comma-separated extra grouping columns for selected tables")
+    parser.add_argument(
+        "--import-audit-after-id",
+        type=int,
+        help="summarize Shopfront import audit rows with id greater than this value",
+    )
     parser.add_argument("--output", type=Path, default=ROOT / ".local" / "tenant-data-inventory.json")
     args = parser.parse_args()
 
@@ -319,6 +375,13 @@ def main() -> None:
                 raise SystemExit("--group-by requires --exact-counts")
             tables = relation_inventory(cur, args.schema, args.exact_counts, selected_tables, group_by)
             tenant_data = tenant_catalog(cur, args.schema)
+            if args.import_audit_after_id is not None and args.import_audit_after_id < 0:
+                raise SystemExit("--import-audit-after-id must be zero or greater")
+            import_audit = (
+                import_audit_after_id(cur, args.schema, args.import_audit_after_id)
+                if args.import_audit_after_id is not None
+                else None
+            )
         conn.rollback()
     finally:
         conn.close()
@@ -332,6 +395,8 @@ def main() -> None:
         "database_bytes": database_bytes,
         "exact_counts": args.exact_counts,
         "tenant_catalog": tenant_data,
+        "import_audit_after_id": args.import_audit_after_id,
+        "import_audit": import_audit,
         "tables": tables,
         "limitations": [
             "Ownership columns and foreign keys are evidence for migration planning, not an approved row-copy map.",

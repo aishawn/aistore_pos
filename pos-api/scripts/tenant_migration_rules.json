@@ -1,0 +1,154 @@
+{
+  "version": "2026-11-11",
+  "control_only": [
+    "platform_admin_audit",
+    "platform_alert",
+    "platform_failure_event",
+    "shopfront_mirror_run",
+    "shopfront_store_mapping",
+    "tenant_provision_attempt",
+    "tenant_provision_attempt_step"
+  ],
+  "replicate_to_each_shard": [
+    "ai_intent",
+    "ai_prompt",
+    "ai_slot",
+    "ai_slot_value",
+    "permission"
+  ],
+  "copy_vendor_root_to_shard": [
+    "vendor"
+  ],
+  "indirect_vendor_scope": {
+    "ai_chat_message": {
+      "parent_table": "ai_chat_thread",
+      "child_key": "thread_id",
+      "parent_key": "id",
+      "parent_owner_column": "vendor_id"
+    },
+    "invoice_scan_line": {
+      "parent_table": "invoice_scan_session",
+      "child_key": "session_id",
+      "parent_key": "id",
+      "parent_owner_column": "vendor_id"
+    },
+    "pos_api_webhook_delivery": {
+      "parent_table": "pos_api_webhook",
+      "child_key": "webhook_id",
+      "parent_key": "id",
+      "parent_owner_column": "vendor_id"
+    },
+    "purchase_receipt_line": {
+      "parent_table": "purchase_receipt",
+      "child_key": "receipt_id",
+      "parent_key": "id",
+      "parent_owner_column": "vendor_id"
+    },
+    "sale_items": {
+      "parent_table": "sales",
+      "child_key": "sale_id",
+      "parent_key": "id",
+      "parent_owner_column": "store_key"
+    }
+  },
+  "table_overrides": {
+    "inventory_snapshots": {
+      "scope": "store_key",
+      "owner_column": "store_key",
+      "note": "outlet_id is the upstream Shopfront outlet identifier, not the Orithos outlet id"
+    },
+    "shopfront_customer_mapping": {
+      "scope": "store_key",
+      "owner_column": "store_key"
+    },
+    "shopfront_inventory": {
+      "scope": "store_key",
+      "owner_column": "store_key",
+      "note": "outlet_id is the upstream Shopfront outlet identifier, not the Orithos outlet id"
+    },
+    "shopfront_purchase_order_business_mapping": {
+      "scope": "store_key",
+      "owner_column": "store_key"
+    },
+    "shopfront_store_mapping": {
+      "scope": "control_only"
+    },
+    "shopfront_supplier_business_mapping": {
+      "scope": "store_key",
+      "owner_column": "store_key"
+    },
+    "ai_report_audit": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "ai_forecast_snapshot": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "ai_report_snapshot": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "ai_decision_snapshot": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "ai_command_draft": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "ai_gateway_usage": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "app_user": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Users may be outlet-bound, but credentials and roles move with the vendor aggregate"
+    },
+    "ai_command_audit": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; migrate with the complete vendor aggregate"
+    },
+    "register_session": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; register references move with the vendor aggregate"
+    },
+    "inventory_movement": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; product and inventory references move with the vendor aggregate"
+    },
+    "purchase_receipt": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; order and receipt references move with the vendor aggregate"
+    },
+    "ai_decision_audit": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; snapshot references move with the vendor aggregate"
+    },
+    "register_cash_movement": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; session and register references move with the vendor aggregate"
+    },
+    "invoice_scan_session": {
+      "scope": "vendor_id",
+      "owner_column": "vendor_id",
+      "note": "Each record carries both vendor and outlet; invoice OCR data is vendor-owned"
+    },
+    "vendor": {
+      "scope": "vendor_root"
+    }
+  }
+}

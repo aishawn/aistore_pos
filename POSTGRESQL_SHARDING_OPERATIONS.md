@@ -9,6 +9,8 @@
 - Every business shard uses a permanent sequence slot from 1–100. New IDs use a shard-specific remainder modulo 100, beginning above the source-wide high-water mark. This keeps existing IDs unchanged while making future sequence-generated IDs distinct across shards. Never reassign a slot to another shard, even after retirement.
 - At 100 outlets x 5 GB, budget for at least 500 GB of logical data plus measured indexes, WAL, backup retention, and temporary migration space. Do not infer host capacity from database count.
 
+Capacity estimates must use measured tenant-level data, not multiply the current database size by the tenant count. The 2026-11-11 source inventory measured about 5.03 GB for the entire database; it did not establish 5 GB per vendor or outlet. Keep the 500 GB figure only as a stress-planning scenario until per-vendor measurements prove that assumption.
+
 ## Configuration
 
 Set secrets in Dokploy, never in source control:
@@ -42,6 +44,12 @@ The migration is intentionally operator-run. The repository does not currently h
 
 Do not switch production traffic until the application routing code, all three shard schemas, and a repeatable vendor-scoped migration utility have been verified together. `pg_dump` does not provide a reliable per-vendor export for this schema: tenant ownership is not uniform across tables, and relationships, shared reference data, generated IDs, and sequences need coordinated handling.
 
+### Observed Source Baseline (2026-11-11)
+
+A read-only inspection of the current source database measured 5,031,745,215 bytes total across 170 public tables. It contained 150 vendor records and 203 outlets: 2 active vendors, 7 trial vendors, and 141 deleted vendors. The enabled Shopfront mappings resolve `demo` to vendor 1 (outlets 1 and 203) and `skr` to vendor 55 (outlet 87); the source currently has no shard routes. Treat deleted/trial tenants as retained data until an explicit retention policy says otherwise.
+
+The largest relations were `shopfront_import_run` (~1,432 MiB), `shopfront_sale_item` (~1,392 MiB), and `shopfront_sale` (~926 MiB). Shopfront sales mirror rows are duplicated into both store keys for the same source feed. New `shopfront_import_run` rows now keep metadata only; this stops that audit table growing with full request payloads, but does not reclaim its historical payloads. These measurements show the current database is about 5 GB total, not 5 GB per active store. Re-measure after import-audit compaction and before sizing production shards.
+
 Before the maintenance window:
 
 1. Run the read-only schema and size inventory from a host that can connect to the source database:
@@ -51,7 +59,8 @@ Before the maintenance window:
      --output .local/tenant-data-inventory.json
    ```
 
-   This default pass reports planner row estimates, relation/index sizes, direct `vendor_id`/`tenant_id`/`company_id`/`outlet_id`/`store_key` columns, declared foreign keys, vendor/outlet catalog, Shopfront store mappings, and any existing shard routes. It does not scan business rows and is not a row-copy map. Use `--tables table_a,table_b` to narrow an exact scan and `--group-by store_key,import_type` for additional dimensions on a selected table. `--exact-counts` can scan large tables; run it only after reviewing sizes and choosing an acceptable maintenance/read-load window. Review indirect ownership, polymorphic references, shared reference data, large objects, and orphan rows separately. Confirm every vendor and outlet has exactly one destination shard.
+   This default pass reports planner row estimates, relation/index sizes, direct `vendor_id`/`tenant_id`/`company_id`/`outlet_id`/`store_key` columns, declared foreign keys, vendor/outlet catalog, Shopfront store mappings, and any existing shard routes. It does not scan business rows and is not a row-copy map. Use `--tables table_a,table_b` to narrow an exact scan and `--group-by store_key,import_type` for additional dimensions on a selected table. `--exact-counts` can scan large tables; run it only after reviewing sizes and choosing an acceptable maintenance/read-load window. `--import-audit-after-id N` checks only newer audit rows by primary key without reading the retained historical payloads. Review indirect ownership, polymorphic references, shared reference data, large objects, and orphan rows separately. Confirm every vendor and outlet has exactly one destination shard.
+   The committed classification rules and validator currently cover all 170 inventoried tables, but the result is `TABLES_CLASSIFIED` with `migration_ready=false`. This is an inventory completeness gate only. `vendor_id` classifications move a vendor and all its outlets together; `outlet_id` classifications must resolve through the canonical `outlet.vendor_id`; `store_key` classifications must resolve through the enabled Shopfront mapping; indirect children follow their declared parent. These rules do not yet constitute an executable row-copy plan. Do not run a production copy until a migration utility validates these joins, external/polymorphic references, shared rows, large objects, orphan handling, and per-tenant checksums against a restored rehearsal database.
 2. Measure disk headroom for the source plus all three copied shards, control data, indexes, WAL, backups, and temporary files. The source remains present during rehearsal and rollback, so plan for close to the full source plus a full copy at peak. Measure IOPS and restore duration; use another host/storage location if the current server cannot hold that peak. Rehearse the full operation against a production-sized restored copy.
 3. Provision three databases and install the exact production schema and migration version in each. Do not rely on the base `schema.sql` alone; it may not include later production migrations.
 4. Take a recoverable backup of the source database and test restoring it. Prepare a route snapshot and a written rollback owner/checklist.
