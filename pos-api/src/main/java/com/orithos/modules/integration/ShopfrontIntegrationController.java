@@ -58,6 +58,7 @@ public class ShopfrontIntegrationController {
     private static final class ProductImportBatch {
         private final Map<String, Long> lookupIds = new HashMap<>();
         private final Map<String, Long> productIdsByIdentity = new HashMap<>();
+        private final Map<String, Long> reservedProductNames = new HashMap<>();
         private final Map<Long, Object[]> productUpdates = new LinkedHashMap<>();
         private final Map<Long, List<Object[]>> pricesByProduct = new LinkedHashMap<>();
         private final List<BarcodeWrite> barcodes = new ArrayList<>();
@@ -1923,11 +1924,22 @@ public class ShopfrontIntegrationController {
                     plan = resolveBusinessProductIds(store, outletId, importable);
                 }
                 ProductImportBatch batch = new ProductImportBatch();
+                Set<Long> replacingProductIds = new HashSet<>();
+                for (JsonNode item : importable) {
+                    Long productId = plan.productIds().get(text(item, "source_id"));
+                    if (productId != null) replacingProductIds.add(productId);
+                }
+                batch.reservedProductNames.putAll(activeProductNameOwners(outletId, replacingProductIds));
                 batch.supplierMappings.putAll(preloadSupplierMappings(store, outletId));
                 for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
                     try {
                         Long resolvedProductId = plan.productIds().get(sourceId);
+                        String productName = reserveUniqueProductName(
+                                text(item, "name"), sourceId, resolvedProductId, batch.reservedProductNames);
+                        if (item instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
+                            objectNode.put("name", productName);
+                        }
                         // Identity is source_id only — never share a new INSERT across
                         // different Shopfront products that happen to share barcode/name.
                         String identity = productIdentityKey(item);
@@ -1937,6 +1949,7 @@ public class ShopfrontIntegrationController {
                         boolean mappingExisted = plan.existingProductMappings().contains(sourceId);
                         boolean productExisted = mappingExisted || resolvedProductId != null;
                         long productId = upsertBusinessProduct(item, store, outletId, taxRates, resolvedProductId, batch);
+                        batch.reservedProductNames.put(normalizeProductName(productName), productId);
                         batch.productIdsByIdentity.putIfAbsent(identity, productId);
                         if (!mappingExisted) {
                             batch.sourceMappings.put(sourceId, new Object[]{store, sourceId, productId});
@@ -2757,6 +2770,48 @@ public class ShopfrontIntegrationController {
                 Long.class, outletId, candidate);
         if (stillTaken == null || stillTaken == 0) return candidate;
         return base + " [" + marker + "-" + (System.currentTimeMillis() % 10000) + "]";
+    }
+
+    private Map<String, Long> activeProductNameOwners(long outletId, Set<Long> replacingProductIds) {
+        Map<String, Long> owners = new LinkedHashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList(
+                "SELECT id,name FROM product WHERE outlet_id=? AND deleted_at IS NULL", outletId)) {
+            long productId = longValue(row.get("id"));
+            if (replacingProductIds.contains(productId)) continue;
+            String key = normalizeProductName(String.valueOf(row.getOrDefault("name", "")));
+            if (!key.isBlank()) owners.put(key, productId);
+        }
+        return owners;
+    }
+
+    static String reserveUniqueProductName(String name, String sourceId, Long productId,
+                                           Map<String, Long> reservedNames) {
+        String base = name == null ? "" : name.trim();
+        String baseKey = normalizeProductName(base);
+        if (baseKey.isBlank()) return base;
+        if (!reservedNames.containsKey(baseKey) || java.util.Objects.equals(reservedNames.get(baseKey), productId)) {
+            reservedNames.put(baseKey, productId);
+            return base;
+        }
+
+        String identity = sourceId == null || sourceId.isBlank() ? "unknown" : sourceId.trim();
+        for (int suffixLength = Math.min(8, identity.length()); ; suffixLength = Math.min(identity.length(), suffixLength + 4)) {
+            String marker = identity.substring(identity.length() - suffixLength);
+            String suffix = " [" + marker + "]";
+            int prefixLength = Math.max(1, 255 - suffix.length());
+            String candidate = base.substring(0, Math.min(base.length(), prefixLength)) + suffix;
+            String key = normalizeProductName(candidate);
+            if (!reservedNames.containsKey(key) || java.util.Objects.equals(reservedNames.get(key), productId)) {
+                reservedNames.put(key, productId);
+                return candidate;
+            }
+            if (suffixLength == identity.length()) break;
+        }
+        throw new IllegalArgumentException("Unable to assign a unique POS name for Shopfront product " + identity);
+    }
+
+    private static String normalizeProductName(String name) {
+        return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
     }
 
     private String productBusinessSignature(JsonNode item) {

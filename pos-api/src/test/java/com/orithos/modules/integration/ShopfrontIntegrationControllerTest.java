@@ -40,6 +40,19 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void reservesStableNamesForDuplicateShopfrontProducts() {
+        Map<String, Long> reserved = new java.util.LinkedHashMap<>();
+
+        String first = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-1", 101L, reserved);
+        String second = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-2", 102L, reserved);
+        String replay = ShopfrontIntegrationController.reserveUniqueProductName("Duplicate", "source-2", 102L, reserved);
+
+        assertEquals("Duplicate", first);
+        assertEquals("Duplicate [source-2]", second);
+        assertEquals(second, replay);
+    }
+
+    @Test
     void matchStatusAggregatesProductAndSaleItemCounts() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
