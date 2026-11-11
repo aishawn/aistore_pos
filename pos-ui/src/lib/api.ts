@@ -1,4 +1,4 @@
-import { clearOdooReadCache } from "./odoo-read-cache";
+import { clearNativeReadCache } from "./native-read-cache";
 /**
  * Typed client for the Orithos Spring Boot backend.
  * Unwraps the `{ code, message, data }` envelope. The same-origin Next BFF
@@ -123,13 +123,18 @@ export function isLocalPreviewSession(): boolean {
 
 let authLogoutInFlight: Promise<void> | null = null;
 
+/** Orithos POS JWT expiry — not Odoo integration 401s or unrelated HTTP 401s. */
+function isPosSessionExpired(status: number, code: number, path: string): boolean {
+  if (code === 40101) return false;
+  if (code === 40100 || code === 40102 || code === 40103) return true;
+  if (path.startsWith("/api/odoo/")) return false;
+  return false;
+}
+
 function handleAuthFailure(path: string, status: number, code: number) {
   if (isLocalPreviewSession()) return;
   if (isAuthExemptPath(path)) return;
-  // Wrong password is HTTP 200 + code 40101 — not a session expiry.
-  if (code === 40101) return;
-  const expired = status === 401 || code === 40100 || code === 40103;
-  if (!expired) return;
+  if (!isPosSessionExpired(status, code, path)) return;
   if (authLogoutInFlight) return;
 
   authLogoutInFlight = (async () => {
@@ -191,7 +196,7 @@ export async function refreshAccessToken(): Promise<RefreshAccessResult> {
         | null;
       if (response.ok && payload?.code === 0) return "ok";
       if ([502, 503, 504].includes(response.status) || payload?.code === 50200) return "transient";
-      if (response.status === 401 || payload?.code === 40100 || payload?.code === 40103) return "expired";
+      if (payload?.code === 40100 || payload?.code === 40102 || payload?.code === 40103) return "expired";
       return "transient";
     } catch {
       return "transient";
@@ -230,7 +235,7 @@ async function request<T>(
   }
 
   const authExpired = !isLocalPreviewSession()
-    && (res.status === 401 || json?.code === 40100 || json?.code === 40103);
+    && isPosSessionExpired(res.status, json?.code ?? -1, path);
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   let sessionRecovered = false;
   let refreshDeferred = false;
@@ -262,7 +267,7 @@ async function request<T>(
     if (!sessionRecovered && !refreshDeferred) handleAuthFailure(path, res.status, json.code);
     throw new ApiError(json.message, json.code, res.status, res.headers.get("x-correlation-id"));
   }
-  if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !path.startsWith("/api/auth/refresh")) clearOdooReadCache();
+  if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !path.startsWith("/api/auth/refresh")) clearNativeReadCache();
   return json.data;
 }
 
@@ -1542,8 +1547,8 @@ export interface InvoiceScanSessionLine {
   qtyCases?: number | null;
   unitPrice?: number | null;
   lineTotal?: number | null;
-  odooProductId?: number | null;
-  odooProductName?: string | null;
+  productId?: number | null;
+  productName?: string | null;
   matchStatus?: InvoiceLineMatchStatus | string | null;
   confidence?: number | null;
 }
@@ -1559,12 +1564,12 @@ export interface InvoiceScanSession {
   dueDate?: string | null;
   totalPayable?: number | null;
   gstIncluded?: number | null;
-  odooSupplierId?: number | null;
-  odooOutletId?: number | null;
-  odooPoId?: number | null;
-  odooPoName?: string | null;
-  odooPickingId?: number | null;
-  odooPickingName?: string | null;
+  supplierId?: number | null;
+  outletId?: number | null;
+  purchaseOrderId?: number | null;
+  purchaseOrderName?: string | null;
+  receiptId?: number | null;
+  receiptName?: string | null;
   sourceFilename?: string | null;
   sourceContentType?: string | null;
   notes?: string | null;
@@ -1594,8 +1599,8 @@ export interface InvoiceScanSavePayload {
   dueDate?: string | null;
   totalPayable?: number | null;
   gstIncluded?: number | null;
-  odooSupplierId?: number | null;
-  odooOutletId?: number | null;
+  supplierId?: number | null;
+  outletId?: number | null;
   notes?: string | null;
   internalNotes?: string | null;
   lines?: InvoiceScanSessionLine[];
@@ -1626,7 +1631,7 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
     handleAuthFailure(route, res.status, json?.code ?? -1);
     const message = json?.message ?? (
       aiGatewayFailureMessage("Invoice scanning", res.status, `Invoice scan failed (${res.status})`)
-      + (res.status === 502 || res.status === 503 || res.status === 504 ? " Open Odoo Purchases if you need to continue now." : "")
+      + (res.status === 502 || res.status === 503 || res.status === 504 ? " Save the invoice and retry from Orithos Purchases when service is available." : "")
     );
     throw new ApiError(
       message,
@@ -1665,7 +1670,7 @@ export function updateInvoiceScan(id: number, payload: InvoiceScanSavePayload) {
 
 export function linkInvoiceScanPurchase(
   id: number,
-  payload: { odooPoId?: number; odooPoName?: string; odooPickingId?: number; odooPickingName?: string; status?: string },
+  payload: { purchaseOrderId?: number; purchaseOrderName?: string; receiptId?: number; receiptName?: string; status?: string },
 ) {
   return api.post<InvoiceScanSession>(`/api/invoice-scans/${id}/link-purchase`, payload);
 }

@@ -39,6 +39,14 @@ class TokenStoreTest {
     }
 
     @Test
+    void refreshValidFailsOpenWhenRedisHasNoRecordYet() {
+        when(ops.get("jwt:refresh:8")).thenReturn(null);
+        when(ops.get("jwt:refresh:prev:8")).thenReturn(null);
+
+        assertTrue(store.refreshValid(8L, "orphan-jti"));
+    }
+
+    @Test
     void saveRefreshRetainsPreviousTokenBriefly() {
         when(ops.get("jwt:refresh:5")).thenReturn("token-a");
         Date expiry = new Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1));

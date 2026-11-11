@@ -37,7 +37,7 @@ function safeReturnPath(value: string | null): string | null {
 }
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, recoverSession } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [controlPlane, setControlPlane] = useState(true);
@@ -66,6 +66,15 @@ export default function LoginPage() {
     }
     setPasswordResetNotice(new URLSearchParams(window.location.search).get("reset") === "1");
   }, []);
+
+  useEffect(() => {
+    if (isControlPlaneHost(window.location.host)) return;
+    void recoverSession().then((recovered) => {
+      if (!recovered) return;
+      const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
+      window.location.assign(storeLandingPath(returnPath, "web"));
+    });
+  }, [recoverSession]);
 
   async function doLogin(mode: UiMode) {
     setBusy(mode);

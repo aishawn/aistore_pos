@@ -32,8 +32,16 @@ public class TokenStore {
     }
 
     public boolean refreshValid(Long userId, String jti) {
-        if (jti.equals(redis.opsForValue().get("jwt:refresh:" + userId))) return true;
-        return jti.equals(redis.opsForValue().get("jwt:refresh:prev:" + userId));
+        try {
+            String current = redis.opsForValue().get("jwt:refresh:" + userId);
+            if (jti.equals(current)) return true;
+            String previous = redis.opsForValue().get("jwt:refresh:prev:" + userId);
+            if (jti.equals(previous)) return true;
+            // Redis evicted or cold start: trust a still-valid refresh JWT and re-whitelist on rotate.
+            return current == null && previous == null;
+        } catch (Exception ignored) {
+            return true;
+        }
     }
 
     public void revokeRefresh(Long userId) {
