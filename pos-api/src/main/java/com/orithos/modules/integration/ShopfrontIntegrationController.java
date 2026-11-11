@@ -629,6 +629,7 @@ public class ShopfrontIntegrationController {
         boolean onlyUnmapped = body == null || body.path("only_unmapped").isMissingNode()
                 || body.path("only_unmapped").isNull()
                 || body.path("only_unmapped").asBoolean(true);
+        boolean retrySkipped = body != null && body.path("retry_skipped").asBoolean(false);
         if (!STORE_KEY.matcher(storeKey).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
         }
@@ -658,14 +659,26 @@ public class ShopfrontIntegrationController {
             args.add(afterSourceId);
         }
         if (onlyUnmapped) {
-            sql.append("""
-                     AND NOT EXISTS (
-                        SELECT 1 FROM shopfront_purchase_order_business_mapping m
-                        WHERE m.store_key = po.store_key
-                          AND m.source_id = po.source_id
-                          AND m.outlet_id = ?
-                    )
-                    """);
+            if (retrySkipped) {
+                sql.append("""
+                         AND NOT EXISTS (
+                            SELECT 1 FROM shopfront_purchase_order_business_mapping m
+                            WHERE m.store_key = po.store_key
+                              AND m.source_id = po.source_id
+                              AND m.outlet_id = ?
+                              AND m.purchase_order_id > 0
+                        )
+                        """);
+            } else {
+                sql.append("""
+                         AND NOT EXISTS (
+                            SELECT 1 FROM shopfront_purchase_order_business_mapping m
+                            WHERE m.store_key = po.store_key
+                              AND m.source_id = po.source_id
+                              AND m.outlet_id = ?
+                        )
+                        """);
+            }
             args.add(outletId);
         }
         sql.append(" ORDER BY source_id ASC LIMIT ?");
@@ -699,6 +712,7 @@ public class ShopfrontIntegrationController {
         result.put("store_key", storeKey);
         result.put("outlet_id", outletId);
         result.put("only_unmapped", onlyUnmapped);
+        result.put("retry_skipped", retrySkipped);
         result.put("mirror_batch", rows.size());
         result.put("rebuild_failures", rebuildFailures);
         result.put("batch_size", limit);
@@ -1732,8 +1746,10 @@ public class ShopfrontIntegrationController {
         int skipped = 0;
         List<String> errors = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        Map<String, Long> supplierCache = new HashMap<>();
-        Map<String, Long> productCache = new HashMap<>();
+        // Prefetch once per batch — historical POs can have hundreds of lines and
+        // per-line mappedProductId/mappedSupplierId round-trips gateway-timeout.
+        Map<String, Long> supplierCache = preloadSupplierMappings(store, outletId);
+        Map<String, Long> productCache = preloadProductMappings(store, outletId);
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
@@ -1928,10 +1944,52 @@ public class ShopfrontIntegrationController {
         jdbc.update(mappingSql, store, sourceId, outletId, 0L, hash);
     }
 
+    private Map<String, Long> preloadSupplierMappings(String store, long outletId) {
+        Map<String, Long> cache = new HashMap<>();
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT m.source_id, m.supplier_id
+                FROM shopfront_supplier_business_mapping m
+                JOIN supplier s ON s.id = m.supplier_id AND s.outlet_id = m.outlet_id AND s.deleted_at IS NULL
+                WHERE m.store_key = ? AND m.outlet_id = ?
+                """, store, outletId);
+        for (Map<String, Object> row : rows) {
+            String sourceId = stringValue(row.get("source_id"));
+            Long supplierId = longValue(row.get("supplier_id"));
+            if (sourceId != null && !sourceId.isBlank() && supplierId != null && supplierId > 0) {
+                cache.put(sourceId, supplierId);
+            }
+        }
+        return cache;
+    }
+
+    private Map<String, Long> preloadProductMappings(String store, long outletId) {
+        Map<String, Long> cache = new HashMap<>();
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT m.source_product_id, m.pos_product_id
+                FROM shopfront_product_mapping m
+                JOIN product p ON p.id = m.pos_product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                WHERE m.store_key = ? AND m.status = 'MAPPED'
+                """, outletId, store);
+        for (Map<String, Object> row : rows) {
+            String sourceId = stringValue(row.get("source_product_id"));
+            Long productId = longValue(row.get("pos_product_id"));
+            if (sourceId != null && !sourceId.isBlank() && productId != null && productId > 0) {
+                cache.put(sourceId, productId);
+            }
+        }
+        return cache;
+    }
+
     private Long cachedMappedSupplierId(String store, String sourceId, long outletId, Map<String, Long> cache) {
         String key = sourceId == null ? "" : sourceId;
         if (cache.containsKey(key)) {
             return cache.get(key);
+        }
+        // Negative cache empty keys / misses so we do not re-query the same
+        // unmapped supplier for every line in a large historical PO.
+        if (key.isBlank()) {
+            cache.put(key, null);
+            return null;
         }
         Long mapped = mappedSupplierId(store, sourceId, outletId);
         cache.put(key, mapped);
@@ -1942,6 +2000,10 @@ public class ShopfrontIntegrationController {
         String key = sourceId == null ? "" : sourceId;
         if (cache.containsKey(key)) {
             return cache.get(key);
+        }
+        if (key.isBlank()) {
+            cache.put(key, null);
+            return null;
         }
         Long mapped = mappedProductId(store, sourceId, outletId);
         cache.put(key, mapped);

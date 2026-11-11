@@ -320,9 +320,9 @@ class ShopfrontIntegrationControllerTest {
         when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
                 .thenReturn(55L);
         when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("supplier_id", 701L)));
+                .thenReturn(List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 701L)));
         when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("pos_product_id", 801L)));
+                .thenReturn(List.of(Map.of("source_product_id", "sf-product-1", "pos_product_id", 801L)));
         when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
                 .thenReturn(List.of());
         when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
@@ -366,15 +366,17 @@ class ShopfrontIntegrationControllerTest {
         when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
         when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
                 .thenReturn(55L);
-        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("supplier_id", 701L)));
-        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("pos_product_id", 801L)))
-                .thenReturn(List.of());
-        when(jdbc.queryForList(contains("FROM shopfront_product sp"), any(Object[].class)))
-                .thenReturn(List.of());
-        when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(invocation -> {
+            Object[] callArgs = invocation.getArguments();
+            String sql = callArgs.length == 0 || callArgs[0] == null ? "" : callArgs[0].toString();
+            if (sql.contains("shopfront_supplier_business_mapping")) {
+                return List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 701L));
+            }
+            if (sql.contains("m.source_product_id, m.pos_product_id")) {
+                return List.of(Map.of("source_product_id", "sf-product-mapped", "pos_product_id", 801L));
+            }
+            return List.of();
+        });
         when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
                 .thenReturn(902L);
 
@@ -422,7 +424,7 @@ class ShopfrontIntegrationControllerTest {
         when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(1L)))
                 .thenReturn(1L);
         when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("supplier_id", 221L)));
+                .thenReturn(List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 221L)));
         when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
                 .thenReturn(List.of());
         when(jdbc.queryForList(contains("FROM shopfront_product sp"), any(Object[].class)))
@@ -481,8 +483,8 @@ class ShopfrontIntegrationControllerTest {
 
         org.mockito.Mockito.lenient().when(jdbc.queryForList(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(Object[].class)))
                 .thenAnswer(invocation -> {
-                    Object sqlArg = invocation.getArgument(0);
-                    String sql = sqlArg == null ? "" : sqlArg.toString();
+                    Object[] callArgs = invocation.getArguments();
+                    String sql = callArgs.length == 0 || callArgs[0] == null ? "" : callArgs[0].toString();
                     if (sql.contains("shopfront_store_mapping WHERE store_key")) {
                         return List.of(Map.of("store_key", "skr", "company_id", "55", "outlet_id", 87L, "enabled", 1));
                     }
@@ -490,10 +492,10 @@ class ShopfrontIntegrationControllerTest {
                         return mirrorRows;
                     }
                     if (sql.contains("shopfront_supplier_business_mapping")) {
-                        return List.of(Map.of("supplier_id", 701L));
+                        return List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 701L));
                     }
                     if (sql.contains("shopfront_product_mapping")) {
-                        return List.of(Map.of("pos_product_id", 801L));
+                        return List.of(Map.of("source_product_id", "sf-product-1", "pos_product_id", 801L));
                     }
                     if (sql.contains("shopfront_purchase_order_business_mapping")) {
                         return List.of();
