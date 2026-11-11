@@ -225,13 +225,13 @@ class ShopfrontIntegrationControllerTest {
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "importBusiness", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class, boolean.class);
         importBusiness.setAccessible(true);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> result = (Map<String, Object>) importBusiness.invoke(controller, "inventory", "skr",
                 Map.of("outlet_id", "87"), new ObjectMapper().readTree(
-                        "[{\"source_id\":\"p1\",\"quantity\":-5.25}]"), false);
+                        "[{\"source_id\":\"p1\",\"quantity\":-5.25}]"), false, false);
 
         ArgumentCaptor<List<Object[]>> rows = ArgumentCaptor.forClass((Class) List.class);
         verify(jdbc).batchUpdate(contains("INSERT INTO product_inventory"), rows.capture());
@@ -239,6 +239,27 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(new BigDecimal("-5.25"), rows.getValue().get(0)[2]);
         assertEquals(1, result.get("updated"));
         assertEquals(0, result.get("skipped"));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM product_inventory"), any(Object[].class));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void inventoryReplaceFlagDoesNotWipeBusinessLedgerBeforeUpsert() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("SELECT m.source_product_id"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("source_product_id", "p1", "pos_product_id", 77L)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "importBusiness", String.class, String.class, Map.class,
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class, boolean.class);
+        importBusiness.setAccessible(true);
+
+        importBusiness.invoke(controller, "inventory", "skr",
+                Map.of("outlet_id", "87"), new ObjectMapper().readTree(
+                        "[{\"source_id\":\"p1\",\"quantity\":12}]"), true, false);
+
+        verify(jdbc).batchUpdate(contains("INSERT INTO product_inventory"), any(List.class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM product_inventory"), any(Object[].class));
     }
 
     @Test
@@ -264,17 +285,17 @@ class ShopfrontIntegrationControllerTest {
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "importBusiness", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class, boolean.class);
         importBusiness.setAccessible(true);
         ObjectMapper mapper = new ObjectMapper();
         var items = mapper.readTree("[{\"source_id\":\"shopfront-supplier-1\",\"name\":\"Supplier One\",\"business_number\":\"12 345 678 901\",\"status\":\"ACTIVE\",\"raw_payload\":{\"orderNotes\":\"Morning delivery\"}}]");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> first = (Map<String, Object>) importBusiness.invoke(controller, "suppliers", "skr",
-                Map.of("company_id", "55", "outlet_id", "87"), items, false);
+                Map.of("company_id", "55", "outlet_id", "87"), items, false, false);
         @SuppressWarnings("unchecked")
         Map<String, Object> replay = (Map<String, Object>) importBusiness.invoke(controller, "suppliers", "skr",
-                Map.of("company_id", "55", "outlet_id", "87"), items, false);
+                Map.of("company_id", "55", "outlet_id", "87"), items, false, false);
 
         assertEquals(1, first.get("created"));
         assertEquals(0, first.get("skipped"));
@@ -295,13 +316,13 @@ class ShopfrontIntegrationControllerTest {
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method importBusiness = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "importBusiness", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
+                com.fasterxml.jackson.databind.JsonNode.class, boolean.class, boolean.class);
         importBusiness.setAccessible(true);
         ObjectMapper mapper = new ObjectMapper();
 
         InvocationTargetException failure = assertThrows(InvocationTargetException.class,
                 () -> importBusiness.invoke(controller, "suppliers", "demo", Map.of("company_id", "56", "outlet_id", "87"),
-                        mapper.readTree("[{\"source_id\":\"s1\",\"name\":\"Supplier\"}]"), false));
+                        mapper.readTree("[{\"source_id\":\"s1\",\"name\":\"Supplier\"}]"), false, false));
 
         assertEquals(IllegalArgumentException.class, failure.getCause().getClass());
         assertEquals("Shopfront supplier mapping does not match the outlet tenant", failure.getCause().getMessage());

@@ -1368,9 +1368,13 @@ public class ShopfrontIntegrationController {
             // Full inventory replaces can be 10k+ rows. Persist a compact audit
             // envelope instead of the entire source payload so staging cannot
             // OOM/timeout the request before shadow/business writes finish.
-            boolean completeInventorySnapshot = "inventory".equals(type)
-                    && body.path("replace").asBoolean(false)
-                    && body.path("snapshot_complete").asBoolean(false);
+            //
+            // Multi-batch protocol: replace=true on first chunk (rebuild shadow),
+            // snapshot_complete=true on last chunk (prune business orphans).
+            // Do not require both flags together for a business wipe — that left
+            // SKR Inventory On Hand at ~500 rows / all zeros after a partial run.
+            boolean replaceInventory = "inventory".equals(type) && body.path("replace").asBoolean(false);
+            boolean snapshotComplete = "inventory".equals(type) && body.path("snapshot_complete").asBoolean(false);
             JsonNode audit = importAuditEnvelope(
                     objectMapper,
                     store,
@@ -1384,13 +1388,13 @@ public class ShopfrontIntegrationController {
             Map<String, Object> nativeLedger = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             if (mappingReady) {
                 ensureShadowTables();
-                persistShadow(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                persistShadow(type, store, mappingRows.get(0), items, replaceInventory);
                 if (businessWriteForType) {
                     if ("purchase_orders".equals(type)) {
                         business = importBusinessPurchaseOrders(store, mappingRows.get(0), items);
                         nativeLedger = business;
                     } else {
-                        business = importBusiness(type, store, mappingRows.get(0), items, completeInventorySnapshot);
+                        business = importBusiness(type, store, mappingRows.get(0), items, replaceInventory, snapshotComplete);
                         if ("suppliers".equals(type)) {
                             nativeLedger = business;
                         }
@@ -1549,7 +1553,8 @@ public class ShopfrontIntegrationController {
      * shopfront_product_mapping, so retries update the same row instead of
      * creating another Sell item.
      */
-    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items, boolean completeInventorySnapshot) throws Exception {
+    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items,
+                                               boolean replaceInventory, boolean snapshotComplete) throws Exception {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
         if ("suppliers".equals(type)) {
@@ -1611,14 +1616,14 @@ public class ShopfrontIntegrationController {
                 flushBusinessProductBatch(batch, outletId);
             }
         } else if ("inventory".equals(type)) {
-            if (completeInventorySnapshot && items.isEmpty()) {
+            if (snapshotComplete && items.isEmpty()) {
                 throw new IllegalArgumentException("A complete inventory snapshot cannot be empty");
             }
             Map<String, Long> inventoryMappings = validateInventoryTargetConflicts(items, store, outletId, errors);
             skipped += Math.max(0, items.size() - inventoryMappings.size());
-            if (completeInventorySnapshot) {
-                jdbc.update("DELETE FROM product_inventory WHERE outlet_id=? AND product_id IN (SELECT pos_product_id FROM shopfront_product_mapping WHERE store_key=?)", outletId, store);
-            }
+            // Never DELETE product_inventory before upserts. Historical
+            // replace+snapshot_complete on the first 500-row chunk wiped the
+            // outlet ledger whenever a later chunk failed or was skipped.
             List<Object[]> inventoryRows = new ArrayList<>();
             for (JsonNode item : items) {
                 String sourceId = text(item, "source_id");
@@ -1633,8 +1638,22 @@ public class ShopfrontIntegrationController {
                 jdbc.batchUpdate("INSERT INTO product_inventory (product_id,outlet_id,quantity,reorder_level,reorder_amount,reorder_limit,max_quantity,on_order) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (product_id,outlet_id) DO UPDATE SET quantity=EXCLUDED.quantity,reorder_level=EXCLUDED.reorder_level,reorder_amount=EXCLUDED.reorder_amount,reorder_limit=EXCLUDED.reorder_limit,max_quantity=EXCLUDED.max_quantity,on_order=EXCLUDED.on_order", inventoryRows);
                 updated += inventoryRows.size();
             }
+            // Prune only on the final chunk. Skip when replace=true so a legacy
+            // first-chunk "complete" flag cannot delete rows later batches need.
+            if (snapshotComplete && !replaceInventory) {
+                jdbc.update(
+                        "DELETE FROM product_inventory pi "
+                                + "WHERE pi.outlet_id=? "
+                                + "AND EXISTS (SELECT 1 FROM shopfront_product_mapping m "
+                                + "WHERE m.store_key=? AND m.pos_product_id=pi.product_id) "
+                                + "AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping m "
+                                + "JOIN shopfront_inventory si ON si.store_key=m.store_key "
+                                + "AND si.source_product_id=m.source_product_id "
+                                + "WHERE m.store_key=? AND m.pos_product_id=pi.product_id)",
+                        outletId, store, store);
+            }
         } else {
-            validateBusinessImport(type, items, store, outletId, completeInventorySnapshot, taxRates);
+            validateBusinessImport(type, items, store, outletId, replaceInventory && snapshotComplete, taxRates);
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("enabled", true);
@@ -3044,6 +3063,27 @@ public class ShopfrontIntegrationController {
     private String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
+    }
+
+    private String lookupName(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            String value = node.asText();
+            return value == null || value.isBlank() ? null : value;
+        }
+        if (node.isObject()) {
+            String name = text(node, "name");
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+            name = text(node, "title");
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+        }
+        return null;
     }
 
     private boolean isPostgres() {
