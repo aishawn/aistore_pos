@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -767,9 +768,15 @@ class ShopfrontIntegrationControllerTest {
 
     @Test
     void businessProductImportRejectsConflictingAliasesInTheSameBatch() throws Exception {
+        // After source_id 1:1 import, barcode alone does not alias. Conflicts only apply when
+        // multiple source_ids already resolve to the same Orithos product id.
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
                 .thenReturn(List.of(7L));
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(
+                        Map.of("source_product_id", "p1", "pos_product_id", 77L),
+                        Map.of("source_product_id", "p2", "pos_product_id", 77L)));
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "validateBusinessImport", String.class, com.fasterxml.jackson.databind.JsonNode.class,
@@ -780,7 +787,7 @@ class ShopfrontIntegrationControllerTest {
                 () -> validate.invoke(controller, "products", new ObjectMapper().readTree("""
                         [
                           {"source_id":"p1","name":"First name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE"},
-                          {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
+                          {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300002"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
                         ]
                         """), "skr", 48L, false, new java.util.HashMap<>()));
 
@@ -791,6 +798,8 @@ class ShopfrontIntegrationControllerTest {
     @Test
     void businessProductImportSoftSkipsConflictingAliasesInsteadOfFailingBatch() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "collectProductAliasConflicts", com.fasterxml.jackson.databind.JsonNode.class, String.class, Map.class, List.class);
@@ -800,10 +809,10 @@ class ShopfrontIntegrationControllerTest {
         Set<String> rejected = (Set<String>) collect.invoke(controller, new ObjectMapper().readTree("""
                 [
                   {"source_id":"p1","name":"First name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":5,"tax_rate_name":"GST","source_status":"ACTIVE"},
-                  {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"},
-                  {"source_id":"p3","name":"Third name","barcodes":[{"code":"9300001"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
+                  {"source_id":"p2","name":"Second name","barcodes":[{"code":"9300002"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"},
+                  {"source_id":"p3","name":"Third name","barcodes":[{"code":"9300003"}],"case_quantity":6,"price":8,"tax_rate_name":"GST","source_status":"ACTIVE"}
                 ]
-                """), "skr", Map.of(), errors);
+                """), "skr", Map.of("p1", 77L, "p2", 77L, "p3", 77L), errors);
         org.junit.jupiter.api.Assertions.assertEquals(Set.of("p1", "p2", "p3"), rejected);
         org.junit.jupiter.api.Assertions.assertFalse(errors.isEmpty());
         org.junit.jupiter.api.Assertions.assertTrue(errors.get(0).contains("conflicting business attributes"));
@@ -888,6 +897,45 @@ class ShopfrontIntegrationControllerTest {
 
         verify(jdbc).update(contains("DELETE FROM product_price WHERE outlet_id=? AND product_id IN"), any(Object[].class));
         verify(jdbc).batchUpdate(contains("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)"), any(List.class));
+    }
+
+
+    @Test
+    void productIdentityKeyIsSourceIdNotBarcode() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method identity = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "productIdentityKey", com.fasterxml.jackson.databind.JsonNode.class);
+        identity.setAccessible(true);
+        Object key = identity.invoke(controller, new ObjectMapper().readTree(
+                "{\"source_id\":\"src-a\",\"name\":\"Same Name\",\"barcodes\":[{\"code\":\"9300001\"}]}"));
+        assertEquals("source:src-a", key);
+    }
+
+    @Test
+    void resolveBusinessProductIdsDoesNotAliasByBarcode() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method resolve = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "resolveBusinessProductIds", String.class, long.class, com.fasterxml.jackson.databind.JsonNode.class);
+        resolve.setAccessible(true);
+        Object plan = resolve.invoke(controller, "skr", 87L, new ObjectMapper().readTree("""
+                [
+                  {"source_id":"p1","name":"Pack A","barcodes":[{"code":"9300001"}]},
+                  {"source_id":"p2","name":"Pack B","barcodes":[{"code":"9300001"}]}
+                ]
+                """));
+        Method productIds = plan.getClass().getDeclaredMethod("productIds");
+        productIds.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Long> ids = (Map<String, Long>) productIds.invoke(plan);
+        org.junit.jupiter.api.Assertions.assertNull(ids.get("p1"));
+        org.junit.jupiter.api.Assertions.assertNull(ids.get("p2"));
+        verify(jdbc, never()).queryForList(contains("product_barcode"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("mdb_id"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("lower(trim(name))"), any(Object[].class));
     }
 
     private static Stream<Arguments> mappingFlags() {

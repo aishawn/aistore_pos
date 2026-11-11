@@ -166,6 +166,142 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "products", body);
     }
 
+    /**
+     * Split many-to-one Shopfront→Orithos product aliases so each source_id owns
+     * its own POS product. Keeps one mapping per shared pos_product_id, unmaps the
+     * extras, then re-imports them from {@code shopfront_product.raw_payload}.
+     */
+    @PostMapping("/products:split-aliases")
+    @Transactional
+    public ApiResult<Map<String, Object>> splitProductAliases(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) throws Exception {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        String store = body.path("store_key").asText("").trim();
+        if (!STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        ensureMappingTable();
+        ensureShadowTables();
+        List<Map<String, Object>> mappingRows = jdbc.queryForList(
+                "SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
+        }
+        int limit = Math.max(1, Math.min(body.path("limit").asInt(500), 5000));
+        List<Map<String, Object>> extras = jdbc.queryForList("""
+                WITH shared AS (
+                  SELECT pos_product_id
+                  FROM shopfront_product_mapping
+                  WHERE store_key = ? AND status = 'MAPPED'
+                  GROUP BY pos_product_id
+                  HAVING COUNT(*) > 1
+                ),
+                ranked AS (
+                  SELECT m.source_product_id,
+                         m.pos_product_id,
+                         ROW_NUMBER() OVER (
+                           PARTITION BY m.pos_product_id
+                           ORDER BY CASE
+                             WHEN EXISTS (
+                               SELECT 1
+                               FROM product_barcode pb
+                               JOIN shopfront_product sp
+                                 ON sp.store_key = m.store_key
+                                AND sp.source_id = m.source_product_id
+                               WHERE pb.outlet_id = ?
+                                 AND pb.product_id = m.pos_product_id
+                                 AND NULLIF(btrim(sp.barcode), '') IS NOT NULL
+                                 AND pb.code = btrim(sp.barcode)
+                             ) THEN 0 ELSE 1 END,
+                             m.source_product_id
+                         ) AS rn
+                  FROM shopfront_product_mapping m
+                  JOIN shared s ON s.pos_product_id = m.pos_product_id
+                  WHERE m.store_key = ? AND m.status = 'MAPPED'
+                )
+                SELECT source_product_id, pos_product_id
+                FROM ranked
+                WHERE rn > 1
+                ORDER BY pos_product_id, source_product_id
+                LIMIT ?
+                """, store, outletId, store, limit);
+        if (extras.isEmpty()) {
+            return ApiResult.ok(Map.of(
+                    "store_key", store,
+                    "shared_alias_extras", 0,
+                    "unmapped", 0,
+                    "reimported", 0,
+                    "created", 0,
+                    "updated", 0,
+                    "skipped", 0,
+                    "errors", List.of()));
+        }
+        List<String> sourceIds = extras.stream()
+                .map(row -> String.valueOf(row.get("source_product_id")))
+                .toList();
+        int unmapped = 0;
+        for (int start = 0; start < sourceIds.size(); start += 400) {
+            List<String> chunk = sourceIds.subList(start, Math.min(start + 400, sourceIds.size()));
+            String placeholders = String.join(",", java.util.Collections.nCopies(chunk.size(), "?"));
+            List<Object> args = new ArrayList<>();
+            args.add(store);
+            args.addAll(chunk);
+            unmapped += jdbc.update(
+                    "UPDATE shopfront_product_mapping SET status='UNMAPPED', updated_at=CURRENT_TIMESTAMP "
+                            + "WHERE store_key=? AND status='MAPPED' AND source_product_id IN (" + placeholders + ")",
+                    args.toArray());
+        }
+        List<Map<String, Object>> shadowRows = queryRowsInChunks(
+                "SELECT source_id, raw_payload FROM shopfront_product WHERE store_key=? AND source_id IN (%s)",
+                List.of(store), sourceIds);
+        com.fasterxml.jackson.databind.node.ArrayNode items = objectMapper.createArrayNode();
+        List<String> errors = new ArrayList<>();
+        for (Map<String, Object> row : shadowRows) {
+            Object raw = row.get("raw_payload");
+            if (raw == null) continue;
+            try {
+                JsonNode item = objectMapper.readTree(String.valueOf(raw));
+                if (text(item, "source_id") == null || text(item, "source_id").isBlank()) {
+                    ((com.fasterxml.jackson.databind.node.ObjectNode) item)
+                            .put("source_id", String.valueOf(row.get("source_id")));
+                }
+                items.add(item);
+            } catch (Exception ex) {
+                if (errors.size() < 25) {
+                    errors.add("Invalid raw_payload for " + row.get("source_id") + ": " + ex.getMessage());
+                }
+            }
+        }
+        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", store);
+        result.put("shared_alias_extras", extras.size());
+        result.put("unmapped", unmapped);
+        result.put("reimported", items.size());
+        result.put("created", imported.getOrDefault("created", 0));
+        result.put("updated", imported.getOrDefault("updated", 0));
+        result.put("skipped", imported.getOrDefault("skipped", 0));
+        @SuppressWarnings("unchecked")
+        List<String> importErrors = imported.get("errors") instanceof List<?> list
+                ? (List<String>) list
+                : List.of();
+        List<String> allErrors = new ArrayList<>(errors);
+        allErrors.addAll(importErrors);
+        result.put("errors", allErrors.size() > 25 ? allErrors.subList(0, 25) : allErrors);
+        result.put("business_write", true);
+        return ApiResult.ok(result);
+    }
+
     @PostMapping("/inventory:replace")
     @Transactional
     public ApiResult<Map<String, Object>> inventory(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
@@ -1549,9 +1685,10 @@ public class ShopfrontIntegrationController {
 
     /**
      * Import the source catalog into the POS catalog after the durable mirror
-     * has been written. Every source product is bound to one POS product in
-     * shopfront_product_mapping, so retries update the same row instead of
-     * creating another Sell item.
+     * has been written. Each Shopfront {@code source_id} binds to exactly one
+     * POS product via {@code shopfront_product_mapping} (no barcode/sku/name
+     * aliasing), so retries update the same row instead of creating another
+     * Sell item and distinct source products stay distinct.
      */
     private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items,
                                                boolean replaceInventory, boolean snapshotComplete) throws Exception {
@@ -1596,6 +1733,8 @@ public class ShopfrontIntegrationController {
                     String sourceId = text(item, "source_id");
                     try {
                         Long resolvedProductId = plan.productIds().get(sourceId);
+                        // Identity is source_id only — never share a new INSERT across
+                        // different Shopfront products that happen to share barcode/name.
                         String identity = productIdentityKey(item);
                         if (resolvedProductId == null) {
                             resolvedProductId = batch.productIdsByIdentity.get(identity);
@@ -2347,13 +2486,13 @@ public class ShopfrontIntegrationController {
 
     private BusinessImportPlan resolveBusinessProductIds(String store, long outletId, JsonNode items) {
         List<String> sourceIds = new ArrayList<>();
-        Map<String, JsonNode> itemBySource = new LinkedHashMap<>();
         for (JsonNode item : items) {
-            String sourceId = text(item, "source_id");
-            sourceIds.add(sourceId);
-            itemBySource.put(sourceId, item);
+            sourceIds.add(text(item, "source_id"));
         }
 
+        // 1:1 by Shopfront source_id only. Barcode/sku/name aliasing collapsed
+        // distinct catalog rows (pack sizes, prepaid variants, unrelated names)
+        // onto one Orithos product and under-counted /products vs Shopfront.
         Map<String, Long> productIds = new LinkedHashMap<>();
         Set<String> existingMappings = new HashSet<>();
         List<Map<String, Object>> mappedRows = queryRowsInChunks(
@@ -2365,60 +2504,6 @@ public class ShopfrontIntegrationController {
             String sourceId = String.valueOf(row.get("source_product_id"));
             productIds.put(sourceId, longValue(row.get("pos_product_id")));
             existingMappings.add(sourceId);
-        }
-
-        Set<String> barcodes = new java.util.LinkedHashSet<>();
-        Set<Integer> skus = new java.util.LinkedHashSet<>();
-        Set<String> names = new java.util.LinkedHashSet<>();
-        for (String sourceId : sourceIds) {
-            if (productIds.containsKey(sourceId)) continue;
-            JsonNode item = itemBySource.get(sourceId);
-            String barcode = firstBarcode(item);
-            if (barcode != null && !barcode.isBlank()) barcodes.add(barcode);
-            Integer sku = integerValue(item.get("sku"));
-            if (sku != null) skus.add(sku);
-            String name = text(item, "name");
-            if (name != null && !name.isBlank()) names.add(name.trim().toLowerCase(Locale.ROOT));
-        }
-
-        Map<String, Long> barcodeOwners = new LinkedHashMap<>();
-        for (Map<String, Object> row : queryRowsInChunks(
-                "SELECT code, product_id FROM product_barcode WHERE outlet_id=? AND code IN (%s)",
-                List.of(outletId), new ArrayList<>(barcodes))) {
-            barcodeOwners.putIfAbsent(String.valueOf(row.get("code")), longValue(row.get("product_id")));
-        }
-        for (String sourceId : sourceIds) {
-            if (productIds.containsKey(sourceId)) continue;
-            String barcode = firstBarcode(itemBySource.get(sourceId));
-            Long targetId = barcode == null ? null : barcodeOwners.get(barcode);
-            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
-        }
-
-        Map<String, Long> skuOwners = new LinkedHashMap<>();
-        for (Map<String, Object> row : queryRowsInChunks(
-                "SELECT mdb_id, id FROM product WHERE outlet_id=? AND deleted_at IS NULL AND mdb_id IN (%s) ORDER BY id",
-                List.of(outletId), new ArrayList<>(skus))) {
-            skuOwners.putIfAbsent(String.valueOf(row.get("mdb_id")), longValue(row.get("id")));
-        }
-        for (String sourceId : sourceIds) {
-            if (productIds.containsKey(sourceId)) continue;
-            Integer sku = integerValue(itemBySource.get(sourceId).get("sku"));
-            Long targetId = sku == null ? null : skuOwners.get(String.valueOf(sku));
-            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
-        }
-
-        Map<String, Long> nameOwners = new LinkedHashMap<>();
-        for (Map<String, Object> row : queryRowsInChunks(
-                "SELECT lower(trim(name)) AS normalized_name, id FROM product "
-                        + "WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name)) IN (%s) ORDER BY id",
-                List.of(outletId), new ArrayList<>(names))) {
-            nameOwners.putIfAbsent(String.valueOf(row.get("normalized_name")), longValue(row.get("id")));
-        }
-        for (String sourceId : sourceIds) {
-            if (productIds.containsKey(sourceId)) continue;
-            String name = text(itemBySource.get(sourceId), "name");
-            Long targetId = name == null ? null : nameOwners.get(name.trim().toLowerCase(Locale.ROOT));
-            if (targetId != null && targetId > 0) productIds.put(sourceId, targetId);
         }
         for (String sourceId : sourceIds) productIds.putIfAbsent(sourceId, null);
         return new BusinessImportPlan(productIds, existingMappings);
@@ -2450,6 +2535,9 @@ public class ShopfrontIntegrationController {
     }
 
     private String productIdentityKey(JsonNode item) {
+        String sourceId = text(item, "source_id");
+        if (sourceId != null && !sourceId.isBlank()) return "source:" + sourceId.trim();
+        // Fallback only for malformed payloads without source_id.
         String barcode = firstBarcode(item);
         if (barcode != null && !barcode.isBlank()) return "barcode:" + barcode.trim().toLowerCase(Locale.ROOT);
         Integer sku = integerValue(item.get("sku"));
