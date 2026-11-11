@@ -58,19 +58,25 @@ public class ProductController {
 
     /**
      * Facets for Products filters: only values that appear on at least one non-deleted product
-     * (so soft-deleted categories like "Beer Local" still show when products reference them).
+     * in the caller's outlet (so soft-deleted categories like "Beer Local" still show when
+     * products reference them).
      */
     @GetMapping("/filter-options")
     public ApiResult<ProductFilterOptions> filterOptions() {
+        Long vendorId = CurrentUser.vendorId();
+        Long outletId = CurrentUser.outletId();
+        if (vendorId == null || outletId == null) {
+            throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
         ProductFilterOptions options = new ProductFilterOptions();
-        options.setBrands(mapper.listBrandFilterOptions());
-        options.setCategories(mapper.listCategoryFilterOptions());
-        options.setFamilies(mapper.listFamilyFilterOptions());
-        options.setTags(mapper.listTagFilterOptions());
-        options.setSuppliers(mapper.listSupplierFilterOptions());
-        options.setTypes(mapper.listTypeFilterOptions());
-        options.setTaxRates(mapper.listTaxRateFilterOptions());
-        options.setCostTaxRates(mapper.listCostTaxRateFilterOptions());
+        options.setBrands(mapper.listBrandFilterOptions(vendorId, outletId));
+        options.setCategories(mapper.listCategoryFilterOptions(vendorId, outletId));
+        options.setFamilies(mapper.listFamilyFilterOptions(vendorId, outletId));
+        options.setTags(mapper.listTagFilterOptions(vendorId, outletId));
+        options.setSuppliers(mapper.listSupplierFilterOptions(vendorId, outletId));
+        options.setTypes(mapper.listTypeFilterOptions(vendorId, outletId));
+        options.setTaxRates(mapper.listTaxRateFilterOptions(vendorId, outletId));
+        options.setCostTaxRates(mapper.listCostTaxRateFilterOptions(vendorId, outletId));
         return ApiResult.ok(options);
     }
 

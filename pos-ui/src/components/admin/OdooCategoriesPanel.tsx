@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 
 type Category = { id: number; name: string; parent_id: [number, string] | false; productCount: number; childCount: number; ids: number[]; editable: boolean };
 
-export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: () => void; onBusyChange: (busy: boolean) => void }) {
+export function OdooCategoriesPanel({ onBusyChange }: { onChanged?: () => void; onBusyChange: (busy: boolean) => void }) {
   const [items, setItems] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +28,15 @@ export function OdooCategoriesPanel({ onChanged, onBusyChange }: { onChanged: ()
         ids: [Number(category.id)],
         editable: false,
       })));
-      onChanged();
+      // Read-only: skip onChanged on load so opening the dialog does not refresh the
+      // catalogue / re-hit filter-options (that stack can surface as gateway 500s).
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load Orithos categories.");
     } finally {
       setLoading(false);
       onBusyChange(false);
     }
-  }, [onBusyChange, onChanged]);
+  }, [onBusyChange]);
 
   useEffect(() => { void load(); }, [load]);
 
