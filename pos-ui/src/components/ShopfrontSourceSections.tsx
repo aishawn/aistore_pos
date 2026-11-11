@@ -21,6 +21,7 @@ type NativeOverview = {
   revenue: number;
   tax: number | null;
   grossProfit: number | null;
+  profitMargin: number | null;
   costAvailable: boolean;
   taxAvailable: boolean;
   transactions: number;
@@ -167,8 +168,9 @@ export function ShopfrontSalesSummary({ from, to, enabled = true }: { from: stri
         {data ? <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
           <p><span className="block text-xs text-[var(--oh-muted)]">Revenue</span><strong>{money(data.revenue)}</strong></p>
           <p><span className="block text-xs text-[var(--oh-muted)]">Gross profit</span><strong>{data.grossProfit == null ? "—" : money(data.grossProfit)}</strong></p>
+          <p><span className="block text-xs text-[var(--oh-muted)]">Profit %</span><strong>{data.profitMargin == null ? "—" : `${Number(data.profitMargin).toFixed(2)}%`}</strong></p>
           <p><span className="block text-xs text-[var(--oh-muted)]">Transactions</span><strong>{number(data.transactions)}</strong></p>
-          <p className="basis-full text-xs text-[var(--oh-muted)]">Orithos sale ledger · {data.costAvailable ? "cost covered" : "cost incomplete"} · {data.taxAvailable ? `tax ${money(data.tax)}` : "tax incomplete"}</p>
+          <p className="basis-full text-xs text-[var(--oh-muted)]">Orithos sale ledger · Shopfront formula (revenue − cost) / revenue · {data.costAvailable ? "cost covered" : "cost incomplete"} · {data.taxAvailable ? `tax ${money(data.tax)}` : "tax incomplete"}</p>
         </div> : !loading && !error ? <p role="status" className="text-sm text-[var(--oh-muted)]">Orithos sales data is unavailable.</p> : null}
       </SourceState>
     </div>

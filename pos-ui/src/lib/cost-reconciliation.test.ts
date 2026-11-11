@@ -108,6 +108,11 @@ test("verified full scope publishes margin only after cost agrees, and samples n
   s.coverage = { allProducts: true, totalOrders: 1, totalLines: 1, selectedLines: 1 };
   assert.equal(audit(s).summary.grossProfit, 3);
   assert.equal(audit(s).summary.grossMarginPercent, 33.333333);
+  // Tax-inclusive revenue is the Shopfront denominator — not ex-tax net.
+  s.lines[0].price_subtotal_incl = 11;
+  s.orders[0].amount_tax = 2;
+  assert.equal(audit(s).summary.grossProfit, 5);
+  assert.equal(audit(s).summary.grossMarginPercent, 45.454545);
   s.coverage.allProducts = false; assert.equal(audit(s).summary.grossProfit, null);
   s.coverage.allProducts = true; s.coverage.totalLines = 2; assert.equal(audit(s).summary.grossProfit, null);
 });

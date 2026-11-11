@@ -37,7 +37,8 @@ function buildQuestion(data: DashboardInsightData, language: "en" | "zh") {
     currency: data.currency,
     period: `${data.rangeLabel}; ${data.periodBounds}`,
     sales: {
-      netRevenue: compactNumber(data.revenue),
+      // Shelf/report revenue is tax-inclusive (Shopfront Sales report basis).
+      revenueIncludingTax: compactNumber(data.revenue),
       transactions: data.transactions,
       averageSale: compactNumber(data.transactions ? data.revenue / data.transactions : 0),
       itemsSold: data.itemsSold,

@@ -167,18 +167,20 @@ export function reconcileCosts(snapshot: AuditSnapshot, batchId: string, sourceH
     product.status = product.lines.some(l => l.status === "review") ? "review" : product.lines.some(l => l.status === "correctable") ? "correctable" : "matched";
   }
   const lines = result.flatMap(p => p.lines), originalCost = sum(lines.map(l => l.originalTotalCost ?? 0)), originalNet = sum(lines.map(l => l.originalNet ?? 0));
+  const gross = sum(lines.map(l => l.gross ?? 0));
   const publicationBlockers: string[] = [];
   if (!lines.length) publicationBlockers.push("NO_SALES_LINES");
   if (!snapshot.coverage?.allProducts || snapshot.coverage.selectedLines !== snapshot.coverage.totalLines || snapshot.coverage.selectedLines !== lines.length) publicationBlockers.push("FULL_SCOPE_NOT_VERIFIED");
   if (snapshot.coverage?.sourceMissingNativeOrders || snapshot.coverage?.importedMissingSourceOrders) publicationBlockers.push("SOURCE_COVERAGE_MISMATCH");
   if (lines.some(l => l.status !== "matched")) publicationBlockers.push("UNRESOLVED_COST_OR_TAX");
-  const grossProfit = publicationBlockers.length ? null : difference(originalNet, originalCost);
+  // Shopfront Profit % = (tax-inclusive revenue - cost) / tax-inclusive revenue.
+  const grossProfit = publicationBlockers.length ? null : difference(gross, originalCost);
   return { ruleVersion: COST_RULE_VERSION, batchId, sourceHash, companyId: snapshot.companyId, store: snapshot.store, timezone: snapshot.timezone,
     from: snapshot.from, to: snapshot.to, capturedAt: snapshot.capturedAt, readOnly: true, products: result,
     summary: { matched: result.filter(p => p.status === "matched").length, correctable: result.filter(p => p.status === "correctable").length,
       review: result.filter(p => p.status === "review").length, lines: lines.length, originalCost, originalNet,
-      gross: sum(lines.map(l => l.gross ?? 0)), recordedTax: sum(lines.map(l => l.recordedTax ?? 0)),
-      grossProfit, grossMarginPercent: grossProfit !== null && originalNet > 0 ? divideCost(multiplyCost(grossProfit, 100), originalNet) : null, publicationBlockers } };
+      gross, recordedTax: sum(lines.map(l => l.recordedTax ?? 0)),
+      grossProfit, grossMarginPercent: grossProfit !== null && gross > 0 ? divideCost(multiplyCost(grossProfit, 100), gross) : null, publicationBlockers } };
 }
 
 export function costAuditCsv(audit: CostAudit): string {

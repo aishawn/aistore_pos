@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { fetchOrithosApi } from "@/lib/orithos-api-fetch";
+import { formatShopfrontProfitPercent, shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
 type Report = {
   source: "orithos_ledger";
@@ -24,11 +25,20 @@ type Report = {
     tax: number | null;
     discount: number | null;
     grossProfit: number | null;
+    profitMargin?: number | null;
     costAvailable: boolean;
     taxAvailable: boolean;
   }>;
   topProducts: Array<{ name: string; revenue: number; quantity: number }>;
 };
+
+function dayProfitPercent(row: Report["dailyTrend"][number]): string {
+  if (row.profitMargin != null && Number.isFinite(Number(row.profitMargin))) {
+    return `${Number(row.profitMargin).toFixed(2)}%`;
+  }
+  const ratio = shopfrontAlignedMarginRatio(row.grossProfit, Number(row.revenue));
+  return ratio == null ? "—" : formatShopfrontProfitPercent(ratio);
+}
 
 function todayInStore() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -97,7 +107,7 @@ export function NativeSalesReportPage() {
     <div className="min-h-0 flex-1 overflow-auto">
       <table className="w-full min-w-[780px] border-collapse text-left text-sm">
         <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]">
-          <tr>{["Business date", "Revenue", "Cost", "Profit", "Tax", "Discount", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
+          <tr>{["Business date", "Revenue", "Cost", "Profit", "Profit %", "Tax", "Discount", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-[var(--oh-border)]">
           {report?.dailyTrend.map(row => <tr key={String(row.date)}>
@@ -105,6 +115,7 @@ export function NativeSalesReportPage() {
             <td className="px-3 py-2">{money(Number(row.revenue))}</td>
             <td className="px-3 py-2">{row.costAvailable && row.cost !== null ? money(Number(row.cost)) : "—"}</td>
             <td className="px-3 py-2">{row.grossProfit !== null ? money(Number(row.grossProfit)) : "—"}</td>
+            <td className="px-3 py-2">{dayProfitPercent(row)}</td>
             <td className="px-3 py-2">{row.taxAvailable && row.tax !== null ? money(Number(row.tax)) : "—"}</td>
             <td className="px-3 py-2">{row.discount != null ? money(Number(row.discount)) : "—"}</td>
             <td className="px-3 py-2">{Number(row.transaction_count).toLocaleString("en-AU")}</td>

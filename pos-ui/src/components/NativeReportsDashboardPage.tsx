@@ -12,6 +12,7 @@ type NativeOverview = {
   cost: number | null;
   tax: number | null;
   grossProfit: number | null;
+  profitMargin: number | null;
   costAvailable: boolean;
   taxAvailable: boolean;
   transactions: number;
@@ -114,10 +115,11 @@ export function NativeReportsDashboardPage() {
       <div className="flex items-center gap-2"><div role="group" aria-label="Reporting period" className="flex rounded-md border border-[var(--oh-border)] bg-white p-0.5">{(["today", "yesterday", "last_week", "last_month"] as const).map(value => <button key={value} type="button" aria-pressed={period === value} onClick={() => { setPeriod(value); const url = new URL(location.href); url.searchParams.set("period", value); history.replaceState(null, "", url); }} className={`min-h-8 px-2 text-xs ${period === value ? "bg-[var(--oh-primary)] text-white" : "text-[var(--oh-text)]"}`}>{value.replace("_", " ")}</button>)}</div><button type="button" onClick={() => setRefreshKey(value => value + 1)} disabled={loading} aria-label="Refresh report" title="Refresh report" className="grid size-9 place-items-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-50"><RefreshCw size={16} className={loading ? "animate-spin" : ""} /></button></div>
     </header>
     {error && <div role="alert" className="flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><AlertCircle size={16} />{error}</div>}
-    <section aria-busy={loading} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section aria-busy={loading} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       <Metric label="Sales" value={data ? money(data.revenue) : "—"} detail={delta === null ? "Comparison unavailable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs previous period`} />
       <Metric label="Transactions" value={data ? data.transactions.toLocaleString("en-AU") : "—"} detail="Orithos ledger records" />
       <Metric label="Profit" value={data?.grossProfit != null ? money(data.grossProfit) : "—"} detail={data?.costAvailable && data.cost !== null ? `Revenue minus cost ${money(data.cost)}` : "Cost coverage unavailable"} />
+      <Metric label="Profit %" value={data?.profitMargin != null ? `${Number(data.profitMargin).toFixed(2)}%` : "—"} detail="Shopfront formula · (revenue − cost) / revenue" />
       <Metric label="Inventory" value={data?.inventoryAvailable && data.inventoryUnits != null ? Number(data.inventoryUnits).toLocaleString("en-AU") : "—"} detail={data?.inventoryAvailable ? (data.negativeStockProducts ? `${data.negativeStockProducts.toLocaleString("en-AU")} SKUs below zero` : "Orithos on-hand · positive units") : "No native snapshot in this report"} />
     </section>
     <section className="grid gap-4 lg:grid-cols-2">
