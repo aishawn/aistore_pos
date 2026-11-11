@@ -105,7 +105,24 @@
                 AND NOT EXISTS (SELECT 1 FROM product_supplier ps
                                 WHERE ps.product_id = p.id AND ps.supplier_id = #{q.excludeSupplierId})
             </if>
+            <if test="q.inventoryLevel == 'not-zero'">
+                AND COALESCE(inv.total_qty, 0) &lt;&gt; 0
+            </if>
+            <if test="q.inventoryLevel == 'only-zero'">
+                AND inv.product_id IS NOT NULL AND COALESCE(inv.total_qty, 0) = 0
+            </if>
+            <if test="q.inventoryLevel == 'no-inventory'">
+                AND inv.product_id IS NULL
+            </if>
         </where>
+    </sql>
+
+    <sql id="inventoryJoin">
+        LEFT JOIN (
+            SELECT product_id, SUM(quantity) AS total_qty
+            FROM product_inventory
+            GROUP BY product_id
+        ) inv ON inv.product_id = p.id
     </sql>
 
     <select id="page" resultMap="ProductMap">
@@ -118,11 +135,7 @@
         FROM product p
         LEFT JOIN category c ON c.id = p.category_id
         LEFT JOIN brand b ON b.id = p.brand_id
-        LEFT JOIN (
-            SELECT product_id, SUM(quantity) AS total_qty
-            FROM product_inventory
-            GROUP BY product_id
-        ) inv ON inv.product_id = p.id
+        <include refid="inventoryJoin"/>
         <include refid="filters"/>
         ORDER BY p.created_at DESC, p.id DESC
         LIMIT #{q.size} OFFSET #{q.offset}
@@ -130,6 +143,33 @@
 
     <select id="count" resultType="long">
         SELECT COUNT(*) FROM product p
+        <include refid="inventoryJoin"/>
+        <include refid="filters"/>
+    </select>
+
+    <!-- Full-catalog Case/Item/Value totals; mirrors UI splitCaseItemLevels + unit_cost×stock. -->
+    <select id="onHandSummary" resultType="com.orithos.modules.product.ProductOnHandSummary">
+        SELECT COUNT(*) AS productCount,
+               COALESCE(SUM(
+                   CASE
+                       WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
+                           THEN TRUNC(COALESCE(inv.total_qty, 0) / p.case_quantity)
+                       ELSE 0
+                   END
+               ), 0) AS caseLevelTotal,
+               COALESCE(SUM(
+                   CASE
+                       WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
+                           THEN COALESCE(inv.total_qty, 0)
+                                - TRUNC(COALESCE(inv.total_qty, 0) / p.case_quantity) * p.case_quantity
+                       ELSE COALESCE(inv.total_qty, 0)
+                   END
+               ), 0) AS itemLevelTotal,
+               COALESCE(SUM(
+                   ROUND(COALESCE(inv.total_qty, 0) * COALESCE(p.cost, 0), 2)
+               ), 0) AS valueIncLastTotal
+        FROM product p
+        <include refid="inventoryJoin"/>
         <include refid="filters"/>
     </select>
 

@@ -187,6 +187,32 @@ export function onHandFooterTotals(rows: OnHandRow[]): OnHandFooterTotals {
   };
 }
 
+/** Map `/api/products/on-hand-summary` payload into footer totals (full catalog). */
+export function onHandSummaryToTotals(summary: {
+  caseLevelTotal?: number | string | null;
+  itemLevelTotal?: number | string | null;
+  valueIncLastTotal?: number | string | null;
+} | null | undefined): OnHandFooterTotals {
+  const read = (value: number | string | null | undefined) => {
+    if (value == null || value === "") return 0;
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  return {
+    caseLevel: read(summary?.caseLevelTotal),
+    itemLevel: read(summary?.itemLevelTotal),
+    valueIncLast: Math.round(read(summary?.valueIncLastTotal) * 100) / 100,
+  };
+}
+
+/** Server inventoryLevel for report types that need SQL filtering. */
+export function inventoryLevelParam(reportType: OnHandReportType): string | undefined {
+  if (reportType === "not-zero" || reportType === "only-zero" || reportType === "no-inventory") {
+    return reportType;
+  }
+  return undefined;
+}
+
 export interface InventoryRow {
   id: number;
   name: string;

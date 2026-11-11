@@ -27,6 +27,11 @@ public class ProductQuery {
     private String status;
     /** Comma-separated status values for multi-select (e.g. ACTIVE,INACTIVE). */
     private String statuses;
+    /**
+     * Inventory-on-hand report stock filter:
+     * on-hand | all | not-zero | only-zero | no-inventory
+     */
+    private String inventoryLevel;
     private int page = 1;
     private int size = 10;
     private Long vendorId;

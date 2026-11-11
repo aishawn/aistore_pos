@@ -21,6 +21,7 @@ import java.util.List;
 public interface ProductMapper {
     List<Product> page(@Param("q") ProductQuery q);
     long count(@Param("q") ProductQuery q);
+    com.orithos.modules.product.ProductOnHandSummary onHandSummary(@Param("q") ProductQuery q);
     Product findById(@Param("id") Long id);
 
     @Select("SELECT p.* FROM product p JOIN outlet o ON o.id=p.outlet_id WHERE p.id=#{id} AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL AND p.deleted_at IS NULL")

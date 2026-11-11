@@ -3,9 +3,11 @@ import test from "node:test";
 import {
   filterOnHandRows,
   groupOnHandRows,
+  inventoryLevelParam,
   inventoryTotals,
   inventoryValueIncLast,
   onHandFooterTotals,
+  onHandSummaryToTotals,
   sortInventory,
   sortOnHandRows,
   splitCaseItemLevels,
@@ -130,4 +132,24 @@ test("footer totals sum case level, item level, and value", () => {
     toOnHandRow({ id: 2, name: "B", caseQuantity: 6, stockQuantity: 7, cost: 10 }),
   ];
   assert.deepEqual(onHandFooterTotals(rows), { caseLevel: 3, itemLevel: 3, valueIncLast: 170 });
+});
+
+test("summary API payload maps to full-catalog footer totals", () => {
+  assert.deepEqual(
+    onHandSummaryToTotals({
+      caseLevelTotal: "151",
+      itemLevelTotal: 1558,
+      valueIncLastTotal: "390107.42",
+    }),
+    { caseLevel: 151, itemLevel: 1558, valueIncLast: 390107.42 },
+  );
+  assert.deepEqual(onHandSummaryToTotals(null), { caseLevel: 0, itemLevel: 0, valueIncLast: 0 });
+});
+
+test("inventoryLevelParam only forwards filtered report types", () => {
+  assert.equal(inventoryLevelParam("on-hand"), undefined);
+  assert.equal(inventoryLevelParam("all"), undefined);
+  assert.equal(inventoryLevelParam("not-zero"), "not-zero");
+  assert.equal(inventoryLevelParam("only-zero"), "only-zero");
+  assert.equal(inventoryLevelParam("no-inventory"), "no-inventory");
 });

@@ -56,6 +56,21 @@ public class ProductController {
         return ApiResult.ok(PageResult.of(items, mapper.count(q), q.getPage(), q.getSize()));
     }
 
+    /** Full-catalog Inventory On Hand footer totals for the current product filters. */
+    @GetMapping("/on-hand-summary")
+    public ApiResult<ProductOnHandSummary> onHandSummary(ProductQuery q) {
+        Long vendorId = CurrentUser.vendorId();
+        Long outletId = CurrentUser.outletId();
+        if (vendorId == null || outletId == null) {
+            throw new BusinessException(40100, "Authenticated vendor and outlet are required.");
+        }
+        q.setVendorId(vendorId);
+        q.setOutletId(outletId);
+        q.normalize();
+        ProductOnHandSummary summary = mapper.onHandSummary(q);
+        return ApiResult.ok(summary != null ? summary : new ProductOnHandSummary());
+    }
+
     /**
      * Facets for Products filters: only values that appear on at least one non-deleted product
      * in the caller's outlet (so soft-deleted categories like "Beer Local" still show when
