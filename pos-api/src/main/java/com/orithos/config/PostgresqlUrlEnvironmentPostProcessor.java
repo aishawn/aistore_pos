@@ -52,7 +52,8 @@ public final class PostgresqlUrlEnvironmentPostProcessor implements EnvironmentP
     }
 
     private static String decode(String value) {
-        return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        // URI user-info is not form data: a literal '+' must remain a plus.
+        return URLDecoder.decode(value.replace("+", "%2B"), StandardCharsets.UTF_8);
     }
 
     private static String encode(String value) {
