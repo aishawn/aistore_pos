@@ -495,6 +495,7 @@ UNCONSOLIDATED'''
                             target["inventory"] = list(current.values())
             except ShopfrontError:
                 continue
+        await self._enrich_products_with_suppliers(access_token, merged)
         return list(merged.values())
 
     async def fetch_products_incremental(self, access_token: str, updated_after: str) -> list[dict[str, Any]]:
@@ -525,7 +526,94 @@ UNCONSOLIDATED'''
                 if not isinstance(node, dict) or not node.get("id"):
                     continue
                 merged.setdefault(str(node["id"]), {}).update(node)
+        await self._enrich_products_with_suppliers(access_token, merged)
         return list(merged.values())
+
+    async def _enrich_products_with_suppliers(
+        self,
+        access_token: str,
+        products: dict[str, dict[str, Any]],
+    ) -> None:
+        """Attach catalog supplier links without poisoning the base product query.
+
+        Shopfront rejects a whole selection when one nested field is unavailable,
+        so supplier fields stay out of CATALOG_QUERY and are merged fail-closed.
+        """
+        if not products:
+            return
+        selections = (
+            "id coreSupplier { id name } lastSupplier { id name } "
+            "suppliers { supplier { id name } code minimumOrderQuantity }",
+            "id coreSupplier { id name } lastSupplier { id name } "
+            "suppliers { supplier { id name } code }",
+            "id coreSupplier { id name } lastSupplier { id name }",
+        )
+        product_ids = list(products.keys())
+        for selection in selections:
+            try:
+                if len(product_ids) >= 250:
+                    query = (
+                        "{ products(first: 100) { edges { node { "
+                        + selection
+                        + " } } } }"
+                    )
+                    nodes = await self._fetch_connection_nodes(access_token, query, "products")
+                else:
+                    nodes = await self._fetch_product_supplier_nodes_by_ids(
+                        access_token, product_ids, selection
+                    )
+            except ShopfrontError:
+                continue
+            for node in nodes:
+                if not isinstance(node, dict) or not node.get("id"):
+                    continue
+                target = products.get(str(node["id"]))
+                if target is None:
+                    continue
+                for key in ("coreSupplier", "lastSupplier", "suppliers"):
+                    if key in node:
+                        target[key] = node[key]
+            return
+
+    async def _fetch_product_supplier_nodes_by_ids(
+        self,
+        access_token: str,
+        product_ids: list[str],
+        selection: str,
+    ) -> list[dict[str, Any]]:
+        ids = [str(value).strip() for value in product_ids if str(value).strip()]
+        if not ids:
+            return []
+        result: list[dict[str, Any]] = []
+        query = f"""
+        query ProductSuppliersByIds($ids: [ID], $after: Cursor) {{
+          products(products: $ids, first: 100, after: $after) {{
+            edges {{ node {{ {selection} }} }}
+            pageInfo {{ hasNextPage endCursor }}
+          }}
+        }}
+        """
+        for start in range(0, len(ids), 100):
+            chunk = ids[start : start + 100]
+            after: str | None = None
+            seen: set[str] = set()
+            while True:
+                data = await self.graphql(access_token, query, {"ids": chunk, "after": after})
+                connection = data.get("products", {}) if isinstance(data, dict) else {}
+                result.extend(
+                    edge.get("node", {})
+                    for edge in connection.get("edges", [])
+                    if isinstance(edge, dict) and isinstance(edge.get("node"), dict)
+                )
+                page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+                if not page_info.get("hasNextPage"):
+                    break
+                next_cursor = str(page_info.get("endCursor") or "")
+                if not next_cursor or next_cursor in seen:
+                    raise ShopfrontError("Shopfront product supplier pagination returned a repeated cursor")
+                seen.add(next_cursor)
+                after = next_cursor
+        return result
 
     async def _fetch_connection_nodes(
         self,
@@ -603,54 +691,9 @@ UNCONSOLIDATED'''
                     result.extend(edge.get("node", {}) for edge in connection.get("edges", []) if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
                     page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
                     if not page_info.get("hasNextPage"):
-                        return result
-                    next_cursor = str(page_info.get("endCursor") or "")
-                    if not next_cursor or next_cursor in seen:
-                        raise ShopfrontError("Shopfront product ID pagination returned a repeated cursor")
-                    seen.add(next_cursor)
-                    after = next_cursor
-            except Exception as exc:
-                last_error = exc
-        raise ShopfrontError(f"Shopfront product ID query failed: {last_error}")
-
-    async def fetch_products_by_ids(self, access_token: str, product_ids: list[str]) -> list[dict[str, Any]]:
-        """Fetch products referenced by history, including archived products."""
-        ids = [str(value).strip() for value in product_ids if str(value).strip()]
-        if not ids:
-            return []
-        fields = """
-          id name mdbId status type description image alternateImages createdAt updatedAt deletedAt deleted
-          tempProduct useScales useBarcodeTemplates usePriceLabel requestQuantity requestPrice minimumOrderQuantity
-          orderNotes invoiceNotes preventManualDiscounts ignorePriceHostChanges ignoreBarcodeHostChanges
-          category { id name } brand { id name } family { id name } tags { name }
-          trackInventory caseQuantity cost lastCost averageCost globalCost globalLastCost globalAverageCost replacementCost costPercentage
-          prices { quantity price priceEx decimalPlaceLength priceSet { id name } }
-          barcodes { code quantity } taxRate { id name } costTaxRate { id name }
-          inventory { outlet { id name } quantity singleLevel caseLevel reorderLevel
-            reorderAmount reorderLimit maxQuantity onOrder }
-        """
-        queries = [fields, "id name mdbId status description image alternateImages prices { quantity price priceEx } barcodes { code quantity }"]
-        last_error: Exception | None = None
-        for selection in queries:
-            query = f"""
-            query ProductsByIds($ids: [ID], $after: Cursor) {{
-              products(products: $ids, first: 100, after: $after) {{
-                edges {{ node {{ {selection} }} }}
-                pageInfo {{ hasNextPage endCursor }}
-              }}
-            }}
-            """
-            try:
-                result: list[dict[str, Any]] = []
-                after: str | None = None
-                seen: set[str] = set()
-                while True:
-                    data = await self.graphql(access_token, query, {"ids": ids, "after": after})
-                    connection = data.get("products", {}) if isinstance(data, dict) else {}
-                    result.extend(edge.get("node", {}) for edge in connection.get("edges", []) if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
-                    page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
-                    if not page_info.get("hasNextPage"):
-                        return result
+                        merged = {str(node["id"]): dict(node) for node in result if isinstance(node, dict) and node.get("id")}
+                        await self._enrich_products_with_suppliers(access_token, merged)
+                        return list(merged.values())
                     next_cursor = str(page_info.get("endCursor") or "")
                     if not next_cursor or next_cursor in seen:
                         raise ShopfrontError("Shopfront product ID pagination returned a repeated cursor")

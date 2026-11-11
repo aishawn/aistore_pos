@@ -460,9 +460,29 @@ def source_product_row(raw: dict[str, Any]) -> dict[str, Any]:
     def name(value: Any) -> str | None:
         return value.get("name") if isinstance(value, dict) else None
 
+    def supplier_entity(value: Any) -> dict[str, Any] | None:
+        # ProductSupplier nests the Supplier under "supplier"; core/last are flat.
+        if not isinstance(value, dict):
+            return None
+        nested = value.get("supplier")
+        if isinstance(nested, dict):
+            return nested
+        if value.get("id") is not None or value.get("name") is not None:
+            return value
+        return None
+
     suppliers = raw.get("suppliers") if isinstance(raw.get("suppliers"), list) else []
-    first_supplier = suppliers[0] if suppliers and isinstance(suppliers[0], dict) else None
-    supplier = raw.get("coreSupplier") or raw.get("lastSupplier") or first_supplier
+    first_supplier = None
+    for entry in suppliers:
+        entity = supplier_entity(entry)
+        if entity is not None:
+            first_supplier = entity
+            break
+    supplier = (
+        supplier_entity(raw.get("coreSupplier"))
+        or supplier_entity(raw.get("lastSupplier"))
+        or first_supplier
+    )
     first_barcode = raw.get("barcodes")[0] if isinstance(raw.get("barcodes"), list) and raw.get("barcodes") and isinstance(raw.get("barcodes")[0], dict) else {}
     additional_fields = raw.get("additionalFields") if isinstance(raw.get("additionalFields"), list) else []
     gift_card_field = next((field for field in additional_fields if isinstance(field, dict) and str(field.get("safeName") or "").casefold() == "vii_is_gift_card"), None)

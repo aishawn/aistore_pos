@@ -110,6 +110,26 @@ def test_live_catalog_query_avoids_unsupported_product_supplier_fields():
     assert "additionalFields { safeName value }" in CATALOG_QUERY
 
 
+def test_source_product_row_unwraps_nested_product_supplier():
+    from app.main import source_product_row
+
+    row = source_product_row({
+        "id": "p-nested",
+        "name": "Nested supplier product",
+        "status": "ACTIVE",
+        "prices": [{"quantity": 1, "price": 2.5}],
+        "coreSupplier": {"id": "sup-core", "name": "Core Co"},
+        "suppliers": [
+            {"supplier": {"id": "sup-core", "name": "Core Co"}, "code": "C-1"},
+            {"supplier": {"id": "sup-alt", "name": "Alt Co"}, "code": "A-1"},
+        ],
+    })
+
+    assert row["supplier"] == "Core Co"
+    assert row["coreSupplier"]["id"] == "sup-core"
+    assert row["suppliers"][0]["code"] == "C-1"
+
+
 def test_duplicate_sale_edges_are_collapsed_and_merged():
     rows, duplicates = _dedupe_sales([
         {"id": "sale-1", "items": [{"id": "line-1"}], "payments": []},
@@ -224,7 +244,20 @@ def test_product_catalog_fetch_follows_cursor_pages():
     def handler(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.read())
         calls.append(payload)
-        if payload["variables"]["after"] is None:
+        query = payload["query"]
+        after = (payload.get("variables") or {}).get("after")
+        if "coreSupplier" in query:
+            node = {
+                "id": "p1" if after is None else "p2",
+                "coreSupplier": {"id": "sup-1", "name": "Acme"} if after is None else None,
+                "lastSupplier": None,
+                "suppliers": [{"supplier": {"id": "sup-1", "name": "Acme"}, "code": "A1"}] if after is None else [],
+            }
+            connection = {
+                "edges": [{"node": node}],
+                "pageInfo": {"hasNextPage": after is None, "endCursor": "cursor-2" if after is None else None},
+            }
+        elif after is None:
             connection = {"edges": [{"node": {"id": "p1", "name": "First", "additionalFields": [{"safeName": "vii_is_gift_card", "value": "true"}]}}], "pageInfo": {"hasNextPage": True, "endCursor": "cursor-2"}}
         else:
             connection = {"edges": [{"node": {"id": "p2", "name": "Second", "additionalFields": [{"safeName": "vii_is_gift_card", "value": "false"}]}}], "pageInfo": {"hasNextPage": False, "endCursor": None}}
@@ -238,15 +271,17 @@ def test_product_catalog_fetch_follows_cursor_pages():
 
     products = asyncio.run(run())
     assert [product["id"] for product in products] == ["p1", "p2"]
-    assert all("additionalFields { safeName value }" in call["query"] for call in calls if "additionalFields" in call["query"])
-    assert len(calls) == 2
+    catalog_calls = [call for call in calls if "coreSupplier" not in call["query"]]
+    assert all("additionalFields { safeName value }" in call["query"] for call in catalog_calls if "additionalFields" in call["query"])
+    assert len(catalog_calls) == 2
     assert products[0]["additionalFields"][0]["safeName"] == "vii_is_gift_card"
-    assert "pageInfo { hasNextPage endCursor }" in calls[0]["query"]
-    assert calls[0]["variables"]["after"] is None
-    assert calls[1]["variables"]["after"] == "cursor-2"
+    assert products[0]["coreSupplier"]["id"] == "sup-1"
+    assert "pageInfo { hasNextPage endCursor }" in catalog_calls[0]["query"]
+    assert catalog_calls[0]["variables"]["after"] is None
+    assert catalog_calls[1]["variables"]["after"] == "cursor-2"
 
 
-def test_incremental_product_query_avoids_unsupported_supplier_fields_and_keeps_stock_units():
+def test_incremental_product_query_keeps_stock_units_and_enriches_suppliers_separately():
     import asyncio
     import json
     import httpx
@@ -255,11 +290,23 @@ def test_incremental_product_query_avoids_unsupported_supplier_fields_and_keeps_
 
     def handler(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.read())
-        calls.append(payload["query"])
-        connection = {
-            "edges": [{"node": {"id": "p1", "caseQuantity": 6, "inventory": []}}],
-            "pageInfo": {"hasNextPage": False, "endCursor": None},
-        }
+        query = payload["query"]
+        calls.append(query)
+        if "coreSupplier" in query:
+            connection = {
+                "edges": [{"node": {
+                    "id": "p1",
+                    "coreSupplier": {"id": "sup-1", "name": "Acme"},
+                    "lastSupplier": None,
+                    "suppliers": [{"supplier": {"id": "sup-1", "name": "Acme"}, "code": "A1"}],
+                }}],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            }
+        else:
+            connection = {
+                "edges": [{"node": {"id": "p1", "caseQuantity": 6, "inventory": []}}],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            }
         return httpx.Response(200, json={"data": {"products": connection}})
 
     async def run():
@@ -270,13 +317,15 @@ def test_incremental_product_query_avoids_unsupported_supplier_fields_and_keeps_
 
     products = asyncio.run(run())
     assert [product["id"] for product in products] == ["p1"]
-    assert len(calls) == 2
-    assert all("coreSupplier { id name }" not in query for query in calls)
-    assert all("lastSupplier { id name }" not in query for query in calls)
-    assert all("caseQuantity" in query and "singleLevel" in query and "caseLevel" in query for query in calls)
+    assert products[0]["coreSupplier"]["id"] == "sup-1"
+    assert products[0]["suppliers"][0]["code"] == "A1"
+    base_calls = [query for query in calls if "coreSupplier" not in query]
+    assert len(base_calls) == 2
+    assert all("caseQuantity" in query and "singleLevel" in query and "caseLevel" in query for query in base_calls)
+    assert any("coreSupplier { id name }" in query for query in calls)
 
 
-def test_product_id_query_avoids_unsupported_supplier_fields():
+def test_product_id_query_avoids_supplier_fields_in_base_selection_then_enriches():
     import asyncio
     import json
     import httpx
@@ -285,9 +334,19 @@ def test_product_id_query_avoids_unsupported_supplier_fields():
 
     def handler(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.read())
-        calls.append(payload["query"])
+        query = payload["query"]
+        calls.append(query)
+        if "coreSupplier" in query:
+            node = {
+                "id": "p1",
+                "coreSupplier": {"id": "sup-9", "name": "Nine"},
+                "lastSupplier": None,
+                "suppliers": [],
+            }
+        else:
+            node = {"id": "p1", "name": "Product"}
         return httpx.Response(200, json={"data": {"products": {
-            "edges": [{"node": {"id": "p1", "name": "Product"}}],
+            "edges": [{"node": node}],
             "pageInfo": {"hasNextPage": False, "endCursor": None},
         }}})
 
@@ -297,10 +356,11 @@ def test_product_id_query_avoids_unsupported_supplier_fields():
         await client.close()
         return products
 
-    assert asyncio.run(run()) == [{"id": "p1", "name": "Product"}]
-    assert len(calls) == 1
+    products = asyncio.run(run())
+    assert products == [{"id": "p1", "name": "Product", "coreSupplier": {"id": "sup-9", "name": "Nine"}, "lastSupplier": None, "suppliers": []}]
     assert "coreSupplier { id name }" not in calls[0]
     assert "lastSupplier { id name }" not in calls[0]
+    assert any("coreSupplier { id name }" in query for query in calls[1:])
 
 
 def test_inventory_fetch_reports_paged_product_progress():
