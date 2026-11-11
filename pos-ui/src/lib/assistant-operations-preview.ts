@@ -38,6 +38,15 @@ type Sales = {
   from: string; to: string; timezone: string; company: string;
 };
 
+class PreviewReadError extends Error {
+  readonly retryable: boolean;
+
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.retryable = retryable;
+  }
+}
+
 function finite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -55,7 +64,7 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
   const response = await fetcher("/api/supply-chain/plan", {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
-  if (!response.ok) throw new Error("Business data unavailable");
+  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status !== 401 && response.status !== 403);
   const body = await response.json() as {
     data?: {
       weekStart?: string;
@@ -69,7 +78,8 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
       }>;
     };
   };
-  const lines = body.data?.lines ?? [];
+  if (!body.data || !Array.isArray(body.data.lines)) throw new Error("Incomplete replenishment response");
+  const lines = body.data.lines;
   const products = lines
     .filter((line) => line.productId != null)
     .map((line) => {
@@ -103,7 +113,7 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
   const response = await fetcher(`/api/reports/native-overview?${params}`, {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
-  if (!response.ok) throw new Error("Business data unavailable");
+  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status !== 401 && response.status !== 403);
   const body = await response.json() as { data?: { source?: string; revenue?: number; transactions?: number } };
   if (!body.data || body.data.source !== "orithos_ledger" || !finite(body.data.revenue) || !finite(body.data.transactions)) {
     throw new Error("Incomplete sales response");
@@ -175,10 +185,13 @@ export async function readOperationsPreview(
   } catch (error) {
     if (signal?.aborted) throw error;
     card.status = "unavailable";
-    card.retryable ??= true;
-    card.summary ??= chinese
-      ? "业务数据暂时无法读取，未生成数值。请重试或打开业务页面核查。"
-      : "Business data could not be loaded. No figures were generated. Retry or open the business page to check.";
+    const retryable = error instanceof PreviewReadError ? error.retryable : true;
+    card.retryable ??= retryable;
+    card.summary ??= !retryable
+      ? chinese ? "登录已过期或无权查看，请重新登录或联系管理员。" : "Sign in again or ask your administrator for access."
+      : chinese
+        ? "业务数据暂时无法读取，未生成数值。请重试或打开业务页面核查。"
+        : "Business data could not be loaded. No figures were generated. Retry or open the business page to check.";
   }
   return {
     threadId: threadId ?? "", intent: intent === "sales_week" ? "report_sales" : "navigate",
