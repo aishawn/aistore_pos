@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  filterOnHandRows,
   groupOnHandRows,
   inventoryTotals,
   inventoryValueIncLast,
+  onHandFooterTotals,
   sortInventory,
   sortOnHandRows,
   splitCaseItemLevels,
@@ -106,4 +108,26 @@ test("on-hand rows sort and group like the Shopfront inventory report", () => {
   assert.equal(rows[0].valueIncLast, 70);
   assert.deepEqual(sortOnHandRows(rows, "name", "asc").map((row) => row.id), ["1", "2"]);
   assert.deepEqual(groupOnHandRows(rows, "category").map((group) => group.label), ["Beer", "Spirits"]);
+});
+
+test("report-type filters match Shopfront inventory levels", () => {
+  const rows = [
+    toOnHandRow({ id: 1, name: "Positive", stockQuantity: 12, caseQuantity: 6, cost: 2 }),
+    toOnHandRow({ id: 2, name: "Zero", stockQuantity: 0, caseQuantity: 6, cost: 2 }),
+    toOnHandRow({ id: 3, name: "Negative", stockQuantity: -3, caseQuantity: 6, cost: 2 }),
+    toOnHandRow({ id: 4, name: "Missing", stockQuantity: null, caseQuantity: 6, cost: 2 }),
+  ];
+  assert.deepEqual(filterOnHandRows(rows, "on-hand").map((row) => row.id), ["1", "2", "3", "4"]);
+  assert.deepEqual(filterOnHandRows(rows, "all").map((row) => row.id), ["1", "2", "3", "4"]);
+  assert.deepEqual(filterOnHandRows(rows, "not-zero").map((row) => row.id), ["1", "3"]);
+  assert.deepEqual(filterOnHandRows(rows, "only-zero").map((row) => row.id), ["2"]);
+  assert.deepEqual(filterOnHandRows(rows, "no-inventory").map((row) => row.id), ["4"]);
+});
+
+test("footer totals sum case level, item level, and value", () => {
+  const rows = [
+    toOnHandRow({ id: 1, name: "A", caseQuantity: 24, stockQuantity: 50, cost: 2 }),
+    toOnHandRow({ id: 2, name: "B", caseQuantity: 6, stockQuantity: 7, cost: 10 }),
+  ];
+  assert.deepEqual(onHandFooterTotals(rows), { caseLevel: 3, itemLevel: 3, valueIncLast: 170 });
 });

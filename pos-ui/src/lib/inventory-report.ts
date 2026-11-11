@@ -21,6 +21,22 @@ export const ON_HAND_SORTS = ["name", "caseQuantity", "caseLevel", "itemLevel", 
 export type OnHandSort = (typeof ON_HAND_SORTS)[number];
 export type OnHandGroupBy = "none" | "category" | "brand";
 
+/** Shopfront Inventory On Hand report-type filter. */
+export const ON_HAND_REPORT_TYPES = [
+  { value: "on-hand", label: "Inventory on Hand" },
+  { value: "no-inventory", label: "No Inventory" },
+  { value: "not-zero", label: "Not Zero Inventory" },
+  { value: "only-zero", label: "Only Zero Inventory" },
+  { value: "all", label: "All Inventory Levels" },
+] as const;
+export type OnHandReportType = (typeof ON_HAND_REPORT_TYPES)[number]["value"];
+
+export interface OnHandFooterTotals {
+  caseLevel: number;
+  itemLevel: number;
+  valueIncLast: number;
+}
+
 export interface OnHandProductSource {
   id: number | string;
   name: string;
@@ -133,6 +149,42 @@ export function groupOnHandRows(rows: OnHandRow[], groupBy: OnHandGroupBy): Arra
   return [...groups.entries()]
     .sort(([a], [b]) => a.localeCompare(b, "en-AU", { numeric: true, sensitivity: "base" }))
     .map(([label, groupRows]) => ({ key: label, label, rows: groupRows }));
+}
+
+/** Filter loaded on-hand rows by Shopfront report-type semantics. */
+export function filterOnHandRows(rows: OnHandRow[], reportType: OnHandReportType): OnHandRow[] {
+  if (reportType === "all" || reportType === "on-hand") return rows;
+  return rows.filter((row) => {
+    const stock = row.stockQuantity;
+    const hasStock = stock != null && Number.isFinite(stock);
+    switch (reportType) {
+      case "no-inventory":
+        return !hasStock;
+      case "not-zero":
+        return hasStock && stock !== 0;
+      case "only-zero":
+        return hasStock && stock === 0;
+      default:
+        return true;
+    }
+  });
+}
+
+/** Footer totals aligned under Case Level / Item Level / Value columns. */
+export function onHandFooterTotals(rows: OnHandRow[]): OnHandFooterTotals {
+  let caseLevel = 0;
+  let itemLevel = 0;
+  let valueIncLast = 0;
+  for (const row of rows) {
+    if (Number.isFinite(Number(row.caseLevel))) caseLevel += Number(row.caseLevel);
+    if (Number.isFinite(Number(row.itemLevel))) itemLevel += Number(row.itemLevel);
+    if (Number.isFinite(Number(row.valueIncLast))) valueIncLast += Number(row.valueIncLast);
+  }
+  return {
+    caseLevel,
+    itemLevel,
+    valueIncLast: Math.round(valueIncLast * 100) / 100,
+  };
 }
 
 export interface InventoryRow {
