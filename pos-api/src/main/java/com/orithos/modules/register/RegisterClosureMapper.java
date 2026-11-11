@@ -8,7 +8,7 @@ public interface RegisterClosureMapper {
 
     @Select("SELECT * FROM register_closure "
             + "WHERE outlet_id = #{outletId} "
-            + "AND (#{registerId} IS NULL OR register_id = #{registerId}) "
+            + "AND (#{registerId,jdbcType=BIGINT} IS NULL OR register_id = #{registerId,jdbcType=BIGINT}) "
             + "ORDER BY closed_at DESC LIMIT #{size} OFFSET #{offset}")
     List<RegisterClosure> page(@Param("outletId") Long outletId,
                                @Param("registerId") Long registerId,
@@ -16,7 +16,7 @@ public interface RegisterClosureMapper {
 
     @Select("SELECT COUNT(*) FROM register_closure "
             + "WHERE outlet_id = #{outletId} "
-            + "AND (#{registerId} IS NULL OR register_id = #{registerId})")
+            + "AND (#{registerId,jdbcType=BIGINT} IS NULL OR register_id = #{registerId,jdbcType=BIGINT})")
     long count(@Param("outletId") Long outletId, @Param("registerId") Long registerId);
 
     @Select("SELECT * FROM register_closure WHERE id = #{id} AND outlet_id = #{outletId}")
