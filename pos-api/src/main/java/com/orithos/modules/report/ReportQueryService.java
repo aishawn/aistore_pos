@@ -160,8 +160,16 @@ public class ReportQueryService {
                 FROM sale s
                 LEFT JOIN shopfront_store_mapping map
                   ON map.outlet_id = CAST(s.outlet_id AS VARCHAR)
-                LEFT JOIN shopfront_sale m
-                  ON m.store_key = map.store_key AND m.external_id = s.external_id
+                LEFT JOIN LATERAL (
+                  SELECT ss.total_cost, ss.total_tax, ss.total_discount
+                  FROM shopfront_sale ss
+                  WHERE ss.external_id = s.external_id
+                  ORDER BY
+                    CASE WHEN map.store_key IS NOT NULL AND ss.store_key = map.store_key THEN 0 ELSE 1 END,
+                    CASE WHEN ss.total_cost IS NULL THEN 1 ELSE 0 END,
+                    ss.synced_at DESC NULLS LAST
+                  LIMIT 1
+                ) m ON s.external_id IS NOT NULL
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
                          SUM(si.cost * si.quantity) AS cost,

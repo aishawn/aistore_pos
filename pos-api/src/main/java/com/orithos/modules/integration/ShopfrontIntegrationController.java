@@ -603,6 +603,90 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "purchase_orders", body);
     }
 
+    /**
+     * Copy sale money fields (and status/payload) from one mirror store_key to another
+     * for a single Adelaide business day. Used to repair stale Demo mirror rows without
+     * a full {@code mirror:copy} (which can gateway-timeout).
+     */
+    @PostMapping("/mirror:sync-sale-money")
+    @Transactional
+    public ApiResult<Map<String, Object>> syncMirrorSaleMoney(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        String source = body.path("source_store_key").asText("").trim();
+        String target = body.path("target_store_key").asText("").trim();
+        String day = body.path("business_day").asText("").trim();
+        if (!STORE_KEY.matcher(source).matches() || !STORE_KEY.matcher(target).matches() || source.equals(target)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Distinct valid source_store_key and target_store_key are required");
+        }
+        if (!day.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "business_day must be YYYY-MM-DD");
+        }
+        ensureMappingTable();
+        ensureSaleBusinessDatesReady();
+        int mirrorUpdated = jdbc.update("""
+                UPDATE shopfront_sale AS tgt
+                SET total_price = src.total_price,
+                    total_tax = src.total_tax,
+                    total_discount = src.total_discount,
+                    total_cost = src.total_cost,
+                    status = src.status,
+                    raw_payload = src.raw_payload,
+                    synced_at = CURRENT_TIMESTAMP
+                FROM shopfront_sale AS src
+                WHERE src.store_key = ?
+                  AND tgt.store_key = ?
+                  AND src.external_id = tgt.external_id
+                  AND src.business_date = CAST(? AS date)
+                  AND tgt.business_date = CAST(? AS date)
+                """, source, target, day, day);
+        Long targetOutlet = null;
+        try {
+            targetOutlet = jdbc.queryForObject(
+                    "SELECT outlet_id::bigint FROM shopfront_store_mapping WHERE store_key = ? LIMIT 1",
+                    Long.class, target);
+        } catch (Exception ignored) {
+            // mapping may store non-numeric outlet ids on fresh installs
+        }
+        int nativeUpdated = 0;
+        if (targetOutlet != null && targetOutlet > 0) {
+            nativeUpdated = jdbc.update("""
+                    UPDATE sale s
+                    SET total_price = m.total_price,
+                        total_tax = m.total_tax,
+                        total_discount = COALESCE(m.total_discount, 0),
+                        total_cost = m.total_cost,
+                        status = CASE
+                            WHEN UPPER(COALESCE(m.status, '')) = 'INCOMPLETE' THEN 'INCOMPLETE'
+                            WHEN UPPER(COALESCE(m.status, '')) IN ('PARKED', 'OPEN', 'SAVED') THEN 'PARKED'
+                            WHEN UPPER(COALESCE(m.status, '')) IN ('VOIDED', 'VOID', 'CANCELLED', 'CANCELED') THEN 'VOIDED'
+                            WHEN UPPER(COALESCE(m.status, '')) = 'REFUNDED' THEN 'REFUNDED'
+                            WHEN UPPER(COALESCE(m.status, '')) IN ('COMPLETED', 'CLOSED', 'PAID', 'FINALISED', 'FINALIZED') THEN 'COMPLETED'
+                            ELSE s.status
+                        END,
+                        updated_at = CURRENT_TIMESTAMP
+                    FROM shopfront_sale m
+                    WHERE s.outlet_id = ?
+                      AND s.source_system = 'shopfront'
+                      AND s.external_id = m.external_id
+                      AND m.store_key = ?
+                      AND m.business_date = CAST(? AS date)
+                      AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) = CAST(? AS date)
+                    """, targetOutlet, target, day, day);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source_store_key", source);
+        result.put("target_store_key", target);
+        result.put("business_day", day);
+        result.put("mirror_rows_updated", mirrorUpdated);
+        result.put("native_rows_updated", nativeUpdated);
+        result.put("target_outlet_id", targetOutlet);
+        result.put("business_write", true);
+        return ApiResult.ok(result);
+    }
+
     @PostMapping("/mirror:copy")
     @Transactional
     public ApiResult<Map<String, Object>> copyShopfrontMirror(
