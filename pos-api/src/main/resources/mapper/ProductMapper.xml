@@ -105,6 +105,12 @@
                 AND NOT EXISTS (SELECT 1 FROM product_supplier ps
                                 WHERE ps.product_id = p.id AND ps.supplier_id = #{q.excludeSupplierId})
             </if>
+            <if test="q.viiGiftCard != null and q.viiGiftCard">
+                AND p.type = 'INTEGRATED'
+            </if>
+            <if test="q.viiGiftCard != null and !q.viiGiftCard">
+                AND (p.type IS NULL OR p.type &lt;&gt; 'INTEGRATED')
+            </if>
             <if test="q.inventoryLevel == 'not-zero'">
                 AND COALESCE(inv.total_qty, 0) &lt;&gt; 0
             </if>

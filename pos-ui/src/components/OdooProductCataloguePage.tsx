@@ -6,11 +6,13 @@ import Link from "next/link";
 import { groupCategories } from "@/lib/category-groups";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, FileUp, LoaderCircle, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown, Check, Download, Eye, FileUp, LoaderCircle, PackageSearch, Pencil, Plus, Printer, RefreshCw, Search, Tag, Trash2, X } from "lucide-react";
 import {
   createOdooProduct,
+  deleteOdooProduct,
   exportOdooProductsCsv,
   getOdooPosBootstrap,
+  getProductFilterOptions,
   getOrithosSession,
   importOdooProducts,
   OdooApiError,
@@ -19,6 +21,8 @@ import {
   type OdooPosCategoryRecord,
   type OdooPage,
   type OdooProductRecord,
+  type ProductCatalogueFilters,
+  type ProductFilterOptions,
 } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
@@ -48,6 +52,30 @@ import { type InventorySort, type InventoryDirection, type InventoryTotals } fro
 import { shopfrontCostValue } from "@/lib/shopfront-cost";
 
 const PAGE_SIZE = 40;
+const PRODUCT_STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Not Selling" },
+  { value: "ARCHIVED", label: "Archived" },
+] as const;
+const ALL_PRODUCT_STATUSES = PRODUCT_STATUS_OPTIONS.map((option) => option.value);
+
+function parseFilterOptionId(id: string) {
+  const parsed = Number(id);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function productStatusBadge(product: OdooProductRecord) {
+  const status = String(product.shopfront_source_status || (product.active ? "ACTIVE" : "INACTIVE")).toUpperCase();
+  const label = PRODUCT_STATUS_OPTIONS.find((option) => option.value === status)?.label
+    ?? (status === "INACTIVE" ? "Not Selling" : status === "ARCHIVED" ? "Archived" : "Active");
+  const activeTone = status === "ACTIVE";
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${activeTone ? "bg-emerald-50 text-emerald-800" : status === "ARCHIVED" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-900"}`}>
+      {label}
+    </span>
+  );
+}
+
 const INVENTORY_COLUMNS = [
   { key: "product", label: "Product" }, { key: "category", label: "Category" }, { key: "cost", label: "Cost" },
   { key: "barcode", label: "Barcode" }, { key: "sku", label: "SKU" },
@@ -136,6 +164,19 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [debouncedQuery, setDebouncedQuery] = useState(() => searchParams.get("q") ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [familyId, setFamilyId] = useState<number | null>(null);
+  const [tagId, setTagId] = useState<number | null>(null);
+  const [supplierId, setSupplierId] = useState<number | null>(null);
+  const [productType, setProductType] = useState<string | null>(null);
+  const [taxRateId, setTaxRateId] = useState<number | null>(null);
+  const [costTaxRateId, setCostTaxRateId] = useState<number | null>(null);
+  const [statusFilters, setStatusFilters] = useState<string[]>(() => [...ALL_PRODUCT_STATUSES]);
+  const [viiGiftCard, setViiGiftCard] = useState<"ignore" | "yes" | "no">("ignore");
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<ProductFilterOptions | null>(null);
+  const [filterOptionsError, setFilterOptionsError] = useState<string | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState(false);
   const requestedView = searchParams.get("view");
   const [catalogueView, setCatalogueView] = useState<CatalogueView>(() =>
     CATALOGUE_VIEWS.some((view) => view.value === requestedView) ? requestedView as CatalogueView : "all",
@@ -274,6 +315,33 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
   const categoryGroups = useMemo(() => groupCategories(categories), [categories]);
   const categoryOptions = useMemo(() => categoryGroups.map((group) => group[0]), [categoryGroups]);
+
+  const catalogueProductFilters = useMemo((): ProductCatalogueFilters => ({
+    brandId,
+    familyId,
+    tagId,
+    supplierId,
+    type: productType,
+    taxRateId,
+    costTaxRateId,
+    statuses: statusFilters.length === ALL_PRODUCT_STATUSES.length ? null : statusFilters.join(","),
+    viiGiftCard: viiGiftCard === "ignore" ? null : viiGiftCard === "yes",
+  }), [brandId, costTaxRateId, familyId, productType, statusFilters, supplierId, tagId, taxRateId, viiGiftCard]);
+
+  const catalogueFiltersActive = useCallback(() => Boolean(
+    debouncedQuery
+    || categoryId
+    || brandId
+    || familyId
+    || tagId
+    || supplierId
+    || productType
+    || taxRateId
+    || costTaxRateId
+    || viiGiftCard !== "ignore"
+    || statusFilters.length !== ALL_PRODUCT_STATUSES.length
+    || catalogueView !== "all",
+  ), [brandId, catalogueView, categoryId, costTaxRateId, debouncedQuery, familyId, productType, statusFilters.length, supplierId, tagId, taxRateId, viiGiftCard]);
 
   const showImportDisplayNote = useMemo(
     () => items.some((product) => {
@@ -445,6 +513,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         offset: append ? nextOffset.current : 0,
         categoryIds: categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined,
         catalogueView,
+        ...(!inventoryReport ? { productFilters: catalogueProductFilters } : {}),
         ...(inventoryReport ? {
           inventoryReport: true,
           sortBy,
@@ -476,11 +545,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [categoryId, categoryGroups, catalogueView, connected, debouncedQuery, dialog, inventoryFilter, inventoryReport, sortBy, sortDirection, refreshKey]);
+  }, [brandId, catalogueProductFilters, categoryId, categoryGroups, catalogueView, connected, costTaxRateId, debouncedQuery, dialog, familyId, inventoryFilter, inventoryReport, productType, sortBy, sortDirection, statusFilters, supplierId, tagId, taxRateId, viiGiftCard, refreshKey]);
 
   useEffect(() => {
     if (dialog === "cost-reconciliation") { setLoading(false); return; }
-    const key = JSON.stringify([categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter]);
+    const key = JSON.stringify([
+      categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter,
+      brandId, familyId, tagId, supplierId, productType, taxRateId, costTaxRateId, statusFilters, viiGiftCard,
+    ]);
     if (loadedQuery.current !== key) {
       setItems([]);
       loadedQuery.current = key;
@@ -488,7 +560,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadProducts();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter, dialog]);
+  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter, dialog, brandId, familyId, tagId, supplierId, productType, taxRateId, costTaxRateId, statusFilters, viiGiftCard]);
 
   useEffect(() => {
     if (!hasNext || resultsPending || loadingMore || error || !sentinel.current) return;
@@ -535,17 +607,35 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     let cancelled = false;
     setCategoryLoading(true);
     setCategoryError(null);
+    setFilterOptionsError(null);
     void (async () => {
-      const all: OdooPosCategoryRecord[] = [];
-      for (let offset = 0; ; offset += 100) {
-        const page = await searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100, offset });
-        all.push(...page.items);
-        if (!page.hasNext) return { items: all };
-        if (!page.items.length) throw new Error("Category pagination is unavailable.");
-      }
+      const [categoryPages, options] = await Promise.all([
+        (async () => {
+          const all: OdooPosCategoryRecord[] = [];
+          for (let offset = 0; ; offset += 100) {
+            const page = await searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100, offset });
+            all.push(...page.items);
+            if (!page.hasNext) return all;
+            if (!page.items.length) throw new Error("Category pagination is unavailable.");
+          }
+        })(),
+        getProductFilterOptions(),
+      ]);
+      return { items: categoryPages, options };
     })()
-      .then((result) => { if (!cancelled) { setCategories(result.items); setCategoryError(null); } })
-      .catch((cause) => { if (!cancelled) setCategoryError(cause instanceof Error ? cause.message : "Product categories are unavailable."); })
+      .then((result) => {
+        if (cancelled) return;
+        setCategories(result.items);
+        setCategoryError(null);
+        setFilterOptions(result.options);
+        setFilterOptionsError(null);
+      })
+      .catch((cause) => {
+        if (cancelled) return;
+        const message = cause instanceof Error ? cause.message : "Product categories are unavailable.";
+        setCategoryError(message);
+        setFilterOptionsError(message);
+      })
       .finally(() => { if (!cancelled) setCategoryLoading(false); });
     return () => { cancelled = true; };
   }, [categoryRetryKey, connected, dialog]);
@@ -578,6 +668,16 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setQuery("");
     setDebouncedQuery("");
     setCategoryId(null);
+    setBrandId(null);
+    setFamilyId(null);
+    setTagId(null);
+    setSupplierId(null);
+    setProductType(null);
+    setTaxRateId(null);
+    setCostTaxRateId(null);
+    setStatusFilters([...ALL_PRODUCT_STATUSES]);
+    setViiGiftCard("ignore");
+    setMoreFiltersOpen(false);
     setCatalogueView("all");
     if (inventoryReport) setInventoryFilter("all");
     const params = new URLSearchParams(searchParams.toString());
@@ -588,6 +688,35 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     const path = inventoryReport ? "/reports/inventory" : "/products";
     router.replace(`${path}${params.size ? `?${params}` : ""}`, { scroll: false });
     setRefreshKey((value) => value + 1);
+  }
+
+  function toggleStatusFilter(status: string) {
+    requestRevision.current += 1;
+    setLoading(true);
+    setStatusFilters((current) => {
+      if (current.includes(status)) {
+        const next = current.filter((value) => value !== status);
+        return next.length ? next : current;
+      }
+      return [...current, status];
+    });
+  }
+
+  async function deleteEditingProduct() {
+    if (!editingProduct || deletingProduct || savingProduct) return;
+    const label = friendlyProductName(editingProduct.display_name || editingProduct.name);
+    if (!window.confirm(`Delete “${label}”? This permanently removes the product from Orithos.`)) return;
+    setDeletingProduct(true);
+    setEditError(null);
+    try {
+      await deleteOdooProduct(editingProduct.id);
+      setEditingProduct(null);
+      setRefreshKey((value) => value + 1);
+    } catch (cause) {
+      setEditError(cause instanceof Error ? cause.message : "Could not delete this product.");
+    } finally {
+      setDeletingProduct(false);
+    }
   }
 
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
@@ -713,7 +842,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
       <div ref={scrollRoot} data-testid="product-results-scroll" className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto overscroll-y-contain px-4 pb-4 md:px-6 print:overflow-visible print:h-auto">
       <header inert={stockBusy || categoryBusy} className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="oh-type-title text-[var(--oh-text)]">{inventoryReport ? "Inventory report" : "Products"}</h1>
+          <h1 className="oh-type-title flex flex-wrap items-baseline gap-2 text-[var(--oh-text)]">
+            {inventoryReport ? "Inventory report" : "Products"}
+            {!inventoryReport && totals && !resultsPending && (
+              <span className="text-base font-semibold text-[var(--oh-muted)]">{quantity(totals.totalItems)} Results</span>
+            )}
+          </h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : inventoryReport ? "Active, saleable Odoo variants and on-hand inventory for this company and warehouse." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
@@ -728,7 +862,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         {tab === "catalogue" && (
         <div className="print:hidden flex w-full items-center justify-end gap-2 sm:w-auto">
           {inventoryReport && <Link href="/products" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><PackageSearch size={16} /><span>Products</span></Link>}
-          {!inventoryReport && <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>}
+          {!inventoryReport && <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> Add Product</button>}
           <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
@@ -784,44 +918,124 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         </div>
       ) : (
         <>
-          <div className="print:hidden flex shrink-0 flex-wrap items-center gap-3">
-            <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
-              <Search size={17} className="text-[var(--oh-muted)]" />
-              <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
-            </label>
-            <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.[0].id ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
+          {!inventoryReport ? (
+            <div className="print:hidden flex shrink-0 flex-col gap-3">
+              <label className="flex h-11 w-full items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+                <Search size={17} className="text-[var(--oh-muted)]" />
+                <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <select aria-label="Filter by brand" aria-busy={categoryLoading} value={brandId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setBrandId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
+                  <option value="">Brand</option>
+                  {(filterOptions?.brands ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+                <select aria-label="Filter by category" aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
+                  <option value="">Category</option>
+                  {(filterOptions?.categories ?? []).map((option) => {
+                    const id = parseFilterOptionId(option.id);
+                    return id ? <option key={option.id} value={id}>{option.name}</option> : null;
+                  })}
+                </select>
+                <select aria-label="Filter by family" aria-busy={categoryLoading} value={familyId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setFamilyId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
+                  <option value="">Family</option>
+                  {(filterOptions?.families ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+                <select aria-label="Filter by tag" aria-busy={categoryLoading} value={tagId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setTagId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
+                  <option value="">Tag</option>
+                  {(filterOptions?.tags ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+                <select aria-label="Filter by supplier" aria-busy={categoryLoading} value={supplierId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setSupplierId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
+                  <option value="">Supplier</option>
+                  {(filterOptions?.suppliers ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setMoreFiltersOpen((open) => !open)} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+                  {moreFiltersOpen ? "— Less Filters" : "+ More Filters"}
+                </button>
+                {catalogueFiltersActive() && <button type="button" onClick={clearFilters} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={14} /> Clear filters</button>}
+              </div>
+              {moreFiltersOpen && (
+                <div className="grid gap-3 rounded-lg border border-[var(--oh-border)] bg-white p-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <fieldset className="grid gap-2 sm:col-span-2 lg:col-span-3">
+                    <legend className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Status</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {PRODUCT_STATUS_OPTIONS.map((option) => (
+                        <button key={option.value} type="button" aria-pressed={statusFilters.includes(option.value)} onClick={() => toggleStatusFilter(option.value)} className={`min-h-10 rounded-lg border px-3 text-xs font-semibold ${statusFilters.includes(option.value) ? "border-[var(--oh-primary)] bg-[var(--oh-primary)] text-white" : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)]"}`}>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Type
+                    <select aria-label="Filter by product type" value={productType ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setProductType(event.target.value || null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                      <option value="">All types</option>
+                      {(filterOptions?.types ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Retail tax
+                    <select aria-label="Filter by retail tax rate" value={taxRateId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setTaxRateId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                      <option value="">Any retail tax</option>
+                      {(filterOptions?.taxRates ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Purchase tax
+                    <select aria-label="Filter by purchase tax rate" value={costTaxRateId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setCostTaxRateId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                      <option value="">Any purchase tax</option>
+                      {(filterOptions?.costTaxRates ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Is Vii gift card
+                    <select aria-label="Filter by Vii gift card products" value={viiGiftCard} onChange={(event) => { requestRevision.current += 1; setLoading(true); setViiGiftCard(event.target.value as "ignore" | "yes" | "no"); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                      <option value="ignore">Ignore</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="print:hidden flex shrink-0 flex-wrap items-center gap-3">
+              <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+                <Search size={17} className="text-[var(--oh-muted)]" />
+                <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+              </label>
+              <select aria-label="Filter by POS category" aria-busy={categoryLoading} value={categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.[0].id ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:w-[220px] sm:flex-none">
                 <option value="">All categories</option>
                 {categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
-            </select>
-            {inventoryReport && <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Odoo stock status
-              <select aria-label="Filter inventory by Odoo stock status" value={inventoryFilter} onChange={(event) => {
-                const value = event.target.value as "all" | "zero" | "negative";
-                setInventoryFilter(value);
-                const params = new URLSearchParams(searchParams.toString());
-                if (value === "all") params.delete("stock"); else params.set("stock", value);
-                router.replace(`/reports/inventory${params.size ? `?${params}` : ""}`, { scroll: false });
-              }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
-                <option value="all">All Odoo stock</option><option value="zero">Zero Odoo stock</option><option value="negative">Negative Odoo stock</option>
               </select>
-            </label>}
-          </div>
+              <label className="grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">Odoo stock status
+                <select aria-label="Filter inventory by Odoo stock status" value={inventoryFilter} onChange={(event) => {
+                  const value = event.target.value as "all" | "zero" | "negative";
+                  setInventoryFilter(value);
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (value === "all") params.delete("stock"); else params.set("stock", value);
+                  router.replace(`/reports/inventory${params.size ? `?${params}` : ""}`, { scroll: false });
+                }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+                  <option value="all">All Odoo stock</option><option value="zero">Zero Odoo stock</option><option value="negative">Negative Odoo stock</option>
+                </select>
+              </label>
+            </div>
+          )}
 
-          <label className="print:hidden grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by
+          {inventoryReport && <label className="print:hidden grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] xl:hidden">Sort by
             <select aria-label="Sort inventory" value={`${sortBy}:${sortDirection}`} onChange={(event) => { const [field, direction] = event.target.value.split(":"); changeSort(field as InventorySort, direction as InventoryDirection); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm">
               {([ ["name", "Product"], ["category", "Category"], ["shopfront_quantity", "Shopfront inventory"], ["qty_available", "Odoo inventory"], ["price_included", "Odoo sale price"] ] as const).flatMap(([field, label]) => (["asc", "desc"] as const).map((direction) => <option key={`${field}:${direction}`} value={`${field}:${direction}`}>{label} · {direction === "asc" ? "Ascending" : "Descending"}</option>))}
             </select>
-          </label>
+          </label>}
 
-          <label className="print:hidden grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] md:hidden">Quick view
+          {inventoryReport && <label className="print:hidden grid shrink-0 gap-1 text-xs font-medium text-[var(--oh-muted)] md:hidden">Quick view
             <select aria-label="Catalogue quick view" value={catalogueView} onChange={(event) => selectView(event.target.value as CatalogueView)} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
               {CATALOGUE_VIEWS.map((view) => <option key={view.value} value={view.value}>{view.label}</option>)}
             </select>
-          </label>
-          <div className="print:hidden hidden shrink-0 flex-wrap gap-2 md:flex" role="group" aria-label="Catalogue quick filters">
+          </label>}
+          {inventoryReport && <div className="print:hidden hidden shrink-0 flex-wrap gap-2 md:flex" role="group" aria-label="Catalogue quick filters">
             {CATALOGUE_VIEWS.map((view) => <button key={view.value} type="button" aria-pressed={catalogueView === view.value} onClick={() => selectView(view.value)} disabled={catalogueView === view.value} className={`min-h-11 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${catalogueView === view.value ? "border-[var(--oh-primary)] bg-[var(--oh-primary)] text-white" : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:border-[var(--oh-primary)]"}`}>{view.label}</button>)}
-            {(query || categoryId || catalogueView !== "all" || (inventoryReport && inventoryFilter !== "all")) && <button type="button" onClick={clearFilters} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={14} /> Clear filters</button>}
-          </div>
-          {(query || categoryId || catalogueView !== "all" || (inventoryReport && inventoryFilter !== "all")) && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
+            {(query || categoryId || catalogueView !== "all" || inventoryFilter !== "all") && <button type="button" onClick={clearFilters} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={14} /> Clear filters</button>}
+          </div>}
+          {inventoryReport && (query || categoryId || catalogueView !== "all" || inventoryFilter !== "all") && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
+          {filterOptionsError && !inventoryReport && <div role="alert" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{filterOptionsError} Filter dropdowns may be incomplete until they reload.</div>}
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
             {inventoryReport
@@ -859,7 +1073,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                     <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 animate-pulse rounded-full bg-[var(--oh-border)]" /><span className="ml-auto h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" />
                   </div></td>
                 </tr>) : items.length === 0 ? (
-                  <tr><td colSpan={inventoryColumns.length + (inventoryReport ? 0 : 1)} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId || catalogueView !== "all" ? "No matching products" : "No products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId || catalogueView !== "all" ? "Try another search, category or quick filter." : "Add a product or import your catalogue to get started."}</p>{debouncedQuery || categoryId || catalogueView !== "all" ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}</div></td></tr>
+                  <tr><td colSpan={inventoryColumns.length + (inventoryReport ? 0 : 1)} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? "No matching products" : "No products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? "Try another search, category or quick filter." : "Add a product or import your catalogue to get started."}</p>{(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}</div></td></tr>
                 ) : (printItems ?? items).map((product) => {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id) || `Category #${id}`);
                   const displayCategory = typeof product.shopfront_source_category === "string" && product.shopfront_source_category.trim()
@@ -873,7 +1087,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   const sourceUnavailable = product.shopfront_data_status !== "available";
                   return (
                     <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
-                      {!inventoryReport && <td className="px-4 py-3">{product.active !== false ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Active</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Archived</span>}</td>}
+                      {!inventoryReport && <td className="px-4 py-3">{productStatusBadge(product)}</td>}
                       {inventoryColumns.includes("product") && <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ProductImage productId={product.id} name={label} refreshToken={refreshKey} className="h-10 w-10 border border-[var(--oh-border)] bg-white" /><span className="min-w-0"><button type="button" onClick={() => setViewingProduct(product)} title={fullName} className="min-h-11 text-left font-semibold text-[var(--oh-text)] hover:text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">{label}</button><CatalogueIssues product={product} /></span></span></td>}
                       {inventoryColumns.includes("category") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{displayCategory}</td>}
                       {inventoryReport && inventoryColumns.includes("barcode") && <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{product.barcode || "—"}</td>}
@@ -885,7 +1099,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                       {inventoryColumns.includes("price") && <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{!inventoryReport ? sourceUnavailable ? <span className="font-normal text-[var(--oh-muted)]">Shopfront unavailable</span> : typeof product.shopfront_price === "number" ? <>{money(product.shopfront_price)}<span className="mt-0.5 block text-[11px] font-normal text-[var(--oh-muted)]">Shopfront</span></> : <span className="font-normal text-[var(--oh-muted)]">No Shopfront price</span> : <CataloguePrice product={product} />}{!inventoryReport && product.shopfront_price_tiers?.length ? <span className="mt-1 block text-[11px] font-normal text-[var(--oh-muted)]" title="Shopfront source price tiers">{product.shopfront_price_tiers.slice(0, 2).map((tier) => { const priceEx = Number(tier.priceEx ?? tier.price_ex); return `${quantity(Number(tier.quantity) || 1)}+ ${money(Number(tier.price) || 0)}${Number.isFinite(priceEx) ? ` · ex tax ${money(priceEx)}` : ""}`; }).join(" · ")}</span> : null}</td>}
                       {inventoryReport && inventoryColumns.includes("pos") && <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>}
                       {!inventoryReport && <td className="px-4 py-3"><div className="flex min-w-[140px] flex-col items-center gap-1" title={`${product.performance_source ?? "Source"} units sold per day over the past 30 days`}><Sparkline points={product.performance_30d ?? []} width={132} height={36} /><span className="text-[11px] tabular-nums text-[var(--oh-muted)]">{product.performance_30d ? `${quantity(product.performance_30d.reduce((sum, point) => sum + point, 0))} units · 30d ${product.performance_source ?? ""}` : "Performance unavailable"}</span></div></td>}
-                      {!inventoryReport && <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-3"><button type="button" onClick={() => setViewingProduct(product)} aria-label={`View ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-sky-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Eye size={15} /> View</button>{(product.shopfront_source_duplicate_count ?? 0) > 1 ? <span className="text-xs text-amber-800">Review mapping</span> : <button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button>}</div></td>}
+                      {!inventoryReport && <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-2"><button type="button" onClick={() => setViewingProduct(product)} aria-label={`View ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-sky-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Eye size={15} /> View</button>{(product.shopfront_source_duplicate_count ?? 0) > 1 ? <span className="text-xs text-amber-800">Review mapping</span> : <><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Delete ${label}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-red-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Trash2 size={14} /> Delete</button></>}</div></td>}
                     </tr>
                   );
                 })}
@@ -903,9 +1117,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 </div>
               ) : items.length === 0 ? (
                 <div className="px-4 py-12 text-center">
-                  <p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId || catalogueView !== "all" ? "No matching products" : "No products yet"}</p>
-                  <p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId || catalogueView !== "all" ? "Try another search, category or quick filter." : "Add a product or import your catalogue to get started."}</p>
-                  {debouncedQuery || categoryId || catalogueView !== "all" ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}
+                  <p className="text-sm font-semibold text-[var(--oh-text)]">{(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? "No matching products" : "No products yet"}</p>
+                  <p className="mt-1 text-sm text-[var(--oh-muted)]">{(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? "Try another search, category or quick filter." : "Add a product or import your catalogue to get started."}</p>
+                  {(inventoryReport ? (debouncedQuery || categoryId || catalogueView !== "all") : catalogueFiltersActive()) ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}
                 </div>
               ) : (printItems ?? items).map((product) => {
                 const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id) || `Category #${id}`);
@@ -955,7 +1169,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
             <span role="status" aria-live="polite" className="text-[var(--oh-muted)]">{resultsPending ? "Loading products…" : totals ? `Loaded ${renderedProductCount} / ${totals.totalItems} Orithos products` : "Totals unavailable"}</span>
             {hasNext && !resultsPending && !error && <button type="button" onClick={() => void loadProducts(true)} disabled={loadingMore} className="print:hidden min-h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">{loadingMore ? "Loading…" : "Load more"}</button>}
             {totals && !resultsPending && <>
-              <span>Orithos active products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
+              <span>Orithos products <strong className="ml-2 tabular-nums">{quantity(totals.totalItems)}</strong></span>
               <span>Positive on-hand units <strong className="ml-2 tabular-nums">{totals.totalQty === null ? "Mixed units" : quantity(totals.totalQty)}</strong></span>
               <span className="basis-full text-xs text-[var(--oh-muted)]">Unit total is the sum of positive Orithos on-hand balances for these products.</span>
               {totals.negativeStockItems > 0 && <span className="basis-full text-xs text-amber-800">{quantity(totals.negativeStockItems)} products have negative stock. The positive on-hand total excludes negative balances.</span>}
@@ -966,11 +1180,11 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
 
       {viewingProduct && <CatalogueProductDetails product={viewingProduct} categories={categoryNames} canEdit={!inventoryReport} onClose={() => setViewingProduct(null)} onEdit={() => { setEditingProduct(viewingProduct); setViewingProduct(null); setCategoriesTouched(false); setEditError(null); }} />}
 
-      {editingProduct && createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingProduct) setEditingProduct(null); }}>
+      {editingProduct && createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingProduct && !deletingProduct) setEditingProduct(null); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="product-edit-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
             <div><h2 id="product-edit-title" className="text-lg font-semibold text-[var(--oh-text)]">Edit product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingProduct.display_name || editingProduct.name} · Orithos #{editingProduct.id}</p></div>
-            <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
+            <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct || deletingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form onSubmit={(event) => void saveProduct(event)} className="mt-5 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1000,9 +1214,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
             <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked={editingProduct.available_in_pos} className="mt-0.5 accent-[var(--oh-primary)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Hide this product from register searches without deleting it.</span></span></label>
             <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The base price follows the product’s Orithos tax configuration. Stock is managed through receipts and inventory adjustments.</p>
             {editError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{editError}</p>}
-            <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Cancel</button>
-              <button type="submit" disabled={savingProduct} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
+            <footer className="flex flex-col gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <button type="button" onClick={() => void deleteEditingProduct()} disabled={savingProduct || deletingProduct} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-4 text-sm font-semibold text-red-800 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50 sm:w-auto">{deletingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />} Delete</button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct || deletingProduct} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Cancel</button>
+                <button type="submit" disabled={savingProduct || deletingProduct} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
+              </div>
             </footer>
           </form>
         </section>

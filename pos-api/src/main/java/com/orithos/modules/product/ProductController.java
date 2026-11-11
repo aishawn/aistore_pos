@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
@@ -53,7 +54,31 @@ public class ProductController {
         q.setOutletId(outletId);
         q.normalize();
         var items = mapper.page(q);
+        attachPerformance(items);
         return ApiResult.ok(PageResult.of(items, mapper.count(q), q.getPage(), q.getSize()));
+    }
+
+    private void attachPerformance(List<Product> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        List<Long> productIds = items.stream()
+                .map(Product::getId)
+                .filter(id -> id != null)
+                .toList();
+        if (productIds.isEmpty()) {
+            return;
+        }
+        Map<Long, List<BigDecimal>> seriesByProduct = activityService.performance30d(productIds);
+        for (Product item : items) {
+            if (item.getId() == null) {
+                continue;
+            }
+            List<BigDecimal> series = seriesByProduct.get(item.getId());
+            if (series != null) {
+                item.setPerformance30d(series);
+            }
+        }
     }
 
     /** Full-catalog Inventory On Hand footer totals for the current product filters. */

@@ -2563,10 +2563,9 @@ public class ShopfrontIntegrationController {
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) return 0;
         Long productId = resolvedProductId;
         Integer mdbId = integerValue(item.get("sku"));
-        Long categoryId = ensureLookup("category", text(item, "category"), outletId, batch.lookupIds);
-        Long brandId = ensureLookup("brand", text(item, "brand"), outletId, batch.lookupIds);
-        JsonNode family = item.get("family");
-        Long familyId = ensureLookup("family", family == null ? null : family.asText(null), outletId, batch.lookupIds);
+        Long categoryId = ensureLookup("category", lookupName(item.get("category")), outletId, batch.lookupIds);
+        Long brandId = ensureLookup("brand", lookupName(item.get("brand")), outletId, batch.lookupIds);
+        Long familyId = ensureLookup("family", lookupName(item.get("family")), outletId, batch.lookupIds);
         Long taxRateId = ensureTaxRate(text(item, "tax_rate_name"), taxRates);
         Long costTaxRateId = ensureTaxRate(text(item, "cost_tax_rate_name"), taxRates);
         BigDecimal caseQuantity = decimal(item, "case_quantity");

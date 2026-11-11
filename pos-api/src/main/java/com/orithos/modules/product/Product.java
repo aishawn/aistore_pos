@@ -52,4 +52,6 @@ public class Product {
     private List<ProductPrice> prices;
     /** Other products in the same family (excludes self). Populated on read. */
     private List<String> familyMemberNames;
+    /** Units sold per day for the last 30 Adelaide business days (list views). */
+    private List<BigDecimal> performance30d;
 }

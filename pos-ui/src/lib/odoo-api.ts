@@ -859,19 +859,53 @@ export async function logoutFromOdoo(): Promise<OdooSessionStatus> {
   return { user: null, autoRecoverConfigured: false };
 }
 
+export interface ProductFilterOption {
+  id: string;
+  name: string;
+  productCount?: number | null;
+}
+
+export interface ProductFilterOptions {
+  brands?: ProductFilterOption[];
+  categories?: ProductFilterOption[];
+  families?: ProductFilterOption[];
+  tags?: ProductFilterOption[];
+  suppliers?: ProductFilterOption[];
+  types?: ProductFilterOption[];
+  taxRates?: ProductFilterOption[];
+  costTaxRates?: ProductFilterOption[];
+}
+
+export interface ProductCatalogueFilters {
+  brandId?: number | null;
+  familyId?: number | null;
+  tagId?: number | null;
+  supplierId?: number | null;
+  type?: string | null;
+  taxRateId?: number | null;
+  costTaxRateId?: number | null;
+  /** Comma-separated status values; omit when all statuses are selected. */
+  statuses?: string | null;
+  viiGiftCard?: boolean | null;
+}
+
 type NativeProductRow = {
   id: number;
   name: string;
   status?: string | null;
+  type?: string | null;
   categoryId?: number | null;
   categoryName?: string | null;
+  brandId?: number | null;
   brandName?: string | null;
+  familyId?: number | null;
   price?: number | null;
   cost?: number | null;
   caseQuantity?: number | null;
   stockQuantity?: number | null;
   trackInventory?: boolean | null;
   barcodes?: Array<{ code?: string | null }> | null;
+  performance30d?: Array<number | string> | null;
 };
 
 function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
@@ -880,11 +914,13 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const cost = product.cost == null ? null : Number(product.cost);
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
   const categoryId = product.categoryId == null ? null : Number(product.categoryId);
+  const status = (product.status || "ACTIVE").toUpperCase();
+  const performance30d = product.performance30d?.map((point) => Number(point)).filter((point) => Number.isFinite(point)) ?? null;
   return {
     id: Number(product.id),
     name: product.name,
     display_name: product.name,
-    active: (product.status || "ACTIVE").toUpperCase() === "ACTIVE",
+    active: status === "ACTIVE",
     barcode,
     default_code: false,
     list_price: price,
@@ -898,7 +934,10 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
     shopfront_data_status: product.stockQuantity == null ? "missing" : "available",
     shopfront_source_name: product.name,
     shopfront_source_category: product.categoryName || false,
+    shopfront_source_status: product.status || null,
     shopfront_track_inventory: product.trackInventory ?? true,
+    performance_30d: performance30d,
+    performance_source: performance30d ? "Odoo" : undefined,
     taxes_id: [],
     price_included: null,
     price_tax: null,
@@ -906,14 +945,14 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
     free_qty: qty,
     uom_id: false,
     pos_categ_ids: categoryId ? [categoryId] : [],
-    available_in_pos: (product.status || "ACTIVE").toUpperCase() === "ACTIVE",
+    available_in_pos: status === "ACTIVE",
   };
 }
 
 /** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
   if (type === "customers") {
     const pageNumber = Math.floor((options.offset ?? 0) / (options.limit ?? 40)) + 1;
@@ -940,17 +979,27 @@ export async function searchOdooRecords<T>(
   if (type === "products" || type === "purchaseProducts") {
     const size = options.limit ?? 40;
     const pageNumber = Math.floor((options.offset ?? 0) / size) + 1;
+    const productFilters = options.productFilters;
     const page = await api.get<Page<NativeProductRow>>("/api/products", {
       name: options.query,
       categoryId: options.categoryId ?? options.categoryIds?.[0],
       page: pageNumber,
       size,
-      status: "ACTIVE",
+      ...(productFilters?.brandId != null ? { brandId: productFilters.brandId } : {}),
+      ...(productFilters?.familyId != null ? { familyId: productFilters.familyId } : {}),
+      ...(productFilters?.tagId != null ? { tagId: productFilters.tagId } : {}),
+      ...(productFilters?.supplierId != null ? { supplierId: productFilters.supplierId } : {}),
+      ...(productFilters?.type ? { type: productFilters.type } : {}),
+      ...(productFilters?.taxRateId != null ? { taxRateId: productFilters.taxRateId } : {}),
+      ...(productFilters?.costTaxRateId != null ? { costTaxRateId: productFilters.costTaxRateId } : {}),
+      ...(productFilters?.statuses ? { statuses: productFilters.statuses } : {}),
+      ...(productFilters?.viiGiftCard != null ? { viiGiftCard: productFilters.viiGiftCard } : {}),
     });
     const items = page.items.map(mapNativeProduct);
     return {
       items: items as T[],
       total: page.total,
+      totalItems: page.total,
       limit: size,
       offset: options.offset ?? 0,
       hasNext: pageNumber * size < page.total,
@@ -958,7 +1007,7 @@ export async function searchOdooRecords<T>(
     };
   }
   if (type === "posCategories") {
-    const filters = await api.get<{ categories?: Array<{ id: string | number; name: string }> }>("/api/products/filter-options");
+    const filters = await api.get<ProductFilterOptions>("/api/products/filter-options");
     const all = (filters.categories || []).map((category) => ({
       id: Number(category.id),
       name: category.name,
@@ -1183,6 +1232,14 @@ export async function getOdooPriceRules(query?: string, offset = 0, limit = 30):
       || rule.sku.includes(query.trim()))
     : rules;
   return { items: filtered.slice(offset, offset + limit), hasNext: offset + limit < filtered.length };
+}
+
+export async function getProductFilterOptions(): Promise<ProductFilterOptions> {
+  return api.get<ProductFilterOptions>("/api/products/filter-options");
+}
+
+export async function deleteOdooProduct(id: number): Promise<void> {
+  await api.del(`/api/products/${id}`);
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {

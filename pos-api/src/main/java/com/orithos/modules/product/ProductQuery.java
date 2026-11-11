@@ -32,6 +32,8 @@ public class ProductQuery {
      * on-hand | all | not-zero | only-zero | no-inventory
      */
     private String inventoryLevel;
+    /** When set, filters Vii gift-card products (Shopfront {@code INTEGRATED} type). */
+    private Boolean viiGiftCard;
     private int page = 1;
     private int size = 10;
     private Long vendorId;

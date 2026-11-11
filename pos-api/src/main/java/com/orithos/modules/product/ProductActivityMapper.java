@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -83,6 +84,32 @@ public interface ProductActivityMapper {
             LIMIT 200
             """)
     List<OrderLine> orders(@Param("productId") Long productId, @Param("transfer") int transfer);
+
+    @org.apache.ibatis.annotations.Select("""
+            <script>
+            SELECT si.product_id AS product_id,
+                   COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) AS day,
+                   COALESCE(SUM(si.quantity), 0) AS quantity
+            FROM sale_item si
+            INNER JOIN sale s ON s.id = si.sale_id
+            WHERE s.status NOT IN ('VOIDED', 'PARKED')
+              AND si.product_id IN
+              <foreach collection="productIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+              AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &gt;= CAST(#{from} AS date)
+              AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &lt; CAST(#{to} AS date)
+            GROUP BY si.product_id, COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date))
+            </script>
+            """)
+    List<DailyQuantity> salesQuantityByDay(@Param("productIds") List<Long> productIds,
+                                           @Param("from") String from,
+                                           @Param("to") String to);
+
+    @Data
+    class DailyQuantity {
+        private Long productId;
+        private LocalDate day;
+        private BigDecimal quantity;
+    }
 
     @Data
     class MonthAmount {

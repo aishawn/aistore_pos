@@ -7,12 +7,17 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ProductActivityService {
+
+    private static final int PERFORMANCE_DAYS = 30;
 
     private final ProductActivityMapper mapper;
 
@@ -41,6 +46,58 @@ public class ProductActivityService {
 
     public List<ProductActivityMapper.OrderLine> transfers(Long productId) {
         return mapper.orders(productId, 1);
+    }
+
+    /**
+     * Units sold per Adelaide business day for the last {@value #PERFORMANCE_DAYS} days (oldest first, ending today).
+     * Missing days are zero-filled.
+     */
+    public Map<Long, List<BigDecimal>> performance30d(List<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Map.of();
+        }
+        LocalDate today = AustraliaTime.today();
+        LocalDate start = today.minusDays(PERFORMANCE_DAYS - 1L);
+        String from = start.toString();
+        String to = today.plusDays(1).toString();
+        List<ProductActivityMapper.DailyQuantity> rows =
+                mapper.salesQuantityByDay(productIds, from, to);
+
+        Map<Long, List<BigDecimal>> seriesByProduct = new HashMap<>();
+        for (Long productId : productIds) {
+            if (productId != null) {
+                seriesByProduct.put(productId, emptyPerformanceSeries());
+            }
+        }
+        if (rows != null) {
+            for (ProductActivityMapper.DailyQuantity row : rows) {
+                if (row.getProductId() == null || row.getDay() == null) {
+                    continue;
+                }
+                long index = ChronoUnit.DAYS.between(start, row.getDay());
+                if (index < 0 || index >= PERFORMANCE_DAYS) {
+                    continue;
+                }
+                BigDecimal quantity = row.getQuantity() == null
+                        ? BigDecimal.ZERO
+                        : row.getQuantity().setScale(2, RoundingMode.HALF_UP);
+                List<BigDecimal> series = seriesByProduct.get(row.getProductId());
+                if (series == null) {
+                    continue;
+                }
+                series.set((int) index, series.get((int) index).add(quantity).setScale(2, RoundingMode.HALF_UP));
+            }
+        }
+        return seriesByProduct;
+    }
+
+    private static List<BigDecimal> emptyPerformanceSeries() {
+        List<BigDecimal> series = new ArrayList<>(PERFORMANCE_DAYS);
+        BigDecimal zero = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        for (int i = 0; i < PERFORMANCE_DAYS; i++) {
+            series.add(zero);
+        }
+        return series;
     }
 
     public List<InventoryEvent> inventoryLog(Long productId) {
