@@ -4,6 +4,137 @@ export const INVENTORY_SORTS = ["name", "category", "qty_available", "shopfront_
 export type InventorySort = typeof INVENTORY_SORTS[number];
 export type InventoryDirection = "asc" | "desc";
 
+/** Shopfront Inventory On Hand column keys (Orithos native report). */
+export const ON_HAND_COLUMNS = [
+  { key: "name", label: "Name" },
+  { key: "caseQuantity", label: "Case Quantity" },
+  { key: "caseLevel", label: "Case Level" },
+  { key: "itemLevel", label: "Item Level" },
+  { key: "valueIncLast", label: "Value (Inc) (Last)" },
+  { key: "category", label: "Category" },
+  { key: "brand", label: "Brand" },
+  { key: "status", label: "Status" },
+] as const;
+
+export type OnHandColumnKey = (typeof ON_HAND_COLUMNS)[number]["key"];
+export const ON_HAND_SORTS = ["name", "caseQuantity", "caseLevel", "itemLevel", "valueIncLast", "category", "brand", "status"] as const;
+export type OnHandSort = (typeof ON_HAND_SORTS)[number];
+export type OnHandGroupBy = "none" | "category" | "brand";
+
+export interface OnHandProductSource {
+  id: number | string;
+  name: string;
+  categoryName?: string | null;
+  brandName?: string | null;
+  status?: string | null;
+  caseQuantity?: number | null;
+  stockQuantity?: number | null;
+  cost?: number | null;
+  deletedAt?: string | null;
+}
+
+export interface OnHandRow {
+  id: string;
+  name: string;
+  categoryName: string;
+  brandName: string;
+  status: string;
+  deleted: boolean;
+  caseQuantity: number | null;
+  caseLevel: number | null;
+  itemLevel: number | null;
+  valueIncLast: number | null;
+  stockQuantity: number | null;
+}
+
+/**
+ * Split total item units into Shopfront-style case / item levels.
+ * Uses trunc so negative stock keeps the same sign on the remainder.
+ */
+export function splitCaseItemLevels(
+  stockQuantity?: number | null,
+  caseQuantity?: number | null,
+): { caseLevel: number | null; itemLevel: number | null } {
+  if (stockQuantity == null) return { caseLevel: null, itemLevel: null };
+  const stock = Number(stockQuantity);
+  const caseQty = Number(caseQuantity);
+  if (!Number.isFinite(stock)) return { caseLevel: null, itemLevel: null };
+  if (!Number.isFinite(caseQty) || caseQty <= 0) return { caseLevel: 0, itemLevel: stock };
+  const caseLevel = Object.is(Math.trunc(stock / caseQty), -0) ? 0 : Math.trunc(stock / caseQty);
+  return { caseLevel, itemLevel: stock - caseLevel * caseQty };
+}
+
+/**
+ * Shopfront Value (Inc) (Last) = case_cost × (case_level + item_level / case_qty).
+ * Orithos `cost` is unit cost, so value = unit_cost × stock_quantity.
+ */
+export function inventoryValueIncLast(
+  stockQuantity?: number | null,
+  unitCost?: number | null,
+): number | null {
+  if (stockQuantity == null || unitCost == null) return null;
+  const stock = Number(stockQuantity);
+  const cost = Number(unitCost);
+  if (!Number.isFinite(stock) || !Number.isFinite(cost)) return null;
+  return Math.round(stock * cost * 100) / 100;
+}
+
+export function toOnHandRow(product: OnHandProductSource): OnHandRow {
+  const caseQuantity = Number(product.caseQuantity);
+  const normalizedCaseQty = Number.isFinite(caseQuantity) && caseQuantity > 0 ? caseQuantity : null;
+  const stockQuantity = product.stockQuantity == null || !Number.isFinite(Number(product.stockQuantity))
+    ? null
+    : Number(product.stockQuantity);
+  const { caseLevel, itemLevel } = splitCaseItemLevels(stockQuantity, normalizedCaseQty);
+  const status = product.deletedAt ? "DELETED" : (product.status || "ACTIVE");
+  return {
+    id: String(product.id),
+    name: product.name,
+    categoryName: product.categoryName?.trim() || "Uncategorised",
+    brandName: product.brandName?.trim() || "No brand",
+    status,
+    deleted: Boolean(product.deletedAt) || status === "DELETED" || status === "INACTIVE" || status === "ARCHIVED",
+    caseQuantity: normalizedCaseQty,
+    caseLevel,
+    itemLevel,
+    valueIncLast: inventoryValueIncLast(stockQuantity, product.cost),
+    stockQuantity,
+  };
+}
+
+export function sortOnHandRows(rows: OnHandRow[], sort: OnHandSort, direction: InventoryDirection): OnHandRow[] {
+  const collator = new Intl.Collator("en-AU", { numeric: true, sensitivity: "base" });
+  return [...rows].sort((a, b) => {
+    let order = 0;
+    if (sort === "name" || sort === "category" || sort === "brand" || sort === "status") {
+      const left = sort === "name" ? friendlyProductName(a.name) : sort === "category" ? a.categoryName : sort === "brand" ? a.brandName : a.status;
+      const right = sort === "name" ? friendlyProductName(b.name) : sort === "category" ? b.categoryName : sort === "brand" ? b.brandName : b.status;
+      order = collator.compare(left, right);
+    } else {
+      const left = a[sort];
+      const right = b[sort];
+      if (typeof left !== "number" || !Number.isFinite(left)) return typeof right === "number" && Number.isFinite(right) ? 1 : collator.compare(a.id, b.id);
+      if (typeof right !== "number" || !Number.isFinite(right)) return -1;
+      order = left - right;
+    }
+    return (direction === "desc" ? -order : order) || collator.compare(a.id, b.id);
+  });
+}
+
+export function groupOnHandRows(rows: OnHandRow[], groupBy: OnHandGroupBy): Array<{ key: string; label: string; rows: OnHandRow[] }> {
+  if (groupBy === "none") return [{ key: "all", label: "", rows }];
+  const groups = new Map<string, OnHandRow[]>();
+  for (const row of rows) {
+    const label = groupBy === "category" ? row.categoryName : row.brandName;
+    const bucket = groups.get(label) ?? [];
+    bucket.push(row);
+    groups.set(label, bucket);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "en-AU", { numeric: true, sensitivity: "base" }))
+    .map(([label, groupRows]) => ({ key: label, label, rows: groupRows }));
+}
+
 export interface InventoryRow {
   id: number;
   name: string;

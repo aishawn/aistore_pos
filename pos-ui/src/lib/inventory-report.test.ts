@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { inventoryTotals, sortInventory, type InventoryRow } from "./inventory-report.ts";
+import {
+  groupOnHandRows,
+  inventoryTotals,
+  inventoryValueIncLast,
+  sortInventory,
+  sortOnHandRows,
+  splitCaseItemLevels,
+  toOnHandRow,
+  type InventoryRow,
+} from "./inventory-report.ts";
 import { getInventorySnapshot, saveInventorySnapshot } from "./inventory-snapshot.ts";
 
 const row = (id: number, qty = 1, cost: number | false = 2): InventoryRow => ({ id, name: `Wine ${id}`, qty_available: qty, standard_price: cost, pos_categ_ids: [1], uom_id: [1, "Units"], price_included: 12 });
@@ -71,4 +80,30 @@ test("inventory snapshots retain the Shopfront coverage summary for every page",
   };
   const id = saveInventorySnapshot("shopfront-coverage", [], inventoryTotals([]), 1000, coverage);
   assert.deepEqual(getInventorySnapshot(id, "shopfront-coverage", 1001)?.shopfrontCoverage, coverage);
+});
+
+test("case/item split matches Shopfront levels including negative remainders", () => {
+  assert.deepEqual(splitCaseItemLevels(278, 24), { caseLevel: 11, itemLevel: 14 });
+  assert.deepEqual(splitCaseItemLevels(-5, 12), { caseLevel: 0, itemLevel: -5 });
+  assert.deepEqual(splitCaseItemLevels(-15, 12), { caseLevel: -1, itemLevel: -3 });
+  assert.deepEqual(splitCaseItemLevels(4, null), { caseLevel: 0, itemLevel: 4 });
+  assert.deepEqual(splitCaseItemLevels(null, 12), { caseLevel: null, itemLevel: null });
+});
+
+test("value (inc) (last) uses Orithos unit cost × stock units", () => {
+  assert.equal(inventoryValueIncLast(11 * 24 + 14, 1.5), 417);
+  assert.equal(inventoryValueIncLast(0, 12), 0);
+  assert.equal(inventoryValueIncLast(3, null), null);
+});
+
+test("on-hand rows sort and group like the Shopfront inventory report", () => {
+  const rows = [
+    toOnHandRow({ id: 2, name: "Zebra", categoryName: "Spirits", brandName: "B", caseQuantity: 6, stockQuantity: 7, cost: 10 }),
+    toOnHandRow({ id: 1, name: "Apple", categoryName: "Beer", brandName: "A", caseQuantity: 24, stockQuantity: 48, cost: 2 }),
+  ];
+  assert.equal(rows[0].caseLevel, 1);
+  assert.equal(rows[0].itemLevel, 1);
+  assert.equal(rows[0].valueIncLast, 70);
+  assert.deepEqual(sortOnHandRows(rows, "name", "asc").map((row) => row.id), ["1", "2"]);
+  assert.deepEqual(groupOnHandRows(rows, "category").map((group) => group.label), ["Beer", "Spirits"]);
 });
