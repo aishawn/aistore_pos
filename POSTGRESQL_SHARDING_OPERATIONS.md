@@ -44,7 +44,14 @@ Do not switch production traffic until the application routing code, all three s
 
 Before the maintenance window:
 
-1. Inventory vendors, outlets, table row counts, relation ownership, index sizes, large objects, and rows without a resolvable vendor/outlet owner. Confirm every vendor and outlet has exactly one destination shard.
+1. Run the read-only schema and size inventory from a host that can connect to the source database:
+
+   ```sh
+   python pos-api/scripts/inventory_tenant_data.py \
+     --output .local/tenant-data-inventory.json
+   ```
+
+   This default pass reports planner row estimates, relation/index sizes, direct `vendor_id`/`outlet_id`/`store_key` columns, and declared foreign keys. It does not scan business rows and is not a row-copy map. `--exact-counts` runs exact counts and direct tenant-key groupings, which may scan large tables; run it only after reviewing the table sizes and choosing an acceptable maintenance/read-load window. Review indirect ownership, polymorphic references, shared reference data, large objects, and orphan rows separately. Confirm every vendor and outlet has exactly one destination shard.
 2. Measure disk headroom for the source plus all three copied shards, control data, indexes, WAL, backups, and temporary files. The source remains present during rehearsal and rollback, so plan for close to the full source plus a full copy at peak. Measure IOPS and restore duration; use another host/storage location if the current server cannot hold that peak. Rehearse the full operation against a production-sized restored copy.
 3. Provision three databases and install the exact production schema and migration version in each. Do not rely on the base `schema.sql` alone; it may not include later production migrations.
 4. Take a recoverable backup of the source database and test restoring it. Prepare a route snapshot and a written rollback owner/checklist.
