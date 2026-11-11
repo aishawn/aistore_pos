@@ -1,8 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle } from "lucide-react";
+import { ReportMetricCard } from "@/components/reports/ReportMetricCard";
+import { ReportParityNote } from "@/components/reports/ReportParityNote";
+import { ReportPeriodToolbar } from "@/components/reports/ReportPeriodToolbar";
+import { reportMoney, reportNumber, reportPercent } from "@/components/reports/report-format";
+import { ReportTopProducts } from "@/components/reports/ReportTopProducts";
+import { ReportTrendChart } from "@/components/reports/ReportTrendChart";
 import { fetchOrithosApi } from "@/lib/orithos-api-fetch";
+import {
+  comparisonDateRange,
+  readReportRangeFromSearch,
+  reportDatePreset,
+  syncReportRangeToUrl,
+  type ReportDatePreset,
+} from "@/lib/report-date-selection";
 
 type NativeOverview = {
   source: "orithos_ledger";
@@ -16,27 +30,22 @@ type NativeOverview = {
   costAvailable: boolean;
   taxAvailable: boolean;
   transactions: number;
-  dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; cost: number | null; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
+  dailyTrend: Array<{
+    date: string;
+    revenue: number;
+    transaction_count: number;
+    cost: number | null;
+    tax: number | null;
+    grossProfit: number | null;
+    costAvailable: boolean;
+    taxAvailable: boolean;
+  }>;
   topProducts: Array<{ id: number; name: string; revenue: number; quantity: number }>;
   inventoryAvailable?: boolean;
   inventoryUnits?: number | null;
   inventoryStatus?: string | null;
   negativeStockProducts?: number | null;
 };
-
-function dayInAdelaide(date: Date) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
-}
-
-function shiftDay(day: string, amount: number) {
-  const date = new Date(`${day}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + amount);
-  return date.toISOString().slice(0, 10);
-}
-
-function money(value: number) {
-  return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(value);
-}
 
 async function readOverview(from: string, to: string, signal: AbortSignal): Promise<NativeOverview> {
   const params = new URLSearchParams({ from, to });
@@ -49,34 +58,46 @@ async function readOverview(from: string, to: string, signal: AbortSignal): Prom
 }
 
 export function NativeReportsDashboardPage() {
-  const [period, setPeriod] = useState<"today" | "yesterday" | "last_week" | "last_month">("yesterday");
+  const defaults = useMemo(() => reportDatePreset("yesterday"), []);
+  const [period, setPeriod] = useState<ReportDatePreset>("yesterday");
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(defaults.to);
+  const [rangeReady, setRangeReady] = useState(false);
   const [data, setData] = useState<NativeOverview | null>(null);
   const [comparison, setComparison] = useState<NativeOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const today = dayInAdelaide(new Date());
-  const bounds = useMemo(() => {
-    const anchor = period === "today" ? today : shiftDay(today, -1);
-    if (period === "today" || period === "yesterday") return { from: anchor, to: anchor };
-    if (period === "last_week") return { from: shiftDay(anchor, -6), to: anchor };
-    const date = new Date(`${anchor}T12:00:00Z`);
-    date.setUTCDate(1);
-    const first = date.toISOString().slice(0, 10);
-    return { from: first, to: anchor };
-  }, [period, today]);
-  const { from, to } = bounds;
-  const span = Math.max(1, Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) + 1);
-  const compareFrom = shiftDay(from, -span);
-  const compareTo = shiftDay(from, -1);
+
+  useEffect(() => {
+    const selection = readReportRangeFromSearch(window.location.search);
+    setPeriod(selection.period);
+    setFrom(selection.from);
+    setTo(selection.to);
+    syncReportRangeToUrl(selection.period, selection.from, selection.to);
+    setRangeReady(true);
+  }, []);
+
+  const compareRange = useMemo(
+    () => (from <= to ? comparisonDateRange(from, to, "previous_period") : null),
+    [from, to],
+  );
 
   const load = useCallback(async (signal: AbortSignal) => {
+    if (!rangeReady) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to || !compareRange) {
+      setData(null);
+      setComparison(null);
+      setError("Choose a valid date range.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const [current, previous] = await Promise.all([
         readOverview(from, to, signal),
-        readOverview(compareFrom, compareTo, signal),
+        readOverview(compareRange.from, compareRange.to, signal),
       ]);
       if (!signal.aborted) {
         setData(current);
@@ -91,7 +112,7 @@ export function NativeReportsDashboardPage() {
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [compareFrom, compareTo, from, to]);
+  }, [compareRange, from, rangeReady, to]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -99,46 +120,139 @@ export function NativeReportsDashboardPage() {
     return () => controller.abort();
   }, [load, refreshKey]);
 
-  useEffect(() => {
-    const requested = new URLSearchParams(location.search).get("period");
-    if (requested === "today" || requested === "yesterday" || requested === "last_week" || requested === "last_month") setPeriod(requested);
-  }, []);
+  const revenueDelta =
+    data && comparison && comparison.revenue !== 0
+      ? ((data.revenue - comparison.revenue) / Math.abs(comparison.revenue)) * 100
+      : null;
+  const negativeSkus = data?.inventoryAvailable ? Number(data.negativeStockProducts) || 0 : 0;
+  const inventoryUnits = data?.inventoryAvailable && data.inventoryUnits != null ? Number(data.inventoryUnits) : null;
+  const singleDay = from === to;
+  const comparisonPanel =
+    singleDay && data && comparison && compareRange
+      ? {
+          current: {
+            label: from,
+            revenue: data.revenue,
+            transactions: data.transactions,
+            grossProfit: data.grossProfit,
+          },
+          previous: {
+            label: compareRange.from === compareRange.to ? compareRange.from : `${compareRange.from}–${compareRange.to}`,
+            revenue: comparison.revenue,
+            transactions: comparison.transactions,
+            grossProfit: comparison.grossProfit,
+          },
+        }
+      : null;
 
-  const delta = data && comparison && comparison.revenue !== 0
-    ? ((data.revenue - comparison.revenue) / Math.abs(comparison.revenue)) * 100
-    : null;
-  const maxRevenue = Math.max(1, ...(data?.dailyTrend ?? []).map(row => Number(row.revenue)));
+  return (
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
+        <div>
+          <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Reports overview</h1>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">
+            {from === to ? from : `${from} → ${to}`}
+            {inventoryUnits != null ? (
+              <>
+                {" · "}
+                <Link href="/reports/inventory" className="font-medium text-[var(--oh-primary)] hover:underline">
+                  {reportNumber(inventoryUnits)} on-hand units
+                </Link>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <ReportPeriodToolbar
+          period={period}
+          from={from}
+          to={to}
+          loading={loading}
+          onChange={(next) => {
+            setPeriod(next.period);
+            setFrom(next.from);
+            setTo(next.to);
+          }}
+          onRefresh={() => setRefreshKey((value) => value + 1)}
+        />
+      </header>
 
-  return <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
-      <div><p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p><h1 className="text-xl font-semibold text-[var(--oh-text)]">Reports overview</h1><p className="text-xs text-[var(--oh-muted)]">{from} to {to}</p></div>
-      <div className="flex items-center gap-2"><div role="group" aria-label="Reporting period" className="flex rounded-md border border-[var(--oh-border)] bg-white p-0.5">{(["today", "yesterday", "last_week", "last_month"] as const).map(value => <button key={value} type="button" aria-pressed={period === value} onClick={() => { setPeriod(value); const url = new URL(location.href); url.searchParams.set("period", value); history.replaceState(null, "", url); }} className={`min-h-8 px-2 text-xs ${period === value ? "bg-[var(--oh-primary)] text-white" : "text-[var(--oh-text)]"}`}>{value.replace("_", " ")}</button>)}</div><button type="button" onClick={() => setRefreshKey(value => value + 1)} disabled={loading} aria-label="Refresh report" title="Refresh report" className="grid size-9 place-items-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-50"><RefreshCw size={16} className={loading ? "animate-spin" : ""} /></button></div>
-    </header>
-    {error && <div role="alert" className="flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><AlertCircle size={16} />{error}</div>}
-    <section aria-busy={loading} className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <Metric label="Sales" value={data ? money(data.revenue) : "—"} detail={delta === null ? "Comparison unavailable" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}% vs previous period`} />
-      <Metric label="Transactions" value={data ? data.transactions.toLocaleString("en-AU") : "—"} detail="Orithos ledger records" />
-      <Metric label="Profit" value={data?.grossProfit != null ? money(data.grossProfit) : "—"} detail={data?.costAvailable && data.cost !== null ? `Revenue minus cost ${money(data.cost)}` : "Cost coverage unavailable"} />
-      <Metric label="Profit %" value={data?.profitMargin != null ? `${Number(data.profitMargin).toFixed(2)}%` : "—"} detail="Shopfront formula · (revenue − cost) / revenue" />
-      <Metric label="Inventory" value={data?.inventoryAvailable && data.inventoryUnits != null ? Number(data.inventoryUnits).toLocaleString("en-AU") : "—"} detail={data?.inventoryAvailable ? (data.negativeStockProducts ? `${data.negativeStockProducts.toLocaleString("en-AU")} SKUs below zero` : "Orithos on-hand · positive units") : "No native snapshot in this report"} />
-    </section>
-    <section className="grid gap-4 lg:grid-cols-2">
-      <section className="border border-[var(--oh-border)] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[var(--oh-text)]">Daily sales</h2>
-        {data?.dailyTrend.length ? <div className="mt-4 flex h-36 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2">
-          {data.dailyTrend.map(row => <div key={String(row.date)} className="group flex h-full min-w-0 flex-1 items-end" title={`${row.date}: ${money(Number(row.revenue))}`}><div className="w-full rounded-t bg-[var(--oh-primary)]" style={{ height: `${Math.max(4, Number(row.revenue) / maxRevenue * 100)}%` }} /></div>)}
-        </div> : <p className="mt-5 text-sm text-[var(--oh-muted)]">{loading ? "Loading…" : "No Orithos sales for this period."}</p>}
-        <div className="mt-2 flex justify-between text-xs text-[var(--oh-muted)]"><span>{data?.dailyTrend[0]?.date}</span><span>{data?.dailyTrend.at(-1)?.date}</span></div>
+      {error ? (
+        <div role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      ) : null}
+
+      <section aria-busy={loading} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <ReportMetricCard
+          label="Sales"
+          value={data ? reportMoney(data.revenue) : "—"}
+          detail={revenueDelta == null ? "Comparison unavailable" : `${reportPercent(revenueDelta)} vs previous period`}
+          tone={revenueDelta == null ? "neutral" : revenueDelta >= 0 ? "positive" : "negative"}
+          loading={loading}
+        />
+        <ReportMetricCard
+          label="Transactions"
+          value={data ? reportNumber(data.transactions) : "—"}
+          detail="Orithos ledger records"
+          loading={loading}
+        />
+        <ReportMetricCard
+          label="Profit"
+          value={data?.grossProfit != null ? reportMoney(data.grossProfit) : "—"}
+          detail={data?.costAvailable && data.cost !== null ? `COGS ${reportMoney(data.cost)}` : "Cost coverage unavailable"}
+          tone={data && !data.costAvailable ? "warning" : "neutral"}
+          loading={loading}
+        />
+        <ReportMetricCard
+          label="Profit %"
+          value={data?.profitMargin != null ? `${Number(data.profitMargin).toFixed(2)}%` : "—"}
+          detail="(revenue − cost) / revenue"
+          loading={loading}
+        />
       </section>
-      <section className="border border-[var(--oh-border)] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[var(--oh-text)]">Top products</h2>
-        {data?.topProducts.length ? <ul className="mt-2 divide-y divide-[var(--oh-border)]">{data.topProducts.map(row => <li key={row.id || row.name} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="min-w-0 truncate">{row.name}</span><span className="shrink-0 text-[var(--oh-muted)]">{row.quantity} units</span><strong className="shrink-0">{money(Number(row.revenue))}</strong></li>)}</ul> : <p className="mt-5 text-sm text-[var(--oh-muted)]">{loading ? "Loading…" : "Product detail unavailable."}</p>}
-      </section>
-    </section>
-    <p className="text-xs text-[var(--oh-muted)]">Shopfront report parity: completed + incomplete sales. Profit = revenue − cost. Parked carts are excluded. Missing tax or historical cost is shown as unavailable.</p>
-  </main>;
-}
 
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="border border-[var(--oh-border)] bg-white p-3"><p className="text-xs text-[var(--oh-muted)]">{label}</p><p className="mt-1 text-lg font-semibold text-[var(--oh-text)]">{value}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{detail}</p></div>;
+      {(negativeSkus > 0 || (data && !data.costAvailable) || (data && !data.taxAvailable)) && !loading ? (
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {negativeSkus > 0 ? (
+            <ReportMetricCard
+              label="Attention"
+              value={`${reportNumber(negativeSkus)} SKUs below zero`}
+              detail="Open inventory report to review negative stock"
+              tone="danger"
+              href="/reports/inventory?negative=1"
+            />
+          ) : null}
+          {data && !data.costAvailable ? (
+            <ReportMetricCard
+              label="Cost coverage"
+              value="Unavailable"
+              detail="Profit may be incomplete until historical cost is synced"
+              tone="warning"
+            />
+          ) : null}
+          {data && !data.taxAvailable ? (
+            <ReportMetricCard
+              label="Tax coverage"
+              value="Unavailable"
+              detail="Tax totals are missing for part of this period"
+              tone="warning"
+            />
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="grid min-h-0 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <ReportTrendChart
+          points={data?.dailyTrend ?? []}
+          loading={loading}
+          comparison={comparisonPanel}
+        />
+        <ReportTopProducts products={data?.topProducts ?? []} loading={loading} />
+      </section>
+
+      <ReportParityNote />
+    </main>
+  );
 }

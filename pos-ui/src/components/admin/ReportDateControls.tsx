@@ -9,7 +9,7 @@ export function ReportDateControls({ value, onChange, comparison, onComparisonCh
   onComparisonChange: (comparison: ReportComparison) => void;
   timezone?: string;
 }) {
-  const presets: Array<{ id: ReportDatePreset; label: string }> = [
+  const presets: Array<{ id: Exclude<ReportDatePreset, "custom">; label: string }> = [
     { id: "today", label: "Today" },
     { id: "last_7_days", label: "Last 7 days" },
     { id: "last_30_days", label: "Last 30 days" },

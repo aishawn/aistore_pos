@@ -72,6 +72,10 @@ export function NativeInventoryReportPage() {
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query.trim(), 250);
   const [includeDeleted, setIncludeDeleted] = useState(Boolean(initialPrefs.includeDeleted));
+  const [negativeOnly, setNegativeOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("negative") === "1";
+  });
   const [groupBy, setGroupBy] = useState<OnHandGroupBy>(initialPrefs.groupBy === "category" || initialPrefs.groupBy === "brand" ? initialPrefs.groupBy : "none");
   const [columns, setColumns] = useState<OnHandColumnKey[]>(() => {
     const saved = initialPrefs.columns?.filter((key): key is OnHandColumnKey => ON_HAND_COLUMNS.some((column) => column.key === key));
@@ -93,6 +97,14 @@ export function NativeInventoryReportPage() {
   const busyRef = useRef(false);
   const scrollRoot = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (negativeOnly) url.searchParams.set("negative", "1");
+    else url.searchParams.delete("negative");
+    window.history.replaceState(null, "", url);
+  }, [negativeOnly]);
 
   const loadPage = useCallback(async (reset: boolean) => {
     if (!reset && busyRef.current) return;
@@ -169,9 +181,21 @@ export function NativeInventoryReportPage() {
     return () => observer.disconnect();
   }, [loadMore, loadMoreError]);
 
-  const displayed = useMemo(() => sortOnHandRows(items, sortBy, sortDirection), [items, sortBy, sortDirection]);
+  const filteredItems = useMemo(() => {
+    if (!negativeOnly) return items;
+    return items.filter((row) => Number(row.itemLevel) < 0 || Number(row.caseLevel) < 0 || Number(row.stockQuantity) < 0);
+  }, [items, negativeOnly]);
+  const displayed = useMemo(() => sortOnHandRows(filteredItems, sortBy, sortDirection), [filteredItems, sortBy, sortDirection]);
   const groups = useMemo(() => groupOnHandRows(displayed, groupBy), [displayed, groupBy]);
   const visibleColumns = ON_HAND_COLUMNS.filter((column) => columns.includes(column.key));
+  const negativeCount = useMemo(
+    () => items.filter((row) => Number(row.itemLevel) < 0 || Number(row.caseLevel) < 0 || Number(row.stockQuantity) < 0).length,
+    [items],
+  );
+  const loadedValue = useMemo(
+    () => items.reduce((sum, row) => sum + (Number.isFinite(Number(row.valueIncLast)) ? Number(row.valueIncLast) : 0), 0),
+    [items],
+  );
 
   function toggleSort(next: OnHandSort) {
     if (next === sortBy) setSortDirection((value) => (value === "asc" ? "desc" : "asc"));
@@ -226,7 +250,11 @@ export function NativeInventoryReportPage() {
   async function exportCsv() {
     setExportBusy(true);
     try {
-      const allRows = sortOnHandRows(await ensureAllLoaded(), sortBy, sortDirection);
+      const loaded = await ensureAllLoaded();
+      const scoped = negativeOnly
+        ? loaded.filter((row) => Number(row.itemLevel) < 0 || Number(row.caseLevel) < 0 || Number(row.stockQuantity) < 0)
+        : loaded;
+      const allRows = sortOnHandRows(scoped, sortBy, sortDirection);
       const header = visibleColumns.map((column) => column.label).join(",");
       const body = allRows.map((row) => visibleColumns.map((column) => {
         switch (column.key) {
@@ -267,48 +295,66 @@ export function NativeInventoryReportPage() {
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 space-y-4 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Source: Orithos ledger</p>
-          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Inventory on hand</h1>
+          <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · on-hand snapshot</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Inventory on hand</h1>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-xs text-[var(--oh-muted)]">
-            Report type
-            <select
-              value="inventory-on-hand"
-              disabled
-              className="h-9 min-w-[11rem] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-sm text-[var(--oh-text)]"
-            >
-              <option value="inventory-on-hand">Inventory On Hand</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs text-[var(--oh-muted)]">
-            Group by
-            <select
-              value={groupBy}
-              onChange={(event) => setGroupBy(event.target.value as OnHandGroupBy)}
-              className="h-9 min-w-[9rem] rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]"
-            >
-              <option value="none">None</option>
-              <option value="category">Category</option>
-              <option value="brand">Brand</option>
-            </select>
-          </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Loaded SKUs</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{items.length.toLocaleString("en-AU")}</p>
+            <p className="text-xs text-[var(--oh-muted)]">{total ? `of ${total.toLocaleString("en-AU")} total` : "Current page window"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNegativeOnly((value) => !value)}
+            aria-pressed={negativeOnly}
+            className={`rounded-lg border p-3 text-left transition-colors ${
+              negativeOnly || negativeCount > 0
+                ? "border-red-200 bg-[var(--brand-danger-tint,#fef2f2)]"
+                : "border-[var(--oh-border)] bg-[var(--oh-surface)]"
+            }`}
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Negative stock</p>
+            <p className={`mt-1 text-xl font-semibold tabular-nums ${negativeCount > 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>
+              {negativeCount.toLocaleString("en-AU")}
+            </p>
+            <p className="text-xs text-[var(--oh-muted)]">
+              {negativeOnly ? "Showing negative only · click to clear" : "Click to filter loaded rows"}
+            </p>
+          </button>
+          <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Loaded value</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{money(loadedValue)}</p>
+            <p className="text-xs text-[var(--oh-muted)]">Inc. GST · from loaded rows</p>
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
-        <label className="flex min-h-10 min-w-[14rem] flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-1 focus-within:ring-[var(--oh-primary)]/25">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6">
+        <label className="flex min-h-11 min-w-[14rem] flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-1 focus-within:ring-[var(--oh-primary)]/25">
           <Search size={16} className="shrink-0 text-[var(--oh-muted)]" aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search for anything"
+            placeholder="Search products"
             className="min-w-0 flex-1 bg-transparent text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)]"
           />
         </label>
-        <div className="flex min-h-10 items-center gap-2 text-sm text-[var(--oh-text-secondary)]">
+        <label className="grid gap-1 text-[10px] font-medium uppercase tracking-wide text-[var(--oh-muted)]">
+          Group by
+          <select
+            value={groupBy}
+            onChange={(event) => setGroupBy(event.target.value as OnHandGroupBy)}
+            className="min-h-11 min-w-[9rem] rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm text-[var(--oh-text)]"
+          >
+            <option value="none">None</option>
+            <option value="category">Category</option>
+            <option value="brand">Brand</option>
+          </select>
+        </label>
+        <div className="flex min-h-11 items-center gap-2 text-sm text-[var(--oh-text-secondary)]">
           <button
             type="button"
             role="switch"
@@ -336,7 +382,7 @@ export function NativeInventoryReportPage() {
       </div>
 
       {(saveNotice || error) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-2.5 text-sm md:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-sm md:px-6">
           {saveNotice && <p className="text-emerald-800">{saveNotice}</p>}
           {error && (
             <div role="alert" className="flex items-center gap-3 text-red-800">
@@ -347,13 +393,13 @@ export function NativeInventoryReportPage() {
         </div>
       )}
 
-      <div ref={scrollRoot} className="min-h-0 flex-1 overflow-auto bg-white">
+      <div ref={scrollRoot} className="min-h-0 flex-1 overflow-auto bg-[var(--oh-surface-elevated)]">
         {loading && items.length === 0 ? (
           <p role="status" className="py-16 text-center text-sm text-[var(--oh-muted)]">Loading inventory…</p>
-        ) : error && items.length === 0 ? null : items.length === 0 ? (
+        ) : error && items.length === 0 ? null : displayed.length === 0 ? (
           <div className="grid place-items-center py-16 text-center text-[var(--oh-muted)]">
             <Boxes size={24} aria-hidden="true" />
-            <p className="mt-2 text-sm">No inventory rows found.</p>
+            <p className="mt-2 text-sm">{negativeOnly ? "No negative-stock rows in the loaded set." : "No inventory rows found."}</p>
           </div>
         ) : (
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
@@ -433,10 +479,11 @@ export function NativeInventoryReportPage() {
         )}
         <div ref={sentinel} className="h-8" aria-hidden="true" />
       </div>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] bg-white px-4 py-2.5 text-xs text-[var(--oh-muted)] md:px-6 print:hidden">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-xs text-[var(--oh-muted)] md:px-6 print:hidden">
         <span>
           Showing {displayed.length.toLocaleString("en-AU")}
-          {total ? ` of ${total.toLocaleString("en-AU")}` : ""} products
+          {negativeOnly ? " negative" : ""}
+          {total && !negativeOnly ? ` of ${total.toLocaleString("en-AU")}` : ""} products
           {loadingMore ? " · Loading more…" : hasNext ? " · Scroll for more" : ""}
         </span>
         {loadMoreError ? (

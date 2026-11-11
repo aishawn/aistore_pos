@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { ReportMetricCard } from "@/components/reports/ReportMetricCard";
+import { ReportParityNote } from "@/components/reports/ReportParityNote";
+import { ReportPeriodToolbar } from "@/components/reports/ReportPeriodToolbar";
+import { reportMoney, reportNumber } from "@/components/reports/report-format";
+import { ReportTopProducts } from "@/components/reports/ReportTopProducts";
+import { ReportTrendChart } from "@/components/reports/ReportTrendChart";
 import { fetchOrithosApi } from "@/lib/orithos-api-fetch";
+import {
+  readReportRangeFromSearch,
+  reportDatePreset,
+  syncReportRangeToUrl,
+  type ReportDatePreset,
+} from "@/lib/report-date-selection";
 import { formatShopfrontProfitPercent, shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
 type Report = {
@@ -40,32 +52,32 @@ function dayProfitPercent(row: Report["dailyTrend"][number]): string {
   return ratio == null ? "—" : formatShopfrontProfitPercent(ratio);
 }
 
-function todayInStore() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
-function money(value: number) {
-  return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(value);
-}
-
 export function NativeSalesReportPage() {
-  const [from, setFrom] = useState(() => todayInStore());
-  const [to, setTo] = useState(() => todayInStore());
+  const defaults = useMemo(() => reportDatePreset("yesterday"), []);
+  const [period, setPeriod] = useState<ReportDatePreset>("yesterday");
+  const [from, setFrom] = useState(defaults.from);
+  const [to, setTo] = useState(defaults.to);
+  const [rangeReady, setRangeReady] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.has("from")) setFrom(params.get("from") || todayInStore());
-    if (params.has("to")) setTo(params.get("to") || todayInStore());
+    const selection = readReportRangeFromSearch(window.location.search);
+    setPeriod(selection.period);
+    setFrom(selection.from);
+    setTo(selection.to);
+    syncReportRangeToUrl(selection.period, selection.from, selection.to);
+    setRangeReady(true);
   }, []);
 
   useEffect(() => {
+    if (!rangeReady) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
       setReport(null);
       setError("Choose a valid date range.");
+      setLoading(false);
       return;
     }
     const controller = new AbortController();
@@ -73,61 +85,153 @@ export function NativeSalesReportPage() {
     setError(null);
     const params = new URLSearchParams({ from, to });
     fetchOrithosApi(`/reports/native-overview?${params}`, { signal: controller.signal })
-      .then(async response => {
+      .then(async (response) => {
         const body = await response.json().catch(() => null) as { data?: Report; message?: string } | null;
-        if (!response.ok || !body?.data || body.data.source !== "orithos_ledger") throw new Error(body?.message || "Orithos sales data is unavailable.");
+        if (!response.ok || !body?.data || body.data.source !== "orithos_ledger") {
+          throw new Error(body?.message || "Orithos sales data is unavailable.");
+        }
         setReport(body.data);
         setError(null);
       })
-      .catch(cause => { if (!controller.signal.aborted) { setReport(null); setError(cause instanceof Error ? cause.message : "Orithos sales data is unavailable."); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+      .catch((cause) => {
+        if (!controller.signal.aborted) {
+          setReport(null);
+          setError(cause instanceof Error ? cause.message : "Orithos sales data is unavailable.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => controller.abort();
-  }, [from, to, revision]);
+  }, [from, to, revision, rangeReady]);
 
-  return <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-    <header className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-      <div><p className="text-xs font-semibold uppercase text-[var(--oh-muted)]">Source: Orithos ledger</p><h1 className="text-xl font-semibold text-[var(--oh-text)]">Sales report</h1></div>
-      <button type="button" onClick={() => setRevision(value => value + 1)} disabled={loading} title="Refresh report" aria-label="Refresh report" className="grid size-9 place-items-center rounded-md border border-[var(--oh-border)] disabled:opacity-50"><RefreshCw size={16} className={loading ? "animate-spin" : ""} /></button>
-    </header>
-    <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
-      <label className="grid gap-1 text-xs text-[var(--oh-muted)]">From<input type="date" value={from} onChange={event => setFrom(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
-      <label className="grid gap-1 text-xs text-[var(--oh-muted)]">To<input type="date" value={to} onChange={event => setTo(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
-    </div>
-    {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 md:mx-6"><AlertCircle size={16} />{error}</div>}
-    <section aria-busy={loading} className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-      <Metric label="Revenue" value={report ? money(report.revenue) : "—"} />
-      <Metric label="Cost of goods sold" value={report?.costAvailable && report.cost !== null ? money(report.cost) : "—"} />
-      <Metric label="Profit" value={report?.grossProfit != null ? money(report.grossProfit) : "—"} />
-      <Metric label="Profit %" value={report?.profitMargin != null ? `${Number(report.profitMargin).toFixed(2)}%` : "—"} />
-      <Metric label="Tax" value={report?.taxAvailable && report.tax !== null ? money(report.tax) : "—"} />
-      <Metric label="Discount" value={report?.discount != null ? money(report.discount) : "—"} />
-      <Metric label="Average sale" value={report?.averageSale != null ? money(report.averageSale) : "—"} />
-      <Metric label="Transactions" value={report ? report.transactions.toLocaleString("en-AU") : "—"} />
-    </section>
-    <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full min-w-[780px] border-collapse text-left text-sm">
-        <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]">
-          <tr>{["Business date", "Revenue", "Cost", "Profit", "Profit %", "Tax", "Discount", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--oh-border)]">
-          {report?.dailyTrend.map(row => <tr key={String(row.date)}>
-            <td className="px-3 py-2">{String(row.date)}</td>
-            <td className="px-3 py-2">{money(Number(row.revenue))}</td>
-            <td className="px-3 py-2">{row.costAvailable && row.cost !== null ? money(Number(row.cost)) : "—"}</td>
-            <td className="px-3 py-2">{row.grossProfit !== null ? money(Number(row.grossProfit)) : "—"}</td>
-            <td className="px-3 py-2">{dayProfitPercent(row)}</td>
-            <td className="px-3 py-2">{row.taxAvailable && row.tax !== null ? money(Number(row.tax)) : "—"}</td>
-            <td className="px-3 py-2">{row.discount != null ? money(Number(row.discount)) : "—"}</td>
-            <td className="px-3 py-2">{Number(row.transaction_count).toLocaleString("en-AU")}</td>
-          </tr>)}
-        </tbody>
-      </table>
-      {!loading && report?.dailyTrend.length === 0 && <p className="p-6 text-center text-sm text-[var(--oh-muted)]">No Orithos sales in this range.</p>}
-    </div>
-    <p className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Shopfront report parity: completed + incomplete sales. Profit = revenue − cost. Parked carts are excluded.</p>
-  </main>;
-}
+  return (
+    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)]">
+      <header className="shrink-0 space-y-4 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Sales report</h1>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">{from === to ? from : `${from} → ${to}`}</p>
+          </div>
+          <ReportPeriodToolbar
+            period={period}
+            from={from}
+            to={to}
+            loading={loading}
+            onChange={(next) => {
+              setPeriod(next.period);
+              setFrom(next.from);
+              setTo(next.to);
+            }}
+            onRefresh={() => setRevision((value) => value + 1)}
+          />
+        </div>
+      </header>
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-28"><p className="text-xs font-medium text-[var(--oh-muted)]">{label}</p><p className="mt-1 text-lg font-semibold text-[var(--oh-text)]">{value}</p></div>;
+      {error ? (
+        <div role="alert" className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 md:mx-6">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section aria-busy={loading} className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4 md:px-6 xl:grid-cols-7">
+          <ReportMetricCard label="Revenue" value={report ? reportMoney(report.revenue) : "—"} loading={loading} />
+          <ReportMetricCard
+            label="COGS"
+            value={report?.costAvailable && report.cost !== null ? reportMoney(report.cost) : "—"}
+            tone={report && !report.costAvailable ? "warning" : "neutral"}
+            loading={loading}
+          />
+          <ReportMetricCard label="Profit" value={report?.grossProfit != null ? reportMoney(report.grossProfit) : "—"} loading={loading} />
+          <ReportMetricCard
+            label="Profit %"
+            value={report?.profitMargin != null ? `${Number(report.profitMargin).toFixed(2)}%` : "—"}
+            loading={loading}
+          />
+          <ReportMetricCard
+            label="Tax"
+            value={report?.taxAvailable && report.tax !== null ? reportMoney(report.tax) : "—"}
+            loading={loading}
+          />
+          <ReportMetricCard
+            label="Avg sale"
+            value={report?.averageSale != null ? reportMoney(report.averageSale) : "—"}
+            loading={loading}
+          />
+          <ReportMetricCard
+            label="Transactions"
+            value={report ? reportNumber(report.transactions) : "—"}
+            loading={loading}
+            className="col-span-2 md:col-span-1 xl:col-span-1"
+          />
+        </section>
+
+        <section className="grid gap-4 px-4 pb-4 md:px-6 xl:grid-cols-[1.35fr_1fr]">
+          <ReportTrendChart
+            points={report?.dailyTrend ?? []}
+            loading={loading}
+            emptyMessage="No Orithos sales in this range."
+          />
+          <ReportTopProducts
+            products={report?.topProducts ?? []}
+            loading={loading}
+            emptyMessage="Product detail unavailable."
+          />
+        </section>
+
+        <section className="border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[780px] border-collapse text-left text-sm">
+              <thead className="sticky top-0 bg-[var(--oh-surface-muted)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
+                <tr>
+                  {["Business date", "Revenue", "Cost", "Profit", "Profit %", "Tax", "Discount", "Transactions"].map((label) => (
+                    <th key={label} className="px-3 py-2.5 font-semibold">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report?.dailyTrend.map((row, index) => (
+                  <tr
+                    key={String(row.date)}
+                    className={index % 2 === 0 ? "bg-[var(--oh-surface-elevated)]" : "bg-[var(--oh-surface)]"}
+                  >
+                    <td className="px-3 py-2.5 tabular-nums">{String(row.date)}</td>
+                    <td className="px-3 py-2.5 tabular-nums">{reportMoney(Number(row.revenue))}</td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.costAvailable && row.cost !== null ? reportMoney(Number(row.cost)) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.grossProfit !== null ? reportMoney(Number(row.grossProfit)) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums">{dayProfitPercent(row)}</td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.taxAvailable && row.tax !== null ? reportMoney(Number(row.tax)) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.discount != null ? reportMoney(Number(row.discount)) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {Number(row.transaction_count).toLocaleString("en-AU")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!loading && report?.dailyTrend.length === 0 ? (
+              <p className="p-6 text-center text-sm text-[var(--oh-muted)]">No Orithos sales in this range.</p>
+            ) : null}
+          </div>
+        </section>
+
+        <div className="border-t border-[var(--oh-border)] px-4 py-3 md:px-6">
+          <ReportParityNote />
+        </div>
+      </div>
+    </main>
+  );
 }

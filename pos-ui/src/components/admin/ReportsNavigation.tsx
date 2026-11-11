@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { BarChart3, Boxes, PackageSearch, ReceiptText, WalletCards } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Boxes, ReceiptText, WalletCards } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ReportTab = {
@@ -21,7 +21,7 @@ const TABS: ReportTab[] = [
     match: ["/reports/dashboard", "/reports/ai"],
   },
   {
-    label: "Sales report",
+    label: "Sales",
     href: "/reports/sales",
     icon: ReceiptText,
     match: ["/reports/sales", "/history"],
@@ -33,28 +33,16 @@ const TABS: ReportTab[] = [
     match: ["/reports/inventory"],
   },
   {
-    label: "Purchase analysis",
-    href: "/reports/purchase",
-    icon: PackageSearch,
-    match: ["/reports/purchase"],
-  },
-  {
-    label: "Purchase Orders",
-    href: "/purchases",
-    icon: PackageSearch,
-    match: ["/purchases"],
+    label: "Closures",
+    href: "/reports/closures",
+    icon: WalletCards,
+    match: ["/reports/closures"],
   },
   {
     label: "Transfers",
     href: "/reports/transfer",
-    icon: PackageSearch,
+    icon: ArrowLeftRight,
     match: ["/reports/transfer"],
-  },
-  {
-    label: "Register Closures",
-    href: "/reports/closures",
-    icon: WalletCards,
-    match: ["/reports/closures"],
   },
 ];
 
@@ -77,7 +65,7 @@ export function ReportsNavigation() {
   if (pathname === "/reports/ai/metrics") return null;
 
   return (
-    <div className="print:hidden shrink-0 border-b border-[var(--oh-border)] bg-white">
+    <div className="print:hidden shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
       <nav aria-label="Report sections" className="overflow-x-auto px-3 lg:px-5 [scrollbar-width:thin]">
         <div className="flex min-w-max items-center gap-1">
           {TABS.map((tab) => {
