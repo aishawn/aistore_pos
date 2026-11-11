@@ -1371,15 +1371,13 @@ public class ShopfrontIntegrationController {
             boolean completeInventorySnapshot = "inventory".equals(type)
                     && body.path("replace").asBoolean(false)
                     && body.path("snapshot_complete").asBoolean(false);
-            var audit = objectMapper.createObjectNode();
-            audit.put("store_key", store);
-            audit.put("type", type);
-            audit.put("item_count", items.size());
-            audit.put("replace", body.path("replace").asBoolean(false));
-            audit.put("snapshot_complete", body.path("snapshot_complete").asBoolean(false));
-            if (!completeInventorySnapshot && items.size() <= 200) {
-                audit.set("items", items);
-            }
+            JsonNode audit = importAuditEnvelope(
+                    objectMapper,
+                    store,
+                    type,
+                    items.size(),
+                    body.path("replace").asBoolean(false),
+                    body.path("snapshot_complete").asBoolean(false));
             var json = objectMapper.writeValueAsString(audit);
             String status = mappingReady ? "STAGED" : "BLOCKED_MAPPING";
             Map<String, Object> business = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
@@ -1450,6 +1448,23 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to stage Shopfront import (" + type + "): " + safeDetail, e);
         }
+    }
+
+    static JsonNode importAuditEnvelope(
+            ObjectMapper mapper,
+            String storeKey,
+            String type,
+            int itemCount,
+            boolean replace,
+            boolean snapshotComplete) {
+        var audit = mapper.createObjectNode();
+        audit.put("store_key", storeKey);
+        audit.put("type", type);
+        audit.put("item_count", itemCount);
+        audit.put("replace", replace);
+        audit.put("snapshot_complete", snapshotComplete);
+        audit.put("payload_mode", "metadata_only");
+        return audit;
     }
 
     private void ensureMappingTable() {
