@@ -899,6 +899,46 @@ class ShopfrontIntegrationControllerTest {
         verify(jdbc).batchUpdate(contains("INSERT INTO product_price (product_id,quantity,price,price_ex,outlet_id) VALUES (?,?,?,?,?)"), any(List.class));
     }
 
+    @Test
+    void catalogSupplierLinksAreWrittenThroughTheBatchImportPath() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        java.lang.reflect.Field supplierMappingsField = batchType.getDeclaredField("supplierMappings");
+        supplierMappingsField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Long> supplierMappings = (Map<String, Long>) supplierMappingsField.get(batch);
+        supplierMappings.put("sup-1", 501L);
+        supplierMappings.put("sup-2", 502L);
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductSuppliers", long.class, com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, long.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 17L, new ObjectMapper().readTree("""
+                {
+                  "raw_payload": {
+                    "coreSupplier": {"id": "sup-1", "name": "Core"},
+                    "suppliers": [
+                      {"supplier": {"id": "sup-1", "name": "Core"}, "code": "C1", "minimumOrderQuantity": 6},
+                      {"supplier": {"id": "sup-2", "name": "Alt"}, "code": "A1"}
+                    ]
+                  }
+                }
+                """), "skr", 48L, batch);
+        Method flush = ShopfrontIntegrationController.class.getDeclaredMethod("flushBusinessProductBatch", batchType, long.class);
+        flush.setAccessible(true);
+        flush.invoke(controller, batch, 48L);
+
+        verify(jdbc).update(contains("DELETE FROM product_supplier WHERE outlet_id=? AND product_id IN"), any(Object[].class));
+        verify(jdbc).batchUpdate(contains(
+                "INSERT INTO product_supplier (product_id, supplier_id, code, minimum_order_quantity, outlet_id) VALUES (?,?,?,?,?)"),
+                any(List.class));
+        verify(jdbc).batchUpdate(contains("UPDATE product SET core_supplier_id=? WHERE id=? AND outlet_id=?"), any(List.class));
+    }
+
 
     @Test
     void productIdentityKeyIsSourceIdNotBarcode() throws Exception {

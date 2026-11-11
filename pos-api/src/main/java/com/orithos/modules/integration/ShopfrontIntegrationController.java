@@ -64,6 +64,10 @@ public class ShopfrontIntegrationController {
         private final Set<Long> productsWithTags = new LinkedHashSet<>();
         private final Map<Long, Map<Long, Object[]>> tagsByProduct = new LinkedHashMap<>();
         private final Map<String, Object[]> sourceMappings = new LinkedHashMap<>();
+        private final Map<String, Long> supplierMappings = new HashMap<>();
+        private final Set<Long> productsWithSuppliers = new LinkedHashSet<>();
+        private final Map<Long, Long> coreSupplierByProduct = new LinkedHashMap<>();
+        private final Map<String, Object[]> supplierLinks = new LinkedHashMap<>();
     }
 
     private final JdbcTemplate jdbc;
@@ -298,6 +302,95 @@ public class ShopfrontIntegrationController {
         List<String> allErrors = new ArrayList<>(errors);
         allErrors.addAll(importErrors);
         result.put("errors", allErrors.size() > 25 ? allErrors.subList(0, 25) : allErrors);
+        result.put("business_write", true);
+        return ApiResult.ok(result);
+    }
+
+    /**
+     * Idempotent backfill of {@code product_supplier} / {@code product.core_supplier_id}
+     * from mirrored Shopfront catalog payloads that already carry supplier fields.
+     */
+    @PostMapping("/products:link-suppliers")
+    @Transactional
+    public ApiResult<Map<String, Object>> linkProductSuppliers(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) throws Exception {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "SHOPFRONT_BUSINESS_WRITE_ENABLED is false");
+        }
+        if (!isPostgres()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "products:link-suppliers requires PostgreSQL");
+        }
+        String store = body.path("store_key").asText("").trim();
+        if (!STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        ensureMappingTable();
+        ensureShadowTables();
+        List<Map<String, Object>> mappingRows = jdbc.queryForList(
+                "SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
+        }
+        int limit = Math.max(1, Math.min(body.path("limit").asInt(1000), 5000));
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT m.pos_product_id AS product_id, sp.raw_payload
+                FROM shopfront_product_mapping m
+                JOIN shopfront_product sp
+                  ON sp.store_key = m.store_key AND sp.source_id = m.source_product_id
+                JOIN product p ON p.id = m.pos_product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                WHERE m.store_key = ? AND m.status = 'MAPPED'
+                  AND (
+                    sp.raw_payload::jsonb ? 'coreSupplier'
+                    OR sp.raw_payload::jsonb ? 'lastSupplier'
+                    OR sp.raw_payload::jsonb ? 'suppliers'
+                  )
+                ORDER BY m.source_product_id
+                LIMIT ?
+                """, outletId, store, limit);
+        ProductImportBatch batch = new ProductImportBatch();
+        batch.supplierMappings.putAll(preloadSupplierMappings(store, outletId));
+        int linked = 0;
+        int skipped = 0;
+        List<String> errors = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Long productId = longValue(row.get("product_id"));
+            if (productId == null || productId <= 0) {
+                skipped++;
+                continue;
+            }
+            try {
+                JsonNode raw = objectMapper.readTree(String.valueOf(row.get("raw_payload")));
+                com.fasterxml.jackson.databind.node.ObjectNode item = objectMapper.createObjectNode();
+                item.set("raw_payload", raw);
+                if (raw.has("coreSupplier")) item.set("coreSupplier", raw.get("coreSupplier"));
+                if (raw.has("lastSupplier")) item.set("lastSupplier", raw.get("lastSupplier"));
+                if (raw.has("suppliers")) item.set("suppliers", raw.get("suppliers"));
+                collectProductSuppliers(productId, item, store, outletId, batch);
+                if (batch.productsWithSuppliers.contains(productId)) linked++;
+                else skipped++;
+            } catch (Exception ex) {
+                skipped++;
+                if (errors.size() < 25) {
+                    errors.add("product " + productId + ": " + ex.getMessage());
+                }
+            }
+        }
+        flushBusinessProductBatch(batch, outletId);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("store_key", store);
+        result.put("scanned", rows.size());
+        result.put("linked", linked);
+        result.put("skipped", skipped);
+        result.put("supplier_links", batch.supplierLinks.size());
+        result.put("errors", errors);
         result.put("business_write", true);
         return ApiResult.ok(result);
     }
@@ -1729,6 +1822,7 @@ public class ShopfrontIntegrationController {
                     plan = resolveBusinessProductIds(store, outletId, importable);
                 }
                 ProductImportBatch batch = new ProductImportBatch();
+                batch.supplierMappings.putAll(preloadSupplierMappings(store, outletId));
                 for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
                     try {
@@ -1741,7 +1835,7 @@ public class ShopfrontIntegrationController {
                         }
                         boolean mappingExisted = plan.existingProductMappings().contains(sourceId);
                         boolean productExisted = mappingExisted || resolvedProductId != null;
-                        long productId = upsertBusinessProduct(item, outletId, taxRates, resolvedProductId, batch);
+                        long productId = upsertBusinessProduct(item, store, outletId, taxRates, resolvedProductId, batch);
                         batch.productIdsByIdentity.putIfAbsent(identity, productId);
                         if (!mappingExisted) {
                             batch.sourceMappings.put(sourceId, new Object[]{store, sourceId, productId});
@@ -2546,6 +2640,24 @@ public class ShopfrontIntegrationController {
         return "name:" + (name == null ? "" : name.trim().toLowerCase(Locale.ROOT));
     }
 
+    private String disambiguateProductName(String name, long outletId, String barcode, String sourceId) {
+        String base = name == null ? "" : name.trim();
+        if (base.isBlank()) return base;
+        Long existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM product WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name))=lower(trim(?))",
+                Long.class, outletId, base);
+        if (existing == null || existing == 0) return base;
+        String marker = barcode != null && !barcode.isBlank() ? barcode.trim() : (sourceId == null ? "" : sourceId.trim());
+        if (marker.length() > 16) marker = marker.substring(marker.length() - 16);
+        if (marker.isBlank()) marker = Long.toString(System.currentTimeMillis() % 1_000_000);
+        String candidate = base + " [" + marker + "]";
+        Long stillTaken = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM product WHERE outlet_id=? AND deleted_at IS NULL AND lower(trim(name))=lower(trim(?))",
+                Long.class, outletId, candidate);
+        if (stillTaken == null || stillTaken == 0) return candidate;
+        return base + " [" + marker + "-" + (System.currentTimeMillis() % 10000) + "]";
+    }
+
     private String productBusinessSignature(JsonNode item) {
         List<String> values = new ArrayList<>();
         JsonNode raw = item.path("raw_payload");
@@ -2644,7 +2756,7 @@ public class ShopfrontIntegrationController {
         return false;
     }
 
-    private long upsertBusinessProduct(JsonNode item, long outletId, Map<String, Long> taxRates,
+    private long upsertBusinessProduct(JsonNode item, String store, long outletId, Map<String, Long> taxRates,
                                        Long resolvedProductId, ProductImportBatch batch) throws Exception {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
@@ -2670,14 +2782,18 @@ public class ShopfrontIntegrationController {
         String productStatus = "ACTIVE".equalsIgnoreCase(sourceStatus) && !sourceDeleted ? "ACTIVE" : "INACTIVE";
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
+            // Shopfront allows duplicate display names across distinct source_ids.
+            // Orithos keeps a unique active name per outlet, so disambiguate on create.
+            String insertName = disambiguateProductName(name, outletId, firstBarcode(item), sourceId);
             String sql = "INSERT INTO product (name,type,status,description,category_id,brand_id,family_id,tax_rate_id,cost_tax_rate_id,cost,case_quantity,cost_percentage,track_inventory,use_scales,use_barcode_templates,prevent_manual_discounts,request_price,request_quantity,order_notes,invoice_notes,image,alternate_images,mdb_id,outlet_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,?,?) RETURNING id";
-            productId = jdbc.queryForObject(sql, Long.class, name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
+            productId = jdbc.queryForObject(sql, Long.class, insertName, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId);
         } else {
             batch.productUpdates.put(productId, new Object[]{name, type, productStatus, description, categoryId, brandId, familyId, taxRateId, costTaxRateId, cost, caseQuantity, flag(item, "cost_percentage", false), flag(item, "track_inventory", true), flag(item, "use_scales", false), flag(item, "use_barcode_templates", false), flag(item, "prevent_manual_discounts", false), flag(item, "request_price", false), flag(item, "request_quantity", false), text(item, "order_notes"), text(item, "invoice_notes"), image, alternateImages, mdbId, outletId, productId});
         }
         collectProductPrices(productId, item, outletId, batch);
         collectProductBarcodes(productId, item, batch);
         collectProductTags(productId, item, outletId, batch);
+        collectProductSuppliers(productId, item, store, outletId, batch);
         return productId;
     }
 
@@ -2737,9 +2853,93 @@ public class ShopfrontIntegrationController {
             }
         }
 
+        if (!batch.productsWithSuppliers.isEmpty()) {
+            deleteByProductIds("product_supplier", new ArrayList<>(batch.productsWithSuppliers), outletId);
+            if (!batch.supplierLinks.isEmpty()) {
+                jdbc.batchUpdate(
+                        "INSERT INTO product_supplier (product_id, supplier_id, code, minimum_order_quantity, outlet_id) VALUES (?,?,?,?,?)",
+                        new ArrayList<>(batch.supplierLinks.values()));
+            }
+            List<Object[]> coreUpdates = new ArrayList<>();
+            for (Long productId : batch.productsWithSuppliers) {
+                coreUpdates.add(new Object[]{batch.coreSupplierByProduct.get(productId), productId, outletId});
+            }
+            jdbc.batchUpdate("UPDATE product SET core_supplier_id=? WHERE id=? AND outlet_id=?", coreUpdates);
+        }
+
         if (!batch.sourceMappings.isEmpty()) {
             jdbc.batchUpdate("INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type='SHOPFRONT',status='MAPPED',updated_at=CURRENT_TIMESTAMP",
                     new ArrayList<>(batch.sourceMappings.values()));
+        }
+    }
+
+    private boolean hasCatalogSupplierPayload(JsonNode item) {
+        if (item == null || item.isNull() || item.isMissingNode()) return false;
+        JsonNode raw = item.path("raw_payload");
+        if (raw.isObject() && (raw.has("coreSupplier") || raw.has("lastSupplier") || raw.has("suppliers"))) {
+            return true;
+        }
+        return item.has("coreSupplier") || item.has("lastSupplier") || item.has("suppliers");
+    }
+
+    private JsonNode supplierEntityNode(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode() || !node.isObject()) return null;
+        JsonNode nested = node.get("supplier");
+        if (nested != null && nested.isObject()) return nested;
+        if (node.has("id") || node.has("name")) return node;
+        return null;
+    }
+
+    private String supplierSourceId(JsonNode node) {
+        JsonNode entity = supplierEntityNode(node);
+        return entity == null ? null : text(entity, "id");
+    }
+
+    private Long resolveMappedSupplier(String store, String sourceId, long outletId, ProductImportBatch batch) {
+        if (sourceId == null || sourceId.isBlank()) return null;
+        if (batch.supplierMappings.containsKey(sourceId)) {
+            return batch.supplierMappings.get(sourceId);
+        }
+        Long mapped = mappedSupplierId(store, sourceId, outletId);
+        batch.supplierMappings.put(sourceId, mapped);
+        return mapped;
+    }
+
+    private void collectProductSuppliers(long productId, JsonNode item, String store, long outletId,
+                                         ProductImportBatch batch) {
+        if (productId <= 0 || !hasCatalogSupplierPayload(item)) return;
+        batch.productsWithSuppliers.add(productId);
+        JsonNode raw = item.path("raw_payload");
+        if (!raw.isObject()) raw = item;
+
+        JsonNode suppliers = raw.has("suppliers") ? raw.get("suppliers")
+                : (item.has("suppliers") ? item.get("suppliers") : null);
+        if (suppliers != null && suppliers.isArray()) {
+            for (JsonNode entry : suppliers) {
+                String sourceId = supplierSourceId(entry);
+                Long supplierId = resolveMappedSupplier(store, sourceId, outletId, batch);
+                if (supplierId == null || supplierId <= 0) continue;
+                String code = text(entry, "code");
+                Integer moq = null;
+                if (entry.has("minimumOrderQuantity") && entry.get("minimumOrderQuantity").canConvertToInt()) {
+                    moq = entry.get("minimumOrderQuantity").asInt();
+                } else if (entry.has("minimum_order_quantity") && entry.get("minimum_order_quantity").canConvertToInt()) {
+                    moq = entry.get("minimum_order_quantity").asInt();
+                }
+                batch.supplierLinks.put(productId + ":" + supplierId,
+                        new Object[]{productId, supplierId, code, moq, outletId});
+            }
+        }
+
+        String coreSource = supplierSourceId(raw.has("coreSupplier") ? raw.get("coreSupplier") : item.get("coreSupplier"));
+        if (coreSource == null || coreSource.isBlank()) {
+            coreSource = supplierSourceId(raw.has("lastSupplier") ? raw.get("lastSupplier") : item.get("lastSupplier"));
+        }
+        Long coreSupplierId = resolveMappedSupplier(store, coreSource, outletId, batch);
+        batch.coreSupplierByProduct.put(productId, coreSupplierId);
+        if (coreSupplierId != null && coreSupplierId > 0) {
+            batch.supplierLinks.putIfAbsent(productId + ":" + coreSupplierId,
+                    new Object[]{productId, coreSupplierId, null, null, outletId});
         }
     }
 
