@@ -437,6 +437,8 @@ export function SellAiPanel({
     { role: "assistant", text: ENABLED_GREETING },
   ]);
   const [busy, setBusy] = useState(false);
+  const [orbCompleted, setOrbCompleted] = useState(false);
+  const previousBusyRef = useRef(false);
   const [thinkingHint, setThinkingHint] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -471,6 +473,19 @@ export function SellAiPanel({
   const [dragging, setDragging] = useState(false);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const restoreFabRef = useRef(false);
+  useEffect(() => {
+    if (busy) {
+      previousBusyRef.current = true;
+      return;
+    }
+    if (!previousBusyRef.current) return;
+
+    previousBusyRef.current = false;
+    setOrbCompleted(true);
+    const timeout = window.setTimeout(() => setOrbCompleted(false), 760);
+    return () => window.clearTimeout(timeout);
+  }, [busy]);
+
   // Phone browsers on the WEB shell still need a true fullscreen assistant;
   // dedicated /m mobile mode keeps the same layout.
   // Page presentation uses the same full-bleed chat chrome inside <main>.
@@ -1617,7 +1632,11 @@ export function SellAiPanel({
                 "cursor-default",
               )}
             >
-              <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
+              <AiFabIcon
+                size={40}
+                className="pointer-events-none shadow-sm"
+                state={busy ? "thinking" : orbCompleted ? "success" : "idle"}
+              />
               <div className="min-w-0 flex-1">
                 <span id="orithos-ai-assistant-title" className="sr-only">
                   Orithos AI assistant
@@ -1758,13 +1777,13 @@ export function SellAiPanel({
           onDragStart={(e) => e.preventDefault()}
           aria-label="Open Orithos AI assistant"
           className={cn(
-            "pointer-events-auto shrink-0 touch-none select-none border-0 bg-transparent p-0 leading-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
+            "group pointer-events-auto shrink-0 touch-none select-none border-0 bg-transparent p-0 leading-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
             dragging ? "cursor-grabbing" : "cursor-grab hover:-translate-y-0.5 hover:scale-105",
             !dragging && "active:scale-95",
           )}
           style={{ boxShadow: FLOAT_SHADOW, borderRadius: "9999px" }}
         >
-          <AiFabIcon size={mobileViewport ? 44 : 64} />
+          <AiFabIcon size={mobileViewport ? 44 : 64} state={busy ? "thinking" : orbCompleted ? "success" : "idle"} />
         </button>
       )}
     </div>
