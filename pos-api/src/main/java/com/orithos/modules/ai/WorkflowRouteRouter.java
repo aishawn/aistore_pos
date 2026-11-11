@@ -210,7 +210,7 @@ public final class WorkflowRouteRouter {
         }
         if (hasWriteIntent(question)) return null;
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
-            return new Override("navigate", "/suppliers/odoo");
+            return new Override("navigate", "/suppliers");
         }
         if (!READ_ONLY_ACTION.matcher(normalized).find()
                 && !WORKFLOW_REPORT_CONTEXT.matcher(normalized).find()

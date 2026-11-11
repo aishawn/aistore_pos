@@ -325,7 +325,7 @@ public class ClassifyQueryNode implements NodeAction {
 
     /**
      * In-chat summary for navigate workflows (restock / pricing / wine). Falls back to a
-     * soft placeholder when the matching brief bean or Odoo data is unavailable.
+     * soft placeholder when the matching brief bean or native data is unavailable.
      */
     private String workflowChatSummary(String route, String question) {
         TenantContext tenant = AssistantTenantContext.get();
@@ -388,7 +388,7 @@ public class ClassifyQueryNode implements NodeAction {
         // "buy these items" or "order these products".
         if (isOrderWriteTarget(question)) return "/orders";
         if (isCustomerWriteTarget(question)) return "/customers";
-        if (isSupplierWriteTarget(question)) return "/suppliers/odoo";
+        if (isSupplierWriteTarget(question)) return "/suppliers";
         if (isProductWriteTarget(question)) return "/products";
         return "";
     }
@@ -445,7 +445,7 @@ public class ClassifyQueryNode implements NodeAction {
                 case "/products" -> "商品目录变更";
                 case "/orders" -> "采购订单变更";
                 case "/invoices" -> "供应商发票操作";
-                case "/suppliers/odoo" -> "供应商资料变更";
+                case "/suppliers" -> "供应商资料变更";
                 case "/stocktake" -> "库存盘点";
                 case "/customers/balances" -> "客户余额变更";
                 case "/customer-groups" -> "客户分组变更";
@@ -463,7 +463,7 @@ public class ClassifyQueryNode implements NodeAction {
             case "/products" -> "product catalogue";
             case "/orders" -> "purchase order";
             case "/invoices" -> "supplier invoice";
-            case "/suppliers/odoo" -> "supplier";
+            case "/suppliers" -> "supplier";
             case "/stocktake" -> "stocktake";
             case "/customers/balances" -> "customer balance";
             case "/customer-groups" -> "customer group";
@@ -563,7 +563,7 @@ public class ClassifyQueryNode implements NodeAction {
             case "customer", "client" -> "/customers";
             case "product", "item", "catalogue", "catalog" -> "/products";
             case "invoice", "bill" -> "/invoices";
-            case "supplier", "vendor" -> "/suppliers/odoo";
+            case "supplier", "vendor" -> "/suppliers";
             case "order", "purchase" -> "/orders";
             case "stock", "inventory" -> "/stock/replenishment";
             case "classification", "category" -> "/classifications";

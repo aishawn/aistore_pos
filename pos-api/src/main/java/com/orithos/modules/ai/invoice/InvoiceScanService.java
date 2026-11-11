@@ -66,12 +66,11 @@ public class InvoiceScanService {
 
     @Transactional
     public Order save(InvoiceScanResponse request) {
-        // Pilot SoT is Odoo. Do not write supplier receives into Classic PostgreSQL.
         throw new BusinessException(50101,
-                "Saving invoice receives into Classic PostgreSQL is disabled. Use Odoo Purchases or Replenishment to create a draft RFQ.");
+                "Direct invoice receive is unavailable. Save the OCR result, create an Orithos purchase order, then receive it from Purchases.");
     }
 
-    /** Retained for reference; Classic receive path must stay disabled while Odoo is SoT. */
+    /** Legacy direct-receive flow is intentionally disabled; invoice review uses native purchase orders. */
     @Transactional
     private Order saveClassic(InvoiceScanResponse request) {
         if (request == null) {

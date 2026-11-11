@@ -33,7 +33,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
     private final TenantResolverFilter tenantResolverFilter;
     private final TenantMatchFilter tenantMatchFilter;
-    private final OdooOnlyModeFilter odooOnlyModeFilter;
+    private final LegacyApiWriteProtectionFilter nativePosOnlyModeFilter;
     private final PosApiTokenFilter posApiTokenFilter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -49,12 +49,12 @@ public class SecurityConfig {
     public SecurityConfig(JwtAuthenticationFilter jwtFilter,
                           TenantResolverFilter tenantResolverFilter,
                           TenantMatchFilter tenantMatchFilter,
-                          OdooOnlyModeFilter odooOnlyModeFilter,
+                          LegacyApiWriteProtectionFilter nativePosOnlyModeFilter,
                           PosApiTokenFilter posApiTokenFilter) {
         this.jwtFilter = jwtFilter;
         this.tenantResolverFilter = tenantResolverFilter;
         this.tenantMatchFilter = tenantMatchFilter;
-        this.odooOnlyModeFilter = odooOnlyModeFilter;
+        this.nativePosOnlyModeFilter = nativePosOnlyModeFilter;
         this.posApiTokenFilter = posApiTokenFilter;
     }
 
@@ -131,7 +131,7 @@ public class SecurityConfig {
             }))
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(requestCorrelationFilter, TenantResolverFilter.class)
-            .addFilterBefore(odooOnlyModeFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(nativePosOnlyModeFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(posApiTokenFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(tenantMatchFilter, JwtAuthenticationFilter.class);

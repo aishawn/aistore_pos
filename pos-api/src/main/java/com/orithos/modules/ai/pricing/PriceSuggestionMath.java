@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Port of {@code pos-ui/src/lib/price-suggestion-math.ts} for in-chat pricing briefs.
- * Does not invent GST — only simple percentage sale taxes from Odoo.
+ * Does not invent GST — only simple percentage sale taxes from the native catalogue.
  */
 public final class PriceSuggestionMath {
 

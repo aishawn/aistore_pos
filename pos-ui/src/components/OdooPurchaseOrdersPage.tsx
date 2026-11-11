@@ -1,6 +1,6 @@
 "use client";
 
-import { clearOdooReadCache } from "@/lib/odoo-read-cache";
+import { clearNativeReadCache } from "@/lib/native-read-cache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -287,7 +287,6 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
       sessionStorage.setItem(`orithos-pending-receipt:${detail.order.id}`, JSON.stringify({ pickingId: detail.receivable.pickingId, lines }));
       submitted = true;
       const result = await receiveOdooPurchaseOrder(detail.order.id, {
-        pickingId: detail.receivable.pickingId,
         lines,
       });
       try { sessionStorage.removeItem(`orithos-pending-receipt:${detail.order.id}`); } catch { /* Completed state will be reconciled on refresh. */ }
@@ -364,7 +363,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
                 ? "Create a same-company warehouse transfer."
                 : "Move stock between warehouses in this company (optional; only if you have 2+ locations)."}
           </p>
-          <p className="mt-2 text-xs text-[var(--oh-muted)]">Source: Odoo · Store scope: {companyScope.length ? companyScope.join(", ") : "companies available to your connected account"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>
+          <p className="mt-2 text-xs text-[var(--oh-muted)]">Source: Orithos · Store scope: {companyScope.length ? companyScope.join(", ") : "current store"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>
           <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Purchases views">
             <Link href="/purchases" role="tab" aria-selected={tab === "orders" && state !== "purchase"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "orders" && state !== "purchase" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Purchase Orders</Link>
             <Link href="/purchases?tab=transfers" role="tab" aria-selected={tab === "transfers" || tab === "transfer-new"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "transfers" || tab === "transfer-new" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Transfers</Link>
@@ -373,7 +372,7 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
         {tab === "orders" && (
         <div className="flex items-center gap-2">
           <Link href="/stock/replenishment" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><ShoppingCart size={16} /> Replenishment</Link>
-          <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchases" title="Refresh purchases" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
+          <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchases" title="Refresh purchases" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
         )}
       </header>}
@@ -383,13 +382,13 @@ function OdooNativePurchaseOrdersPage({ embedded = false }: { embedded?: boolean
         <CreateStockTransferPage embedded />
       ) : (
       <>
-      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearOdooReadCache(); void loadOrders(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearNativeReadCache(); void loadOrders(failedAppend.current); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-      {embedded && <p className="shrink-0 text-xs text-[var(--oh-muted)]">Source: Odoo · Store scope: {companyScope.length ? companyScope.join(", ") : "companies available to your connected account"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>}
+      {embedded && <p className="shrink-0 text-xs text-[var(--oh-muted)]">Source: Orithos · Store scope: {companyScope.length ? companyScope.join(", ") : "current store"}{lastLoadedAt !== null && <> · Retrieved {formatStoreEpoch(lastLoadedAt, storeTimezone)}</>}</p>}
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15"><Search size={17} className="text-[var(--oh-muted)]" /><input aria-label="Search purchase orders by RFQ, order or supplier" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search RFQ, order or supplier" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" /></label>
         <select aria-label="Filter purchase orders by status" value={state} onChange={(event) => { setState(event.target.value); }} className="h-11 w-full min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 sm:w-[210px] sm:flex-none">{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        {embedded && <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchase orders" title="Refresh purchase orders" className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span>Refresh</span></button>}
+        {embedded && <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh purchase orders" title="Refresh purchase orders" className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span>Refresh</span></button>}
       </div>
 
       <section ref={scrollRoot} data-testid="purchase-results-scroll" className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">

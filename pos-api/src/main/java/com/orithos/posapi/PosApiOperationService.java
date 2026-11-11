@@ -19,7 +19,7 @@ public class PosApiOperationService {
     public PosApiOperationService(JdbcTemplate jdbc, ObjectMapper mapper, @Qualifier("posApiExecutor") Executor executor,PosApiWebhookService webhooks) { this.jdbc=jdbc;this.mapper=mapper;this.executor=executor;this.webhooks=webhooks; }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void recoverInterruptedOperations() {
-        String interruption=mapper.createObjectNode().put("code","service_restarted").put("message","The service restarted before this operation completed; reconcile its Odoo outcome before retrying.").toString();
+        String interruption=mapper.createObjectNode().put("code","service_restarted").put("message","The service restarted before this operation completed; reconcile its Orithos outcome before retrying.").toString();
         jdbc.update("UPDATE pos_api_operation SET status='unknown',error_json=?,updated_at=CURRENT_TIMESTAMP WHERE status IN ('queued','running')",interruption);
         String response=mapper.createObjectNode().put("status","unknown").put("error","service_restarted_reconcile_before_retry").toString();
         jdbc.update("UPDATE pos_api_idempotency i SET status='unknown',response_json=? FROM pos_api_operation o WHERE i.operation_id=o.id AND i.status='accepted' AND o.status='unknown' AND o.error_json LIKE '%service_restarted%'",response);

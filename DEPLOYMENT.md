@@ -1,72 +1,65 @@
-# Dokploy deployment
+# Dokploy Deployment and Operations
 
-This repository deploys the Spring Boot + PostgreSQL + Redis services and the Next.js frontend from the root `docker-compose.yml`. The web app account is authenticated by the Spring API. Odoo is a separate business-data connection: the cashier signs in to Orithos first, then connects an Odoo staff account under **Setup → Integrations**.
+POS code is maintained on `main` in `aishawn/aistore_pos`. Dokploy auto-deploys the POS Compose app from that branch. Do not deploy from old clones or include unrelated working-tree changes.
 
-## Configure the Dokploy application
+## Operating surfaces
 
-1. Connect the Dokploy Compose application to `aishawn/aistore_pos` and the `main` branch. Use the repository root as the build context and `docker-compose.yml` as the Compose file. A push to `main` can then trigger Dokploy's configured deployment pipeline.
-2. Set the required Compose environment variables in Dokploy before the first deployment: `DB_PASSWORD`, `POS_REDIS_URL`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, and `CORS_ALLOWED_ORIGINS`. Set `POS_REDIS_URL` to the externally managed Redis URI supplied for this app, as a Dokploy secret; do not paste it into Git or logs. POS API uses database 0 and report snapshots use database 1 on that same Redis endpoint. For multi-tenant subdomains set `CORS_ALLOWED_ORIGINS=https://*.orithos.com.au,https://orithos.com.au,https://app.orithos.com.au`, plus `APP_TENANT_BASE_DOMAIN=orithos.com.au` and `APP_TENANT_SCHEME=https`.
-   The frontend and backend Docker builds read the 40-character Git SHA from Dokploy's checked-out `.git` metadata. Do not set or pin `SOURCE_COMMIT` in Dokploy; the version endpoints report the source checkout that produced each image. Native Orithos POS writes require `APP_NATIVE_POS_EXPECTED_DATABASE` to match the live datasource and `APP_NATIVE_POS_ENABLED_VENDOR_IDS` to explicitly list the authorized test/cutover tenant. For UAT, also set `RUNTIME_ENVIRONMENT=uat` and make `ISOLATION_POS_DATABASE` equal the expected database name. That name must identify a dedicated database; `postgres`, `aipos`, `orithos`, `production`, and `prod` are rejected even when the configured and live names match, unless the owner explicitly sets `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true` for a multi-tenant cutover. Shared-database authorization still requires an exact name match, never claims `isolated=true`, and must list every writable vendor id.
-3. The frontend and backend services default to `ODOO_BASE_URL=https://odoo.orithos.com.au`. For the current unified phase, set `ODOO_DATABASE=aipos_uat`, `ODOO_DATABASE_UAT=aipos_uat`, and `ISOLATION_ODOO_DATABASE=aipos_uat` together. Do not leave an alternate database value in a service-specific override, local fallback, or Dokploy secret: deployment, debugging, and approved trial writes must all resolve to `aipos_uat`. This is controlled UAT mode; provision a dedicated customer database before unrestricted customer production. They are passed server-side by Compose; do not add Odoo credentials or session tokens to `NEXT_PUBLIC_*` variables.
-4. To have Orithos reconnect to Odoo automatically after deployment, set **both** frontend and backend Compose env vars in Dokploy:
-   - `ODOO_SERVICE_USERNAME`
-   - `ODOO_SERVICE_PASSWORD`
-   These credentials are only used server-side to restore an Odoo session for an already authenticated Orithos user; they are never exposed to the browser. After setting them and running a normal **Deploy** (never **Fresh Volumes**), opening Orithos should reconnect automatically without clicking Connect. Use a dedicated least-privilege Odoo POS account where possible. Never commit the password to Git.
-5. PostgreSQL remains on its private Compose network; Redis is managed outside this Compose app and reached through `POS_REDIS_URL`. Expose the frontend service on port `3000` through Dokploy's domain/proxy configuration and enable HTTPS. Point DNS for `app.orithos.com.au`, `demo.orithos.com.au`, and preferably `*.orithos.com.au` at the same edge; preserve `X-Forwarded-Host` / `X-Forwarded-Proto`. Control plane = `app`, pilot POS store = `demo`. See [docs/TENANT_SUBDOMAIN.md](docs/TENANT_SUBDOMAIN.md).
-6. Keep `APP_ODOO_ONLY_MODE=true` in the backend environment. This retires the unscoped Classic MySQL API surface with HTTP 410; the Odoo BFF routes, tenant lifecycle, platform admin and AI endpoints remain available. Do not disable it for a pilot tenant unless every retained Classic controller has a recorded tenant-scope review.
+| Surface | URL | Login / secret variable names | Use |
+|---|---|---|---|
+| Shopfront source | <https://skr.onshopfront.com/> | `AIWEI` / `SHOPFRONT_PASS` | Read-only source comparison; `/reports/misc` is the inventory-at-date report. Never use Register. |
+| SKR Orithos store | <https://skr.orithos.com.au/> | `ORITHOS_SKR_USER` / `ORITHOS_SKR_PASS` | Read-only post-sync store verification. |
+| Demo Orithos store | <https://demo.orithos.com.au/> | `admin` / `INITIAL_ADMIN_PASSWORD` | Default read-only UAT target and parity comparison with SKR. |
+| Orithos control plane | <https://app.orithos.com.au/> | `admin` / `INITIAL_ADMIN_PASSWORD` | Platform administration. |
+| Shopfront crawler | <https://crawler.orithos.com.au/> | `SHOPFRONT_INTEGRATION_TOKEN` for POS integration | Reads source APIs/web reports and syncs mapped data to Orithos. API docs: <https://developer.onshopfront.com/documentation/General/About>. |
+| POS database | — | `POSTGRESQL_URL` | Database access for approved diagnostics; never print the value. |
+| Dokploy | <https://dokploy.orithos.com.au/> | `ORTHOS_DOKPLOY_USER` / `ORTHOS_DOKPLOY_PASS` | Deployment and environment management. |
 
-  6. Deploy and sign into Orithos. When service-account variables are configured, **Setup → Integrations** and **Register → Sell** should establish the Odoo session automatically; manual staff sign-in remains available as a fallback. Confirm that the expected POS configuration, open session, payment methods and products appear. Classic MySQL routes are hidden unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true` (debug only). Do not pilot dual-write.
-7. Optional AI: leave `AI_ENABLED=false` until the AI gateway is deployed and its token is configured. To use the remote service, set `AI_ENABLED=true`, `AI_PROVIDER=remote`, `AI_SERVICE_BASE_URL`, and `AI_SERVICE_TOKEN` (matching `AI_GATEWAY_API_TOKEN` in `orithos-ai-services`). Forecasts use the gateway's authenticated `/v1/forecast/sales` proxy; set `AI_FORECAST_BASE_URL=https://ai.orithos.com.au`, `AI_SERVICE_TOKEN`, and `AI_FORECAST_ENABLED=true` only after the AI Compose deployment includes that proxy route. The gateway forwards to its internal `forecast-service`; POS Compose no longer runs one. POS does not need the model provider key. Invoice OCR save into Classic MySQL is disabled; use Odoo Purchases / Replenishment for draft RFQs.
+Dokploy Compose services:
 
-For the AI Compose app, set `AI_REDIS_URL` to the same external Redis endpoint with database 2 and keep `AI_REDIS_PREFIX=ai:`; its queue remains separate from POS state (DB 0) and report snapshots (DB 1). After deploying the POS Compose change, verify obsolete local `forecast-service` and `redis` containers are gone. If Dokploy leaves removed Compose services as orphans, run the deployment with `--remove-orphans`; do not remove volumes as part of this cleanup. The old local Redis contents are not copied: users may need to sign in again, and report snapshots will be regenerated by the worker.
+- POS: <https://dokploy.orithos.com.au/dashboard/project/ewJIOao2VS7KNdhRg7rzn/environment/9RNFH68veP4p9K47vtMfl/services/compose/V3BuMZuSCowVe-OKWIR6J>
+- AI services: <https://dokploy.orithos.com.au/dashboard/project/ewJIOao2VS7KNdhRg7rzn/environment/9RNFH68veP4p9K47vtMfl/services/compose/n9P_rkiIncyltEzhq6gRP>
+- Shopfront crawler: <https://dokploy.orithos.com.au/dashboard/project/ewJIOao2VS7KNdhRg7rzn/environment/9RNFH68veP4p9K47vtMfl/services/compose/JHfNJMWCJGqpq0_5aovzZ?tab=deployments>
 
-## Orithos administrator account
+Credentials are held only in ignored local env files or Dokploy Secrets. Do not copy values into Git, command output, screenshots, handoffs, or test reports. The owner authorizes relevant local or Dokploy environment changes; change only variables needed for the task, verify the target service/environment, and report names and results without values.
 
-- The initial Orithos username is `admin`. Find the initial password in the Dokploy application's Compose environment variables under `INITIAL_ADMIN_PASSWORD`; the value in a local `.env` file is relevant only if it matches the value deployed to Dokploy.
-- The backend reads `INITIAL_ADMIN_PASSWORD` only when it creates the first `admin` row in a new database. Changing the variable later does not change an existing account's password, and the current password cannot be read back from the database.
-- If `admin` already exists and the configured value does not work, ask the Dokploy owner to use the application's supported password-reset process. Do not delete the database volume to recreate the account; that would erase store data.
+## Data Flow and Sync Checks
 
-## Odoo requirements and current limits
-
-- Odoo must be reachable from the frontend container over HTTPS. The app uses the Odoo JSON-RPC web session and the configured database.
-- The Odoo staff user must have access to the relevant company, POS configuration, session, products, customers, payment methods, taxes and sale orders. Use an individual staff account, not a shared administrator password.
-- Keep an Odoo POS session open before selling. Orithos can close a session from **Close Register** (`/api/odoo/session/close`); opening a session is still done in Odoo.
-- The Odoo register resolves pricelist / customer prices via Odoo, supports GST, cash rounding, pack/case factors, park (local), full-sale refunds from history, and register close. Cross-currency pricelists and credit sales remain unsupported. See `docs/CAPABILITY_STATUS.md`.
-- Pilot navigation exposes Odoo surfaces only (Sell, history, products, customers, purchases, replenishment, reporting). Classic POS tables are reference-only and not synchronized.
-
-## Updating the deployment
-
-Shopfront collection runs in the standalone `aishawn/shopfront-crawler` Dokploy application at `https://crawler.orithos.com.au`. POS Compose does not run a crawler or migration runner. Set `SHOPFRONT_CRAWLER_URL=https://crawler.orithos.com.au` in the POS Compose environment, and set `SHOPFRONT_INTEGRATION_TOKEN` to the same strong secret in both Dokploy applications. Keep `SHOPFRONT_INTEGRATION_ENABLED=true` so the crawler can mirror data into POS staging, and keep `SHOPFRONT_BUSINESS_WRITE_ENABLED=false` to prevent formal catalog/inventory business writes. Crawler-to-POS notifications must use `https://app.orithos.com.au/api/internal/shopfront-sync-notify` and the matching `ORITHOS_SHOPFRONT_SYNC_NOTIFY_SECRET`; old Compose-only URLs such as `http://frontend:3000` do not resolve between applications. The `shopfront-crawler-data` volume remains declared for rollback and must not be pruned until its backup and cleanup plan is approved.
-
-After a change is pushed to `main`, Dokploy should deploy the Compose services if auto-deploy is enabled for this application. Check the Dokploy deployment log and verify the frontend domain, Orithos login, Odoo connection, product/customer pages, sales history, replenishment plan and reporting dashboard. Use an Odoo test database and test POS session for checkout verification; do not create test sales in the live store.
-
-### Troubleshooting `Branch Not Match`
-
-If the Compose webhook returns `HTTP 301` with `{"message":"Branch Not Match"}`, Dokploy rejected the request before a build started. Treat this as a deployment configuration failure, not a successful deploy or a cache issue.
-
-1. Open the Compose service's **Source/Git** settings and set the repository to `aishawn/aistore_pos`, branch/ref to `main`, repository root to `/`, and Compose file to `docker-compose.yml`.
-2. Save the source settings, then use the service's normal **Deploy** action once. Do not use **Fresh Volumes**.
-3. In the deployment details, save the frontend and backend image/container commit SHAs, the complete frontend/backend build logs, deployment timestamp, and health status. A webhook response or public HTTP 200 alone is not sufficient evidence.
-4. If the service is intentionally bound to another branch, either change it to `main` or create that exact branch in GitHub before sending another webhook. This repository currently publishes only `main`.
-5. After the build is healthy, run the read-only smoke matrix and record its `sourceCommit` together with the Dokploy runtime SHA. Never label a UAT result as post-deploy until those identities match.
-
-### Smoke checklist after every Deploy
-
-1. Dokploy deployment status is **Done** and the commit SHA matches `origin/main` (or contains at least the intended fix commit).
-2. **Console**: https://app.orithos.com.au/login → sign in as `admin` (username/password only; no subdomain field) → `/platform/stores` with PlatformShell. Opening https://app.orithos.com.au/ must redirect to `/platform/stores`, not Sell.
-3. **Pilot store**: https://demo.orithos.com.au/login → sign in as `admin` (no subdomain field) → Sell `/` and store pages.
-4. Optional: https://app.orithos.com.au/signup → create a trial store → land on `{slug}.orithos.com.au` already signed in.
-5. On the demo store host, **Setup → Integrations**: Odoo shows Connected (or Connect with staff account). Confirm the auto-recover note matches Dokploy (`autoRecoverConfigured` via `/api/odoo/session` when logged in).
-6. Sell on `demo.orithos.com.au` `/`: register selector loads; when no session, **Open Odoo POS** is visible.
-7. Close `/close`: empty/disabled state is correct when no session is open.
-8. If Autodeploy missed the push, trigger a normal **Deploy** once; then check GitHub webhook delivery and Dokploy Watch Paths. Do not create duplicate Compose apps.
-
-For a manual deployment from the repo root, create the deployment environment in Dokploy (or a protected `.env` file) and run:
-
-```sh
-docker compose pull
-docker compose build
-docker compose up -d
+```text
+Shopfront (read-only source) → shopfront-crawler → Orithos POS API/PostgreSQL → SKR and Demo
 ```
 
-Do not commit `.env` files or database dumps. The legacy MySQL source was backed up before migration; keep the backup until the PostgreSQL cutover is accepted.
+Orithos is the POS backend and operational ledger. Shopfront is the upstream source for the real store data being synced; it is not a POS backend. Odoo is deprecated: do not add its credentials, runtime reads, writes, fallbacks, scheduled jobs, or new dependencies. Remaining legacy removal and physical decommission status is tracked in the root [HANDOFF.md](HANDOFF.md); do not claim complete retirement until its acceptance checks pass.
+
+Both SKR and Demo are expected to contain the same synced Shopfront data. Sync runs may be scheduled and manually triggered multiple times per day. Before queuing a run, inspect crawler status and avoid duplicates while an applicable job is active. Use the current crawler configuration and its README for the active schedule and endpoints; do not copy an old schedule into a new runbook.
+
+For each affected store and Adelaide business date, verify:
+
+1. The crawler job reached a terminal successful state; queued or partial work is not completion.
+2. Shopfront source report/API values, crawler run/mirror status, and downstream acknowledgement/import results agree for the relevant data domain.
+3. SKR and Demo Orithos APIs agree on stable external IDs, counts, business fields, and sampled records. Use the read-only store pages to confirm the same records are visible.
+4. Report differences, unmapped IDs, missing permissions, stale snapshots, skipped rows, and incomplete source data explicitly. Similar totals do not prove row-level parity.
+
+Use Shopfront `/reports/misc` only as a read-only reference for the data it reports. Never use Shopfront Register or create transactions to generate, repair, or validate source data. Do not infer missing prices, GST, ABN, product mappings, or inventory quantities.
+
+## Deployment
+
+1. Confirm the POS remote is `aishawn/aistore_pos`, the branch is `main`, and the intended commit contains only scoped files. Preserve unrelated dirty changes.
+2. Push to `origin/main`; the configured Dokploy POS service should deploy automatically. Do not use **Fresh Volumes** for ordinary code or login issues.
+3. Confirm Dokploy status is **Done**, inspect the build log, and compare the deployed/source SHA with `origin/main` and `/api/public/version`.
+4. Run the read-only smoke checks below. If a deploy failed, diagnose the first failing layer (webhook/source binding, build, container health, runtime config, API, or UI) before changing code or retrying.
+
+The POS app's current Compose configuration and `*.env.example` files are authoritative for required values. Use the shared `SHOPFRONT_INTEGRATION_TOKEN` and configured Orithos sync-notification URL/secret as documented there. Confirm the active import path writes to Orithos and never enables Odoo writes. Keep the configured native-POS-only guard enabled while it protects the unscoped legacy API surface; do not remove that guard until an equivalent has been verified.
+
+Odoo is not required for new deployments. Do not add `ODOO_*` variables to new environments. Existing Odoo-related configuration may remain during domain-by-domain code retirement; remove it only after the matching runtime dependency is gone and the no-Odoo-config/network acceptance in the current handoff passes.
+
+For any change touching `pos-api/`, the exact candidate SHA must pass Java 21 `mvn -B clean verify` in the approved remote pre-push workflow before push. Local static checks or a build after push do not satisfy this gate. If candidate-SHA evidence is unavailable, leave the backend change unpushed and report the blocker.
+
+## Read-only Smoke After Deploy
+
+- Verify Dokploy **Done**, source commit SHA, runtime SHA, and `/api/public/version` for the POS service.
+- Sign into `app.orithos.com.au` and verify the platform shell. Sign into both `demo.orithos.com.au` and `skr.orithos.com.au` and verify the store shell and affected pages.
+- For sync-related changes, compare crawler job status and source/API/page data for both stores using the checks above.
+- Do not perform sales, refunds, receiving, stock, register-close, or other business writes during production smoke tests. Use an approved isolated Orithos test environment for write UAT unless the owner explicitly approves a production write.
+- If a failure occurs, capture the affected URL/API, store, business date/timezone, source/runtime SHA, read/write scope, response class, and sanitized evidence. Make the narrow root-cause fix and repeat the relevant check.
+
+If Dokploy returns `Branch Not Match`, confirm the Compose source is `aishawn/aistore_pos`, ref `main`, repository root `/`, and Compose file `docker-compose.yml`. The webhook response itself is not deployment evidence.

@@ -8,7 +8,7 @@ public final class AiGatewayPolicy {
     private static final List<Pattern> CONTROL_ASSIGNMENTS = List.of(
             Pattern.compile("(?i)(?:^|[\\s,{])(?:tenant_?id|vendor_?id|outlet_?id|user_?id)\\s*[:=]"),
             Pattern.compile("(?is)(?:^|[;\\n])\\s*(?:select\\s+.+\\s+from\\s+[a-z_][\\w.]*|insert\\s+into\\s+[a-z_][\\w.]*|update\\s+[a-z_][\\w.]*\\s+set|delete\\s+from\\s+[a-z_][\\w.]*)\\b"),
-            Pattern.compile("(?i)(?:^|\\s)odoo\\s+model\\s*[:=]"),
+            Pattern.compile("(?i)(?:^|\\s)(?:[a-z0-9_-]+\\s+)?model\\s*[:=]"),
             Pattern.compile("(?i)(?:^|\\s)/api/[a-z0-9_./-]+"));
 
     private AiGatewayPolicy() {

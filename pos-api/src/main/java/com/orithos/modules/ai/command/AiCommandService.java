@@ -12,7 +12,7 @@ import com.orithos.modules.product.ProductPrice;
 import com.orithos.modules.product.ProductService;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.ai.report.NativeAiReportQueryService;
-import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
+import com.orithos.modules.ai.replenishment.NativeReplenishmentService;
 import com.orithos.modules.ai.replenishment.ReplenishmentPlan;
 import com.orithos.modules.ai.replenishment.ReplenishmentSuggestion;
 import com.orithos.modules.ai.report.TenantContext;
@@ -44,7 +44,7 @@ public class AiCommandService {
     private final CustomerMapper customerMapper;
     private final CustomerService customerService;
     private final NativeAiReportQueryService nativeReports;
-    private final OdooReplenishmentClient replenishmentClient;
+    private final NativeReplenishmentService replenishmentClient;
     private final JdbcTemplate jdbc;
     private final AiCommandParser commandParser;
     private final boolean enabled;
@@ -55,7 +55,7 @@ public class AiCommandService {
                             ProductService productService, CustomerMapper customerMapper,
                             CustomerService customerService, JdbcTemplate jdbc,
                             NativeAiReportQueryService nativeReports,
-                            OdooReplenishmentClient replenishmentClient,
+                            NativeReplenishmentService replenishmentClient,
                             AiCommandParser commandParser,
                             @Value("${app.ai.commands.enabled:false}") boolean enabled,
                             @Value("${app.ai.commands.execution-enabled:false}") boolean executionEnabled) {
@@ -85,8 +85,8 @@ public class AiCommandService {
         try {
             // Resolve explicit, supported command phrases deterministically first.
             // This keeps manual preview commands available when the model provider is
-            // slow or temporarily returns a non-conforming response. Odoo remains the
-            // source of record for all resolved IDs and current values.
+            // slow or temporarily returns a non-conforming response. Orithos remains
+            // the source of record for all resolved IDs and current values.
             parsed = parseText(tenant, text);
         } catch (BusinessException deterministic) {
             if (deterministic.getCode() != 40027) throw deterministic;
@@ -142,7 +142,7 @@ public class AiCommandService {
         requireEnabled();
         if (!executionEnabled) {
             throw new BusinessException(50303,
-                    "AI command execution is disabled. Preview is available; enable the execution switch only after Odoo UAT.");
+                    "AI command execution is disabled. Preview is available; enable the execution switch only after Orithos UAT.");
         }
         AdminAccess.requireAdmin();
         TenantContext tenant = tenantContextFactory.fromSecurity();

@@ -94,24 +94,15 @@ public class ForecastRiskService {
     private Map<Long, Inventory> inventory(TenantContext tenant) {
         Map<Long, Inventory> result = new LinkedHashMap<>();
         jdbc.query("""
-                SELECT product_id, on_hand,
-                       COALESCE((inv.payload->>'virtualAvailable')::numeric, i.on_hand) AS available_stock,
-                       COALESCE((p.payload->>'standard_price')::numeric, 0) AS cost,
-                       COALESCE((inv.payload->>'leadTimeDays')::numeric, 0) AS lead_time
-                FROM ai_inventory_daily i
-                LEFT JOIN LATERAL (
-                    SELECT payload FROM odoo_read_snapshot s
-                    WHERE s.vendor_id = i.vendor_id AND s.outlet_id = i.outlet_id
-                      AND s.object_type = 'PRODUCT' AND s.source_record_id = i.product_id::text
-                    ORDER BY s.event_time DESC LIMIT 1
-                ) p ON TRUE
-                LEFT JOIN LATERAL (
-                    SELECT payload FROM odoo_read_snapshot s
-                    WHERE s.vendor_id = i.vendor_id AND s.outlet_id = i.outlet_id
-                      AND s.object_type = 'INVENTORY' AND s.source_record_id = i.product_id::text
-                    ORDER BY s.event_time DESC LIMIT 1
-                ) inv ON TRUE
-                WHERE i.vendor_id = ? AND i.outlet_id = ? AND i.business_date = CURRENT_DATE
+                SELECT p.id AS product_id, COALESCE(i.quantity, 0) AS on_hand,
+                       COALESCE(i.quantity, 0) + COALESCE(i.on_order, 0) AS available_stock,
+                       COALESCE(pc.average_cost, pc.cost, p.cost, 0) AS cost,
+                       0 AS lead_time
+                FROM product p
+                JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
+                LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
+                LEFT JOIN product_cost pc ON pc.product_id = p.id AND pc.outlet_id = p.outlet_id
+                WHERE p.outlet_id = ? AND p.deleted_at IS NULL
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.put(rs.getLong("product_id"), new Inventory(
                         asDouble(rs.getObject("on_hand")), asDouble(rs.getObject("available_stock")),
                         asDouble(rs.getObject("cost")),

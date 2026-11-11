@@ -58,12 +58,14 @@ class ForecastServiceSnapshotTest {
     }
 
     @Test
-    void doesNotAcceptUnknownDailySalesSourceAsForecastInput() {
+    void acceptsOnlyOrithosLedgerAsForecastInput() {
         assertThrows(BusinessException.class,
                 () -> ForecastService.requireVerifiedSourceVersion("unknown"));
         assertThrows(BusinessException.class,
                 () -> ForecastService.requireVerifiedSourceVersion(" "));
-        assertDoesNotThrow(() -> ForecastService.requireVerifiedSourceVersion("odoo-2026-11-01T00:00:00Z"));
+        assertThrows(BusinessException.class,
+                () -> ForecastService.requireVerifiedSourceVersion("odoo-2026-11-01T00:00:00Z"));
+        assertDoesNotThrow(() -> ForecastService.requireVerifiedSourceVersion("orithos-ledger-2026-11-01T00:00:00Z"));
     }
 
     @Test

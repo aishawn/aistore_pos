@@ -23,21 +23,12 @@ interface StoreDetail {
   createdAt?: string | null;
   platformOperator?: boolean;
   outletId?: number | null;
-  odooCompanyId?: number | null;
-  odooProvisionStatus?: string | null;
   owner?: {
     id: number;
     username: string;
     name?: string | null;
     email?: string | null;
     isAdmin?: boolean;
-  } | null;
-  odooBinding?: {
-    odooCompanyId?: number | null;
-    odooPosConfigId?: number | null;
-    odooProvisionStatus?: string | null;
-    odooProvisionError?: string | null;
-    r2Prefix?: string | null;
   } | null;
 }
 
@@ -96,7 +87,6 @@ type ConfirmAction = { title: string; message: string; reason: string } & (
   | { kind: "reset" }
   | { kind: "reinvite" }
   | { kind: "delete" }
-  | { kind: "odoo" }
 );
 type ConfirmRequest = ConfirmAction extends infer Action
   ? Action extends ConfirmAction
@@ -111,8 +101,8 @@ const ACTION_LABELS: Record<string, string> = {
   OWNER_RESET_ISSUED: "Owner reset issued",
   OWNER_REINVITED: "Owner re-invited",
   OWNER_BOOTSTRAP_ISSUED: "Owner sign-in link issued",
-  ODOO_PROVISION_RETRIED: "Orithos provisioning retried",
-  ODOO_BINDING_CHANGED: "Orithos binding changed",
+  ODOO_PROVISION_RETRIED: "Legacy store setup retried",
+  ODOO_BINDING_CHANGED: "Legacy store mapping changed",
 };
 
 function utcDate(value: string | null | undefined): string {
@@ -267,8 +257,6 @@ export default function PlatformStoreDetailPage() {
         setLinkResult(result.inviteUrl || result.resetUrl || "Invite issued.");
       } else if (confirm.kind === "delete") {
         setStore(await api.del<StoreDetail>(`/api/admin/tenants/${store.id}`, { reason: confirm.reason }));
-      } else if (confirm.kind === "odoo") {
-        setStore(await api.post<StoreDetail>(`/api/admin/tenants/${store.id}/odoo-provision`, { reason: confirm.reason }));
       }
       setConfirm(null);
       const resetHistoryPages = auditPage !== 1 || provisionPage !== 1;
@@ -418,14 +406,8 @@ export default function PlatformStoreDetailPage() {
           <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Outlet & Orithos</h2>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-[var(--oh-muted)]">Outlet id</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.outletId ?? "—"}</dd></div>
-              <div><dt className="text-[var(--oh-muted)]">Orithos company</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.odooBinding?.odooCompanyId ?? store.odooCompanyId ?? "—"}</dd></div>
-              <div><dt className="text-[var(--oh-muted)]">POS config</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.odooBinding?.odooPosConfigId ?? "—"}</dd></div>
-              <div><dt className="text-[var(--oh-muted)]">Provision</dt><dd className="mt-0.5 capitalize text-[var(--oh-text)]">{store.odooBinding?.odooProvisionStatus || store.odooProvisionStatus || "unmapped"}</dd></div>
-              <div className="sm:col-span-2"><dt className="text-[var(--oh-muted)]">R2 prefix</dt><dd className="mt-0.5 font-mono text-xs text-[var(--oh-text)]">{store.odooBinding?.r2Prefix || "—"}</dd></div>
-              {store.odooBinding?.odooProvisionError ? (
-                <div className="sm:col-span-2"><dt className="text-[var(--oh-muted)]">Provision error</dt><dd className="mt-0.5 text-sm text-rose-800">{store.odooBinding.odooProvisionError}</dd></div>
-              ) : null}
+              <div><dt className="text-[var(--oh-muted)]">Vendor id</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.id}</dd></div>
+              <div><dt className="text-[var(--oh-muted)]">Primary outlet id</dt><dd className="mt-0.5 text-[var(--oh-text)]">{store.outletId ?? "—"}</dd></div>
             </dl>
           </section>
 
@@ -447,7 +429,6 @@ export default function PlatformStoreDetailPage() {
 <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
                   </>
                 ) : null}
-<button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" onClick={() => askConfirm({ kind: "odoo", title: "Retry Orithos provision?", message: "Creates or refreshes the Orithos company / POS config mapping for this store." })}>Retry Orithos provision</button>
                 {store.status.toLowerCase() === "trial" ? (
 <button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700" onClick={() => askConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Orithos sales and audit history are retained." })}>Delete trial store</button>
                 ) : null}

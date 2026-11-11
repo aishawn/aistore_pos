@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.modules.payment.PaymentMethod;
 import com.orithos.modules.payment.PaymentMethodMapper;
-import com.orithos.modules.register.Outlet;
-import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.register.Register;
 import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.tax.TaxRate;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * One-shot / on-demand Shopfront → Orithos settings promote.
- * Never overwrites Orithos-owned company keys or existing catalog rows matched by source id/name.
+ * One-shot Shopfront catalogue promote scoped to the mapped Orithos outlet.
+ * Global vendor settings are not imported because the Shopfront source key is not their scope.
  */
 @Service
 public class SettingsImportService {
@@ -36,110 +33,106 @@ public class SettingsImportService {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
-    private final CompanySettingsService companySettings;
     private final TaxRateMapper taxRates;
     private final PaymentMethodMapper paymentMethods;
-    private final OutletMapper outlets;
     private final RegisterMapper registers;
 
     public SettingsImportService(JdbcTemplate jdbc,
                                  ObjectMapper objectMapper,
-                                 CompanySettingsService companySettings,
                                  TaxRateMapper taxRates,
                                  PaymentMethodMapper paymentMethods,
-                                 OutletMapper outlets,
                                  RegisterMapper registers) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
-        this.companySettings = companySettings;
         this.taxRates = taxRates;
         this.paymentMethods = paymentMethods;
-        this.outlets = outlets;
         this.registers = registers;
     }
 
     @Transactional
-    public Map<String, Object> promote(String storeKey, boolean forceEmptyOnly) {
+    public Map<String, Object> promote(String storeKey, long outletId, boolean forceEmptyOnly) {
+        if (storeKey == null || storeKey.isBlank() || outletId <= 0) {
+            throw new IllegalArgumentException("An enabled Shopfront mapping with a native outlet is required");
+        }
         ensureStaging();
         Map<String, Object> counts = new LinkedHashMap<>();
-        counts.put("company_settings", promoteCompanySettings(storeKey));
-        counts.put("tax_rates", promoteTaxRates(storeKey));
-        counts.put("payment_methods", promotePaymentMethods(storeKey));
-        counts.put("outlets", promoteOutlets(storeKey));
-        counts.put("registers", promoteRegisters(storeKey));
-        counts.put("enterprise", promoteJsonSetting(storeKey, "enterprise_policies", "enterprise."));
-        counts.put("push", promoteJsonSetting(storeKey, "push_notifications", "push."));
-        counts.put("dedupe", dedupeCatalogues());
-        companySettings.putOwned("settings.import.last_store_key", storeKey, "string");
-        companySettings.putOwned("settings.import.last_at", java.time.Instant.now().toString(), "string");
-        companySettings.putOwned("settings.import.force_empty_only", String.valueOf(forceEmptyOnly), "boolean");
+        counts.put("company_settings", 0);
+        counts.put("tax_rates", promoteTaxRates(storeKey, outletId));
+        counts.put("payment_methods", promotePaymentMethods(storeKey, outletId));
+        counts.put("outlets", 0);
+        counts.put("registers", promoteRegisters(storeKey, outletId));
+        counts.put("enterprise", 0);
+        counts.put("push", 0);
+        counts.put("dedupe", dedupeCatalogues(outletId));
         log.info("Settings import promote complete store={} counts={}", storeKey, counts);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
+        result.put("outlet_id", outletId);
         result.put("business_write", true);
-        result.put("overwrite_owned", false);
+        result.put("global_settings_imported", false);
+        result.put("force_empty_only", forceEmptyOnly);
         result.put("counts", counts);
         return result;
     }
 
-    /**
-     * Merge duplicate active tax rates / payment methods by case-insensitive name.
-     * Keeps the lowest id, reassigns FK references, then soft-deletes extras.
-     */
     @Transactional
-    public Map<String, Object> dedupeCatalogues() {
+    public Map<String, Object> dedupeCatalogues(long outletId) {
+        if (outletId <= 0) throw new IllegalArgumentException("outlet_id must be positive");
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("tax_rates_removed", dedupeTaxRates());
-        result.put("payment_methods_removed", dedupePaymentMethods());
+        result.put("tax_rates_removed", dedupeTaxRates(outletId));
+        result.put("payment_methods_removed", dedupePaymentMethods(outletId));
         return result;
     }
 
-    private int promoteCompanySettings(String storeKey) {
-        List<Map<String, Object>> rows = loadExtended(storeKey, "company_settings");
-        int written = 0;
-        for (Map<String, Object> row : rows) {
-            JsonNode raw = parseRaw(row.get("raw_payload"));
-            if (raw == null) continue;
-            if (raw.isObject() && raw.has("settings") && raw.get("settings").isObject()) {
-                raw = raw.get("settings");
-            }
-            if (!raw.isObject()) continue;
-            var fields = raw.fields();
-            while (fields.hasNext()) {
-                var entry = fields.next();
-                String key = entry.getKey();
-                if (key == null || key.isBlank()) continue;
-                String name = key.startsWith("company.") ? key : "company." + key;
-                String value = entry.getValue().isValueNode() ? entry.getValue().asText() : entry.getValue().toString();
-                if (companySettings.importIfEmpty(name, value, null)) {
-                    written++;
-                }
-            }
+    private int dedupeTaxRates(long outletId) {
+        Map<String, Long> keepers = new LinkedHashMap<>();
+        int removed = 0;
+        for (Map<String, Object> row : jdbc.queryForList(
+                "SELECT id, name FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL ORDER BY id", new Object[]{outletId})) {
+            Long id = longValue(row.get("id"));
+            String name = String.valueOf(row.getOrDefault("name", "")).trim();
+            if (id == null || name.isBlank()) continue;
+            Long keeper = keepers.putIfAbsent(normalizeName(name), id);
+            if (keeper == null) continue;
+            jdbc.update("UPDATE product SET tax_rate_id = ? WHERE outlet_id = ? AND tax_rate_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE product SET cost_tax_rate_id = ? WHERE outlet_id = ? AND cost_tax_rate_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE vendor SET default_tax_rate_id = ? WHERE outlet_id = ? AND default_tax_rate_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE sale_item SET tax_rate_id = ? WHERE outlet_id = ? AND tax_rate_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE tax_rate SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND outlet_id = ?", id, outletId);
+            removed++;
         }
-        for (Map<String, Object> row : loadExtended(storeKey, "settings")) {
-            JsonNode raw = parseRaw(row.get("raw_payload"));
-            if (raw == null || !raw.isObject()) continue;
-            String name = text(raw, "name");
-            String value = text(raw, "value");
-            if (name == null || value == null) continue;
-            if (!name.startsWith("company.") && !name.startsWith("enterprise.") && !name.startsWith("push.")) {
-                name = "company." + name;
-            }
-            if (companySettings.importIfEmpty(name, value, text(raw, "datatype"))) {
-                written++;
-            }
-        }
-        return written;
+        return removed;
     }
 
-    private int promoteTaxRates(String storeKey) {
+    private int dedupePaymentMethods(long outletId) {
+        Map<String, Long> keepers = new LinkedHashMap<>();
+        int removed = 0;
+        for (Map<String, Object> row : jdbc.queryForList(
+                "SELECT id, name FROM payment_method WHERE outlet_id = ? AND deleted_at IS NULL ORDER BY id", new Object[]{outletId})) {
+            Long id = longValue(row.get("id"));
+            String name = String.valueOf(row.getOrDefault("name", "")).trim();
+            if (id == null || name.isBlank()) continue;
+            Long keeper = keepers.putIfAbsent(normalizeName(name), id);
+            if (keeper == null) continue;
+            jdbc.update("UPDATE sale_payment SET payment_method_id = ? WHERE outlet_id = ? AND payment_method_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE customer_payment SET payment_method_id = ? WHERE outlet_id = ? AND payment_method_id = ?", keeper, outletId, id);
+            jdbc.update("UPDATE register_closure_payment SET payment_method_id = ? WHERE outlet_id = ? AND payment_method_id = ?", keeper, outletId, id);
+            jdbc.update("DELETE FROM register_payment_method source WHERE source.payment_method_id = ? AND source.outlet_id = ? AND EXISTS ("
+                    + "SELECT 1 FROM register_payment_method target WHERE target.register_id = source.register_id "
+                    + "AND target.outlet_id = source.outlet_id AND target.payment_method_id = ?)", id, outletId, keeper);
+            jdbc.update("UPDATE register_payment_method SET payment_method_id = ? WHERE payment_method_id = ? AND outlet_id = ?", keeper, id, outletId);
+            jdbc.update("UPDATE payment_method SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND outlet_id = ?", id, outletId);
+            removed++;
+        }
+        return removed;
+    }
+
+    private int promoteTaxRates(String storeKey, long outletId) {
         int written = 0;
         Set<String> seen = new HashSet<>();
-        for (TaxRate existing : taxRates.findAllActiveAsc()) {
-            if (existing.getName() != null) {
-                seen.add(normalizeName(existing.getName()));
-            }
-        }
+        for (String name : jdbc.queryForList(
+                "SELECT name FROM tax_rate WHERE deleted_at IS NULL AND outlet_id = ?", String.class, outletId))
+            if (name != null) seen.add(normalizeName(name));
         for (Map<String, Object> row : loadExtended(storeKey, "tax_rates")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
@@ -147,26 +140,26 @@ public class SettingsImportService {
             if (name == null || name.isBlank()) continue;
             String key = normalizeName(name);
             if (!seen.add(key)) continue;
-            if (taxRates.findByNameIgnoreCase(name) != null) continue;
             TaxRate t = new TaxRate();
             t.setName(name);
             t.setAmount(decimal(raw, "amount", raw.has("rate") ? raw.get("rate").decimalValue() : BigDecimal.TEN));
-            t.setIsDefault(bool(raw, "isDefault") || bool(raw, "default"));
-            t.setOutletId(1L);
+            boolean hasDefault = Boolean.TRUE.equals(jdbc.queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL AND is_default = TRUE)",
+                    Boolean.class, outletId));
+            t.setIsDefault(!hasDefault && (bool(raw, "isDefault") || bool(raw, "default")));
+            t.setOutletId(outletId);
             taxRates.insert(t);
             written++;
         }
         return written;
     }
 
-    private int promotePaymentMethods(String storeKey) {
+    private int promotePaymentMethods(String storeKey, long outletId) {
         int written = 0;
         Set<String> seen = new HashSet<>();
-        for (PaymentMethod existing : paymentMethods.findAllActiveAsc()) {
-            if (existing.getName() != null) {
-                seen.add(normalizeName(existing.getName()));
-            }
-        }
+        for (String name : jdbc.queryForList(
+                "SELECT name FROM payment_method WHERE deleted_at IS NULL AND outlet_id = ?", String.class, outletId))
+            if (name != null) seen.add(normalizeName(name));
         for (Map<String, Object> row : loadExtended(storeKey, "payment_methods")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
@@ -174,7 +167,6 @@ public class SettingsImportService {
             if (name == null || name.isBlank()) continue;
             String key = normalizeName(name);
             if (!seen.add(key)) continue;
-            if (paymentMethods.findByName(name) != null) continue;
             PaymentMethod p = new PaymentMethod();
             p.setName(name);
             p.setType(text(raw, "type") != null ? text(raw, "type") : "OTHER");
@@ -183,44 +175,20 @@ public class SettingsImportService {
             p.setAlwaysPrint(bool(raw, "alwaysPrint"));
             p.setUseRounding(bool(raw, "useRounding"));
             p.setDefaultPayExact(bool(raw, "defaultPayExact"));
-            p.setOutletId(1L);
+            p.setOutletId(outletId);
             paymentMethods.insert(p);
             written++;
         }
         return written;
     }
 
-    private int promoteOutlets(String storeKey) {
+    private int promoteRegisters(String storeKey, long outletId) {
         int written = 0;
         Set<String> seen = new HashSet<>();
-        List<Outlet> existing = outlets.findAll();
-        for (Outlet o : existing) {
-            if (o.getName() != null) seen.add(normalizeName(o.getName()));
-        }
-        for (Map<String, Object> row : loadExtended(storeKey, "outlets")) {
-            JsonNode raw = parseRaw(row.get("raw_payload"));
-            if (raw == null) continue;
-            String name = text(raw, "name");
-            if (name == null || name.isBlank()) continue;
-            if (!seen.add(normalizeName(name))) continue;
-            Outlet o = new Outlet();
-            o.setName(name);
-            o.setVendorId(1L);
-            outlets.insert(o);
-            written++;
-        }
-        return written;
-    }
-
-    private int promoteRegisters(String storeKey) {
-        int written = 0;
-        Set<String> seen = new HashSet<>();
-        List<Register> existing = registers.findAll();
+        List<Register> existing = registers.findByOutletId(outletId);
         for (Register r : existing) {
             if (r.getName() != null) seen.add(normalizeName(r.getName()));
         }
-        List<Outlet> outletList = outlets.findAll();
-        Long defaultOutletId = outletList.isEmpty() ? 1L : outletList.get(0).getId();
         for (Map<String, Object> row : loadExtended(storeKey, "registers")) {
             JsonNode raw = parseRaw(row.get("raw_payload"));
             if (raw == null) continue;
@@ -229,81 +197,12 @@ public class SettingsImportService {
             if (!seen.add(normalizeName(name))) continue;
             Register r = new Register();
             r.setName(name);
-            r.setOutletId(defaultOutletId);
+            r.setOutletId(outletId);
             r.setClosed(false);
             registers.insert(r);
             written++;
         }
         return written;
-    }
-
-    private int promoteJsonSetting(String storeKey, String entityType, String keyPrefix) {
-        int written = 0;
-        for (Map<String, Object> row : loadExtended(storeKey, entityType)) {
-            JsonNode raw = parseRaw(row.get("raw_payload"));
-            if (raw == null || !raw.isObject()) continue;
-            var fields = raw.fields();
-            while (fields.hasNext()) {
-                var entry = fields.next();
-                String key = entry.getKey();
-                if (key == null || key.isBlank()) continue;
-                String name = key.startsWith(keyPrefix) ? key : keyPrefix + key;
-                String value = entry.getValue().isValueNode() ? entry.getValue().asText() : entry.getValue().toString();
-                if (companySettings.importIfEmpty(name, value, null)) {
-                    written++;
-                }
-            }
-        }
-        return written;
-    }
-
-    private int dedupeTaxRates() {
-        Map<String, List<TaxRate>> groups = new LinkedHashMap<>();
-        for (TaxRate rate : taxRates.findAllActiveAsc()) {
-            if (rate.getName() == null || rate.getName().isBlank()) continue;
-            groups.computeIfAbsent(normalizeName(rate.getName()), ignored -> new ArrayList<>()).add(rate);
-        }
-        int removed = 0;
-        for (List<TaxRate> group : groups.values()) {
-            if (group.size() < 2) continue;
-            Long keeper = group.get(0).getId();
-            for (int i = 1; i < group.size(); i++) {
-                Long source = group.get(i).getId();
-                if (source == null || source.equals(keeper)) continue;
-                taxRates.reassignProductTaxRate(keeper, source);
-                taxRates.reassignProductCostTaxRate(keeper, source);
-                taxRates.reassignVendorDefaultTaxRate(keeper, source);
-                taxRates.reassignSaleItemTaxRate(keeper, source);
-                taxRates.softDelete(source);
-                removed++;
-            }
-        }
-        return removed;
-    }
-
-    private int dedupePaymentMethods() {
-        Map<String, List<PaymentMethod>> groups = new LinkedHashMap<>();
-        for (PaymentMethod method : paymentMethods.findAllActiveAsc()) {
-            if (method.getName() == null || method.getName().isBlank()) continue;
-            groups.computeIfAbsent(normalizeName(method.getName()), ignored -> new ArrayList<>()).add(method);
-        }
-        int removed = 0;
-        for (List<PaymentMethod> group : groups.values()) {
-            if (group.size() < 2) continue;
-            Long keeper = group.get(0).getId();
-            for (int i = 1; i < group.size(); i++) {
-                Long source = group.get(i).getId();
-                if (source == null || source.equals(keeper)) continue;
-                paymentMethods.reassignSalePayment(keeper, source);
-                paymentMethods.reassignCustomerPayment(keeper, source);
-                paymentMethods.reassignRegisterClosurePayment(keeper, source);
-                paymentMethods.dropConflictingRegisterAssignments(keeper, source);
-                paymentMethods.reassignRegisterPaymentMethod(keeper, source);
-                paymentMethods.softDelete(source);
-                removed++;
-            }
-        }
-        return removed;
     }
 
     private List<Map<String, Object>> loadExtended(String storeKey, String entityType) {
@@ -339,6 +238,12 @@ public class SettingsImportService {
 
     private static String normalizeName(String name) {
         return name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static Long longValue(Object value) {
+        if (value instanceof Number number) return number.longValue();
+        try { return value == null ? null : Long.parseLong(String.valueOf(value)); }
+        catch (NumberFormatException ignored) { return null; }
     }
 
     private static String text(JsonNode node, String field) {

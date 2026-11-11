@@ -45,7 +45,7 @@ class InvoiceScanSessionMapperTest {
         Map<String, Object> params = new HashMap<>();
         params.put("vendorId", 42L);
         params.put("invoiceNumber", "INV-1");
-        params.put("odooSupplierId", null);
+        params.put("supplierId", null);
         params.put("supplierAbn", null);
         PreparedStatement statement = bind("findDuplicateIds", params);
         verify(statement, atLeastOnce()).setNull(anyInt(), eq(Types.BIGINT));

@@ -28,7 +28,7 @@ public class AiCommandParser {
     private static final PromptVersion PROMPT = new PromptVersion("ai-command-parser", "v1", "");
     private static final Set<String> CONTROL_KEYS = Set.of(
             "tenantid", "tenant_id", "vendorid", "vendor_id", "outletid", "outlet_id", "userid", "user_id",
-            "sql", "model", "odoomodel", "odoo_model", "apipath", "api_path");
+            "sql", "model", "apipath", "api_path");
     private static final Set<String> PRODUCT_FIELDS = Set.of("name", "barcode", "category", "tag");
     private static final Set<String> CUSTOMER_FIELDS = Set.of("name", "phone", "email", "address", "group");
 
@@ -50,7 +50,7 @@ public class AiCommandParser {
         String input = "Return JSON only for this schema: {type, confidence, summary, items, changes, excluded}. "
                 + "Allowed type values: UPDATE_PRODUCT, UPDATE_CUSTOMER, PREVIEW_PRICE_CHANGE, "
                 + "PREVIEW_REPLENISHMENT. Each item may contain only id, name, field, before, after, reason, status. "
-                + "Do not return tenant IDs, outlet IDs, SQL, API paths, Odoo model names, or credentials. "
+                + "Do not return tenant IDs, outlet IDs, SQL, API paths, internal model names, or credentials. "
                 + "Resolve no record and perform no action. User request: " + normalized;
         AiCompletion<JsonNode> completion;
         try {

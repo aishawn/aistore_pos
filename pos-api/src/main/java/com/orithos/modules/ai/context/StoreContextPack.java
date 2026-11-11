@@ -7,7 +7,7 @@ import java.util.Map;
 
 /**
  * Server-assembled store framing for classify/respond. Never accept vendor/outlet
- * from the model — pack fields come from JWT + vendor/Odoo metadata only.
+ * from the model — pack fields come from JWT and vendor metadata only.
  */
 public record StoreContextPack(
         long vendorId,

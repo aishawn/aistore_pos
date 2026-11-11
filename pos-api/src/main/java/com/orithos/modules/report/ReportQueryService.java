@@ -31,10 +31,29 @@ public class ReportQueryService {
 
     public record Period(LocalDateTime from, LocalDateTime toExclusive) {}
 
+    /**
+     * Shopfront sales-report parity: COMPLETED plus Shopfront INCOMPLETE
+     * (imported as PARKED). Local cashier parked carts stay excluded.
+     */
+    static final String REPORTABLE_SALE_STATUS_SQL =
+            "(s.status = 'COMPLETED' OR (s.status = 'PARKED' AND s.source_system = 'shopfront'))";
+
     private final JdbcTemplate jdbc;
 
     public ReportQueryService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    /** Same rule as {@link #REPORTABLE_SALE_STATUS_SQL} for unit tests. */
+    static boolean isReportableSale(String status, String sourceSystem) {
+        if (status == null || status.isBlank()) {
+            return false;
+        }
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if ("COMPLETED".equals(normalized)) {
+            return true;
+        }
+        return "PARKED".equals(normalized) && "shopfront".equalsIgnoreCase(sourceSystem);
     }
 
     public Period defaultPeriod(Grain grain) {
@@ -62,7 +81,7 @@ public class ReportQueryService {
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id
                   GROUP BY si.sale_id
                 ) line ON line.sale_id = s.id
-                WHERE s.status = 'COMPLETED'
+                WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) = ?
                 """, outletId, sqlDate(day));
@@ -93,7 +112,7 @@ public class ReportQueryService {
                        COALESCE(SUM(s.total_tax), 0) AS tax
                 FROM sale s
                 WHERE s.outlet_id = ?
-                  AND s.status = 'COMPLETED'
+                  AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
@@ -146,7 +165,7 @@ public class ReportQueryService {
                   FROM sale_item si
                   WHERE si.sale_id = s.id AND si.outlet_id = s.outlet_id
                 ) line ON TRUE
-                WHERE s.outlet_id = ? AND s.status = 'COMPLETED'
+                WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
@@ -161,7 +180,7 @@ public class ReportQueryService {
                        COALESCE(SUM(si.quantity), 0) AS quantity
                 FROM sale s JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                 LEFT JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id
-                WHERE s.outlet_id = ? AND s.status = 'COMPLETED'
+                WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
@@ -296,7 +315,7 @@ public class ReportQueryService {
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id
                   GROUP BY si.sale_id
                 ) line ON line.sale_id = s.id
-                WHERE s.status = 'COMPLETED'
+                WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?
@@ -324,7 +343,7 @@ public class ReportQueryService {
                   LEFT JOIN product_cost pc ON pc.product_id = si.product_id AND pc.outlet_id = si.outlet_id
                   GROUP BY si.sale_id
                 ) line ON line.sale_id = s.id
-                WHERE s.status = 'COMPLETED'
+                WHERE """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND s.outlet_id = ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) >= ?
                   AND COALESCE(s.business_date, DATE(s.local_sold_at), DATE(s.created_at)) <= ?

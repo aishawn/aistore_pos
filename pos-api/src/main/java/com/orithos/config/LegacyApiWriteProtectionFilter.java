@@ -18,13 +18,12 @@ import java.io.IOException;
 import java.util.Set;
 
 /**
- * Fail closed for the old PostgreSQL POS API when a deployment is Odoo-only.
- * Odoo routes are served by the Next BFF and are not affected. This prevents
- * unscoped reference controllers from becoming a second writable tenant store.
+ * Fail closed for legacy Classic POS routes while Orithos-native APIs are live.
+ * This prevents unscoped reference controllers from becoming a second writable tenant store.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
-public final class OdooOnlyModeFilter extends OncePerRequestFilter {
+public final class LegacyApiWriteProtectionFilter extends OncePerRequestFilter {
     private static final Set<String> LEGACY_PREFIXES = Set.of(
             "/api/barcode-templates", "/api/bulk-price-edit", "/api/buying-periods",
             "/api/capped-pricing", "/api/classifications", "/api/customer-displays",
@@ -39,13 +38,13 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             "/api/sale-keys", "/api/sales", "/api/security-events", "/api/settings",
             "/api/shelf-tickets", "/api/statements", "/api/stock-list", "/api/stocktakes",
             "/api/suppliers", "/api/supply-chain", "/api/tax-rates", "/api/ticket-template-pages",
-            "/api/ticket-templates", "/api/transferees", "/api/trashed-items",
+            "/api/ticket-templates", "/api/transferees", "/api/trashed-items", "/api/pos/v1",
             "/api/vendor-connections", "/api/webhooks");
 
     private final boolean enabled;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public OdooOnlyModeFilter(@Value("${app.odoo-only-mode:false}") boolean enabled) {
+    public LegacyApiWriteProtectionFilter(@Value("${app.native-pos-only-mode:true}") boolean enabled) {
         this.enabled = enabled;
     }
 
@@ -57,8 +56,11 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             response.setStatus(HttpServletResponse.SC_GONE);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding("UTF-8");
+            String message = request.getRequestURI().startsWith("/api/pos/v1")
+                    ? "The Odoo-backed POS API is retired. Use the Orithos store APIs."
+                    : "This Classic POS API route is retired.";
             response.getWriter().write(objectMapper.writeValueAsString(
-            ApiResult.fail(41001, "This Classic POS API route is retired.")));
+                    ApiResult.fail(41001, message)));
             return;
         }
         chain.doFilter(request, response);
@@ -111,8 +113,8 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
         if ("PUT".equalsIgnoreCase(method) && path.matches("/api/register-closures/[0-9]+/note")) {
             return false;
         }
-        // Shopfront is an isolated, token-authenticated staging boundary. It
-        // never writes Odoo or Classic POS business tables.
+        // Shopfront imports have dedicated token-authenticated handlers rather
+        // than the legacy Classic API's general write surface.
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {
             return false;
         }

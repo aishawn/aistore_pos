@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,5 +101,32 @@ class InvoiceScanSessionServiceTest {
         request.setStatus("failed");
         service.linkPurchase(7L, request);
         verify(mapper).update(any(InvoiceScanSessionEntity.class));
+    }
+
+    @Test
+    void createRejectsSupplierOutsideCurrentVendor() {
+        InvoiceScanSessionDtos.SaveRequest request = new InvoiceScanSessionDtos.SaveRequest();
+        request.setSupplierId(901L);
+
+        when(mapper.supplierBelongsToVendor(901L, 42L)).thenReturn(false);
+        assertThrows(BusinessException.class, () -> service.create(request));
+        verify(mapper, never()).insert(any(InvoiceScanSessionEntity.class));
+    }
+
+    @Test
+    void linkPurchaseRejectsOrderOutsideCurrentVendor() {
+        InvoiceScanSessionEntity stored = new InvoiceScanSessionEntity();
+        stored.setId(8L);
+        stored.setVendorId(42L);
+        stored.setStatus("matched");
+        when(mapper.findOwned(8L, 42L)).thenReturn(stored);
+        when(mapper.purchaseOrderBelongsToVendor(902L, 42L)).thenReturn(false);
+
+        InvoiceScanSessionDtos.LinkPurchaseRequest request = new InvoiceScanSessionDtos.LinkPurchaseRequest();
+        request.setPurchaseOrderId(902L);
+        request.setStatus("po_created");
+
+        assertThrows(BusinessException.class, () -> service.linkPurchase(8L, request));
+        verify(mapper, never()).update(any(InvoiceScanSessionEntity.class));
     }
 }

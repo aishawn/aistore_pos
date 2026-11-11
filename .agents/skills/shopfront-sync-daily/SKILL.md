@@ -1,15 +1,16 @@
 ---
 name: shopfront-sync-daily
-description: Queue and monitor the daily incremental Shopfront sync, including sales overlap, catalog checkpoints, inventory refresh, and optional supply-chain mirroring.
+description: Queue and verify a scheduled or on-demand Shopfront sync, including source freshness, catalog/inventory checkpoints, sales overlap, and SKR/Demo Orithos parity.
 ---
 
 # Shopfront Daily Sync
 
-Use the persistent `sync_jobs` queue. The scheduled run is 02:00 `Australia/Adelaide` and rechecks the recent completed business-day window.
+Use the persistent `sync_jobs` queue. Syncs may run multiple times per day. Read the current crawler configuration for the active schedule and source filters; do not rely on an old fixed schedule or start a duplicate job.
 
-1. Inspect `/api/sync/status?store=skr` and avoid a second active job.
-2. Queue with `POST /shopfront-sync-daily?store=skr` or `POST /api/stores/skr/sync`.
-3. Poll status until a terminal state, then inspect `/api/sync/runs`, `/shopfront-audit`, and `/shopfront-reconcile` for each affected date.
-4. Confirm the catalog checkpoint moved only after a successful source read and downstream mirror acknowledgement.
+1. Inspect `/api/sync/status?store=skr` and `?store=demo`; avoid a duplicate job for either store.
+2. Queue the requested store with `POST /shopfront-sync-daily?store=...` or the documented `/api/stores/{store}/sync` route.
+3. Poll both relevant jobs until terminal states, then inspect `/api/sync/runs`, `/shopfront-audit`, and `/shopfront-reconcile` for each affected business date.
+4. Confirm source reads, catalog/inventory checkpoints, and downstream Orithos acknowledgements completed; a queued or partial job is not success.
+5. Compare stable source IDs, counts, key fields, and samples between Shopfront/crawler and Orithos APIs for both stores. Check the read-only store pages for the same records and report every mismatch.
 
-The first catalog run is full. Later runs use Shopfront `updatedAfter` and `lastStocktakedAfter` filters and merge changed product IDs. If either filter is unsupported or fails, retain the previous checkpoint and report the failure. Supplier and purchase-order syncing requires `see_suppliers`, `see_stock_management`, `SHOPFRONT_ENABLE_SUPPLY_CHAIN=true`, and fresh OAuth authorization; it remains a read-only shadow mirror. Do not call queued as completed or write formal Odoo purchases as part of this skill.
+The first catalog run may be full; later runs use the crawler's supported Shopfront change filters and checkpoint semantics. If a filter or source read fails, retain the prior complete checkpoint and report the failure. Supplier and purchase-order mirror coverage depends on Shopfront scopes and crawler configuration; verify those before declaring completeness. Shopfront is read-only: never use Register. Do not call queued as completed, invent missing business data, or write to Odoo.

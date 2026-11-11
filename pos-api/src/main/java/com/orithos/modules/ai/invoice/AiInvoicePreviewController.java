@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Odoo-safe invoice OCR preview. It does not resolve or write supplier, product, or stock records. */
+/** Invoice OCR preview. It does not resolve or write supplier, product, or stock records. */
 @RestController
 @RequestMapping("/api/ai/invoice")
 public class AiInvoicePreviewController {

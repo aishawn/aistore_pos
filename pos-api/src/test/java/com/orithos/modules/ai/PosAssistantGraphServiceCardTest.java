@@ -200,16 +200,16 @@ class PosAssistantGraphServiceCardTest {
                 "You do not have permission to query the live product total.").getFirst();
         AssistantCard unlinked = PosAssistantGraphService.cardsFor(
                 "product_count", new UiAction("products", "products", "/products", "navigate"),
-                "This store is not connected to Odoo.").getFirst();
+                "This store is not connected to the Orithos service.").getFirst();
         AssistantCard notConfigured = PosAssistantGraphService.cardsFor(
                 "product_count", new UiAction("products", "products", "/products", "navigate"),
-                "Odoo is not configured for this store.").getFirst();
+                "Orithos is not configured for this store.").getFirst();
         AssistantCard notConfiguredChinese = PosAssistantGraphService.cardsFor(
                 "product_count", new UiAction("products", "products", "/products", "navigate"),
-                "当前门店尚未配置 Odoo。", "商品总数").getFirst();
+                "当前门店尚未配置 Orithos。", "商品总数").getFirst();
         AssistantCard notConfiguredEnglishForChineseQuestion = PosAssistantGraphService.cardsFor(
                 "product_count", new UiAction("products", "products", "/products", "navigate"),
-                "Odoo is not configured for this store.", "商品总数").getFirst();
+                "Orithos is not configured for this store.", "商品总数").getFirst();
         AssistantCard transientFailure = PosAssistantGraphService.cardsFor(
                 "product_count", new UiAction("products", "products", "/products", "navigate"),
                 "Live product count is unavailable right now. Please retry.").getFirst();
@@ -220,10 +220,10 @@ class PosAssistantGraphServiceCardTest {
         assertEquals(false, notConfigured.retryable());
         assertEquals("unavailable", notConfiguredChinese.status());
         assertEquals(false, notConfiguredChinese.retryable());
-        assertEquals("当前门店尚未配置 Odoo，请联系管理员完成配置。", notConfiguredChinese.summary());
+        assertEquals("当前门店尚未配置此功能，请联系管理员完成配置。", notConfiguredChinese.summary());
         assertEquals("unavailable", notConfiguredEnglishForChineseQuestion.status());
         assertEquals(false, notConfiguredEnglishForChineseQuestion.retryable());
-        assertEquals("当前门店尚未配置 Odoo，请联系管理员完成配置。",
+        assertEquals("当前门店尚未配置此功能，请联系管理员完成配置。",
                 notConfiguredEnglishForChineseQuestion.summary());
         assertEquals("/products", notConfigured.cta().route());
         assertEquals("/products", notConfiguredChinese.cta().route());
@@ -483,7 +483,7 @@ class PosAssistantGraphServiceCardTest {
                 Map.entry("/invoices", "Open supplier invoices"),
                 Map.entry("/invoices/scan", "Open supplier invoices"),
                 Map.entry("/invoices/new", "Scan supplier invoice"),
-                Map.entry("/suppliers/odoo", "Open suppliers"));
+                Map.entry("/suppliers", "Open suppliers"));
 
         routeLabels.forEach((route, label) -> {
             AssistantCard card = PosAssistantGraphService.cardsFor(

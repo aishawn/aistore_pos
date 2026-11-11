@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { clearOdooReadCache } from "@/lib/odoo-read-cache";
+import { clearNativeReadCache } from "@/lib/native-read-cache";
 import { fetchShopfrontSyncStamp, readShopfrontSyncStamp } from "@/lib/shopfront-sync-stamp";
 
 export function useShopfrontSyncRefresh(onSync: () => void) {
@@ -14,7 +14,7 @@ export function useShopfrontSyncRefresh(onSync: () => void) {
     const refresh = (stamp: number) => {
       if (!Number.isFinite(stamp) || stamp <= 0 || (seenStamp.current !== null && stamp <= seenStamp.current)) return;
       seenStamp.current = stamp;
-      clearOdooReadCache();
+      clearNativeReadCache();
       callback.current();
     };
     const onSync = (event: Event) => {

@@ -1,5 +1,5 @@
 "use client";
-import { clearOdooReadCache } from "@/lib/odoo-read-cache";
+import { clearNativeReadCache } from "@/lib/native-read-cache";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -51,7 +51,7 @@ const PAGE_SIZE = 40;
 const INVENTORY_COLUMNS = [
   { key: "product", label: "Product" }, { key: "category", label: "Category" }, { key: "cost", label: "Cost" },
   { key: "barcode", label: "Barcode" }, { key: "sku", label: "SKU" },
-  { key: "quantity", label: "Inventory" }, { key: "odoo_quantity", label: "Odoo inventory" }, { key: "unit", label: "Unit" },
+  { key: "quantity", label: "Inventory" }, { key: "odoo_quantity", label: "Orithos inventory" }, { key: "unit", label: "Unit" },
   { key: "price", label: "Sale price" }, { key: "pos", label: "POS" },
 ] as const;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
@@ -68,7 +68,7 @@ function ShopfrontCostDetails({ product, showOdooCost = true }: { product: OdooP
     {sourceCost !== null && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]" title="Shopfront source cost; tax basis is source-reported">Shopfront {money(sourceCost)}{caseQuantity ? ` / pack ${quantity(caseQuantity)}` : " · unit basis unknown"}</span>}
     {product.shopfront_data_status === "available" && <span className="mt-0.5 block text-[11px] text-[var(--oh-text-secondary)]">Shopfront · Purchase tax (effective) {product.shopfront_purchase_tax_rate || "Unavailable"} · Retail tax {product.shopfront_retail_tax_rate || "Unavailable"}</span>}
     {sourceCost !== null && caseQuantity && caseQuantity > 1 && <span className="block text-[11px] text-amber-800">Per item from box cost ÷ pack size</span>}
-    {showOdooCost && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Odoo recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>}
+    {showOdooCost && <span className="mt-1 block text-[11px] text-[var(--oh-muted)]">Orithos recorded {odooCost === null ? "unavailable" : money(odooCost)}</span>}
   </>;
 }
 
@@ -370,7 +370,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   }
 
   function downloadInventoryCsv(products: OdooProductRecord[]) {
-    const labels: Record<string, string> = { product: "Product", category: "Category", cost: "Shopfront source cost", barcode: "Barcode", sku: "SKU", quantity: "Shopfront inventory", odoo_quantity: "Odoo inventory", unit: "Unit", price: "Odoo sale price (AUD)", pos: "POS" };
+    const labels: Record<string, string> = { product: "Product", category: "Category", cost: "Shopfront source cost", barcode: "Barcode", sku: "SKU", quantity: "Shopfront inventory", odoo_quantity: "Orithos inventory", unit: "Unit", price: "Orithos sale price (AUD)", pos: "POS" };
     const cell = (value: string | number) => {
       const text = String(value);
       const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
@@ -729,7 +729,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         <div className="print:hidden flex w-full items-center justify-end gap-2 sm:w-auto">
           {inventoryReport && <Link href="/products" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><PackageSearch size={16} /><span>Products</span></Link>}
           {!inventoryReport && <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>}
-          <button type="button" onClick={() => { clearOdooReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
+          <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
           {inventoryReport && hasPermission("stock.products.view") && <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy || loading} aria-label="Export all matching inventory rows to CSV" title="Export all matching inventory rows" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white disabled:opacity-50">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}</button>}
@@ -846,7 +846,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   {inventoryReport && inventoryColumns.includes("sku") && <th scope="col" className="px-4 py-3">SKU</th>}
                   {(!inventoryReport || inventoryColumns.includes("cost")) && <th scope="col" className="px-4 py-3">Cost</th>}
                   {inventoryColumns.includes("quantity") && sortHeader(inventoryReport ? "shopfront_quantity" : "qty_available", inventoryReport ? "Shopfront inventory" : "Inventory")}
-                  {inventoryReport && inventoryColumns.includes("odoo_quantity") && sortHeader("qty_available", "Odoo inventory")}
+                  {inventoryReport && inventoryColumns.includes("odoo_quantity") && sortHeader("qty_available", "Orithos inventory")}
                   {inventoryReport && inventoryColumns.includes("unit") && <th scope="col" className="px-4 py-3">Unit</th>}
                   {inventoryColumns.includes("price") && sortHeader("price_included", inventoryReport ? "Odoo sale price · AUD" : "Price")}
                   {inventoryReport && inventoryColumns.includes("pos") && <th scope="col" className="px-4 py-3">POS</th>}

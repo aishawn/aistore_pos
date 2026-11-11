@@ -12,15 +12,6 @@ import java.util.List;
 @Mapper
 public interface VendorMapper {
 
-    @Select("""
-            SELECT * FROM vendor
-            WHERE outlet_id IS NOT NULL
-              AND odoo_company_id IS NOT NULL
-              AND odoo_provision_status = 'ready'
-            ORDER BY id
-            """)
-    List<Vendor> readyOdooBindings();
-
     @Select("SELECT * FROM vendor WHERE id = #{id}")
     Vendor findById(Long id);
 
@@ -88,19 +79,6 @@ public interface VendorMapper {
                                    @Param("trialEndsAt") java.time.LocalDateTime trialEndsAt,
                                    @Param("nextStatus") String nextStatus,
                                    @Param("currentStatus") String currentStatus);
-
-    @Update("""
-            UPDATE vendor SET
-              odoo_company_id=#{odooCompanyId},
-              odoo_pos_config_id=#{odooPosConfigId},
-              odoo_warehouse_id=#{odooWarehouseId},
-              odoo_stock_location_id=#{odooStockLocationId},
-              odoo_provision_status=#{odooProvisionStatus},
-              odoo_provision_error=#{odooProvisionError},
-              r2_prefix=#{r2Prefix}
-            WHERE id=#{id}
-            """)
-    int updateOdooBinding(Vendor vendor);
 
     @Update("""
             UPDATE vendor SET

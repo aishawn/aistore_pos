@@ -20,8 +20,8 @@ public final class InvoiceScanSessionDtos {
         private BigDecimal qtyCases;
         private BigDecimal unitPrice;
         private BigDecimal lineTotal;
-        private Long odooProductId;
-        private String odooProductName;
+        private Long productId;
+        private String productName;
         private String matchStatus;
         private BigDecimal confidence;
     }
@@ -38,8 +38,8 @@ public final class InvoiceScanSessionDtos {
         private LocalDate dueDate;
         private BigDecimal totalPayable;
         private BigDecimal gstIncluded;
-        private Long odooSupplierId;
-        private Long odooOutletId;
+        private Long supplierId;
+        private Long outletId;
         private String notes;
         private String internalNotes;
         private List<LineInput> lines = new ArrayList<>();
@@ -54,8 +54,8 @@ public final class InvoiceScanSessionDtos {
         private LocalDate dueDate;
         private BigDecimal totalPayable;
         private BigDecimal gstIncluded;
-        private Long odooSupplierId;
-        private Long odooOutletId;
+        private Long supplierId;
+        private Long outletId;
         private String notes;
         private String internalNotes;
         private List<LineInput> lines;
@@ -63,10 +63,10 @@ public final class InvoiceScanSessionDtos {
 
     @Data
     public static class LinkPurchaseRequest {
-        private Long odooPoId;
-        private String odooPoName;
-        private Long odooPickingId;
-        private String odooPickingName;
+        private Long purchaseOrderId;
+        private String purchaseOrderName;
+        private Long receiptId;
+        private String receiptName;
         private String status;
     }
 
@@ -80,8 +80,8 @@ public final class InvoiceScanSessionDtos {
         private BigDecimal qtyCases;
         private BigDecimal unitPrice;
         private BigDecimal lineTotal;
-        private Long odooProductId;
-        private String odooProductName;
+        private Long productId;
+        private String productName;
         private String matchStatus;
         private BigDecimal confidence;
     }
@@ -98,12 +98,12 @@ public final class InvoiceScanSessionDtos {
         private LocalDate dueDate;
         private BigDecimal totalPayable;
         private BigDecimal gstIncluded;
-        private Long odooSupplierId;
-        private Long odooOutletId;
-        private Long odooPoId;
-        private String odooPoName;
-        private Long odooPickingId;
-        private String odooPickingName;
+        private Long supplierId;
+        private Long outletId;
+        private Long purchaseOrderId;
+        private String purchaseOrderName;
+        private Long receiptId;
+        private String receiptName;
         private String sourceFilename;
         private String sourceContentType;
         private String notes;

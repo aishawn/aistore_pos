@@ -3,9 +3,9 @@ info:
   title: Orithos POS API
   version: 1.0.0
   description: >-
-    Odoo-backed, tenant-scoped API. Batch writes support sales, validated
-    full-sale refunds, stock counts, and draft purchase orders. Each write is
-    feature-gated, asynchronous, idempotent, and isolated to the vendor company.
+    RETIRED. Every request to this API returns HTTP 410 Gone. This former
+    ERP-backed API is no longer available. Use authenticated, tenant-scoped
+    Orithos APIs documented by the active application OpenAPI specification.
 servers:
   - url: https://{storeHost}/api/pos/v1
     variables:
@@ -64,13 +64,13 @@ paths:
           name: limit
           schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
       responses:
-        '200': { description: Tenant-scoped Odoo records }
+        '200': { description: Tenant-scoped records }
         '401': { description: Missing, expired, or revoked API token }
         '403': { description: Missing scope or tenant mismatch }
-        '502': { description: Odoo read failed }
+        '502': { description: Orithos API request failed }
   /{resource}/{id}:
     get:
-      summary: Get a supported Odoo record; sale details include refund line data
+      summary: Get a supported record; sale details include refund line data
       parameters:
         - in: path
           name: resource
@@ -81,19 +81,19 @@ paths:
           required: true
           schema: { type: integer, minimum: 1 }
       responses:
-        '200': { description: Tenant-scoped Odoo record }
+        '200': { description: Tenant-scoped record }
         '404': { description: Record not found }
   /sales:quote:
     post:
-      summary: Request an Odoo-backed sale quote
+      summary: Request a sale quote
       responses:
         '200': { description: Quote response }
         '400': { description: Invalid quote request }
-        '502': { description: Odoo quote failed }
+        '502': { description: Quote request failed }
   /{resource}:batch:
     post:
       summary: Submit a feature-gated batch operation
-      description: Sales (including validated full-sale refunds), inventory counts, and draft purchase orders. Server flags control writes per deployment. Every purchase line requires numeric, non-negative unitCost mapped to Odoo price_unit; costs are never inferred. Purchase writes create drafts and do not receive stock.
+      description: Sales (including validated full-sale refunds), inventory counts, and draft purchase orders. Server flags control writes per deployment. Every purchase line requires numeric, non-negative unitCost; costs are never inferred. Purchase writes create drafts and do not receive stock.
       parameters:
         - in: path
           name: resource
@@ -138,7 +138,7 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: Operation status and item results. Reconcile an unknown outcome in Odoo before retrying; completed_with_errors means some records failed.
+          description: Operation status and item results. Reconcile an unknown outcome in Orithos before retrying; completed_with_errors means some records failed.
           content:
             application/json:
               schema:
@@ -219,7 +219,7 @@ components:
               unitCost:
                 type: number
                 minimum: 0
-                description: Required for every purchase line; maps to Odoo purchase.order.line.price_unit.
+                description: Required for every purchase line; maps to the Orithos purchase line unit cost.
   securitySchemes:
     bearerAuth:
       type: http

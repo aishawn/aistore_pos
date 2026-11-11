@@ -232,8 +232,8 @@ public class PosAssistantGraphService {
                 || lower.contains("not available") || lower.contains("不可用")
                 || lower.contains("无法取得") || lower.contains("无法获取")
                 || lower.contains("暂时无法") || lower.contains("无法查询")
-                || lower.contains("not configured") || lower.contains("尚未配置 odoo")
-                || lower.contains("未配置 odoo")
+                || lower.contains("not configured")
+                || lower.contains("尚未配置 orithos") || lower.contains("未配置 orithos")
                 || lower.contains("请先登录") || lower.contains("尚未绑定")
                 || lower.contains("未绑定门店") || lower.contains("sign in")
                 || lower.contains("not bound") || lower.contains("permission")
@@ -273,7 +273,7 @@ public class PosAssistantGraphService {
         List<Map<String, Object>> items = unavailable || empty ? List.of() : cardItems(type, answer);
         String unavailableReason = unavailableReason(type, text, chinese);
         String source = "sommelier".equals(type) || "recommend".equals(type) ? "catalogue"
-                : "guided_action".equals(type) ? "assistant" : "odoo";
+                : "guided_action".equals(type) ? "assistant" : "orithos";
         String ctaLabel = cardCtaLabel(type, routeTarget, chinese);
         String emptySummary = "product_count".equals(type)
                 ? productCountSummary(text) : emptyReason(type, chinese);
@@ -301,14 +301,12 @@ public class PosAssistantGraphService {
         return lower.contains("permission") || lower.contains("no access")
                 || lower.contains("sign in") || lower.contains("not bound")
                 || lower.contains("not connected") || lower.contains("not linked")
-                || lower.contains("not configured") || lower.contains("尚未配置 odoo")
-                || lower.contains("未配置 odoo")
+                || lower.contains("not configured")
+                || lower.contains("尚未配置 orithos") || lower.contains("未配置 orithos")
                 || answer != null && (answer.contains("没有权限") || answer.contains("无权限")
                 || answer.contains("权限不足") || answer.contains("无法访问")
                 || answer.contains("请先登录") || answer.contains("尚未绑定")
-                || answer.contains("未绑定门店") || answer.contains("尚未连接")
-                || answer.contains("未连接 Odoo") || answer.contains("尚未配置 Odoo")
-                || answer.contains("未配置 Odoo"));
+                || answer.contains("未绑定门店") || answer.contains("尚未连接"));
     }
 
     public static List<AssistantCard> cardsForHistory(String intent, String answer, String question) {
@@ -349,9 +347,8 @@ public class PosAssistantGraphService {
                 || text.contains("权限不足") || text.contains("无法访问")) {
             return "当前账号没有权限查询此数据，请联系管理员或检查门店权限。";
         }
-        if (lower.contains("not configured") || lower.contains("尚未配置 odoo")
-                || lower.contains("未配置 odoo")) {
-            return "当前门店尚未配置 Odoo，请联系管理员完成配置。";
+        if (lower.contains("not configured") || lower.contains("尚未配置 orithos") || lower.contains("未配置 orithos")) {
+            return "当前门店尚未配置此功能，请联系管理员完成配置。";
         }
         if (lower.contains("sign in") || lower.contains("not bound")
                 || text.contains("请先登录") || text.contains("尚未绑定") || text.contains("未绑定门店")) {
@@ -438,7 +435,7 @@ public class PosAssistantGraphService {
                 case "/stocktake" -> "打开库存盘点";
                 case "/invoices", "/invoices/scan" -> "打开供应商发票";
                 case "/invoices/new" -> "扫描供应商发票";
-                case "/suppliers/odoo" -> "打开供应商";
+                case "/suppliers" -> "打开供应商";
                 case "/" -> "打开工作区";
                 default -> "打开业务页面";
             };
@@ -459,7 +456,7 @@ public class PosAssistantGraphService {
             case "/invoices" -> "Open supplier invoices";
             case "/invoices/scan" -> "Open supplier invoices";
             case "/invoices/new" -> "Scan supplier invoice";
-            case "/suppliers/odoo" -> "Open suppliers";
+            case "/suppliers" -> "Open suppliers";
             case "/" -> "Open workspace";
             default -> "Open workflow";
         };

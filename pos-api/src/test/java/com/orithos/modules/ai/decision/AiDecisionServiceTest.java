@@ -1,9 +1,9 @@
 package com.orithos.modules.ai.decision;
 
 import com.orithos.common.BusinessException;
-import com.orithos.modules.ai.pricing.OdooPriceSuggestionClient;
+import com.orithos.modules.ai.pricing.NativePriceSuggestionService;
 import com.orithos.modules.ai.report.TenantContext;
-import com.orithos.modules.ai.replenishment.OdooReplenishmentClient;
+import com.orithos.modules.ai.replenishment.NativeReplenishmentService;
 import com.orithos.security.PermissionAccess;
 import org.junit.jupiter.api.Test;
 
@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiDecisionServiceTest {
-    private final OdooPriceSuggestionClient pricing = mock(OdooPriceSuggestionClient.class);
-    private final OdooReplenishmentClient replenishment = mock(OdooReplenishmentClient.class);
+    private final NativePriceSuggestionService pricing = mock(NativePriceSuggestionService.class);
+    private final NativeReplenishmentService replenishment = mock(NativeReplenishmentService.class);
     private final AiDecisionRepository repository = mock(AiDecisionRepository.class);
     private final PermissionAccess permissions = mock(PermissionAccess.class);
     private final AiDecisionService service = new AiDecisionService(pricing, replenishment, repository, permissions);

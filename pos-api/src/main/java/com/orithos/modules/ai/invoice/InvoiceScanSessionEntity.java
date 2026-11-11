@@ -20,12 +20,12 @@ public class InvoiceScanSessionEntity {
     private LocalDate dueDate;
     private BigDecimal totalPayable;
     private BigDecimal gstIncluded;
-    private Long odooSupplierId;
-    private Long odooOutletId;
-    private Long odooPoId;
-    private String odooPoName;
-    private Long odooPickingId;
-    private String odooPickingName;
+    private Long supplierId;
+    private Long outletId;
+    private Long purchaseOrderId;
+    private String purchaseOrderName;
+    private Long receiptId;
+    private String receiptName;
     private String sourceFilename;
     private String sourceContentType;
     private String notes;

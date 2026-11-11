@@ -1,192 +1,53 @@
-# AGENTS.md — Orithos POS
+# Orithos POS — Agent Instructions
 
-## Project fact library maintenance
+## Project entry and current state
 
-- Start with [docs/project/README.md](docs/project/README.md) for feature design, progress, effectiveness, tests, issues and reporting. Follow [the maintenance contract](docs/project/maintenance.md).
-- For behavior/interface changes, update the feature design and progress. After meaningful tests, update validation, the existing TEST_REPORT_INDEX and a dated test session; keep original evidence immutable.
-- Record source/runtime SHA, environment, samples, write scope and limitations. Model/prompt/config/snapshot versions may be unknown; say so rather than copying defaults. Separate implementation, fixture checks, deployment and online acceptance.
-- Close issues with a linked fix and applicable regression evidence. Never merge retries into a fictitious full-run PASS or label inventory cash occupancy as realized savings.
-- Run `python scripts/check-project-docs.py` for fact-library edits. Reports are dated derivatives of evidence, not a second editable source of truth. This rule does not authorize provider spending or business writes.
+- This is the POS repository: `aishawn/aistore_pos`, branch `main`. The maintained local checkout is `orithopos-master`; do POS work here, not in `pos-main`, old clones, or worktrees unless a task names one explicitly.
+- At task start, confirm this repository, `main`, HEAD, and `git status`. Preserve unrelated local changes and stage only files in the task scope.
+- Read this file, the root [HANDOFF](HANDOFF.md), and only the task's relevant tracked design/progress docs and tests. The root handoff is the single current operational status; older dated notes are historical evidence.
+- A local `docs/project/` fact library may be available but is ignored from deployment clones; consult it when present, and do not make runtime or release instructions depend on local-only files. Run `python scripts/check-project-docs.py` after editing that library, when its required corpus is present.
 
-Shared project brief for **Cursor** and **Codex** (and any other coding agent). Read this first; follow links for depth. Do **not** put passwords, API keys, or tokens in this file.
+## System boundaries
 
-**Working-state note (2026-11-09):** Demo+SKR native Orithos cutover is **owner-authorized on shared DB `postgres`** (live POS SHA `b58b6ee60214ad2c53b591b9f591ede45c2fdcab`; vendors `1,55` with `APP_NATIVE_POS_ALLOW_SHARED_DATABASE=true`). `isolated=false` / `SHARED_DATABASE_NAME` remain expected and must not be described as tenant isolation. The pilot remains **NO-GO for formal production** until backup, Xero, and Odoo-retire acceptance. Treat root [HANDOFF.md](HANDOFF.md) (and local `docs/HANDOFF_2026-11-09_CURRENT.md`), `docs/CAPABILITY_STATUS.md`, and `docs/PILOT_RELEASE_READINESS.md` as the status sources of truth; this file contains durable rules, not a replacement for UAT evidence.
+- Orithos (`pos-api` + PostgreSQL) is the POS backend and live retail ledger for SKR and Demo. Store pages and AI features use Orithos APIs for POS data.
+- Shopfront is the upstream reference/source for the real store data that must be synced to both stores. `shopfront-crawler` reads Shopfront and delivers mapped data to Orithos; it is not the POS backend.
+- Odoo is deprecated. Do not add Odoo reads, writes, fallbacks, credentials, scheduled jobs, or new runtime dependencies. Remove remaining legacy dependencies by domain after the Orithos path is verified. Do not migrate Odoo history or decommission its host without the acceptance evidence recorded in the current handoff.
+- The Classic Spring/MySQL POS paths are reference-only. Do not restore them as a live ledger or dual-write source.
 
-## What this is
+## Shopfront sync and data integrity
 
-Orithos POS: Australian bottle-shop / specialty retail POS and inventory. Cashiers sell, stock, purchase, and report in one UI. Optional AI (cashier assistant, sommelier, invoice OCR) stays off in production until budgeted.
+- Shopfront access is read-only. Use the source website and its APIs/reports, including `/reports/misc`, for comparison; never use Shopfront Register or create source transactions.
+- Demo and SKR should contain the same synced Shopfront data. Daily syncs may run more than once; check current job status first and never start a duplicate while a job is active.
+- Trace a sync through Shopfront source → crawler job/mirror → Orithos import/API → SKR and Demo. A successful fetch, queued job, matching totals, or reachable page alone does not prove parity.
+- Verify terminal job status, source business date/timezone, stable external IDs, counts, important fields, and differences for both stores. Use read-only APIs and pages for acceptance; record missing scopes, stale snapshots, skipped rows, and unresolved mappings as blockers.
+- Never invent prices, GST, ABN, tax mappings, product identity, or stock. Keep unresolved products unsaleable and report the source fields needed to resolve them.
 
-- **Migration target (owner-directed 2026-11-10):** Orithos (`pos-api` and its PostgreSQL database) is the sole operational business ledger for SKR and Demo. Fully retire Odoo dependencies, including read-only runtime paths; do not add Odoo fallbacks or migrate Odoo history unless the owner changes this scope. Shopfront may feed the crawler sync into Orithos, while browser pages read Orithos APIs only.
-- **Classic Spring/MySQL POS:** in-repo **reference only**; do not pilot as writable SoT. No dual-write with Orithos or Odoo.
-- **Stack:** Next.js 16 (`pos-ui`) → Spring Boot 3.3 (`pos-api`) → PostgreSQL + Redis 7. Compose at repo root. Remote: GitHub `aishawn/aistore_pos`, branch `main`.
+## Task workflow
 
-## Hosts (production)
+1. Confirm the request's expected behavior and observable acceptance criteria. Search the relevant symbols, callers, tests, and current feature notes; do not read the whole repository by default.
+2. For bugs, reproduce or trace the failing path and state the root cause with evidence before changing code. Follow the full relevant path (UI → API → service → persistence, including crawler when applicable).
+3. Make small, isolated changes directly. For cross-module, data, security, payment, inventory, or migration work, first give a concise diagnosis, affected boundaries, implementation choice, risks, and verification steps; keep the work in independently verifiable slices.
+4. Run the narrowest relevant checks and inspect `git diff`. Do not claim a fix from mocks, compilation alone, a queued sync, or page reachability.
+5. Parallelize only independent read-only investigation. Do not assign concurrent edits to shared files or add agents/tools by default.
 
-| Host | Role |
-|------|------|
-| `https://app.orithos.com.au` | Control plane — `PlatformShell`, `/platform/*`, signup. **No** store Sidebar / Sell. |
-| `https://demo.orithos.com.au` | Pilot store — full POS shell. Default UAT target. |
-| `https://{slug}.orithos.com.au` | Other tenant stores (same POS shell as demo). |
-| `https://odoo.orithos.com.au` | Legacy Odoo endpoint pending full retirement; application runtime must not depend on it. |
+## Business and safety invariants
 
-Login uses username/password only (no subdomain field). Host → vendor. Pilot admin username: `admin`. Demo credentials have been supplied in the current owner conversation; never copy the password into this file, handoffs, UAT artifacts, command logs, or Git. For repeatable browser checks, place it in an ignored local env file as `DEMO_ADMIN_PASSWORD` and read it without printing it.
+- Enforce vendor and outlet scope in the backend. A shared database is not proof of tenant isolation.
+- Shelf prices include GST; at 10%, GST is inclusive price / 11 (`GstMath`). Use decimal arithmetic. Round cash to 5 cents; keep card amounts exact.
+- Use the store timezone for business dates (SKR/Demo currently use `Australia/Adelaide`); use UTC for transport/audit timestamps.
+- Business writes must use the Orithos API and an approved test environment unless the owner explicitly approves a production write. Do not use Odoo or Shopfront as a write target.
+- Keep `AI_ENABLED=false` in production until the provider and budget are explicitly configured.
+- Change Next.js pages under `pos-ui/app`; shared UI/API code is under `pos-ui/src`. The API client is `pos-ui/src/lib/api.ts`.
 
-Details: [docs/TENANT_SUBDOMAIN.md](docs/TENANT_SUBDOMAIN.md), [DEPLOYMENT.md](DEPLOYMENT.md).
+## Verification and release
 
-## Repo map
+- Owner preference is no local application builds. Use relevant type checks, focused lint, script checks, and tests. Application builds and backend verification run through the configured Dokploy/Java 21 workflow.
+- Before pushing any `pos-api/` change, the exact candidate SHA must pass Java 21 `mvn -B clean verify` in the approved remote workflow. A post-push build does not satisfy this gate. If exact-SHA evidence is unavailable, do not push the backend change; report the blocker.
+- Maintain `main` only. After required checks pass, commit and push only task-scoped files; never include unrelated dirty changes or secrets. Dokploy auto-deploys the POS Compose app from `main`.
+- After deployment, confirm Dokploy status and deployed/source SHA. For sync or data changes, check crawler status and read-only source/API/UI parity on both SKR and Demo; iterate on concrete differences.
+- Keep implementation, local checks, deployment, runtime identity, and online acceptance as separate claims. Record environment, scope, sample, result, limitations, source/runtime SHA, and links to evidence.
 
-```text
-orithopos/
-├── pos-ui/           Next.js UI (edit pages under pos-ui/app; shared code under pos-ui/src)
-├── pos-api/          Spring Boot API (Java 21)
-├── docker-compose.yml
-├── .env.example      Template only — copy to .env locally / set in Dokploy
-├── DEPLOYMENT.md     Dokploy, env vars, smoke checklist
-├── docs/             Handoffs, capability, UAT evidence, runbooks
-└── scripts/          Pilot / UAT / R2 helpers
-```
+## Credentials and operating surfaces
 
-Local IDE: `pos-api/.env` from `pos-api/.env.example`; `pos-ui/.env.local` from `pos-ui/.env.local.example`; provide PostgreSQL and Redis externally.
-
-Toolchain: Node **24+** (the UI package declares `engines.node >=24`) and Java **21**. **Owner preference: do not run local builds.** Use narrow static checks such as `npm run typecheck`, targeted ESLint, and script syntax checks when relevant. Run application builds and full backend verification through Dokploy; report the exact source/deployment SHA and build evidence. The default live read-only UAT target is `https://demo.orithos.com.au`.
-
-## Secrets and shared context (Cursor ↔ Codex)
-
-| Kind | Where | Commit? |
-|------|--------|---------|
-| Architecture, hosts, process | This file, `README.md`, `DEPLOYMENT.md`, `docs/*` | Yes |
-| Progress / latest state | `docs/HANDOFF_*.md`, `docs/PILOT_RELEASE_READINESS.md`, `docs/CAPABILITY_STATUS.md` | Yes |
-| Passwords, JWT, Odoo service account, R2 keys, DashScope, deployment webhook | Ignored local env files / environment variables / Dokploy Compose env | **No** (never put values in tracked files) |
-| Cursor-only habit | `.cursor/rules/` | Yes (behaviour, not secrets) |
-
-Both tools open the same workspace: they share Git docs and the same local `.env`. Chat history does **not** sync — update a handoff or this file when switching tools.
-
-**Never** commit `.env`, `.env.local`, `.local/`, dumps, or real credentials. Prefer variable **names** in docs (“set `ODOO_SERVICE_PASSWORD` in Dokploy”).
-
-The owner says API keys are already configured as environment variables. Inspect only variable names/presence when needed; never print values. The Dokploy webhook is a deployment credential: do not persist its URL in Git, handoff or command output. For repeatable deployment commands, load it from an ignored environment variable such as `DOKPLOY_WEBHOOK_URL`.
-
-## Context and memory
-
-Use each context source for one purpose; do not copy the full project history into this file.
-
-| Context | Source of truth | Keep here |
-|---------|-----------------|-----------|
-| Durable rules and architecture | `AGENTS.md`, `README.md`, runbooks | Cross-task constraints, source-of-truth boundaries, verification gates |
-| Current project state | `docs/HANDOFF_2026-10-19_CURRENT.md`, `docs/CAPABILITY_STATUS.md`, `docs/PILOT_RELEASE_READINESS.md` | Latest blockers, next actions, pilot decision; update the handoff after meaningful work |
-| Verification evidence | `docs/UAT_*.json` and linked screenshots | Exact target, commit/deployment SHA, read/write scope, result and limitations |
-| Historical rationale | Codex conversation history or Agent Memory plugin | Search when the reason for a prior decision is unclear; do not treat a chat summary as current product or deployment evidence |
-
-When resuming work, read this file, then the current handoff and the task-specific status/runbook; inspect the matching UAT evidence before repeating checks. Keep these states distinct in notes and reports: implemented, locally verified, deployed, and production-verified. Record failed login, missing deployment identity, blocked writes, and unrun checks as limitations rather than inferring a product failure or success. Agent Memory is optional retrieval for past decisions; save only durable rationale or reusable preferences, never credentials or a duplicate of volatile release status.
-
-## Deploy
-
-1. Confirm the intended commit is on `main`, then use the configured Dokploy deployment path (auto-deploy or the owner-provided webhook). Never deploy unrelated dirty working-tree files.
-2. Required Compose secrets (Dokploy): `DB_PASSWORD`, `POS_REDIS_URL`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, `CORS_ALLOWED_ORIGINS`, plus tenant vars as in `.env.example`.
-3. Odoo auto-recover needs **both** frontend and backend: `ODOO_SERVICE_USERNAME`, `ODOO_SERVICE_PASSWORD`. Normal **Deploy** only — never **Fresh Volumes** to “fix” login.
-4. Build and verify in Dokploy; then run the read-only smoke checklist in [DEPLOYMENT.md](DEPLOYMENT.md) against the demo store and Integrations Connected. Verify the running/source SHA before calling a change deployed.
-5. If the webhook returns `Branch Not Match`, stop retries; verify the Dokploy repo, branch (`main`), repository root and Compose file in Source/Git settings before trying again.
-
-Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` row.
-
-## Git completion rule
-
-完成修复和必要验证后，默认冻结本次变更范围，提交到本地 `main` 并推送 `origin/main`，让 Dokploy 按 `main` 自动部署。只有用户明确要求本地保留、等待审查或特殊分支处理时，才不直接推送；不得把无关 dirty worktree 文件一并提交。
-
-## Hard rules for agents
-
-1. **Orithos PostgreSQL is the sole SoT** for sell / stock / purchase / customer / reporting. No Odoo runtime fallback, browser request, BFF call, scheduled read, or AI query may remain after its domain is migrated. Do not revive Classic MySQL as the live path.
-2. **Business writes use Orithos APIs** with authenticated vendor/outlet scope and idempotency where applicable. Historical Odoo isolation procedures are archival only and do not authorize runtime Odoo dependencies.
-3. **Shopfront synchronization boundary:** the active source-ingest path is `shopfront-crawler` → POS integrations → Orithos PostgreSQL. Browser pages and AI queries read Orithos only. R2 history remains an audit artifact, not a runtime ledger or fallback. Do not introduce Shopfront or Odoo online reads into store pages. See [docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md](docs/SHOPFRONT_SYNC_STABILITY_REVIEW.md).
-4. **Do not invent GST, prices, ABN, or stock.** Missing source price/tax → keep product unsaleable; leave for owner/accountant.
-5. **AI** (`AI_ENABLED`) stays false in production until DashScope is configured and budgeted.
-6. **Pages:** change UI under `pos-ui/app` (not a duplicate tree under `pos-ui/src/app` if both exist). API client: `pos-ui/src/lib/api.ts`.
-7. **Backend pre-push gate (remote Java 21):** do not run local builds. Do not push any change touching `pos-api/` until `mvn -B clean verify` has completed successfully on Java 21 for that exact candidate SHA. A normal branch webhook that only builds an already-pushed branch is not a pre-push gate. If Dokploy/CI cannot build an unpushed candidate and expose its full log, leave the `pos-api` changes unpushed; never claim the requirement was met by a post-push build.
-8. **Writes need an explicit environment gate:** read-only browser/UAT checks may target production; sell, refund, receive, stock, cash, register-close, role, supplier, or import writes must use an approved Orithos test environment unless the user explicitly approves production. Never use Odoo as a fallback write target.
-9. **Do not infer acceptance from mocks or page reachability:** fixture/intercepted-request UAT proves UI behavior only. For pilot claims, cite the relevant `docs/UAT_*.json`, deployment SHA, and whether the action was read-only or wrote business data.
-10. **Git:** do not force-push `main`/`master`; do not commit secrets. This repo’s Cursor rule defaults to commit + push when a change set is finished (unless the user says keep local-only).
-11. **Do not switch the backend language/stack** to “fix” Dokploy test failures. Repeated red builds have been compile/test hygiene and pre-push skips, not a Spring Boot problem. Keep Java 21 / Spring Boot 3.3.
-
-## pos-api pre-push gate (Dokploy)
-
-Owner preference is no local builds. The required backend gate is the Dokploy Java 21 build command `mvn -B clean verify`, run inside `maven:3.9-eclipse-temurin-21`. Review the complete backend log and confirm its checkout SHA matches the intended commit before treating it as green. A compile error or Surefire failure aborts the whole Compose deploy (frontend is canceled too). A webhook response alone is not a build result.
-
-**Before pushing a change that touches `pos-api/` (main or test sources, `pom.xml`, or `src/main/resources`):**
-
-1. Review the changed Java sources and tests; run only non-build checks locally if useful.
-2. Arrange a remote pre-push build of the candidate SHA in `maven:3.9-eclipse-temurin-21` and run `mvn -B clean verify`; inspect the complete backend log and confirm the tested SHA is the candidate.
-3. Push only after that exact-SHA build succeeds. After push/deploy, separately confirm the Compose image build, container health, and runtime SHA before claiming deployment.
-4. If no remote pre-push builder is available, the build fails, or any SHA cannot be confirmed, leave the backend changes unpushed and record the exact blocker. A post-push webhook/build does not retroactively satisfy this gate.
-
-**Do not:**
-
-- Treat a local static check or a green frontend check as proof that the backend build passed.
-- Commit or push a new/changed `*Test.java` until it passes against the code in the **same** commit (no “test first, fix later on main”).
-- Leave unfinished WIP Java sources in the tree while running verify for an unrelated fix — park/stash them; they can break compile for everyone.
-- “Fix” red deploys by rewriting the backend in another language.
-
-**Recent failure evidence (2026-10-20 to 2026-10-21):**
-
-| Evidence | What happened | Classification / response |
-|----------|---------------|---------------------------|
-| 2026-10-20 webhook attempts (`4aacb74`, `435ec47`) | Dokploy returned `301 Branch Not Match`; no build was created | Source/branch binding failure, not a Maven failure. Stop retries and verify repo `aishawn/aistore_pos`, branch `main`, root `/`, and `docker-compose.yml`. |
-| Dokploy #38 backend log (reviewed 2026-10-21) | Old build context reported missing `AiProviderConfig` in two controllers; the current source had the class and imports | Compile failure in the logged context, but not reproducible from that then-current source. Verify checkout SHA and build context before changing code; do not treat a later webhook response as proof. |
-| Dokploy backend logs after the 2026-10-21 AI retest (5,640 returned lines) | 48 AI audit mapper parameter DEBUG records, 46 DashScope `InvalidParameter / url error` markers, and 24 classifier failure markers; raw counts, not deduplicated incidents. Runtime SHA was unavailable. | DEBUG mapper parameters expose assistant query text. The source default is now INFO and Odoo invalid-response diagnostics record only RPC model/method/response type; both changes remain unbuilt and unverified. Keep backend changes unpushed until the exact-SHA Java 21 gate passes; never copy raw parameters into evidence. |
-
-**Recurring source/test failure classes to check before push (seen 2026-10-20):**
-
-| Class | What to verify |
-|-------|----------------|
-| Missing imports / wrong package | New types (`Map`, mappers under `….mapper.…`) compile in **main and test** |
-| Phrase / substring order | Longer aliases before shorter ones (e.g. `day before yesterday` before `yesterday`) |
-| Regex intent routing | Both word orders (`supplier…pay` and `pay…supplier`) if both are in tests |
-| Percentile / numeric helpers | Test expectations match the actual algorithm (nearest-rank vs interpolate) |
-| AI fail-closed | Disabled AI must throw **before** `ObjectProvider.getIfAvailable()` / tenant catalogue access |
-| Mockito `verify` counts | If the SUT calls a collaborator N times, asserts use `times(N)` |
-
-When Dokploy exposes backend logs, record the Maven result, deployed SHA, and container/runtime identity in the handoff. A failed or branch-blocked webhook is not a build result.
-
-## Domain constraints (product)
-
-- Shelf prices include GST; 10% GST = inclusive price / 11 (`GstMath`).
-- Cash rounding to 5¢ (`CashRounding`); card stays exact.
-- Business day / display timezone: use the store/Odoo company location (for example `Australia/Adelaide`), never a fixed Shanghai clock for business dates. Keep UTC for transport/audit timestamps and convert only at the store boundary.
-- Multi-outlet / register model; inventory and sales hang off outlet.
-- Amounts are decimal values, not floating point; preserve GST-inclusive shelf prices, payment-specific cash rounding, and the Odoo company/warehouse context when comparing totals or stock.
-
-## Doc index (start here)
-
-| Need | Doc |
-|------|-----|
-| Overview / run locally | [README.md](README.md) |
-| Dokploy / smoke | [DEPLOYMENT.md](DEPLOYMENT.md) |
-| app vs demo hosts | [docs/TENANT_SUBDOMAIN.md](docs/TENANT_SUBDOMAIN.md) |
-| What works / gaps | [docs/CAPABILITY_STATUS.md](docs/CAPABILITY_STATUS.md) |
-| Function checklist / test status | [docs/FUNCTIONALITY_CHECKLIST.md](docs/FUNCTIONALITY_CHECKLIST.md) |
-| Pilot GO / NO-GO | [docs/PILOT_RELEASE_READINESS.md](docs/PILOT_RELEASE_READINESS.md) |
-| Current session handoff | Root [HANDOFF.md](HANDOFF.md) and [docs/HANDOFF_2026-11-09_CURRENT.md](docs/HANDOFF_2026-11-09_CURRENT.md); older `docs/HANDOFF_*.md` files are historical unless linked from the current handoff. |
-| AI acceptance scope | [docs/AI_ASSISTANT_TEST_MATRIX.md](docs/AI_ASSISTANT_TEST_MATRIX.md), [docs/AI_ASSISTANT_TEST_PLAN.md](docs/AI_ASSISTANT_TEST_PLAN.md), [docs/AI_ASSISTANT_UTTERANCE_CATALOG.md](docs/AI_ASSISTANT_UTTERANCE_CATALOG.md) |
-| Isolation write UAT | [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md) |
-| R2 archive / cold history | [docs/R2_ARCHIVE_SYNC_PLAN.md](docs/R2_ARCHIVE_SYNC_PLAN.md), [docs/R2_COLD_HISTORY_POLICY.md](docs/R2_COLD_HISTORY_POLICY.md) |
-| Telegram / Hermes product agent | [docs/ORITHOPOS_AGENT.md](docs/ORITHOPOS_AGENT.md) (runtime product-agent instructions; not this repo’s Cursor/Codex brief) |
-| Scale / suspend ops | [docs/SCALE_OPS_RUNBOOK.md](docs/SCALE_OPS_RUNBOOK.md) |
-| Website logo / hero / stock images | Personal skill `website-images` (junction → `C:\shawn\1code\1project-new\tools\网站图像\SKILL.md`); live ModKie docs <https://modkie.com/docs> |
-
-### Website images (cross-project skill)
-
-When the user asks for logo、配图、hero、OG、AI 生成图 or AI 搜图 for this or any other site:
-
-1. Read and follow `website-images` (`%USERPROFILE%\.agents\skills\website-images\SKILL.md` or `C:\shawn\1code\1project-new\tools\网站图像\SKILL.md`).
-2. Generate via ModKie (`MODKIE_KEY` / `MODKIE_SYSTEM_API_KEY` in ignored `C:\shawn\1code\1project-new\api\v1\.env`). Search stock via backend_media using `PEXELS_API_KEY` / `PIXABAY_API_KEY` from that same `.env` — never print or commit key values.
-3. Prefer search for real photography; generate for logos and original brand art. Save under the target project’s `public/` (or agreed path) and update references.
-
-UAT evidence lives as `docs/UAT_*.json` — prefer those over chat recall for “what passed on which SHA”. Do not edit a historical UAT deployment SHA to make it match a newer commit; create a new evidence file instead.
-
-## When finishing a task
-
-1. Read the relevant status/runbook docs before changing production-facing behavior.
-2. Prefer small, reviewable diffs; match existing style and move business domains to Orithos only with tenant isolation, migration reconciliation, and domain acceptance evidence. Do not turn off Odoo writes for a store before its cutover gate passes.
-3. Run the narrowest applicable checks while iterating, then report command, environment, result, and limitations. Do not call a mock or read-only pass a business acceptance.
-4. Follow the no-local-build preference. Use typecheck, targeted lint, and script syntax checks locally; use Dokploy for application builds and backend `mvn -B clean verify`, then record SHA-specific results.
-5. Update the relevant handoff / capability / readiness doc if behavior or pilot status changed.
-6. Push to `origin` when the change set is done so Dokploy can deploy (unless asked to keep local-only).
-7. Confirm commit SHA, deployment SHA when known, and that secrets were not staged.
+- Use only secret variable names in docs and reports. Never print or commit secret values, cookies, tokens, full database URLs, or login artifacts. The owner authorizes relevant local or Dokploy environment changes; record variable names, target service/environment, and verification without recording values.
+- Service URLs, Dokploy Compose links, login names, and environment variable names are maintained in [DEPLOYMENT.md](DEPLOYMENT.md). Do not duplicate that table in handoffs.

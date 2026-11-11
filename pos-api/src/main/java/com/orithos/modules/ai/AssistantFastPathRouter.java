@@ -230,7 +230,7 @@ public final class AssistantFastPathRouter {
     /**
      * Explicit "stock of/for <product>" wording must extract only the product.
      * Keep this ahead of the broader "do we have <thing>" fallback so "stock
-     * of VB Cans" is never sent to Odoo as the product name.
+     * of VB Cans" is never sent as the product name.
      */
     private static final Pattern STOCK_QUERY_DIRECT = Pattern.compile(
             "^(?:do we have|is there|can you check)\\s+(?:any\\s+)?stock\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
@@ -415,7 +415,7 @@ public final class AssistantFastPathRouter {
                     "navigate",
                     "Opened suppliers.",
                     Map.of(),
-                    "/suppliers/odoo",
+                    "/suppliers",
                     "",
                     "",
                     "");

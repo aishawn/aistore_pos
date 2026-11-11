@@ -23,7 +23,7 @@ public class AiDecisionRepository {
     public AiDecisionRepository(JdbcTemplate jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
 
     public UUID insert(TenantContext tenant, String type, Instant asOf, String configVersion, Object decision) {
-        return insert(tenant, type, asOf, configVersion, "odoo-live", "unversioned", Map.of(), decision);
+        return insert(tenant, type, asOf, configVersion, "orithos-native", "live", Map.of(), decision);
     }
 
     public UUID insert(TenantContext tenant, String type, Instant asOf, String configVersion,

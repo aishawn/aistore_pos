@@ -35,18 +35,17 @@ function storeDay() {
   }).format(new Date());
 }
 
-/** Polls Orithos native overview instead of the retired shopfront sync-stamp route. */
+/** Reads the last crawler completion notification recorded by the Orithos app. */
 export async function fetchShopfrontSyncStamp(): Promise<number | null> {
   try {
-    const day = storeDay();
-    const response = await fetch(`/api/reports/native-overview?from=${day}&to=${day}`, {
+    const response = await fetch("/api/internal/shopfront-sync-notify", {
       cache: "no-store",
       credentials: "same-origin",
     });
     if (!response.ok) return null;
-    const body = await response.json().catch(() => null) as { data?: { source?: string } } | null;
-    if (!body?.data || body.data.source !== "orithos_ledger") return null;
-    const at = Date.parse(response.headers.get("date") || "") || Date.now();
+    const body = await response.json().catch(() => null) as { at?: number | null } | null;
+    const at = Number(body?.at);
+    if (!Number.isFinite(at) || at <= 0) return null;
     writeShopfrontSyncStamp(at);
     return at;
   } catch {

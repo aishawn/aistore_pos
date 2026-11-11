@@ -3,7 +3,7 @@ export const fetchCache = "force-no-store";
 
 import { OdooRegisterPage } from "@/components/OdooRegisterPage";
 
-/** Owner-locked shell: Odoo sell register. */
+/** Owner-locked shell: use the owner-approved register interface. */
 export default function RegisterRoute() {
   return <OdooRegisterPage />;
 }

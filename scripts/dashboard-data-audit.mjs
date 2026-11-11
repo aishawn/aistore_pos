@@ -1,46 +1,83 @@
-// Node 24+. Read-only Odoo reconciliation; credentials come from the environment.
-import { calculateReport } from '../pos-ui/src/lib/report-data.ts';
-import { getOdooCompanyTimezone } from '../pos-ui/src/lib/odoo-store-timezone.ts';
+// Node 24+. Read-only Orithos native-ledger dashboard audit.
+import fs from "node:fs";
+import path from "node:path";
 
-const argument = name => process.argv[process.argv.indexOf(name) + 1];
-const companyId = Number(process.argv.includes('--company') ? argument('--company') : 0);
-const database = process.argv.includes('--database') ? argument('--database') : '';
-const base = process.env.ODOO_URL || 'https://odoo.orithos.com.au';
-if (!Number.isInteger(companyId) || companyId <= 0 || !database || database.startsWith('--')) {
-  throw new Error('Provide explicit --company ID --database NAME');
+for (const file of [".env", "pos-api/.env", "pos-ui/.env.local"]) {
+  const envPath = path.resolve(file);
+  if (fs.existsSync(envPath)) process.loadEnvFile(envPath);
 }
-if (!process.env.ODOO_USER || !process.env.ODOO_PASS) throw new Error('Set ODOO_USER and ODOO_PASS privately');
-let cookie = '';
-async function call(path, params) {
-  const response = await fetch(new URL(path, base), {
-    method: 'POST', headers: { 'content-type': 'application/json', Cookie: cookie },
-    body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params, id: 1 }),
+
+const args = new Map();
+for (let i = 2; i < process.argv.length; i += 2) {
+  const key = process.argv[i];
+  const value = process.argv[i + 1];
+  if (!key?.startsWith("--") || !value || value.startsWith("--")) {
+    throw new Error("Use --store demo|skr [--date YYYY-MM-DD]");
+  }
+  args.set(key.slice(2), value);
+}
+if ([...args.keys()].some((key) => !["store", "date"].includes(key))) {
+  throw new Error("Supported arguments: --store, --date");
+}
+
+const store = args.get("store") || "demo";
+if (!["demo", "skr"].includes(store)) throw new Error("Store must be demo or skr");
+const base = (store === "skr"
+  ? process.env.ORITHOS_SKR_HOST || "https://skr.orithos.com.au"
+  : process.env.ORITHOS_DEMO_HOST || "https://demo.orithos.com.au").replace(/\/+$/, "");
+const username = store === "skr" ? process.env.ORITHOS_SKR_USER : process.env.ORITHOS_DEMO_USER || "admin";
+const password = store === "skr" ? process.env.ORITHOS_SKR_PASS : process.env.INITIAL_ADMIN_PASSWORD;
+if (!username || !password) throw new Error(`Set the Orithos ${store} login variables in the environment`);
+
+function adelaideDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Adelaide", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+const date = args.get("date") || adelaideDate();
+const parsedDate = new Date(`${date}T12:00:00Z`);
+if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+  throw new Error("Date must use YYYY-MM-DD");
+}
+
+async function request(path, { cookie, body } = {}) {
+  const response = await fetch(new URL(path, `${base}/`), {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      Accept: "application/json",
+      Origin: base,
+      "X-Orithos-Tenant-Slug": store,
+      ...(cookie ? { Cookie: cookie } : {}),
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: "no-store",
     signal: AbortSignal.timeout(30_000),
   });
-  for (const value of response.headers.getSetCookie()) {
-    if (value.startsWith('session_id=')) cookie = value.split(';')[0];
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.code !== 0) {
+    throw new Error(`Orithos request failed (${response.status})`);
   }
-  if (!response.ok) throw new Error(`Odoo HTTP ${response.status}`);
-  const body = await response.json();
-  if (body.error) throw new Error('Odoo RPC failed; no business data was changed');
-  return body.result;
+  return { data: payload.data, cookies: response.headers.getSetCookie() };
 }
+
+let stage = "login";
 try {
-  const login = await call('/web/session/authenticate', { db: database, login: process.env.ODOO_USER, password: process.env.ODOO_PASS });
-  if (!login?.uid) throw new Error('Odoo authentication failed');
-  const rpc = async (_session, model, method, args, kwargs = {}) => {
-    if (!['search_read', 'read', 'read_group', 'search_count'].includes(method)) throw new Error('Read-only method required');
-    return call('/web/dataset/call_kw', { model, method, args, kwargs: { ...kwargs,
-      context: { allowed_company_ids: [companyId], force_company: companyId } } });
-  };
-  const [company] = await rpc('', 'res.company', 'read', [[companyId]], { fields: ['name', 'partner_id', 'currency_id'] });
-  if (!company) throw new Error('Company not accessible');
-  const [partner] = await rpc('', 'res.partner', 'read', [[company.partner_id[0]]], { fields: ['country_id', 'state_id'] });
-  const timezone = getOdooCompanyTimezone(partner.country_id, partner.state_id);
-  const result = await calculateReport(rpc, { sessionId: '', companyId,
-    company: { name: company.name, currency: company.currency_id[1], timezone }, summaryOnly: true, period: 'today' });
-  console.log(JSON.stringify({ database, companyId, readOnly: true, auditedAt: new Date().toISOString(), result }, null, 2));
-} catch {
-  console.error('Read-only dashboard audit failed. Check target, private credentials, connectivity and Odoo read permissions. No business records were modified.');
+  const login = await request("/api/auth/login", { body: { username, password, subdomain: store } });
+  const accessCookie = login.cookies.find((value) => value.startsWith("orithos_access_token="))?.split(";", 1)[0];
+  if (!accessCookie) throw new Error("Orithos login returned no session cookie");
+  stage = "native report";
+  const query = new URLSearchParams({ from: date, to: date });
+  const { data: result } = await request(`/api/reports/native-overview?${query}`, { cookie: accessCookie });
+  if (result?.source !== "orithos_ledger" || result?.from !== date || result?.to !== date) {
+    throw new Error("Orithos returned an incomplete or unexpected report scope");
+  }
+  console.log(JSON.stringify({ store, date, source: result.source, readOnly: true, auditedAt: new Date().toISOString(), result }, null, 2));
+} catch (error) {
+  const detail = error instanceof Error ? error.message : "unknown error";
+  console.error(`Read-only Orithos ${stage} audit failed for ${store}: ${detail}`);
   process.exitCode = 1;
 }

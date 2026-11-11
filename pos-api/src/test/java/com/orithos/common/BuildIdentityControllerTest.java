@@ -16,8 +16,6 @@ class BuildIdentityControllerTest {
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_demo_uat");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
         ReflectionTestUtils.setField(controller, "environment", "uat");
-        ReflectionTestUtils.setField(controller, "database", "odoo_demo_uat");
-        ReflectionTestUtils.setField(controller, "isolationOdooDatabase", "odoo_demo_uat");
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "uat");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "pos_demo_uat");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "pos_demo_uat");
@@ -45,8 +43,6 @@ class BuildIdentityControllerTest {
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_production");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
         ReflectionTestUtils.setField(controller, "environment", "production");
-        ReflectionTestUtils.setField(controller, "database", "odoo_production");
-        ReflectionTestUtils.setField(controller, "isolationOdooDatabase", "odoo_uat");
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "production");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "pos_production");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "");
@@ -65,8 +61,6 @@ class BuildIdentityControllerTest {
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
         ReflectionTestUtils.setField(controller, "environment", "uat");
-        ReflectionTestUtils.setField(controller, "database", "odoo_demo_uat");
-        ReflectionTestUtils.setField(controller, "isolationOdooDatabase", "odoo_demo_uat");
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "uat");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "postgres");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "postgres");
@@ -89,8 +83,6 @@ class BuildIdentityControllerTest {
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("postgres");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
         ReflectionTestUtils.setField(controller, "environment", "production");
-        ReflectionTestUtils.setField(controller, "database", "aipos_uat");
-        ReflectionTestUtils.setField(controller, "isolationOdooDatabase", "aipos_uat");
         ReflectionTestUtils.setField(controller, "runtimeEnvironment", "production");
         ReflectionTestUtils.setField(controller, "expectedPosDatabase", "postgres");
         ReflectionTestUtils.setField(controller, "isolationPosDatabase", "");

@@ -1,6 +1,6 @@
 "use client";
 
-import { setOdooReadIdentity, clearOdooReadCache } from "./odoo-read-cache";
+import { setNativeReadIdentity, clearNativeReadCache } from "./native-read-cache";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, isLocalPreviewSession, refreshAccessToken, registerAuthFailureHandler } from "@/lib/api";
 
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unregister = registerAuthFailureHandler(() => {
       void recoverSession().then((ok) => {
         if (!ok) {
-          setOdooReadIdentity(null);
+          setNativeReadIdentity(null);
           setUser(null);
         }
       });
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setOdooReadIdentity(ready && user ? JSON.stringify([user.id, user.vendorId, user.outletId, user.roleCode, user.permissions]) : null);
+    setNativeReadIdentity(ready && user ? JSON.stringify([user.id, user.vendorId, user.outletId, user.roleCode, user.permissions]) : null);
   }, [ready, user]);
 
   useEffect(() => {
@@ -196,8 +196,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    setOdooReadIdentity(null);
-    clearOdooReadCache();
+    setNativeReadIdentity(null);
+    clearNativeReadCache();
     try {
       await api.post("/api/auth/logout");
     } catch {

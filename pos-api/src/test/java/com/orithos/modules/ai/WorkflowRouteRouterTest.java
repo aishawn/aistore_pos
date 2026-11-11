@@ -11,9 +11,9 @@ class WorkflowRouteRouterTest {
 
     @Test
     void routesExplicitWorkflowRequestsWithoutDependingOnModelIntent() {
-        assertRoute("Show me the suppliers", "/suppliers/odoo");
-        assertRoute("Search supplier directory", "/suppliers/odoo");
-        assertRoute("查看供应商列表", "/suppliers/odoo");
+        assertRoute("Show me the suppliers", "/suppliers");
+        assertRoute("Search supplier directory", "/suppliers");
+        assertRoute("查看供应商列表", "/suppliers");
         assertRoute("Open orders", "/orders");
         assertRoute("Show me purchase orders", "/orders");
         assertRoute("查看采购订单", "/orders");
@@ -120,7 +120,7 @@ class WorkflowRouteRouterTest {
         assertRoute("Snap this supplier invoice", "/invoices");
         assertRoute("Read this supplier invoice", "/invoices");
         assertRoute("帮我看一下这张供应商发票", "/invoices");
-        assertRoute("Who are our suppliers?", "/suppliers/odoo");
+        assertRoute("Who are our suppliers?", "/suppliers");
     }
 
     @Test

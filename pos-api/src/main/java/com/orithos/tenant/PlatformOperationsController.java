@@ -30,7 +30,6 @@ public class PlatformOperationsController {
     private final BuildIdentityController buildIdentity;
     private final boolean aiEnabled;
     private final String aiApiKey;
-    private final String odooBaseUrl;
     private final String environment;
 
     public PlatformOperationsController(
@@ -40,7 +39,6 @@ public class PlatformOperationsController {
             BuildIdentityController buildIdentity,
             @Value("${app.ai.enabled:false}") boolean aiEnabled,
             @Value("${AI_SERVICE_TOKEN:}") String aiApiKey,
-            @Value("${ODOO_BASE_URL:}") String odooBaseUrl,
             @Value("${RUNTIME_ENVIRONMENT:unknown}") String environment) {
         this.platformAccess = platformAccess;
         this.jdbcTemplate = jdbcTemplate;
@@ -48,7 +46,6 @@ public class PlatformOperationsController {
         this.buildIdentity = buildIdentity;
         this.aiEnabled = aiEnabled;
         this.aiApiKey = aiApiKey;
-        this.odooBaseUrl = odooBaseUrl;
         this.environment = environment;
     }
 
@@ -64,7 +61,6 @@ public class PlatformOperationsController {
         result.put("dependencies", List.of(
                 probeDatabase(),
                 probeRedis(),
-                odooConfiguration(),
                 aiConfiguration()));
         return ApiResult.ok(result);
     }
@@ -91,12 +87,6 @@ public class PlatformOperationsController {
             log.warn("Platform health Redis probe failed type={}", error.getClass().getSimpleName());
             return dependency("redis", "DOWN", elapsedMillis(started), "Connection probe failed.");
         }
-    }
-
-    private Map<String, Object> odooConfiguration() {
-        boolean configured = odooBaseUrl != null && !odooBaseUrl.isBlank();
-        return dependency("odoo", configured ? "CONFIGURED_UNVERIFIED" : "NOT_CONFIGURED",
-                null, "This page does not probe Odoo connectivity.");
     }
 
     private Map<String, Object> aiConfiguration() {

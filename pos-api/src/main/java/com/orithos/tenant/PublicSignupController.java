@@ -22,16 +22,13 @@ public class PublicSignupController {
     private final TenantProvisionService provisionService;
     private final SignupRateLimiter rateLimiter;
     private final TenantProperties tenantProperties;
-    private final OdooTenantProvisioner odooTenantProvisioner;
 
     public PublicSignupController(TenantProvisionService provisionService,
                                   SignupRateLimiter rateLimiter,
-                                  TenantProperties tenantProperties,
-                                  OdooTenantProvisioner odooTenantProvisioner) {
+                                  TenantProperties tenantProperties) {
         this.provisionService = provisionService;
         this.rateLimiter = rateLimiter;
         this.tenantProperties = tenantProperties;
-        this.odooTenantProvisioner = odooTenantProvisioner;
     }
 
     public record SignupRequest(
@@ -78,7 +75,6 @@ public class PublicSignupController {
                         req.outlets(),
                         req.dummyData()));
         boolean seedDummy = Boolean.TRUE.equals(req.dummyData());
-        odooTenantProvisioner.provisionAsyncSafe(result.vendorId(), seedDummy);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());
         body.put("subdomain", result.subdomain());

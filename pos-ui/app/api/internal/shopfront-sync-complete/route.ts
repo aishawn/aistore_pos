@@ -1,7 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { clearReportingCache } from "@/lib/reporting-dashboard-cache";
-import { recordShopfrontSync, reportTargets } from "@/lib/report-snapshots";
 import { recordShopfrontSyncForHost } from "@/lib/shopfront-sync-registry";
 
 export const runtime = "nodejs";
@@ -35,21 +34,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const knownHosts = STORE_TARGET_HOSTS[body.storeKey] || [];
-    const targets = reportTargets().filter(target =>
-      target.shopfrontStore === body.storeKey || knownHosts.includes(target.host.toLowerCase()));
-    if (!targets.length) return NextResponse.json({ message: "No report target is configured for this Shopfront store" }, { status: 503 });
-    const state = {
-      fromDay: body.fromDay as string,
-      toDay: body.toDay as string,
-      runId: typeof body.syncRunId === "number" ? body.syncRunId : null,
-      status: body.status as "completed" | "partial" | "failed",
-    };
-    await Promise.all(targets.map(async target => {
-      await recordShopfrontSyncForHost(target.host, Date.now());
-      clearReportingCache(`${target.host.toLowerCase()}|`);
-      await recordShopfrontSync(target, state);
+    if (!knownHosts.length) return NextResponse.json({ message: "No Orithos stores are configured for this Shopfront source" }, { status: 503 });
+    const at = Date.now();
+    await Promise.all(knownHosts.map(async host => {
+      await recordShopfrontSyncForHost(host, at);
+      clearReportingCache(`${host}|`);
     }));
-    return NextResponse.json({ accepted: true, targets: targets.length });
+    return NextResponse.json({ accepted: true, stores: knownHosts.length, status: body.status });
   } catch {
     return NextResponse.json({ message: "Report refresh could not be recorded" }, { status: 503 });
   }

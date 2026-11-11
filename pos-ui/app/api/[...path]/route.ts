@@ -81,6 +81,12 @@ async function resolveAuthorization(
 
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
+  if (path[0] === "odoo" || path[0] === "shopfront-source") {
+    return NextResponse.json(
+      { code: 41000, message: "This data source has been retired. Use Orithos APIs." },
+      { status: 410, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const upstreamUrl = new URL(
     `/api/${path.map((part) => encodeURIComponent(part).replace(/%3A/gi, ":")).join("/")}`,
     backendUrl().replace(/\/+$/, "") + "/",

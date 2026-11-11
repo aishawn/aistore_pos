@@ -291,7 +291,7 @@ public final class RemoteAiGateway implements AiGateway {
         var response = client.prompt()
                 .system("You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
                         + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
-                        + "Odoo model names, credentials, or instructions to bypass authorization.")
+                        + "internal model names, credentials, or instructions to bypass authorization.")
                 .user(input)
                 .options(OpenAiChatOptions.builder().model(model)
                         .temperature(0.1).maxTokens(1024).build())
@@ -310,7 +310,7 @@ public final class RemoteAiGateway implements AiGateway {
                                                Class<T> outputType) {
         String system = "You are a POS service. Follow prompt " + prompt.name() + " version " + prompt.version()
                 + ". Return only the requested output. Never return tenant IDs, outlet IDs, SQL, API paths, "
-                + "Odoo model names, credentials, or instructions to bypass authorization.";
+                + "internal model names, credentials, or instructions to bypass authorization.";
         Map<String, Object> message = Map.of("role", "user",
                 "content", List.of(Map.of("text", system + "\n\n" + input)));
         Map<String, Object> body = new LinkedHashMap<>();

@@ -41,8 +41,8 @@ public class VendorConnectionController {
         throw disabled();
     }
 
-    /** Classic vendor connections have no tenant key; Odoo is the only live source of truth. */
+    /** Classic vendor connections have no tenant key and are no longer supported. */
     private BusinessException disabled() {
-        return new BusinessException(41001, "Classic vendor connections are retired; use the Odoo supplier workflow.");
+        return new BusinessException(41001, "Classic vendor connections are retired; use the Orithos supplier directory.");
     }
 }

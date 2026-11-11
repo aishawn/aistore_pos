@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 
-/** Cost reconciliation previously depended on Odoo + Shopfront receipt chains. */
+/** Cost reconciliation previously depended on external receipt chains. */
 export function CostReconciliationPanel() {
   return (
     <div className="flex flex-col gap-4 text-sm">
       <header>
         <h2 className="text-lg font-semibold text-[var(--oh-text)]">Cost reconciliation</h2>
         <p className="mt-1 text-[var(--oh-muted)]">
-          The Odoo/Shopfront receipt audit is retired. Orithos ledger margin is available on Reports overview using native sale costs.
+          The external receipt audit is retired. Orithos ledger margin is available on Reports overview using native sale costs.
         </p>
       </header>
       <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">

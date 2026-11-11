@@ -246,8 +246,8 @@ export function ScanInvoicePage() {
         dueDate: scan.dueDate,
         totalPayable: scan.totalPayable,
         gstIncluded: scan.gstIncluded,
-        odooSupplierId: scan.supplierId ?? null,
-        odooOutletId: scan.toId ?? null,
+        supplierId: scan.supplierId ?? null,
+        outletId: scan.toId ?? null,
         notes: scan.notes,
         internalNotes: scan.internalNotes,
         lines: (scan.lines ?? []).map((line) => ({
@@ -257,7 +257,7 @@ export function ScanInvoicePage() {
           qtyCases: line.qtyCases,
           unitPrice: line.unitPrice,
           lineTotal: line.lineTotal,
-          odooProductId: line.productId ?? null,
+          productId: line.productId ?? null,
           matchStatus: line.productId ? "confirmed" : "unmatched",
         })),
       });

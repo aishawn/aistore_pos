@@ -1,17 +1,17 @@
 # 全功能清单
 
-更新日期：2026-11-03。负责人均待项目 owner 明确分配；“待盘点”表示尚未完成本轮事实整理，不表示功能未实现。
+更新日期：2026-11-11。负责人均待项目 owner 明确分配；“待盘点”表示尚未完成本轮事实整理，不表示功能未实现。当前运行状态见根目录 `HANDOFF.md`。
 
 | 功能 ID | 功能 / 入口 | 本期状态与范围 | 负责人 | 证据入口 |
 |---|---|---|---|---|
 | CAP-AI | [AI 能力](ai/README.md) | 已实现；各子能力验证层级不同，见七个完整样板 | AI/后端 owner 待指定 | [AI 验证总览](ai/README.md#验证与效果) |
-| CAP-POS | [收银与退款](checkout/README.md) | Orithos checkout/班次 API 本地候选通过 541 项后端回归；POS UI 仍依赖 Odoo，未部署/未做隔离业务验收 | POS owner 待指定 | [收银验证](checkout/validation.md) / [班次验证](register-session/validation.md) |
+| CAP-POS | [收银与退款](checkout/README.md) | Orithos checkout/班次 API 已有本地候选验证；线上行为和当前剩余退役边界以运行 SHA 与 handoff 记录为准 | POS owner 待指定 | [收银验证](checkout/validation.md) / [班次验证](register-session/validation.md) |
 | CAP-INV | [商品、库存与盘点](inventory/README.md) | 待盘点，已有修复与报表记录 | 库存 owner 待指定 | INV-001 |
 | CAP-PUR | [采购与收货](purchasing/README.md) | `/purchases` 候选切到 Orithos 列表和 crawler 只读历史；部署及采购/收货闭环待验收 | 采购 owner 待指定 | [进展](purchasing/progress.md) / PUR-001 |
 | CAP-CUS | [客户与价格表](customers/README.md) | 待盘点，已有角色和定价方案 | 客户模块 owner 待指定 | CUS-001 |
 | CAP-RPT | [报表与经营看板](reporting/README.md) | 已建立销售、采购、交班与库存报表事实记录；候选源码未完成线上验收 | 报表 owner 待指定 | [专题](reporting/README.md) / RPT-001 |
 | CAP-PLT | [平台、租户与集成](platform/README.md) | 待盘点，共享试用库不等于生产隔离 | 平台 owner 待指定 | TEN-001 / OPS-001 / R2-001 |
-| CAP-SHP | [Shopfront 数据同步](shopfront-sync/README.md) | 已实现；本轮销售镜像对账与修复待线上验收 | 集成 owner 待指定 | SHP-001 |
+| CAP-SHP | [Shopfront 数据同步](shopfront-sync/README.md) | Shopfront 只读采集，经 crawler 同步至 Orithos；SKR/Demo 完整行级一致性按当前任务和运行 SHA 验证 | 集成 owner 待指定 | SHP-001 |
 | CAP-SET | [Settings 1:1](settings/README.md) | 已实现候选；Orithos 权威 + 按需导入；线上 UAT 待部署 | Settings owner 待指定 | UAT_SETTINGS_2026-11-10 |
 | CAP-API | [Orithos POS API](pos-api/README.md) | 已实现读取、token、CLI、异步批处理及 webhook 代码；销售/库存/采购写入默认关闭，退款/收货与线上验收待完成 | API owner 待指定 | API-001 |
 

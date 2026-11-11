@@ -2,6 +2,8 @@
 
 Updated: 2026-11-10. Owner: TBD.
 
+> Historical entries retain the state and evidence from their recorded dates. For current source boundaries, enabled store ledgers, active sync jobs, and unresolved parity issues, use the root `HANDOFF.md`; do not follow older instructions to write to Odoo.
+
 ## Report refresh propagation (2026-11-10)
 
 - POS report refresh now forwards `refresh=true` for Shopfront Sales, Inventory, Purchase and Dashboard inventory. The crawler Dashboard inventory endpoint passes the flag to the same Shopfront Reporting API loader used by the Inventory report.

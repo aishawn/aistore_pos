@@ -88,10 +88,10 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         setNotice("Connect your Orithos staff account before confirming into purchases.");
       }
       let next = detail;
-      if (!detail.odooSupplierId && detail.supplierAbn) {
+      if (!detail.supplierId && detail.supplierAbn) {
         try {
           const mapped = await suggestedInvoiceSupplierByAbn(detail.supplierAbn);
-          if (mapped) next = { ...detail, odooSupplierId: mapped };
+          if (mapped) next = { ...detail, supplierId: mapped };
         } catch {
           /* optional ABN map */
         }
@@ -101,7 +101,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       setOutlets(outletPage.items ?? []);
       const queries: Record<number, string> = {};
       (next.lines ?? []).forEach((line, index) => {
-        queries[index] = line.odooProductName || line.description || "";
+        queries[index] = line.productName || line.description || "";
       });
       setProductQuery(queries);
     } catch (cause) {
@@ -117,14 +117,14 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   }, [load]);
 
   const editable = session?.status === "draft" || session?.status === "matched" || session?.status === "failed";
-  const canFinishReceive = session?.status === "po_created" && Boolean(session.odooPoId);
+  const canFinishReceive = session?.status === "po_created" && Boolean(session.purchaseOrderId);
   const done = session?.status === "received";
   const lines = session?.lines ?? [];
   const openLines = useMemo(
     () => lines.filter((line) => {
       const status = line.matchStatus;
       if (status === "confirmed" || status === "skipped") return false;
-      if (status === "suggested" && line.odooProductId) return false;
+      if (status === "suggested" && line.productId) return false;
       return true;
     }),
     [lines],
@@ -132,7 +132,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   const confirmedLines = useMemo(
     () => lines.filter((line) => (
       (line.matchStatus === "confirmed" || line.matchStatus === "suggested")
-      && line.odooProductId
+      && line.productId
       && Number(line.qtyCases ?? 0) > 0
     )),
     [lines],
@@ -143,7 +143,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   );
   const canConfirm = Boolean(
     editable
-    && session?.odooSupplierId
+    && session?.supplierId
     && lines.length > 0
     && openLines.length === 0
     && confirmedLines.length > 0,
@@ -154,7 +154,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     suggestStarted.current = true;
     const unmatched = (session.lines ?? [])
       .map((line, index) => ({ line, index }))
-      .filter(({ line }) => !line.odooProductId && line.matchStatus !== "skipped" && (line.description || "").trim());
+      .filter(({ line }) => !line.productId && line.matchStatus !== "skipped" && (line.description || "").trim());
     void (async () => {
       for (const { line, index } of unmatched.slice(0, 12)) {
         const query = (line.description || "").trim();
@@ -167,11 +167,11 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
             setSession((current) => {
               if (!current) return current;
               const next = [...(current.lines ?? [])];
-              if (next[index]?.odooProductId) return current;
+              if (next[index]?.productId) return current;
               next[index] = {
                 ...next[index],
-                odooProductId: hit.id,
-                odooProductName: hit.display_name || hit.name,
+                productId: hit.id,
+                productName: hit.display_name || hit.name,
                 matchStatus: "suggested",
               };
               return { ...current, lines: next };
@@ -230,8 +230,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         dueDate: session.dueDate,
         totalPayable: session.totalPayable,
         gstIncluded: session.gstIncluded,
-        odooSupplierId: session.odooSupplierId,
-        odooOutletId: session.odooOutletId,
+        supplierId: session.supplierId,
+        outletId: session.outletId,
         notes: session.notes,
         internalNotes: session.internalNotes,
         lines: (session.lines ?? []).map((line) => ({
@@ -241,8 +241,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
           qtyCases: line.qtyCases,
           unitPrice: line.unitPrice,
           lineTotal: line.lineTotal,
-          odooProductId: line.odooProductId,
-          odooProductName: line.odooProductName,
+          productId: line.productId,
+          productName: line.productName,
           matchStatus: line.matchStatus === "suggested" ? "confirmed" : line.matchStatus,
           confidence: line.confidence,
         })),
@@ -262,7 +262,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
 
   async function confirmAndReceive() {
     if (!canReceiveStock) return;
-    if (!session || !canConfirm || !session.odooSupplierId) return;
+    if (!session || !canConfirm || !session.supplierId) return;
     setConfirming(true);
     setError(null);
     setNotice(null);
@@ -272,18 +272,18 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       if (!saved) return;
       const working = saved;
       const linesToReceive = (working.lines ?? []).filter(
-        (line) => line.matchStatus === "confirmed" && line.odooProductId && Number(line.qtyCases ?? 0) > 0,
+        (line) => line.matchStatus === "confirmed" && line.productId && Number(line.qtyCases ?? 0) > 0,
       );
       if (!linesToReceive.length) {
         throw new Error("Confirm at least one matched line with quantity before creating a purchase.");
       }
       const draft = await createOdooDraftRfqFromInvoice({
-        supplierId: working.odooSupplierId!,
+        supplierId: working.supplierId!,
         invoiceNumber: working.invoiceNumber,
         invoiceDate: working.invoiceDate,
         notes: working.notes,
         lines: linesToReceive.map((line) => ({
-          productId: Number(line.odooProductId),
+          productId: Number(line.productId),
           quantity: Number(line.qtyCases),
           priceUnit: line.unitPrice ?? null,
           description: line.description,
@@ -292,10 +292,10 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       await confirmOdooPurchaseOrder(draft.id);
       const receiveResult = await tryReceivePurchase(draft.id, linesToReceive);
       const linked = await linkInvoiceScanPurchase(working.id, {
-        odooPoId: draft.id,
-        odooPoName: draft.name,
-        odooPickingId: receiveResult.pickingId,
-        odooPickingName: receiveResult.pickingName,
+        purchaseOrderId: draft.id,
+        purchaseOrderName: draft.name,
+        receiptId: receiveResult.receiptId,
+        receiptName: receiveResult.pickingName,
         status: receiveResult.status,
       });
       setSession(linked);
@@ -311,8 +311,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       setError(message);
       try {
         const linked = await linkInvoiceScanPurchase(session.id, {
-          odooPoId: session.odooPoId || undefined,
-          odooPoName: session.odooPoName || undefined,
+          purchaseOrderId: session.purchaseOrderId || undefined,
+          purchaseOrderName: session.purchaseOrderName || undefined,
           status: "failed",
         }).catch(() => null);
         if (linked) setSession(linked);
@@ -326,26 +326,26 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
 
   async function finishReceive() {
     if (!canReceiveStock) return;
-    if (!session?.odooPoId) return;
+    if (!session?.purchaseOrderId) return;
     setReceiving(true);
     setError(null);
     setNotice(null);
     try {
       const linesToReceive = (session.lines ?? []).filter(
-        (line) => line.matchStatus === "confirmed" && line.odooProductId && Number(line.qtyCases ?? 0) > 0,
+        (line) => line.matchStatus === "confirmed" && line.productId && Number(line.qtyCases ?? 0) > 0,
       );
-      const receiveResult = await tryReceivePurchase(session.odooPoId, linesToReceive);
+      const receiveResult = await tryReceivePurchase(session.purchaseOrderId, linesToReceive);
       const linked = await linkInvoiceScanPurchase(session.id, {
-        odooPoId: session.odooPoId,
-        odooPoName: session.odooPoName || undefined,
-        odooPickingId: receiveResult.pickingId,
-        odooPickingName: receiveResult.pickingName,
+        purchaseOrderId: session.purchaseOrderId,
+        purchaseOrderName: session.purchaseOrderName || undefined,
+        receiptId: receiveResult.receiptId,
+        receiptName: receiveResult.pickingName,
         status: receiveResult.status,
       });
       setSession(linked);
       setNotice(
         receiveResult.status === "received"
-          ? `Received ${receiveResult.pickingName || session.odooPoName}. Stock is now in Orithos.`
+          ? `Received ${receiveResult.pickingName || session.purchaseOrderName}. Stock is now in Orithos.`
           : "Could not auto-receive. Open Purchases to validate the picking manually.",
       );
     } catch (cause) {
@@ -360,14 +360,14 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   async function tryReceivePurchase(
     purchaseOrderId: number,
     confirmed: InvoiceScanSessionLine[],
-  ): Promise<{ status: "po_created" | "received"; pickingId?: number; pickingName?: string }> {
+  ): Promise<{ status: "po_created" | "received"; receiptId?: number; pickingName?: string }> {
     const detail = await getOdooPurchaseOrderDetail(purchaseOrderId);
     if (!detail.receivable?.pickingId || !detail.receivable.moves?.length) {
       return { status: "po_created" };
     }
     const qtyByProduct = new Map<number, number>();
     for (const line of confirmed) {
-      const productId = Number(line.odooProductId);
+      const productId = Number(line.productId);
       qtyByProduct.set(productId, (qtyByProduct.get(productId) ?? 0) + Number(line.qtyCases ?? 0));
     }
     const receiveLines = detail.receivable.moves.map((move) => {
@@ -377,15 +377,14 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       return { moveId: move.id, qtyDone: Math.max(0, Math.min(ordered, wanted)) };
     });
     if (!receiveLines.some((line) => line.qtyDone > 0)) {
-      return { status: "po_created", pickingId: detail.receivable.pickingId };
+      return { status: "po_created" };
     }
     const received = await receiveOdooPurchaseOrder(purchaseOrderId, {
-      pickingId: detail.receivable.pickingId,
       lines: receiveLines,
     });
     return {
       status: "received",
-      pickingId: detail.receivable.pickingId,
+      receiptId: received.receiptId,
       pickingName: received.pickingName,
     };
   }
@@ -458,8 +457,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-sm font-semibold text-[var(--oh-tile-green-text)]">Stock received</h2>
                   <p className="mt-1 text-sm text-[var(--oh-tile-green-text)]">
-                    {session.odooPoName || "Purchase"} is confirmed
-                    {session.odooPickingName ? ` · ${session.odooPickingName}` : ""}.
+                    {session.purchaseOrderName || "Purchase"} is confirmed
+                    {session.receiptName ? ` · ${session.receiptName}` : ""}.
                     On-hand quantities are updated in Orithos for matched products only — unmatched/skipped lines were not received.
                   </p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -490,8 +489,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                 <span className="mb-1.5 block font-medium">Supplier</span>
                 <select
                   disabled={!editable}
-                  value={session.odooSupplierId ? String(session.odooSupplierId) : ""}
-                  onChange={(e) => patchSession({ odooSupplierId: e.target.value ? Number(e.target.value) : null })}
+                  value={session.supplierId ? String(session.supplierId) : ""}
+                  onChange={(e) => patchSession({ supplierId: e.target.value ? Number(e.target.value) : null })}
                   className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 disabled:bg-[var(--oh-surface)]"
                 >
                   <option value="">{session.supplierName ? `OCR: ${session.supplierName}` : "Select supplier…"}</option>
@@ -502,8 +501,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                 <span className="mb-1.5 block font-medium">Outlet</span>
                 <select
                   disabled={!editable}
-                  value={session.odooOutletId ? String(session.odooOutletId) : ""}
-                  onChange={(e) => patchSession({ odooOutletId: e.target.value ? Number(e.target.value) : null })}
+                  value={session.outletId ? String(session.outletId) : ""}
+                  onChange={(e) => patchSession({ outletId: e.target.value ? Number(e.target.value) : null })}
                   className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 disabled:bg-[var(--oh-surface)]"
                 >
                   <option value="">No outlet selected</option>
@@ -516,12 +515,12 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               </label>
               <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm"><p className="text-xs text-[var(--oh-muted)]">Total</p><p className="mt-1 font-semibold tabular-nums">{money(session.totalPayable)}</p></div>
               <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm"><p className="text-xs text-[var(--oh-muted)]">ABN</p><p className="mt-1">{session.supplierAbn || "—"}</p></div>
-              {(session.odooPoName || session.odooPickingName) && (
+              {(session.purchaseOrderName || session.receiptName) && (
                 <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm sm:col-span-2">
                   <p className="text-xs text-[var(--oh-muted)]">Orithos documents</p>
                   <p className="mt-1 font-medium">
-                    {session.odooPoName || "—"}
-                    {session.odooPickingName ? ` · ${session.odooPickingName}` : ""}
+                    {session.purchaseOrderName || "—"}
+                    {session.receiptName ? ` · ${session.receiptName}` : ""}
                   </p>
                 </div>
               )}
@@ -591,8 +590,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                                   className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--oh-surface-muted)]"
                                   onClick={() => {
                                     patchLine(index, {
-                                      odooProductId: hit.id,
-                                      odooProductName: hit.display_name || hit.name,
+                                      productId: hit.id,
+                                      productName: hit.display_name || hit.name,
                                       matchStatus: "confirmed",
                                     });
                                     setProductHits((current) => ({ ...current, [index]: [] }));
@@ -606,13 +605,13 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                           </ul>
                         )}
                         <div className="flex flex-wrap gap-2">
-                          {line.odooProductName && (
+                          {line.productName && (
                             <span className="rounded-full bg-[var(--oh-tile-green-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-tile-green-text)]">
                               {line.matchStatus === "suggested" ? "Suggested: " : "Matched: "}
-                              {line.odooProductName}
+                              {line.productName}
                             </span>
                           )}
-                          {line.matchStatus === "suggested" && line.odooProductId && (
+                          {line.matchStatus === "suggested" && line.productId && (
                             <button
                               type="button"
                               onClick={() => patchLine(index, { matchStatus: "confirmed" })}
@@ -623,7 +622,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                           )}
                           <button
                             type="button"
-                            onClick={() => patchLine(index, { matchStatus: "skipped", odooProductId: null, odooProductName: null })}
+                            onClick={() => patchLine(index, { matchStatus: "skipped", productId: null, productName: null })}
                             className="rounded-md border border-[var(--oh-border)] px-2.5 py-1 text-xs font-semibold"
                           >
                             Skip line
@@ -634,8 +633,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                         </div>
                       </>
                     )}
-                    {!editable && line.odooProductName && (
-                      <p className="text-sm text-[var(--oh-text-secondary)]">Product: {line.odooProductName} · qty {line.qtyCases ?? 0}</p>
+                    {!editable && line.productName && (
+                      <p className="text-sm text-[var(--oh-text-secondary)]">Product: {line.productName} · qty {line.qtyCases ?? 0}</p>
                     )}
                   </article>
                 );
@@ -657,7 +656,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
             <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-sm text-[var(--oh-text)]">
               {confirmedLines.map((line, index) => (
                 <li key={line.id ?? index} className="flex justify-between gap-3 border-b border-[var(--oh-border)] py-1.5 last:border-0">
-                  <span className="min-w-0 truncate">{line.odooProductName || line.description}</span>
+                  <span className="min-w-0 truncate">{line.productName || line.description}</span>
                   <span className="shrink-0 tabular-nums">{line.qtyCases}</span>
                 </li>
               ))}
@@ -680,7 +679,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                 Discard draft
               </button>
             )}
-            {(session.odooPoId || done || canFinishReceive) && (
+            {(session.purchaseOrderId || done || canFinishReceive) && (
               <Link href="/purchases" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">
                 Open Purchases
               </Link>
@@ -716,7 +715,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
         </div>
         {editable && !canConfirm && (
           <p className="mx-auto mt-2 w-full max-w-5xl text-xs text-[var(--oh-muted)]">
-            {!session.odooSupplierId
+            {!session.supplierId
               ? "Select an Orithos supplier first."
               : openLines.length > 0
                 ? `${openLines.length} line${openLines.length === 1 ? "" : "s"} still need a match or skip.`

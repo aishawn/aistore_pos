@@ -18,11 +18,11 @@ function loadClient(fetchImpl) {
     require: (name) => {
       if (name === "./api") return { isLocalPreviewSession: () => false, api: {} };
       if (name === "./odoo-quote-timeout") return {};
-      if (name === "./odoo-read-cache") {
+      if (name === "./native-read-cache") {
         return {
-          cachedOdooRead: (_path, init, transport) => transport(init),
-          clearOdooReadCache: () => undefined,
-          setOdooReadIdentity: () => undefined,
+          cachedNativeRead: (_path, init, transport) => transport(init),
+          clearNativeReadCache: () => undefined,
+          setNativeReadIdentity: () => undefined,
         };
       }
       throw new Error("Unexpected dependency: " + name);

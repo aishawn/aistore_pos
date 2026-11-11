@@ -2,7 +2,7 @@
 
 项目设计、进展、效果、测试和问题的统一入口：[项目事实库](docs/project/README.md)。先读 [AI 全景](docs/project/features/ai/README.md) 或 [管理层摘要](docs/project/reports/2026-11-03-management-summary.md)；下文包含历史架构描述，当前业务边界以 [Product Boundaries](docs/PRODUCT_BOUNDARIES.md) 和适用版本证据为准。
 
-Orithos POS REST API 与 Python CLI 状态见 [API feature 文档](docs/project/features/pos-api/README.md) 和 [CLI 手册](tools/README.md)。POS API 提供 12 类 Odoo 只读资源，并支持受控的销售、库存与采购批处理。采购行必须显式传 `unitCost` 并写入 Odoo 单价。API 文档页位于 POS 的 `/api-docs`，随现有 Compose/Dokploy 服务部署，不需要单独服务。
+Orithos POS 内部 API 与已退役外部 POS API 的说明见 [API feature 文档](docs/project/features/pos-api/README.md)。旧 `/api/pos/v1` 外部 API 已停用并返回 HTTP 410；门店业务页面使用租户范围内的 Orithos 原生 API。API 状态页位于 POS 的 `/api-docs`。
 
 面向澳洲瓶装酒与精品零售的收银与进销存系统。收银员在同一套界面完成开单、结账、库存、采购和报表；店员还可以用自然语言问数、按酒标推荐在售葡萄酒，以及把供应商税票扫成收货单。
 
@@ -128,19 +128,19 @@ AI 默认关闭。未配置 `AI_ENABLED` 和百炼 API Key 时，收银、进销
 界面是一个全屏收银壳，不是多套独立站点。
 
 - `AppShell` 包住已登录页面：顶栏、侧栏、当前门店。
-- 首页 `/` 是 **Odoo 收银台**（`OdooRegisterPage`）：搜索/扫码、购物车、挂单、结账。
-- 侧栏只暴露 Odoo 业务入口（Register / Stock / Customers / Reporting / AI / Setup）。Classic PostgreSQL 路由默认隐藏；调试时设 `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`。
+- 首页 `/` 是收银工作区：搜索/扫码、购物车、挂单、结账；在线数据通过 Orithos 原生 API 读写。
+- 侧栏暴露 Orithos 业务入口（Register / Stock / Customers / Reporting / AI / Setup）。Classic MySQL 路由默认隐藏；调试时设 `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`。
 - `/m` 是手机会话。`ui-mode.ts` 把手机限制在高频收银与库存面，避免小屏打开整棵设置树。
 - Classic JWT 存在 Cookie `sf_token`（历史命名）。401 或会话失效业务码会清会话并回到 `/login`。
-- Odoo 员工会话经 **Settings → Integrations** 登录后写入 HttpOnly Cookie；浏览器不接触 Odoo 会话令牌。
+- 登录态仅用于 Orithos API；浏览器不保存外部业务系统会话令牌。
 
-### Odoo 为唯一业务事实源
+### Orithos 为唯一业务事实源
 
-试点与产品路线以 **Odoo** 为商品、销售、库存、采购的唯一可写源。Spring/PostgreSQL Classic 栈保留作行为规格与 AI Graph 参考，**不再与 Odoo 双写**。
+Orithos PostgreSQL 是商品、销售、库存、采购、客户和报表的唯一在线事实源。Shopfront 只经独立 crawler 同步进入 Orithos；门店页面、报表和 AI 不直读 Shopfront、Odoo 或历史快照服务。
 
-已接入的 Odoo 收银能力包括：价目表/客户价解析（经 Odoo 计价）、GST、现金凑整、瓶/箱包装系数、挂单（终端本地）、销售历史全单退款、关班（关闭 POS session）。跨币种价表与赊销仍拒绝或未做。能力三态见 [`docs/CAPABILITY_STATUS.md`](docs/CAPABILITY_STATUS.md)。
+收银、退款、库存、采购和关班通过经过租户/门店范围校验的 Orithos API 完成。能力三态见 [`docs/CAPABILITY_STATUS.md`](docs/CAPABILITY_STATUS.md)。
 
-Dokploy / 部署需配置 `ODOO_BASE_URL`（HTTPS）与 `ODOO_DATABASE`。员工账号需要公司、POS 配置、商品与销售权限。
+Dokploy 部署不需要 Odoo URL、数据库、账号或密码；运行验收还需确认应用出站网络不能访问 Odoo host。
 
 AI：补货建议（规则可解释 + 人工审批草稿 RFQ）为试点优先；侍酒/发票 OCR/通用助手在 `AI_ENABLED` 时可用，但不挡收银主路径。问数快照在 `/reports/ai/[id]`。
 

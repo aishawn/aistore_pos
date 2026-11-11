@@ -34,7 +34,7 @@ public class SellService {
     private final ProductMapper productMapper;
     private final CustomerMapper customerMapper;
     private final SaleMapper saleMapper;
-    private final boolean odooOnlyMode;
+    private final boolean nativePosOnlyMode;
 
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper) {
         this(productMapper, customerMapper, saleMapper, false);
@@ -42,11 +42,11 @@ public class SellService {
 
     @Autowired
     public SellService(ProductMapper productMapper, CustomerMapper customerMapper, SaleMapper saleMapper,
-                       @Value("${app.odoo-only-mode:false}") boolean odooOnlyMode) {
+                       @Value("${app.native-pos-only-mode:true}") boolean nativePosOnlyMode) {
         this.productMapper = productMapper;
         this.customerMapper = customerMapper;
         this.saleMapper = saleMapper;
-        this.odooOnlyMode = odooOnlyMode;
+        this.nativePosOnlyMode = nativePosOnlyMode;
     }
 
     /** Search products and customers for the Sell-pad search bar. */
@@ -88,9 +88,8 @@ public class SellService {
 
     /** List parked (suspended) sales for the Parked Sales tab. */
     public List<Sale> listParked() {
-        // Parked sales are a Classic POS concept; Odoo-only deployments have no
-        // legacy sale tables and must expose an empty read-only state instead.
-        if (odooOnlyMode) return List.of();
+        // Parked sales remain unavailable until their Orithos ledger is implemented.
+        if (nativePosOnlyMode) return List.of();
         Long vendorId = requireVendorId();
         Long outletId = requireOutletId();
         LocalDate today = AustraliaTime.today();

@@ -25,7 +25,7 @@ import {
 } from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
-import type { InventorySnapshotStatus } from "@/lib/inventory-snapshot-status";
+import type { InventoryHistoryStatus } from "@/types/inventory-history";
 import type { ForecastBusinessCost } from "@/lib/forecast-business-cost";
 import { forecastReadiness } from "@/lib/forecast-readiness";
 
@@ -102,7 +102,7 @@ type ReplenishmentData = {
   productEligibility?: string;
   generatedAt: string;
   cache?: { status?: "HIT" | "MISS"; expiresAt?: string };
-  inventoryHistory?: InventorySnapshotStatus;
+  inventoryHistory?: InventoryHistoryStatus;
   dataQuality?: string;
   forecast?: {
     enabled: boolean;

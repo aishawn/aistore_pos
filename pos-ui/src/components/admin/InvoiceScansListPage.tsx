@@ -220,7 +220,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(String(item.status))}`}>
                           {statusLabel(String(item.status))}
                         </span>
-                        {item.odooPoName && <p className="mt-1 text-xs text-[var(--oh-muted)]">{item.odooPoName}</p>}
+                        {item.purchaseOrderName && <p className="mt-1 text-xs text-[var(--oh-muted)]">{item.purchaseOrderName}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <Link href={`/invoices/${item.id}`} className="text-xs font-semibold text-[var(--oh-primary)] hover:underline">

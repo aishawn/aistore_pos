@@ -1,4 +1,4 @@
-import { cachedOdooRead, clearOdooReadCache } from "./odoo-read-cache";
+import { cachedNativeRead, clearNativeReadCache } from "./native-read-cache";
 import {
   ApiError,
   api,
@@ -471,7 +471,7 @@ export class OdooApiError extends Error {
     // actionable backend messages and validation errors.
     const gatewayFailure = [502, 503, 504].includes(status)
       && /\((?:502|503|504)\)$/.test(message);
-    super(gatewayFailure ? "Odoo is temporarily unavailable. Try again shortly." : message);
+    super(gatewayFailure ? "Orithos is temporarily unavailable. Try again shortly." : message);
     this.name = "OdooApiError";
   }
 }
@@ -507,9 +507,9 @@ async function fetchOdooTransport(input: RequestInfo | URL, init?: RequestInit, 
 
 async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false): Promise<Response> {
   const path = typeof input === "string" ? input : input instanceof URL ? input.pathname + input.search : input.url;
-  const response = await cachedOdooRead(path, init, options => fetchOdooTransport(input, options, safeToRetry));
+  const response = await cachedNativeRead(path, init, options => fetchOdooTransport(input, options, safeToRetry));
   const method = init?.method?.toUpperCase() ?? "GET";
-  if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(method)) clearOdooReadCache();
+  if (response.ok && !["GET", "HEAD", "OPTIONS"].includes(method)) clearNativeReadCache();
   return response;
 }
 
@@ -855,7 +855,7 @@ export async function closeOdooPosSession(configId: number, countedCash?: number
 
 export async function logoutFromOdoo(): Promise<OdooSessionStatus> {
   await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", cache: "no-store" }).catch(() => undefined);
-  clearOdooReadCache();
+  clearNativeReadCache();
   return { user: null, autoRecoverConfigured: false };
 }
 
@@ -1800,9 +1800,8 @@ export async function confirmOdooPurchaseOrder(purchaseId: number): Promise<void
 
 export async function receiveOdooPurchaseOrder(
   purchaseId: number,
-  body: { pickingId?: number; lines: Array<{ moveId: number; qtyDone: number }> },
-): Promise<{ pickingName: string; pickingState: string }> {
-  void body.pickingId;
+  body: { lines: Array<{ moveId: number; qtyDone: number }> },
+): Promise<{ receiptId?: number; pickingName: string; pickingState: string }> {
   const idempotencyKey = crypto.randomUUID();
   try {
     const result = await api.post<{ receiptId?: number; status?: string }>(`/api/orders/${purchaseId}/receipts`, {
@@ -1811,6 +1810,7 @@ export async function receiveOdooPurchaseOrder(
         .map((line) => ({ orderProductId: line.moveId, quantity: line.qtyDone })),
     }, { headers: { "Idempotency-Key": idempotencyKey } });
     return {
+      receiptId: result.receiptId,
       pickingName: result.receiptId ? `Receipt ${result.receiptId}` : `Receipt ${purchaseId}`,
       pickingState: (result.status || "updated").toLowerCase(),
     };

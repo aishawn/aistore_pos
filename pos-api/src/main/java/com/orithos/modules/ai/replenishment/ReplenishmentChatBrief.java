@@ -19,9 +19,9 @@ public class ReplenishmentChatBrief {
 
     private static final DateTimeFormatter DATA_DATE = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
 
-    private final OdooReplenishmentClient client;
+    private final NativeReplenishmentService client;
 
-    public ReplenishmentChatBrief(OdooReplenishmentClient client) {
+    public ReplenishmentChatBrief(NativeReplenishmentService client) {
         this.client = client;
     }
 
@@ -52,8 +52,8 @@ public class ReplenishmentChatBrief {
                                 + "Tap below to open replenishment.";
             }
             String sourceNote = chinese
-                    ? "数据来源：Odoo 原生库存与 POS 销售；检查日期：" + dataDate(plan.dataAsOf()) + " UTC。"
-                    : "Source: native Odoo inventory and POS sales; checked " + dataDate(plan.dataAsOf()) + " UTC.";
+                    ? "数据来源：Orithos 库存与销售账本；检查日期：" + dataDate(plan.dataAsOf()) + " UTC。"
+                    : "Source: Orithos inventory and sales ledger; checked " + dataDate(plan.dataAsOf()) + " UTC.";
             StringBuilder sb = new StringBuilder();
             if (chinese) {
                 sb.append("建议补货（覆盖 ").append(plan.coverageDays()).append(" 天）：")

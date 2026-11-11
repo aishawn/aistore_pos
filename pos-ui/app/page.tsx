@@ -1,6 +1,6 @@
 import { OdooRegisterPage } from "@/components/OdooRegisterPage";
 
-/** Owner-locked shell: Odoo sell register. Do not swap to OrithosRegisterPage without explicit owner approval. */
+/** Owner-locked shell: use the owner-approved register interface. */
 export default function Home() {
   return <OdooRegisterPage />;
 }

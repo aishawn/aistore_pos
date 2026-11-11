@@ -1,8 +1,12 @@
 package com.orithos.modules.config;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.CurrentUser;
 import com.orithos.security.PermissionAccess;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -14,13 +18,16 @@ public class SettingsPromoteController {
     private final SettingsImportService importService;
     private final CompanySettingsService companySettings;
     private final PermissionAccess permissions;
+    private final JdbcTemplate jdbc;
 
     public SettingsPromoteController(SettingsImportService importService,
                                      CompanySettingsService companySettings,
-                                     PermissionAccess permissions) {
+                                     PermissionAccess permissions,
+                                     JdbcTemplate jdbc) {
         this.importService = importService;
         this.companySettings = companySettings;
         this.permissions = permissions;
+        this.jdbc = jdbc;
     }
 
     @PostMapping("/promote")
@@ -31,11 +38,25 @@ public class SettingsPromoteController {
             if (body.get("storeKey") != null) storeKey = body.get("storeKey").trim();
             else if (body.get("store_key") != null) storeKey = body.get("store_key").trim();
         }
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "An outlet is required");
         if (storeKey.isBlank()) {
-            storeKey = companySettings.getString("settings.import.last_store_key", "skr");
-            if (storeKey == null || storeKey.isBlank()) storeKey = "skr";
+            var mappings = jdbc.queryForList(
+                    "SELECT store_key FROM shopfront_store_mapping WHERE outlet_id = ? AND enabled = TRUE", outletId);
+            if (mappings.size() != 1) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Exactly one enabled Shopfront mapping is required for this outlet");
+            }
+            storeKey = String.valueOf(mappings.getFirst().get("store_key"));
         }
-        return ApiResult.ok(importService.promote(storeKey, true));
+        Integer mapped = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_store_mapping WHERE store_key = ? AND outlet_id = ? AND enabled = TRUE",
+                Integer.class, storeKey, outletId);
+        if (mapped == null || mapped != 1) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "The Shopfront mapping is not assigned to this outlet");
+        }
+        return ApiResult.ok(importService.promote(storeKey, outletId, true));
     }
 
     @PostMapping("/dedupe")
@@ -43,7 +64,9 @@ public class SettingsPromoteController {
         if (!permissions.hasPermission("settings.store") && !permissions.hasPermission("settings.integrations")) {
             permissions.requirePermission("settings.store");
         }
-        return ApiResult.ok(importService.dedupeCatalogues());
+        Long outletId = CurrentUser.outletId();
+        if (outletId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "An outlet is required");
+        return ApiResult.ok(importService.dedupeCatalogues(outletId));
     }
 
     @GetMapping("/status")

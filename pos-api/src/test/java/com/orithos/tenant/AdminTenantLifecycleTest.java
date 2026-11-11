@@ -30,7 +30,6 @@ class AdminTenantLifecycleTest {
     private UserMapper userMapper;
     private TenantProperties tenantProperties;
     private AccountLifecycleService accountLifecycle;
-    private OdooTenantProvisioner odooTenantProvisioner;
     private AdminTenantController controller;
 
     @BeforeEach
@@ -41,15 +40,13 @@ class AdminTenantLifecycleTest {
         tenantProperties = new TenantProperties();
         tenantProperties.setPlatformOperatorSlug("demo");
         accountLifecycle = mock(AccountLifecycleService.class);
-        odooTenantProvisioner = mock(OdooTenantProvisioner.class);
         controller = new AdminTenantController(
                 mock(TenantProvisionService.class),
                 platformAccess,
                 vendorMapper,
                 userMapper,
                 tenantProperties,
-                accountLifecycle,
-                odooTenantProvisioner);
+                accountLifecycle);
     }
 
     @Test

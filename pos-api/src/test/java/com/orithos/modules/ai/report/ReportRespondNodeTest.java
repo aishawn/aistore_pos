@@ -66,16 +66,16 @@ class ReportRespondNodeTest {
     }
 
     @Test
-    void unavailableOdooIsNotReportedAsAnEmptyDay() {
-        assertError("ODOO_REPORT_UNAVAILABLE", "Live Odoo reporting is temporarily unavailable. Please try again.");
+    void unavailableNativeDataIsNotReportedAsAnEmptyDay() {
+        assertError("NATIVE_REPORT_UNAVAILABLE", "Orithos reporting is temporarily unavailable. Please try again.");
     }
 
     @Test
     void unavailableStockSourceOffersAReadOnlyFallbackInsteadOfSayingTheProductIsMissing() {
-        OverAllState state = state("ODOO_REPORT_UNAVAILABLE", List.of());
+        OverAllState state = state("NATIVE_REPORT_UNAVAILABLE", List.of());
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
 
-        assertEquals("I could not read live stock data right now. Open the stock list to check manually, or try again shortly.",
+        assertEquals("I could not read Orithos stock data right now. Open the stock list to check manually, or try again shortly.",
                 node.apply(state).get("answer"));
     }
 
@@ -144,23 +144,16 @@ class ReportRespondNodeTest {
     }
 
     @Test
-    void unlinkedStoreAndMissingPermissionHaveDistinctGuidance() {
-        assertError("ODOO_REPORT_STORE_UNLINKED",
-                "This store is not linked to an Odoo company for live reporting. Contact your administrator.");
-        OverAllState stock = state("ODOO_REPORT_STORE_UNLINKED", List.of());
-        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
-        assertEquals("This store is not linked to an Odoo company for live stock lookup. Contact your administrator.",
-                node.apply(stock).get("answer"));
+    void missingOutletAndPermissionHaveDistinctGuidance() {
+        assertError("NO_OUTLET", "Your account is not bound to a store.");
         assertError("NO_PERMISSION", "You do not have permission to query reports.");
     }
 
     @Test
     void unsupportedAndOversizedReportsAskForSupportedNarrowerQueries() {
-        assertError("ODOO_REPORT_UNSUPPORTED",
+        assertError("NATIVE_REPORT_UNSUPPORTED",
                 "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
                         + "how much [product] is in stock, or dead stock last 30 days.");
-        assertError("ODOO_REPORT_TOO_LARGE",
-                "That report is too large to summarize safely. Add a product filter or narrow the date range.");
     }
 
     @Test

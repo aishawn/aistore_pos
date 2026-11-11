@@ -64,9 +64,10 @@ public class InvoiceScanSessionService {
         session.setCreatedBy(user.id());
         session.setStatus("draft");
         session.setSourceType(normalizeSource(request.getSourceType()));
+        validateHeaderReferences(user.vendorId(), request.getSupplierId(), request.getOutletId());
         applyHeader(session, request.getSupplierName(), request.getSupplierAbn(), request.getInvoiceNumber(),
                 request.getInvoiceDate(), request.getDueDate(), request.getTotalPayable(), request.getGstIncluded(),
-                request.getOdooSupplierId(), request.getOdooOutletId(), request.getNotes(), request.getInternalNotes());
+                request.getSupplierId(), request.getOutletId(), request.getNotes(), request.getInternalNotes());
         session.setSourceFilename(trimToNull(request.getSourceFilename()));
         session.setSourceContentType(trimToNull(request.getSourceContentType()));
         try {
@@ -76,7 +77,7 @@ public class InvoiceScanSessionService {
         }
         rememberSupplier(user.vendorId(), session);
         mapper.insert(session);
-        replaceLines(session.getId(), request.getLines());
+        replaceLines(session.getId(), request.getLines(), user.vendorId());
         refreshMatchStatus(session);
         mapper.update(session);
         return toDetail(requireOwned(session.getId(), user.vendorId()));
@@ -92,11 +93,12 @@ public class InvoiceScanSessionService {
         if (request == null) {
             throw new BusinessException(40010, "Invoice scan patch is required.");
         }
+        validateHeaderReferences(user.vendorId(), request.getSupplierId(), request.getOutletId());
         applyHeader(session, request.getSupplierName(), request.getSupplierAbn(), request.getInvoiceNumber(),
                 request.getInvoiceDate(), request.getDueDate(), request.getTotalPayable(), request.getGstIncluded(),
-                request.getOdooSupplierId(), request.getOdooOutletId(), request.getNotes(), request.getInternalNotes());
+                request.getSupplierId(), request.getOutletId(), request.getNotes(), request.getInternalNotes());
         if (request.getLines() != null) {
-            replaceLines(session.getId(), request.getLines());
+            replaceLines(session.getId(), request.getLines(), user.vendorId());
         }
         rememberSupplier(user.vendorId(), session);
         refreshMatchStatus(session);
@@ -113,17 +115,25 @@ public class InvoiceScanSessionService {
         }
         String status = blankToNull(request.getStatus());
         if (status == null || !LINK_STATUSES.contains(status)) {
-            status = request.getOdooPickingId() != null ? "received" : "po_created";
+            status = request.getReceiptId() != null ? "received" : "po_created";
         }
-        if (!"failed".equals(status) && (request.getOdooPoId() == null || request.getOdooPoId() < 1)) {
-            throw new BusinessException(40010, "Odoo purchase order id is required.");
+        if (!"failed".equals(status) && (request.getPurchaseOrderId() == null || request.getPurchaseOrderId() < 1)) {
+            throw new BusinessException(40010, "Orithos purchase order id is required.");
         }
-        if (request.getOdooPoId() != null && request.getOdooPoId() > 0) {
-            session.setOdooPoId(request.getOdooPoId());
-            session.setOdooPoName(trimToNull(request.getOdooPoName()));
+        if (request.getPurchaseOrderId() != null
+                && !mapper.purchaseOrderBelongsToVendor(request.getPurchaseOrderId(), user.vendorId())) {
+            throw new BusinessException(40010, "Purchase order is outside the current store.");
         }
-        session.setOdooPickingId(request.getOdooPickingId());
-        session.setOdooPickingName(trimToNull(request.getOdooPickingName()));
+        if (request.getReceiptId() != null && (request.getPurchaseOrderId() == null
+                || !mapper.receiptBelongsToPurchaseOrder(request.getReceiptId(), request.getPurchaseOrderId(), user.vendorId()))) {
+            throw new BusinessException(40010, "Receipt is outside the linked purchase order.");
+        }
+        if (request.getPurchaseOrderId() != null && request.getPurchaseOrderId() > 0) {
+            session.setPurchaseOrderId(request.getPurchaseOrderId());
+            session.setPurchaseOrderName(trimToNull(request.getPurchaseOrderName()));
+        }
+        session.setReceiptId(request.getReceiptId());
+        session.setReceiptName(trimToNull(request.getReceiptName()));
         session.setStatus(status);
         if (!"failed".equals(status)) {
             session.setConfirmedBy(user.id());
@@ -150,12 +160,15 @@ public class InvoiceScanSessionService {
         return mapper.findMappedSupplier(user.vendorId(), abn);
     }
 
-    private void replaceLines(long sessionId, List<InvoiceScanSessionDtos.LineInput> lines) {
+    private void replaceLines(long sessionId, List<InvoiceScanSessionDtos.LineInput> lines, long vendorId) {
         mapper.deleteLines(sessionId);
         if (lines == null || lines.isEmpty()) return;
         int index = 0;
         for (InvoiceScanSessionDtos.LineInput input : lines) {
             if (input == null) continue;
+            if (input.getProductId() != null && !mapper.productBelongsToVendor(input.getProductId(), vendorId)) {
+                throw new BusinessException(40010, "Product is outside the current store.");
+            }
             InvoiceScanLineEntity line = new InvoiceScanLineEntity();
             line.setSessionId(sessionId);
             line.setLineIndex(index++);
@@ -165,9 +178,9 @@ public class InvoiceScanSessionService {
             line.setQtyCases(input.getQtyCases());
             line.setUnitPrice(input.getUnitPrice());
             line.setLineTotal(input.getLineTotal());
-            line.setOdooProductId(input.getOdooProductId());
-            line.setOdooProductName(trimToNull(input.getOdooProductName()));
-            line.setMatchStatus(normalizeMatch(input.getMatchStatus(), input.getOdooProductId()));
+            line.setProductId(input.getProductId());
+            line.setProductName(trimToNull(input.getProductName()));
+            line.setMatchStatus(normalizeMatch(input.getMatchStatus(), input.getProductId()));
             line.setConfidence(input.getConfidence());
             mapper.insertLine(line);
         }
@@ -176,7 +189,7 @@ public class InvoiceScanSessionService {
     private void refreshMatchStatus(InvoiceScanSessionEntity session) {
         List<InvoiceScanLineEntity> lines = mapper.listLines(session.getId());
         boolean hasOpen = false;
-        boolean hasConfirmed = session.getOdooSupplierId() != null;
+        boolean hasConfirmed = session.getSupplierId() != null;
         for (InvoiceScanLineEntity line : lines) {
             String match = line.getMatchStatus() == null ? "unmatched" : line.getMatchStatus();
             if ("unmatched".equals(match) || "suggested".equals(match)) {
@@ -186,9 +199,9 @@ public class InvoiceScanSessionService {
                 hasConfirmed = true;
             }
         }
-        if (session.getOdooSupplierId() != null && !hasOpen && !lines.isEmpty()) {
+        if (session.getSupplierId() != null && !hasOpen && !lines.isEmpty()) {
             session.setStatus("matched");
-        } else if (hasConfirmed || session.getOdooSupplierId() != null) {
+        } else if (hasConfirmed || session.getSupplierId() != null) {
             session.setStatus("draft");
         } else {
             session.setStatus("draft");
@@ -197,8 +210,17 @@ public class InvoiceScanSessionService {
 
     private void rememberSupplier(long vendorId, InvoiceScanSessionEntity session) {
         String abn = normalizeAbn(session.getSupplierAbn());
-        if (abn == null || session.getOdooSupplierId() == null) return;
-        mapper.upsertAbnMap(vendorId, abn, session.getOdooSupplierId(), session.getSupplierName());
+        if (abn == null || session.getSupplierId() == null) return;
+        mapper.upsertAbnMap(vendorId, abn, session.getSupplierId(), session.getSupplierName());
+    }
+
+    private void validateHeaderReferences(long vendorId, Long supplierId, Long outletId) {
+        if (supplierId != null && !mapper.supplierBelongsToVendor(supplierId, vendorId)) {
+            throw new BusinessException(40010, "Supplier is outside the current store.");
+        }
+        if (outletId != null && !mapper.outletBelongsToVendor(outletId, vendorId)) {
+            throw new BusinessException(40010, "Outlet is outside the current store.");
+        }
     }
 
     private InvoiceScanSessionDtos.SessionView toSummary(InvoiceScanSessionEntity session) {
@@ -213,7 +235,7 @@ public class InvoiceScanSessionService {
             List<Long> duplicates = new ArrayList<>(mapper.findDuplicateIds(
                     session.getVendorId(),
                     session.getInvoiceNumber(),
-                    session.getOdooSupplierId(),
+                    session.getSupplierId(),
                     normalizeAbn(session.getSupplierAbn())));
             duplicates.removeIf(id -> id.equals(session.getId()));
             view.setDuplicateIds(duplicates);
@@ -229,8 +251,8 @@ public class InvoiceScanSessionService {
             row.setQtyCases(line.getQtyCases());
             row.setUnitPrice(line.getUnitPrice());
             row.setLineTotal(line.getLineTotal());
-            row.setOdooProductId(line.getOdooProductId());
-            row.setOdooProductName(line.getOdooProductName());
+            row.setProductId(line.getProductId());
+            row.setProductName(line.getProductName());
             row.setMatchStatus(line.getMatchStatus());
             row.setConfidence(line.getConfidence());
             lines.add(row);
@@ -250,12 +272,12 @@ public class InvoiceScanSessionService {
         view.setDueDate(session.getDueDate());
         view.setTotalPayable(session.getTotalPayable());
         view.setGstIncluded(session.getGstIncluded());
-        view.setOdooSupplierId(session.getOdooSupplierId());
-        view.setOdooOutletId(session.getOdooOutletId());
-        view.setOdooPoId(session.getOdooPoId());
-        view.setOdooPoName(session.getOdooPoName());
-        view.setOdooPickingId(session.getOdooPickingId());
-        view.setOdooPickingName(session.getOdooPickingName());
+        view.setSupplierId(session.getSupplierId());
+        view.setOutletId(session.getOutletId());
+        view.setPurchaseOrderId(session.getPurchaseOrderId());
+        view.setPurchaseOrderName(session.getPurchaseOrderName());
+        view.setReceiptId(session.getReceiptId());
+        view.setReceiptName(session.getReceiptName());
         view.setSourceFilename(session.getSourceFilename());
         view.setSourceContentType(session.getSourceContentType());
         view.setNotes(session.getNotes());
@@ -273,8 +295,8 @@ public class InvoiceScanSessionService {
                                     java.time.LocalDate dueDate,
                                     java.math.BigDecimal totalPayable,
                                     java.math.BigDecimal gstIncluded,
-                                    Long odooSupplierId,
-                                    Long odooOutletId,
+                                    Long supplierId,
+                                    Long outletId,
                                     String notes,
                                     String internalNotes) {
         session.setSupplierName(trimToNull(supplierName));
@@ -284,8 +306,8 @@ public class InvoiceScanSessionService {
         session.setDueDate(dueDate);
         session.setTotalPayable(totalPayable);
         session.setGstIncluded(gstIncluded);
-        session.setOdooSupplierId(odooSupplierId);
-        session.setOdooOutletId(odooOutletId);
+        session.setSupplierId(supplierId);
+        session.setOutletId(outletId);
         session.setNotes(trimToNull(notes));
         session.setInternalNotes(trimToNull(internalNotes));
     }

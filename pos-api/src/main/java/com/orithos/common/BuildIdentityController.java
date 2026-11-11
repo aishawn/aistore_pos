@@ -20,10 +20,6 @@ import java.util.stream.Collectors;
 public class BuildIdentityController {
     @Value("${RUNTIME_ENVIRONMENT:}")
     private String environment;
-    @Value("${ODOO_DATABASE:}")
-    private String database;
-    @Value("${ISOLATION_ODOO_DATABASE:}")
-    private String isolationOdooDatabase;
     @Value("${RUNTIME_ENVIRONMENT:}")
     private String runtimeEnvironment;
     @Value("${app.native-pos.expected-database:}")
@@ -43,8 +39,6 @@ public class BuildIdentityController {
     /** Internal BFF preflight; never returns credentials or database names in production. */
     @GetMapping("/api/public/uat-context")
     public ResponseEntity<Map<String, Object>> uatContext() {
-        boolean odooIsolated = "uat".equals(environment) && !database.isBlank()
-                && database.equals(isolationOdooDatabase) && !"aipos".equals(database);
         PosDatabaseIdentity.VerificationStatus posDatabaseStatus = posDatabaseStatus();
         boolean sharedAuthorized = allowSharedPosDatabase
                 && posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.SHARED_DATABASE_NAME;
@@ -57,10 +51,9 @@ public class BuildIdentityController {
                 && enabledPosVendorIds != null
                 && Arrays.stream(enabledPosVendorIds.split(","))
                 .map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet()).size() == 1;
-        boolean isolated = odooIsolated && posTenantIsolated;
+        boolean isolated = "uat".equals(environment) && posTenantIsolated;
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("isolated", isolated);
-        result.put("odooDatabaseIsolated", odooIsolated);
         result.put("posDatabaseVerified", posDatabaseVerified);
         result.put("posDatabaseStatus", posDatabaseStatus.name());
         result.put("posSharedDatabaseAuthorized", sharedAuthorized);

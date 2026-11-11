@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 /**
  * Shared formatting for in-chat assistant briefs: strip import/test noise from
- * Odoo display names and keep shelf prices to two decimals.
+ * Native display names and keep shelf prices to two decimals.
  */
 public final class AssistantDisplayText {
 

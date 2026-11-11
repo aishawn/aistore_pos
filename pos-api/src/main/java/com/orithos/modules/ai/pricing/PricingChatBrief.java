@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class PricingChatBrief {
 
-    private final OdooPriceSuggestionClient client;
+    private final NativePriceSuggestionService client;
 
-    public PricingChatBrief(OdooPriceSuggestionClient client) {
+    public PricingChatBrief(NativePriceSuggestionService client) {
         this.client = client;
     }
 

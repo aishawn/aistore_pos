@@ -196,9 +196,6 @@ public class ReportRespondNode implements NodeAction {
             case "NO_OUTLET" -> "Your account is not bound to a store.";
             case "NEED_PRODUCT" ->
                     "Please tell me the product name, for example: how much Coca Cola is in stock.";
-            case "ODOO_REPORT_NOT_CONFIGURED" -> isStockIntent(intent)
-                    ? "Live stock lookup is not configured for this store. Contact your administrator."
-                    : "Live sales reporting is not configured for this store. Contact your administrator.";
             case "NO_COST_PERMISSION" -> "You do not have permission to query inventory cost.";
             case "NATIVE_REPORT_UNAVAILABLE" -> isStockIntent(intent)
                     ? "I could not read Orithos stock data right now. Open the stock list to check manually, or try again shortly."
@@ -206,19 +203,8 @@ public class ReportRespondNode implements NodeAction {
             case "NATIVE_REPORT_UNSUPPORTED" ->
                     "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
                             + "how much [product] is in stock, or dead stock last 30 days.";
-            case "ODOO_REPORT_STORE_UNLINKED" -> isStockIntent(intent)
-                    ? "This store is not linked to an Odoo company for live stock lookup. Contact your administrator."
-                    : "This store is not linked to an Odoo company for live reporting. Contact your administrator.";
-            case "ODOO_REPORT_UNSUPPORTED" ->
-                    "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
-                            + "how much [product] is in stock, or dead stock last 30 days.";
             case "COST_DATA_UNAVAILABLE" ->
                     "Inventory cash value is unavailable because this reporting source does not contain trusted product cost data.";
-            case "ODOO_REPORT_UNAVAILABLE" -> isStockIntent(intent)
-                    ? "I could not read live stock data right now. Open the stock list to check manually, or try again shortly."
-                    : "Live Odoo reporting is temporarily unavailable. Please try again.";
-            case "ODOO_REPORT_TOO_LARGE" ->
-                    "That report is too large to summarize safely. Add a product filter or narrow the date range.";
             case "QUOTA_EXCEEDED" ->
                     "This store has reached its hourly report quota. Try again later.";
             default -> "The query failed. Please try again.";

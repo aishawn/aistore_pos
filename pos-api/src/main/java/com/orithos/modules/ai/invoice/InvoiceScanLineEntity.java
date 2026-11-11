@@ -15,8 +15,8 @@ public class InvoiceScanLineEntity {
     private BigDecimal qtyCases;
     private BigDecimal unitPrice;
     private BigDecimal lineTotal;
-    private Long odooProductId;
-    private String odooProductName;
+    private Long productId;
+    private String productName;
     private String matchStatus;
     private BigDecimal confidence;
 }

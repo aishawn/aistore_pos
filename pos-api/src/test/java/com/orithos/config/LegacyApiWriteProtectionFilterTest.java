@@ -9,11 +9,11 @@ import org.springframework.mock.web.MockFilterChain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-class OdooOnlyModeFilterTest {
+class LegacyApiWriteProtectionFilterTest {
 
     @Test
-    void odooSafeAiInvoicePreviewPassesThrough() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeAiInvoicePreviewPassesThrough() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/ai/invoice/preview");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -25,8 +25,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeOrderReceiveRoutePassesThroughInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeOrderReceiveRoutePassesThroughInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/orders/receives/scan");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -38,8 +38,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeTenantScopedPurchaseOrdersPassThroughInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeTenantScopedPurchaseOrdersPassThroughInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/orders");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -51,8 +51,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeSalesRoutesPassThroughInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeSalesRoutesPassThroughInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String[] route : new String[][]{
                 {"GET", "/api/sales"},
                 {"GET", "/api/sales/42"},
@@ -71,7 +71,7 @@ class OdooOnlyModeFilterTest {
 
     @Test
     void nativeRegisterSessionRoutesPassThroughWhileClassicRegisterRoutesRemainRetired() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String[] route : new String[][]{
                 {"GET", "/api/retail/registers"},
                 {"GET", "/api/retail/registers/11/sessions/current"},
@@ -109,8 +109,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void legacySaleWritesRemainRetiredInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void legacySaleWritesRemainRetiredInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String[] route : new String[][]{
                 {"POST", "/api/sales"},
                 {"PUT", "/api/sales/42"},
@@ -124,8 +124,20 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
+    void odooBackedExternalPosApiReturnsGone() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/pos/v1/products");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertEquals(410, response.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(response.getContentAsString().contains("Odoo-backed POS API is retired"));
+    }
+
+    @Test
     void tenantScopedSupplierRoutesAndOutletReadsPassThrough() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String[] route : new String[][]{
                 {"GET", "/api/suppliers"},
                 {"GET", "/api/suppliers/1"},
@@ -148,7 +160,7 @@ class OdooOnlyModeFilterTest {
 
     @Test
     void nativeProductRoutesPassThroughAfterCatalogueCutover() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String path : new String[]{"/api/products", "/api/products/filter-options", "/api/products/12", "/api/products/12/prices"}) {
             MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
             MockHttpServletResponse response = new MockHttpServletResponse();
@@ -173,7 +185,7 @@ class OdooOnlyModeFilterTest {
 
     @Test
     void nativeSupplyPlanAndCartPassThroughWhileLegacySupplyWritesRemainRetired() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (var route : new String[][]{
                 {"GET", "/api/supply-chain/plan"},
                 {"GET", "/api/supply-chain/settings"},
@@ -194,7 +206,7 @@ class OdooOnlyModeFilterTest {
 
     @Test
     void nativeReportCustomerAndPriceListRoutesPassThroughWhileSidePathsRemainRetired() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (String path : new String[]{
                 "/api/reports/native-overview",
                 "/api/reports/native-sales-history",
@@ -242,8 +254,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeTaxRateRoutesPassThroughInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeTaxRateRoutesPassThroughInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (var route : new String[][]{
                 {"GET", "/api/tax-rates"},
                 {"GET", "/api/tax-rates/3"},
@@ -263,8 +275,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void nativeSettingsRoutesPassThroughInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void nativeSettingsRoutesPassThroughInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (var route : new String[][]{
                 {"GET", "/api/settings"},
                 {"GET", "/api/settings/company"},
@@ -299,8 +311,8 @@ class OdooOnlyModeFilterTest {
     }
 
     @Test
-    void appUserManagementRemainsAvailableInOdooOnlyMode() throws Exception {
-        OdooOnlyModeFilter filter = new OdooOnlyModeFilter(true);
+    void appUserManagementRemainsAvailableInNativePosOnlyMode() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/users");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();

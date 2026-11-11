@@ -53,23 +53,20 @@ public class ForecastService {
         List<ForecastDtos.Series> series = new ArrayList<>();
         Map<Long, List<Daily>> grouped = new LinkedHashMap<>();
         jdbc.query("""
-                SELECT COALESCE(s.product_id, i.product_id) AS product_id,
-                       COALESCE(s.business_date, i.business_date) AS business_date,
-                       COALESCE(s.units_sold, 0) AS units_sold,
-                       COALESCE(i.stockout_flag, s.stockout_flag, false) AS stockout_flag,
-                       COALESCE(i.data_quality_status, s.data_quality_status) AS data_quality_status
-                FROM ai_sales_daily s
-                FULL OUTER JOIN ai_inventory_daily i
-                  ON i.vendor_id = s.vendor_id AND i.outlet_id = s.outlet_id
-                 AND i.product_id = s.product_id AND i.business_date = s.business_date
-                WHERE COALESCE(s.vendor_id, i.vendor_id) = ?
-                  AND COALESCE(s.outlet_id, i.outlet_id) = ?
-                  AND COALESCE(s.business_date, i.business_date) >= CURRENT_DATE - (? * INTERVAL '1 day')
-                  AND (s.product_id IS NULL OR s.data_quality_status IN ('VALID', 'CENSORED_DEMAND'))
-                ORDER BY product_id, business_date
+                SELECT si.product_id,
+                       COALESCE(s.business_date, s.local_sold_at::date) AS business_date,
+                       SUM(si.quantity) AS units_sold
+                FROM sale s
+                JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
+                JOIN outlet o ON o.id = s.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
+                JOIN product p ON p.id = si.product_id AND p.outlet_id = s.outlet_id AND p.deleted_at IS NULL
+                WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                  AND COALESCE(s.business_date, s.local_sold_at::date)
+                      >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - ?
+                GROUP BY si.product_id, COALESCE(s.business_date, s.local_sold_at::date)
+                ORDER BY si.product_id, business_date
                 """, (org.springframework.jdbc.core.RowCallbackHandler) rs -> grouped.computeIfAbsent(rs.getLong("product_id"), ignored -> new ArrayList<>())
-                .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"),
-                        rs.getBoolean("stockout_flag") || "CENSORED_DEMAND".equals(rs.getString("data_quality_status")))),
+                .add(new Daily(rs.getDate("business_date").toLocalDate(), rs.getDouble("units_sold"), false)),
                 tenant.vendorId(), tenant.requireOutletId(), maxHistoryDays);
         log.info("AI forecast history loaded vendorId={} outletId={} products={} elapsedMs={}",
                 tenant.vendorId(), tenant.requireOutletId(), grouped.size(), elapsedMs(startedAt));
@@ -92,11 +89,14 @@ public class ForecastService {
         }
         if (series.isEmpty()) throw new BusinessException(40431, "No valid daily sales history is available.");
         String sourceVersion = jdbc.query("""
-                SELECT source_version FROM ai_sales_daily
-                WHERE vendor_id = ? AND outlet_id = ?
-                  AND source_version IS NOT NULL AND trim(source_version) <> ''
-                ORDER BY data_as_of DESC LIMIT 1
-                """, rs -> rs.next() ? rs.getString(1) : "unknown",
+                SELECT MAX(s.updated_at)::text FROM sale s
+                JOIN outlet o ON o.id = s.outlet_id AND o.vendor_id = ? AND o.deleted_at IS NULL
+                WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
+                """, rs -> {
+                    if (!rs.next()) return "unknown";
+                    String updatedAt = rs.getString(1);
+                    return updatedAt == null || updatedAt.isBlank() ? "unknown" : "orithos-ledger-" + updatedAt;
+                },
                 tenant.vendorId(), tenant.requireOutletId());
         requireVerifiedSourceVersion(sourceVersion);
         Set<Long> expectedProducts = new HashSet<>();
@@ -144,9 +144,9 @@ public class ForecastService {
     }
 
     static void requireVerifiedSourceVersion(String sourceVersion) {
-        if (sourceVersion == null || sourceVersion.isBlank() || "unknown".equalsIgnoreCase(sourceVersion)) {
+        if (sourceVersion == null || !sourceVersion.startsWith("orithos-ledger-")) {
             throw new BusinessException(40431,
-                    "Daily sales history has no verified source snapshot; run a read-only Odoo sync first.");
+                    "Orithos does not have verified completed sales history for this store.");
         }
     }
 

@@ -16,6 +16,7 @@ class AiGatewayPolicyTest {
         assertEquals("show stock", AiGatewayPolicy.validateInput(" show stock ", 100));
         assertThrows(IllegalArgumentException.class, () -> AiGatewayPolicy.validateInput("select * from products", 100));
         assertThrows(IllegalArgumentException.class, () -> AiGatewayPolicy.validateInput("change outletId=2", 100));
+        assertThrows(IllegalArgumentException.class, () -> AiGatewayPolicy.validateInput("inventory model = internal_product", 100));
     }
 
     @Test

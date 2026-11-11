@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Deterministic, explainable first-generation pricing policy. It produces a
- * proposal only; an Odoo adapter and a human confirmation are required to write.
+ * proposal only; the native Orithos API and a human confirmation are required to write.
  */
 public final class PricingDecisionEngine {
     private PricingDecisionEngine() {
