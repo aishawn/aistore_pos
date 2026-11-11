@@ -19,14 +19,14 @@ import static org.mockito.Mockito.verify;
 class ReportQueryServiceReportableSaleTest {
 
     @Test
-    void reportableSaleIncludesCompletedAndShopfrontParkedOnly() {
+    void reportableSaleIncludesCompletedAndIncompleteOnly() {
         assertTrue(ReportQueryService.isReportableSale("COMPLETED", null));
         assertTrue(ReportQueryService.isReportableSale("COMPLETED", "shopfront"));
-        assertTrue(ReportQueryService.isReportableSale("PARKED", "shopfront"));
-        assertTrue(ReportQueryService.isReportableSale("parked", "Shopfront"));
+        assertTrue(ReportQueryService.isReportableSale("INCOMPLETE", "shopfront"));
+        assertTrue(ReportQueryService.isReportableSale("incomplete", null));
 
+        assertFalse(ReportQueryService.isReportableSale("PARKED", "shopfront"));
         assertFalse(ReportQueryService.isReportableSale("PARKED", null));
-        assertFalse(ReportQueryService.isReportableSale("PARKED", "orithos"));
         assertFalse(ReportQueryService.isReportableSale("VOIDED", "shopfront"));
         assertFalse(ReportQueryService.isReportableSale(null, "shopfront"));
     }
@@ -38,15 +38,16 @@ class ReportQueryServiceReportableSaleTest {
                 "total_sales", 5038.48,
                 "transaction_count", 162,
                 "cost", 3620.12
-        ))).when(jdbc).queryForList(anyString(), (Object) any(), (Object) any());
+        ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class));
         ReportQueryService service = new ReportQueryService(jdbc);
 
         service.dailySales(87L, LocalDate.of(2026, 11, 9));
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbc).queryForList(sql.capture(), (Object) any(), (Object) any());
+        verify(jdbc).queryForList(sql.capture(), any(Object.class), any(Object.class));
         String query = sql.getValue();
         assertTrue(query.contains(ReportQueryService.REPORTABLE_SALE_STATUS_SQL));
-        assertTrue(query.contains("s.source_system = 'shopfront'"));
+        assertTrue(query.contains("s.status = 'INCOMPLETE'"));
+        assertFalse(query.contains("s.status = 'PARKED'"));
     }
 }

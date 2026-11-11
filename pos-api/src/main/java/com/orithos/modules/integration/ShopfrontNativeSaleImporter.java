@@ -496,7 +496,10 @@ public class ShopfrontNativeSaleImporter {
         String status = raw.trim().toUpperCase(Locale.ROOT);
         return switch (status) {
             case "COMPLETED", "CLOSED", "PAID", "FINALISED", "FINALIZED" -> "COMPLETED";
-            case "PARKED", "INCOMPLETE", "OPEN", "SAVED" -> "PARKED";
+            // Keep Shopfront INCOMPLETE distinct so sales reports can match Shopfront DSL
+            // (COMPLETED + INCOMPLETE) without counting ordinary parked carts.
+            case "INCOMPLETE" -> "INCOMPLETE";
+            case "PARKED", "OPEN", "SAVED" -> "PARKED";
             case "VOIDED", "VOID", "CANCELLED", "CANCELED" -> "VOIDED";
             case "REFUNDED" -> "REFUNDED";
             default -> throw new IllegalArgumentException("Unknown sale status: " + raw);

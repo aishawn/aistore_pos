@@ -32,11 +32,11 @@ public class ReportQueryService {
     public record Period(LocalDateTime from, LocalDateTime toExclusive) {}
 
     /**
-     * Shopfront sales-report parity: COMPLETED plus Shopfront INCOMPLETE
-     * (imported as PARKED). Local cashier parked carts stay excluded.
+     * Shopfront sales-report parity: COMPLETED plus INCOMPLETE.
+     * Local / Shopfront PARKED carts stay excluded.
      */
     static final String REPORTABLE_SALE_STATUS_SQL =
-            "(s.status = 'COMPLETED' OR (s.status = 'PARKED' AND s.source_system = 'shopfront'))";
+            "(s.status = 'COMPLETED' OR s.status = 'INCOMPLETE')";
 
     private final JdbcTemplate jdbc;
 
@@ -50,10 +50,7 @@ public class ReportQueryService {
             return false;
         }
         String normalized = status.trim().toUpperCase(Locale.ROOT);
-        if ("COMPLETED".equals(normalized)) {
-            return true;
-        }
-        return "PARKED".equals(normalized) && "shopfront".equalsIgnoreCase(sourceSystem);
+        return "COMPLETED".equals(normalized) || "INCOMPLETE".equals(normalized);
     }
 
     public Period defaultPeriod(Grain grain) {

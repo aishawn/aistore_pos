@@ -430,7 +430,8 @@ public class ShopfrontIntegrationController {
         if (raw == null || raw.isBlank()) return "UNKNOWN";
         return switch (raw.trim().toUpperCase(Locale.ROOT)) {
             case "COMPLETED", "CLOSED", "PAID", "FINALISED", "FINALIZED" -> "COMPLETED";
-            case "PARKED", "INCOMPLETE", "OPEN", "SAVED" -> "PARKED";
+            case "INCOMPLETE" -> "INCOMPLETE";
+            case "PARKED", "OPEN", "SAVED" -> "PARKED";
             case "VOIDED", "VOID", "CANCELLED", "CANCELED" -> "VOIDED";
             case "REFUNDED" -> "REFUNDED";
             default -> "UNKNOWN";

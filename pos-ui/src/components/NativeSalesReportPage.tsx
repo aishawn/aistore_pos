@@ -78,7 +78,7 @@ export function NativeSalesReportPage() {
       <table className="w-full min-w-[680px] border-collapse text-left text-sm"><thead className="sticky top-0 bg-[var(--oh-surface)] text-xs uppercase text-[var(--oh-muted)]"><tr>{["Business date", "Revenue", "Cost", "Gross profit", "Tax", "Transactions"].map(label => <th key={label} className="px-3 py-2">{label}</th>)}</tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{report?.dailyTrend.map(row => <tr key={String(row.date)}><td className="px-3 py-2">{String(row.date)}</td><td className="px-3 py-2">{money(Number(row.revenue))}</td><td className="px-3 py-2">{row.costAvailable && row.cost !== null ? money(Number(row.cost)) : "—"}</td><td className="px-3 py-2">{row.grossProfit !== null ? money(Number(row.grossProfit)) : "—"}</td><td className="px-3 py-2">{row.taxAvailable && row.tax !== null ? money(Number(row.tax)) : "—"}</td><td className="px-3 py-2">{Number(row.transaction_count).toLocaleString("en-AU")}</td></tr>)}</tbody></table>
       {!loading && report?.dailyTrend.length === 0 && <p className="p-6 text-center text-sm text-[var(--oh-muted)]">No Orithos sales in this range.</p>}
     </div>
-    <p className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Includes completed sales plus Shopfront incomplete imports (parked). Local parked carts are excluded. Tax and historical cost must be complete to show gross profit.</p>
+    <p className="border-t border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Includes completed sales plus Shopfront incomplete sales (Shopfront report parity). Parked carts are excluded. Tax and historical cost must be complete to show gross profit.</p>
   </main>;
 }
 

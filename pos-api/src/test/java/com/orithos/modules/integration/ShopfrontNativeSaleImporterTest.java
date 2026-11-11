@@ -24,7 +24,8 @@ class ShopfrontNativeSaleImporterTest {
     void mapsShopfrontStatusesOntoNativeLedgerStatuses() {
         assertEquals("COMPLETED", ShopfrontNativeSaleImporter.mapStatus("COMPLETED"));
         assertEquals("COMPLETED", ShopfrontNativeSaleImporter.mapStatus("closed"));
-        assertEquals("PARKED", ShopfrontNativeSaleImporter.mapStatus("INCOMPLETE"));
+        assertEquals("INCOMPLETE", ShopfrontNativeSaleImporter.mapStatus("INCOMPLETE"));
+        assertEquals("PARKED", ShopfrontNativeSaleImporter.mapStatus("PARKED"));
         assertEquals("VOIDED", ShopfrontNativeSaleImporter.mapStatus("cancelled"));
         assertThrows(IllegalArgumentException.class, () -> ShopfrontNativeSaleImporter.mapStatus(null));
         assertThrows(IllegalArgumentException.class, () -> ShopfrontNativeSaleImporter.mapStatus("mystery"));
