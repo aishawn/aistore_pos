@@ -38,8 +38,9 @@ public class ShopfrontMatchStatusIndexMigrator implements CommandLineRunner {
             }
             log.info("Shopfront match-status supporting index is ready.");
         } catch (Exception error) {
-            log.error("Shopfront match-status index migration failed", error);
-            throw new IllegalStateException("Shopfront match-status index migration failed", error);
+            // CONCURRENTLY builds on large sale_item tables can take longer than a
+            // deploy health window; never take the API down for an optional index.
+            log.warn("Shopfront match-status index migration deferred: {}", error.toString());
         }
     }
 

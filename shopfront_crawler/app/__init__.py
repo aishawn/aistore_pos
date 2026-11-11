@@ -1,1 +1,0 @@
-"""Shopfront synchronization service."""
