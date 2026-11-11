@@ -604,6 +604,94 @@ public class ShopfrontIntegrationController {
     }
 
     /**
+     * Promote durable {@code shopfront_purchase_order} mirror rows into Orithos
+     * {@code purchase_order} / {@code order_product} for one store. Batched so
+     * callers can loop without gateway timeouts. Requires business-write.
+     */
+    @PostMapping("/purchase-orders:promote-native")
+    @Transactional
+    public ApiResult<Map<String, Object>> promotePurchaseOrders(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        if (!businessWriteEnabled) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Shopfront business write is disabled; enable SHOPFRONT_BUSINESS_WRITE_ENABLED before promoting purchase orders");
+        }
+        ensureMappingTable();
+        ensureShadowTables();
+        ensurePurchaseOrderBusinessMappingTable();
+        String storeKey = body == null ? "" : body.path("store_key").asText("").trim();
+        String afterSourceId = body == null ? "" : body.path("after_source_id").asText("").trim();
+        int limit = body == null ? 100 : body.path("limit").asInt(100);
+        if (!STORE_KEY.matcher(storeKey).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        if (limit < 1 || limit > 250) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be between 1 and 250");
+        }
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT store_key, company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?",
+                storeKey);
+        if (mappings.isEmpty() || !isEnabled(mappings.getFirst().get("enabled"))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No enabled Shopfront store mapping for " + storeKey);
+        }
+        Map<String, Object> mapping = mappings.getFirst();
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Shopfront mapping has no numeric POS outlet_id for store " + storeKey);
+        }
+        StringBuilder sql = new StringBuilder(
+                "SELECT source_id, supplier_source_id, status, order_date, total_cost, raw_payload "
+                        + "FROM shopfront_purchase_order WHERE store_key = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(storeKey);
+        if (!afterSourceId.isBlank()) {
+            sql.append(" AND source_id > ?");
+            args.add(afterSourceId);
+        }
+        sql.append(" ORDER BY source_id ASC LIMIT ?");
+        args.add(limit);
+        List<Map<String, Object>> rows = jdbc.queryForList(sql.toString(), args.toArray());
+        var items = objectMapper.createArrayNode();
+        int rebuildFailures = 0;
+        String lastSourceId = afterSourceId;
+        for (Map<String, Object> row : rows) {
+            String sourceId = stringValue(row.get("source_id"));
+            lastSourceId = sourceId;
+            try {
+                items.add(rebuildPurchaseOrderNode(row));
+            } catch (Exception ex) {
+                rebuildFailures++;
+                log.warn("Failed to rebuild mirror purchase order for promote store={} source={} message={}",
+                        storeKey, sourceId, ex.getMessage());
+            }
+        }
+        Map<String, Object> imported = importBusinessPurchaseOrders(storeKey, mapping, items);
+        Integer mirrorTotal = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_purchase_order WHERE store_key = ?", Integer.class, storeKey);
+        Integer mappedTotal = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key = ? AND outlet_id = ?",
+                Integer.class, storeKey, outletId);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "PROMOTED");
+        result.put("store_key", storeKey);
+        result.put("outlet_id", outletId);
+        result.put("mirror_batch", rows.size());
+        result.put("rebuild_failures", rebuildFailures);
+        result.put("batch_size", limit);
+        result.put("last_source_id", lastSourceId);
+        result.put("has_more", rows.size() >= limit);
+        result.put("mirror_total", mirrorTotal == null ? 0 : mirrorTotal);
+        result.put("purchase_orders_mapped", mappedTotal == null ? 0 : mappedTotal);
+        result.put("business", imported);
+        result.put("business_write", true);
+        return ApiResult.ok(result);
+    }
+
+    /**
      * Copy sale money fields (and status/payload) from one mirror store_key to another
      * for a single Adelaide business day. Used to repair stale Demo mirror rows without
      * a full {@code mirror:copy} (which can gateway-timeout).
@@ -2725,6 +2813,83 @@ public class ShopfrontIntegrationController {
         JsonNode id = child.path(idField);
         if (id.isMissingNode() || id.isNull()) id = child.path("raw_payload").path(idField);
         return id.isMissingNode() || id.isNull() || id.asText().isBlank() ? Integer.toString(index) : id.asText();
+    }
+
+    private com.fasterxml.jackson.databind.node.ObjectNode rebuildPurchaseOrderNode(Map<String, Object> row) {
+        JsonNode raw = parseJsonObject(row.get("raw_payload"));
+        var node = objectMapper.createObjectNode();
+        String sourceId = firstNonBlank(stringValue(row.get("source_id")), text(raw, "id"));
+        if (sourceId == null || sourceId.isBlank()) {
+            throw new IllegalArgumentException("Purchase order mirror row is missing source_id");
+        }
+        node.put("source_id", sourceId);
+        String supplierSourceId = firstNonBlank(stringValue(row.get("supplier_source_id")), text(raw, "supplier_source_id"));
+        if (supplierSourceId == null || supplierSourceId.isBlank()) {
+            JsonNode products = raw.path("products");
+            if (products.isArray()) {
+                for (JsonNode line : products) {
+                    String candidate = text(line.path("supplier"), "id");
+                    if (candidate != null && !candidate.isBlank()) {
+                        supplierSourceId = candidate;
+                        break;
+                    }
+                }
+            }
+        }
+        if (supplierSourceId != null && !supplierSourceId.isBlank()) {
+            node.put("supplier_source_id", supplierSourceId);
+        }
+        putText(node, "status", firstNonBlank(stringValue(row.get("status")), text(raw, "status")));
+        putText(node, "order_date", firstNonBlank(stringValue(row.get("order_date")), text(raw, "orderDate"), text(raw, "order_date")));
+        BigDecimal totalCost = row.get("total_cost") != null
+                ? decimalObject(row.get("total_cost"))
+                : firstDecimal(raw, "totalCost", "total_cost");
+        if (totalCost != null) {
+            node.put("total_cost", totalCost);
+        }
+        node.set("raw_payload", raw.isMissingNode() || raw.isNull() ? objectMapper.createObjectNode() : raw);
+        return node;
+    }
+
+    private JsonNode parseJsonObject(Object raw) {
+        if (raw == null) {
+            return objectMapper.createObjectNode();
+        }
+        if (raw instanceof JsonNode node) {
+            return node.isObject() ? node : objectMapper.createObjectNode();
+        }
+        String text = String.valueOf(raw).trim();
+        if (text.isBlank()) {
+            return objectMapper.createObjectNode();
+        }
+        try {
+            JsonNode parsed = objectMapper.readTree(text);
+            return parsed.isObject() ? parsed : objectMapper.createObjectNode();
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Purchase order raw_payload is not valid JSON", ex);
+        }
+    }
+
+    private static String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private void putText(com.fasterxml.jackson.databind.node.ObjectNode node, String field, String value) {
+        if (value != null && !value.isBlank()) {
+            node.put(field, value);
+        }
     }
 
     private String text(JsonNode node, String field) {

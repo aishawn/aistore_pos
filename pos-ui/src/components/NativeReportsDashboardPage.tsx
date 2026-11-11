@@ -133,7 +133,7 @@ export function NativeReportsDashboardPage() {
         {data?.topProducts.length ? <ul className="mt-2 divide-y divide-[var(--oh-border)]">{data.topProducts.map(row => <li key={row.id || row.name} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="min-w-0 truncate">{row.name}</span><span className="shrink-0 text-[var(--oh-muted)]">{row.quantity} units</span><strong className="shrink-0">{money(Number(row.revenue))}</strong></li>)}</ul> : <p className="mt-5 text-sm text-[var(--oh-muted)]">{loading ? "Loading…" : "Product detail unavailable."}</p>}
       </section>
     </section>
-    <p className="text-xs text-[var(--oh-muted)]">Includes completed transactions imported into Orithos and completed Orithos sales. Missing tax or historical cost is shown as unavailable.</p>
+    <p className="text-xs text-[var(--oh-muted)]">Shopfront report parity: completed + incomplete sales. Profit = revenue − cost. Parked carts are excluded. Missing tax or historical cost is shown as unavailable.</p>
   </main>;
 }
 

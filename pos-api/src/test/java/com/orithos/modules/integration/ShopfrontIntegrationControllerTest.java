@@ -457,6 +457,65 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void promotesPurchaseOrdersFromMirrorInBoundedBatches() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("shopfront_store_mapping WHERE store_key"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("store_key", "skr", "company_id", "55", "outlet_id", 87L, "enabled", 1)));
+        when(jdbc.queryForList(contains("FROM shopfront_purchase_order WHERE store_key"), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "source_id", "sf-order-1",
+                        "supplier_source_id", "sf-supplier-1",
+                        "status", "RECEIVED",
+                        "order_date", "2026-10-02",
+                        "total_cost", new BigDecimal("20"),
+                        "raw_payload", """
+                                {"status":"RECEIVED","orderDate":"2026-10-02","invoiceNumber":"INV-1001",
+                                 "totalCost":20,"expectedTotal":20,"products":[{
+                                   "caseQuantity":1,"orderedQuantity":2,"receivedQuantity":2,"baseCost":10,"orderedCost":20,
+                                   "supplier":{"id":"sf-supplier-1"},"item":{"id":"sf-product-1","mdbId":"SKU-1"}
+                                 }]}
+                                """
+                )));
+        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
+                .thenReturn(55L);
+        when(jdbc.queryForList(contains("shopfront_supplier_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("supplier_id", 701L)));
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("pos_product_id", 801L)));
+        when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
+                .thenReturn(901L);
+        when(jdbc.queryForObject(contains("FROM shopfront_purchase_order WHERE store_key"), eq(Integer.class), eq("skr")))
+                .thenReturn(2372);
+        when(jdbc.queryForObject(contains("FROM shopfront_purchase_order_business_mapping"), eq(Integer.class), eq("skr"), eq(87L)))
+                .thenReturn(499);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        var body = new ObjectMapper().createObjectNode()
+                .put("store_key", "skr")
+                .put("limit", 100);
+        Map<String, Object> result = controller.promotePurchaseOrders("token", body).data();
+
+        assertEquals("PROMOTED", result.get("status"));
+        assertEquals("skr", result.get("store_key"));
+        assertEquals(1, result.get("mirror_batch"));
+        assertEquals(false, result.get("has_more"));
+        assertEquals(2372, result.get("mirror_total"));
+        assertEquals(499, result.get("purchase_orders_mapped"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> business = (Map<String, Object>) result.get("business");
+        assertEquals(1, business.get("created"));
+    }
+
+    @Test
     void clonesProductMappingsInBoundedPhases() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
