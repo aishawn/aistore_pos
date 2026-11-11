@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight, BarChart3, RefreshCw } from "lucide-react";
+import { formatShopfrontProfitPercent } from "@/lib/shopfront-aligned-margin";
 import { money, type OverviewPulse, pulseMarginNote } from "./useOverview";
 
 function updatedAt(value: string | undefined, timezone: string) {
@@ -43,17 +44,10 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
     ? "/reports/dashboard?period=yesterday"
     : `/products?dialog=cost-reconciliation&fromDay=${data.yesterdayFrom || ""}&toDay=${data.yesterdayTo || ""}`;
   const negativeStockHref = orithosMode || sourceMode ? "/reports/inventory" : "/products?view=negative-stock";
-  const marginValue = (() => {
-    if (!marginAvailable) return "—";
-    if (orithosMode) {
-      const net = data.yesterdayNetSales;
-      if (net != null && net > 0) {
-        return `${((data.yesterdayGrossMargin! / net) * 100).toFixed(1)}%`;
-      }
-      return money(data.yesterdayGrossMargin!, data.currency);
-    }
-    return `${(data.yesterdayGrossMargin! * 100).toFixed(sourceMode ? 2 : 1)}%`;
-  })();
+  // Shopfront / Orithos sales report: Profit % = (revenue - cost) / revenue (tax inclusive).
+  const marginValue = marginAvailable
+    ? formatShopfrontProfitPercent(data.yesterdayGrossMargin!, sourceMode || orithosMode ? 2 : 1)
+    : "—";
 
   return (
     <section className="ov-pulse-panel" aria-labelledby="ov-pulse-title">
@@ -86,7 +80,7 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           }
         />
         <Metric
-          label={sourceMode ? "Profit percentage" : "Gross margin"}
+          label={sourceMode || orithosMode ? "Profit percentage" : "Gross margin"}
           href={marginHref}
           value={marginValue}
           note={marginNote}

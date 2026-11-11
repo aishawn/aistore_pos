@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { buildLaunchDestinations } from "@/lib/overview-launch";
 import { getSidebarNavigation } from "@/lib/sidebar-navigation";
+import { shopfrontAlignedMarginRatio } from "@/lib/shopfront-aligned-margin";
 
 export type OverviewPulse = {
   generatedAt?: string;
@@ -56,7 +57,7 @@ type NativeOverview = {
   dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
 };
 
-const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v1";
+const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v2";
 const PULSE_FRESH_MS = 60_000;
 
 function storeDay(date = new Date()) {
@@ -161,10 +162,13 @@ export function useOverview() {
         yesterdaySalesAvailable: Boolean(yesterdayRow),
         yesterdayNetSales: yesterdayRow?.taxAvailable && yesterdayRow.tax !== null ? Number(yesterdayRow.revenue) - Number(yesterdayRow.tax) : null,
         yesterdayTax: yesterdayRow?.taxAvailable && yesterdayRow.tax !== null ? Number(yesterdayRow.tax) : null,
-        yesterdayGrossMargin: marginAvailable ? Number(yesterdayRow?.grossProfit) : null,
+        // Ratio on tax-inclusive revenue — same as Shopfront Profit Percentage / sales-report profitMargin.
+        yesterdayGrossMargin: marginAvailable
+          ? shopfrontAlignedMarginRatio(Number(yesterdayRow?.grossProfit), Number(yesterdayRow?.revenue))
+          : null,
         grossMarginCoverage: marginAvailable ? 1 : 0,
         grossMarginStatus: !yesterdayRow ? "no_sales" : marginAvailable ? "complete" : "unavailable",
-        grossMarginBasis: "orithos_sale_and_sale_item_ledger",
+        grossMarginBasis: "shopfront_revenue_minus_cost",
         yesterdayFrom: yesterday,
         yesterdayTo: yesterday,
         inventoryUnits: result.inventoryAvailable ? Number(result.inventoryUnits ?? 0) : null,
