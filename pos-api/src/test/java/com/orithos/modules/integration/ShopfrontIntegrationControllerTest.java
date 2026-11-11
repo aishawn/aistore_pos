@@ -412,7 +412,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void purchaseOrderImportLazilyMapsProductsByShopfrontBarcode() throws Exception {
+    void purchaseOrderImportSkipsWhenProductMissingFromPreloadedMappings() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
         Connection connection = mock(Connection.class);
@@ -427,12 +427,8 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 221L)));
         when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
                 .thenReturn(List.of());
-        when(jdbc.queryForList(contains("FROM shopfront_product sp"), any(Object[].class)))
-                .thenReturn(List.of(Map.of("pos_product_id", 501L)));
         when(jdbc.queryForList(contains("shopfront_purchase_order_business_mapping"), any(Object[].class)))
                 .thenReturn(List.of());
-        when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
-                .thenReturn(601L);
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         Method importer = ShopfrontIntegrationController.class.getDeclaredMethod(
@@ -453,9 +449,12 @@ class ShopfrontIntegrationControllerTest {
         Map<String, Object> result = (Map<String, Object>) importer.invoke(controller, "demo",
                 Map.of("company_id", "1", "outlet_id", "1"), items);
 
-        assertEquals(1, result.get("created"));
-        assertEquals(0, result.get("skipped"));
-        verify(jdbc).update(contains("BARCODE_LAZY"), any(Object[].class));
+        assertEquals(0, result.get("created"));
+        assertEquals(1, result.get("skipped"));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("BARCODE_LAZY"), any(Object[].class));
+        verify(jdbc).update(contains("shopfront_purchase_order_business_mapping"),
+                eq("demo"), eq("sf-order-demo-1"), eq(1L), eq(0L),
+                argThat(hash -> String.valueOf(hash).length() == 64));
     }
 
     @Test

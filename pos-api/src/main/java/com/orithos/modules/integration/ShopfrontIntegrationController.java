@@ -2001,13 +2001,11 @@ public class ShopfrontIntegrationController {
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
-        if (key.isBlank()) {
-            cache.put(key, null);
-            return null;
-        }
-        Long mapped = mappedProductId(store, sourceId, outletId);
-        cache.put(key, mapped);
-        return mapped;
+        // After batch preload, treat misses as unmapped. Do not fall back to
+        // per-line mappedProductId/barcode-lazy queries — historical POs with
+        // hundreds of retired catalogue ids otherwise gateway-timeout.
+        cache.put(key, null);
+        return null;
     }
 
     private Long mappedSupplierId(String store, String sourceId, long outletId) {
