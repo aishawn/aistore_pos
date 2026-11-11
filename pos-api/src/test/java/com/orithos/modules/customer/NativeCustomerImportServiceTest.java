@@ -111,4 +111,33 @@ class NativeCustomerImportServiceTest {
                 eq(LocalDateTime.parse("2026-11-09T12:30:00")), eq(null), eq(87L));
         verify(jdbc).update(contains("INSERT INTO shopfront_customer_payment_mapping"), eq("skr"), eq("sf-payment-7"), eq(87L), eq(654L));
     }
+
+    @Test
+    void importsHistoricalCustomerPaymentsWithCompactUtcOffset() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
+            String sql = call.getArgument(0, String.class);
+            return sql.contains("SELECT customer_id FROM shopfront_customer_mapping") ? List.of(321L) : List.of();
+        });
+        when(jdbc.queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class), any(Object[].class)))
+                .thenReturn(654L);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-payment-utc","raw_payload":{
+                  "amount":59.99,"timestamp":"2024-01-16T09:46:19+0000",
+                  "cancelledAt":"2024-01-17T14:33:05+0000",
+                  "status":"CANCELLED","customer":{"id":"sf-customer-1"},
+                  "paymentMethod":{"name":"Cash"}
+                }}]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importPayments("skr", 87, items);
+
+        assertEquals(1, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        verify(jdbc).queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class),
+                eq(321L), eq(null), eq(null), eq("VOIDED"), eq(null),
+                eq(new BigDecimal("59.99")), eq(null),
+                eq(LocalDateTime.parse("2024-01-16T09:46:19")),
+                eq(LocalDateTime.parse("2024-01-17T14:33:05")), eq(87L));
+    }
 }

@@ -304,6 +304,14 @@ public class NativeCustomerImportService {
         try {
             return OffsetDateTime.parse(value).toLocalDateTime();
         } catch (DateTimeParseException ignored) {
+            String normalizedOffset = value.replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2");
+            if (!normalizedOffset.equals(value)) {
+                try {
+                    return OffsetDateTime.parse(normalizedOffset).toLocalDateTime();
+                } catch (DateTimeParseException ignoredCompactOffset) {
+                    // Try a local timestamp below for source values without an offset.
+                }
+            }
             try {
                 return LocalDateTime.parse(value);
             } catch (DateTimeParseException ex) {
