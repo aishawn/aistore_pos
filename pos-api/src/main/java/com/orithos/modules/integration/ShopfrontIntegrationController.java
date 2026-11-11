@@ -689,7 +689,10 @@ public class ShopfrontIntegrationController {
         Integer mirrorTotal = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_purchase_order WHERE store_key = ?", Integer.class, storeKey);
         Integer mappedTotal = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key = ? AND outlet_id = ?",
+                "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key = ? AND outlet_id = ? AND purchase_order_id > 0",
+                Integer.class, storeKey, outletId);
+        Integer skippedMarked = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key = ? AND outlet_id = ? AND purchase_order_id = 0",
                 Integer.class, storeKey, outletId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", "PROMOTED");
@@ -703,6 +706,7 @@ public class ShopfrontIntegrationController {
         result.put("has_more", rows.size() >= limit);
         result.put("mirror_total", mirrorTotal == null ? 0 : mirrorTotal);
         result.put("purchase_orders_mapped", mappedTotal == null ? 0 : mappedTotal);
+        result.put("purchase_orders_skipped_marked", skippedMarked == null ? 0 : skippedMarked);
         result.put("business", imported);
         result.put("business_write", true);
         return ApiResult.ok(result);
@@ -1728,6 +1732,8 @@ public class ShopfrontIntegrationController {
         int skipped = 0;
         List<String> errors = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        Map<String, Long> supplierCache = new HashMap<>();
+        Map<String, Long> productCache = new HashMap<>();
         for (JsonNode item : items) {
             String sourceId = text(item, "source_id");
             JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
@@ -1741,6 +1747,7 @@ public class ShopfrontIntegrationController {
             JsonNode sourceLines = raw.path("products");
             if (!sourceLines.isArray()) {
                 skipped++;
+                markPurchaseOrderSkipped(store, sourceId, outletId, "no_products_array");
                 if (errors.size() < 25) {
                     errors.add("Purchase order " + sourceId + " has no source products array");
                 }
@@ -1756,9 +1763,10 @@ public class ShopfrontIntegrationController {
                     }
                 }
             }
-            Long supplierId = mappedSupplierId(store, supplierSourceId, outletId);
+            Long supplierId = cachedMappedSupplierId(store, supplierSourceId, outletId, supplierCache);
             if (supplierId == null) {
                 skipped++;
+                markPurchaseOrderSkipped(store, sourceId, outletId, "unmapped_supplier");
                 if (errors.size() < 25) {
                     errors.add("Purchase order " + sourceId + " has no mapped Orithos supplier");
                 }
@@ -1774,9 +1782,9 @@ public class ShopfrontIntegrationController {
             // when nothing usable remains.
             for (JsonNode line : sourceLines) {
                 String lineSupplierSourceId = text(line.path("supplier"), "id");
-                Long lineSupplierId = mappedSupplierId(store,
+                Long lineSupplierId = cachedMappedSupplierId(store,
                         lineSupplierSourceId == null || lineSupplierSourceId.isBlank() ? supplierSourceId : lineSupplierSourceId,
-                        outletId);
+                        outletId, supplierCache);
                 if (lineSupplierId == null || !supplierId.equals(lineSupplierId)) {
                     skippedLines++;
                     if (errors.size() < 25) {
@@ -1785,7 +1793,7 @@ public class ShopfrontIntegrationController {
                     continue;
                 }
                 String productSourceId = text(line.path("item"), "id");
-                Long productId = mappedProductId(store, productSourceId, outletId);
+                Long productId = cachedMappedProductId(store, productSourceId, outletId, productCache);
                 if (productId == null) {
                     skippedLines++;
                     if (errors.size() < 25) {
@@ -1811,6 +1819,8 @@ public class ShopfrontIntegrationController {
             }
             if (lineRows.isEmpty()) {
                 skipped++;
+                markPurchaseOrderSkipped(store, sourceId, outletId,
+                        "no_importable_lines:" + skippedLines);
                 if (errors.size() < 25) {
                     errors.add("Purchase order " + sourceId + " has no importable lines"
                             + (skippedLines > 0 ? " (" + skippedLines + " skipped)" : ""));
@@ -1904,6 +1914,38 @@ public class ShopfrontIntegrationController {
 
     private void ensurePurchaseOrderBusinessMappingTable() {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order_business_mapping (store_key VARCHAR(64) NOT NULL,source_id VARCHAR(192) NOT NULL,outlet_id BIGINT NOT NULL,purchase_order_id BIGINT NOT NULL,source_hash VARCHAR(64) NOT NULL,updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY (store_key,source_id,outlet_id))");
+    }
+
+    /**
+     * Persist a sentinel mapping ({@code purchase_order_id=0}) so {@code only_unmapped}
+     * promote loops do not keep reprocessing permanently unimportable historical POs.
+     */
+    private void markPurchaseOrderSkipped(String store, String sourceId, long outletId, String reason) {
+        String hash = purchaseOrderSourceHash("SKIPPED:" + reason + ":" + sourceId);
+        String mappingSql = isPostgres()
+                ? "INSERT INTO shopfront_purchase_order_business_mapping (store_key,source_id,outlet_id,purchase_order_id,source_hash) VALUES (?,?,?,?,?) ON CONFLICT (store_key,source_id,outlet_id) DO UPDATE SET purchase_order_id=EXCLUDED.purchase_order_id,source_hash=EXCLUDED.source_hash,updated_at=CURRENT_TIMESTAMP"
+                : "INSERT INTO shopfront_purchase_order_business_mapping (store_key,source_id,outlet_id,purchase_order_id,source_hash) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE purchase_order_id=VALUES(purchase_order_id),source_hash=VALUES(source_hash),updated_at=CURRENT_TIMESTAMP";
+        jdbc.update(mappingSql, store, sourceId, outletId, 0L, hash);
+    }
+
+    private Long cachedMappedSupplierId(String store, String sourceId, long outletId, Map<String, Long> cache) {
+        String key = sourceId == null ? "" : sourceId;
+        if (cache.containsKey(key)) {
+            return cache.get(key);
+        }
+        Long mapped = mappedSupplierId(store, sourceId, outletId);
+        cache.put(key, mapped);
+        return mapped;
+    }
+
+    private Long cachedMappedProductId(String store, String sourceId, long outletId, Map<String, Long> cache) {
+        String key = sourceId == null ? "" : sourceId;
+        if (cache.containsKey(key)) {
+            return cache.get(key);
+        }
+        Long mapped = mappedProductId(store, sourceId, outletId);
+        cache.put(key, mapped);
+        return mapped;
     }
 
     private Long mappedSupplierId(String store, String sourceId, long outletId) {

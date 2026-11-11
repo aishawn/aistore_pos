@@ -506,8 +506,10 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(901L);
         when(jdbc.queryForObject(contains("FROM shopfront_purchase_order WHERE store_key"), eq(Integer.class), eq("skr")))
                 .thenReturn(2372);
-        when(jdbc.queryForObject(contains("FROM shopfront_purchase_order_business_mapping"), eq(Integer.class), eq("skr"), eq(87L)))
+        when(jdbc.queryForObject(contains("purchase_order_id > 0"), eq(Integer.class), eq("skr"), eq(87L)))
                 .thenReturn(499);
+        when(jdbc.queryForObject(contains("purchase_order_id = 0"), eq(Integer.class), eq("skr"), eq(87L)))
+                .thenReturn(12);
 
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
         var body = new ObjectMapper().createObjectNode()
