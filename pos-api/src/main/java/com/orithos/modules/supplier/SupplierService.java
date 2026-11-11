@@ -11,10 +11,22 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.orithos.common.PageResult;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SupplierService {
+
+    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Adelaide");
+    static final int PERFORMANCE_DAYS = 30;
 
     private final SupplierMapper supplierMapper;
     private final ContactMapper contactMapper;
@@ -35,6 +47,44 @@ public class SupplierService {
         this.additionalContactMapper = additionalContactMapper;
         this.passwordEncoder = passwordEncoder;
         this.outletMapper = outletMapper;
+    }
+
+    public PageResult<Supplier> list(String name, int page, int size) {
+        Long vendorId = requireVendorId();
+        int offset = Math.max(0, (page - 1) * size);
+        List<Supplier> items = supplierMapper.page(name, vendorId, size, offset);
+        attachPerformance(items, vendorId, LocalDate.now(STORE_ZONE));
+        return PageResult.of(items, supplierMapper.count(name, vendorId), page, size);
+    }
+
+    /** Fills {@code performance30d} (oldest to newest, ending today) with units sold per business day. */
+    void attachPerformance(List<Supplier> items, Long vendorId, LocalDate today) {
+        if (items == null || items.isEmpty()) return;
+        LocalDate from = today.minusDays(PERFORMANCE_DAYS - 1L);
+        List<Long> supplierIds = items.stream().map(Supplier::getId).toList();
+        List<SupplierMapper.SupplierDailyQuantity> rows =
+                supplierMapper.salesQuantityByDay(vendorId, supplierIds, from.toString(), today.toString());
+
+        Map<Long, List<Double>> seriesBySupplier = new HashMap<>();
+        if (rows != null) {
+            for (SupplierMapper.SupplierDailyQuantity row : rows) {
+                if (row.getSupplierId() == null || row.getDay() == null) continue;
+                long index = ChronoUnit.DAYS.between(from, row.getDay());
+                if (index < 0 || index >= PERFORMANCE_DAYS) continue;
+                BigDecimal quantity = row.getQuantity() == null ? BigDecimal.ZERO : row.getQuantity();
+                List<Double> series = seriesBySupplier.computeIfAbsent(row.getSupplierId(), k -> emptyPerformance());
+                series.set((int) index, series.get((int) index) + quantity.doubleValue());
+            }
+        }
+        for (Supplier item : items) {
+            item.setPerformance30d(seriesBySupplier.getOrDefault(item.getId(), emptyPerformance()));
+        }
+    }
+
+    private static List<Double> emptyPerformance() {
+        List<Double> series = new ArrayList<>(PERFORMANCE_DAYS);
+        for (int i = 0; i < PERFORMANCE_DAYS; i++) series.add(0.0d);
+        return series;
     }
 
     public SupplierDetail getDetail(Long id) {

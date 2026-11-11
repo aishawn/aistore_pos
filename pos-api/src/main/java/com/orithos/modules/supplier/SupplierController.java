@@ -33,11 +33,7 @@ public class SupplierController {
     public ApiResult<PageResult<Supplier>> list(@RequestParam(required = false) String name,
                                                 @RequestParam(defaultValue = "1") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
-        int offset = Math.max(0, (page - 1) * size);
-        Long vendorId = CurrentUser.vendorId();
-        if (vendorId == null) throw new BusinessException(40310, "Tenant context is required.");
-        var items = mapper.page(name, vendorId, size, offset);
-        return ApiResult.ok(PageResult.of(items, mapper.count(name, vendorId), page, size));
+        return ApiResult.ok(service.list(name, page, size));
     }
 
     @GetMapping("/{id}")

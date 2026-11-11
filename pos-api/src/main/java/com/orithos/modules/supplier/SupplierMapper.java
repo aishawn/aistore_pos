@@ -1,6 +1,10 @@
 package com.orithos.modules.supplier;
 
+import lombok.Data;
 import org.apache.ibatis.annotations.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -8,18 +12,29 @@ public interface SupplierMapper {
 
     @Select("""
         SELECT s.*, ct.phone, ct.email, (
-            SELECT COUNT(DISTINCT ps.product_id)
-            FROM product_supplier ps
-            INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
-            WHERE ps.supplier_id = s.id
+            SELECT COUNT(DISTINCT lp.product_id)
+            FROM (
+                SELECT ps.product_id FROM product_supplier ps WHERE ps.supplier_id = s.id
+                UNION
+                SELECT cp.id FROM product cp WHERE cp.core_supplier_id = s.id
+                UNION
+                SELECT op.product_id FROM order_product op WHERE op.supplier_id = s.id AND op.product_id IS NOT NULL
+            ) lp
+            INNER JOIN product p ON p.id = lp.product_id AND p.deleted_at IS NULL
         ) AS product_count
         FROM supplier s
         LEFT JOIN contact ct ON ct.id = s.contact_id
         JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
-            SELECT 1 FROM product_supplier ps
-            INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
-            WHERE ps.supplier_id = s.id
+            SELECT 1
+            FROM (
+                SELECT ps.product_id FROM product_supplier ps WHERE ps.supplier_id = s.id
+                UNION
+                SELECT cp.id FROM product cp WHERE cp.core_supplier_id = s.id
+                UNION
+                SELECT op.product_id FROM order_product op WHERE op.supplier_id = s.id AND op.product_id IS NOT NULL
+            ) lp
+            INNER JOIN product p ON p.id = lp.product_id AND p.deleted_at IS NULL
         ))
           AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
                OR COALESCE(ct.phone, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
@@ -37,9 +52,15 @@ public interface SupplierMapper {
         LEFT JOIN contact ct ON ct.id = s.contact_id
         JOIN outlet o ON o.id=s.outlet_id AND o.vendor_id=#{vendorId} AND o.deleted_at IS NULL
         WHERE (s.deleted_at IS NULL OR EXISTS (
-            SELECT 1 FROM product_supplier ps
-            INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
-            WHERE ps.supplier_id = s.id
+            SELECT 1
+            FROM (
+                SELECT ps.product_id FROM product_supplier ps WHERE ps.supplier_id = s.id
+                UNION
+                SELECT cp.id FROM product cp WHERE cp.core_supplier_id = s.id
+                UNION
+                SELECT op.product_id FROM order_product op WHERE op.supplier_id = s.id AND op.product_id IS NOT NULL
+            ) lp
+            INNER JOIN product p ON p.id = lp.product_id AND p.deleted_at IS NULL
         ))
           AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
                OR COALESCE(ct.phone, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%')
@@ -48,6 +69,48 @@ public interface SupplierMapper {
                OR COALESCE(s.account_number, '') LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         """)
     long count(@Param("name") String name, @Param("vendorId") Long vendorId);
+
+    /**
+     * Units sold per business day per supplier (COMPLETED, non-refund sales), linking products via
+     * product_supplier, product.core_supplier_id and order_product.supplier_id. {@code to} is inclusive.
+     */
+    @Select("""
+        <script>
+        SELECT l.supplier_id AS supplier_id,
+               COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) AS day,
+               COALESCE(SUM(si.quantity), 0) AS quantity
+        FROM (
+            SELECT ps.supplier_id, ps.product_id FROM product_supplier ps
+            UNION
+            SELECT cp.core_supplier_id, cp.id FROM product cp WHERE cp.core_supplier_id IS NOT NULL
+            UNION
+            SELECT op.supplier_id, op.product_id FROM order_product op
+            WHERE op.supplier_id IS NOT NULL AND op.product_id IS NOT NULL
+        ) l
+        INNER JOIN product p ON p.id = l.product_id AND p.deleted_at IS NULL
+        INNER JOIN outlet po ON po.id = p.outlet_id AND po.vendor_id = #{vendorId} AND po.deleted_at IS NULL
+        INNER JOIN sale_item si ON si.product_id = l.product_id
+        INNER JOIN sale s ON s.id = si.sale_id
+        WHERE s.status = 'COMPLETED'
+          AND s.refund_reason IS NULL
+          AND l.supplier_id IN
+          <foreach collection="supplierIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &gt;= CAST(#{from} AS date)
+          AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &lt;= CAST(#{to} AS date)
+        GROUP BY l.supplier_id, COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date))
+        </script>
+        """)
+    List<SupplierDailyQuantity> salesQuantityByDay(@Param("vendorId") Long vendorId,
+                                                   @Param("supplierIds") List<Long> supplierIds,
+                                                   @Param("from") String from,
+                                                   @Param("to") String to);
+
+    @Data
+    class SupplierDailyQuantity {
+        private Long supplierId;
+        private LocalDate day;
+        private BigDecimal quantity;
+    }
 
     @Select("SELECT * FROM supplier WHERE id = #{id}")
     Supplier findById(Long id);
