@@ -267,20 +267,21 @@ export function FormDatePicker({
       <button
         ref={triggerRef}
         type="button"
-        onClick={openPicker}
+        onClick={() => (open ? closePicker() : openPicker())}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
         className={cn(
-          "flex w-full items-center border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
+          "flex w-full items-center gap-2 border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)] text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
             compact
-            ? "min-h-11 justify-between rounded-lg px-3 text-[14px]"
+            ? "min-h-11 rounded-lg px-3 text-[14px]"
             : "h-10 rounded-[var(--oh-radius)] px-3 text-[14px]",
           displayValue ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]",
         )}
       >
-        <span>{displayValue || placeholder}</span>
-        {compact && <SelectChevronIcon size={14} className="shrink-0 text-[var(--oh-muted)]" />}
+        <span className="min-w-0 flex-1 truncate">{displayValue || placeholder}</span>
+        <Calendar size={16} className="shrink-0 text-[var(--oh-text)]" strokeWidth={1.75} aria-hidden />
+        <SelectChevronIcon size={14} className={cn("shrink-0 text-[var(--oh-muted)] transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (

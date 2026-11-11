@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 import {
   matchReportDatePreset,
   reportDatePreset,
@@ -34,6 +36,12 @@ export function ReportPeriodToolbar({
   onRefresh?: () => void;
   timezone?: string;
 }) {
+  const [draft, setDraft] = useState({ start: from, end: to });
+
+  useEffect(() => {
+    setDraft({ start: from, end: to });
+  }, [from, to]);
+
   function apply(nextPeriod: ReportDatePreset, nextFrom: string, nextTo: string) {
     onChange({ period: nextPeriod, from: nextFrom, to: nextTo });
     syncReportRangeToUrl(nextPeriod, nextFrom, nextTo);
@@ -41,19 +49,15 @@ export function ReportPeriodToolbar({
 
   function selectPreset(id: Exclude<ReportDatePreset, "custom">) {
     const range = reportDatePreset(id, new Date(), timezone);
+    setDraft({ start: range.from, end: range.to });
     apply(id, range.from, range.to);
   }
 
-  function changeFrom(value: string) {
-    const nextTo = value > to ? value : to;
-    const nextPeriod = matchReportDatePreset(value, nextTo, new Date(), timezone);
-    apply(nextPeriod, value, nextTo);
-  }
-
-  function changeTo(value: string) {
-    const nextFrom = value < from ? value : from;
-    const nextPeriod = matchReportDatePreset(nextFrom, value, new Date(), timezone);
-    apply(nextPeriod, nextFrom, value);
+  function changeRange(range: { start: string; end: string }) {
+    setDraft(range);
+    if (!range.start || !range.end) return;
+    const nextPeriod = matchReportDatePreset(range.start, range.end, new Date(), timezone);
+    apply(nextPeriod, range.start, range.end);
   }
 
   return (
@@ -80,26 +84,7 @@ export function ReportPeriodToolbar({
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="grid gap-1 text-[10px] font-medium uppercase tracking-wide text-[var(--oh-muted)]">
-          From
-          <input
-            type="date"
-            value={from}
-            onChange={(event) => changeFrom(event.target.value)}
-            className="min-h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-sm text-[var(--oh-text)]"
-          />
-        </label>
-        <label className="grid gap-1 text-[10px] font-medium uppercase tracking-wide text-[var(--oh-muted)]">
-          To
-          <input
-            type="date"
-            value={to}
-            onChange={(event) => changeTo(event.target.value)}
-            className="min-h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-sm text-[var(--oh-text)]"
-          />
-        </label>
-      </div>
+      <FilterDateRangePicker label="Date range" start={draft.start} end={draft.end} onChange={changeRange} />
       {onRefresh ? (
         <button
           type="button"

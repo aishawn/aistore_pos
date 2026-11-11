@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { FrownIcon } from "@/components/icons";
 import { AsyncState } from "@/components/admin/AsyncState";
-import { FormDatePicker } from "@/components/admin/FormDatePicker";
+import { FormDateRangePicker } from "@/components/admin/FormDateRangePicker";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList } from "@/hooks/useApi";
@@ -132,22 +132,16 @@ function CreateBuyingPeriodModal({
         <h2 id={titleId} className="text-[20px] font-bold text-[var(--oh-text)]">Create Buying Period</h2>
         <div className="mt-4 space-y-3">
           <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
-            Start Date
+            Date range
             <div className="mt-1">
-              <FormDatePicker
-                value={start}
-                onChange={setStart}
-                placeholder="YYYY / MM / DD"
-              />
-            </div>
-          </label>
-          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">
-            End Date
-            <div className="mt-1">
-              <FormDatePicker
-                value={end}
-                onChange={setEnd}
-                placeholder="YYYY / MM / DD"
+              <FormDateRangePicker
+                start={start}
+                end={end}
+                onChange={(range) => {
+                  setStart(range.start);
+                  setEnd(range.end);
+                }}
+                ariaLabel="Buying period date range"
               />
             </div>
           </label>

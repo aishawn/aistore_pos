@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { SelectChevronIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
@@ -90,12 +91,14 @@ function DateSegmentInput({
   part,
   value,
   onChange,
+  onClear,
   active,
   onFocus,
 }: {
   part: "start" | "end";
   value: string;
   onChange: (value: string) => void;
+  onClear: () => void;
   active: boolean;
   onFocus: () => void;
 }) {
@@ -121,54 +124,66 @@ function DateSegmentInput({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-1 items-center rounded-[var(--oh-radius)] border px-3 py-2 text-[14px]",
-        active ? "border-[var(--oh-text)]" : "border-[var(--oh-border)]",
+        "flex min-w-0 flex-1 items-center gap-1 rounded-md border px-2.5 py-2 text-[14px]",
+        active ? "border-[var(--oh-primary)] ring-1 ring-[var(--oh-primary)]" : "border-[var(--oh-border)]",
       )}
     >
-      <input
-        type="text"
-        inputMode="numeric"
-        aria-label={`${part === "start" ? "Start" : "End"} year`}
-        maxLength={4}
-        value={segments.year}
-        placeholder="YYYY"
-        onFocus={onFocus}
-        onChange={(e) => {
-          const year = e.target.value.replace(/\D/g, "").slice(0, 4);
-          applySegments({ ...segments, year });
-        }}
-        className="w-12 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
-      />
-      <span className="text-[var(--oh-muted)]">/</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        aria-label={`${part === "start" ? "Start" : "End"} month`}
-        maxLength={2}
-        value={segments.month}
-        placeholder="MM"
-        onFocus={onFocus}
-        onChange={(e) => {
-          const month = e.target.value.replace(/\D/g, "").slice(0, 2);
-          applySegments({ ...segments, month });
-        }}
-        className="w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
-      />
-      <span className="text-[var(--oh-muted)]">/</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        aria-label={`${part === "start" ? "Start" : "End"} day`}
-        maxLength={2}
-        value={segments.day}
-        placeholder="DD"
-        onFocus={onFocus}
-        onChange={(e) => {
-          const day = e.target.value.replace(/\D/g, "").slice(0, 2);
-          applySegments({ ...segments, day });
-        }}
-        className="w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
-      />
+      <div className="flex min-w-0 flex-1 items-center" onFocusCapture={onFocus}>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label={`${part === "start" ? "Start" : "End"} year`}
+          maxLength={4}
+          value={segments.year}
+          placeholder="YYYY"
+          onFocus={onFocus}
+          onChange={(e) => {
+            const year = e.target.value.replace(/\D/g, "").slice(0, 4);
+            applySegments({ ...segments, year });
+          }}
+          className="w-12 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
+        />
+        <span className="text-[var(--oh-muted)]">/</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label={`${part === "start" ? "Start" : "End"} month`}
+          maxLength={2}
+          value={segments.month}
+          placeholder="MM"
+          onFocus={onFocus}
+          onChange={(e) => {
+            const month = e.target.value.replace(/\D/g, "").slice(0, 2);
+            applySegments({ ...segments, month });
+          }}
+          className="w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
+        />
+        <span className="text-[var(--oh-muted)]">/</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label={`${part === "start" ? "Start" : "End"} day`}
+          maxLength={2}
+          value={segments.day}
+          placeholder="DD"
+          onFocus={onFocus}
+          onChange={(e) => {
+            const day = e.target.value.replace(/\D/g, "").slice(0, 2);
+            applySegments({ ...segments, day });
+          }}
+          className="w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]"
+        />
+      </div>
+      {value ? (
+        <button
+          type="button"
+          aria-label={`Clear ${part === "start" ? "start" : "end"} date`}
+          onClick={onClear}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
+        >
+          <X size={14} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -201,7 +216,7 @@ function RangeMonthPanel({
         : effectiveStart
       : null;
   const effectiveStartDay =
-    effectiveStart && effectiveEnd && compareDays(effectiveStart, previewEnd!) > 0
+    effectiveStart && effectiveEnd && previewEnd && compareDays(effectiveStart, previewEnd) > 0
       ? previewEnd
       : effectiveStart;
 
@@ -223,8 +238,9 @@ function RangeMonthPanel({
           </div>
         ))}
         {days.map(({ date, inMonth }) => {
-          const isSelected =
-            (rangeStart && sameDay(date, rangeStart)) || (rangeEnd && sameDay(date, rangeEnd));
+          const isStart = Boolean(rangeStart && sameDay(date, rangeStart));
+          const isEnd = Boolean(rangeEnd && sameDay(date, rangeEnd));
+          const isEndpoint = isStart || isEnd;
           const isToday = sameDay(date, today);
           const inRange = isInRange(date);
           return (
@@ -232,16 +248,17 @@ function RangeMonthPanel({
               key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
               type="button"
               aria-label={`${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`}
-              aria-pressed={Boolean(isSelected)}
+              aria-pressed={isEndpoint}
               onClick={() => onSelect(date)}
               onMouseEnter={() => onHover(date)}
               onMouseLeave={() => onHover(null)}
               className={cn(
-                "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
+                "relative mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
                 inMonth ? "text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]" : "text-[var(--oh-placeholder)]",
-                inRange && inMonth && "bg-[var(--oh-orange-light)]",
-                isSelected && "ring-2 ring-[var(--oh-primary)] ring-offset-1",
-                !isSelected && isToday && inMonth && "bg-[var(--oh-orange-light)]",
+                inRange && inMonth && !isEndpoint && "bg-[var(--oh-orange-light)]",
+                isStart && "bg-[var(--oh-primary)] font-semibold text-white hover:bg-[var(--oh-primary)]",
+                isEnd && !isStart && "bg-white font-semibold text-[var(--oh-primary)] ring-2 ring-[var(--oh-primary)]",
+                !isEndpoint && isToday && inMonth && "bg-[var(--oh-orange-light)]",
               )}
             >
               {date.getDate()}
@@ -260,7 +277,7 @@ export function getDefaultStatementDateRange(): { start: string; end: string } {
   return { start: toIsoDate(startDate), end: toIsoDate(endDate) };
 }
 
-/** Date range field showing DD/MM/YYYY — DD/MM/YYYY with a dual-month popover picker. */
+/** Date range field: one click opens a dual-month popover to pick start and end. */
 export function FormDateRangePicker({
   start,
   end,
@@ -304,7 +321,7 @@ export function FormDateRangePicker({
   function openPicker() {
     setOpen(true);
     setLeftMonth(startOfMonth(startDate ?? endDate ?? today));
-    setActiveInput("start");
+    setActiveInput(start && !end ? "end" : "start");
     setHoverDate(null);
   }
 
@@ -351,44 +368,54 @@ export function FormDateRangePicker({
       <button
         ref={triggerRef}
         type="button"
-        onClick={openPicker}
+        onClick={() => (open ? closePicker() : openPicker())}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={ariaLabel}
         className={cn(
-          "flex w-full items-center text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
+          "flex w-full items-center gap-2 text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
           compact
-            ? "min-h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 text-[13px] text-[var(--oh-text)]"
+            ? "min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)]"
             : "h-10 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px]",
           start || end ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]",
         )}
       >
-        {display}
+        <span className="min-w-0 flex-1 truncate">{display}</span>
+        <Calendar size={16} className="shrink-0 text-[var(--oh-text)]" strokeWidth={1.75} aria-hidden />
+        <SelectChevronIcon
+          size={14}
+          className={cn("shrink-0 text-[var(--oh-muted)] transition-transform", open && "rotate-180")}
+        />
       </button>
 
       {open && (
-        <div role="dialog" aria-label={`${ariaLabel ?? placeholder} calendar`} className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <DateSegmentInput
-                  part="start"
-                  value={start}
-                  active={activeInput === "start"}
-                  onFocus={() => setActiveInput("start")}
-                  onChange={(value) => onChange(normalizeRange(value, end))}
-                />
-                <span className="shrink-0 text-[var(--oh-muted)]">—</span>
-                <DateSegmentInput
-                  part="end"
-                  value={end}
-                  active={activeInput === "end"}
-                  onFocus={() => setActiveInput("end")}
-                  onChange={(value) => onChange(normalizeRange(start, value))}
-                />
-              </div>
-              <Calendar size={16} className="mt-2 text-[var(--oh-primary)]" strokeWidth={1.75} />
-            </div>
+        <div
+          role="dialog"
+          aria-label={`${ariaLabel ?? placeholder} calendar`}
+          className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]"
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <DateSegmentInput
+              part="start"
+              value={start}
+              active={activeInput === "start"}
+              onFocus={() => setActiveInput("start")}
+              onChange={(value) => onChange(value && end ? normalizeRange(value, end) : { start: value, end })}
+              onClear={() => onChange({ start: "", end })}
+            />
+            <span className="shrink-0 text-[var(--oh-muted)]">—</span>
+            <DateSegmentInput
+              part="end"
+              value={end}
+              active={activeInput === "end"}
+              onFocus={() => setActiveInput("end")}
+              onChange={(value) => onChange(start && value ? normalizeRange(start, value) : { start, end: value })}
+              onClear={() => onChange({ start, end: "" })}
+            />
+          </div>
+
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <Calendar size={16} className="text-[var(--oh-primary)]" strokeWidth={1.75} aria-hidden />
             <button
               type="button"
               onClick={setCurrentDay}
@@ -403,7 +430,7 @@ export function FormDateRangePicker({
               type="button"
               aria-label="Previous month"
               onClick={() => setLeftMonth((month) => addMonths(month, -1))}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronLeft size={18} />
             </button>
@@ -433,7 +460,7 @@ export function FormDateRangePicker({
               type="button"
               aria-label="Next month"
               onClick={() => setLeftMonth((month) => addMonths(month, 1))}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronRight size={18} />
             </button>

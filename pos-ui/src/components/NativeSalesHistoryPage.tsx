@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 
 type HistoryDay = {
   date: string;
@@ -44,6 +45,7 @@ export function NativeSalesHistoryPage({
   const today = todayInStore();
   const [from, setFrom] = useState(() => shiftDay(today, -29));
   const [to, setTo] = useState(() => today);
+  const [draft, setDraft] = useState(() => ({ start: shiftDay(today, -29), end: today }));
   const [rows, setRows] = useState<HistoryDay[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,6 +57,10 @@ export function NativeSalesHistoryPage({
     if (params.get("from")) setFrom(params.get("from")!);
     if (params.get("to")) setTo(params.get("to")!);
   }, [variant]);
+
+  useEffect(() => {
+    setDraft({ start: from, end: to });
+  }, [from, to]);
 
   useEffect(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
@@ -114,8 +120,18 @@ export function NativeSalesHistoryPage({
         </div>
       </header>
       <div className="flex flex-wrap items-end gap-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
-        <label className="grid gap-1 text-xs text-[var(--oh-muted)]">From<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
-        <label className="grid gap-1 text-xs text-[var(--oh-muted)]">To<input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="h-9 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)]" /></label>
+        <FilterDateRangePicker
+          label="Date range"
+          start={draft.start}
+          end={draft.end}
+          onChange={(range) => {
+            setDraft(range);
+            if (range.start && range.end) {
+              setFrom(range.start);
+              setTo(range.end);
+            }
+          }}
+        />
       </div>
       {error && <div role="alert" className="mx-4 mt-3 flex items-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 md:mx-6"><AlertCircle size={16} />{error}</div>}
       <section aria-busy={loading} className="flex flex-wrap gap-x-8 gap-y-3 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">

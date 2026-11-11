@@ -16,8 +16,8 @@ export function FilterDateRangePicker({
   placeholder?: string;
 }) {
   return (
-    <label className="flex min-w-0 w-full flex-col font-sans">
-      <span className="mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]">
+    <div className="flex min-w-[16rem] max-w-full flex-col font-sans sm:min-w-[18rem]">
+      <span className="mb-1 block h-4 truncate whitespace-nowrap text-[10px] font-medium uppercase tracking-wide leading-4 text-[var(--oh-muted)]">
         {label}
       </span>
       <FormDateRangePicker
@@ -28,6 +28,6 @@ export function FilterDateRangePicker({
         ariaLabel={label}
         compact
       />
-    </label>
+    </div>
   );
 }

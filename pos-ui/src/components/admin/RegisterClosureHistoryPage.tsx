@@ -5,6 +5,7 @@ import { AlertTriangle, Download, LoaderCircle, Printer, RefreshCw } from "lucid
 import { api, listRetailRegisters, type Page, type RetailRegister } from "@/lib/api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { salesDate, shiftDay } from "@/lib/replenishment-safety";
+import { FilterDateRangePicker } from "@/components/admin/FilterDateRangePicker";
 import { ReportColumnChooser } from "@/components/admin/ReportColumnChooser";
 import { ReportDateControls } from "@/components/admin/ReportDateControls";
 import { comparisonDateRange, type ReportComparison } from "@/lib/report-date-selection";
@@ -320,8 +321,12 @@ export function RegisterClosureHistoryPage() {
         </header>
         <section aria-label="Closure history filters" className="print:hidden flex flex-wrap items-end gap-3 border-y border-[var(--oh-border)] py-3">
           <ReportDateControls value={draftDates} onChange={setDraftDates} comparison={comparison} onComparisonChange={setComparison} timezone={timezone} />
-          <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">From<input type="date" value={draftDates.from} onChange={(event) => setDraftDates((value) => ({ ...value, from: event.target.value }))} className="min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm" /></label>
-          <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">To<input type="date" value={draftDates.to} onChange={(event) => setDraftDates((value) => ({ ...value, to: event.target.value }))} className="min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm" /></label>
+          <FilterDateRangePicker
+            label="Date range"
+            start={draftDates.from}
+            end={draftDates.to}
+            onChange={(range) => setDraftDates({ from: range.start, to: range.end })}
+          />
           <button type="button" onClick={() => setDates({ ...draftDates })} disabled={loading || !draftDates.from || !draftDates.to || draftDates.from > draftDates.to} className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">Apply</button>
           <button type="button" aria-pressed={exceptionsOnly} onClick={() => setExceptionsOnly((value) => !value)} className={`min-h-11 rounded-md border px-3 text-sm font-semibold ${exceptionsOnly ? "border-amber-400 bg-amber-50 text-amber-950" : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"}`}><AlertTriangle size={15} className="mr-2 inline" />Differences only</button>
           <button type="button" onClick={() => void exportCsv()} aria-label="Export all matching closure rows to CSV" title="Export CSV" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white"><Download size={16} /></button>
