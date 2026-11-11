@@ -73,6 +73,12 @@ public final class ReportAdhocRouter {
         if (TICKET_COUNT.matcher(q).find()) {
             return false;
         }
+        // Exactly two explicit dates with one supported sales metric use the
+        // native overview path rather than the unsupported-query gate.
+        if (SALES_COMPARISON.matcher(q).matches() && !MIXED_METRICS.matcher(q).matches()
+                && ExplicitReportDates.parsePair(question).isPresent()) {
+            return false;
+        }
         return ADHOC.matcher(q).find();
     }
 

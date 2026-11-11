@@ -204,6 +204,20 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesYesterdayProfitQuestionsToTheAuthoritativeSalesReportWithoutLlm() {
+        for (String question : new String[]{
+                "What was profit yesterday?",
+                "What were sales and profit yesterday?",
+                "昨天利润如何？",
+                "昨天销售额如何？利润如何？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_sales", match.intent(), question);
+        }
+    }
+
+    @Test
     void normalizesFullWidthPunctuationAndRepeatedWhitespace() {
         for (String question : new String[]{
                 "  TODAY'S   SALES？ ",

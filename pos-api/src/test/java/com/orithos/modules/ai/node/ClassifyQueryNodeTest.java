@@ -707,19 +707,38 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void customComparisonKeepsGuidedRefusalAheadOfDateShortcut() {
+    void supportedSalesComparisonsUseTheNativeReportWhileUnsupportedComparisonsStayRefused() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
         AiProperties properties = mock(AiProperties.class);
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
-        OverAllState state = mock(OverAllState.class);
-        when(state.value("question", String.class))
-                .thenReturn(Optional.of("Compare sales on 14 Oct with 15 Oct"));
 
-        Map<String, Object> result = node.apply(state);
+        assertDeterministicResult(node,
+                "Compare sales on 14 Oct 2026 with 15 Oct 2026", "report_sales", "");
+        assertDeterministicResult(node,
+                "比较2026年10月14日和2026年10月15日销售额", "report_sales", "");
+        assertDeterministicResult(node,
+                "Compare sales last week with this week", "report_adhoc", "");
+        assertDeterministicResult(node,
+                "Compare sales and units on 14 Oct with 15 Oct", "report_adhoc", "");
 
-        assertEquals("report_adhoc", result.get("intent"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void yesterdayProfitQuestionsUseTheNativeReportWithoutCallingClassifier() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        assertDeterministicResult(node, "What was profit yesterday?", "report_sales", "");
+        assertDeterministicResult(node, "What were sales and profit yesterday?", "report_sales", "");
+        assertDeterministicResult(node, "昨天利润如何？", "report_sales", "");
+        assertDeterministicResult(node, "昨天销售额如何？利润如何？", "report_sales", "");
+
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

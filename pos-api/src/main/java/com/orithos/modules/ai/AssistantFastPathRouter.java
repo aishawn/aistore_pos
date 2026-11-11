@@ -26,6 +26,12 @@ public final class AssistantFastPathRouter {
                     + "what(?:'s| is) yesterday'?s? (?:sales|revenue|takings|turnover)|"
                     + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern YESTERDAY_PROFIT = Pattern.compile(
+            "^(?:(?:what was|what is|what's|show(?: me)?|tell me) (?:our )?(?:gross )?(?:profit|margin) (?:for )?yesterday|"
+                    + "yesterday'?s? (?:gross )?(?:profit|margin)|"
+                    + "(?:what were|show(?: me)?) (?:our )?sales and (?:gross )?profit yesterday|"
+                    + "昨天.*(?:利润|毛利).*|(?:利润|毛利).*昨天.*)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern SALES_RANGE = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
             Pattern.CASE_INSENSITIVE);
@@ -279,6 +285,16 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "Yesterday's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (YESTERDAY_PROFIT.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Yesterday's sales and gross profit",
                     Map.of(),
                     "",
                     "",

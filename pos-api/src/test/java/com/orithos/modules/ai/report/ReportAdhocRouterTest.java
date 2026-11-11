@@ -40,6 +40,19 @@ class ReportAdhocRouterTest {
     }
 
     @Test
+    void supportedExplicitDateSalesComparisonsBypassAdhocGate() {
+        for (String question : new String[]{
+                "Compare sales on 14 Oct 2026 with 15 Oct 2026",
+                "比较2026年10月14日和2026年10月15日销售额"
+        }) {
+            assertFalse(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+            assertEquals("report_sales", ReportAdhocRouter.maybeOverride(question, "report_adhoc"), question);
+        }
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("Compare sales last week with this week"));
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("Compare sales and units on 14 Oct with 15 Oct"));
+    }
+
+    @Test
     void plainQtyStaysOnTemplate() {
         assertFalse(ReportAdhocRouter.shouldUseNl2Sql("昨天销量"));
         assertEquals("report_qty",
