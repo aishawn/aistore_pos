@@ -57,6 +57,9 @@ public class ReportRespondNode implements NodeAction {
             };
         }
         return switch (intent == null ? "" : intent) {
+            case "report_sales" -> rows.get(0).containsKey("grossProfit")
+                    ? formatAuthoritativeSales(rows.get(0), from, to, chinese)
+                    : formatSeries(rows, "sales", "Sales", from, to);
             case "report_aov" -> formatAov(rows.get(0), from, to);
             case "report_stock" -> formatStock(rows, slots.get("query"));
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
@@ -65,6 +68,28 @@ public class ReportRespondNode implements NodeAction {
             case "report_adhoc" -> formatAdhoc(rows, from, to);
             default -> formatSeries(rows, "sales", "Sales", from, to);
         };
+    }
+
+    private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese) {
+        BigDecimal sales = ReportQueryService.toDecimal(row.get("sales"));
+        if (ReportQueryService.toDecimal(row.get("transactions")).signum() == 0) {
+            return chinese ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
+                    : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
+        }
+        Object profit = row.get("grossProfit");
+        String range = rangeText(from, to);
+        if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null) {
+            return chinese
+                    ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
+                    : "Sales for " + range + " were AUD " + money(sales)
+                        + "; gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.";
+        }
+        String profitText = money(ReportQueryService.toDecimal(profit));
+        return chinese
+                ? range + "营业额 AUD " + money(sales) + "，毛利 AUD " + profitText
+                    + "（营业额减成本，含 GST）。数据来源：Orithos POS 报表。"
+                : "Sales for " + range + " were AUD " + money(sales) + " and gross profit was AUD " + profitText
+                    + " (sales less cost, GST inclusive). Source: Orithos POS report.";
     }
 
     private String formatSeries(List<Map<String, Object>> rows, String metricKey, String label,

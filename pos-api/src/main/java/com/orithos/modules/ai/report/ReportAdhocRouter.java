@@ -46,7 +46,7 @@ public final class ReportAdhocRouter {
                     + "(?:发票|账单).*(?:花了|多少钱|费用|成本)|(?:花了|支付了|付了).{0,12}(?:发票|账单)|"
                     + "发票.*(?:多少|数量|总额)|供应商.*(?:付款|支出)|"
                     + "\\bdrop\\b|\\balter\\b|\\btruncate\\b|"
-                    + "why are sales|why .*down|利润|profit|margin",
+                    + "why are sales|why .*down",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -74,6 +74,13 @@ public final class ReportAdhocRouter {
         String q = question.toLowerCase(Locale.ROOT);
         if (TICKET_COUNT.matcher(q).find() && canOverride(intent)) {
             return "report_aov";
+        }
+        // The native sales overview owns the audited gross-profit calculation.
+        // Keep profit questions on that deterministic path instead of the
+        // intentionally disabled arbitrary-query route.
+        if (Pattern.compile("利润|毛利|profit|margin", Pattern.CASE_INSENSITIVE).matcher(q).find()
+                && canOverride(intent)) {
+            return "report_sales";
         }
         if (shouldUseNl2Sql(question) && canOverride(intent)) {
             return "report_adhoc";

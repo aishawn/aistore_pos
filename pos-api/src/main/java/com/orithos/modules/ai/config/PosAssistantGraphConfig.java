@@ -112,6 +112,10 @@ public class PosAssistantGraphConfig {
             strategies.put("report_data_as_of", new ReplaceStrategy());
             strategies.put("report_data_source", new ReplaceStrategy());
             strategies.put("report_store_scope", new ReplaceStrategy());
+            strategies.put("report_period_from", new ReplaceStrategy());
+            strategies.put("report_period_to", new ReplaceStrategy());
+            strategies.put("report_time_zone", new ReplaceStrategy());
+            strategies.put("report_data_status", new ReplaceStrategy());
             return strategies;
         };
     }

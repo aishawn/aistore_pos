@@ -40,6 +40,15 @@ class ReportAdhocRouterTest {
     }
 
     @Test
+    void grossProfitQuestionsUseTheAuthoritativeSalesReportPath() {
+        for (String question : new String[]{"昨天利润如何？", "昨天销量如何？利润如何？", "昨天毛利多少",
+                "What was profit yesterday?", "Show margin this week"}) {
+            assertEquals("report_sales", ReportAdhocRouter.maybeOverride(question, "report_adhoc"), question);
+            assertFalse(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+        }
+    }
+
+    @Test
     void invoiceAndSupplierSpendQuestionsStayInReporting() {
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How many invoices did we receive?"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How much did we pay suppliers this month?"));

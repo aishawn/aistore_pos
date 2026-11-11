@@ -123,6 +123,10 @@ public class PosAssistantGraphService {
             String dataAsOf = stringValue(data, "report_data_as_of");
             String dataSource = stringValue(data, "report_data_source");
             String storeScope = stringValue(data, "report_store_scope");
+            String periodFrom = stringValue(data, "report_period_from");
+            String periodTo = stringValue(data, "report_period_to");
+            String timeZone = stringValue(data, "report_time_zone");
+            String dataStatus = stringValue(data, "report_data_status");
             List<AssistantCard> cards = cardsFor(intent, ui, answer, question, fastPathId);
             Object assistantCard = data.get("assistant_card");
             if (assistantCard instanceof AssistantCard card) {
@@ -151,7 +155,11 @@ public class PosAssistantGraphService {
                     llmFallback,
                     dataAsOf,
                     dataSource,
-                    storeScope
+                    storeScope,
+                    periodFrom,
+                    periodTo,
+                    timeZone,
+                    dataStatus
             );
         } finally {
             AssistantTenantContext.clear();
@@ -546,6 +554,10 @@ public class PosAssistantGraphService {
             boolean llmFallback,
             String dataAsOf,
             String dataSource,
-            String storeScope
+            String storeScope,
+            String reportPeriodFrom,
+            String reportPeriodTo,
+            String reportTimeZone,
+            String reportDataStatus
     ) {}
 }

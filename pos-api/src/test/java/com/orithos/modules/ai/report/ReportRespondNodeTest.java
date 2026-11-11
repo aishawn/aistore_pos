@@ -47,6 +47,26 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void authoritativeSalesAnswerIncludesProfitAndExplainsItsBasis() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", 40.25,
+                "costAvailable", true, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("Sales for 2026-10-16 were AUD 125.50 and gross profit was AUD 40.25 (sales less cost, GST inclusive). Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void authoritativeSalesDoesNotInventProfitWhenCostsAreIncomplete() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", "",
+                "costAvailable", false, "transactions", 4)), "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+
+        assertEquals("Sales for 2026-10-16 were AUD 125.50; gross profit is unavailable because sale cost data is incomplete. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void quantitySummaryUsesUnitsInsteadOfAud() {
         OverAllState state = state("", List.of(
                 Map.of("date", "2026-10-19", "qty", 2.25),
