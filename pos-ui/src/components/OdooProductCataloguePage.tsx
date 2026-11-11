@@ -171,7 +171,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [productType, setProductType] = useState<string | null>(null);
   const [taxRateId, setTaxRateId] = useState<number | null>(null);
   const [costTaxRateId, setCostTaxRateId] = useState<number | null>(null);
-  const [statusFilters, setStatusFilters] = useState<string[]>(() => [...ALL_PRODUCT_STATUSES]);
+  // Match Shopfront Products default: Status = Active.
+  const [statusFilters, setStatusFilters] = useState<string[]>(() => ["ACTIVE"]);
   const [viiGiftCard, setViiGiftCard] = useState<"ignore" | "yes" | "no">("ignore");
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [filterOptions, setFilterOptions] = useState<ProductFilterOptions | null>(null);
@@ -339,9 +340,9 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     || taxRateId
     || costTaxRateId
     || viiGiftCard !== "ignore"
-    || statusFilters.length !== ALL_PRODUCT_STATUSES.length
+    || !(statusFilters.length === 1 && statusFilters[0] === "ACTIVE")
     || catalogueView !== "all",
-  ), [brandId, catalogueView, categoryId, costTaxRateId, debouncedQuery, familyId, productType, statusFilters.length, supplierId, tagId, taxRateId, viiGiftCard]);
+  ), [brandId, catalogueView, categoryId, costTaxRateId, debouncedQuery, familyId, productType, statusFilters, supplierId, tagId, taxRateId, viiGiftCard]);
 
   const showImportDisplayNote = useMemo(
     () => items.some((product) => {
@@ -675,7 +676,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setProductType(null);
     setTaxRateId(null);
     setCostTaxRateId(null);
-    setStatusFilters([...ALL_PRODUCT_STATUSES]);
+    setStatusFilters(["ACTIVE"]);
     setViiGiftCard("ignore");
     setMoreFiltersOpen(false);
     setCatalogueView("all");

@@ -339,11 +339,17 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
         }
         int limit = Math.max(1, Math.min(body.path("limit").asInt(500), 5000));
+        // Include both explicit UNMAPPED rows and mirror products that never got a MAPPED row.
         List<Map<String, Object>> unmapped = jdbc.queryForList("""
-                SELECT m.source_product_id
-                FROM shopfront_product_mapping m
-                WHERE m.store_key = ? AND m.status = 'UNMAPPED'
-                ORDER BY m.source_product_id
+                SELECT sp.source_id AS source_product_id
+                FROM shopfront_product sp
+                LEFT JOIN shopfront_product_mapping m
+                  ON m.store_key = sp.store_key
+                 AND m.source_product_id = sp.source_id
+                 AND m.status = 'MAPPED'
+                WHERE sp.store_key = ?
+                  AND m.source_product_id IS NULL
+                ORDER BY sp.source_id
                 LIMIT ?
                 """, store, limit);
         if (unmapped.isEmpty()) {
@@ -3197,12 +3203,15 @@ public class ShopfrontIntegrationController {
             String nestedField = "tax_rate_name".equals(field) ? "taxRate" : "costTaxRate";
             JsonNode nested = raw.path(nestedField);
             if (nested.isObject() && nested.has("name")) {
-                return normalizeTaxRateName(nested.path("name").asText());
+                String nestedName = normalizeTaxRateName(nested.path("name").asText());
+                if (nestedName != null && !nestedName.isBlank()) return nestedName;
             }
             String camel = "tax_rate_name".equals(field) ? "tax_rate_name" : "cost_tax_rate_name";
             String fromRaw = text(raw, camel);
             if (fromRaw != null && !fromRaw.isBlank()) return normalizeTaxRateName(fromRaw);
         }
+        // AU retail default when Shopfront mirror rows omit tax labels.
+        if ("tax_rate_name".equals(field) || "cost_tax_rate_name".equals(field)) return "GST";
         return null;
     }
 
@@ -3257,6 +3266,7 @@ public class ShopfrontIntegrationController {
         if (isBlankText(item, "source_status")) {
             String status = firstText(nested, "status", "source_status");
             if (status != null && !status.isBlank()) item.put("source_status", status);
+            else item.put("source_status", "INACTIVE");
         }
         if ((decimal(item, "price") == null || decimal(item, "price").signum() < 0) && !hasUnitPrice(item)) {
             BigDecimal price = decimal(nested, "price");

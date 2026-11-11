@@ -729,7 +729,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void businessProductImportRejectsMissingPriceOrTax() throws Exception {
+    void businessProductImportRejectsMissingPriceAndDefaultsBlankTaxToGst() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
                 .thenReturn(List.of(7L));
@@ -738,20 +738,18 @@ class ShopfrontIntegrationControllerTest {
                 "validateProductBusinessFields", com.fasterxml.jackson.databind.JsonNode.class, long.class, Map.class);
         validate.setAccessible(true);
         ObjectMapper mapper = new ObjectMapper();
-        // Missing case_quantity defaults to 1 and should pass when price + GST are present.
+        // Missing case_quantity defaults to 1; blank tax defaults to GST.
         validate.invoke(controller, mapper.readTree(
                 "{\"source_id\":\"p1\",\"name\":\"Product\",\"price\":5,\"tax_rate_name\":\"Including GST\",\"source_status\":\"ACTIVE\"}"),
                 48L, new java.util.HashMap<>());
-        String[] blockedProducts = {
-                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}",
-                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5,\"source_status\":\"ACTIVE\"}"
-        };
-
-        for (String product : blockedProducts) {
-            InvocationTargetException failure = assertThrows(InvocationTargetException.class,
-                    () -> validate.invoke(controller, mapper.readTree(product), 48L, new java.util.HashMap<>()));
-            org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
-        }
+        validate.invoke(controller, mapper.readTree(
+                "{\"source_id\":\"p2\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5,\"source_status\":\"ACTIVE\"}"),
+                48L, new java.util.HashMap<>());
+        InvocationTargetException failure = assertThrows(InvocationTargetException.class,
+                () -> validate.invoke(controller, mapper.readTree(
+                        "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}"),
+                        48L, new java.util.HashMap<>()));
+        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
     }
 
     @Test
