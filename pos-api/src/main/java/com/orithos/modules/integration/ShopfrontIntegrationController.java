@@ -1257,7 +1257,6 @@ public class ShopfrontIntegrationController {
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_extended_record (store_key VARCHAR(64) NOT NULL, entity_type VARCHAR(64) NOT NULL, source_id VARCHAR(192) NOT NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, entity_type, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
         if (postgres) {
-            jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_item_store_product_sale ON shopfront_sale_item (store_key, source_product_id, external_sale_id)");
             jdbc.update("ALTER TABLE shopfront_sale ADD COLUMN IF NOT EXISTS business_date DATE");
             jdbc.update("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_store_biz_ext ON shopfront_sale (store_key, business_date, external_id)");
         } else {

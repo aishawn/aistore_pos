@@ -74,6 +74,8 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(0, result.data().get("sale_items_missing_source_product"));
         verify(jdbc).queryForMap(contains("FROM shopfront_product sp"), any(Object[].class));
         verify(jdbc).queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(
+                contains("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_item_store_product_sale"));
     }
 
     @Test
