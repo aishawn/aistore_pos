@@ -123,7 +123,11 @@ public class AiAssistantController {
                 result.llmFallback(),
                 result.dataAsOf(),
                 result.dataSource(),
-                result.storeScope()
+                result.storeScope(),
+                result.reportPeriodFrom(),
+                result.reportPeriodTo(),
+                result.reportTimeZone(),
+                result.reportDataStatus()
         ));
     }
 

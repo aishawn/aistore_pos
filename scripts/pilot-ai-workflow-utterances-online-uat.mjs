@@ -722,7 +722,7 @@ try {
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const reportMetadataCheck = !item.reportStatus || (item.reportStatus.includes(data.reportDataStatus)
-      && data.reportDataSource === item.reportSource
+      && data.dataSource === item.reportSource
       && data.reportPeriodFrom === item.reportFrom
       && data.reportPeriodTo === item.reportTo
       && data.reportTimeZone === item.reportTimeZone);

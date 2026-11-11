@@ -19,5 +19,9 @@ public record AssistantResponse(
         boolean llmFallback,
         String dataAsOf,
         String dataSource,
-        String storeScope
+        String storeScope,
+        String reportPeriodFrom,
+        String reportPeriodTo,
+        String reportTimeZone,
+        String reportDataStatus
 ) {}
