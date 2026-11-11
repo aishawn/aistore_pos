@@ -295,8 +295,9 @@ const cases = [
   { id: "date-sales-sold-amount-no-currency-zh", question: "10月16日卖了多少？", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
   { id: "date-sales-sold-amount-zh", question: "10月16日卖了多少钱", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
   { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-compare-en-guided-refusal", question: "Compare sales on 14 Oct with 15 Oct", intent: "report_adhoc" },
-  { id: "date-compare-zh-guided-refusal", question: "比较10月14日和10月15日销售额", intent: "report_adhoc" },
+  { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
   { id: "sales-paraphrase-revenue-today", question: "What's our revenue today?", intent: "report_sales" },
   { id: "sales-paraphrase-show-today", question: "Show me today's sales", intent: "report_sales" },
@@ -640,6 +641,58 @@ try {
     const route = data.ui?.route ?? null;
     const query = data.slots?.query ?? null;
     const answer = typeof data.answer === "string" ? data.answer : "";
+    let authoritativeReportCheck = true;
+    let authoritativeReportEvidence = null;
+    if (item.compareReport) {
+      try {
+        const reportResponse = await context.request.get(
+          `${base}/api/reports/native-overview?from=${item.reportFrom}&to=${item.reportTo}`);
+        const reportBody = await reportResponse.json().catch(() => ({}));
+        const report = reportBody.data ?? {};
+        const daily = Array.isArray(report.dailyTrend) ? report.dailyTrend : [];
+        const day = (date) => daily.find((row) => row.date === date);
+        const amount = (date, metric) => {
+          const value = day(date)?.[metric];
+          return value == null ? 0 : Number(value);
+        };
+        const responseSales = (date) => {
+          const escaped = date.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const match = answer.match(new RegExp(`(?:Sales on ${escaped} were AUD |${escaped}营业额 AUD )([\\d.]+)`, "i"));
+          return match ? Number(match[1]) : null;
+        };
+        const firstDate = item.reportFrom;
+        const secondDate = item.reportTo;
+        const noSales = Number(report.transactions) === 0;
+        const salesMatches = noSales
+          ? /no completed sales|均没有已完成销售记录/i.test(answer)
+          : responseSales(firstDate) === amount(firstDate, "revenue")
+            && responseSales(secondDate) === amount(secondDate, "revenue");
+        const profitMatch = answer.match(/(?:gross profit was AUD |毛利分别为 AUD )([\d.]+)(?: and AUD | 和 AUD )([\d.]+)/i);
+        const profitMatches = profitMatch
+          ? report.costAvailable === true
+            && Number(profitMatch[1]) === amount(firstDate, "grossProfit")
+            && Number(profitMatch[2]) === amount(secondDate, "grossProfit")
+          : noSales || /gross profit comparison is unavailable|毛利对比暂不可用/i.test(answer);
+        authoritativeReportCheck = reportResponse.ok() && reportBody.code === 0
+          && report.source === "orithos_ledger" && report.from === firstDate && report.to === secondDate
+          && salesMatches && profitMatches;
+        authoritativeReportEvidence = {
+          httpStatus: reportResponse.status(),
+          source: report.source ?? null,
+          from: report.from ?? null,
+          to: report.to ?? null,
+          revenueByDate: [amount(firstDate, "revenue"), amount(secondDate, "revenue")],
+          grossProfitByDate: [amount(firstDate, "grossProfit"), amount(secondDate, "grossProfit")],
+          costAvailable: report.costAvailable ?? null,
+          transactions: report.transactions ?? null,
+          salesMatches,
+          profitMatches,
+        };
+      } catch (error) {
+        authoritativeReportCheck = false;
+        authoritativeReportEvidence = { error: redactError(error instanceof Error ? error.message : "Report comparison failed") };
+      }
+    }
     const productCountCard = Array.isArray(data.cards)
       ? data.cards.find((card) => card?.type === "product_count")
       : null;
@@ -658,6 +711,11 @@ try {
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
+    const reportMetadataCheck = !item.reportStatus || (item.reportStatus.includes(data.reportDataStatus)
+      && data.reportDataSource === item.reportSource
+      && data.reportPeriodFrom === item.reportFrom
+      && data.reportPeriodTo === item.reportTo
+      && data.reportTimeZone === item.reportTimeZone);
     const intentMatches = Array.isArray(item.intent)
       ? item.intent.includes(data.intent)
       : data.intent === item.intent;
@@ -675,6 +733,8 @@ try {
       && answerRegexCheck
       && answerLanguageCheck
       && productCountCardCheck
+      && authoritativeReportCheck
+      && reportMetadataCheck
       && writeRequestsCheck;
     const dataUnavailable = !passed && (isDataUnavailableAnswer(answer)
       || (item.intent === "product_count" && productCountCard?.status === "unavailable"));
@@ -704,6 +764,15 @@ try {
         source: data.source ?? null,
         llmFallback: data.llmFallback ?? null,
         writeRequests: data.writeRequests ?? null,
+        ...(item.reportStatus ? {
+          reportMetadataCheck,
+          reportDataStatus: data.reportDataStatus ?? null,
+          reportDataSource: data.reportDataSource ?? null,
+          reportPeriodFrom: data.reportPeriodFrom ?? null,
+          reportPeriodTo: data.reportPeriodTo ?? null,
+          reportTimeZone: data.reportTimeZone ?? null,
+        } : {}),
+        ...(item.compareReport ? { authoritativeReportCheck, authoritativeReportEvidence } : {}),
         writeRequestsCheck,
         correlationId: response.headers()["x-correlation-id"] ?? null,
         ...(answerChecks.length ? { answerChecks } : {}),

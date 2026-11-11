@@ -23,6 +23,19 @@ public final class ReportAdhocRouter {
             Pattern.CASE_INSENSITIVE
     );
 
+    private static final Pattern SALES_COMPARISON = Pattern.compile(
+            "(?is).*(?:对比|比较|差多少|compare(?:d|s|ing)?|comparison|versus|\\bvs\\b).*"
+                    + "(?:销售额|营业额|收入|sales|revenue|takings|profit|gross profit|毛利|利润).*"
+                    + "|.*(?:销售额|营业额|收入|sales|revenue|takings|profit|gross profit|毛利|利润).*"
+                    + "(?:对比|比较|差多少|compare(?:d|s|ing)?|comparison|versus|\\bvs\\b).*",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern MIXED_METRICS = Pattern.compile(
+            "(?is).*(?:sales|revenue|takings|销售额|营业额|收入|profit|gross profit|毛利|利润).*"
+                    + "(?:units|quantity|销量|件数|库存|stock).*|.*(?:units|quantity|销量|件数|库存|stock).*"
+                    + "(?:sales|revenue|takings|销售额|营业额|收入|profit|gross profit|毛利|利润).*"
+    );
+
     private static final Pattern ADHOC = Pattern.compile(
             "分别|混[合问]|"
                     + "哪个商品|卖得最多|卖得最好|销量最高|排行|top product|best seller|best-performing|"
@@ -72,6 +85,10 @@ public final class ReportAdhocRouter {
             return intent;
         }
         String q = question.toLowerCase(Locale.ROOT);
+        if (SALES_COMPARISON.matcher(q).matches() && !MIXED_METRICS.matcher(q).matches()
+                && ExplicitReportDates.parsePair(question).isPresent() && canOverride(intent)) {
+            return "report_sales";
+        }
         if (TICKET_COUNT.matcher(q).find() && canOverride(intent)) {
             return "report_aov";
         }

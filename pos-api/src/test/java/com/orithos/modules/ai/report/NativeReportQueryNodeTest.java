@@ -38,6 +38,7 @@ class NativeReportQueryNodeTest {
         when(state.value("vendor_id")).thenReturn(Optional.of(55L));
         when(state.value("outlet_id")).thenReturn(Optional.of(87L));
         when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("can_report_cost")).thenReturn(Optional.of(true));
         when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-16"), LocalDate.parse("2026-10-16")))
                 .thenReturn(Map.of("revenue", 100.00, "grossProfit", 30.00, "profitMargin", 30.00,
@@ -69,6 +70,64 @@ class NativeReportQueryNodeTest {
         assertEquals("2026-10-16", result.get("report_period_from"));
         assertEquals("Australia/Adelaide", result.get("report_time_zone"));
         verify(queryService, never()).query(any(), anyString(), any(), any());
+    }
+
+    @Test
+    void explicitDateComparisonQueriesBothDatesFromTheSharedOverview() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of(
+                "Compare sales on 14 Oct 2026 with 15 Oct 2026"));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("can_report_cost")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of()));
+        when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-14"), LocalDate.parse("2026-10-14")))
+                .thenReturn(Map.of("revenue", 100.0, "grossProfit", 30.0, "costAvailable", true, "transactions", 2));
+        when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-15"), LocalDate.parse("2026-10-15")))
+                .thenReturn(Map.of("revenue", 120.0, "grossProfit", 35.0, "costAvailable", true, "transactions", 3));
+
+        Map<String, Object> result = node.apply(state);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) result.get("report_rows")).get(0);
+
+        assertEquals(true, row.get("comparison"));
+        assertEquals("2026-10-14", row.get("firstDate"));
+        assertEquals("2026-10-15", row.get("secondDate"));
+        assertEquals("available", result.get("report_data_status"));
+        assertEquals("2026-10-14", result.get("report_period_from"));
+        assertEquals("2026-10-15", result.get("report_period_to"));
+        verify(queryService, never()).query(any(), anyString(), any(), any());
+    }
+
+    @Test
+    void salesRemainAvailableButProfitIsRedactedWithoutCostPermission() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("yesterday sales and profit"));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(reportQuery.nativeOverview(any(Long.class), any(Long.class), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Map.of("revenue", 100.0, "grossProfit", 30.0, "costAvailable", true, "transactions", 2));
+
+        Map<String, Object> result = node.apply(state);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) result.get("report_rows")).get(0);
+
+        assertEquals(100.0, row.get("sales"));
+        assertEquals(null, row.get("grossProfit"));
+        assertEquals(false, row.get("costAvailable"));
+        assertEquals("permission", row.get("profitUnavailableReason"));
     }
 
     @Test

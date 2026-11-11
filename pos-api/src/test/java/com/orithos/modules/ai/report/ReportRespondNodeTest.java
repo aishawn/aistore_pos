@@ -67,6 +67,52 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void authoritativeSalesExplainsWhenProfitIsHiddenByCostPermission() {
+        OverAllState state = state("", List.of(Map.of("sales", 125.50, "grossProfit", "",
+                "costAvailable", false, "profitUnavailableReason", "permission", "transactions", 4)),
+                "2026-10-16", "2026-10-16");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        assertEquals("Sales for 2026-10-16 were AUD 125.50; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void explicitDateComparisonReportsBothDatesAndAuthoritativeMetrics() {
+        OverAllState state = state("", List.of(Map.of("comparison", true,
+                "firstDate", "2026-10-14", "secondDate", "2026-10-15",
+                "first", Map.of("sales", 100.00, "grossProfit", 30.00, "costAvailable", true, "transactions", 2),
+                "second", Map.of("sales", 120.00, "grossProfit", 35.00, "costAvailable", true, "transactions", 3))),
+                "2026-10-14", "2026-10-15");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        assertEquals("Sales on 2026-10-14 were AUD 100.00; sales on 2026-10-15 were AUD 120.00; gross profit was AUD 30.00 and AUD 35.00 (sales less cost, GST inclusive). Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void comparisonDoesNotReportProfitWhenEitherCostCoverageIsIncomplete() {
+        OverAllState state = state("", List.of(Map.of("comparison", true,
+                "firstDate", "2026-10-14", "secondDate", "2026-10-15",
+                "first", Map.of("sales", 100.00, "grossProfit", 30.00, "costAvailable", true, "transactions", 2),
+                "second", Map.of("sales", 120.00, "grossProfit", "", "costAvailable", false, "transactions", 3))),
+                "2026-10-14", "2026-10-15");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        assertEquals("Sales on 2026-10-14 were AUD 100.00; sales on 2026-10-15 were AUD 120.00. Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void comparisonReportsNoDataWhenNeitherDateHasCompletedSales() {
+        OverAllState state = state("", List.of(Map.of("comparison", true,
+                "firstDate", "2026-10-14", "secondDate", "2026-10-15",
+                "first", Map.of("sales", 0, "transactions", 0, "costAvailable", true),
+                "second", Map.of("sales", 0, "transactions", 0, "costAvailable", true))),
+                "2026-10-14", "2026-10-15");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        assertEquals("No completed sales were found on 2026-10-14 or 2026-10-15. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void quantitySummaryUsesUnitsInsteadOfAud() {
         OverAllState state = state("", List.of(
                 Map.of("date", "2026-10-19", "qty", 2.25),
@@ -172,8 +218,8 @@ class ReportRespondNodeTest {
     @Test
     void unsupportedAndOversizedReportsAskForSupportedNarrowerQueries() {
         assertError("NATIVE_REPORT_UNSUPPORTED",
-                "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
-                        + "how much [product] is in stock, or dead stock last 30 days.");
+                "That custom report is not supported. You can compare sales on two explicit dates, for example: "
+                        + "Compare sales on 14 Oct 2026 with 15 Oct 2026.");
     }
 
     @Test

@@ -58,6 +58,7 @@ public class ReportRespondNode implements NodeAction {
         }
         return switch (intent == null ? "" : intent) {
             case "report_sales" -> rows.get(0).containsKey("grossProfit")
+                    || Boolean.TRUE.equals(rows.get(0).get("comparison"))
                     ? formatAuthoritativeSales(rows.get(0), from, to, chinese)
                     : formatSeries(rows, "sales", "Sales", from, to);
             case "report_aov" -> formatAov(rows.get(0), from, to);
@@ -71,6 +72,7 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String formatAuthoritativeSales(Map<String, Object> row, String from, String to, boolean chinese) {
+        if (Boolean.TRUE.equals(row.get("comparison"))) return formatSalesComparison(row, chinese);
         BigDecimal sales = ReportQueryService.toDecimal(row.get("sales"));
         if (ReportQueryService.toDecimal(row.get("transactions")).signum() == 0) {
             return chinese ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
@@ -79,6 +81,12 @@ public class ReportRespondNode implements NodeAction {
         Object profit = row.get("grossProfit");
         String range = rangeText(from, to);
         if (Boolean.FALSE.equals(row.get("costAvailable")) || profit == null) {
+            if ("permission".equals(row.get("profitUnavailableReason"))) {
+                return chinese
+                        ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
+                        : "Sales for " + range + " were AUD " + money(sales)
+                            + "; gross profit is unavailable because your account cannot view cost data. Source: Orithos POS report.";
+            }
             return chinese
                     ? range + "营业额 AUD " + money(sales) + "；毛利暂不可用，销售成本数据不完整。数据来源：Orithos POS 报表。"
                     : "Sales for " + range + " were AUD " + money(sales)
@@ -90,6 +98,48 @@ public class ReportRespondNode implements NodeAction {
                     + "（营业额减成本，含 GST）。数据来源：Orithos POS 报表。"
                 : "Sales for " + range + " were AUD " + money(sales) + " and gross profit was AUD " + profitText
                     + " (sales less cost, GST inclusive). Source: Orithos POS report.";
+    }
+
+    @SuppressWarnings("unchecked")
+    private String formatSalesComparison(Map<String, Object> row, boolean chinese) {
+        Map<String, Object> first = (Map<String, Object>) row.get("first");
+        Map<String, Object> second = (Map<String, Object>) row.get("second");
+        String firstDate = String.valueOf(row.get("firstDate"));
+        String secondDate = String.valueOf(row.get("secondDate"));
+        BigDecimal firstSales = ReportQueryService.toDecimal(first.get("sales"));
+        BigDecimal secondSales = ReportQueryService.toDecimal(second.get("sales"));
+        if (ReportQueryService.toDecimal(first.get("transactions")).signum() == 0
+                && ReportQueryService.toDecimal(second.get("transactions")).signum() == 0) {
+            return chinese
+                    ? firstDate + "和" + secondDate + "均没有已完成销售记录。数据来源：Orithos POS 报表。"
+                    : "No completed sales were found on " + firstDate + " or " + secondDate
+                        + ". Source: Orithos POS report.";
+        }
+        String comparison = chinese
+                ? firstDate + "营业额 AUD " + money(firstSales) + "；" + secondDate + "营业额 AUD " + money(secondSales)
+                : "Sales on " + firstDate + " were AUD " + money(firstSales)
+                    + "; sales on " + secondDate + " were AUD " + money(secondSales);
+        boolean costComplete = Boolean.TRUE.equals(first.get("costAvailable"))
+                && Boolean.TRUE.equals(second.get("costAvailable"))
+                && first.get("grossProfit") != null && second.get("grossProfit") != null;
+        if (!costComplete) {
+            boolean permissionDenied = "permission".equals(first.get("profitUnavailableReason"))
+                    || "permission".equals(second.get("profitUnavailableReason"));
+            return comparison + (chinese
+                    ? permissionDenied
+                        ? "。毛利对比暂不可用，因为当前账号没有查看成本数据的权限。数据来源：Orithos POS 报表。"
+                        : "。毛利对比暂不可用，因为至少一个日期的销售成本数据不完整。数据来源：Orithos POS 报表。"
+                    : permissionDenied
+                        ? ". Gross profit comparison is unavailable because your account cannot view cost data. Source: Orithos POS report."
+                        : ". Gross profit comparison is unavailable because sale cost data is incomplete for at least one date. Source: Orithos POS report.");
+        }
+        return comparison + (chinese
+                ? "；毛利分别为 AUD " + money(ReportQueryService.toDecimal(first.get("grossProfit")))
+                    + " 和 AUD " + money(ReportQueryService.toDecimal(second.get("grossProfit")))
+                    + "（营业额减成本，含 GST）。数据来源：Orithos POS 报表。"
+                : "; gross profit was AUD " + money(ReportQueryService.toDecimal(first.get("grossProfit")))
+                    + " and AUD " + money(ReportQueryService.toDecimal(second.get("grossProfit")))
+                    + " (sales less cost, GST inclusive). Source: Orithos POS report.");
     }
 
     private String formatSeries(List<Map<String, Object>> rows, String metricKey, String label,
@@ -225,9 +275,10 @@ public class ReportRespondNode implements NodeAction {
             case "NATIVE_REPORT_UNAVAILABLE" -> isStockIntent(intent)
                     ? "I could not read Orithos stock data right now. Open the stock list to check manually, or try again shortly."
                     : "Orithos reporting is temporarily unavailable. Please try again.";
-            case "NATIVE_REPORT_UNSUPPORTED" ->
-                    "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
-                            + "how much [product] is in stock, or dead stock last 30 days.";
+            case "NATIVE_REPORT_UNSUPPORTED" -> chinese
+                    ? "暂不支持这种自定义查询。可比较两个明确日期的销售额，例如：比较2026年10月14日和2026年10月15日销售额。"
+                    : "That custom report is not supported. You can compare sales on two explicit dates, for example: "
+                        + "Compare sales on 14 Oct 2026 with 15 Oct 2026.";
             case "COST_DATA_UNAVAILABLE" ->
                     "Inventory cash value is unavailable because this reporting source does not contain trusted product cost data.";
             case "QUOTA_EXCEEDED" ->

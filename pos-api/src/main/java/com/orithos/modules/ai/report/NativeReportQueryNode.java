@@ -28,7 +28,14 @@ public class NativeReportQueryNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
-        ReportPeriodResolver.Window window = windowFromState(state);
+        String question = ReportGraphState.string(state, "question");
+        var comparisonDates = ExplicitReportDates.parsePair(question);
+        ReportPeriodResolver.Window window = comparisonDates.map(dates -> {
+            var first = dates.get(0).isBefore(dates.get(1)) ? dates.get(0) : dates.get(1);
+            var last = dates.get(0).isAfter(dates.get(1)) ? dates.get(0) : dates.get(1);
+            return new ReportPeriodResolver.Window(first.atStartOfDay(), last.plusDays(1).atStartOfDay(),
+                    (int) (last.toEpochDay() - first.toEpochDay() + 1));
+        }).orElseGet(() -> windowFromState(state));
         if ("report_adhoc".equals(intent)) {
             Map<String, Object> refused = new HashMap<>();
             refused.put("sql_path", "unsupported");
@@ -44,9 +51,34 @@ public class NativeReportQueryNode implements NodeAction {
         TenantContext tenant = ReportGraphState.tenant(state);
         NativeAiReportQueryService.Result result;
         boolean hasCategory = ReportGraphState.slots(state).containsKey("category");
-        String question = ReportGraphState.string(state, "question");
         boolean asksProfit = question != null && question.matches("(?is).*(利润|毛利|profit|margin).*");
-        if ("report_sales".equals(intent) && hasCategory && asksProfit) {
+        if ("report_sales".equals(intent) && comparisonDates.isPresent()) {
+            if (hasCategory) {
+                result = new NativeAiReportQueryService.Result(List.of(), "NATIVE_REPORT_UNSUPPORTED");
+            } else if (tenant.requireOutletId() == null || !tenant.canQueryReport()) {
+                result = new NativeAiReportQueryService.Result(List.of(), tenant.requireOutletId() == null
+                        ? "NO_OUTLET" : "NO_PERMISSION");
+            } else {
+                try {
+                    var dates = comparisonDates.get();
+                    Map<String, Object> first = reportQueryService.nativeOverview(tenant.vendorId(),
+                            tenant.requireOutletId(), dates.get(0), dates.get(0));
+                    Map<String, Object> second = reportQueryService.nativeOverview(tenant.vendorId(),
+                            tenant.requireOutletId(), dates.get(1), dates.get(1));
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("comparison", true);
+                    row.put("firstDate", dates.get(0).toString());
+                    row.put("secondDate", dates.get(1).toString());
+                    row.put("first", salesMetrics(first, tenant.canQueryCost()));
+                    row.put("second", salesMetrics(second, tenant.canQueryCost()));
+                    row.put("transactions", ReportQueryService.toDecimal(first.get("transactions"))
+                            .add(ReportQueryService.toDecimal(second.get("transactions"))));
+                    result = new NativeAiReportQueryService.Result(List.of(row), null);
+                } catch (RuntimeException e) {
+                    result = new NativeAiReportQueryService.Result(List.of(), "NATIVE_REPORT_UNAVAILABLE");
+                }
+            }
+        } else if ("report_sales".equals(intent) && hasCategory && asksProfit) {
             result = new NativeAiReportQueryService.Result(List.of(), "NATIVE_REPORT_UNSUPPORTED");
         } else if ("report_sales".equals(intent) && !hasCategory
                 && tenant.requireOutletId() != null && tenant.canQueryReport()) {
@@ -54,12 +86,7 @@ public class NativeReportQueryNode implements NodeAction {
                 Map<String, Object> overview = reportQueryService.nativeOverview(tenant.vendorId(),
                         tenant.requireOutletId(), window.from().toLocalDate(),
                         window.toExclusive().minusNanos(1).toLocalDate());
-                Map<String, Object> row = new HashMap<>();
-                row.put("sales", overview.get("revenue"));
-                row.put("grossProfit", overview.get("grossProfit"));
-                row.put("profitMargin", overview.get("profitMargin"));
-                row.put("costAvailable", overview.get("costAvailable"));
-                row.put("transactions", overview.get("transactions"));
+                Map<String, Object> row = salesMetrics(overview, tenant.canQueryCost());
                 result = new NativeAiReportQueryService.Result(List.of(row), null);
             } catch (RuntimeException e) {
                 result = new NativeAiReportQueryService.Result(List.of(), "NATIVE_REPORT_UNAVAILABLE");
@@ -82,6 +109,16 @@ public class NativeReportQueryNode implements NodeAction {
                 || row.containsKey("tickets") && ReportQueryService.toDecimal(row.get("tickets")).signum() == 0);
         addProvenance(out, window, result.error() != null ? "unavailable" : noData ? "no_data" : "available");
         return out;
+    }
+
+    private static Map<String, Object> salesMetrics(Map<String, Object> overview, boolean canViewCost) {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("sales", overview.get("revenue"));
+        metrics.put("grossProfit", canViewCost ? overview.get("grossProfit") : null);
+        metrics.put("costAvailable", canViewCost && Boolean.TRUE.equals(overview.get("costAvailable")));
+        if (!canViewCost) metrics.put("profitUnavailableReason", "permission");
+        metrics.put("transactions", overview.get("transactions"));
+        return metrics;
     }
 
     private static void addProvenance(Map<String, Object> target, ReportPeriodResolver.Window window,
