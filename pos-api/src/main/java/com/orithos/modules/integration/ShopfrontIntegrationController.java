@@ -1578,52 +1578,69 @@ public class ShopfrontIntegrationController {
             List<Object[]> lineRows = new ArrayList<>();
             BigDecimal orderedTotal = BigDecimal.ZERO;
             BigDecimal receivedTotal = BigDecimal.ZERO;
-            boolean allReceived = sourceLines.size() > 0;
-            boolean lineError = false;
+            int skippedLines = 0;
+            // Keep importing mapped lines when a historical Shopfront row still
+            // references deleted/unmapped catalogue ids; only skip the whole PO
+            // when nothing usable remains.
             for (JsonNode line : sourceLines) {
                 String lineSupplierSourceId = text(line.path("supplier"), "id");
                 Long lineSupplierId = mappedSupplierId(store,
                         lineSupplierSourceId == null || lineSupplierSourceId.isBlank() ? supplierSourceId : lineSupplierSourceId,
                         outletId);
                 if (lineSupplierId == null || !supplierId.equals(lineSupplierId)) {
+                    skippedLines++;
                     if (errors.size() < 25) {
-                        errors.add("Purchase order " + sourceId + " has a line with an unmapped or different supplier");
+                        errors.add("Purchase order " + sourceId + " skipped a line with an unmapped or different supplier");
                     }
-                    lineError = true;
-                    break;
+                    continue;
                 }
                 String productSourceId = text(line.path("item"), "id");
                 Long productId = mappedProductId(store, productSourceId, outletId);
                 if (productId == null) {
+                    skippedLines++;
                     if (errors.size() < 25) {
-                        errors.add("Purchase order " + sourceId + " has an unmapped product " + productSourceId);
+                        errors.add("Purchase order " + sourceId + " skipped unmapped product " + productSourceId);
                     }
-                    lineError = true;
-                    break;
+                    continue;
                 }
                 BigDecimal ordered = decimal(line, "orderedQuantity");
                 BigDecimal received = decimal(line, "receivedQuantity");
                 if (ordered == null || ordered.signum() < 0 || (received != null && received.signum() < 0)) {
+                    skippedLines++;
                     if (errors.size() < 25) {
-                        errors.add("Purchase order " + sourceId + " has an invalid quantity");
+                        errors.add("Purchase order " + sourceId + " skipped a line with an invalid quantity");
                     }
-                    lineError = true;
-                    break;
+                    continue;
                 }
                 received = received == null ? BigDecimal.ZERO : received;
                 orderedTotal = orderedTotal.add(ordered);
                 receivedTotal = receivedTotal.add(received);
-                if (received.compareTo(ordered) < 0) allReceived = false;
                 lineRows.add(new Object[]{productId, lineSupplierId, text(line.path("item"), "mdbId"),
                         decimal(line, "caseQuantity"), ordered, received, decimal(line, "baseCost"),
                         decimal(line, "orderedCost"), outletId});
             }
-            if (lineError) {
+            if (lineRows.isEmpty()) {
                 skipped++;
+                if (errors.size() < 25) {
+                    errors.add("Purchase order " + sourceId + " has no importable lines"
+                            + (skippedLines > 0 ? " (" + skippedLines + " skipped)" : ""));
+                }
                 continue;
             }
+            boolean allReceived = !lineRows.isEmpty();
+            for (Object[] lineRow : lineRows) {
+                BigDecimal ordered = (BigDecimal) lineRow[4];
+                BigDecimal received = (BigDecimal) lineRow[5];
+                if (received.compareTo(ordered) < 0) {
+                    allReceived = false;
+                    break;
+                }
+            }
 
-            String hash = purchaseOrderSourceHash(raw);
+            // Include imported-line cardinality so newly mapped catalogue rows
+            // can expand a previously partial PO on the next upsert.
+            String hash = purchaseOrderSourceHash(raw) + ":imported=" + lineRows.size()
+                    + ":skipped=" + skippedLines;
             List<Map<String, Object>> prior = jdbc.queryForList(
                     "SELECT purchase_order_id,source_hash FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
                     store, sourceId, outletId);
@@ -1640,7 +1657,7 @@ public class ShopfrontIntegrationController {
                 }
             }
 
-            String status = purchaseOrderStatus(raw, sourceLines.size(), receivedTotal, allReceived);
+            String status = purchaseOrderStatus(raw, lineRows.size(), receivedTotal, allReceived);
             String invoiceNumber = text(raw, "invoiceNumber");
             if (invoiceNumber == null || invoiceNumber.isBlank()) invoiceNumber = sourceId;
             if (invoiceNumber.length() > 64 || sourceId.length() > 128) {
