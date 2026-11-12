@@ -111,6 +111,10 @@
             <if test="q.viiGiftCard != null and !q.viiGiftCard">
                 AND (p.type IS NULL OR p.type &lt;&gt; 'INTEGRATED')
             </if>
+            <!-- Shopfront "Inventory On Hand" = positive stock only (excludes zero and negative). -->
+            <if test="q.inventoryLevel == 'on-hand'">
+                AND COALESCE(inv.total_qty, 0) &gt; 0
+            </if>
             <if test="q.inventoryLevel == 'not-zero'">
                 AND COALESCE(inv.total_qty, 0) &lt;&gt; 0
             </if>

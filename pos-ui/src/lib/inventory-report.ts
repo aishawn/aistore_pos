@@ -153,11 +153,14 @@ export function groupOnHandRows(rows: OnHandRow[], groupBy: OnHandGroupBy): Arra
 
 /** Filter loaded on-hand rows by Shopfront report-type semantics. */
 export function filterOnHandRows(rows: OnHandRow[], reportType: OnHandReportType): OnHandRow[] {
-  if (reportType === "all" || reportType === "on-hand") return rows;
+  if (reportType === "all") return rows;
   return rows.filter((row) => {
     const stock = row.stockQuantity;
     const hasStock = stock != null && Number.isFinite(stock);
     switch (reportType) {
+      case "on-hand":
+        // Shopfront Inventory On Hand: positive quantity only (no zero/negative).
+        return hasStock && stock > 0;
       case "no-inventory":
         return !hasStock;
       case "not-zero":
@@ -207,7 +210,12 @@ export function onHandSummaryToTotals(summary: {
 
 /** Server inventoryLevel for report types that need SQL filtering. */
 export function inventoryLevelParam(reportType: OnHandReportType): string | undefined {
-  if (reportType === "not-zero" || reportType === "only-zero" || reportType === "no-inventory") {
+  if (
+    reportType === "on-hand"
+    || reportType === "not-zero"
+    || reportType === "only-zero"
+    || reportType === "no-inventory"
+  ) {
     return reportType;
   }
   return undefined;

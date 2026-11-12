@@ -28,8 +28,8 @@ public class ProductQuery {
     /** Comma-separated status values for multi-select (e.g. ACTIVE,INACTIVE). */
     private String statuses;
     /**
-     * Inventory-on-hand report stock filter:
-     * on-hand | all | not-zero | only-zero | no-inventory
+     * Inventory report stock filter (Shopfront report-type semantics):
+     * on-hand (quantity > 0) | all | not-zero | only-zero | no-inventory
      */
     private String inventoryLevel;
     /** When set, filters Vii gift-card products (Shopfront {@code INTEGRATED} type). */

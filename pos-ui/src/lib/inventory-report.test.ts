@@ -119,7 +119,7 @@ test("report-type filters match Shopfront inventory levels", () => {
     toOnHandRow({ id: 3, name: "Negative", stockQuantity: -3, caseQuantity: 6, cost: 2 }),
     toOnHandRow({ id: 4, name: "Missing", stockQuantity: null, caseQuantity: 6, cost: 2 }),
   ];
-  assert.deepEqual(filterOnHandRows(rows, "on-hand").map((row) => row.id), ["1", "2", "3", "4"]);
+  assert.deepEqual(filterOnHandRows(rows, "on-hand").map((row) => row.id), ["1"]);
   assert.deepEqual(filterOnHandRows(rows, "all").map((row) => row.id), ["1", "2", "3", "4"]);
   assert.deepEqual(filterOnHandRows(rows, "not-zero").map((row) => row.id), ["1", "3"]);
   assert.deepEqual(filterOnHandRows(rows, "only-zero").map((row) => row.id), ["2"]);
@@ -147,7 +147,7 @@ test("summary API payload maps to full-catalog footer totals", () => {
 });
 
 test("inventoryLevelParam only forwards filtered report types", () => {
-  assert.equal(inventoryLevelParam("on-hand"), undefined);
+  assert.equal(inventoryLevelParam("on-hand"), "on-hand");
   assert.equal(inventoryLevelParam("all"), undefined);
   assert.equal(inventoryLevelParam("not-zero"), "not-zero");
   assert.equal(inventoryLevelParam("only-zero"), "only-zero");
