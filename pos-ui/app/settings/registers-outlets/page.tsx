@@ -7,8 +7,8 @@ import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-type Outlet = { id: number; name: string };
-type Register = { id: number; name: string; outletId?: number; invoiceNumber?: string; closed?: boolean };
+type Outlet = { id: number; name: string; [key: string]: unknown };
+type Register = { id: number; name: string; outletId?: number; invoiceNumber?: string; closed?: boolean; [key: string]: unknown };
 
 export default function RegistersOutletsPage() {
   const { hasPermission, ready } = useAuth();
@@ -19,6 +19,8 @@ export default function RegistersOutletsPage() {
   const [outletName, setOutletName] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerOutletId, setRegisterOutletId] = useState<number | "">("");
+  const [editingOutlet, setEditingOutlet] = useState<Outlet | null>(null);
+  const [editingRegister, setEditingRegister] = useState<Register | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -70,6 +72,39 @@ export default function RegistersOutletsPage() {
     }
   }
 
+  async function updateOutlet() {
+    if (!canEdit || !editingOutlet?.name.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.put(`/api/outlets/${editingOutlet.id}`, { ...editingOutlet, name: editingOutlet.name.trim() });
+      setEditingOutlet(null);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update outlet");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateRegister() {
+    if (!canEdit || !editingRegister?.name.trim() || !editingRegister.outletId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.put(`/api/registers/${editingRegister.id}`, {
+        ...editingRegister,
+        name: editingRegister.name.trim(),
+      });
+      setEditingRegister(null);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update register");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <AdminPageLayout
       title="Registers & Outlets"
@@ -82,7 +117,28 @@ export default function RegistersOutletsPage() {
         <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4">
           <h2 className="font-semibold">Outlets</h2>
           <ul className="mt-3 divide-y">
-            {outlets.map((outlet) => <li key={outlet.id} className="py-2 text-sm">{outlet.name}</li>)}
+            {outlets.map((outlet) => (
+              <li key={outlet.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                {editingOutlet?.id === outlet.id ? (
+                  <input
+                    aria-label={`Outlet name ${outlet.id}`}
+                    autoFocus
+                    className="h-10 min-w-0 flex-1 rounded-lg border px-3"
+                    value={editingOutlet.name}
+                    disabled={saving}
+                    onChange={(e) => setEditingOutlet({ ...editingOutlet, name: e.target.value })}
+                  />
+                ) : <span className="min-w-0 flex-1">{outlet.name}</span>}
+                {canEdit && (editingOutlet?.id === outlet.id ? (
+                  <span className="flex shrink-0 gap-2">
+                    <button type="button" onClick={() => void updateOutlet()} disabled={saving || !editingOutlet.name.trim()} className="font-semibold text-[var(--oh-primary)] disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setEditingOutlet(null)} disabled={saving} className="text-[var(--oh-muted)]">Cancel</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setEditingOutlet({ ...outlet })} className="shrink-0 font-semibold text-[var(--oh-primary)]">Edit</button>
+                ))}
+              </li>
+            ))}
             {outlets.length === 0 && <li className="py-6 text-sm text-[var(--oh-muted)]">No outlets yet.</li>}
           </ul>
           {canEdit && (
@@ -97,8 +153,43 @@ export default function RegistersOutletsPage() {
           <ul className="mt-3 divide-y">
             {registers.map((register) => (
               <li key={register.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span>{register.name}</span>
-                <span className="text-[var(--oh-muted)]">{register.closed ? "Closed" : "Openable"}</span>
+                {editingRegister?.id === register.id ? (
+                  <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <input
+                      aria-label={`Register name ${register.id}`}
+                      autoFocus
+                      className="h-10 min-w-0 rounded-lg border px-3"
+                      value={editingRegister.name}
+                      disabled={saving}
+                      onChange={(e) => setEditingRegister({ ...editingRegister, name: e.target.value })}
+                    />
+                    <select
+                      aria-label={`Register outlet ${register.id}`}
+                      className="h-10 min-w-0 rounded-lg border px-3"
+                      value={editingRegister.outletId ?? ""}
+                      disabled={saving}
+                      onChange={(e) => setEditingRegister({ ...editingRegister, outletId: Number(e.target.value) })}
+                    >
+                      {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">{register.name}</span>
+                    <span className="block text-xs text-[var(--oh-muted)]">
+                      {outlets.find((outlet) => outlet.id === register.outletId)?.name ?? "Unknown outlet"}
+                      {` · ${register.closed ? "Closed" : "Openable"}`}
+                    </span>
+                  </span>
+                )}
+                {canEdit && (editingRegister?.id === register.id ? (
+                  <span className="flex shrink-0 gap-2">
+                    <button type="button" onClick={() => void updateRegister()} disabled={saving || !editingRegister.name.trim() || !editingRegister.outletId} className="font-semibold text-[var(--oh-primary)] disabled:opacity-50">Save</button>
+                    <button type="button" onClick={() => setEditingRegister(null)} disabled={saving} className="text-[var(--oh-muted)]">Cancel</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setEditingRegister({ ...register })} className="shrink-0 font-semibold text-[var(--oh-primary)]">Edit</button>
+                ))}
               </li>
             ))}
             {registers.length === 0 && <li className="py-6 text-sm text-[var(--oh-muted)]">No registers yet.</li>}

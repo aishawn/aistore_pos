@@ -94,7 +94,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
   upstreamUrl.search = new URL(request.url).search;
 
   const clientAuthorization = request.headers.get("authorization");
-  let { authorization, refreshed } = await resolveAuthorization(request, clientAuthorization);
+  const { authorization, refreshed: initialRefresh } = await resolveAuthorization(request, clientAuthorization);
+  let refreshed = initialRefresh;
 
   const method = request.method.toUpperCase();
   const headers = buildProxyHeaders(request, path, authorization);

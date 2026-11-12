@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     void (async () => {
       try {
-        let current = await api.get<CurrentUserResponse>("/api/auth/me");
+        const current = await api.get<CurrentUserResponse>("/api/auth/me");
         if (!active) return;
         const normalized = normalizeUser(current);
         setUser(normalized);

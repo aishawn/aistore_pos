@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, LoaderCircle, RefreshCw } from "lucide-react";
 import { api, type Page } from "@/lib/api";
-import { formatStoreEpoch } from "@/lib/odoo-date";
 
 type ProductRow = {
   id: number;
@@ -92,7 +91,7 @@ export function ShopfrontInventorySummary({ productCount }: { productCount?: num
           {typeof productCount === "number" && <p><span className="block text-xs text-[var(--oh-muted)]">Catalogue products</span><strong>{number(productCount)}</strong></p>}
           {overview?.inventoryUnits != null && <p><span className="block text-xs text-[var(--oh-muted)]">On-hand units</span><strong>{number(overview.inventoryUnits)}</strong></p>}
           {overview?.negativeStockProducts != null && overview.negativeStockProducts > 0 && <p><span className="block text-xs text-[var(--oh-muted)]">Negative stock products</span><strong>{number(overview.negativeStockProducts)}</strong></p>}
-          <p className="basis-full text-xs text-[var(--oh-muted)]">{overview?.inventoryStatus ? `Inventory ${overview.inventoryStatus}` : "Inventory from Orithos product on-hand"}{overview ? ` · refreshed ${formatStoreEpoch(Date.now(), "Australia/Adelaide")}` : ""}.</p>
+          <p className="basis-full text-xs text-[var(--oh-muted)]">{overview?.inventoryStatus ? `Inventory ${overview.inventoryStatus}` : "Inventory from Orithos product on-hand"}.</p>
         </div>}
       </SourceState>
     </div>
