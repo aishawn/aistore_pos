@@ -162,6 +162,7 @@ export function SettingsCatalogCrud({
                 <input
                   type="checkbox"
                   checked={Boolean(draft[column.key])}
+                  disabled={!canEdit || busy}
                   onChange={(e) => setDraft({ ...draft, [column.key]: e.target.checked })}
                 />
               ) : (
@@ -169,6 +170,7 @@ export function SettingsCatalogCrud({
                   className="h-10 rounded-lg border border-[var(--oh-border)] px-3"
                   type={column.type === "number" ? "number" : "text"}
                   value={String(draft[column.key] ?? "")}
+                  disabled={!canEdit || busy}
                   onChange={(e) => setDraft({
                     ...draft,
                     [column.key]: column.type === "number" ? Number(e.target.value) : e.target.value,
@@ -178,7 +180,7 @@ export function SettingsCatalogCrud({
             </label>
           ))}
           <div className="flex gap-2 sm:col-span-2">
-            <button type="button" disabled={busy} onClick={() => void save()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white">Save</button>
+            <button type="button" disabled={!canEdit || busy} onClick={() => void save()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white">Save</button>
             <button type="button" disabled={busy} onClick={() => setDraft(null)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
           </div>
         </div>
@@ -206,7 +208,7 @@ export function SettingsCatalogCrud({
                   ))}
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button type="button" className="text-[var(--oh-primary)] underline" onClick={() => setDraft({ ...row })}>Edit</button>
+                      {canEdit && <button type="button" className="text-[var(--oh-primary)] underline" onClick={() => setDraft({ ...row })}>Edit</button>}
                       {canEdit && row.id != null && (
                         <button type="button" className="inline-flex items-center gap-1 text-red-700" onClick={() => void remove(Number(row.id))}>
                           <Trash2 size={14} /> Delete
