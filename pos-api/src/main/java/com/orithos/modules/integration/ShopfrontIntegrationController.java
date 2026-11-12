@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
 public class ShopfrontIntegrationController {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
     private static final Pattern STORE_KEY = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
+    private static final String PURCHASE_ORDER_IMPORT_VERSION = "po-import-v2";
     private static final List<ShopfrontMirrorTable> MIRROR_TABLES = List.of(
             new ShopfrontMirrorTable("shopfront_product", "source_id,name,sku,barcode,category,brand,cost,price,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_inventory", "source_product_id,outlet_id,quantity,snapshot_at,raw_payload,synced_at"),
@@ -2352,8 +2353,7 @@ public class ShopfrontIntegrationController {
             // Include imported-line cardinality so newly mapped catalogue rows
             // can expand a previously partial PO on the next upsert. Re-digest
             // so the value still fits source_hash VARCHAR(64).
-            String hash = purchaseOrderSourceHash(
-                    purchaseOrderSourceHash(raw) + ":imported=" + lineRows.size() + ":skipped=" + skippedLines);
+            String hash = purchaseOrderImportHash(raw, lineRows.size(), skippedLines);
             List<Map<String, Object>> prior = jdbc.queryForList(
                     "SELECT purchase_order_id,source_hash FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
                     store, sourceId, outletId);
@@ -2621,8 +2621,12 @@ public class ShopfrontIntegrationController {
         com.fasterxml.jackson.databind.node.ObjectNode normalized = ((com.fasterxml.jackson.databind.node.ObjectNode) raw).deepCopy();
         if (status == null) normalized.putNull("status");
         else normalized.put("status", status);
-        return purchaseOrderSourceHash(
-                purchaseOrderSourceHash(normalized) + ":imported=" + importedLines + ":skipped=" + skippedLines);
+        return purchaseOrderImportHash(normalized, importedLines, skippedLines);
+    }
+
+    private String purchaseOrderImportHash(JsonNode raw, int importedLines, int skippedLines) {
+        return purchaseOrderSourceHash(purchaseOrderSourceHash(raw) + ":" + PURCHASE_ORDER_IMPORT_VERSION
+                + ":imported=" + importedLines + ":skipped=" + skippedLines);
     }
 
     private String purchaseOrderSourceHash(String material) {
