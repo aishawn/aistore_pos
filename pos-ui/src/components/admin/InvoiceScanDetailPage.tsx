@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, LoaderCircle, Package, Search, ShoppingCart } from "lucide-react";
 import {
+  api,
   apiFailureMessage,
   discardInvoiceScan,
   getInvoiceScan,
@@ -17,26 +18,39 @@ import {
   type InvoiceScanSession,
   type InvoiceScanSessionLine,
 } from "@/lib/api";
-import {
-  confirmOdooPurchaseOrder,
-  createOdooDraftRfqFromInvoice,
-  getOdooPurchaseOrderDetail,
-  getOdooSession,
-  OdooApiError,
-  receiveOdooPurchaseOrder,
-  searchOdooRecords,
-} from "@/lib/odoo-api";
 import { InvoiceWorkflowSteps, invoiceStepFromStatus } from "@/components/admin/InvoiceWorkflowSteps";
 
 interface Named {
-  id: number;
+  id: number | string;
   name: string;
-  display_name?: string;
 }
+
+interface NativeOrder {
+  id: number;
+  invoiceNumber?: string;
+  status?: string;
+  products?: Array<{
+    id: number;
+    productId: number;
+    orderedQuantity?: number;
+    receivedQuantity?: number;
+  }>;
+}
+
+interface NativeProductPage {
+  items?: Array<{ id: number; name: string; caseQuantity?: number | null }>;
+}
+
+type NativeProductHit = { id: number; name: string; caseQuantity?: number | null };
 
 function money(value?: number | null) {
   if (value == null || Number.isNaN(Number(value))) return "—";
   return `$${Number(value).toFixed(2)}`;
+}
+
+function localDate() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function statusLabel(status: string) {
@@ -69,7 +83,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [productQuery, setProductQuery] = useState<Record<number, string>>({});
-  const [productHits, setProductHits] = useState<Record<number, Named[]>>({});
+  const [productHits, setProductHits] = useState<Record<number, NativeProductHit[]>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const suggestStarted = useRef(false);
   const searchTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -78,27 +92,23 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     setLoading(true);
     setError(null);
     try {
-      const [detail, sessionInfo, supplierPage, outletPage] = await Promise.all([
+      const [detail, supplierPage, outletPage] = await Promise.all([
         getInvoiceScan(scanId),
-        getOdooSession(),
-        searchOdooRecords<Named>("suppliers", { limit: 100 }).catch(() => ({ items: [] as Named[] })),
-        searchOdooRecords<Named>("outlets", { limit: 100 }).catch(() => ({ items: [] as Named[] })),
+        api.get<{ items?: Named[] }>("/api/suppliers", { page: 1, size: 500 }),
+        api.get<Named[]>("/api/outlets"),
       ]);
-      if (!sessionInfo) {
-        setNotice("Connect your Orithos staff account before confirming into purchases.");
-      }
-      let next = detail;
+      let next = { ...detail, outletId: detail.outletId ?? (Number(outletPage[0]?.id ?? 0) || null) };
       if (!detail.supplierId && detail.supplierAbn) {
         try {
           const mapped = await suggestedInvoiceSupplierByAbn(detail.supplierAbn);
-          if (mapped) next = { ...detail, supplierId: mapped };
+          if (mapped) next = { ...next, supplierId: mapped };
         } catch {
           /* optional ABN map */
         }
       }
       setSession(next);
       setSuppliers(supplierPage.items ?? []);
-      setOutlets(outletPage.items ?? []);
+      setOutlets(outletPage);
       const queries: Record<number, string> = {};
       (next.lines ?? []).forEach((line, index) => {
         queries[index] = line.productName || line.description || "";
@@ -113,13 +123,14 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   }, [scanId]);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   const editable = session?.status === "draft" || session?.status === "matched" || session?.status === "failed";
   const canFinishReceive = session?.status === "po_created" && Boolean(session.purchaseOrderId);
   const done = session?.status === "received";
-  const lines = session?.lines ?? [];
+  const lines = useMemo(() => session?.lines ?? [], [session?.lines]);
   const openLines = useMemo(
     () => lines.filter((line) => {
       const status = line.matchStatus;
@@ -144,6 +155,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   const canConfirm = Boolean(
     editable
     && session?.supplierId
+    && session?.outletId
     && lines.length > 0
     && openLines.length === 0
     && confirmedLines.length > 0,
@@ -159,7 +171,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       for (const { line, index } of unmatched.slice(0, 12)) {
         const query = (line.description || "").trim();
         try {
-          const page = await searchOdooRecords<Named>("purchaseProducts", { query, limit: 5 });
+          const page = await api.get<NativeProductPage>("/api/products", { name: query, page: 1, size: 5, status: "ACTIVE" });
           const hits = page.items ?? [];
           setProductHits((current) => ({ ...current, [index]: hits }));
           if (hits.length === 1) {
@@ -171,12 +183,13 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               next[index] = {
                 ...next[index],
                 productId: hit.id,
-                productName: hit.display_name || hit.name,
+                productName: hit.name,
+                packQty: next[index].packQty ?? hit.caseQuantity ?? null,
                 matchStatus: "suggested",
               };
               return { ...current, lines: next };
             });
-            setProductQuery((current) => ({ ...current, [index]: hit.display_name || hit.name }));
+            setProductQuery((current) => ({ ...current, [index]: hit.name }));
           }
         } catch {
           /* ignore suggest failures */
@@ -208,7 +221,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
           return;
         }
         try {
-          const page = await searchOdooRecords<Named>("purchaseProducts", { query: query.trim(), limit: 8 });
+          const page = await api.get<NativeProductPage>("/api/products", { name: query.trim(), page: 1, size: 8, status: "ACTIVE" });
           setProductHits((current) => ({ ...current, [index]: page.items ?? [] }));
         } catch {
           setProductHits((current) => ({ ...current, [index]: [] }));
@@ -277,48 +290,57 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       if (!linesToReceive.length) {
         throw new Error("Confirm at least one matched line with quantity before creating a purchase.");
       }
-      const draft = await createOdooDraftRfqFromInvoice({
-        supplierId: working.supplierId!,
-        invoiceNumber: working.invoiceNumber,
-        invoiceDate: working.invoiceDate,
-        notes: working.notes,
-        lines: linesToReceive.map((line) => ({
-          productId: Number(line.productId),
-          quantity: Number(line.qtyCases),
-          priceUnit: line.unitPrice ?? null,
-          description: line.description,
-        })),
+      if (linesToReceive.some((line) => line.unitPrice == null || Number(line.unitPrice) < 0)) {
+        throw new Error("Add a valid supplier cost to every matched line before receiving stock.");
+      }
+      if (linesToReceive.some((line) => line.packQty == null || Number(line.packQty) <= 0)) {
+        throw new Error("Add a valid pack quantity to every matched line before receiving stock.");
+      }
+      const orderNumber = `SCAN-${working.id}`;
+      let order: NativeOrder;
+      try {
+        order = await api.post<NativeOrder>("/api/orders", {
+          fromId: working.supplierId,
+          toId: working.outletId,
+          orderDate: working.invoiceDate || localDate(),
+          dueDate: working.dueDate || null,
+          invoiceNumber: orderNumber,
+          reference: `Invoice scan #${working.id}${working.invoiceNumber ? ` · ${working.invoiceNumber}` : ""}`,
+          notes: working.notes || null,
+          internalNotes: working.internalNotes || null,
+          lines: linesToReceive.map((line) => ({
+            productId: Number(line.productId),
+            quantity: Number(line.qtyCases),
+            caseQuantity: Number(line.packQty),
+            unitPrice: Number(line.unitPrice),
+            description: line.description || null,
+          })),
+        });
+      } catch (cause) {
+        const existing = await api.get<{ items?: NativeOrder[] }>("/api/orders", {
+          type: "ORDER", invoiceNumber: orderNumber, page: 1, size: 1,
+        }).catch(() => null);
+        if (!existing?.items?.[0]) throw cause;
+        order = existing.items[0];
+      }
+      const linkedOrder = await linkInvoiceScanPurchase(working.id, {
+        purchaseOrderId: order.id,
+        purchaseOrderName: order.invoiceNumber || orderNumber,
+        status: "po_created",
       });
-      await confirmOdooPurchaseOrder(draft.id);
-      const receiveResult = await tryReceivePurchase(draft.id, linesToReceive);
+      setSession(linkedOrder);
+      const receiveResult = await receiveNativePurchase(order, working.id);
       const linked = await linkInvoiceScanPurchase(working.id, {
-        purchaseOrderId: draft.id,
-        purchaseOrderName: draft.name,
+        purchaseOrderId: order.id,
+        purchaseOrderName: order.invoiceNumber || orderNumber,
         receiptId: receiveResult.receiptId,
-        receiptName: receiveResult.pickingName,
-        status: receiveResult.status,
+        receiptName: receiveResult.receiptId ? `Receipt #${receiveResult.receiptId}` : undefined,
+        status: "received",
       });
       setSession(linked);
-      setNotice(
-        receiveResult.status === "received"
-          ? `Stock received for ${draft.name}. Check Products for updated on-hand quantities.`
-          : `Created and confirmed ${draft.name}. Finish receive in Purchases if the picking needs a manual check.`,
-      );
+      setNotice(`Stock received for ${order.invoiceNumber || orderNumber}. Check Products for updated on-hand quantities.`);
     } catch (cause) {
-      const message = cause instanceof OdooApiError
-        ? cause.message
-        : apiFailureMessage(cause, "Could not confirm this invoice into Orithos.", "Please sign in again.");
-      setError(message);
-      try {
-        const linked = await linkInvoiceScanPurchase(session.id, {
-          purchaseOrderId: session.purchaseOrderId || undefined,
-          purchaseOrderName: session.purchaseOrderName || undefined,
-          status: "failed",
-        }).catch(() => null);
-        if (linked) setSession(linked);
-      } catch {
-        /* ignore secondary status update */
-      }
+      setError(apiFailureMessage(cause, "Could not confirm this invoice into Orithos.", "Please sign in again."));
     } finally {
       setConfirming(false);
     }
@@ -331,62 +353,39 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     setError(null);
     setNotice(null);
     try {
-      const linesToReceive = (session.lines ?? []).filter(
-        (line) => line.matchStatus === "confirmed" && line.productId && Number(line.qtyCases ?? 0) > 0,
-      );
-      const receiveResult = await tryReceivePurchase(session.purchaseOrderId, linesToReceive);
+      const order = await api.get<NativeOrder>(`/api/orders/${session.purchaseOrderId}`);
+      const receiveResult = await receiveNativePurchase(order, session.id);
       const linked = await linkInvoiceScanPurchase(session.id, {
         purchaseOrderId: session.purchaseOrderId,
         purchaseOrderName: session.purchaseOrderName || undefined,
         receiptId: receiveResult.receiptId,
-        receiptName: receiveResult.pickingName,
-        status: receiveResult.status,
+        receiptName: receiveResult.receiptId ? `Receipt #${receiveResult.receiptId}` : undefined,
+        status: "received",
       });
       setSession(linked);
-      setNotice(
-        receiveResult.status === "received"
-          ? `Received ${receiveResult.pickingName || session.purchaseOrderName}. Stock is now in Orithos.`
-          : "Could not auto-receive. Open Purchases to validate the picking manually.",
-      );
+      setNotice(`Received ${session.purchaseOrderName || `order ${session.purchaseOrderId}`}. Stock is now in Orithos.`);
     } catch (cause) {
-      setError(cause instanceof OdooApiError
-        ? cause.message
-        : apiFailureMessage(cause, "Could not finish receive.", "Please sign in again."));
+      setError(apiFailureMessage(cause, "Could not finish receive.", "Please sign in again."));
     } finally {
       setReceiving(false);
     }
   }
 
-  async function tryReceivePurchase(
-    purchaseOrderId: number,
-    confirmed: InvoiceScanSessionLine[],
-  ): Promise<{ status: "po_created" | "received"; receiptId?: number; pickingName?: string }> {
-    const detail = await getOdooPurchaseOrderDetail(purchaseOrderId);
-    if (!detail.receivable?.pickingId || !detail.receivable.moves?.length) {
-      return { status: "po_created" };
+  async function receiveNativePurchase(order: NativeOrder, scanId: number): Promise<{ receiptId?: number }> {
+    const lines = (order.products ?? [])
+      .map((line) => ({
+        orderProductId: Number(line.id),
+        quantity: Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0),
+      }))
+      .filter((line) => line.quantity > 0);
+    if (!lines.length) {
+      if (order.status === "RECEIVED") return {};
+      throw new Error("This order has no outstanding lines to receive.");
     }
-    const qtyByProduct = new Map<number, number>();
-    for (const line of confirmed) {
-      const productId = Number(line.productId);
-      qtyByProduct.set(productId, (qtyByProduct.get(productId) ?? 0) + Number(line.qtyCases ?? 0));
-    }
-    const receiveLines = detail.receivable.moves.map((move) => {
-      const productId = Array.isArray(move.product_id) ? move.product_id[0] : 0;
-      const ordered = Number(move.product_uom_qty ?? 0);
-      const wanted = qtyByProduct.get(productId) ?? ordered;
-      return { moveId: move.id, qtyDone: Math.max(0, Math.min(ordered, wanted)) };
+    const result = await api.post<{ receiptId: number }>(`/api/orders/${order.id}/receipts`, { lines }, {
+      headers: { "Idempotency-Key": `invoice-scan-${scanId}` },
     });
-    if (!receiveLines.some((line) => line.qtyDone > 0)) {
-      return { status: "po_created" };
-    }
-    const received = await receiveOdooPurchaseOrder(purchaseOrderId, {
-      lines: receiveLines,
-    });
-    return {
-      status: "received",
-      receiptId: received.receiptId,
-      pickingName: received.pickingName,
-    };
+    return result;
   }
 
   async function onDiscard() {
@@ -519,7 +518,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                 <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm sm:col-span-2">
                   <p className="text-xs text-[var(--oh-muted)]">Orithos documents</p>
                   <p className="mt-1 font-medium">
-                    {session.purchaseOrderName || "—"}
+                    {session.purchaseOrderId ? <Link href={`/orders/${session.purchaseOrderId}/view`} className="text-[var(--oh-primary)] hover:underline">{session.purchaseOrderName || `Order ${session.purchaseOrderId}`}</Link> : session.purchaseOrderName || "—"}
                     {session.receiptName ? ` · ${session.receiptName}` : ""}
                   </p>
                 </div>
@@ -559,7 +558,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                     </div>
                     {editable && (
                       <>
-                        <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
+                        <div className="grid grid-cols-2 gap-3 sm:max-w-md">
                           <label className="text-sm">
                             <span className="mb-1 block text-xs font-medium text-[var(--oh-muted)]">Qty / cases</span>
                             <input
@@ -568,6 +567,17 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                               step="0.01"
                               value={line.qtyCases ?? ""}
                               onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })}
+                              className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 tabular-nums"
+                            />
+                          </label>
+                          <label className="text-sm">
+                            <span className="mb-1 block text-xs font-medium text-[var(--oh-muted)]">Items per case</span>
+                            <input
+                              type="number"
+                              min="0.0001"
+                              step="0.0001"
+                              value={line.packQty ?? ""}
+                              onChange={(e) => patchLine(index, { packQty: e.target.value === "" ? null : Number(e.target.value) })}
                               className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 tabular-nums"
                             />
                           </label>
@@ -591,14 +601,15 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
                                   onClick={() => {
                                     patchLine(index, {
                                       productId: hit.id,
-                                      productName: hit.display_name || hit.name,
+                                      productName: hit.name,
+                                      packQty: line.packQty ?? hit.caseQuantity ?? null,
                                       matchStatus: "confirmed",
                                     });
                                     setProductHits((current) => ({ ...current, [index]: [] }));
-                                    setProductQuery((current) => ({ ...current, [index]: hit.display_name || hit.name }));
+                                    setProductQuery((current) => ({ ...current, [index]: hit.name }));
                                   }}
                                 >
-                                  {hit.display_name || hit.name}
+                                  {hit.name}
                                 </button>
                               </li>
                             ))}
@@ -717,6 +728,8 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
           <p className="mx-auto mt-2 w-full max-w-5xl text-xs text-[var(--oh-muted)]">
             {!session.supplierId
               ? "Select an Orithos supplier first."
+              : !session.outletId
+                ? "Select an Orithos outlet first."
               : openLines.length > 0
                 ? `${openLines.length} line${openLines.length === 1 ? "" : "s"} still need a match or skip.`
                 : confirmedLines.length === 0

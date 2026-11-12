@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PackageCheck } from "lucide-react";
 import { useApi } from "@/hooks/useApi";
@@ -137,6 +138,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
 
   const products = order?.products ?? [];
   const lineCount = order?.lineCount ?? products.length;
+  const invoiceScanId = order?.reference?.match(/\bInvoice scan #(\d+)/i)?.[1];
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
@@ -191,7 +193,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                     <DetailField label="To" value={display(order.toName || order.toId)} />
                     <DetailField label="Order date" value={display(formatAuDate(order.orderDate))} />
                     <DetailField label="Due date" value={display(formatAuDate(order.dueDate))} />
-                    <DetailField label="Reference" value={display(order.reference)} />
+                    <DetailField label="Reference" value={<>{display(order.reference)}{invoiceScanId && <><span className="px-2 text-[var(--oh-muted)]">·</span><Link href={`/invoices/${invoiceScanId}`} className="font-semibold text-[var(--oh-primary)] hover:underline">Open invoice scan</Link></>}</>} />
                   </div>
                   <div className="grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/70 p-4 sm:grid-cols-3 sm:px-5">
                     <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
