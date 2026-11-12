@@ -13,13 +13,12 @@ public record ReplenishmentPlan(
         Instant dataAsOf
 ) {
     public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top) {
-        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), Instant.now());
+        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null);
     }
 
     public ReplenishmentPlan {
         dataQualityStatus = dataQualityStatus == null || dataQualityStatus.isBlank()
                 ? "VALID" : dataQualityStatus;
         dataGaps = dataGaps == null ? List.of() : List.copyOf(dataGaps);
-        dataAsOf = dataAsOf == null ? Instant.now() : dataAsOf;
     }
 }

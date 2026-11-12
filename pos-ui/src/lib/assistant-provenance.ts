@@ -95,8 +95,22 @@ export function assistantProvenanceFields(metadata: AssistantProvenanceMetadata)
     reportPeriodTo: metadata.reportPeriodTo ?? null,
     reportTimeZone: metadata.reportTimeZone ?? null,
     reportDataStatus: metadata.reportDataStatus ?? null,
-    requestedDateRange: assistantReportDateRange(metadata.reportPeriodFrom, metadata.reportPeriodTo),
+    reportPeriodRange: assistantReportDateRange(metadata.reportPeriodFrom, metadata.reportPeriodTo),
   };
+}
+
+export function assistantReportDataStatus(
+  status: string | null | undefined,
+  chinese: boolean,
+): string | null {
+  if (!status?.trim()) return null;
+  const labels: Record<string, [string, string]> = {
+    available: ["Available", "可用"],
+    no_data: ["No data", "无数据"],
+    unavailable: ["Unavailable", "暂不可用"],
+    incomplete: ["Incomplete", "数据不完整"],
+  };
+  return labels[status.trim().toLowerCase()]?.[chinese ? 1 : 0] ?? status;
 }
 
 export function formatAssistantDataAsOf(value: string): string {

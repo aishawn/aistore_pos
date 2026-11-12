@@ -6,11 +6,11 @@ import com.orithos.config.CorrelationIdContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -22,8 +22,6 @@ import java.time.format.DateTimeFormatter;
 public class ReplenishmentChatBrief {
 
     private static final Logger log = LoggerFactory.getLogger(ReplenishmentChatBrief.class);
-
-    private static final DateTimeFormatter DATA_DATE = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
 
     private final NativeReplenishmentService client;
 
@@ -45,27 +43,29 @@ public class ReplenishmentChatBrief {
                 return unavailableMessage(question);
             }
             int dataGapCount = plan.dataGaps().size();
+            String sourceNote = chinese
+                    ? "数据来源：Orithos 库存与销售账本；销售数据最后更新时间：" + dataDate(plan.dataAsOf(), true)
+                            + "。库存记录没有独立更新时间。"
+                    : "Source: Orithos inventory and sales ledger; sales data updated at "
+                            + dataDate(plan.dataAsOf(), false) + ". Inventory records have no separate update timestamp.";
             if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())
                     && (plan.top() == null || plan.top().isEmpty())) {
                 logOutcome("incomplete_data", dataGapCount, startedAt);
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
                 return chinese
-                        ? "补货建议数据不完整，暂不生成数量：" + gaps + "。数据检查日期："
-                                + dataDate(plan.dataAsOf()) + " UTC。已转人工审核；请补齐库存或供应商资料后重试。"
+                        ? "补货建议数据不完整，暂不生成数量：" + gaps + "。" + sourceNote
+                                + "已转人工审核；请补齐库存或供应商资料后重试。"
                         : "Replenishment data is incomplete, so no quantities were generated: "
-                                + gaps + ". Data checked: " + dataDate(plan.dataAsOf())
-                                + " UTC. Manual review is required; complete inventory or supplier data and retry.";
+                                + gaps + ". " + sourceNote
+                                + " Manual review is required; complete inventory or supplier data and retry.";
             }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
                 logOutcome("success_empty", dataGapCount, startedAt);
                 return chinese
-                        ? "当前库存可覆盖目标周期，暂时没有补货数量建议。打开补货页面查看。"
+                        ? "当前库存可覆盖目标周期，暂时没有补货数量建议。" + sourceNote + "打开补货页面查看。"
                         : "No restock quantities are suggested right now — forecast stock covers the target window. "
-                                + "Tap below to open replenishment.";
+                                + sourceNote + " Tap below to open replenishment.";
             }
-            String sourceNote = chinese
-                    ? "数据来源：Orithos 库存与销售账本；检查日期：" + dataDate(plan.dataAsOf()) + " UTC。"
-                    : "Source: Orithos inventory and sales ledger; checked " + dataDate(plan.dataAsOf()) + " UTC.";
             StringBuilder sb = new StringBuilder();
             if (chinese) {
                 sb.append("建议补货（覆盖 ").append(plan.coverageDays()).append(" 天）：")
@@ -94,6 +94,10 @@ public class ReplenishmentChatBrief {
             }
             logOutcome(dataGapCount == 0 ? "success" : "partial_data", dataGapCount, startedAt);
             return sb.toString();
+        } catch (AccessDeniedException e) {
+            log.info("AI replenishment brief correlationId={} category=permission dataGapCount=0 elapsedMs={}",
+                    CorrelationIdContext.current(), elapsedMs(startedAt));
+            return unavailableMessage(question, "permission");
         } catch (DataAccessException e) {
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
@@ -172,7 +176,7 @@ public class ReplenishmentChatBrief {
         return String.valueOf(Math.round(days));
     }
 
-    private static String dataDate(Instant value) {
-        return DATA_DATE.format(value == null ? Instant.EPOCH : value);
+    private static String dataDate(Instant value, boolean chinese) {
+        return value == null ? (chinese ? "未知" : "unknown") : DateTimeFormatter.ISO_INSTANT.format(value);
     }
 }

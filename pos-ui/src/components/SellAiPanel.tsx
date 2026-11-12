@@ -30,7 +30,7 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
-import { assistantProvenanceFields, assistantReportDateRange, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
+import { assistantProvenanceFields, assistantReportDataStatus, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -178,6 +178,7 @@ interface ChatMessage {
   dataAsOf?: string | null;
   reportPeriodFrom?: string | null;
   reportPeriodTo?: string | null;
+  reportPeriodRange?: string | null;
   reportTimeZone?: string | null;
   reportDataStatus?: string | null;
   requestedDateRange?: string | null;
@@ -1137,8 +1138,7 @@ export function SellAiPanel({
               cards: result.cards ?? null,
               retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
               ...assistantProvenanceFields(result),
-              requestedDateRange: assistantReportDateRange(result.reportPeriodFrom, result.reportPeriodTo)
-                ?? requestedSalesDateRange(result.intent, result.slots),
+              requestedDateRange: requestedSalesDateRange(result.intent, result.slots),
               suggestedFollowUps: result.suggestedFollowUps ?? null,
               clarificationRequired: result.clarificationRequired === true,
               clarifyingQuestion: result.clarifyingQuestion ?? null,
@@ -2157,7 +2157,7 @@ function DialogueView({
                 ))}
               </div>
             ) : null}
-            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.reportTimeZone || msg.reportDataStatus || msg.diagnostics?.intent === "report_sales") ? (
+            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.reportPeriodRange || msg.reportTimeZone || msg.reportDataStatus || msg.diagnostics?.intent === "report_sales") ? (
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
                 {msg.dataSource
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
@@ -2170,18 +2170,21 @@ function DialogueView({
                 {msg.requestedDateRange
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "查询范围" : "Requested"}: ${msg.requestedDateRange}`
                   : ""}
+                {msg.reportPeriodRange
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "报表期间" : "Report period"}: ${msg.reportPeriodRange}`
+                  : ""}
                 {msg.storeScope
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "门店范围" : "Store scope"}: ${msg.storeScope}`
                   : ""}
                 {msg.diagnostics?.intent === "report_sales" ? (
                   <>
-                    {(msg.dataSource || msg.source || msg.requestedDateRange) ? " · " : ""}
+                    {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
                     {returnedReportDateRange(msg.table?.rows)
                       ? `${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "返回行日期范围" : "Rows span"}: ${returnedReportDateRange(msg.table?.rows)} · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "最新返回销售日" : "Latest returned sales date"}: ${latestReportDataDate(msg.table?.rows)}`
                       : /[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "没有返回销售行" : "No sales rows returned"}
                   </>
                 ) : null}
-                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.diagnostics?.intent === "report_sales") && msg.dataAsOf ? " · " : ""}
+                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales") && msg.dataAsOf ? " · " : ""}
                 {msg.dataAsOf
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
                     ? `数据时间：${formatAssistantDataAsOf(msg.dataAsOf)}`
@@ -2190,8 +2193,8 @@ function DialogueView({
                 {msg.reportTimeZone
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "时区" : "Timezone"}: ${msg.reportTimeZone}`
                   : ""}
-                {msg.reportDataStatus && msg.reportDataStatus !== "AVAILABLE"
-                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "数据状态" : "Data status"}: ${msg.reportDataStatus}`
+                {assistantReportDataStatus(msg.reportDataStatus, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "数据状态" : "Data status"}: ${assistantReportDataStatus(msg.reportDataStatus, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))}`
                   : ""}
               </p>
             ) : null}

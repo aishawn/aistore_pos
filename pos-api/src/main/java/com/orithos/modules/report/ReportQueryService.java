@@ -9,6 +9,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -19,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 /**
@@ -26,6 +30,9 @@ import java.util.UUID;
  */
 @Service
 public class ReportQueryService {
+
+    private static final Duration NATIVE_OVERVIEW_TTL = Duration.ofSeconds(10);
+    private static final int MAX_NATIVE_OVERVIEW_CACHE_ENTRIES = 512;
 
     public enum Grain { DAY, WEEK, MONTH }
 
@@ -39,10 +46,26 @@ public class ReportQueryService {
             "(s.status = 'COMPLETED' OR s.status = 'INCOMPLETE')";
 
     private final JdbcTemplate jdbc;
+    private final Clock clock;
+    private final Duration nativeOverviewTtl;
+    private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeOverviewCache = new ConcurrentHashMap<>();
 
     public ReportQueryService(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+        this(jdbc, Clock.systemUTC(), NATIVE_OVERVIEW_TTL);
     }
+
+    ReportQueryService(JdbcTemplate jdbc, Clock clock) {
+        this(jdbc, clock, NATIVE_OVERVIEW_TTL);
+    }
+
+    ReportQueryService(JdbcTemplate jdbc, Clock clock, Duration nativeOverviewTtl) {
+        this.jdbc = jdbc;
+        this.clock = clock;
+        this.nativeOverviewTtl = nativeOverviewTtl;
+    }
+
+    private record OverviewCacheKey(long vendorId, long outletId, LocalDate from, LocalDate to) {}
+    private record CachedOverview(Instant expiresAt, Map<String, Object> payload) {}
 
     /** Same rule as {@link #REPORTABLE_SALE_STATUS_SQL} for unit tests. */
     static boolean isReportableSale(String status, String sourceSystem) {
@@ -307,6 +330,11 @@ public class ReportQueryService {
     /** Native ledger only, including source sales imported into that ledger. No external fallback. */
     public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
+        OverviewCacheKey cacheKey = new OverviewCacheKey(vendorId, outletId, from, to);
+        Instant now = clock.instant();
+        CachedOverview cached = nativeOverviewCache.get(cacheKey);
+        if (cached != null && now.isBefore(cached.expiresAt())) return copyOverviewPayload(cached.payload());
+        if (cached != null) nativeOverviewCache.remove(cacheKey, cached);
         List<Map<String, Object>> daily = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
@@ -324,7 +352,8 @@ public class ReportQueryService {
                        COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
                        COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost,
+                       MAX(s.updated_at AT TIME ZONE 'UTC') AS data_as_of
                 FROM sale s
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
@@ -391,7 +420,39 @@ public class ReportQueryService {
                   AND p.deleted_at IS NULL
                   AND p.status = 'ACTIVE'
                 """, outletId);
-        return nativeOverviewPayload(from, to, daily, products, inventory);
+        Map<String, Object> payload = nativeOverviewPayload(from, to, daily, products, inventory);
+        payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
+        if (nativeOverviewCache.size() >= MAX_NATIVE_OVERVIEW_CACHE_ENTRIES) nativeOverviewCache.clear();
+        nativeOverviewCache.put(cacheKey, new CachedOverview(now.plus(nativeOverviewTtl),
+                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(payload))));
+        return copyOverviewPayload(payload);
+    }
+
+    private static Map<String, Object> copyOverviewPayload(Map<String, Object> payload) {
+        Map<String, Object> copy = new LinkedHashMap<>(payload);
+        for (String field : List.of("dailyTrend", "topProducts")) {
+            Object value = payload.get(field);
+            if (value instanceof List<?> rows) {
+                copy.put(field, rows.stream().map(row -> row instanceof Map<?, ?> map
+                        ? new LinkedHashMap<>(map) : row).toList());
+            }
+        }
+        return copy;
+    }
+
+    static String nativeOverviewDataAsOf(List<Map<String, Object>> daily) {
+        Object dataAsOf = daily.stream().map(row -> row.get("data_as_of"))
+                .filter(java.util.Objects::nonNull).max((left, right) ->
+                        toInstant(left).compareTo(toInstant(right))).orElse(null);
+        return dataAsOf == null ? null
+                : toInstant(dataAsOf).atZone(AustraliaTime.ZONE).toOffsetDateTime().toString();
+    }
+
+    private static Instant toInstant(Object value) {
+        if (value instanceof Timestamp timestamp) return timestamp.toInstant();
+        if (value instanceof java.time.OffsetDateTime offset) return offset.toInstant();
+        if (value instanceof LocalDateTime local) return local.atZone(AustraliaTime.ZONE).toInstant();
+        return Instant.parse(value.toString());
     }
 
     private void requireReportOutlet(long vendorId, long outletId) {

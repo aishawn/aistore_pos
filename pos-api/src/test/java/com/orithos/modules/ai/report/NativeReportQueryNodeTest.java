@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -43,13 +44,15 @@ class NativeReportQueryNodeTest {
         when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-16"), LocalDate.parse("2026-10-16")))
                 .thenReturn(Map.of("revenue", 100.00, "grossProfit", 30.00, "profitMargin", 30.00,
-                        "costAvailable", true, "transactions", 3));
+                        "costAvailable", true, "transactions", 3,
+                        "dataAsOf", "2026-10-16T14:30:00+10:30"));
 
         Map<String, Object> result = node.apply(state);
 
         verify(reportQuery).nativeOverview(55L, 87L, LocalDate.parse("2026-10-16"), LocalDate.parse("2026-10-16"));
         verify(queryService, never()).query(any(), anyString(), any(), any());
         assertEquals("available", result.get("report_data_status"));
+        assertEquals("2026-10-16T14:30:00+10:30", result.get("report_data_as_of"));
         assertEquals(30.00, ((Map<?, ?>) ((List<?>) result.get("report_rows")).get(0)).get("grossProfit"));
     }
 
@@ -188,8 +191,7 @@ class NativeReportQueryNodeTest {
         assertEquals("orithos", result.get("report_data_source"));
         assertEquals("orithos_template", result.get("sql_path"));
         assertEquals("current_authenticated_store", result.get("report_store_scope"));
-        assertTrue(String.valueOf(result.get("report_data_as_of")).contains("+10:30")
-                || String.valueOf(result.get("report_data_as_of")).contains("+09:30"));
+        assertNull(result.get("report_data_as_of"));
         assertEquals("2026-10-16", result.get("report_period_from"));
         assertEquals("Australia/Adelaide", result.get("report_time_zone"));
         assertEquals("available", result.get("report_data_status"));

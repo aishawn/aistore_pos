@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class NativeOverviewPayloadTest {
+
+    @Test
+    void dataAsOfUsesLatestPersistedSaleUpdateAndCanBeAbsent() {
+        List<Map<String, Object>> daily = List.of(
+                Map.of("data_as_of", OffsetDateTime.parse("2026-11-12T01:00:00Z")),
+                Map.of("data_as_of", OffsetDateTime.parse("2026-11-12T02:30:00Z")));
+
+        assertEquals("2026-11-12T13:00+10:30", ReportQueryService.nativeOverviewDataAsOf(daily));
+        assertNull(ReportQueryService.nativeOverviewDataAsOf(List.of()));
+    }
 
     @Test
     void withholdsProfitWhenCostOrTaxCoverageIsIncomplete() {

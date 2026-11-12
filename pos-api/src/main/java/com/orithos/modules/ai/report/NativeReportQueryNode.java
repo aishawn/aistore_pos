@@ -6,6 +6,7 @@ import com.orithos.modules.report.ReportQueryService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +46,7 @@ public class NativeReportQueryNode implements NodeAction {
             refused.put("sql_error", "NATIVE_REPORT_UNSUPPORTED");
             refused.put("report_rows", List.of());
             refused.put("report_columns", List.of());
-            addProvenance(refused, window, "unavailable");
+            addProvenance(refused, window, "unavailable", null);
             return refused;
         }
         TenantContext tenant = ReportGraphState.tenant(state);
@@ -73,6 +74,7 @@ public class NativeReportQueryNode implements NodeAction {
                     row.put("second", salesMetrics(second, tenant.canQueryCost()));
                     row.put("transactions", ReportQueryService.toDecimal(first.get("transactions"))
                             .add(ReportQueryService.toDecimal(second.get("transactions"))));
+                    row.put("dataAsOf", latestDataAsOf(first, second));
                     result = new NativeAiReportQueryService.Result(List.of(row), null);
                 } catch (RuntimeException e) {
                     result = new NativeAiReportQueryService.Result(List.of(), "NATIVE_REPORT_UNAVAILABLE");
@@ -107,7 +109,8 @@ public class NativeReportQueryNode implements NodeAction {
         boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row ->
                 row.containsKey("transactions") && ReportQueryService.toDecimal(row.get("transactions")).signum() == 0
                 || row.containsKey("tickets") && ReportQueryService.toDecimal(row.get("tickets")).signum() == 0);
-        addProvenance(out, window, result.error() != null ? "unavailable" : noData ? "no_data" : "available");
+        addProvenance(out, window, result.error() != null ? "unavailable" : noData ? "no_data" : "available",
+                latestDataAsOf(result.rows()));
         return out;
     }
 
@@ -118,19 +121,31 @@ public class NativeReportQueryNode implements NodeAction {
         metrics.put("costAvailable", canViewCost && Boolean.TRUE.equals(overview.get("costAvailable")));
         if (!canViewCost) metrics.put("profitUnavailableReason", "permission");
         metrics.put("transactions", overview.get("transactions"));
+        metrics.put("dataAsOf", overview.get("dataAsOf"));
         return metrics;
     }
 
     private static void addProvenance(Map<String, Object> target, ReportPeriodResolver.Window window,
-                                      String status) {
+                                      String status, String dataAsOf) {
         ZoneId timezone = com.orithos.common.AustraliaTime.ZONE;
-        target.put("report_data_as_of", java.time.OffsetDateTime.now(timezone).toString());
+        if (dataAsOf != null && !dataAsOf.isBlank()) target.put("report_data_as_of", dataAsOf);
         target.put("report_data_source", "orithos");
         target.put("report_store_scope", "current_authenticated_store");
         target.put("report_period_from", window.from().toLocalDate().toString());
         target.put("report_period_to", window.toExclusive().minusNanos(1).toLocalDate().toString());
         target.put("report_time_zone", timezone.getId());
         target.put("report_data_status", status);
+    }
+
+    private static String latestDataAsOf(List<Map<String, Object>> rows) {
+        return rows.stream().map(row -> row.get("dataAsOf"))
+                .filter(String.class::isInstance).map(String.class::cast)
+                .filter(value -> !value.isBlank())
+                .max(java.util.Comparator.comparing(Instant::parse)).orElse(null);
+    }
+
+    private static String latestDataAsOf(Map<String, Object> first, Map<String, Object> second) {
+        return latestDataAsOf(List.of(first, second));
     }
 
     private ReportPeriodResolver.Window windowFromState(OverAllState state) {

@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.sql.SQLException;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.security.access.AccessDeniedException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +51,7 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
         assertTrue(text.contains("\n• Shiraz — 建议订购 12（约剩 5.0 天）"));
-        assertTrue(text.contains("数据来源：Orithos 库存与销售账本；检查日期："));
+        assertTrue(text.contains("数据来源：Orithos 库存与销售账本；销售数据最后更新时间：未知。库存记录没有独立更新时间。"));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
     }
 
@@ -110,6 +111,18 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
+    void applicationPermissionFailureIsExplainedWithoutQueryingOrLeakingDetails() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of());
+        when(client.plan(tenant)).thenThrow(new AccessDeniedException("internal permission detail"));
+
+        String text = new ReplenishmentChatBrief(client).brief("补货建议", tenant);
+
+        assertTrue(text.contains("权限"));
+        assertFalse(text.contains("internal permission detail"));
+    }
+
+    @Test
     void queryConfigurationFailureIsNotMisreportedAsPermissionFailure() {
         NativeReplenishmentService client = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
@@ -150,9 +163,22 @@ class ReplenishmentChatBriefTest {
 
         String text = new ReplenishmentChatBrief(client).brief("What do we need to buy?", tenant);
 
-        assertTrue(text.contains("Data checked: 2026-11-03 UTC"));
+        assertTrue(text.contains("sales data updated at 2026-11-03T04:00:00Z"));
         assertTrue(text.contains("Manual review is required"));
         assertTrue(text.contains("no quantities were generated"));
+    }
+
+    @Test
+    void missingSalesTimestampIsReportedAsUnknownInsteadOfEpochOrRequestTime() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(21, 0, List.of()));
+
+        String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+
+        assertTrue(text.contains("sales data updated at unknown"));
+        assertTrue(text.contains("Inventory records have no separate update timestamp"));
+        assertFalse(text.contains("1970-01-01"));
     }
 
     @Test

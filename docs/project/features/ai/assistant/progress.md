@@ -22,6 +22,8 @@
 
 2026-11-13 候选复用 Orithos `nativeOverview` 计算客单价，拆分销售额/退款额与对应笔数，并增加零交易和权威指标缺失的 fail-closed 处理。验证见[session](../../../../test-sessions/2026-11-13-ai-assistant-aov-integrity.md)；Java 21 远程构建、SKR/Demo 部署与在线对账仍未完成。
 
+2026-11-13 本地工作树继续补齐报表元数据与补货观测：助手复用权威 overview 取得数据时间，按 vendor/outlet/期间缓存 10 秒；补货权限在缓存读取前检查，并对拒绝、数据缺口和服务失败分类记录耗时。UI 用 API 期间与请求范围分开显示，历史详情恢复来源、期间、时区、状态和数据时间；中英文高频昨日销售问法有参数化路由用例。当前后端 658/658、UI 201/201、TypeScript 检查通过。尚未完成精确 SHA 发布后的 SKR/Demo 报表对账、线上只读问答、语音与历史/清空/取消流程验收；详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
+
 ## 验证闭环
 
 历史问题链：E-HISTORY-FINDING 记录列表 id=null → 详情 /threads/null HTTP 400；显式 mapper 映射修复后仍需上线证据。E-HISTORY 的 0d3d0bc3 记录数字 ID 和 session/timestamp 存在、报表产生 2 条消息（局部关闭）；旧会话 0 消息及 greeting/navigation 的 50210 未关闭。这是“发现→修复→测试→局部关闭”的样例，不能写成历史功能全面修复。

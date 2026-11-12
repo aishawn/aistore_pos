@@ -61,7 +61,7 @@ function buildQuestion(data: DashboardInsightData, language: "en" | "zh") {
     lowStockCount: data.lowStockCount ?? null,
   };
   const languageInstruction = language === "zh" ? "用简体中文回答。" : "Answer in English.";
-  return `You are analysing the current Odoo POS dashboard for a store manager. ${languageInstruction}
+  return `You are analysing the current Orithos POS dashboard for a store manager. ${languageInstruction}
 Use only the supplied dashboard snapshot and do not invent missing figures. Give a concise executive readout in this exact structure:
 1. Key finding: one sentence.
 2. Dimensions: 3-5 bullets covering sales trend/comparison, customer basket or refunds, product/category mix, and inventory when available.
@@ -122,7 +122,7 @@ export function DashboardInsightsPanel({ data }: { data: DashboardInsightData | 
               <p className="oh-type-meta font-semibold uppercase tracking-[.08em] text-[var(--oh-muted)]">Analysis context</p>
               <p className="oh-type-label mt-2 text-[var(--oh-text)]">{data?.rangeLabel}</p>
               <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{data?.periodBounds}</p>
-              <p className="oh-type-meta mt-3 flex items-start gap-1.5 text-[var(--oh-muted)]"><Lightbulb size={14} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />Read-only suggestions. Confirm actions in the relevant Odoo workflow.</p>
+              <p className="oh-type-meta mt-3 flex items-start gap-1.5 text-[var(--oh-muted)]"><Lightbulb size={14} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />Read-only suggestions. Confirm actions in the relevant Orithos workflow.</p>
             </aside>
           </div>
         ) : (

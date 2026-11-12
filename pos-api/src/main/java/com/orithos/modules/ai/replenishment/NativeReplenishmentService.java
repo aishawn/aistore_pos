@@ -2,13 +2,16 @@ package com.orithos.modules.ai.replenishment;
 
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 
 /** Builds a read-only reorder preview from the tenant's Orithos ledger. */
 @Service
@@ -19,9 +22,17 @@ public class NativeReplenishmentService {
     private static final long CACHE_TTL_MILLIS = 15_000;
 
     private final JdbcTemplate jdbc;
+    private final LongSupplier currentTimeMillis;
     private final ConcurrentHashMap<CacheKey, CachedPlan> cache = new ConcurrentHashMap<>();
 
-    public NativeReplenishmentService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public NativeReplenishmentService(JdbcTemplate jdbc) {
+        this(jdbc, System::currentTimeMillis);
+    }
+
+    NativeReplenishmentService(JdbcTemplate jdbc, LongSupplier currentTimeMillis) {
+        this.jdbc = jdbc;
+        this.currentTimeMillis = currentTimeMillis;
+    }
 
     public ReplenishmentPlan plan(TenantContext tenant) {
         return plan(tenant, DEFAULT_COVERAGE_DAYS);
@@ -33,16 +44,19 @@ public class NativeReplenishmentService {
 
     public ReplenishmentPlan plan(TenantContext tenant, int coverageDays, int suggestionLimit) {
         if (tenant == null || tenant.requireOutletId() == null) return null;
+        if (!tenant.canQueryReport()) {
+            throw new AccessDeniedException("AI report query permission is required");
+        }
         int cover = coverageDays > 0 ? Math.min(coverageDays, 180) : DEFAULT_COVERAGE_DAYS;
         int limit = Math.max(1, Math.min(50, suggestionLimit));
         CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit);
-        long now = System.currentTimeMillis();
+        long now = currentTimeMillis.getAsLong();
         cache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
         CachedPlan cached = cache.get(key);
         if (cached != null && cached.expiresAtMillis() > now) return cached.plan();
         if (cached != null) cache.remove(key, cached);
         return cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit),
-                System.currentTimeMillis() + CACHE_TTL_MILLIS)).plan();
+                currentTimeMillis.getAsLong() + CACHE_TTL_MILLIS)).plan();
     }
 
     private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit) {
@@ -53,7 +67,8 @@ public class NativeReplenishmentService {
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
                                >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS recent_units,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS previous_units
+                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS previous_units,
+                           MAX(s.updated_at) AS sales_data_as_of
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
@@ -65,6 +80,7 @@ public class NativeReplenishmentService {
                        COALESCE(i.on_order, 0) AS on_order,
                        COALESCE(s.recent_units, 0) AS recent_units,
                        COALESCE(s.previous_units, 0) AS previous_units,
+                       s.sales_data_as_of,
                        EXISTS (SELECT 1 FROM product_supplier ps
                                WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id) AS has_supplier,
                        COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
@@ -82,10 +98,12 @@ public class NativeReplenishmentService {
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
                 rs.getDouble("recent_units"), rs.getDouble("previous_units"), rs.getBoolean("has_supplier"),
-                rs.getDouble("minimum_order")));
+                rs.getDouble("minimum_order"), timestampInstant(rs.getTimestamp("sales_data_as_of"))));
 
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
+        Instant dataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
+                .max(Instant::compareTo).orElse(null);
         for (Row row : rows) {
             if (row.onHand() == null) {
                 gaps.add(row.name() + ": inventory unavailable");
@@ -113,16 +131,21 @@ public class NativeReplenishmentService {
                 .thenComparing(Comparator.comparingDouble(ReplenishmentSuggestion::unitsPerDay).reversed())
                 .thenComparing(ReplenishmentSuggestion::name));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
-                gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(), Instant.now());
+                gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(), dataAsOf);
     }
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
-                       double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder) { }
+                       double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder,
+                       Instant salesDataAsOf) { }
 
     private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit) { }
     private record CachedPlan(ReplenishmentPlan plan, long expiresAtMillis) { }
 
     private static Double asDouble(Object value) {
         return value instanceof Number number ? number.doubleValue() : null;
+    }
+
+    private static Instant timestampInstant(Timestamp value) {
+        return value == null ? null : value.toInstant();
     }
 }

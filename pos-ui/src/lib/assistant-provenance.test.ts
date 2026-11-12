@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assistantDataAsOf,
   assistantProvenanceFields,
+  assistantReportDataStatus,
   assistantReportDateRange,
   assistantRouteLabel,
   formatAssistantDataAsOf,
@@ -76,7 +77,7 @@ test("preserves API provenance fields for live responses and restored history", 
     reportPeriodTo: "2026-11-11",
     reportTimeZone: "Australia/Adelaide",
     reportDataStatus: "available",
-    requestedDateRange: "2026-11-11",
+    reportPeriodRange: "2026-11-11",
   });
   assert.deepEqual(assistantProvenanceFields({}), {
     source: null,
@@ -87,8 +88,16 @@ test("preserves API provenance fields for live responses and restored history", 
     reportPeriodTo: null,
     reportTimeZone: null,
     reportDataStatus: null,
-    requestedDateRange: null,
+    reportPeriodRange: null,
   });
+});
+
+test("localizes report data states without changing unknown backend values", () => {
+  assert.equal(assistantReportDataStatus("available", true), "可用");
+  assert.equal(assistantReportDataStatus("NO_DATA", false), "No data");
+  assert.equal(assistantReportDataStatus("unavailable", true), "暂不可用");
+  assert.equal(assistantReportDataStatus("custom_state", false), "custom_state");
+  assert.equal(assistantReportDataStatus(null, true), null);
 });
 
 test("keeps date-only provenance timezone-stable", () => {

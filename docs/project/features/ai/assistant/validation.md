@@ -6,6 +6,12 @@
 
 候选 `c3afe76c024d73eee60592f1eb4a11829fe91925` 已推送。Java `mvn -B clean verify` 未运行。评估器 Node 测试 1/1 PASS，两个脚本 `node --check` PASS，`git diff --check` PASS。客单价新增 Java 用例和完整 Java 21 构建 NOT RUN；SKR/Demo 公开版本探测超时，运行 SHA、自动部署和线上报表对账未确认。详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-aov-integrity.md)。
 
+## 2026-11-13 本地候选全套回归
+
+当前 `main` 工作树基于 `845e479f` 且包含未提交的 AI 报表/补货/UI 改动。`mvn -B test` 658/658 PASS，POS UI 单测 201/201 PASS，`npm run typecheck` PASS，目标控制器定向测试 4/4 PASS。AI 洞察中的旧 Odoo 仪表盘/工作流提示已改为 Orithos。机器和源码范围、用例边界见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
+
+这些是本地测试，不构成精确候选远端构建或线上部署/对账证据。SKR/Demo 当前运行 SHA、真实数据报表一致性、模型调用费用、麦克风语音、完整历史/清空/取消/重试仍待验收；本轮未发送线上 AI 请求，业务写入为 0。
+
 更新日期：2026-11-13。本页区分本地候选回归与历史线上证据；候选线上业务测试尚未运行，真实业务写入 0。
 
 ## 2026-11-04 本地来源说明回归
