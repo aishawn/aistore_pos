@@ -346,7 +346,7 @@ class ShopfrontIntegrationControllerTest {
                 com.fasterxml.jackson.databind.JsonNode.class);
         importer.setAccessible(true);
         var items = new ObjectMapper().readTree("""
-                [{"source_id":"sf-order-1","supplier_source_id":"sf-supplier-1","raw_payload":{
+                [{"source_id":"sf-order-1","supplier_source_id":"sf-supplier-1","total_cost":"20.1234","raw_payload":{
                   "status":"RECEIVED","orderDate":"2026-10-02","invoiceNumber":"INV-1001",
                   "totalCost":20.12345678,"expectedTotal":20.12345678,"products":[{
                     "caseQuantity":1,"orderedQuantity":0,"receivedQuantity":-3,
@@ -370,7 +370,8 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(new BigDecimal("20.12345678"), lineArgs.getValue()[8]);
         org.mockito.ArgumentCaptor<Object[]> orderArgs = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), orderArgs.capture());
-        assertEquals(new BigDecimal("20.12345678"), orderArgs.getValue()[9]);
+        assertEquals(new BigDecimal("20.1234"), orderArgs.getValue()[9]);
+        assertEquals(new BigDecimal("20.12345678"), orderArgs.getValue()[10]);
         verify(jdbc, org.mockito.Mockito.never()).update(contains("inventory_movement"), any(Object[].class));
         verify(jdbc, org.mockito.Mockito.never()).update(contains("product_inventory"), any(Object[].class));
     }

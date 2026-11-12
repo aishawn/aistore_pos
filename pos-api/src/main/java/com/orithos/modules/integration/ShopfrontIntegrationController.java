@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 public class ShopfrontIntegrationController {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
     private static final Pattern STORE_KEY = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
-    private static final String PURCHASE_ORDER_IMPORT_VERSION = "po-import-v2";
+    private static final String PURCHASE_ORDER_IMPORT_VERSION = "po-import-v3";
     private static final List<ShopfrontMirrorTable> MIRROR_TABLES = List.of(
             new ShopfrontMirrorTable("shopfront_product", "source_id,name,sku,barcode,category,brand,cost,price,raw_payload,synced_at"),
             new ShopfrontMirrorTable("shopfront_inventory", "source_product_id,outlet_id,quantity,snapshot_at,raw_payload,synced_at"),
@@ -2399,7 +2399,8 @@ public class ShopfrontIntegrationController {
             }
             java.sql.Date orderDate = sqlDate(text(raw, "orderDate"));
             java.sql.Date dueDate = sqlDate(text(raw, "dueDate"));
-            BigDecimal totalCost = decimal(raw, "totalCost");
+            BigDecimal totalCost = decimal(item, "total_cost");
+            if (totalCost == null) totalCost = firstDecimal(raw, "totalCost", "total_cost");
             BigDecimal expectedTotal = decimal(raw, "expectedTotal");
             if (expectedTotal == null) expectedTotal = totalCost;
             // purchase_order.include_freight is SMALLINT/INT2 in Orithos schemas.
