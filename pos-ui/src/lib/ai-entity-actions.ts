@@ -325,7 +325,7 @@ function viewPath(entity: AiEntity, id: string): string | null {
       return `/customer-groups/${id}/view`;
     case "order":
       return `/orders/${id}/view`;
-    // The current supplier source of truth is the read-only Odoo directory;
+    // The current supplier source of truth is the read-only Orithos directory;
     // there is no safe supplier detail route here. The caller will open the
     // directory with the lookup query instead of entering an edit form.
     case "supplier":

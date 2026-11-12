@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantDataAsOf,
+  assistantProvenanceFields,
   assistantReportDateRange,
   assistantRouteLabel,
   formatAssistantDataAsOf,
@@ -54,6 +55,40 @@ test("explains routing metadata without presenting it as the data source", () =>
 test("keeps backend data timestamp separate from returned sales dates", () => {
   assert.equal(assistantDataAsOf("2026-11-03T01:00:00Z"), "2026-11-03T01:00:00Z");
   assert.equal(assistantDataAsOf(null), null);
+});
+
+test("preserves API provenance fields for live responses and restored history", () => {
+  assert.deepEqual(assistantProvenanceFields({
+    source: "deterministic",
+    dataSource: "orithos_ledger",
+    dataAsOf: "2026-11-12T07:30:00+10:30",
+    storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-11-11",
+    reportPeriodTo: "2026-11-11",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+  }), {
+    source: "deterministic",
+    dataSource: "orithos_ledger",
+    dataAsOf: "2026-11-12T07:30:00+10:30",
+    storeScope: "current_authenticated_store",
+    reportPeriodFrom: "2026-11-11",
+    reportPeriodTo: "2026-11-11",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+    requestedDateRange: "2026-11-11",
+  });
+  assert.deepEqual(assistantProvenanceFields({}), {
+    source: null,
+    dataSource: null,
+    dataAsOf: null,
+    storeScope: null,
+    reportPeriodFrom: null,
+    reportPeriodTo: null,
+    reportTimeZone: null,
+    reportDataStatus: null,
+    requestedDateRange: null,
+  });
 });
 
 test("keeps date-only provenance timezone-stable", () => {

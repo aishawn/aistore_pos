@@ -1,5 +1,16 @@
 type ReportRow = Record<string, unknown>;
 
+export interface AssistantProvenanceMetadata {
+  source?: string | null;
+  dataSource?: string | null;
+  dataAsOf?: string | null;
+  storeScope?: string | null;
+  reportPeriodFrom?: string | null;
+  reportPeriodTo?: string | null;
+  reportTimeZone?: string | null;
+  reportDataStatus?: string | null;
+}
+
 const MONTHS = new Map([
   ["jan", "01"], ["feb", "02"], ["mar", "03"], ["apr", "04"],
   ["may", "05"], ["jun", "06"], ["jul", "07"], ["aug", "08"],
@@ -72,6 +83,20 @@ export function assistantDataAsOf(
   dataAsOf: string | null | undefined,
 ): string | null {
   return dataAsOf || null;
+}
+
+export function assistantProvenanceFields(metadata: AssistantProvenanceMetadata) {
+  return {
+    source: metadata.source ?? null,
+    dataSource: metadata.dataSource ?? null,
+    dataAsOf: assistantDataAsOf(metadata.dataAsOf),
+    storeScope: metadata.storeScope ?? null,
+    reportPeriodFrom: metadata.reportPeriodFrom ?? null,
+    reportPeriodTo: metadata.reportPeriodTo ?? null,
+    reportTimeZone: metadata.reportTimeZone ?? null,
+    reportDataStatus: metadata.reportDataStatus ?? null,
+    requestedDateRange: assistantReportDateRange(metadata.reportPeriodFrom, metadata.reportPeriodTo),
+  };
 }
 
 export function formatAssistantDataAsOf(value: string): string {

@@ -313,7 +313,7 @@ class PosAssistantGraphServiceCardTest {
     void localizesEnglishUnavailableReasonsForChineseRecommendationCards() {
         for (String[] sample : new String[][]{
                 {"/sommelier", "Wine recommendations are unavailable right now.", "品鉴推荐暂不可用，请稍后重试。"},
-                {"/stock/replenishment", "Odoo data unavailable.", "补货建议暂不可用，请稍后重试。"},
+                {"/stock/replenishment", "Supply-chain data unavailable.", "补货建议暂不可用，请稍后重试。"},
                 {"/stock/capped-pricing", "Price review not available.", "价格复核建议暂不可用，请稍后重试。"},
                 {"/recommend/grocery", "Grocery recommendations are unavailable.", "商品推荐暂不可用，请稍后重试。"}
         }) {
@@ -547,9 +547,10 @@ class PosAssistantGraphServiceCardTest {
     @Test
     void keepsLegacyTenArgumentCardConstructionValid() {
         AssistantCard card = new AssistantCard(
-                "pricing", "Price review", "summary", List.of(), "odoo", "now", null,
+                "pricing", "Price review", "summary", List.of(), "orithos_ledger", "now", null,
                 "ready", "Open price review", "/stock/capped-pricing");
 
+        assertEquals("orithos_ledger", card.source());
         assertEquals("/stock/capped-pricing", card.ctaRoute());
         assertEquals(null, card.cta());
     }
