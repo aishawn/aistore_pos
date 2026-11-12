@@ -46,6 +46,9 @@ public class ReportRespondNode implements NodeAction {
         if (rows == null || rows.isEmpty()) {
             return switch (intent == null ? "" : intent) {
                 case "report_stock" -> chinese ? "没有找到匹配库存，请检查商品名称或目录拼写。" : "No matching stock found. Check the product name or catalogue spelling.";
+                case "report_aov" -> chinese
+                        ? rangeText(from, to) + "没有已完成销售记录。数据来源：Orithos POS 报表。"
+                        : "No completed sales found for " + rangeText(from, to) + ". Source: Orithos POS report.";
                 case "report_dead_stock" -> "No dead-stock items found for the selected period."
                         + " Try asking for dead stock last 60 days if you want a wider window.";
                 case "report_stock_value" -> "No on-hand products with a recorded cost were found.";
@@ -61,7 +64,7 @@ public class ReportRespondNode implements NodeAction {
                     || Boolean.TRUE.equals(rows.get(0).get("comparison"))
                     ? formatAuthoritativeSales(rows.get(0), from, to, chinese)
                     : formatSeries(rows, "sales", "Sales", from, to);
-            case "report_aov" -> formatAov(rows.get(0), from, to);
+            case "report_aov" -> formatAov(rows.get(0), from, to, chinese);
             case "report_stock" -> formatStock(rows, slots.get("query"));
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
             case "report_stock_value" -> formatStockValue(rows, chinese);
@@ -165,13 +168,16 @@ public class ReportRespondNode implements NodeAction {
                 + days + (days == 1 ? " day)." : " days).");
     }
 
-    private String formatAov(Map<String, Object> row, String from, String to) {
+    private String formatAov(Map<String, Object> row, String from, String to, boolean chinese) {
         String range = rangeText(from, to);
         String aov = "AUD " + money(ReportQueryService.toDecimal(row.get("aov")));
         String tickets = ReportQueryService.toDecimal(row.get("tickets")).stripTrailingZeros().toPlainString();
-        BigDecimal ticketCount = ReportQueryService.toDecimal(row.get("tickets"));
+        if (chinese) {
+            return range + "平均客单价 " + aov + "，基于 " + tickets + " 笔销售交易。数据来源：Orithos POS 报表。";
+        }
         return "Average Ticket for " + range + " is " + aov + " across " + tickets
-                + (ticketCount.compareTo(BigDecimal.ONE) == 0 ? " sale." : " sales.");
+                + ("1".equals(tickets) ? " sale transaction. Source: Orithos POS report."
+                : " sales transactions. Source: Orithos POS report.");
     }
 
     private String formatStock(List<Map<String, Object>> rows, String query) {
@@ -275,6 +281,9 @@ public class ReportRespondNode implements NodeAction {
             case "NATIVE_REPORT_UNAVAILABLE" -> isStockIntent(intent)
                     ? "I could not read Orithos stock data right now. Open the stock list to check manually, or try again shortly."
                     : "Orithos reporting is temporarily unavailable. Please try again.";
+            case "AUTHORITATIVE_REPORT_INCOMPLETE" -> chinese
+                    ? "权威报表缺少计算客单价所需的数据，暂时无法提供结果。请稍后重试。"
+                    : "The authoritative report is missing data required to calculate average sale. Please try again shortly.";
             case "NATIVE_REPORT_UNSUPPORTED" -> chinese
                     ? "暂不支持这种自定义查询。可比较两个明确日期的销售额，例如：比较2026年10月14日和2026年10月15日销售额。"
                     : "That custom report is not supported. You can compare sales on two explicit dates, for example: "

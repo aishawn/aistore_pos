@@ -124,11 +124,33 @@ class ReportRespondNodeTest {
     }
 
     @Test
-    void averageTicketSummaryIncludesAudAndUsesSingularSale() {
+    void averageTicketSummaryIncludesAudAndNamesItsSalesTransactionCount() {
         OverAllState state = state("", List.of(Map.of("sales", 12.99, "tickets", 1, "aov", 12.99)));
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
 
-        assertEquals("Average Ticket for 2026-10-20 is AUD 12.99 across 1 sale.", node.apply(state).get("answer"));
+        assertEquals("Average Ticket for 2026-10-20 is AUD 12.99 across 1 sale transaction. Source: Orithos POS report.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void averageTicketSummaryFollowsChineseQuestionLanguage() {
+        OverAllState state = state("", List.of(Map.of("sales", 5178.94, "tickets", 185, "aov", 27.99)),
+                "2026-11-12", "2026-11-12");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("昨天平均客单价是多少？"));
+
+        assertEquals("2026-11-12平均客单价 AUD 27.99，基于 185 笔销售交易。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void emptyAverageTicketPeriodReportsNoSalesInChinese() {
+        OverAllState state = state("", List.of(), "2026-11-11", "2026-11-11");
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("昨天平均客单价是多少？"));
+
+        assertEquals("2026-11-11没有已完成销售记录。数据来源：Orithos POS 报表。",
+                node.apply(state).get("answer"));
     }
 
     @Test

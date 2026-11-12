@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.report;
 
+import com.orithos.modules.report.ReportQueryService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -19,11 +20,14 @@ public class NativeAiReportQueryService {
 
     private final AiReportDataSourceRegistry dataSources;
     private final ReportTemplateRegistry templates;
+    private final ReportQueryService reportQueryService;
 
     public NativeAiReportQueryService(AiReportDataSourceRegistry dataSources,
-                                      ReportTemplateRegistry templates) {
+                                      ReportTemplateRegistry templates,
+                                      ReportQueryService reportQueryService) {
         this.dataSources = dataSources;
         this.templates = templates;
+        this.reportQueryService = reportQueryService;
     }
 
     public Result query(TenantContext tenant, String intent, Map<String, String> slots,
@@ -38,6 +42,31 @@ public class NativeAiReportQueryService {
         }
 
         try {
+            if ("report_aov".equals(intent)) {
+                Map<String, Object> overview = reportQueryService.nativeOverview(tenant.vendorId(),
+                        tenant.requireOutletId(), window.from().toLocalDate(),
+                        window.toExclusive().minusNanos(1).toLocalDate());
+                Object transactionValue = overview.get("transactions");
+                Object averageSale = overview.get("averageSale");
+                Object grossSales = overview.get("grossSales");
+                if (!(transactionValue instanceof Number) || grossSales == null) {
+                    return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
+                }
+                var transactions = ReportQueryService.toDecimal(transactionValue);
+                if (transactions.signum() < 0) {
+                    return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
+                }
+                if (transactions.signum() == 0) {
+                    return Result.ok(List.of());
+                }
+                if (averageSale == null) {
+                    return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
+                }
+                return Result.ok(List.of(Map.of(
+                        "aov", averageSale,
+                        "tickets", transactionValue,
+                        "sales", grossSales)));
+            }
             ReportTemplateRegistry.BoundSql bound = templates.bind(intent, tenant, slots, window);
             if (bound.error() != null) return Result.fail(bound.error());
             List<Map<String, Object>> rows = dataSources.jdbc(tenant.requireOutletId())

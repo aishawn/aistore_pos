@@ -49,15 +49,7 @@ public class ReportTemplateRegistry {
         return switch (intent) {
             case "report_sales" -> sales(outletId, fromDay, toDay, category, "amount");
             case "report_qty" -> sales(outletId, fromDay, toDay, category, "qty");
-            case "report_aov" -> BoundSql.ok("""
-                    SELECT COUNT(*) AS tickets, COALESCE(SUM(amount), 0) AS sales,
-                           CASE WHEN COUNT(*) = 0 THEN 0 ELSE ROUND(SUM(amount) / COUNT(*), 2) END AS aov
-                    FROM ai_rpt_customer_sale
-                    WHERE outlet_id = ?
-                      AND business_date >= ?
-                      AND business_date < ?
-                    LIMIT 1
-                    """, List.of(outletId, fromDay, toDay));
+            case "report_aov" -> BoundSql.fail("AUTHORITATIVE_REPORT_REQUIRED");
             case "report_stock" -> {
                 if (query == null) {
                     yield BoundSql.fail("NEED_PRODUCT");

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,6 +51,39 @@ class NativeReportQueryNodeTest {
         verify(queryService, never()).query(any(), anyString(), any(), any());
         assertEquals("available", result.get("report_data_status"));
         assertEquals(30.00, ((Map<?, ?>) ((List<?>) result.get("report_rows")).get(0)).get("grossProfit"));
+    }
+
+    @Test
+    void averageTicketIntentUsesTheSharedNativeQueryService() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDateTime from = LocalDateTime.of(2026, 11, 12, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 11, 13, 0, 0);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("What was our average sale yesterday?"));
+        when(state.value("report_from")).thenReturn(Optional.of(from));
+        when(state.value("report_to")).thenReturn(Optional.of(to));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-11-12", "to", "2026-11-12")));
+        when(queryService.query(any(TenantContext.class), eq("report_aov"), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(
+                        List.of(Map.of("aov", 27.99, "tickets", 185, "sales", 5178.94)), null));
+
+        Map<String, Object> result = node.apply(state);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) result.get("report_rows")).get(0);
+        assertEquals(27.99, row.get("aov"));
+        assertEquals(185, row.get("tickets"));
+        assertEquals("available", result.get("report_data_status"));
+        verify(queryService).query(any(TenantContext.class), eq("report_aov"), any(), any());
+        verify(reportQuery, never()).nativeOverview(any(Long.class), any(Long.class), any(LocalDate.class), any(LocalDate.class));
     }
 
     @Test

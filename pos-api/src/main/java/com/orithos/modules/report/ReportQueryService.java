@@ -311,9 +311,16 @@ public class ReportQueryService {
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
+                                         THEN s.total_price ELSE 0 END), 0) AS sales_amount,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL
+                                         THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
                        COALESCE(SUM(s.total_tax), 0) AS tax,
                        COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
-                       COUNT(*) AS transaction_count,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL)
+                           AS transaction_count,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL)
+                           AS refund_transaction_count,
                        COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
                        COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
@@ -406,19 +413,26 @@ public class ReportQueryService {
                                                      List<Map<String, Object>> products,
                                                      Map<String, Object> inventory) {
         BigDecimal revenue = BigDecimal.ZERO;
+        BigDecimal salesAmount = BigDecimal.ZERO;
+        BigDecimal refundAmount = BigDecimal.ZERO;
         BigDecimal cost = BigDecimal.ZERO;
         BigDecimal tax = BigDecimal.ZERO;
         BigDecimal discount = BigDecimal.ZERO;
         long transactions = 0;
+        long refundTransactions = 0;
         long costMissingCount = 0;
         long taxMissingCount = 0;
         List<Map<String, Object>> dailyTrend = new ArrayList<>();
         for (Map<String, Object> row : daily) {
             revenue = revenue.add(toDecimal(row.get("revenue")));
+            salesAmount = salesAmount.add(row.containsKey("sales_amount")
+                    ? toDecimal(row.get("sales_amount")) : toDecimal(row.get("revenue")));
+            refundAmount = refundAmount.add(toDecimal(row.get("refund_amount")));
             cost = cost.add(toDecimal(row.get("cost")));
             tax = tax.add(toDecimal(row.get("tax")));
             discount = discount.add(toDecimal(row.get("discount")));
             transactions += toDecimal(row.get("transaction_count")).longValue();
+            refundTransactions += toDecimal(row.get("refund_transaction_count")).longValue();
             costMissingCount += toDecimal(row.get("cost_missing_count")).longValue();
             taxMissingCount += toDecimal(row.get("tax_missing_count")).longValue();
             Map<String, Object> day = new LinkedHashMap<>(row);
@@ -433,6 +447,10 @@ public class ReportQueryService {
             day.put("grossProfit", dayCostAvailable
                     ? money(toDecimal(row.get("revenue")).subtract(toDecimal(row.get("cost"))))
                     : null);
+            day.put("salesAmount", money(row.containsKey("sales_amount")
+                    ? row.get("sales_amount") : row.get("revenue")));
+            day.put("refundAmount", money(row.get("refund_amount")));
+            day.put("refundTransactions", toDecimal(row.get("refund_transaction_count")).longValue());
             dailyTrend.add(day);
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -441,6 +459,8 @@ public class ReportQueryService {
         result.put("to", to.toString());
         result.put("timeZone", AustraliaTime.ZONE.getId());
         result.put("revenue", money(revenue));
+        result.put("grossSales", money(salesAmount));
+        result.put("refunds", money(refundAmount));
         result.put("netRevenue", taxMissingCount == 0 ? money(revenue.subtract(tax)) : null);
         result.put("cost", costMissingCount == 0 ? money(cost) : null);
         result.put("tax", taxMissingCount == 0 ? money(tax) : null);
@@ -453,9 +473,10 @@ public class ReportQueryService {
                     .divide(revenue, 2, RoundingMode.HALF_UP)
                 : null);
         result.put("averageSale", transactions > 0
-                ? money(revenue.divide(BigDecimal.valueOf(transactions), 2, RoundingMode.HALF_UP))
+                ? money(salesAmount.divide(BigDecimal.valueOf(transactions), 2, RoundingMode.HALF_UP))
                 : null);
         result.put("transactions", transactions);
+        result.put("refundTransactions", refundTransactions);
         result.put("dailyTrend", dailyTrend);
         result.put("topProducts", products);
         boolean inventoryPresent = inventory != null && !inventory.isEmpty();

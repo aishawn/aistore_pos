@@ -203,6 +203,7 @@ public final class AssistantFastPathRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
             "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday)|how many (?:transactions?|tickets?|orders?)(?: did we have)? (?:today|yesterday)|"
+                    + "(?:(?:昨天|昨日|今天|今日)(?:的)?(?:平均)?客单价(?:是多少|如何|怎么样)?|(?:平均)?客单价(?:是)?(?:昨天|昨日|今天|今日))|"
                     + "(?:today|yesterday)\\s+(?:transaction|ticket|order) count|今天(?:有)?多少笔(?:交易|订单)|"
                     + "今天(?:有)?几笔(?:交易|订单)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);

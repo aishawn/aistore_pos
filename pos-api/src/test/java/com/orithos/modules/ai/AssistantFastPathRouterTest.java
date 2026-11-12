@@ -403,6 +403,20 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesChineseAverageTicketQuestionsDeterministically() {
+        for (String question : new String[]{
+                "昨天平均客单价是多少？",
+                "昨日的平均客单价如何",
+                "今天客单价怎么样？",
+                "平均客单价是今天"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_aov", match.intent(), question);
+        }
+    }
+
+    @Test
     void routesWeeklyQuantityAndMixedSalesUnitsDeterministically() {
         for (String question : new String[]{"这周卖了多少件", "units sold this week"}) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);

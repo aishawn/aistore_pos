@@ -55,6 +55,19 @@ class ReportTemplateRegistryTest {
     }
 
     @Test
+    void averageTicketCannotUseTheLegacyCustomerSaleAggregation() {
+        TenantContext tenant = new TenantContext(
+                55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 11, 12);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        ReportTemplateRegistry.BoundSql bound = registry.bind("report_aov", tenant, Map.of(), window);
+
+        assertEquals("AUTHORITATIVE_REPORT_REQUIRED", bound.error());
+    }
+
+    @Test
     void stockValueUsesTenantScopedOrithosCostView() {
         TenantContext tenant = new TenantContext(
                 55L, 12L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY, TenantContext.PERM_COST));

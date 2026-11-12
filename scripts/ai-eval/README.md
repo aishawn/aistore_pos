@@ -39,6 +39,14 @@ Run the local fixture evaluator:
 node scripts/ai-eval/run-local-eval.mjs --cases scripts/ai-eval/fixtures/utterances.jsonl
 ```
 
+Without `AI_EVAL_ENDPOINT`, assistant assertions are `BLOCKED`; the runner only
+checks that fixture expectations agree with the synthetic snapshot. When an
+endpoint is configured, `PARTIAL` means intent, route, and write safety were
+checked but the report lists additional assistant assertions the runner does
+not verify yet. Neither result certifies full POS assistant behavior. Use the
+Java router tests for deterministic routing and the read-only live evaluator
+for deployed behavior and report reconciliation.
+
 For forecast backtests, pass the generated native inventory history as the
 third argument. Complete date coverage replaces inferred `stock.move` flags;
 partial coverage is reported as incomplete and is never treated as zero

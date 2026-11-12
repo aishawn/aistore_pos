@@ -27,9 +27,9 @@ function firstValue(body, keys) {
 
 function remoteAssertions(testCase, remote) {
   const expected = testCase.expected || {};
-  const body = remote?.body || {};
+  const body = remote?.body?.data && typeof remote.body.data === "object" ? remote.body.data : remote?.body || {};
   const actualIntent = firstValue(body, ["intent", "classification.intent", "result.intent"]);
-  const actualRoute = firstValue(body, ["route", "destination", "result.route", "card.route"]);
+  const actualRoute = firstValue(body, ["ui.route", "route", "destination", "result.route", "card.route"]);
   const writes = firstValue(body, ["writeRequests", "result.writeRequests"]) || [];
   const expectedRoute = expected.route ?? null;
   const intentMatch = expected.intent === undefined || actualIntent === expected.intent;
@@ -55,6 +55,23 @@ function localExpected(testCase) {
   return result;
 }
 
+function unverifiedAssistantAssertions(testCase) {
+  const expected = testCase.expected || {};
+  const unverified = [];
+  if (expected.entities?.product !== undefined) unverified.push("assistant product selection");
+  if (expected.entities?.barcode !== undefined) unverified.push("assistant barcode extraction");
+  if (expected.entities?.date !== undefined) unverified.push("assistant date extraction");
+  if (expected.entities?.stock !== undefined) unverified.push("assistant stock answer");
+  if (expected.data?.revenue !== undefined) unverified.push("assistant revenue reconciliation");
+  if (expected.clarification !== undefined) unverified.push("clarification behavior");
+  if (testCase.context?.thread?.length) unverified.push("multi-turn context handling");
+  if (expected.entities?.maxPrice !== undefined) unverified.push("price constraint extraction");
+  for (const assertion of expected.negative || []) {
+    if (assertion !== "writeRequests empty") unverified.push(`negative assertion: ${assertion}`);
+  }
+  return unverified;
+}
+
 async function callAssistant(testCase) {
   if (!endpoint) return null;
   const started = Date.now();
@@ -75,13 +92,17 @@ const results = [];
 for (const testCase of cases) {
   const remote = await callAssistant(testCase);
   const local = localExpected(testCase);
-  const blocked = remote && remote.status === "BLOCKED";
+  const blocked = !remote || remote.status === "BLOCKED";
   const remoteCheck = remote && !blocked ? remoteAssertions(testCase, remote) : {};
   const checks = { ...local, ...remoteCheck };
+  const unverified = unverifiedAssistantAssertions(testCase);
+  const assertionsPass = checks.intentMatch && checks.routeMatch && checks.entityMatch && checks.dataMatch && checks.safetyPass;
   results.push({
     caseId: testCase.id,
     category: testCase.category,
-    status: blocked ? "BLOCKED" : (checks.intentMatch && checks.routeMatch && checks.entityMatch && checks.dataMatch && checks.safetyPass ? "PASS" : "FAIL"),
+    status: blocked ? "BLOCKED" : !assertionsPass ? "FAIL" : unverified.length ? "PARTIAL" : "PASS",
+    assistantStatus: !remote ? "NOT_CONFIGURED" : blocked ? "UNAVAILABLE" : "CHECKED",
+    ...(unverified.length ? { unverifiedAssistantAssertions: unverified } : {}),
     ...checks,
     ...(remote ? { httpStatus: remote.httpStatus, latencyMs: remote.latencyMs, response: remote.body } : {}),
     sourceSha,
@@ -89,7 +110,7 @@ for (const testCase of cases) {
   });
 }
 
-const summary = results.reduce((acc, result) => { acc[result.status] += 1; return acc; }, { PASS: 0, FAIL: 0, BLOCKED: 0 });
+const summary = results.reduce((acc, result) => { acc[result.status] += 1; return acc; }, { PASS: 0, PARTIAL: 0, FAIL: 0, BLOCKED: 0 });
 const output = { schemaVersion: 1, generatedAt: new Date().toISOString(), sourceSha, runtimeSha, summary, results };
 const outputPath = option("output");
 if (outputPath) {
@@ -98,3 +119,4 @@ if (outputPath) {
 }
 console.log(JSON.stringify(output, null, 2));
 if (summary.FAIL > 0) process.exitCode = 1;
+else if (summary.PARTIAL > 0 || summary.BLOCKED > 0) process.exitCode = 2;

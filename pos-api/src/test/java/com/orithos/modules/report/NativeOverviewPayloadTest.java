@@ -59,6 +59,32 @@ class NativeOverviewPayloadTest {
     }
 
     @Test
+    void averageSaleUsesSalesOnlyAndKeepsRefundsSeparate() {
+        Map<String, Object> day = new LinkedHashMap<>();
+        day.put("date", LocalDate.of(2026, 11, 12));
+        day.put("revenue", new BigDecimal("5173.94"));
+        day.put("sales_amount", new BigDecimal("5178.94"));
+        day.put("refund_amount", new BigDecimal("5.00"));
+        day.put("tax", new BigDecimal("423.82"));
+        day.put("cost", new BigDecimal("3188.66"));
+        day.put("discount", BigDecimal.ZERO);
+        day.put("transaction_count", 185);
+        day.put("refund_transaction_count", 1);
+        day.put("cost_missing_count", 0);
+        day.put("tax_missing_count", 0);
+
+        Map<String, Object> result = ReportQueryService.nativeOverviewPayload(
+                LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 12), List.of(day), List.of());
+
+        assertEquals(new BigDecimal("5173.94"), result.get("revenue"));
+        assertEquals(new BigDecimal("5178.94"), result.get("grossSales"));
+        assertEquals(new BigDecimal("5.00"), result.get("refunds"));
+        assertEquals(185L, result.get("transactions"));
+        assertEquals(1L, result.get("refundTransactions"));
+        assertEquals(new BigDecimal("27.99"), result.get("averageSale"));
+    }
+
+    @Test
     void includesPositiveInventoryUnitsWhenSnapshotIsPresent() {
         Map<String, Object> inventory = new LinkedHashMap<>();
         inventory.put("sku_count", 10);
