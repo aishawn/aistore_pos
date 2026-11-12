@@ -90,6 +90,22 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void productImportDoesNotPersistSourceMirrorRows() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))
+                .thenReturn(List.of(Map.of("company_id", "55", "outlet_id", "48", "enabled", true)));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, false);
+
+        var result = controller.products("token", new ObjectMapper().createObjectNode()
+                .put("store_key", "skr")
+                .set("items", new ObjectMapper().readTree("[{\"source_id\":\"p-1\",\"raw_payload\":{\"large\":true}}]")));
+
+        assertEquals(false, result.data().get("shadow_write"));
+        assertEquals("crawler", result.data().get("source_of_truth"));
+        verify(jdbc, never()).batchUpdate(contains("INSERT INTO shopfront_product"), any(List.class));
+    }
+
+    @Test
     void stagingFailureDoesNotExposeDatabaseErrorDetails() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.update(anyString())).thenThrow(new IllegalStateException("database password=secret"));
@@ -104,60 +120,6 @@ class ShopfrontIntegrationControllerTest {
         assertTrue(failure.getReason().contains("IllegalStateException"));
         assertFalse(failure.getReason().contains("password=secret"));
         assertFalse(failure.getMessage().contains("password=secret"));
-    }
-
-    @Test
-    void completeInventoryReplacementClearsOnlyTheTargetStoreShadow() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        persistShadow.invoke(controller, "inventory", "skr", Map.of("outlet_id", "48"),
-                new ObjectMapper().readTree("[]"), true);
-
-        verify(jdbc).update(contains("DELETE FROM shopfront_inventory WHERE store_key = ?"), eq("skr"));
-    }
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void batchesProductAndInventoryShadowWritesAndPreservesNegativeStock() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        ObjectMapper mapper = new ObjectMapper();
-
-        persistShadow.invoke(controller, "products", "skr", Map.of("outlet_id", "87"), mapper.readTree(
-                "[{\"source_id\":\"p1\",\"name\":\"One\"},{\"source_id\":\"p2\",\"name\":\"Two\"}]"), false);
-        ArgumentCaptor<List<Object[]>> productRows = ArgumentCaptor.forClass((Class) List.class);
-        verify(jdbc).batchUpdate(contains("INSERT INTO shopfront_product"), productRows.capture());
-        assertEquals(2, productRows.getValue().size());
-        assertEquals("p1", productRows.getValue().get(0)[1]);
-
-        persistShadow.invoke(controller, "inventory", "skr", Map.of("outlet_id", "87"), mapper.readTree(
-                "[{\"source_id\":\"p1\",\"quantity\":-5.25,\"timestamp\":\"2026-11-09\"}]"), false);
-        ArgumentCaptor<List<Object[]>> inventoryRows = ArgumentCaptor.forClass((Class) List.class);
-        verify(jdbc).batchUpdate(contains("INSERT INTO shopfront_inventory"), inventoryRows.capture());
-        assertEquals(new BigDecimal("-5.25"), inventoryRows.getValue().get(0)[3]);
-        assertEquals("87", inventoryRows.getValue().get(0)[2]);
     }
 
     @Test
@@ -444,104 +406,6 @@ class ShopfrontIntegrationControllerTest {
         var error = assertThrows(ResponseStatusException.class,
                 () -> controller.data("token", "skr", "products", 2, 500));
         assertEquals(HttpStatus.GONE, error.getStatusCode());
-    }
-
-    @Test
-    void persistsSupplierAndPurchaseOrderShadowsByExternalId() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        ObjectMapper mapper = new ObjectMapper();
-        persistShadow.invoke(controller, "suppliers", "skr", Map.of("outlet_id", "48"),
-                mapper.readTree("[{\"source_id\":\"supplier-1\",\"name\":\"Supplier\",\"raw_payload\":{\"id\":\"supplier-1\"}}]"), false);
-        persistShadow.invoke(controller, "purchase_orders", "skr", Map.of("outlet_id", "48"),
-                mapper.readTree("[{\"source_id\":\"order-1\",\"supplier_source_id\":\"supplier-1\",\"raw_payload\":{\"id\":\"order-1\"}}]"), false);
-
-        verify(jdbc).update(contains("INSERT INTO shopfront_supplier"), any(Object[].class));
-        verify(jdbc).update(contains("INSERT INTO shopfront_purchase_order"), any(Object[].class));
-    }
-
-    @Test
-    void reconcilesSaleChildrenOnlyWhenSourceMarksSaleComplete() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        ObjectMapper mapper = new ObjectMapper();
-
-        persistShadow.invoke(controller, "sales", "skr", Map.of(), mapper.readTree(
-                "[{\"external_id\":\"sale-1\",\"items\":[],\"payments\":[]} ]"), false);
-        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.never())
-                .update(contains("DELETE FROM shopfront_sale_item"), any(Object[].class));
-
-        persistShadow.invoke(controller, "sales", "skr", Map.of(), mapper.readTree(
-                "[{\"external_id\":\"sale-2\",\"source_complete\":true,\"items\":[],\"payments\":[]} ]"), false);
-        verify(jdbc).update(contains("DELETE FROM shopfront_sale_item WHERE store_key = ? AND external_sale_id = ?"), any(Object[].class));
-        verify(jdbc).update(contains("DELETE FROM shopfront_sale_payment WHERE store_key = ? AND external_sale_id = ?"), any(Object[].class));
-    }
-
-    @Test
-    void saleLineKeyUsesNestedShopfrontSourceId() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        persistShadow.invoke(controller, "sales", "skr", Map.of(), new ObjectMapper().readTree(
-                "[{\"external_id\":\"sale-1\",\"source_complete\":true,\"items\":[{\"id\":\"line-42\",\"raw_payload\":{\"item\":{\"id\":\"product-7\"}}}],\"payments\":[]}]"), false);
-
-        verify(jdbc).update(contains("INSERT INTO shopfront_sale_item"),
-                org.mockito.ArgumentMatchers.eq("skr"), org.mockito.ArgumentMatchers.eq("sale-1"),
-                org.mockito.ArgumentMatchers.eq("line-42"), any(), any(), any(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void upsertsCustomerShadowByExternalIdWithoutBusinessCustomerWrites() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        Method persistShadow = ShopfrontIntegrationController.class.getDeclaredMethod(
-                "persistShadow", String.class, String.class, Map.class,
-                com.fasterxml.jackson.databind.JsonNode.class, boolean.class);
-        persistShadow.setAccessible(true);
-        persistShadow.invoke(controller, "customers", "skr", Map.of("outlet_id", "48"),
-                new ObjectMapper().readTree("[{\"source_id\":\"customer-1\",\"client_id\":\"client-1\",\"name\":\"Test\",\"email\":\"test@example.com\",\"raw_payload\":{\"id\":\"customer-1\"}}]"), false);
-
-        verify(jdbc).update(contains("ON CONFLICT (store_key,source_id) DO UPDATE"), any(Object[].class));
     }
 
     @ParameterizedTest
