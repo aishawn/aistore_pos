@@ -32,6 +32,7 @@ type Plan = {
   top: Product[]; itemsNeedingOrder: number; dataGapCount: number; dataGaps: string[];
   coverageDays: number; dataAsOf?: string | null; dataSource: string; storeScope: string;
   reportPeriodFrom: string; reportPeriodTo: string; reportTimeZone: string; reportDataStatus: string;
+  inventoryGapCount?: number; supplierGapCount?: number;
 };
 type Sales = {
   period: string; revenue: number; transactions: number; currency: string;
@@ -41,10 +42,12 @@ type Sales = {
 
 class PreviewReadError extends Error {
   readonly retryable: boolean;
+  readonly status: number;
 
-  constructor(message: string, retryable: boolean) {
+  constructor(message: string, status: number) {
     super(message);
-    this.retryable = retryable;
+    this.status = status;
+    this.retryable = status !== 401 && status !== 403;
   }
 }
 
@@ -60,13 +63,17 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
   const response = await fetcher("/api/ai/assistant/replenishment-report", {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
-  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status !== 401 && response.status !== 403);
+  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status);
   const body = await response.json() as {
+    code?: number;
+    message?: string;
     data?: {
       top?: Product[];
       itemsNeedingOrder?: number;
       dataGapCount?: number;
       dataGaps?: string[];
+      inventoryGapCount?: number;
+      supplierGapCount?: number;
       coverageDays?: number;
       dataAsOf?: string | null;
       dataSource?: string;
@@ -77,6 +84,13 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
       reportDataStatus?: string;
     };
   };
+  if (body.code != null && body.code !== 0) {
+    const status = response.status === 401 || response.status === 403
+      ? response.status
+      : body.code === 40300 || body.code === 40310 ? 403
+        : body.code >= 50000 ? 503 : response.status;
+    throw new PreviewReadError(body.message ?? "Business data unavailable", status);
+  }
   const plan = body.data;
   if (!plan || !Array.isArray(plan.top) || !finite(plan.itemsNeedingOrder) || !finite(plan.dataGapCount)
     || !finite(plan.coverageDays) || !plan.dataSource || !plan.storeScope || !plan.reportPeriodFrom
@@ -95,7 +109,7 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
   const response = await fetcher(`/api/reports/native-overview?${params}`, {
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
-  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status !== 401 && response.status !== 403);
+  if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status);
   const body = await response.json() as {
     data?: {
       source?: string; revenue?: number; transactions?: number; from?: string; to?: string;
@@ -170,13 +184,20 @@ export async function readOperationsPreview(
         : plan.dataGapCount > 0 ? "partial" : eligible.length ? "ready" : "empty";
       if (hasNoData) card.retryable = false;
       const analysisPeriod = `${plan.reportPeriodFrom} to ${plan.reportPeriodTo} (${plan.reportTimeZone})`;
+      const gapDetails = plan.inventoryGapCount != null || plan.supplierGapCount != null
+        ? chinese
+          ? `${plan.inventoryGapCount ?? 0} 个商品缺少库存数据，${plan.supplierGapCount ?? 0} 个商品缺少供应商资料。`
+          : `${plan.inventoryGapCount ?? 0} products lack inventory data; ${plan.supplierGapCount ?? 0} lack supplier details.`
+        : chinese
+          ? `${plan.dataGapCount} 个商品因资料不完整被排除。`
+          : `${plan.dataGapCount} products were excluded for incomplete data.`;
       card.summary = chinese
         ? hasNoData
           ? `所选销售期间 ${analysisPeriod} 没有可验证的销售历史，未生成补货数量。`
-          : `${analysisPeriod} 销售数据对应的补货预览：目标覆盖 ${plan.coverageDays} 天，${plan.itemsNeedingOrder} 个商品有建议数量。${plan.dataGapCount} 个商品因资料不完整被排除。`
+          : `${analysisPeriod} 销售数据对应的补货预览：目标覆盖 ${plan.coverageDays} 天，${plan.itemsNeedingOrder} 个商品有建议数量。${gapDetails}`
         : hasNoData
           ? `No verifiable sales history is available for ${analysisPeriod}; no replenishment quantities were generated.`
-          : `Replenishment preview for ${analysisPeriod}: ${plan.itemsNeedingOrder} products need order for ${plan.coverageDays}d cover. ${plan.dataGapCount} products were excluded for incomplete data.`;
+          : `Replenishment preview for ${analysisPeriod}: ${plan.itemsNeedingOrder} products need order for ${plan.coverageDays}d cover. ${gapDetails}`;
       if (plan.reportDataStatus === "incomplete" && !plan.dataGapCount) {
         card.summary += chinese ? " 报表数据不完整，请人工复核。" : " Report data is incomplete; review manually.";
       }
@@ -236,11 +257,13 @@ export async function readOperationsPreview(
     card.status = "unavailable";
     const retryable = error instanceof PreviewReadError ? error.retryable : true;
     card.retryable ??= retryable;
-    card.summary ??= !retryable
-      ? chinese ? "登录已过期或无权查看，请重新登录或联系管理员。" : "Sign in again or ask your administrator for access."
+    card.summary ??= error instanceof PreviewReadError && error.status === 401
+      ? chinese ? "登录已过期，请重新登录后再查看补货数据。" : "Your session has expired. Sign in again to view replenishment data."
+      : error instanceof PreviewReadError && error.status === 403
+        ? chinese ? "当前账号没有权限查看补货数据，请联系管理员检查门店权限。" : "You do not have permission to view replenishment data. Ask an administrator to check store access."
       : chinese
-        ? "业务数据暂时无法读取，未生成数值。请重试或打开业务页面核查。"
-        : "Business data could not be loaded. No figures were generated. Retry or open the business page to check.";
+        ? "补货查询服务暂时不可用，未生成数量或金额。请稍后重试或打开补货页面核查。"
+        : "The replenishment query service is temporarily unavailable. No figures were generated. Retry shortly or open Replenishment to check.";
   }
   return {
     threadId: threadId ?? "", intent: intent === "sales_week" ? "report_sales" : "navigate",

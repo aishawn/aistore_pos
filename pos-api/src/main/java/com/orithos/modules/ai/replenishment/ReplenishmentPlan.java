@@ -11,16 +11,25 @@ public record ReplenishmentPlan(
         String dataQualityStatus,
         List<String> dataGaps,
         Instant dataAsOf,
-        int dataGapCount
+        int dataGapCount,
+        int inventoryGapCount,
+        int supplierGapCount
 ) {
     public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top) {
-        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null, 0);
+        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null, 0, 0, 0);
     }
 
     public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top,
                              String dataQualityStatus, List<String> dataGaps, Instant dataAsOf) {
         this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
-                dataGaps == null ? 0 : dataGaps.size());
+                dataGaps == null ? 0 : dataGaps.size(), 0, 0);
+    }
+
+    public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top,
+                             String dataQualityStatus, List<String> dataGaps, Instant dataAsOf,
+                             int dataGapCount) {
+        this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
+                dataGapCount, 0, 0);
     }
 
     public ReplenishmentPlan {
@@ -28,5 +37,7 @@ public record ReplenishmentPlan(
                 ? "VALID" : dataQualityStatus;
         dataGaps = dataGaps == null ? List.of() : List.copyOf(dataGaps);
         dataGapCount = Math.max(dataGapCount, dataGaps.size());
+        inventoryGapCount = Math.max(0, inventoryGapCount);
+        supplierGapCount = Math.max(0, supplierGapCount);
     }
 }

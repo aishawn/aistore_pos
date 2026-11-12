@@ -156,6 +156,39 @@ class NativeReplenishmentServiceTest {
         assertEquals(0, plan.itemsNeedingOrder());
     }
 
+    @Test
+    void reportsInventoryAndSupplierGapsSeparately() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet inventoryMissing = replenishmentRow(5L, "Shiraz", null, true);
+        ResultSet supplierMissing = replenishmentRow(6L, "Beer", 4d, false);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(inventoryMissing, 0), mapper.mapRow(supplierMissing, 1));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals(2, plan.dataGapCount());
+        assertEquals(1, plan.inventoryGapCount());
+        assertEquals(1, plan.supplierGapCount());
+    }
+
+    private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
+            throws Exception {
+        ResultSet row = mock(ResultSet.class);
+        when(row.getLong("id")).thenReturn(id);
+        when(row.getString("name")).thenReturn(name);
+        when(row.getDouble("case_quantity")).thenReturn(6d);
+        when(row.getObject("on_hand")).thenReturn(onHand);
+        when(row.getDouble("on_order")).thenReturn(0d);
+        when(row.getDouble("recent_units")).thenReturn(0d);
+        when(row.getDouble("previous_units")).thenReturn(0d);
+        when(row.getBoolean("has_supplier")).thenReturn(supplier);
+        when(row.getDouble("minimum_order")).thenReturn(1d);
+        when(row.getTimestamp("sales_data_as_of")).thenReturn(Timestamp.from(Instant.parse("2026-11-12T07:30:00Z")));
+        return row;
+    }
+
     private static TenantContext tenant(long vendorId, long outletId) {
         return new TenantContext(vendorId, 7L, outletId, List.of(outletId), Set.of(TenantContext.PERM_QUERY));
     }

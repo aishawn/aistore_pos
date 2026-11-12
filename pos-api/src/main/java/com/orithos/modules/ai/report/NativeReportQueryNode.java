@@ -129,7 +129,7 @@ public class NativeReportQueryNode implements NodeAction {
                                       String status, String dataAsOf) {
         ZoneId timezone = com.orithos.common.AustraliaTime.ZONE;
         if (dataAsOf != null && !dataAsOf.isBlank()) target.put("report_data_as_of", dataAsOf);
-        target.put("report_data_source", "orithos");
+        target.put("report_data_source", "orithos_ledger");
         target.put("report_store_scope", "current_authenticated_store");
         target.put("report_period_from", window.from().toLocalDate().toString());
         target.put("report_period_to", window.toExclusive().minusNanos(1).toLocalDate().toString());

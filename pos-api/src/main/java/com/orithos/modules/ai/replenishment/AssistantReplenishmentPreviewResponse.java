@@ -17,7 +17,9 @@ public record AssistantReplenishmentPreviewResponse(
         int itemsNeedingOrder,
         List<ReplenishmentSuggestion> top,
         int dataGapCount,
-        List<String> dataGaps
+        List<String> dataGaps,
+        int inventoryGapCount,
+        int supplierGapCount
 ) {
     public static AssistantReplenishmentPreviewResponse from(ReplenishmentPlan plan, LocalDate today) {
         return new AssistantReplenishmentPreviewResponse(
@@ -33,7 +35,9 @@ public record AssistantReplenishmentPreviewResponse(
                 plan.itemsNeedingOrder(),
                 plan.top(),
                 plan.dataGapCount(),
-                plan.dataGaps()
+                plan.dataGaps(),
+                plan.inventoryGapCount(),
+                plan.supplierGapCount()
         );
     }
 }

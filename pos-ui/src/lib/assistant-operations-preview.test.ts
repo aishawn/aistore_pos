@@ -40,13 +40,14 @@ test("full catalogue suggestions survive unrelated review products", async () =>
       reportTimeZone: "Australia/Adelaide", reportDataStatus: "incomplete",
       dataAsOf: "2026-11-13T01:00:00Z", coverageDays: 21, itemsNeedingOrder: 1,
       dataGapCount: 1, dataGaps: ["Gift card: inventory unavailable"],
+      inventoryGapCount: 1, supplierGapCount: 0,
       top: [{ productId: 501, name: "Beer", unit: "units", suggestedQuantity: 8 }],
     },
   }));
   assert.equal(result?.threadId, "existing-thread");
   assert.equal(result?.cards?.[0].status, "partial");
   assert.match(result?.answer ?? "", /2026-10-01 to 2026-11-13 \(Australia\/Adelaide\)/);
-  assert.match(result?.answer ?? "", /1 products were excluded/);
+  assert.match(result?.answer ?? "", /1 products lack inventory data; 0 lack supplier details/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
   assert.equal(result?.dataAsOf, "2026-11-13T01:00:00Z");
   assert.equal(result?.dataSource, "orithos_ledger");
@@ -104,6 +105,22 @@ test("permission errors have no retry loop", async () => {
   const result = await readOperationsPreview(question, null, undefined, mockFetch({}, 403));
   assert.equal(result?.cards?.[0].status, "unavailable");
   assert.equal(result?.cards?.[0].retryable, false);
+  assert.match(result?.answer ?? "", /do not have permission/);
+});
+
+test("expired sessions and temporary query failures have distinct messages", async () => {
+  const unauthorized = await readOperationsPreview(question, null, undefined, mockFetch({}, 401));
+  const forbidden = await readOperationsPreview(question, null, undefined, mockFetch({
+    code: 40310, message: "You do not have permission to view replenishment data.",
+  }));
+  const unavailable = await readOperationsPreview(question, null, undefined, mockFetch({
+    code: 50321, message: "Replenishment data is temporarily unavailable.",
+  }));
+  assert.match(unauthorized?.answer ?? "", /session has expired/);
+  assert.match(forbidden?.answer ?? "", /do not have permission/);
+  assert.match(unavailable?.answer ?? "", /temporarily/);
+  assert.deepEqual(forbidden?.writeRequests, []);
+  assert.deepEqual(unavailable?.writeRequests, []);
 });
 
 test("sales are read from the calendar week endpoint, preserving currency/refunds", async () => {

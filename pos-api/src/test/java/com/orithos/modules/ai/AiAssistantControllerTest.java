@@ -95,7 +95,7 @@ class AiAssistantControllerTest {
                 "55:7:test-thread", "report_sales", "Sales and gross profit", "Sales for yesterday",
                 java.util.Map.of(), new com.orithos.modules.ai.dto.UiAction(null, null, null, null),
                 null, 91L, java.util.List.of(), java.util.List.of(), "report_sales", "deterministic", false,
-                "2026-11-12T07:30:00+10:30", "orithos", "current_authenticated_store",
+                "2026-11-12T07:30:00+10:30", "orithos_ledger", "current_authenticated_store",
                 "2026-11-11", "2026-11-11", "Australia/Adelaide", "available");
         when(service.ask(eq("What were sales and profit yesterday?"), isNull(), eq(tenant), isNull()))
                 .thenReturn(assistantResult);
@@ -108,7 +108,7 @@ class AiAssistantControllerTest {
         ApiResult<com.orithos.modules.ai.dto.AssistantResponse> result = controller.assistant(
                 new AssistantRequest("What were sales and profit yesterday?", null));
 
-        assertEquals("orithos", result.data().dataSource());
+        assertEquals("orithos_ledger", result.data().dataSource());
         assertEquals("2026-11-11", result.data().reportPeriodFrom());
         assertEquals("2026-11-11", result.data().reportPeriodTo());
         assertEquals("Australia/Adelaide", result.data().reportTimeZone());
@@ -117,7 +117,7 @@ class AiAssistantControllerTest {
         verify(history).appendTurn(eq(tenant), eq("55:7:test-thread"),
                 eq("What were sales and profit yesterday?"), eq("report_sales"), eq("Sales for yesterday"),
                 eq(91L), eq(java.util.Map.of()),
-                eq("deterministic"), eq("2026-11-12T07:30:00+10:30"), eq("orithos"),
+                  eq("deterministic"), eq("2026-11-12T07:30:00+10:30"), eq("orithos_ledger"),
                 eq("current_authenticated_store"), eq("2026-11-11"), eq("2026-11-11"),
                 eq("Australia/Adelaide"), eq("available"));
     }

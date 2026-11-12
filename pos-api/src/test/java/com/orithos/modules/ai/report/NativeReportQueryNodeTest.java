@@ -188,7 +188,7 @@ class NativeReportQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("orithos", result.get("report_data_source"));
+        assertEquals("orithos_ledger", result.get("report_data_source"));
         assertEquals("orithos_template", result.get("sql_path"));
         assertEquals("current_authenticated_store", result.get("report_store_scope"));
         assertNull(result.get("report_data_as_of"));

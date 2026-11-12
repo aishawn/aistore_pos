@@ -229,9 +229,9 @@ const cases = [
   { id: "customer-lookup-conversational-en", question: "Can you find customer Alex Example?", intent: "search_customer", noRoute: true, query: "Alex Example" },
   { id: "customer-lookup-zh", question: "帮我查一下 客户 Alex Example", intent: "search_customer", noRoute: true, query: "Alex Example" },
   { id: "customer-lookup-list-en", question: "Search customers", intent: "search_customer", noRoute: true, query: "" },
-  { id: "supplier-lookup-en", question: "Show me the suppliers", intent: "navigate", route: "/suppliers/odoo" },
-  { id: "supplier-lookup-directory-en", question: "Search supplier directory", intent: "navigate", route: "/suppliers/odoo" },
-  { id: "supplier-lookup-zh", question: "查看供应商列表", intent: "navigate", route: "/suppliers/odoo" },
+  { id: "supplier-lookup-en", question: "Show me the suppliers", intent: "navigate", route: "/suppliers" },
+  { id: "supplier-lookup-directory-en", question: "Search supplier directory", intent: "navigate", route: "/suppliers" },
+  { id: "supplier-lookup-zh", question: "查看供应商列表", intent: "navigate", route: "/suppliers" },
   { id: "order-lookup-en", question: "Open orders", intent: "navigate", route: "/orders" },
   { id: "purchase-order-lookup-en", question: "Show me purchase orders", intent: "navigate", route: "/orders" },
   { id: "purchase-order-lookup-zh", question: "查看采购订单", intent: "navigate", route: "/orders" },
@@ -287,26 +287,26 @@ const cases = [
   { id: "stock-list-zh-no-product", question: "查询库存", intent: "navigate", route: "/stock/list" },
   { id: "date-sales-zh", question: "10月14日销售额", intent: "report_sales" },
   { id: "date-sales-en", question: "sales on 14 October 2026", intent: "report_sales" },
-  { id: "date-sales-screenshot-en", question: "16 Oct 2026 sales", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-takings-en", question: "How much did we take on 16 Oct 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-what-take-en", question: "What did we take on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-made-en", question: "What did we make on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-sell-amount-en", question: "How much did we sell on 16 Oct 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-store-sell-en", question: "How much did the store sell on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-what-sell-en", question: "What did we sell on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-how-were-en", question: "How were sales on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-au-revenue-en", question: "16/10/2026 revenue", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-australian-en", question: "What were our takings on 16/10/2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-revenue-en", question: "Revenue for 16/10/2026", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-turnover-en", question: "16 October 2026 turnover", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-amount-zh", question: "收入多少：2026年10月16日", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-sold-amount-no-currency-zh", question: "10月16日卖了多少？", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-sold-amount-zh", question: "10月16日卖了多少钱", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
-  { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
-  { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
-  { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
-  { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
+  { id: "date-sales-screenshot-en", question: "16 Oct 2026 sales", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-takings-en", question: "How much did we take on 16 Oct 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-what-take-en", question: "What did we take on 16 October 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-made-en", question: "What did we make on 16 October 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-sell-amount-en", question: "How much did we sell on 16 Oct 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-store-sell-en", question: "How much did the store sell on 16 October 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-what-sell-en", question: "What did we sell on 16 October 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-how-were-en", question: "How were sales on 16 October 2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-au-revenue-en", question: "16/10/2026 revenue", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-australian-en", question: "What were our takings on 16/10/2026?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-revenue-en", question: "Revenue for 16/10/2026", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-turnover-en", question: "16 October 2026 turnover", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerRegex: "(?:Sales for 2026-10-16.*AUD|No completed sales found for 2026-10-16)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-amount-zh", question: "收入多少：2026年10月16日", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", answerRegex: "(?:2026-10-16营业额 AUD|2026-10-16没有已完成销售记录)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-sold-amount-no-currency-zh", question: "10月16日卖了多少？", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", answerRegex: "(?:2026-10-16营业额 AUD|2026-10-16没有已完成销售记录)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-sold-amount-zh", question: "10月16日卖了多少钱", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", answerRegex: "(?:2026-10-16营业额 AUD|2026-10-16没有已完成销售记录)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", answerRegex: "(?:2026-10-16营业额 AUD|2026-10-16没有已完成销售记录)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
+  { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
   { id: "sales-paraphrase-revenue-today", question: "What's our revenue today?", intent: "report_sales" },
@@ -372,7 +372,7 @@ const cases = [
   { id: "stock-clarification-see-anything-en", question: "Why can't I see anything?", intent: "qa", noRoute: true, answerIncludes: ["product name", "barcode"] },
   { id: "stock-clarification-see-inventory-en", question: "Why can't I see anything in inventory?", intent: "qa", noRoute: true, answerIncludes: ["product name", "barcode"] },
   { id: "stock-clarification-appears-en", question: "Nothing appears in inventory", intent: "qa", noRoute: true, answerIncludes: ["product name", "barcode"] },
-  { id: "supplier-directory-short-en", question: "Who are our suppliers?", intent: "navigate", route: "/suppliers/odoo" },
+  { id: "supplier-directory-short-en", question: "Who are our suppliers?", intent: "navigate", route: "/suppliers" },
   { id: "help-ai-boundary-zh", question: "AI会直接下单吗", intent: "qa", noRoute: true },
   { id: "help-ai-auto-order-spaced-zh", question: "AI 能自动下采购单吗", intent: "qa", noRoute: true },
   { id: "help-ai-submit-order-zh", question: "AI会提交采购订单吗", intent: "qa", noRoute: true },
@@ -680,7 +680,7 @@ try {
         const noSales = Number(report.transactions) === 0;
         const singlePeriodReport = item.singlePeriodReport === true;
         const salesMatches = noSales
-          ? /no completed sales|均没有已完成销售记录/i.test(answer)
+          ? /no completed sales|(?:均)?没有已完成销售记录/i.test(answer)
           : singlePeriodReport
             ? responseSinglePeriodSales(firstDate) === amount(firstDate, "revenue")
             : responseSales(firstDate) === amount(firstDate, "revenue")
@@ -748,7 +748,7 @@ try {
       && body.code === 0
       && (item.writeGuided ? data.intent === expectedIntent : intentMatches)
       && (item.writeGuided
-        ? (item.route ? route === item.route : ["/customers", "/products", "/invoices", "/orders", "/stock/replenishment", "/stock/capped-pricing", "/suppliers/odoo", "/classifications", "/customer-groups", "/pricelists", "/giftcards", "/stocktake", "/stock/buying-periods", "/customers/balances"].includes(route))
+        ? (item.route ? route === item.route : ["/customers", "/products", "/invoices", "/orders", "/stock/replenishment", "/stock/capped-pricing", "/suppliers", "/classifications", "/customer-groups", "/pricelists", "/giftcards", "/stocktake", "/stock/buying-periods", "/customers/balances"].includes(route))
         : (item.route ? route === item.route : true))
       && (item.noRoute && !item.writeGuided ? route === null : true)
       && (item.query ? query === item.query : true)
@@ -761,6 +761,7 @@ try {
       && reportMetadataCheck
       && writeRequestsCheck;
     const dataUnavailable = !passed && (isDataUnavailableAnswer(answer)
+      && !(item.compareReport && authoritativeReportCheck)
       || (item.intent === "product_count" && productCountCard?.status === "unavailable"));
     const blocked = !passed && (isUnavailable(response.status(), body.code) || dataUnavailable);
     checks.push({
