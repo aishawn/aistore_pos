@@ -26,6 +26,8 @@ public class Order {
     private BigDecimal totalCost;
     private BigDecimal expectedTotal;
     private BigDecimal feePercentage;
+    /** Sum of ordered_cost × ordered_quantity across imported lines (list honesty). */
+    private BigDecimal linesTotalCost;
     private Integer lineCount;
     private Long createdById;
     private Long sentById;

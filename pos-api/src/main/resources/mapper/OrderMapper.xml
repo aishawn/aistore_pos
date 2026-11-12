@@ -20,6 +20,7 @@
         <result property="totalCost" column="total_cost"/>
         <result property="expectedTotal" column="expected_total"/>
         <result property="feePercentage" column="fee_percentage"/>
+        <result property="linesTotalCost" column="lines_total_cost"/>
         <result property="lineCount" column="line_count"/>
         <result property="createdById" column="created_by_id"/>
         <result property="sentById" column="sent_by_id"/>
@@ -36,6 +37,8 @@
     <sql id="listSelect">
         SELECT po.*,
                (SELECT COUNT(*) FROM order_product op WHERE op.order_id = po.id) AS line_count,
+               (SELECT COALESCE(SUM(COALESCE(op.ordered_cost, 0) * COALESCE(op.ordered_quantity, 0)), 0)
+                  FROM order_product op WHERE op.order_id = po.id) AS lines_total_cost,
                COALESCE(sup.name, from_outlet.name) AS from_name,
                CASE
                    WHEN po.type = 'RETURN' THEN to_sup.name
@@ -84,6 +87,12 @@
             </if>
             <if test="q.orderDate != null">
                 AND po.order_date = #{q.orderDate}
+            </if>
+            <if test="q.orderDateFrom != null">
+                AND po.order_date &gt;= #{q.orderDateFrom}
+            </if>
+            <if test="q.orderDateTo != null">
+                AND po.order_date &lt;= #{q.orderDateTo}
             </if>
             <if test="q.dueDate != null">
                 AND po.due_date = #{q.dueDate}

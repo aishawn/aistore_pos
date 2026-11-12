@@ -141,6 +141,186 @@ public class ReportQueryService {
         return result;
     }
 
+    /**
+     * Purchase spend from the native purchase_order ledger (received / partially received
+     * ORDER rows by order_date). Fees/freight/tax stay unavailable until imported reliably —
+     * never invent Shopfront report columns.
+     */
+    public Map<String, Object> nativePurchaseReport(long vendorId, long outletId, LocalDate from, LocalDate to,
+                                                    String groupBy) {
+        requireReportOutlet(vendorId, outletId);
+        String normalizedGroup = normalizePurchaseGroupBy(groupBy);
+        String selectGroup;
+        String groupClause;
+        if ("supplier".equals(normalizedGroup)) {
+            selectGroup = """
+                    po.from_id AS group_id,
+                    COALESCE(sup.name, 'Unknown supplier') AS name,
+                    """;
+            groupClause = "GROUP BY po.from_id, COALESCE(sup.name, 'Unknown supplier')";
+        } else if ("none".equals(normalizedGroup)) {
+            selectGroup = """
+                    CAST(NULL AS BIGINT) AS group_id,
+                    'All received purchase orders' AS name,
+                    """;
+            groupClause = "";
+        } else {
+            selectGroup = """
+                    po.outlet_id AS group_id,
+                    COALESCE(o.name, CONCAT('Outlet ', po.outlet_id)) AS name,
+                    """;
+            groupClause = "GROUP BY po.outlet_id, o.name";
+        }
+        String sql = """
+                SELECT %s
+                       COUNT(*) AS order_count,
+                       COALESCE(SUM(po.total_cost), 0) AS total_cost,
+                       COALESCE(SUM(line.fees_sum), 0) AS fees_sum,
+                       COALESCE(SUM(line.fees_present), 0) AS fees_present,
+                       COALESCE(SUM(line.freight_sum), 0) AS freight_sum,
+                       COALESCE(SUM(line.freight_present), 0) AS freight_present
+                FROM purchase_order po
+                LEFT JOIN supplier sup ON sup.id = po.from_id
+                LEFT JOIN outlet o ON o.id = po.outlet_id
+                LEFT JOIN LATERAL (
+                  SELECT COALESCE(SUM(op.fees), 0) AS fees_sum,
+                         COUNT(op.fees) AS fees_present,
+                         COALESCE(SUM(op.freight), 0) AS freight_sum,
+                         COUNT(op.freight) AS freight_present
+                  FROM order_product op
+                  WHERE op.order_id = po.id
+                ) line ON TRUE
+                WHERE po.outlet_id = ?
+                  AND po.type = 'ORDER'
+                  AND po.status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
+                  AND po.order_date IS NOT NULL
+                  AND po.order_date >= CAST(? AS DATE)
+                  AND po.order_date <= CAST(? AS DATE)
+                %s
+                ORDER BY total_cost DESC NULLS LAST, name ASC
+                """.formatted(selectGroup, groupClause);
+        List<Map<String, Object>> rawRows = jdbc.queryForList(sql, outletId, sqlDate(from), sqlDate(to));
+        boolean feesAvailable = false;
+        boolean freightAvailable = false;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        long orderCount = 0;
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map<String, Object> raw : rawRows) {
+            boolean rowFees = toDecimal(raw.get("fees_present")).signum() > 0;
+            boolean rowFreight = toDecimal(raw.get("freight_present")).signum() > 0;
+            feesAvailable = feesAvailable || rowFees;
+            freightAvailable = freightAvailable || rowFreight;
+            BigDecimal rowCost = toDecimal(raw.get("total_cost")).setScale(2, RoundingMode.HALF_UP);
+            long rowOrders = toDecimal(raw.get("order_count")).longValue();
+            totalCost = totalCost.add(rowCost);
+            orderCount += rowOrders;
+            Map<String, Object> row = new LinkedHashMap<>();
+            Object groupId = raw.get("group_id");
+            row.put("id", groupId == null ? null : toDecimal(groupId).longValue());
+            row.put("name", raw.get("name") == null ? "—" : String.valueOf(raw.get("name")));
+            row.put("orderCount", rowOrders);
+            row.put("totalCost", rowCost);
+            row.put("fees", rowFees ? toDecimal(raw.get("fees_sum")).setScale(2, RoundingMode.HALF_UP) : null);
+            row.put("freight", rowFreight ? toDecimal(raw.get("freight_sum")).setScale(2, RoundingMode.HALF_UP) : null);
+            row.put("paymentFees", null);
+            row.put("taxAmount", null);
+            row.put("feesAvailable", rowFees);
+            row.put("freightAvailable", rowFreight);
+            row.put("paymentFeesAvailable", false);
+            row.put("taxAvailable", false);
+            rows.add(row);
+        }
+        Map<String, Object> totals = new LinkedHashMap<>();
+        totals.put("orderCount", orderCount);
+        totals.put("totalCost", totalCost.setScale(2, RoundingMode.HALF_UP));
+        totals.put("fees", feesAvailable
+                ? rows.stream()
+                    .map(r -> toDecimal(r.get("fees")))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .setScale(2, RoundingMode.HALF_UP)
+                : null);
+        totals.put("freight", freightAvailable
+                ? rows.stream()
+                    .map(r -> toDecimal(r.get("freight")))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .setScale(2, RoundingMode.HALF_UP)
+                : null);
+        totals.put("paymentFees", null);
+        totals.put("taxAmount", null);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source", "orithos_ledger");
+        result.put("from", from.toString());
+        result.put("to", to.toString());
+        result.put("groupBy", normalizedGroup);
+        result.put("timezone", "Australia/Adelaide");
+        result.put("inclusion", "ORDER status RECEIVED or PARTIALLY_RECEIVED by order_date");
+        result.put("rows", rows);
+        result.put("totals", totals);
+        result.put("feesAvailable", feesAvailable);
+        result.put("freightAvailable", freightAvailable);
+        result.put("paymentFeesAvailable", false);
+        result.put("taxAvailable", false);
+        result.put("diagnostics", purchaseSyncDiagnostics(outletId, from, to));
+        result.put("parityNotes", List.of(
+                "Native ledger only — does not proxy Shopfront /reports/purchase.",
+                "Includes received and partially received purchase orders (type ORDER) by order date.",
+                "Fees, freight, payment fees, and tax stay unavailable unless line fees/freight were stored.",
+                "Mirror purchase orders that are not promoted (mapping gaps) are excluded from totals."
+        ));
+        return result;
+    }
+
+    static String normalizePurchaseGroupBy(String groupBy) {
+        if (groupBy == null || groupBy.isBlank()) {
+            return "outlet";
+        }
+        String normalized = groupBy.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "supplier", "none", "outlet" -> normalized;
+            default -> "outlet";
+        };
+    }
+
+    private Map<String, Object> purchaseSyncDiagnostics(long outletId, LocalDate from, LocalDate to) {
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("available", true);
+        try {
+            Long mirror = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM shopfront_purchase_order spo
+                    WHERE spo.store_key IN (
+                      SELECT store_key FROM shopfront_store_mapping
+                      WHERE outlet_id = CAST(? AS VARCHAR)
+                    )
+                    """, Long.class, outletId);
+            Long mapped = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping
+                    WHERE outlet_id = ? AND purchase_order_id > 0
+                    """, Long.class, outletId);
+            Long nativeAll = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM purchase_order
+                    WHERE outlet_id = ? AND type = 'ORDER'
+                    """, Long.class, outletId);
+            Long nativeInRange = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM purchase_order
+                    WHERE outlet_id = ?
+                      AND type = 'ORDER'
+                      AND status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
+                      AND order_date IS NOT NULL
+                      AND order_date >= CAST(? AS DATE)
+                      AND order_date <= CAST(? AS DATE)
+                    """, Long.class, outletId, sqlDate(from), sqlDate(to));
+            diagnostics.put("mirrorPurchaseOrders", mirror == null ? 0 : mirror);
+            diagnostics.put("mappedPurchaseOrders", mapped == null ? 0 : mapped);
+            diagnostics.put("nativePurchaseOrders", nativeAll == null ? 0 : nativeAll);
+            diagnostics.put("nativeReportOrders", nativeInRange == null ? 0 : nativeInRange);
+        } catch (Exception ex) {
+            diagnostics.put("available", false);
+            diagnostics.put("message", "Purchase sync diagnostic tables are unavailable.");
+        }
+        return diagnostics;
+    }
+
     /** Native ledger only, including source sales imported into that ledger. No external fallback. */
     public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);

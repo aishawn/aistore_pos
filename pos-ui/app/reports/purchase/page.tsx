@@ -1,9 +1,6 @@
-import { redirect } from "next/navigation";
+import { NativePurchaseReportPage } from "@/components/NativePurchaseReportPage";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
-/** Purchase report URL folds into purchasing workspace (Shopfront source report API retired). */
+/** Purchase report aggregates Orithos ledger. Shopfront source report API remains retired. */
 export default function PurchaseReportsPage() {
-  redirect("/purchases");
+  return <NativePurchaseReportPage />;
 }

@@ -30,7 +30,7 @@ The owner repeatedly asked to keep the full operational shells for Sell / Stock.
 | `/reports/dashboard` | `NativeReportsDashboardPage` |
 | `/reports/sales` | `NativeSalesReportPage` |
 | `/reports/inventory` | `NativeInventoryReportPage` |
-| `/reports/purchase` | redirect to `/purchases` |
+| `/reports/purchase` | `NativePurchaseReportPage` |
 | `/reports/shopfront/dashboard` | redirect to `/reports/dashboard` |
 
 Keep `pos-ui/src/lib/native-pos-host.ts` with an **empty** `NATIVE_POS_HOSTS` set while sell uses the Odoo register.

@@ -40,6 +40,8 @@ public class OrderController {
                                              @RequestParam(required = false) String invoiceNumber,
                                              @RequestParam(required = false) String reference,
                                              @RequestParam(required = false) LocalDate orderDate,
+                                             @RequestParam(required = false) LocalDate orderDateFrom,
+                                             @RequestParam(required = false) LocalDate orderDateTo,
                                              @RequestParam(required = false) LocalDate dueDate,
                                              @RequestParam(required = false) Long createdById,
                                              @RequestParam(required = false) Long sentById,
@@ -56,6 +58,8 @@ public class OrderController {
         query.setInvoiceNumber(invoiceNumber);
         query.setReference(reference);
         query.setOrderDate(orderDate);
+        query.setOrderDateFrom(orderDateFrom);
+        query.setOrderDateTo(orderDateTo);
         query.setDueDate(dueDate);
         query.setCreatedById(createdById);
         query.setSentById(sentById);

@@ -19,6 +19,8 @@ public class OrderListQuery {
     private String invoiceNumber;
     private String reference;
     private LocalDate orderDate;
+    private LocalDate orderDateFrom;
+    private LocalDate orderDateTo;
     private LocalDate dueDate;
     private Long createdById;
     private Long sentById;

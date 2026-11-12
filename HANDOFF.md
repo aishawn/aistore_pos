@@ -35,6 +35,15 @@ Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/vers
 - **Still open:** finish crawler job 206 + re-clone remaining 37; rematch/promote unmatched Demo sale lines; member pricelist / promotions / gift tenders; Demo cash open→sell→close write UAT; compose `report-worker` Odoo credentials; physical Odoo decommission; triage day-totals `other_sales` INV orphans.
 - Cashiers on NativePosGate vendors `1,55` can list `/api/retail/payment-methods` without `settings.view`.
 
+## Purchase ops vs report (2026-11-12)
+
+- Shopfront splits **Orders** (workflow) and **Purchase Report** (aggregates). Orithos keeps the same split:
+  - `/purchases` = `PurchasingWorkspace` ops shell (orders / invoice scans / suppliers / replenishment).
+  - `/reports/purchase` = `NativePurchaseReportPage` → `GET /api/reports/purchase` on the native ledger.
+- Report inclusion: `type=ORDER` and `status IN (RECEIVED, PARTIALLY_RECEIVED)` by `order_date` (Australia/Adelaide civil dates). Fees / freight / payment fees / tax stay `—` until line fields are stored; do not invent Shopfront report columns.
+- Sync diagnostics on the report response: mirror vs mapped (`purchase_order_id > 0`) vs native counts. Mirror ≫ mapped is expected until product/supplier mapping catch-up; that gap is why list/report totals will not match Shopfront `/reports/purchase` 1:1.
+- Ops list honesty: Shopfront-promoted rows show a hint when header `total_cost` diverges from sum of imported lines.
+
 ## Page audit (this follow-up)
 
 | Page | Live finding before `7043eaf0` | Fix |
@@ -46,6 +55,7 @@ Status after Odoo/Shopfront browser-caller retirement (confirm `/api/public/vers
 | `/customers/[id]/view` | Odoo workspace + Shopfront history tabs | Native `/api/customers/{id}` + recent-sales + revisions |
 | `/products` (owner-locked shell) | Odoo BFF records + Shopfront sections → 410 | `searchOdooRecords` → `/api/products` etc.; Orithos summary sections; create/update via `/api/products` |
 | `/purchases` | Shopfront purchasing archive 403/410 | Removed `ShopfrontPurchasingSection`; Orithos `/api/orders` + `/api/suppliers` |
+| `/reports/purchase` | Redirected to `/purchases` (no aggregate) | `NativePurchaseReportPage` + native purchase aggregate API |
 | `/api/price-lists` | Classic filter 410 | Allowlisted + outlet-scoped controller |
 | Product writes Classic gate | POST `/api/products` → 410 | `OdooOnlyModeFilter` allows full product routes |
 

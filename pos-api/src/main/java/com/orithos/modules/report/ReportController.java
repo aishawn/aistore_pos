@@ -82,6 +82,24 @@ public class ReportController {
         return ApiResult.ok(reportQueryService.nativeSalesHistory(vendorId, outletId, from, to));
     }
 
+    @GetMapping("/purchase")
+    public ApiResult<Map<String, Object>> nativePurchaseReport(@RequestParam LocalDate from,
+                                                                @RequestParam LocalDate to,
+                                                                @RequestParam(defaultValue = "outlet") String groupBy) {
+        permissionAccess.requirePermission("reports.dashboard");
+        Long outletId = CurrentUser.outletId();
+        Long vendorId = CurrentUser.vendorId();
+        if (outletId == null || vendorId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "A store outlet is required.");
+        }
+        if (to.isBefore(from) || ChronoUnit.DAYS.between(from, to) > 800) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 801 days.");
+        }
+        return ApiResult.ok(reportQueryService.nativePurchaseReport(vendorId, outletId, from, to, groupBy));
+    }
+
     @GetMapping("/weekly-sales")
     public ApiResult<List<DailySalesReport>> weeklySales() {
         var tenant = tenantContextFactory.fromSecurity();

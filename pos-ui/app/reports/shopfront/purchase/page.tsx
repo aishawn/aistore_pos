@@ -4,5 +4,5 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default function ShopfrontPurchasePage() {
-  redirect("/purchases");
+  redirect("/reports/purchase");
 }

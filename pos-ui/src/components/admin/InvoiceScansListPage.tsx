@@ -110,10 +110,10 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Documents</p>
-            {!embedded && <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Supplier invoices</h1>}
+            <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Invoice scans</p>
+            {!embedded && <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Invoice scans</h1>}
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
-              Capture → match to Products → confirm PO → receive stock. Scanning alone does not update inventory.
+              Scan supplier invoices → match products → confirm PO → receive stock. This is the OCR workflow, not an accounting purchase report.
             </p>
           </div>
           <Link

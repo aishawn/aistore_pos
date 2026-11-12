@@ -51,7 +51,7 @@ const pages = [
   { path: "/reports/advanced", expect: [/Advanced report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/inventory", expect: [/Inventory report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/misc", expect: [/Miscellaneous report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
-  { path: "/reports/purchase", expect: [/Purchase report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/purchase", expect: [/Purchase report/i, /Orithos ledger/i, /Total cost/i] },
   { path: "/reports/sales", expect: [/Sales report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/transfer", expect: [/Transfer report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/settings/integrations", expect: [/Integrations|Odoo|Connected|auto-reconnect|auto recover/i] },
