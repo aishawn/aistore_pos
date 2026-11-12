@@ -1,4 +1,4 @@
-from app.main import _normalized_customer_group_item, _normalized_customer_item
+from app.main import _normalized_customer_group_item, _normalized_customer_item, _normalized_price_list_item
 from app.models import ShopfrontCustomer
 
 
@@ -9,6 +9,22 @@ def test_normalized_customer_group_item_requires_source_id_and_name():
     }
     assert _normalized_customer_group_item({"id": "g1", "name": "  "}) is None
     assert _normalized_customer_group_item({"name": "Staff Group"}) is None
+
+
+def test_normalized_price_list_item_keeps_rules_and_flags():
+    assert _normalized_price_list_item({
+        "id": "pl-1",
+        "name": "Staff discounts",
+        "allowHigherPrice": True,
+        "items": [{"rule": "FIXED", "amount": 1}],
+    }) == {
+        "source_id": "pl-1",
+        "name": "Staff discounts",
+        "allow_higher_price": True,
+        "allow_discounting_promotions": False,
+        "items": [{"rule": "FIXED", "amount": 1}],
+    }
+    assert _normalized_price_list_item({"id": "pl-1", "name": "  "}) is None
 
 
 def test_normalized_customer_item_flattens_group_without_raw_payload():

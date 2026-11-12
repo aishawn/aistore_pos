@@ -29,6 +29,8 @@ class NativeCustomerImportServiceTest {
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
         when(jdbc.queryForObject(contains("INSERT INTO customer_group"), eq(Long.class), any(Object[].class)))
                 .thenReturn(55L);
+        when(jdbc.queryForObject(contains("INSERT INTO price_list"), eq(Long.class), any(Object[].class)))
+                .thenReturn(88L);
         when(jdbc.queryForObject(contains("INSERT INTO customer ("), eq(Long.class), any(Object[].class)))
                 .thenReturn(321L);
         ObjectMapper mapper = new ObjectMapper();
@@ -108,6 +110,44 @@ class NativeCustomerImportServiceTest {
                 eq("skr"), eq("g1"), eq(87L), eq(701L));
         verify(jdbc).update(contains("INSERT INTO shopfront_customer_group_mapping"),
                 eq("skr"), eq("g2"), eq(87L), eq(702L));
+    }
+
+    @Test
+    void importsPriceListCatalogWithRulesAndProductMapping() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
+            String sql = call.getArgument(0, String.class);
+            if (sql.contains("FROM shopfront_product_mapping")) return List.of(9001L);
+            return List.of();
+        });
+        when(jdbc.queryForObject(contains("INSERT INTO price_list"), eq(Long.class), any(Object[].class)))
+                .thenReturn(501L);
+        var items = new ObjectMapper().readTree("""
+                [{
+                  "source_id":"pl-1",
+                  "name":"Staff discounts",
+                  "allowHigherPrice":true,
+                  "allowDiscountingPromotions":false,
+                  "items":[{
+                    "exclude":false,
+                    "rule":"FIXED",
+                    "amount":9.99,
+                    "item":{"__typename":"Product","id":"sf-product-1","name":"Wine"}
+                  }]
+                }]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importPriceLists("skr", 87, items);
+
+        assertEquals(1, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        assertEquals(1, receipt.get("item_rows"));
+        assertEquals(0, receipt.get("unmatched_items"));
+        assertEquals(true, receipt.get("enabled"));
+        verify(jdbc).update(contains("INSERT INTO shopfront_price_list_mapping"),
+                eq("skr"), eq("pl-1"), eq(87L), eq(501L));
+        verify(jdbc).update(contains("INSERT INTO price_list_item"),
+                eq(501L), eq("PRODUCT"), eq(9001L), eq(0), eq("FIXED"), eq(new BigDecimal("9.99")), eq(87L));
     }
 
     @Test

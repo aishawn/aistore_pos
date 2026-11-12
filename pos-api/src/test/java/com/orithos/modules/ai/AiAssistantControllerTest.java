@@ -116,7 +116,10 @@ class AiAssistantControllerTest {
         assertTrue(result.data().writeRequests().isEmpty());
         verify(history).appendTurn(eq(tenant), eq("55:7:test-thread"),
                 eq("What were sales and profit yesterday?"), eq("report_sales"), eq("Sales for yesterday"),
-                eq(91L), eq(java.util.Map.of()));
+                eq(91L), eq(java.util.Map.of()),
+                eq("deterministic"), eq("2026-11-12T07:30:00+10:30"), eq("orithos"),
+                eq("current_authenticated_store"), eq("2026-11-11"), eq("2026-11-11"),
+                eq("Australia/Adelaide"), eq("available"));
     }
 
     @Test

@@ -3694,6 +3694,23 @@ def _normalized_customer_group_item(source: dict[str, Any]) -> dict[str, Any] | 
     return {"source_id": source_id, "name": name}
 
 
+def _normalized_price_list_item(source: dict[str, Any]) -> dict[str, Any] | None:
+    source_id = str(source.get("id") or source.get("source_id") or "").strip()
+    name = str(source.get("name") or "").strip()
+    if not source_id or not name:
+        return None
+    items = source.get("items")
+    return {
+        "source_id": source_id,
+        "name": name,
+        "allow_higher_price": bool(source.get("allowHigherPrice") or source.get("allow_higher_price") or False),
+        "allow_discounting_promotions": bool(
+            source.get("allowDiscountingPromotions") or source.get("allow_discounting_promotions") or False
+        ),
+        "items": items if isinstance(items, list) else [],
+    }
+
+
 async def run_customers_job(job_id: int) -> None:
     db = next(get_db())
     try:
@@ -3713,13 +3730,14 @@ async def run_customers_job(job_id: int) -> None:
         if settings.pos_import_enabled:
             pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
             try:
-                # Import the Shopfront group catalog first so filter options and
-                # customer assignments resolve even for empty groups.
+                # Import Shopfront group + price-list catalogs first so filter
+                # options and customer assignments resolve even for empty lists.
                 try:
                     token = await access_token(db, settings, store)
                     client = get_client(settings, store)
                     try:
                         group_rows = await client.fetch_customer_groups(token)
+                        price_list_rows = await client.fetch_price_lists(token)
                     finally:
                         await client.close()
                     group_items = [
@@ -3736,8 +3754,31 @@ async def run_customers_job(job_id: int) -> None:
                         if receipt.get("enabled") is not True:
                             raise PosIntegrationError("Customer group import was not acknowledged")
                     job.payload["pos_customer_groups"] = {"count": len(group_items)}
+
+                    price_list_items = [
+                        normalized for source in price_list_rows
+                        if (normalized := _normalized_price_list_item(source)) is not None
+                    ]
+                    for offset in range(0, len(price_list_items), 50):
+                        batch = price_list_items[offset:offset + 50]
+                        response = await pos_client.upsert_price_lists(jsonable_encoder({
+                            "store_key": store.store_key,
+                            "items": batch,
+                        }))
+                        receipt = response.get("data", response)
+                        if receipt.get("enabled") is not True:
+                            raise PosIntegrationError("Price list import was not acknowledged")
+                    job.payload["pos_price_lists"] = {
+                        "count": len(price_list_items),
+                        "item_rows": sum(len(item.get("items") or []) for item in price_list_items),
+                    }
                 except Exception as group_exc:
-                    job.payload["pos_customer_groups"] = {"status": "failed", "error": str(group_exc)[:200]}
+                    job.payload["pos_customer_groups"] = job.payload.get("pos_customer_groups") or {
+                        "status": "failed",
+                        "error": str(group_exc)[:200],
+                    }
+                    if "pos_price_lists" not in job.payload:
+                        job.payload["pos_price_lists"] = {"status": "failed", "error": str(group_exc)[:200]}
                     raise
 
                 customer_rows = db.scalars(
