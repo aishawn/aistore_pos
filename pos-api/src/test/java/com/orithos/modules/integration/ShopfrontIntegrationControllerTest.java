@@ -90,6 +90,32 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void nativePurchaseOrderDataReturnsMappedHeadersAndLinesForTheRequestedOutlet() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("FROM shopfront_store_mapping"), eq("skr")))
+                .thenReturn(List.of(Map.of("outlet_id", 48L, "shopfront_outlet", "skr", "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(*)"), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(contains("FROM shopfront_purchase_order_business_mapping m"), any(Object[].class)))
+                .thenReturn(List.of(new java.util.HashMap<>(Map.of(
+                        "source_id", "po-1", "purchase_order_id", 70L, "mapping_status", "MAPPED",
+                        "status", "SENT", "order_date", "2026-11-12", "total_cost", new BigDecimal("24.00")))));
+        when(jdbc.queryForList(contains("FROM order_product op"), any(Object[].class)))
+                .thenReturn(List.of(new java.util.HashMap<>(Map.of(
+                        "order_id", 70L, "source_product_id", "product-1", "ordered_quantity", new BigDecimal("2.5")))));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        var result = controller.nativeData("token", "skr", "purchase_orders", 1, 100);
+
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) result.data().get("data");
+        assertEquals(1, rows.size());
+        assertEquals("po-1", rows.get(0).get("source_id"));
+        assertEquals("MAPPED", rows.get(0).get("mapping_status"));
+        assertEquals(1, ((List<?>) rows.get(0).get("items")).size());
+        verify(jdbc).queryForList(contains("WHERE m.store_key=? AND m.outlet_id=?"), any(Object[].class));
+    }
+
+    @Test
     void productImportDoesNotPersistSourceMirrorRows() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))

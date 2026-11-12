@@ -1389,8 +1389,8 @@ public class ShopfrontIntegrationController {
         if (page < 1 || size < 1 || size > 500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 500");
         }
-        if (!Set.of("products", "inventory", "sales", "payments").contains(type)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, or payments");
+        if (!Set.of("products", "inventory", "sales", "payments", "purchase_orders").contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, payments, or purchase_orders");
         }
         ensureMappingTable();
         ensureShadowTables();
@@ -1447,6 +1447,23 @@ public class ShopfrontIntegrationController {
                     + "ORDER BY s.external_id, s.id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId};
             rowArgs = new Object[]{outletId, size, (page - 1) * size};
+        } else if ("purchase_orders".equals(type)) {
+            ensurePurchaseOrderBusinessMappingTable();
+            countSql = "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND outlet_id=?";
+            rowsSql = "SELECT m.source_id, m.purchase_order_id, "
+                    + "CASE WHEN m.purchase_order_id=0 THEN 'SKIPPED' "
+                    + "WHEN po.id IS NULL THEN 'BROKEN_MAPPING' ELSE 'MAPPED' END AS mapping_status, "
+                    + "po.status, po.order_date::text AS order_date, po.due_date::text AS due_date, "
+                    + "po.invoice_number, po.reference, sm.source_id AS supplier_source_id, "
+                    + "po.total_cost, po.expected_total, po.line_count "
+                    + "FROM shopfront_purchase_order_business_mapping m "
+                    + "LEFT JOIN purchase_order po ON po.id=m.purchase_order_id AND po.outlet_id=m.outlet_id AND po.type='ORDER' "
+                    + "LEFT JOIN shopfront_supplier_business_mapping sm ON sm.store_key=m.store_key "
+                    + "AND sm.outlet_id=m.outlet_id AND sm.supplier_id=po.from_id "
+                    + "WHERE m.store_key=? AND m.outlet_id=? "
+                    + "ORDER BY m.source_id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{storeKey, outletId};
+            rowArgs = new Object[]{storeKey, outletId, size, (page - 1) * size};
         } else {
             countSql = "SELECT COUNT(*) FROM sale_payment sp JOIN sale s ON s.id=sp.sale_id AND s.outlet_id=sp.outlet_id "
                     + "WHERE s.outlet_id=? AND s.source_system='shopfront'";
@@ -1463,7 +1480,45 @@ public class ShopfrontIntegrationController {
         result.put("type", type);
         result.put("page", page);
         result.put("size", size);
-        result.put("data", jdbc.queryForList(rowsSql, rowArgs));
+        List<Map<String, Object>> data = jdbc.queryForList(rowsSql, rowArgs);
+        if ("purchase_orders".equals(type) && !data.isEmpty()) {
+            List<Long> orderIds = data.stream()
+                    .map(row -> longValue(row.get("purchase_order_id")))
+                    .filter(id -> id != null && id > 0)
+                    .distinct()
+                    .toList();
+            Map<Long, List<Map<String, Object>>> linesByOrder = new HashMap<>();
+            if (!orderIds.isEmpty()) {
+                String placeholders = String.join(",", java.util.Collections.nCopies(orderIds.size(), "?"));
+                List<Object> lineArgs = new ArrayList<>();
+                lineArgs.add(storeKey);
+                lineArgs.add(storeKey);
+                lineArgs.add(outletId);
+                lineArgs.addAll(orderIds);
+                List<Map<String, Object>> lines = jdbc.queryForList(
+                        "SELECT op.order_id, pm.source_product_id, psm.source_id AS supplier_source_id, "
+                                + "op.ordered_quantity, op.received_quantity, op.case_quantity, op.base_cost, op.ordered_cost "
+                                + "FROM order_product op "
+                                + "LEFT JOIN shopfront_product_mapping pm ON pm.store_key=? "
+                                + "AND pm.pos_product_id=op.product_id AND pm.status='MAPPED' "
+                                + "LEFT JOIN shopfront_supplier_business_mapping psm ON psm.store_key=? "
+                                + "AND psm.outlet_id=op.outlet_id AND psm.supplier_id=op.supplier_id "
+                                + "WHERE op.outlet_id=? AND op.order_id IN (" + placeholders + ") "
+                                + "ORDER BY op.order_id, op.id",
+                        lineArgs.toArray());
+                for (Map<String, Object> line : lines) {
+                    Long orderId = longValue(line.remove("order_id"));
+                    if (orderId != null) {
+                        linesByOrder.computeIfAbsent(orderId, ignored -> new ArrayList<>()).add(line);
+                    }
+                }
+            }
+            for (Map<String, Object> row : data) {
+                Long orderId = longValue(row.get("purchase_order_id"));
+                row.put("items", orderId == null ? List.of() : linesByOrder.getOrDefault(orderId, List.of()));
+            }
+        }
+        result.put("data", data);
         result.put("total", total);
         result.put("source_of_truth", "orithos_native_business_tables");
         return ApiResult.ok(result);
