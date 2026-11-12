@@ -4,7 +4,7 @@
 
 失败日志发生于 2026-11-12 23:17 +08。断言在 7 参数历史调用上失败；提交 `7a1d0bb4` 于 23:21 +08 将断言扩展为包含来源、数据时间、门店范围、期间、时区和数据状态的 15 参数调用，当前 `origin/main` 已包含此修正。不能把旧日志当作当前候选的验证结果。
 
-本轮 source base `429ad1ffcff35e7d432c90182c1645ce53ae35df`，工作树含未提交候选；Java `mvn -B clean verify` 未运行。评估器 Node 测试 1/1 PASS，两个脚本 `node --check` PASS，`git diff --check` PASS。客单价新增 Java 用例、完整 Java 21 远程构建、运行 SHA 和线上报表对账均 NOT RUN。详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-aov-integrity.md)。
+候选 `c3afe76c024d73eee60592f1eb4a11829fe91925` 已推送。Java `mvn -B clean verify` 未运行。评估器 Node 测试 1/1 PASS，两个脚本 `node --check` PASS，`git diff --check` PASS。客单价新增 Java 用例和完整 Java 21 构建 NOT RUN；SKR/Demo 公开版本探测超时，运行 SHA、自动部署和线上报表对账未确认。详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-aov-integrity.md)。
 
 更新日期：2026-11-13。本页区分本地候选回归与历史线上证据；候选线上业务测试尚未运行，真实业务写入 0。
 
