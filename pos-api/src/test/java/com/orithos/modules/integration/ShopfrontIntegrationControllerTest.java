@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -363,9 +364,10 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(0, result.get("updated"));
         org.mockito.ArgumentCaptor<Object[]> lineArgs = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).update(contains("INSERT INTO order_product"), lineArgs.capture());
-        assertEquals(new BigDecimal("-3"), lineArgs.getValue()[5]);
-        assertEquals(new BigDecimal("10.12345678"), lineArgs.getValue()[6]);
-        assertEquals(new BigDecimal("20.12345678"), lineArgs.getValue()[7]);
+        assertEquals(BigDecimal.ZERO, lineArgs.getValue()[5]);
+        assertEquals(new BigDecimal("-3"), lineArgs.getValue()[6]);
+        assertEquals(new BigDecimal("10.12345678"), lineArgs.getValue()[7]);
+        assertEquals(new BigDecimal("20.12345678"), lineArgs.getValue()[8]);
         org.mockito.ArgumentCaptor<Object[]> orderArgs = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), orderArgs.capture());
         assertEquals(new BigDecimal("20.12345678"), orderArgs.getValue()[9]);

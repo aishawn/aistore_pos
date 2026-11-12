@@ -56,7 +56,9 @@ public class SettingsImportService {
         }
         Map<String, Object> counts = new LinkedHashMap<>();
         counts.put("company_settings", 0);
-        counts.put("tax_rates", promoteTaxRates(outletId, catalogues.path("tax_rates")));
+        TaxRatePromotionResult taxRateResult = promoteTaxRates(outletId, catalogues.path("tax_rates"));
+        counts.put("tax_rates", taxRateResult.written());
+        counts.put("tax_rates_skipped_missing_amount", taxRateResult.skippedMissingAmount());
         counts.put("payment_methods", promotePaymentMethods(outletId, catalogues.path("payment_methods")));
         counts.put("outlets", 0);
         counts.put("registers", promoteRegisters(outletId, catalogues.path("registers")));
@@ -126,8 +128,9 @@ public class SettingsImportService {
         return removed;
     }
 
-    private int promoteTaxRates(long outletId, JsonNode records) {
+    private TaxRatePromotionResult promoteTaxRates(long outletId, JsonNode records) {
         int written = 0;
+        int skippedMissingAmount = 0;
         Set<String> seen = new HashSet<>();
         for (String name : jdbc.queryForList(
                 "SELECT name FROM tax_rate WHERE deleted_at IS NULL AND outlet_id = ?", String.class, outletId))
@@ -136,11 +139,17 @@ public class SettingsImportService {
             if (raw == null) continue;
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
+            BigDecimal amount = decimal(raw, "amount", null);
+            if (amount == null) amount = decimal(raw, "rate", null);
+            if (amount == null) {
+                skippedMissingAmount++;
+                continue;
+            }
             String key = normalizeName(name);
             if (!seen.add(key)) continue;
             TaxRate t = new TaxRate();
             t.setName(name);
-            t.setAmount(decimal(raw, "amount", raw.has("rate") ? raw.get("rate").decimalValue() : BigDecimal.TEN));
+            t.setAmount(amount);
             boolean hasDefault = Boolean.TRUE.equals(jdbc.queryForObject(
                     "SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL AND is_default = TRUE)",
                     Boolean.class, outletId));
@@ -149,8 +158,10 @@ public class SettingsImportService {
             taxRates.insert(t);
             written++;
         }
-        return written;
+        return new TaxRatePromotionResult(written, skippedMissingAmount);
     }
+
+    private record TaxRatePromotionResult(int written, int skippedMissingAmount) {}
 
     private int promotePaymentMethods(long outletId, JsonNode records) {
         int written = 0;
