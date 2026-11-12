@@ -148,7 +148,13 @@ public final class LegacyApiWriteProtectionFilter extends OncePerRequestFilter {
             return false;
         }
         if (path.equals("/api/registers") || path.startsWith("/api/registers/")) {
-            return false;
+            return !(("GET".equalsIgnoreCase(method)
+                    && (path.equals("/api/registers") || path.matches("/api/registers/[0-9]+")))
+                    || ("POST".equalsIgnoreCase(method) && path.equals("/api/registers"))
+                    || ("PUT".equalsIgnoreCase(method)
+                    && (path.matches("/api/registers/[0-9]+")
+                    || path.matches("/api/registers/[0-9]+/(invoice-number|surcharging)")))
+                    || ("DELETE".equalsIgnoreCase(method) && path.matches("/api/registers/[0-9]+")));
         }
         if (path.equals("/api/receipts") || path.startsWith("/api/receipts/")
                 || path.equals("/api/statements") || path.startsWith("/api/statements/")

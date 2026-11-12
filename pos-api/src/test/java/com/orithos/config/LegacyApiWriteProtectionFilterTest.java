@@ -86,13 +86,30 @@ class LegacyApiWriteProtectionFilterTest {
             assertEquals(200, response.getStatus());
             assertSame(request, (ServletRequest) chain.getRequest());
         }
-        // /api/registers is live for Orithos Settings (Registers & Outlets / surcharging).
-        MockHttpServletRequest registers = new MockHttpServletRequest("GET", "/api/registers");
-        MockHttpServletResponse registersResponse = new MockHttpServletResponse();
-        MockFilterChain registersChain = new MockFilterChain();
-        filter.doFilter(registers, registersResponse, registersChain);
-        assertEquals(200, registersResponse.getStatus());
-        assertSame(registers, (ServletRequest) registersChain.getRequest());
+        for (String[] route : new String[][]{
+                {"GET", "/api/registers"},
+                {"GET", "/api/registers/11"},
+                {"POST", "/api/registers"},
+                {"PUT", "/api/registers/11/surcharging"},
+                {"PUT", "/api/registers/11/invoice-number"},
+                {"DELETE", "/api/registers/11"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus(), route[0] + " " + route[1]);
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+        for (String[] route : new String[][]{
+                {"POST", "/api/registers/11/close"},
+                {"POST", "/api/registers/11/movements"},
+                {"PATCH", "/api/registers/11"}
+        }) {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(new MockHttpServletRequest(route[0], route[1]), response, new MockFilterChain());
+            assertEquals(410, response.getStatus(), route[0] + " " + route[1]);
+        }
 
         for (String[] route : new String[][]{
                 {"GET", "/api/register-closures"},

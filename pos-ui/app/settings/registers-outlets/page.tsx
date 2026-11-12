@@ -19,6 +19,7 @@ export default function RegistersOutletsPage() {
   const [outletName, setOutletName] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerOutletId, setRegisterOutletId] = useState<number | "">("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setError(null);
@@ -41,16 +42,32 @@ export default function RegistersOutletsPage() {
 
   async function addOutlet() {
     if (!canEdit || !outletName.trim()) return;
-    await api.post("/api/outlets", { name: outletName.trim(), vendorId: 1 });
-    setOutletName("");
-    await load();
+    setSaving(true);
+    setError(null);
+    try {
+      await api.post("/api/outlets", { name: outletName.trim() });
+      setOutletName("");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not add outlet");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function addRegister() {
     if (!canEdit || !registerName.trim() || registerOutletId === "") return;
-    await api.post("/api/registers", { name: registerName.trim(), outletId: registerOutletId, closed: false });
-    setRegisterName("");
-    await load();
+    setSaving(true);
+    setError(null);
+    try {
+      await api.post("/api/registers", { name: registerName.trim(), outletId: registerOutletId, closed: false });
+      setRegisterName("");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not add register");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -60,7 +77,7 @@ export default function RegistersOutletsPage() {
       actions={<AdminSecondaryButton onClick={() => void load()}>Refresh</AdminSecondaryButton>}
       toolbar={<StoreSettingsTabs activeHref="/settings/registers-outlets" />}
     >
-      {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4">
           <h2 className="font-semibold">Outlets</h2>
@@ -71,7 +88,7 @@ export default function RegistersOutletsPage() {
           {canEdit && (
             <div className="mt-3 flex gap-2">
               <input className="h-10 flex-1 rounded-lg border px-3" value={outletName} onChange={(e) => setOutletName(e.target.value)} placeholder="New outlet name" />
-              <button type="button" onClick={() => void addOutlet()} className="rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white">Add</button>
+              <button type="button" onClick={() => void addOutlet()} disabled={saving || !outletName.trim()} className="rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50">Add</button>
             </div>
           )}
         </section>
@@ -92,7 +109,7 @@ export default function RegistersOutletsPage() {
               <select className="h-10 rounded-lg border px-3" value={registerOutletId} onChange={(e) => setRegisterOutletId(Number(e.target.value))}>
                 {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
               </select>
-              <button type="button" onClick={() => void addRegister()} className="rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-sm font-semibold text-white">Add register</button>
+              <button type="button" onClick={() => void addRegister()} disabled={saving || !registerName.trim() || registerOutletId === ""} className="rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Add register</button>
             </div>
           )}
         </section>

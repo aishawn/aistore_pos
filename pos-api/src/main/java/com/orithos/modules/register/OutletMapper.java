@@ -25,12 +25,13 @@ public interface OutletMapper {
             + "#{loyaltyName}, #{loyaltyEarnRate}, #{loyaltyRedeemRate}, CASE WHEN #{hasKitchenScreen} THEN 1 ELSE 0 END, #{ticketingPriceSetId})")
     int insert(Outlet o);
 
-    @Update("UPDATE outlet SET name=#{name}, contact_id=#{contactId}, logo=#{logo}, "
-            + "business_number=#{businessNumber}, loyalty_enabled=#{loyaltyEnabled}, loyalty_name=#{loyaltyName}, "
-            + "loyalty_earn_rate=#{loyaltyEarnRate}, loyalty_redeem_rate=#{loyaltyRedeemRate}, "
-            + "has_kitchen_screen=#{hasKitchenScreen}, ticketing_price_set_id=#{ticketingPriceSetId} WHERE id=#{id}")
-    int update(Outlet o);
+    @Update("UPDATE outlet SET name=#{outlet.name}, contact_id=#{outlet.contactId}, logo=#{outlet.logo}, "
+            + "business_number=#{outlet.businessNumber}, loyalty_enabled=#{outlet.loyaltyEnabled}, loyalty_name=#{outlet.loyaltyName}, "
+            + "loyalty_earn_rate=#{outlet.loyaltyEarnRate}, loyalty_redeem_rate=#{outlet.loyaltyRedeemRate}, "
+            + "has_kitchen_screen=#{outlet.hasKitchenScreen}, ticketing_price_set_id=#{outlet.ticketingPriceSetId} "
+            + "WHERE id=#{outlet.id} AND vendor_id=#{vendorId}")
+    int update(@Param("outlet") Outlet outlet, @Param("vendorId") Long vendorId);
 
-    @Update("UPDATE outlet SET deleted_at = NOW() WHERE id=#{id}")
-    int softDelete(Long id);
+    @Update("UPDATE outlet SET deleted_at = NOW() WHERE id=#{id} AND vendor_id=#{vendorId}")
+    int softDelete(@Param("id") Long id, @Param("vendorId") Long vendorId);
 }
