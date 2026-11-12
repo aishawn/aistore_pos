@@ -35,15 +35,19 @@ public class ReplenishmentChatBrief {
         long startedAt = System.nanoTime();
         boolean chinese = isChinese(question);
         if (tenant == null) {
+            logOutcome("tenant_unavailable", 0, startedAt);
             return unavailableMessage(question);
         }
         try {
             ReplenishmentPlan plan = client.plan(tenant);
             if (plan == null) {
+                logOutcome("service_unavailable", 0, startedAt);
                 return unavailableMessage(question);
             }
+            int dataGapCount = plan.dataGaps().size();
             if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())
                     && (plan.top() == null || plan.top().isEmpty())) {
+                logOutcome("incomplete_data", dataGapCount, startedAt);
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
                 return chinese
                         ? "补货建议数据不完整，暂不生成数量：" + gaps + "。数据检查日期："
@@ -53,6 +57,7 @@ public class ReplenishmentChatBrief {
                                 + " UTC. Manual review is required; complete inventory or supplier data and retry.";
             }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
+                logOutcome("success_empty", dataGapCount, startedAt);
                 return chinese
                         ? "当前库存可覆盖目标周期，暂时没有补货数量建议。打开补货页面查看。"
                         : "No restock quantities are suggested right now — forecast stock covers the target window. "
@@ -87,36 +92,57 @@ public class ReplenishmentChatBrief {
                 sb.append(chinese ? "\n\n注意：部分商品因数据缺失未纳入建议：" : "\n\nSome items were excluded because data is missing: ")
                         .append(gaps).append(".");
             }
+            logOutcome(dataGapCount == 0 ? "success" : "partial_data", dataGapCount, startedAt);
             return sb.toString();
         } catch (DataAccessException e) {
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
             String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : null;
-            log.warn("AI replenishment query failed correlationId={} category={} exceptionType={} sqlState={} elapsedMs={}",
-                    CorrelationIdContext.current(), sqlState != null && sqlState.startsWith("08") ? "connection"
-                            : "query", e.getClass().getSimpleName(), sqlState,
-                    (System.nanoTime() - startedAt) / 1_000_000L);
-            return unavailableMessage(question, sqlState);
+            String category = failureCategory(sqlState);
+            log.warn("AI replenishment query failed correlationId={} category={} exceptionType={} sqlState={} dataGapCount=0 elapsedMs={}",
+                    CorrelationIdContext.current(), category, exceptionType(e), sqlState,
+                    elapsedMs(startedAt));
+            return unavailableMessage(question, category);
         } catch (Exception e) {
-            log.warn("AI replenishment failed correlationId={} exceptionType={} elapsedMs={}",
-                    CorrelationIdContext.current(), e.getClass().getSimpleName(),
-                    (System.nanoTime() - startedAt) / 1_000_000L);
+            log.warn("AI replenishment failed correlationId={} category=service exceptionType={} dataGapCount=0 elapsedMs={}",
+                    CorrelationIdContext.current(), exceptionType(e), elapsedMs(startedAt));
             return unavailableMessage(question);
         }
     }
 
-    private static String unavailableMessage(String question, String sqlState) {
-        if (sqlState != null && sqlState.startsWith("42")) {
+    private static String failureCategory(String sqlState) {
+        if ("42501".equals(sqlState)) return "permission";
+        if ("57014".equals(sqlState)) return "timeout";
+        if (sqlState != null && sqlState.startsWith("08")) return "connection";
+        return "query";
+    }
+
+    private static String unavailableMessage(String question, String category) {
+        if ("permission".equals(category)) {
             return isChinese(question)
-                    ? "补货数据权限或查询配置异常，尚未生成建议。请联系管理员检查门店数据访问权限。"
-                    : "Replenishment data access is not configured correctly, so no suggestions were generated. Ask an administrator to check store data permissions.";
+                    ? "当前账号没有权限查询补货数据，尚未生成建议。请联系管理员检查门店权限。"
+                    : "You do not have permission to query replenishment data, so no suggestions were generated. Ask an administrator to check store access.";
         }
-        if ("57014".equals(sqlState)) {
+        if ("timeout".equals(category)) {
             return isChinese(question)
                     ? "补货查询超时，未生成建议。请稍后重试或打开补货页面。"
                     : "The replenishment query timed out, so no suggestions were generated. Retry shortly or open replenishment.";
         }
         return unavailableMessage(question);
+    }
+
+    private static void logOutcome(String category, int dataGapCount, long startedAt) {
+        log.info("AI replenishment brief correlationId={} category={} dataGapCount={} elapsedMs={}",
+                CorrelationIdContext.current(), category, dataGapCount, elapsedMs(startedAt));
+    }
+
+    private static long elapsedMs(long startedAt) {
+        return Math.max(0, (System.nanoTime() - startedAt) / 1_000_000L);
+    }
+
+    private static String exceptionType(Throwable error) {
+        String simpleName = error.getClass().getSimpleName();
+        return simpleName.isBlank() ? error.getClass().getSuperclass().getSimpleName() : simpleName;
     }
 
     private static String unavailableMessage(String question) {

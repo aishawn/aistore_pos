@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantDataAsOf,
-  assistantDataSource,
+  assistantReportDateRange,
   assistantRouteLabel,
   formatAssistantDataAsOf,
   latestReportDataDate,
@@ -32,17 +32,17 @@ test("formats the requested sales range only from valid report slots", () => {
   assert.equal(requestedSalesDateRange("report_stock", { from: "2026-10-29", to: "2026-11-04" }), null);
 });
 
+test("uses the API report period when it is present", () => {
+  assert.equal(assistantReportDateRange("2026-11-10", "2026-11-11"), "2026-11-10 to 2026-11-11");
+  assert.equal(assistantReportDateRange("2026-11-11", "2026-11-11"), "2026-11-11");
+  assert.equal(assistantReportDateRange("bad", "2026-11-11"), null);
+});
+
 test("accepts ISO report dates and rejects impossible calendar dates", () => {
   assert.equal(latestReportDataDate([
     { date: "2026-11-01T00:00:00Z" },
     { date: "2026-02-30" },
   ]), "2026-11-01");
-});
-
-test("does not invent a data source when the API did not return provenance", () => {
-  assert.equal(assistantDataSource("report_sales"), null);
-  assert.equal(assistantDataSource("report_stock"), null);
-  assert.equal(assistantDataSource("report_adhoc"), null);
 });
 
 test("explains routing metadata without presenting it as the data source", () => {

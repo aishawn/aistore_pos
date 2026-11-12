@@ -30,7 +30,7 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
-import { assistantDataAsOf, assistantDataSource, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
+import { assistantDataAsOf, assistantReportDateRange, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -939,18 +939,14 @@ export function SellAiPanel({
             ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
             ...(m.role === "assistant" ? {
               source: m.source ?? null,
-              dataSource: m.dataSource ?? assistantDataSource(m.intent),
+              dataSource: m.dataSource ?? null,
               dataAsOf: assistantDataAsOf(m.dataAsOf),
               storeScope: m.storeScope ?? null,
               reportPeriodFrom: m.reportPeriodFrom ?? null,
               reportPeriodTo: m.reportPeriodTo ?? null,
               reportTimeZone: m.reportTimeZone ?? null,
               reportDataStatus: m.reportDataStatus ?? null,
-              requestedDateRange: m.reportPeriodFrom
-                ? m.reportPeriodTo && m.reportPeriodTo !== m.reportPeriodFrom
-                  ? `${m.reportPeriodFrom} to ${m.reportPeriodTo}`
-                  : m.reportPeriodFrom
-                : null,
+              requestedDateRange: assistantReportDateRange(m.reportPeriodFrom, m.reportPeriodTo),
               suggestedFollowUps: m.suggestedFollowUps ?? null,
               clarificationRequired: m.clarificationRequired === true,
               clarifyingQuestion: m.clarifyingQuestion ?? null,
@@ -1149,10 +1145,15 @@ export function SellAiPanel({
               cards: result.cards ?? null,
               retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
               source: result.source ?? null,
-              dataSource: result.dataSource ?? assistantDataSource(result.intent),
+              dataSource: result.dataSource ?? null,
               storeScope: result.storeScope ?? null,
               dataAsOf: assistantDataAsOf(result.dataAsOf),
-              requestedDateRange: requestedSalesDateRange(result.intent, result.slots),
+              reportPeriodFrom: result.reportPeriodFrom ?? null,
+              reportPeriodTo: result.reportPeriodTo ?? null,
+              reportTimeZone: result.reportTimeZone ?? null,
+              reportDataStatus: result.reportDataStatus ?? null,
+              requestedDateRange: assistantReportDateRange(result.reportPeriodFrom, result.reportPeriodTo)
+                ?? requestedSalesDateRange(result.intent, result.slots),
               suggestedFollowUps: result.suggestedFollowUps ?? null,
               clarificationRequired: result.clarificationRequired === true,
               clarifyingQuestion: result.clarifyingQuestion ?? null,

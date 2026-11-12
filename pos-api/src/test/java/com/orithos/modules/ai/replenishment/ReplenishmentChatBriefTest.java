@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Set;
 import java.time.Instant;
+import java.sql.SQLException;
+
+import org.springframework.dao.DataAccessException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,6 +92,52 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("暂不可用"));
         assertTrue(text.contains("重试"));
+    }
+
+    @Test
+    void databasePermissionFailureIsExplainedWithoutExposingDatabaseDetails() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        DataAccessException failure = new DataAccessException(
+                "database password=must-not-leak", new SQLException("permission denied", "42501")) { };
+        when(client.plan(tenant)).thenThrow(failure);
+
+        String text = new ReplenishmentChatBrief(client).brief("补货建议", tenant);
+
+        assertTrue(text.contains("权限"));
+        assertFalse(text.contains("must-not-leak"));
+        assertFalse(text.contains("permission denied"));
+    }
+
+    @Test
+    void queryConfigurationFailureIsNotMisreportedAsPermissionFailure() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        DataAccessException failure = new DataAccessException(
+                "database password=must-not-leak", new SQLException("syntax error", "42601")) { };
+        when(client.plan(tenant)).thenThrow(failure);
+
+        String text = new ReplenishmentChatBrief(client).brief("补货建议", tenant);
+
+        assertTrue(text.contains("暂不可用"));
+        assertFalse(text.contains("权限"));
+        assertFalse(text.contains("must-not-leak"));
+        assertFalse(text.contains("syntax error"));
+    }
+
+    @Test
+    void queryTimeoutHasAnActionableMessage() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        DataAccessException failure = new DataAccessException(
+                "database password=must-not-leak", new SQLException("statement timeout", "57014")) { };
+        when(client.plan(tenant)).thenThrow(failure);
+
+        String text = new ReplenishmentChatBrief(client).brief("补货建议", tenant);
+
+        assertTrue(text.contains("查询超时"));
+        assertTrue(text.contains("重试"));
+        assertFalse(text.contains("must-not-leak"));
     }
 
     @Test

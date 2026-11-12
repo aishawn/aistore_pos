@@ -25,10 +25,6 @@ function reportDate(value: unknown): string | null {
   return month ? validIsoDate(Number(localized[3]), Number(month), Number(localized[1])) : null;
 }
 
-export function assistantDataSource(_intent: string | null | undefined): string | null {
-  return null;
-}
-
 export function assistantRouteLabel(source: string | null | undefined): string | null {
   if (source === "deterministic") return "Rule-based route";
   if (source === "llm") return "AI-classified route";
@@ -60,6 +56,14 @@ export function requestedSalesDateRange(
   const from = reportDate(slots?.from);
   const to = reportDate(slots?.to);
   if (!from) return to;
+  if (!to || from === to) return from;
+  return `${from} to ${to}`;
+}
+
+export function assistantReportDateRange(fromValue: unknown, toValue: unknown): string | null {
+  const from = reportDate(fromValue);
+  const to = reportDate(toValue);
+  if (!from) return null;
   if (!to || from === to) return from;
   return `${from} to ${to}`;
 }

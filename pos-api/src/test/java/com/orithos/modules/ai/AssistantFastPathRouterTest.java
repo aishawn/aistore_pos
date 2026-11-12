@@ -2,6 +2,8 @@ package com.orithos.modules.ai;
 
 import com.orithos.modules.ai.report.ReportAdhocRouter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -215,6 +217,25 @@ class AssistantFastPathRouterTest {
             assertNotNull(match, question);
             assertEquals("report_sales", match.intent(), question);
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "昨天销售额如何",
+            "昨天销售额如何？",
+            "昨天营业额怎么样",
+            "昨天营业额怎么样？",
+            "昨天的营业额怎么样？",
+            "昨日营业额如何？",
+            "How were yesterday's takings?",
+            "What was our turnover yesterday?"
+    })
+    void routesHighFrequencyYesterdaySalesQuestionsDeterministically(String question) {
+        AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+
+        assertNotNull(match, question);
+        assertEquals("report_sales", match.intent(), question);
+        assertEquals("", match.route(), question);
     }
 
     @Test

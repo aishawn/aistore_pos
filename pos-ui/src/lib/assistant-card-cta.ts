@@ -83,10 +83,6 @@ const workflowLabels: Record<string, string> = {
 
 const INTERNAL_ORIGIN = "https://orithos.invalid";
 const FORBIDDEN_ASSISTANT_ROOTS = new Set(["/admin", "/platform", "/internal", "/debug", "/api"]);
-const odooRouteByLegacyRoot: Record<string, string> = {
-  "/customers": "/customers",
-  "/products": "/products",
-};
 
 export function assistantSaleActionHref(action: string | null | undefined): string {
   const normalized = action?.trim().toLowerCase();
@@ -118,8 +114,7 @@ export function normalizeAssistantHref(value: string | null | undefined): string
       decodedPathname = decoded;
     }
     if (/%[\da-f]{2}/i.test(decodedPathname)) return null;
-    const pathname = odooRouteByLegacyRoot[parsed.pathname] || parsed.pathname;
-    return `${pathname}${parsed.search}${parsed.hash}`;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return null;
   }

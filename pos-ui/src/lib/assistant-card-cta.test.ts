@@ -109,7 +109,7 @@ test("keeps safe internal routes with query and hash", () => {
   assert.equal(normalizeAssistantHref(" /stock/list?search=beer#results "), "/stock/list?search=beer#results");
 });
 
-test("routes assistant product and customer links to Odoo source-of-truth pages", () => {
+test("keeps assistant product and customer links on Orithos pages", () => {
   assert.equal(normalizeAssistantHref("/products"), "/products");
   assert.equal(normalizeAssistantHref("/products?q=shiraz#results"), "/products?q=shiraz#results");
   assert.equal(normalizeAssistantHref("/customers"), "/customers");
