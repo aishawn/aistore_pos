@@ -3159,9 +3159,10 @@ public class ShopfrontIntegrationController {
 
     private Long createTaxRate(String name, long outletId) {
         BigDecimal amount = taxRateAmountFromName(name);
+        Object isDefault = isPostgres() ? Short.valueOf((short) 0) : Boolean.FALSE;
         return jdbc.queryForObject(
-                "INSERT INTO tax_rate (name, amount, is_default, outlet_id) VALUES (?,?,false,?) RETURNING id",
-                Long.class, name, amount, outletId);
+                "INSERT INTO tax_rate (name, amount, is_default, outlet_id) VALUES (?,?,?,?) RETURNING id",
+                Long.class, name, amount, isDefault, outletId);
     }
 
     static BigDecimal taxRateAmountFromName(String name) {

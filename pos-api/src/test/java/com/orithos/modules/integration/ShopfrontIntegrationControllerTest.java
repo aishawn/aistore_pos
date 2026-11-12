@@ -106,6 +106,31 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void createsPostgresTaxRateWithSmallintDefaultFlag() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForObject(contains("INSERT INTO tax_rate"), eq(Long.class), any(Object[].class)))
+                .thenReturn(12L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method createTaxRate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "createTaxRate", String.class, long.class);
+        createTaxRate.setAccessible(true);
+
+        Long id = (Long) createTaxRate.invoke(controller, "GST", 87L);
+
+        assertEquals(12L, id);
+        ArgumentCaptor<Object[]> args = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForObject(contains("INSERT INTO tax_rate"), eq(Long.class), args.capture());
+        assertEquals(Short.valueOf((short) 0), args.getValue()[2]);
+    }
+
+    @Test
     void stagingFailureDoesNotExposeDatabaseErrorDetails() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.update(anyString())).thenThrow(new IllegalStateException("database password=secret"));
