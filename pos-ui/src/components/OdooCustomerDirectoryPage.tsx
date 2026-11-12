@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth";
 import { CustomerLookup } from "@/components/CustomerLookup";
 import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
 import { OdooRecordLink } from "@/components/OdooRecordLink";
+import { FilterMultiSelect } from "@/components/admin/FilterMultiSelect";
+import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useSearchParams } from "next/navigation";
 import { Archive, AlertCircle, Check, Ellipsis, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import {
@@ -37,14 +39,14 @@ function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClea
         <UserRound size={19} aria-hidden="true" />
       </span>
       <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">
-        {searching ? "No customers match this search" : "No customers available"}
+        {searching ? "No customers match these filters" : "No customers available"}
       </p>
       <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">
-        {searching ? "Try another name, phone number, email or customer code." : "Customer records available to this Orithos account will appear here."}
+        {searching ? "Try another search, customer group or price list." : "Customer records available to this Orithos account will appear here."}
       </p>
       {searching && (
         <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
-          Clear search
+          Clear filters
         </button>
       )}
     </div>
@@ -57,8 +59,8 @@ export function OdooCustomerDirectoryPage() {
   const canEdit = hasPermission("customers.edit");
   const canBalance = hasPermission("customers.balances");
   const canGroups = hasPermission("customers.groups");
-  const [groupFilter, setGroupFilter] = useState<number[]>([]);
-  const [includeNoGroup, setIncludeNoGroup] = useState(false);
+  const [groupFilterValues, setGroupFilterValues] = useState<string[]>([]);
+  const [priceListFilter, setPriceListFilter] = useState("");
   const [selectedPriceIds, setSelectedPriceIds] = useState<number[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
@@ -119,6 +121,13 @@ export function OdooCustomerDirectoryPage() {
 
   function clearSearch() {
     setQuery("");
+    setDebouncedQuery("");
+  }
+
+  function clearFilters() {
+    clearSearch();
+    setGroupFilterValues([]);
+    setPriceListFilter("");
   }
 
   useEffect(() => {
@@ -170,13 +179,16 @@ export function OdooCustomerDirectoryPage() {
 
   useEffect(() => { void loadLookups(); }, [loadLookups, refreshKey]);
 
-  const groupIdsParam = (() => {
-    const parts = [
-      ...groupFilter.map(String),
-      ...(includeNoGroup ? ["__none__"] : []),
-    ];
-    return parts.length ? parts.join(",") : undefined;
-  })();
+  const groupIdsParam = groupFilterValues.length ? groupFilterValues.join(",") : undefined;
+  const groupOptions = [
+    { value: "__none__", label: "No Group" },
+    ...groups.map((group) => ({ value: String(group.id), label: group.name })),
+  ];
+  const priceListOptions = [
+    { value: "__none__", label: "No price list" },
+    ...pricelists.map((list) => ({ value: String(list.id), label: list.name })),
+  ];
+  const filtersActive = Boolean(debouncedQuery || groupFilterValues.length || priceListFilter);
 
   const loadCustomers = useCallback(async (append = false) => {
     if (connected !== true) return;
@@ -193,6 +205,7 @@ export function OdooCustomerDirectoryPage() {
         limit: PAGE_SIZE,
         offset,
         groupIds: groupIdsParam,
+        pricelistId: priceListFilter || undefined,
       });
       if (revision !== requestRevision.current) return;
       if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
@@ -206,15 +219,15 @@ export function OdooCustomerDirectoryPage() {
     } finally {
       if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
-  }, [connected, debouncedQuery, groupIdsParam]);
+  }, [connected, debouncedQuery, groupIdsParam, priceListFilter]);
 
   useEffect(() => {
-    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, includeNoGroup]);
+    const filters = JSON.stringify([connected, debouncedQuery, groupFilterValues, priceListFilter]);
     if (loadedFilters.current !== filters) { setItems([]); loadedFilters.current = filters; }
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadCustomers();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadCustomers, refreshKey, connected, debouncedQuery, groupFilter, includeNoGroup]);
+  }, [loadCustomers, refreshKey, connected, debouncedQuery, groupFilterValues, priceListFilter]);
   useEffect(() => {
     const node = sentinel.current; const root = scrollRoot.current;
     if (!node || !root) return;
@@ -321,18 +334,22 @@ export function OdooCustomerDirectoryPage() {
     <main ref={scrollRoot} data-testid="customer-results-scroll" className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain bg-[var(--oh-surface)] px-4 pb-4 md:px-6 md:pb-6">
       <header className="mt-4 flex shrink-0 flex-col items-stretch gap-3 md:mt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            Orithos customer directory{total !== null ? ` · ${total} matching customers` : ""} with groups, contact details and receivable balances.
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
+            {canEdit && <button type="button" onClick={openCreate} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> Add Customer</button>}
+            {canGroups && <button type="button" onClick={() => setGroupsOpen(true)} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Manage groups</button>}
+            <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={resultsBusy} aria-label="Refresh customers" title="Refresh customers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
+              {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+            Customer directory for this store.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {canEdit && <button type="button" onClick={openCreate} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>}
-          {canGroups && <button type="button" onClick={() => setGroupsOpen(true)} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Manage groups</button>}
-          <button type="button" onClick={() => { clearNativeReadCache(); setRefreshKey((value) => value + 1); }} disabled={resultsBusy} aria-label="Refresh customers" title="Refresh customers" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-            {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
-          </button>
+        <div className="shrink-0 text-right" aria-live="polite">
+          <p className="text-3xl font-bold tabular-nums leading-none text-[var(--oh-text)]">{loading && items.length === 0 ? "—" : (total ?? items.length).toLocaleString("en-AU")}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Results</p>
         </div>
       </header>
 
@@ -352,25 +369,37 @@ export function OdooCustomerDirectoryPage() {
         </section>
       ) : (
         <>
-          <label className="flex h-11 w-full shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
-            <Search size={17} className="text-[var(--oh-muted)]" />
-            <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Customers..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
-          </label>
-          <div className="grid max-w-xl gap-3">
-            <CustomerLookup
-              kind="groups"
-              label="Customer Group"
-              multiple
-              includeNone
-              noneSelected={includeNoGroup}
-              onNoneChange={setIncludeNoGroup}
-              values={groupFilter}
-              onChange={setGroupFilter}
-              initialOptions={groups}
-            />
+          <div className="flex shrink-0 flex-col gap-3">
+            <label className="flex h-11 w-full items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+              <Search size={17} className="text-[var(--oh-muted)]" />
+              <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Customers..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            </label>
+            <div className="grid items-end gap-3 sm:grid-cols-2 lg:max-w-3xl">
+              <FilterMultiSelect
+                label="Customer Group"
+                placeholder="Select..."
+                options={groupOptions}
+                values={groupFilterValues}
+                onChange={setGroupFilterValues}
+              />
+              <FilterSelect
+                label="Price List"
+                placeholder="Select..."
+                options={priceListOptions}
+                value={priceListFilter}
+                onChange={setPriceListFilter}
+              />
+            </div>
+            {filtersActive && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={clearFilters} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+                  <X size={14} /> Clear filters
+                </button>
+              </div>
+            )}
           </div>
           {resultsBusy && items.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer results…"} Existing rows are temporarily read-only.</p>}
-          {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Group assignment may be limited until this recovers.</div>}
+          {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Group and price-list filters may be incomplete until this recovers.</div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearNativeReadCache(); void loadCustomers(failedAppend.current); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section aria-busy={resultsBusy} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
@@ -391,7 +420,7 @@ export function OdooCustomerDirectoryPage() {
                     <td colSpan={canBalance ? 6 : 5} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /></td>
                   </tr>
                 )) : items.length === 0 ? (
-                  <tr><td colSpan={canBalance ? 6 : 5} className="p-0"><CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} /></td></tr>
+                  <tr><td colSpan={canBalance ? 6 : 5} className="p-0"><CustomerEmptyState searching={filtersActive} onClear={clearFilters} /></td></tr>
                 ) : items.map((customer) => {
                   const points = customer.performance_30d ?? [];
                   const units = points.reduce((sum, point) => sum + (Number(point) || 0), 0);
@@ -420,7 +449,7 @@ export function OdooCustomerDirectoryPage() {
               {loading && items.length === 0 ? (
                 <p className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading customers…</p>
               ) : items.length === 0 ? (
-                <CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} />
+                <CustomerEmptyState searching={filtersActive} onClear={clearFilters} />
               ) : items.map((customer) => {
                 const points = customer.performance_30d ?? [];
                 const units = points.reduce((sum, point) => sum + (Number(point) || 0), 0);

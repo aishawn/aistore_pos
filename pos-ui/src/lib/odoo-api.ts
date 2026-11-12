@@ -964,7 +964,7 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
 /** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; groupIds?: string; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
+  options: { groupId?: number; groupIds?: string; pricelistId?: number | string; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
   if (type === "customers") {
     const pageNumber = Math.floor((options.offset ?? 0) / (options.limit ?? 40)) + 1;
