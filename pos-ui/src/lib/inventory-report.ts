@@ -82,17 +82,20 @@ export function splitCaseItemLevels(
 
 /**
  * Shopfront Value (Inc) (Last) = case_cost × (case_level + item_level / case_qty).
- * Orithos `cost` is unit cost, so value = unit_cost × stock_quantity.
+ * Orithos `cost` is the case cost, matching Shopfront's last cost.
  */
 export function inventoryValueIncLast(
   stockQuantity?: number | null,
-  unitCost?: number | null,
+  caseCost?: number | null,
+  caseQuantity?: number | null,
 ): number | null {
-  if (stockQuantity == null || unitCost == null) return null;
+  if (stockQuantity == null || caseCost == null) return null;
   const stock = Number(stockQuantity);
-  const cost = Number(unitCost);
+  const cost = Number(caseCost);
+  const pack = Number(caseQuantity);
   if (!Number.isFinite(stock) || !Number.isFinite(cost)) return null;
-  return Math.round(stock * cost * 100) / 100;
+  const units = Number.isFinite(pack) && pack > 0 ? stock / pack : stock;
+  return Math.round(units * cost * 100) / 100;
 }
 
 export function toOnHandRow(product: OnHandProductSource): OnHandRow {
@@ -113,7 +116,7 @@ export function toOnHandRow(product: OnHandProductSource): OnHandRow {
     caseQuantity: normalizedCaseQty,
     caseLevel,
     itemLevel,
-    valueIncLast: inventoryValueIncLast(stockQuantity, product.cost),
+    valueIncLast: inventoryValueIncLast(stockQuantity, product.cost, normalizedCaseQty),
     stockQuantity,
   };
 }

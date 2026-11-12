@@ -222,7 +222,7 @@
         <include refid="filters"/>
     </select>
 
-    <!-- Full-catalog Case/Item/Value totals; mirrors UI splitCaseItemLevels + unit_cost×stock. -->
+    <!-- Full-catalog Case/Item/Value totals; mirrors Shopfront case-cost valuation. -->
     <select id="onHandSummary" resultType="com.orithos.modules.product.ProductOnHandSummary">
         SELECT COUNT(*) AS productCount,
                COALESCE(SUM(
@@ -240,9 +240,13 @@
                        ELSE COALESCE(inv.total_qty, 0)
                    END
                ), 0) AS itemLevelTotal,
-               COALESCE(SUM(
-                   ROUND(COALESCE(inv.total_qty, 0) * COALESCE(p.cost, 0), 2)
-               ), 0) AS valueIncLastTotal
+               ROUND(COALESCE(SUM(
+                   COALESCE(p.cost, 0) *
+                   CASE WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
+                        THEN COALESCE(inv.total_qty, 0) / p.case_quantity
+                        ELSE COALESCE(inv.total_qty, 0)
+                   END
+               ), 0), 2) AS valueIncLastTotal
         FROM product p
         <include refid="inventoryJoin"/>
         <include refid="filters"/>

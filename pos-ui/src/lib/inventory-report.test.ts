@@ -94,10 +94,10 @@ test("case/item split matches Shopfront levels including negative remainders", (
   assert.deepEqual(splitCaseItemLevels(null, 12), { caseLevel: null, itemLevel: null });
 });
 
-test("value (inc) (last) uses Orithos unit cost × stock units", () => {
-  assert.equal(inventoryValueIncLast(11 * 24 + 14, 1.5), 417);
-  assert.equal(inventoryValueIncLast(0, 12), 0);
-  assert.equal(inventoryValueIncLast(3, null), null);
+test("value (inc) (last) uses Orithos case cost × case-equivalent stock", () => {
+  assert.equal(inventoryValueIncLast(11 * 24 + 14, 1.5, 24), 17.38);
+  assert.equal(inventoryValueIncLast(0, 12, 6), 0);
+  assert.equal(inventoryValueIncLast(3, null, 6), null);
 });
 
 test("on-hand rows sort and group like the Shopfront inventory report", () => {
@@ -107,7 +107,7 @@ test("on-hand rows sort and group like the Shopfront inventory report", () => {
   ];
   assert.equal(rows[0].caseLevel, 1);
   assert.equal(rows[0].itemLevel, 1);
-  assert.equal(rows[0].valueIncLast, 70);
+  assert.equal(rows[0].valueIncLast, 11.67);
   assert.deepEqual(sortOnHandRows(rows, "name", "asc").map((row) => row.id), ["1", "2"]);
   assert.deepEqual(groupOnHandRows(rows, "category").map((group) => group.label), ["Beer", "Spirits"]);
 });
@@ -131,7 +131,7 @@ test("footer totals sum case level, item level, and value", () => {
     toOnHandRow({ id: 1, name: "A", caseQuantity: 24, stockQuantity: 50, cost: 2 }),
     toOnHandRow({ id: 2, name: "B", caseQuantity: 6, stockQuantity: 7, cost: 10 }),
   ];
-  assert.deepEqual(onHandFooterTotals(rows), { caseLevel: 3, itemLevel: 3, valueIncLast: 170 });
+  assert.deepEqual(onHandFooterTotals(rows), { caseLevel: 3, itemLevel: 3, valueIncLast: 15.84 });
 });
 
 test("summary API payload maps to full-catalog footer totals", () => {
