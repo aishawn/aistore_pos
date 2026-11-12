@@ -102,7 +102,7 @@ public class ShopfrontIntegrationController {
             ObjectMapper objectMapper,
             String token,
             boolean enabled) {
-        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc),
                 new NativeCustomerImportService(jdbc), token, enabled, false);
     }
 
@@ -112,7 +112,7 @@ public class ShopfrontIntegrationController {
             String token,
             boolean enabled,
             boolean businessWriteEnabled) {
-        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc, objectMapper),
+        this(jdbc, objectMapper, new ShopfrontNativeSaleImporter(jdbc),
                 new NativeCustomerImportService(jdbc), token, enabled, businessWriteEnabled);
     }
 
@@ -176,9 +176,8 @@ public class ShopfrontIntegrationController {
      * its own POS product. Keeps one mapping per shared pos_product_id, unmaps the
      * extras, then re-imports them from {@code shopfront_product.raw_payload}.
      */
-    @PostMapping("/products:split-aliases")
     @Transactional
-    public ApiResult<Map<String, Object>> splitProductAliases(
+    private ApiResult<Map<String, Object>> legacySplitProductAliases(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) throws Exception {
         authorize(supplied);
@@ -289,7 +288,7 @@ public class ShopfrontIntegrationController {
                 }
             }
         }
-        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false);
+        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false, null);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", store);
         result.put("shared_alias_extras", extras.size());
@@ -313,9 +312,8 @@ public class ShopfrontIntegrationController {
      * Re-import UNMAPPED Shopfront products from {@code shopfront_product.raw_payload}
      * after tax/case validation fixes. Idempotent: already-mapped source ids stay mapped.
      */
-    @PostMapping("/products:import-unmapped")
     @Transactional
-    public ApiResult<Map<String, Object>> importUnmappedProducts(
+    private ApiResult<Map<String, Object>> legacyImportUnmappedProducts(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) throws Exception {
         authorize(supplied);
@@ -389,7 +387,7 @@ public class ShopfrontIntegrationController {
                 }
             }
         }
-        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false);
+        Map<String, Object> imported = importBusiness("products", store, mapping, items, false, false, null);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", store);
         result.put("unmapped", unmapped.size());
@@ -412,9 +410,8 @@ public class ShopfrontIntegrationController {
      * Idempotent backfill of {@code product_supplier} / {@code product.core_supplier_id}
      * from mirrored Shopfront catalog payloads that already carry supplier fields.
      */
-    @PostMapping("/products:link-suppliers")
     @Transactional
-    public ApiResult<Map<String, Object>> linkProductSuppliers(
+    private ApiResult<Map<String, Object>> legacyLinkProductSuppliers(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) throws Exception {
         authorize(supplied);
@@ -515,8 +512,7 @@ public class ShopfrontIntegrationController {
      * One-shot promotion of durable {@code shopfront_sale*} rows into the native
      * {@code sale}/{@code sale_item} ledger for mapped outlets (no stock moves).
      */
-    @GetMapping("/sales:native-day-totals")
-    public ApiResult<Map<String, Object>> nativeDayTotals(
+    private ApiResult<Map<String, Object>> legacyNativeDayTotals(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestParam String day) {
         authorize(supplied);
@@ -609,8 +605,7 @@ public class ShopfrontIntegrationController {
     /**
      * Diagnose Adelaide-day parity between mirror {@code shopfront_sale} and native {@code sale}.
      */
-    @GetMapping("/sales:native-day-diff")
-    public ApiResult<Map<String, Object>> nativeDayDiff(
+    private ApiResult<Map<String, Object>> legacyNativeDayDiff(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestParam String day,
             @RequestParam(required = false) String store_key) {
@@ -834,8 +829,7 @@ public class ShopfrontIntegrationController {
         return ApiResult.ok(result);
     }
 
-    @PostMapping("/sales:promote-native")
-    public ApiResult<Map<String, Object>> promoteNativeSales(
+    private ApiResult<Map<String, Object>> legacyPromoteNativeSales(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody(required = false) JsonNode body) {
         authorize(supplied);
@@ -939,9 +933,8 @@ public class ShopfrontIntegrationController {
      * {@code purchase_order} / {@code order_product} for one store. Batched so
      * callers can loop without gateway timeouts. Requires business-write.
      */
-    @PostMapping("/purchase-orders:promote-native")
     @Transactional
-    public ApiResult<Map<String, Object>> promotePurchaseOrders(
+    private ApiResult<Map<String, Object>> legacyPromotePurchaseOrders(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody(required = false) JsonNode body) {
         authorize(supplied);
@@ -1072,9 +1065,8 @@ public class ShopfrontIntegrationController {
      * for a single Adelaide business day. Used to repair stale Demo mirror rows without
      * a full {@code mirror:copy} (which can gateway-timeout).
      */
-    @PostMapping("/mirror:sync-sale-money")
     @Transactional
-    public ApiResult<Map<String, Object>> syncMirrorSaleMoney(
+    private ApiResult<Map<String, Object>> legacySyncMirrorSaleMoney(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) {
         authorize(supplied);
@@ -1151,9 +1143,8 @@ public class ShopfrontIntegrationController {
         return ApiResult.ok(result);
     }
 
-    @PostMapping("/mirror:copy")
     @Transactional
-    public ApiResult<Map<String, Object>> copyShopfrontMirror(
+    private ApiResult<Map<String, Object>> legacyCopyShopfrontMirror(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) {
         authorize(supplied);
@@ -1228,35 +1219,11 @@ public class ShopfrontIntegrationController {
     }
 
     @PostMapping("/extended:upsert")
-    @Transactional
     public ApiResult<Map<String, Object>> extendedRecords(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                            @RequestBody JsonNode body) {
         authorize(supplied);
-        String store = body.path("store_key").asText("").trim();
-        String entityType = body.path("entity_type").asText("").trim();
-        JsonNode items = body.path("items");
-        if (store.isBlank() || !entityType.matches("[a-z][a-z0-9_]{0,63}") || !items.isArray() || items.size() > 200) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "store_key, entity_type and up to 200 items are required");
-        }
-        try {
-            ensureShadowTables();
-            boolean postgres = isPostgres();
-            String sql = postgres
-                    ? "INSERT INTO shopfront_extended_record (store_key,entity_type,source_id,raw_payload) VALUES (?,?,?,?) ON CONFLICT (store_key,entity_type,source_id) DO UPDATE SET raw_payload=EXCLUDED.raw_payload,synced_at=CURRENT_TIMESTAMP"
-                    : "INSERT INTO shopfront_extended_record (store_key,entity_type,source_id,raw_payload) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE raw_payload=VALUES(raw_payload),synced_at=CURRENT_TIMESTAMP";
-            int accepted = 0;
-            for (JsonNode item : items) {
-                String sourceId = text(item, "source_id");
-                if (sourceId == null || sourceId.isBlank() || sourceId.length() > 192) continue;
-                JsonNode raw = item.path("raw_payload").isMissingNode() ? item : item.path("raw_payload");
-                jdbc.update(sql, store, entityType, sourceId, objectMapper.writeValueAsString(raw));
-                accepted++;
-            }
-            return ApiResult.ok(Map.of("status", "STAGED", "entity_type", entityType, "item_count", accepted, "business_write", false));
-        } catch (Exception e) {
-            log.error("Shopfront extended staging failed: entity_type={}, store={}, message={}", entityType, store, e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront extended records", e);
-        }
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "Shopfront source records are owned by CRAWL_DATABASE_URL; use settings:import for native POS settings");
     }
 
     @GetMapping("/snapshot")
@@ -1264,19 +1231,8 @@ public class ShopfrontIntegrationController {
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestParam String storeKey) {
         authorize(supplied);
-        ensureShadowTables();
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("store_key", storeKey);
-        result.put("products", count("shopfront_product", storeKey));
-        result.put("inventory", count("shopfront_inventory", storeKey));
-        result.put("sales", count("shopfront_sale", storeKey));
-        result.put("sale_items", count("shopfront_sale_item", storeKey));
-        result.put("payments", count("shopfront_sale_payment", storeKey));
-        result.put("suppliers", count("shopfront_supplier", storeKey));
-        result.put("customers", count("shopfront_customer", storeKey));
-        result.put("purchase_orders", count("shopfront_purchase_order", storeKey));
-        result.put("extended_records", count("shopfront_extended_record", storeKey));
-        return ApiResult.ok(result);
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "Shopfront source snapshots are owned by CRAWL_DATABASE_URL");
     }
 
     @GetMapping("/data")
@@ -1287,39 +1243,81 @@ public class ShopfrontIntegrationController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "100") int size) {
         authorize(supplied);
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "Shopfront source records are owned by CRAWL_DATABASE_URL; use native-data for POS business rows");
+    }
+
+    @GetMapping("/native-data")
+    public ApiResult<Map<String, Object>> nativeData(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String storeKey,
+            @RequestParam String type,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        authorize(supplied);
+        if (!STORE_KEY.matcher(storeKey).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid storeKey is required");
+        }
         if (page < 1 || size < 1 || size > 500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 500");
         }
-        String table = switch (type) {
-            case "products" -> "shopfront_product";
-            case "inventory" -> "shopfront_inventory";
-            case "sales" -> "shopfront_sale";
-            case "sale_items" -> "shopfront_sale_item";
-            case "payments" -> "shopfront_sale_payment";
-            case "suppliers" -> "shopfront_supplier";
-            case "customers" -> "shopfront_customer";
-            case "purchase_orders" -> "shopfront_purchase_order";
-            case "extended_records" -> "shopfront_extended_record";
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
-        };
-        String orderBy = switch (type) {
-            case "products", "suppliers", "customers", "purchase_orders" -> "source_id ASC";
-            case "inventory" -> "source_product_id ASC, outlet_id ASC";
-            case "sales" -> "external_id ASC";
-            case "sale_items" -> "external_sale_id ASC, line_key ASC";
-            case "payments" -> "external_sale_id ASC, payment_key ASC";
-            case "extended_records" -> "entity_type ASC, source_id ASC";
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown Shopfront data type");
-        };
+        if (!Set.of("products", "inventory").contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products or inventory");
+        }
+        ensureMappingTable();
         ensureShadowTables();
-        int offset = (page - 1) * size;
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id, shopfront_outlet, enabled FROM shopfront_store_mapping WHERE store_key = ?",
+                storeKey);
+        Map<String, Object> mapping = mappings.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No enabled POS outlet mapping for store_key=" + storeKey));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "POS outlet mapping has no numeric outlet_id");
+        }
+
+        String countSql;
+        String rowsSql;
+        Object[] countArgs;
+        Object[] rowArgs;
+        if ("products".equals(type)) {
+            countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product p "
+                    + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED'";
+            rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.sku,p.status "
+                    + "FROM shopfront_product_mapping m JOIN product p "
+                    + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED' "
+                    + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId, storeKey};
+            rowArgs = new Object[]{outletId, storeKey, size, (page - 1) * size};
+        } else {
+            countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product_inventory pi "
+                    + "ON pi.product_id=m.pos_product_id AND pi.outlet_id=? "
+                    + "JOIN product p ON p.id=pi.product_id AND p.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED'";
+            rowsSql = "SELECT m.source_product_id AS source_product_id, "
+                    + "COALESCE(NULLIF(?, ''), CAST(? AS VARCHAR)) AS outlet_id, pi.quantity "
+                    + "FROM shopfront_product_mapping m JOIN product_inventory pi "
+                    + "ON pi.product_id=m.pos_product_id AND pi.outlet_id=? "
+                    + "JOIN product p ON p.id=pi.product_id AND p.deleted_at IS NULL "
+                    + "WHERE m.store_key=? AND m.status='MAPPED' "
+                    + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId, storeKey};
+            rowArgs = new Object[]{mapping.get("shopfront_outlet"), outletId, outletId, storeKey, size, (page - 1) * size};
+        }
+        int total = jdbc.queryForObject(countSql, Integer.class, countArgs);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
         result.put("type", type);
         result.put("page", page);
         result.put("size", size);
-        result.put("data", jdbc.queryForList("SELECT * FROM " + table + " WHERE store_key = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?", storeKey, size, offset));
-        result.put("total", count(table, storeKey));
+        result.put("data", jdbc.queryForList(rowsSql, rowArgs));
+        result.put("total", total);
+        result.put("source_of_truth", "orithos_native_business_tables");
         return ApiResult.ok(result);
     }
 
@@ -1328,77 +1326,7 @@ public class ShopfrontIntegrationController {
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestParam String storeKey) {
         authorize(supplied);
-        ensureShadowTables();
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("store_key", storeKey);
-        Map<String, Object> productStats = jdbc.queryForMap("""
-                SELECT COUNT(*) AS products,
-                       COALESCE(SUM(CASE WHEN sp.name IS NULL OR TRIM(sp.name) = '' THEN 1 ELSE 0 END), 0) AS products_missing_name,
-                       COALESCE(SUM(CASE WHEN sp.barcode IS NOT NULL AND EXISTS (
-                           SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
-                       ) THEN 1 ELSE 0 END), 0) AS barcode_matched,
-                       COALESCE(SUM(CASE WHEN sp.barcode IS NULL OR NOT EXISTS (
-                           SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
-                       ) THEN 1 ELSE 0 END), 0) AS barcode_unmatched,
-                       (SELECT COUNT(*) FROM shopfront_product_mapping pm
-                        WHERE pm.store_key = ? AND pm.status = 'MAPPED') AS manually_mapped,
-                       COALESCE(SUM(CASE WHEN NOT EXISTS (
-                           SELECT 1 FROM shopfront_product_mapping pm
-                           WHERE pm.store_key = sp.store_key
-                             AND pm.source_product_id = sp.source_id
-                             AND pm.status = 'MAPPED'
-                       ) THEN 1 ELSE 0 END), 0) AS products_unmapped
-                FROM shopfront_product sp
-                WHERE sp.store_key = ?
-                """, storeKey, storeKey);
-        result.put("products", statisticCount(productStats, "products"));
-        result.put("products_missing_name", statisticCount(productStats, "products_missing_name"));
-        result.put("barcode_matched", statisticCount(productStats, "barcode_matched"));
-        result.put("barcode_unmatched", statisticCount(productStats, "barcode_unmatched"));
-        result.put("manually_mapped", statisticCount(productStats, "manually_mapped"));
-        result.put("products_unmapped", statisticCount(productStats, "products_unmapped"));
-        result.put("sales_with_unmatched_items", jdbc.queryForObject("""
-                WITH unmatched_products AS (
-                    SELECT sp.source_id
-                    FROM shopfront_product sp
-                    WHERE sp.store_key = ?
-                      AND NOT EXISTS (
-                          SELECT 1 FROM shopfront_product_mapping pm
-                          WHERE pm.store_key = sp.store_key
-                            AND pm.source_product_id = sp.source_id
-                            AND pm.status = 'MAPPED'
-                      )
-                      AND (sp.barcode IS NULL OR NOT EXISTS (
-                          SELECT 1 FROM product_barcode pb WHERE pb.code = sp.barcode
-                      ))
-                ), unmatched_sales AS (
-                    SELECT DISTINCT si.external_sale_id
-                    FROM shopfront_sale_item si
-                    JOIN unmatched_products up ON up.source_id = si.source_product_id
-                    WHERE si.store_key = ?
-                    UNION
-                    SELECT DISTINCT si.external_sale_id
-                    FROM shopfront_sale_item si
-                    WHERE si.store_key = ?
-                      AND (si.source_product_id IS NULL OR TRIM(si.source_product_id) = '')
-                )
-                SELECT COUNT(*)
-                FROM unmatched_sales us
-                JOIN shopfront_sale ss
-                  ON ss.store_key = ? AND ss.external_id = us.external_sale_id
-                """, Integer.class, storeKey, storeKey, storeKey, storeKey));
-        Map<String, Object> saleItemStats = jdbc.queryForMap("""
-                SELECT COALESCE(SUM(CASE WHEN product_name IS NULL OR TRIM(product_name) = '' THEN 1 ELSE 0 END), 0) AS sale_items_missing_name,
-                       COALESCE(SUM(CASE WHEN source_product_id IS NULL OR TRIM(source_product_id) = '' THEN 1 ELSE 0 END), 0) AS sale_items_missing_source_product
-                FROM shopfront_sale_item
-                WHERE store_key = ?
-                """, storeKey);
-        result.put("sale_items_missing_name", statisticCount(saleItemStats, "sale_items_missing_name"));
-        result.put("sale_items_missing_source_product", statisticCount(saleItemStats, "sale_items_missing_source_product"));
-        result.put("inventory_outlets", jdbc.queryForObject(
-                "SELECT COUNT(DISTINCT outlet_id) FROM shopfront_inventory WHERE store_key = ?",
-                Integer.class, storeKey));
-        return ApiResult.ok(result);
+        return gone("Shopfront matching diagnostics are owned by the crawler; use crawler coverage and native-data reconciliation");
     }
 
     private static int statisticCount(Map<String, Object> statistics, String name) {
@@ -1431,8 +1359,7 @@ public class ShopfrontIntegrationController {
      * {@code source_barcodes}) and {@code limit} (default 1500) and loop until
      * {@code more=false} for each phase.
      */
-    @PostMapping("/product-mappings:clone")
-    public ApiResult<Map<String, Object>> cloneProductMappings(
+    private ApiResult<Map<String, Object>> legacyCloneProductMappings(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
             @RequestBody JsonNode body) {
         authorize(supplied);
@@ -1513,22 +1440,13 @@ public class ShopfrontIntegrationController {
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("store_key", storeKey);
-        result.put("products", count("shopfront_product", storeKey));
         Integer mapped = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_product_mapping WHERE store_key = ? AND status = 'MAPPED'",
                 Integer.class, storeKey);
         result.put("products_mapped", mapped == null ? 0 : mapped);
-        Integer unmapped = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM shopfront_product sp
-                WHERE sp.store_key = ?
-                  AND NOT EXISTS (
-                    SELECT 1 FROM shopfront_product_mapping pm
-                    WHERE pm.store_key = sp.store_key
-                      AND pm.source_product_id = sp.source_id
-                      AND pm.status = 'MAPPED'
-                  )
-                """, Integer.class, storeKey);
-        result.put("products_unmapped", unmapped == null ? 0 : unmapped);
+        result.put("source_products_count", null);
+        result.put("source_unmapped_count", null);
+        result.put("source_counts_owner", "crawler_archive");
         Integer suppliersMapped = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM shopfront_supplier_business_mapping WHERE store_key = ?",
                 Integer.class, storeKey);
@@ -1673,11 +1591,8 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> run(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                               @PathVariable long id) {
         authorize(supplied);
-        var rows = jdbc.queryForList("SELECT id, store_key, import_type, status, item_count, created_at FROM shopfront_import_run WHERE id = ?", id);
-        Map<String, Object> result = rows.isEmpty()
-                ? new LinkedHashMap<>(Map.of("id", id, "status", "not_found"))
-                : new LinkedHashMap<>(rows.get(0));
-        return ApiResult.ok(result);
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "Import run history is owned by the crawler database");
     }
 
     private ApiResult<Map<String, Object>> stage(String supplied, String type, JsonNode body) {
@@ -1692,40 +1607,21 @@ public class ShopfrontIntegrationController {
             var mappingRows = jdbc.queryForList("SELECT company_id, outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
             boolean mappingReady = mappingRows.stream().anyMatch(row -> isEnabled(row.get("enabled")));
             boolean businessWriteForType = businessWriteEnabled && Set.of("products", "inventory", "suppliers", "purchase_orders").contains(type);
-            boolean postgres = isPostgres();
-            jdbc.update(postgres
-                    ? "CREATE TABLE IF NOT EXISTS shopfront_import_run (id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, store_key VARCHAR(64) NOT NULL, import_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, item_count INT NOT NULL, payload_json TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-                    : "CREATE TABLE IF NOT EXISTS shopfront_import_run (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, store_key VARCHAR(64) NOT NULL, import_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, item_count INT NOT NULL, payload_json LONGTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
-            // Full inventory replaces can be 10k+ rows. Persist a compact audit
-            // envelope instead of the entire source payload so staging cannot
-            // OOM/timeout the request before shadow/business writes finish.
-            //
-            // Multi-batch protocol: replace=true on first chunk (rebuild shadow),
-            // snapshot_complete=true on last chunk (prune business orphans).
-            // Do not require both flags together for a business wipe — that left
-            // SKR Inventory On Hand at ~500 rows / all zeros after a partial run.
+            // The crawler database owns source records and sync audit history.
+            // POS stores only native business rows and external ID mappings.
             boolean replaceInventory = "inventory".equals(type) && body.path("replace").asBoolean(false);
             boolean snapshotComplete = "inventory".equals(type) && body.path("snapshot_complete").asBoolean(false);
-            JsonNode audit = importAuditEnvelope(
-                    objectMapper,
-                    store,
-                    type,
-                    items.size(),
-                    body.path("replace").asBoolean(false),
-                    body.path("snapshot_complete").asBoolean(false));
-            var json = objectMapper.writeValueAsString(audit);
-            String status = mappingReady ? "STAGED" : "BLOCKED_MAPPING";
+            JsonNode expectedSourceIds = snapshotComplete ? body.path("expected_source_ids") : null;
+            String status = mappingReady ? "IMPORTED" : "BLOCKED_MAPPING";
             Map<String, Object> business = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             Map<String, Object> nativeLedger = Map.of("enabled", false, "created", 0, "updated", 0, "skipped", 0);
             if (mappingReady) {
-                ensureShadowTables();
-                persistShadow(type, store, mappingRows.get(0), items, replaceInventory);
                 if (businessWriteForType) {
                     if ("purchase_orders".equals(type)) {
                         business = importBusinessPurchaseOrders(store, mappingRows.get(0), items);
                         nativeLedger = business;
                     } else {
-                        business = importBusiness(type, store, mappingRows.get(0), items, replaceInventory, snapshotComplete);
+                        business = importBusiness(type, store, mappingRows.get(0), items, replaceInventory, snapshotComplete, expectedSourceIds);
                         if ("suppliers".equals(type)) {
                             nativeLedger = business;
                         }
@@ -1748,21 +1644,14 @@ public class ShopfrontIntegrationController {
                     nativeLedger = nativeCustomerImportService.importCustomers(store, outletId, items);
                 }
             }
-            Long id;
-            if (postgres) {
-                id = jdbc.queryForObject("INSERT INTO shopfront_import_run (store_key, import_type, status, item_count, payload_json) VALUES (?, ?, ?, ?, ?) RETURNING id", Long.class, store, type, status, items.size(), json);
-            } else {
-                jdbc.update("INSERT INTO shopfront_import_run (store_key, import_type, status, item_count, payload_json) VALUES (?, ?, ?, ?, ?)", store, type, status, items.size(), json);
-                id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-            }
             Map<String, Object> result = new LinkedHashMap<>();
-            result.put("id", id);
             result.put("status", status);
             result.put("type", type);
             result.put("item_count", items.size());
             result.put("mapping_ready", mappingReady);
             result.put("business_write", businessWriteForType && mappingReady);
-            result.put("shadow_write", mappingReady);
+            result.put("shadow_write", false);
+            result.put("source_of_truth", "crawler");
             result.put("native_ledger", nativeLedger);
             result.put("business", business);
             return ApiResult.ok(result);
@@ -1806,31 +1695,15 @@ public class ShopfrontIntegrationController {
                 jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_store_mapping (store_key VARCHAR(64) NOT NULL PRIMARY KEY, shopfront_outlet VARCHAR(255), company_id VARCHAR(128) NOT NULL, outlet_id VARCHAR(128) NOT NULL, enabled SMALLINT NOT NULL DEFAULT 1)");
     }
 
-    /**
-     * Durable, source-shaped Shopfront mirror. It keeps every payload available
-     * to POS reporting without changing the live sale or stock ledgers.
-     */
+    private <T> T gone(String message) {
+        throw new ResponseStatusException(HttpStatus.GONE, message);
+    }
+
+    /** Ensure only compact source-to-business identity mappings; source payloads belong to the crawler. */
     private void ensureShadowTables() {
-        boolean postgres = isPostgres();
-        String key = postgres ? "VARCHAR(160)" : "VARCHAR(160)";
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, name VARCHAR(255), sku VARCHAR(128), barcode VARCHAR(128), category VARCHAR(255), brand VARCHAR(255), cost DECIMAL(18,4), price DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_inventory (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, outlet_id VARCHAR(128) NOT NULL, quantity DECIMAL(18,4), snapshot_at VARCHAR(64) NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id, outlet_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_sale (store_key VARCHAR(64) NOT NULL, external_id " + key + " NOT NULL, invoice_id VARCHAR(128), status VARCHAR(64), created_at VARCHAR(64), updated_at VARCHAR(64), business_date DATE, total_price DECIMAL(18,4), total_tax DECIMAL(18,4), total_discount DECIMAL(18,4), total_cost DECIMAL(18,4), customer_reference VARCHAR(255), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, external_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_sale_item (store_key VARCHAR(64) NOT NULL, external_sale_id " + key + " NOT NULL, line_key VARCHAR(64) NOT NULL, source_product_id " + key + ", product_name VARCHAR(255), quantity DECIMAL(18,4), unit_price DECIMAL(18,4), line_total DECIMAL(18,4), cost DECIMAL(18,4), tax DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, external_sale_id, line_key))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_sale_payment (store_key VARCHAR(64) NOT NULL, external_sale_id " + key + " NOT NULL, payment_key VARCHAR(64) NOT NULL, amount DECIMAL(18,4), status VARCHAR(64), subtype VARCHAR(128), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, external_sale_id, payment_key))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, name VARCHAR(255), business_number VARCHAR(128), status VARCHAR(64), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
+        String key = "VARCHAR(160)";
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_supplier_business_mapping (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, outlet_id BIGINT NOT NULL, supplier_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_customer (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, client_id VARCHAR(255), code VARCHAR(128), name VARCHAR(255), email VARCHAR(255), phone VARCHAR(128), mobile VARCHAR(128), deleted BOOLEAN, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_purchase_order (store_key VARCHAR(64) NOT NULL, source_id " + key + " NOT NULL, supplier_source_id " + key + ", status VARCHAR(64), order_date VARCHAR(64), total_cost DECIMAL(18,4), raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id))");
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_extended_record (store_key VARCHAR(64) NOT NULL, entity_type VARCHAR(64) NOT NULL, source_id VARCHAR(192) NOT NULL, raw_payload TEXT NOT NULL, synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, entity_type, source_id))");
         jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_product_mapping (store_key VARCHAR(64) NOT NULL, source_product_id " + key + " NOT NULL, pos_product_id BIGINT NOT NULL, match_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_product_id))");
-        if (!postgres) {
-            try {
-                jdbc.update("ALTER TABLE shopfront_sale ADD COLUMN business_date DATE NULL");
-            } catch (Exception ignored) {
-                // Column already present on MySQL reference schemas.
-            }
-        }
     }
 
     /**
@@ -1886,7 +1759,8 @@ public class ShopfrontIntegrationController {
      * Sell item and distinct source products stay distinct.
      */
     private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items,
-                                               boolean replaceInventory, boolean snapshotComplete) throws Exception {
+                                               boolean replaceInventory, boolean snapshotComplete,
+                                               JsonNode expectedSourceIds) throws Exception {
         long outletId = longValue(mapping.get("outlet_id"));
         if (outletId <= 0) throw new IllegalArgumentException("Shopfront mapping has no numeric POS outlet_id");
         if ("suppliers".equals(type)) {
@@ -1988,16 +1862,25 @@ public class ShopfrontIntegrationController {
             // Prune only on the final chunk. Skip when replace=true so a legacy
             // first-chunk "complete" flag cannot delete rows later batches need.
             if (snapshotComplete && !replaceInventory) {
-                jdbc.update(
-                        "DELETE FROM product_inventory pi "
-                                + "WHERE pi.outlet_id=? "
-                                + "AND EXISTS (SELECT 1 FROM shopfront_product_mapping m "
-                                + "WHERE m.store_key=? AND m.pos_product_id=pi.product_id) "
-                                + "AND NOT EXISTS (SELECT 1 FROM shopfront_product_mapping m "
-                                + "JOIN shopfront_inventory si ON si.store_key=m.store_key "
-                                + "AND si.source_product_id=m.source_product_id "
-                                + "WHERE m.store_key=? AND m.pos_product_id=pi.product_id)",
-                        outletId, store, store);
+                if (expectedSourceIds == null || !expectedSourceIds.isArray()) {
+                    throw new IllegalArgumentException("Final inventory snapshot requires expected_source_ids");
+                }
+                List<String> expected = new ArrayList<>();
+                for (JsonNode id : expectedSourceIds) {
+                    if (!id.isNull() && !id.asText().isBlank()) expected.add(id.asText());
+                }
+                if (expected.isEmpty()) {
+                    throw new IllegalArgumentException("Final inventory snapshot expected_source_ids cannot be empty");
+                }
+                String placeholders = String.join(",", java.util.Collections.nCopies(expected.size(), "?"));
+                List<Object> pruneArgs = new ArrayList<>();
+                pruneArgs.add(outletId);
+                pruneArgs.add(store);
+                pruneArgs.addAll(expected);
+                jdbc.update("DELETE FROM product_inventory pi WHERE pi.outlet_id=? AND pi.product_id IN ("
+                                + "SELECT m.pos_product_id FROM shopfront_product_mapping m WHERE m.store_key=? "
+                                + "AND m.status='MAPPED' AND CAST(m.source_product_id AS VARCHAR) NOT IN (" + placeholders + "))",
+                        pruneArgs.toArray());
             }
         } else {
             validateBusinessImport(type, items, store, outletId, replaceInventory && snapshotComplete, taxRates);
@@ -2009,6 +1892,11 @@ public class ShopfrontIntegrationController {
         result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
+    }
+
+    private Map<String, Object> importBusiness(String type, String store, Map<String, Object> mapping, JsonNode items,
+                                               boolean replaceInventory, boolean snapshotComplete) throws Exception {
+        return importBusiness(type, store, mapping, items, replaceInventory, snapshotComplete, null);
     }
 
     private Map<String, Object> importBusinessSuppliers(String store, long outletId, Object mappedCompanyId, JsonNode items) {
@@ -3725,6 +3613,87 @@ public class ShopfrontIntegrationController {
         if (value == null) return false;
         String text = value.toString().trim();
         return "1".equals(text) || "true".equalsIgnoreCase(text);
+    }
+
+    @PostMapping("/products:split-aliases")
+    public ApiResult<Map<String, Object>> splitProductAliases(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("Alias repair must be performed by replaying source products from the crawler database");
+    }
+
+    @PostMapping("/products:import-unmapped")
+    public ApiResult<Map<String, Object>> importUnmappedProducts(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("Unmapped product retries must be supplied by the crawler database through products:upsert");
+    }
+
+    @PostMapping("/products:link-suppliers")
+    public ApiResult<Map<String, Object>> linkProductSuppliers(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("Supplier links must be replayed from crawler-owned product records through products:upsert");
+    }
+
+    @GetMapping("/sales:native-day-totals")
+    public ApiResult<Map<String, Object>> nativeDayTotals(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String day) {
+        authorize(supplied);
+        return gone("Source-to-native report parity is owned by the crawler and Shopfront source reports");
+    }
+
+    @GetMapping("/sales:native-day-diff")
+    public ApiResult<Map<String, Object>> nativeDayDiff(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestParam String day,
+            @RequestParam(required = false) String store_key) {
+        authorize(supplied);
+        return gone("Source-to-native report parity is owned by the crawler and Shopfront source reports");
+    }
+
+    @PostMapping("/sales:promote-native")
+    public ApiResult<Map<String, Object>> promoteNativeSales(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        return gone("Historical sales must be paged from CRAWL_DATABASE_URL and imported through sales:upsert");
+    }
+
+    @PostMapping("/purchase-orders:promote-native")
+    public ApiResult<Map<String, Object>> promotePurchaseOrders(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody(required = false) JsonNode body) {
+        authorize(supplied);
+        return gone("Historical purchase orders must be paged from CRAWL_DATABASE_URL and imported through purchase-orders:upsert");
+    }
+
+    @PostMapping("/mirror:sync-sale-money")
+    public ApiResult<Map<String, Object>> syncMirrorSaleMoney(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("Mirror sale repair is retired; replay source sales from the crawler database");
+    }
+
+    @PostMapping("/mirror:copy")
+    public ApiResult<Map<String, Object>> copyShopfrontMirror(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("POS mirror copying is retired; import source data independently for each mapped outlet");
+    }
+
+    @PostMapping("/product-mappings:clone")
+    public ApiResult<Map<String, Object>> cloneProductMappings(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        return gone("Product mappings are created independently when the crawler imports each POS target");
     }
 
     private void authorize(String supplied) {

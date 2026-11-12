@@ -46,7 +46,7 @@ class ReportQueryServicePurchaseReportTest {
                 "freight_sum", BigDecimal.ZERO,
                 "freight_present", 0
         ))).when(jdbc).queryForList(anyString(), any(Object.class), any(Object.class), any(Object.class));
-        // Diagnostics soft-fail when Long stubs are absent — report body still valid.
+        doReturn(3L, 2L).when(jdbc).queryForObject(anyString(), eq(Long.class), any(Object[].class));
 
         ReportQueryService service = new ReportQueryService(jdbc);
         Map<String, Object> report = service.nativePurchaseReport(
@@ -75,6 +75,12 @@ class ReportQueryServicePurchaseReportTest {
         assertTrue(query.contains("po.type = 'ORDER'"));
         assertFalse(query.contains("status = 'OPEN'"));
         assertFalse(query.contains("status = 'CANCELLED'"));
+
+        ArgumentCaptor<String> diagnosticsSql = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2))
+                .queryForObject(diagnosticsSql.capture(), eq(Long.class), any(Object[].class));
+        assertTrue(diagnosticsSql.getAllValues().stream().allMatch(value -> value.contains("purchase_order")));
+        assertTrue(diagnosticsSql.getAllValues().stream().noneMatch(value -> value.contains("shopfront_")));
     }
 
     @Test

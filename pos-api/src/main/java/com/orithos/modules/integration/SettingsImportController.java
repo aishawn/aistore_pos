@@ -1,5 +1,6 @@
 package com.orithos.modules.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.orithos.common.ApiResult;
 import com.orithos.modules.config.SettingsImportService;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,9 +39,9 @@ public class SettingsImportController {
     @PostMapping("/settings:import")
     public ApiResult<Map<String, Object>> importSettings(
             @RequestHeader("X-Shopfront-Integration-Token") String supplied,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody JsonNode body) {
         authorize(supplied);
-        String storeKey = body == null ? "" : String.valueOf(body.getOrDefault("store_key", "")).trim();
+        String storeKey = body == null ? "" : body.path("store_key").asText("").trim();
         if (storeKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "store_key is required");
         }
@@ -61,9 +62,8 @@ public class SettingsImportController {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "The mapped Orithos outlet id is invalid");
         }
-        boolean forceEmptyOnly = body.get("force_empty_only") == null
-                || Boolean.parseBoolean(String.valueOf(body.get("force_empty_only")));
-        return ApiResult.ok(importService.promote(storeKey, outletId, forceEmptyOnly));
+        boolean forceEmptyOnly = !body.has("force_empty_only") || body.path("force_empty_only").asBoolean(true);
+        return ApiResult.ok(importService.promote(storeKey, outletId, forceEmptyOnly, body.path("catalogues")));
     }
 
     private void authorize(String supplied) {

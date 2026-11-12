@@ -39,15 +39,16 @@ class ShopfrontNativeSaleImporterTest {
     }
 
     @Test
-    void promoteFromMirrorFiltersOnIndexedBusinessDate() {
+    void mirrorPromotionIsDisabledAndDoesNotReadPosMirrorTables() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(java.util.List.of());
-        var importer = new ShopfrontNativeSaleImporter(jdbc, new ObjectMapper());
+        var importer = new ShopfrontNativeSaleImporter(jdbc);
 
-        importer.promoteFromMirror("demo", 1L, null, 40, "2026-11-10");
+        assertThrows(UnsupportedOperationException.class,
+                () -> importer.promoteFromMirror("demo", 1L, null, 40, "2026-11-10"));
 
-        verify(jdbc).queryForList(contains("business_date = CAST(? AS date)"), any(Object[].class));
-        verify(jdbc, never()).queryForList(contains("created_at::timestamptz"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("shopfront_sale"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("shopfront_sale_item"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("shopfront_sale_payment"), any(Object[].class));
     }
 
     @Test
@@ -64,7 +65,7 @@ class ShopfrontNativeSaleImporterTest {
                     throw new org.springframework.dao.EmptyResultDataAccessException(1);
                 });
 
-        var importer = new ShopfrontNativeSaleImporter(jdbc, new ObjectMapper());
+        var importer = new ShopfrontNativeSaleImporter(jdbc);
         var payload = new ObjectMapper().readTree("""
                 [{"external_id":"sf-1","invoice_id":"INV-1","status":"COMPLETED",
                   "created_at":"2026-11-09T03:15:00Z","total_price":12.50,"total_tax":1.14,"total_cost":7.00,
@@ -78,8 +79,8 @@ class ShopfrontNativeSaleImporterTest {
         assertEquals(1, result.get("created"));
         assertEquals(0, result.get("updated"));
         assertEquals(1, result.get("unmatched_lines"));
-        verify(jdbc).update(contains("INSERT INTO sale_item"), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(jdbc).update(contains("INSERT INTO sale_payment"), any(), any(), any(), any(), any());
+        verify(jdbc).update(contains("external_line_id"), any(Object[].class));
+        verify(jdbc).update(contains("external_payment_id"), any(Object[].class));
         verify(jdbc, never()).update(contains("inventory_movement"), any(Object[].class));
         verify(jdbc, never()).update(contains("product_inventory"), any(Object[].class));
     }
@@ -89,7 +90,7 @@ class ShopfrontNativeSaleImporterTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
                 .thenReturn(java.util.List.of());
-        var importer = new ShopfrontNativeSaleImporter(jdbc, new ObjectMapper());
+        var importer = new ShopfrontNativeSaleImporter(jdbc);
         var payload = new ObjectMapper().readTree("""
                 [{"external_id":"sf-bad","status":"mystery","created_at":"2026-11-09T03:15:00Z",
                   "total_price":12.50,"total_tax":1.14,"items":[]}]

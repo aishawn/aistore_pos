@@ -55,108 +55,22 @@ class ShopfrontIntegrationControllerTest {
     @Test
     void matchStatusAggregatesProductAndSaleItemCounts() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForMap(contains("FROM shopfront_product sp"), any(Object[].class)))
-                .thenReturn(Map.of(
-                        "products", 11033L,
-                        "products_missing_name", 0L,
-                        "barcode_matched", 10970L,
-                        "barcode_unmatched", 63L,
-                        "manually_mapped", 11033L,
-                        "products_unmapped", 0L));
-        when(jdbc.queryForObject(contains("WITH unmatched_products"), eq(Integer.class), any(Object[].class)))
-                .thenReturn(0);
-        when(jdbc.queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class)))
-                .thenReturn(Map.of("sale_items_missing_name", 0L, "sale_items_missing_source_product", 0L));
-        when(jdbc.queryForObject(contains("COUNT(DISTINCT outlet_id)"), eq(Integer.class), any(Object[].class)))
-                .thenReturn(1);
-
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        var result = controller.matchStatus("token", "demo");
-
-        assertEquals(11033, result.data().get("products"));
-        assertEquals(63, result.data().get("barcode_unmatched"));
-        assertEquals(11033, result.data().get("manually_mapped"));
-        assertEquals(0, result.data().get("products_unmapped"));
-        assertEquals(0, result.data().get("sales_with_unmatched_items"));
-        assertEquals(0, result.data().get("sale_items_missing_name"));
-        assertEquals(0, result.data().get("sale_items_missing_source_product"));
-        verify(jdbc).queryForMap(contains("FROM shopfront_product sp"), any(Object[].class));
-        verify(jdbc).queryForMap(contains("FROM shopfront_sale_item"), any(Object[].class));
-        verify(jdbc, org.mockito.Mockito.never()).update(
-                contains("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_item_store_product_sale"));
-        verify(jdbc, org.mockito.Mockito.never()).update(
-                contains("CREATE INDEX IF NOT EXISTS idx_shopfront_sale_store_biz_ext"));
-        verify(jdbc).update(contains("updated_at VARCHAR(64), business_date DATE"));
+        ResponseStatusException failure = assertThrows(ResponseStatusException.class,
+                () -> controller.matchStatus("token", "demo"));
+        assertEquals(HttpStatus.GONE, failure.getStatusCode());
+        verify(jdbc, never()).update(anyString());
     }
 
     @Test
-    void copiesOnlyShopfrontMirrorTablesBetweenDistinctMappedOutlets() throws Exception {
+    void mirrorCopyIsRetired() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForList(contains("SELECT store_key, outlet_id, enabled"), any(Object[].class)))
-                .thenReturn(List.of(
-                        Map.of("store_key", "skr", "outlet_id", "87", "enabled", true),
-                        Map.of("store_key", "demo", "outlet_id", "1", "enabled", true)));
-        when(jdbc.queryForObject(contains("COUNT(*) FROM"), eq(Integer.class), any(Object[].class)))
-                .thenReturn(2);
-        when(jdbc.queryForObject(contains("INSERT INTO shopfront_mirror_run"), eq(Long.class), any(Object[].class)))
-                .thenReturn(42L);
-
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        var result = controller.copyShopfrontMirror("token", new ObjectMapper().readTree(
-                "{\"source_store_key\":\"skr\",\"target_store_key\":\"demo\"}"));
-
-        assertEquals("skr", result.data().get("source_store_key"));
-        assertEquals("demo", result.data().get("target_store_key"));
-        assertEquals(false, result.data().get("business_write"));
-        @SuppressWarnings("unchecked")
-        Map<String, Integer> counts = (Map<String, Integer>) result.data().get("record_counts");
-        assertEquals(9, counts.size());
-        assertEquals(2, counts.get("shopfront_sale"));
-        assertTrue(counts.containsKey("shopfront_extended_record"));
-        verify(jdbc).update(contains("LOCK TABLE shopfront_sale_payment"));
-        verify(jdbc).update(contains("INSERT INTO shopfront_sale (store_key"), eq("demo"), eq("skr"));
-        verify(jdbc, org.mockito.Mockito.never()).update(contains("shopfront_product_mapping"), any(Object[].class));
-        verify(jdbc, org.mockito.Mockito.never()).update(contains("shopfront_supplier_business_mapping"), any(Object[].class));
-        verify(jdbc, org.mockito.Mockito.never()).update(contains("inventory_movement"), any(Object[].class));
-    }
-
-    @Test
-    void rejectsMirrorCopyWhenSourceAndTargetResolveToSameOutlet() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForList(contains("SELECT store_key, outlet_id, enabled"), any(Object[].class)))
-                .thenReturn(List.of(
-                        Map.of("store_key", "skr", "outlet_id", "87", "enabled", true),
-                        Map.of("store_key", "demo", "outlet_id", "87", "enabled", true)));
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-
         ResponseStatusException failure = assertThrows(ResponseStatusException.class,
                 () -> controller.copyShopfrontMirror("token", new ObjectMapper().readTree(
                         "{\"source_store_key\":\"skr\",\"target_store_key\":\"demo\"}")));
-
-        assertEquals(HttpStatus.CONFLICT, failure.getStatusCode());
-        assertEquals("Source and target must map to different POS outlets", failure.getReason());
-        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM shopfront_sale"), any(Object[].class));
+        assertEquals(HttpStatus.GONE, failure.getStatusCode());
+        verify(jdbc, never()).update(anyString());
     }
 
     @Test
@@ -493,129 +407,27 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void promotesPurchaseOrdersFromMirrorInBoundedBatches() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-
-        String rawPayload = "{\"status\":\"RECEIVED\",\"orderDate\":\"2026-10-02\",\"invoiceNumber\":\"INV-1001\","
-                + "\"totalCost\":20,\"expectedTotal\":20,\"products\":[{"
-                + "\"caseQuantity\":1,\"orderedQuantity\":2,\"receivedQuantity\":2,\"baseCost\":10,\"orderedCost\":20,"
-                + "\"supplier\":{\"id\":\"sf-supplier-1\"},\"item\":{\"id\":\"sf-product-1\",\"mdbId\":\"SKU-1\"}}]}";
-        List<Map<String, Object>> mirrorRows = List.of(Map.of(
-                "source_id", "sf-order-1",
-                "supplier_source_id", "sf-supplier-1",
-                "status", "RECEIVED",
-                "order_date", "2026-10-02",
-                "total_cost", new BigDecimal("20"),
-                "raw_payload", rawPayload));
-
-        org.mockito.Mockito.lenient().when(jdbc.queryForList(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(Object[].class)))
-                .thenAnswer(invocation -> {
-                    Object[] callArgs = invocation.getArguments();
-                    String sql = callArgs.length == 0 || callArgs[0] == null ? "" : callArgs[0].toString();
-                    if (sql.contains("shopfront_store_mapping WHERE store_key")) {
-                        return List.of(Map.of("store_key", "skr", "company_id", "55", "outlet_id", 87L, "enabled", 1));
-                    }
-                    if (sql.contains("FROM shopfront_purchase_order po")) {
-                        return mirrorRows;
-                    }
-                    if (sql.contains("shopfront_supplier_business_mapping")) {
-                        return List.of(Map.of("source_id", "sf-supplier-1", "supplier_id", 701L));
-                    }
-                    if (sql.contains("shopfront_product_mapping")) {
-                        return List.of(Map.of("source_product_id", "sf-product-1", "pos_product_id", 801L));
-                    }
-                    if (sql.contains("shopfront_purchase_order_business_mapping")) {
-                        return List.of();
-                    }
-                    return List.of();
-                });
-        when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))
-                .thenReturn(55L);
-        when(jdbc.queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), any(Object[].class)))
-                .thenReturn(901L);
-        when(jdbc.queryForObject(contains("FROM shopfront_purchase_order WHERE store_key"), eq(Integer.class), eq("skr")))
-                .thenReturn(2372);
-        when(jdbc.queryForObject(contains("purchase_order_id > 0"), eq(Integer.class), eq("skr"), eq(87L)))
-                .thenReturn(499);
-        when(jdbc.queryForObject(contains("purchase_order_id = 0"), eq(Integer.class), eq("skr"), eq(87L)))
-                .thenReturn(12);
-
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
-        var body = new ObjectMapper().createObjectNode()
-                .put("store_key", "skr")
-                .put("limit", 100);
-        Map<String, Object> result = controller.promotePurchaseOrders("token", body).data();
-
-        assertEquals("PROMOTED", result.get("status"));
-        assertEquals("skr", result.get("store_key"));
-        assertEquals(true, result.get("only_unmapped"));
-        assertEquals(1, result.get("mirror_batch"));
-        assertEquals(false, result.get("has_more"));
-        assertEquals(2372, result.get("mirror_total"));
-        assertEquals(499, result.get("purchase_orders_mapped"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> business = (Map<String, Object>) result.get("business");
-        assertEquals(1, business.get("created"));
+    void refusesPurchaseOrderPromotionFromPosMirror() {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        var error = assertThrows(ResponseStatusException.class,
+                () -> controller.promotePurchaseOrders("token", new ObjectMapper().createObjectNode()));
+        assertEquals(HttpStatus.GONE, error.getStatusCode());
     }
 
     @Test
-    void clonesProductMappingsInBoundedPhases() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForList(contains("shopfront_store_mapping"), any(Object[].class)))
-                .thenReturn(List.of(
-                        Map.of("store_key", "skr", "outlet_id", 87, "enabled", 1),
-                        Map.of("store_key", "demo", "outlet_id", 1, "enabled", 1)));
-        when(jdbc.update(contains("BARCODE"), any(Object[].class))).thenReturn(1500);
-        when(jdbc.queryForObject(contains("shopfront_product_mapping WHERE store_key"), eq(Integer.class), eq("skr")))
-                .thenReturn(11000);
-        when(jdbc.queryForObject(contains("shopfront_product_mapping WHERE store_key"), eq(Integer.class), eq("demo")))
-                .thenReturn(1500);
-
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
-        var body = new ObjectMapper().createObjectNode()
-                .put("source_store_key", "skr")
-                .put("target_store_key", "demo")
-                .put("phase", "target_barcodes")
-                .put("limit", 1500);
-
-        Map<String, Object> result = controller.cloneProductMappings("token", body).data();
-        assertEquals("CLONED", result.get("status"));
-        assertEquals(true, result.get("more"));
-        assertEquals(1500, result.get("inserted"));
-        assertEquals("target_barcodes", result.get("phase"));
+    void refusesCloningProductMappingsThroughTheRetiredEndpoint() {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        var error = assertThrows(ResponseStatusException.class,
+                () -> controller.cloneProductMappings("token", new ObjectMapper().createObjectNode()));
+        assertEquals(HttpStatus.GONE, error.getStatusCode());
     }
 
     @Test
-    void pagesProductMirrorByImmutableSourceId() throws Exception {
-        JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
-        when(jdbc.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.getMetaData()).thenReturn(metadata);
-        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
-        when(jdbc.queryForObject(contains("SELECT COUNT(*) FROM shopfront_product"), eq(Integer.class), eq("skr")))
-                .thenReturn(11016);
-
-        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
-        controller.data("token", "skr", "products", 2, 500);
-
-        verify(jdbc).queryForList(contains("ORDER BY source_id ASC"), any(Object[].class));
+    void refusesPagingShopfrontProductMirrorFromPos() {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true);
+        var error = assertThrows(ResponseStatusException.class,
+                () -> controller.data("token", "skr", "products", 2, 500));
+        assertEquals(HttpStatus.GONE, error.getStatusCode());
     }
 
     @Test
@@ -738,7 +550,7 @@ class ShopfrontIntegrationControllerTest {
         var result = controller.products("token", body);
 
         assertEquals(expected, result.data().get("mapping_ready"));
-        assertEquals(expected ? "STAGED" : "BLOCKED_MAPPING", result.data().get("status"));
+        assertEquals(expected ? "IMPORTED" : "BLOCKED_MAPPING", result.data().get("status"));
     }
 
     @Test

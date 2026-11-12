@@ -1,7 +1,6 @@
 package com.orithos.modules.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.AustraliaTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,11 +35,8 @@ public class ShopfrontNativeSaleImporter {
     private static final Logger log = LoggerFactory.getLogger(ShopfrontNativeSaleImporter.class);
 
     private final JdbcTemplate jdbc;
-    private final ObjectMapper objectMapper;
-
-    public ShopfrontNativeSaleImporter(JdbcTemplate jdbc, ObjectMapper objectMapper) {
+    public ShopfrontNativeSaleImporter(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        this.objectMapper = objectMapper;
     }
 
     public Map<String, Object> upsertSales(String storeKey, long outletId, JsonNode items) {
@@ -97,132 +93,12 @@ public class ShopfrontNativeSaleImporter {
      * callers can loop without gateway timeouts.
      */
     public Map<String, Object> promoteFromMirror(String storeKey, long outletId) {
-        return promoteFromMirror(storeKey, outletId, null, 500, null);
+        throw new UnsupportedOperationException("Historical sales must be read from the crawler archive and sent through sales:upsert");
     }
 
     public Map<String, Object> promoteFromMirror(String storeKey, long outletId, String afterExternalId,
                                                  int limit, String businessDay) {
-        int pageSize = Math.max(1, Math.min(limit <= 0 ? 500 : limit, 2000));
-        StringBuilder sql = new StringBuilder(
-                "SELECT external_id, invoice_id, status, created_at, updated_at, total_price, total_tax, "
-                        + "total_discount, total_cost, customer_reference, raw_payload "
-                        + "FROM shopfront_sale WHERE store_key = ?");
-        List<Object> args = new ArrayList<>();
-        args.add(storeKey);
-        if (afterExternalId != null && !afterExternalId.isBlank()) {
-            sql.append(" AND external_id > ?");
-            args.add(afterExternalId);
-        }
-        if (businessDay != null && !businessDay.isBlank()) {
-            // Prefer indexed business_date (maintained on mirror upsert/backfill).
-            // UUID external_id order + created_at CASE expression previously
-            // forced full-table scans and gateway 502s on day-scoped promote.
-            sql.append(" AND business_date = CAST(? AS date)");
-            args.add(businessDay);
-        }
-        sql.append(" ORDER BY external_id LIMIT ?");
-        args.add(pageSize);
-        List<Map<String, Object>> sales = jdbc.queryForList(sql.toString(), args.toArray());
-        var items = objectMapper.createArrayNode();
-        int rebuildFailures = 0;
-        String lastExternalId = afterExternalId;
-        for (Map<String, Object> row : sales) {
-            try {
-                String externalId = stringValue(row.get("external_id"));
-                lastExternalId = externalId;
-                items.add(rebuildSaleNode(storeKey, row));
-            } catch (Exception ex) {
-                rebuildFailures++;
-                log.warn("Failed to rebuild mirror sale for promote store={} message={}", storeKey, ex.getMessage());
-            }
-        }
-        Map<String, Object> result = upsertSales(storeKey, outletId, items);
-        result.put("mirror_sales", sales.size());
-        result.put("rebuild_failures", rebuildFailures);
-        result.put("batch_size", pageSize);
-        result.put("last_external_id", lastExternalId);
-        result.put("has_more", sales.size() >= pageSize);
-        result.put("business_day", businessDay);
-        return result;
-    }
-
-    private com.fasterxml.jackson.databind.node.ObjectNode rebuildSaleNode(String storeKey, Map<String, Object> row) {
-        JsonNode payload = parsePayload(row.get("raw_payload"));
-        var saleNode = objectMapper.createObjectNode();
-        String externalId = stringValue(row.get("external_id"));
-        saleNode.put("external_id", externalId);
-        saleNode.put("source_complete", true);
-        putText(saleNode, "invoice_id", firstNonBlank(
-                text(payload, "invoice_id"), text(payload, "invoiceId"), stringValue(row.get("invoice_id"))));
-        putText(saleNode, "status", firstNonBlank(text(payload, "status"), stringValue(row.get("status"))));
-        putText(saleNode, "created_at", firstNonBlank(
-                text(payload, "created_at"), text(payload, "createdAt"), stringValue(row.get("created_at"))));
-        putText(saleNode, "updated_at", firstNonBlank(
-                text(payload, "updated_at"), text(payload, "updatedAt"), stringValue(row.get("updated_at"))));
-        BigDecimal columnTotal = decimal(row.get("total_price"));
-        BigDecimal payloadTotal = firstDecimal(payload, "total_price", "totalPrice");
-        BigDecimal totalPrice = firstNonNullDecimal(payloadTotal, columnTotal);
-        if (totalPrice == null) {
-            totalPrice = BigDecimal.ZERO;
-        }
-        saleNode.put("total_price", totalPrice);
-        BigDecimal tax = firstNonNullDecimal(
-                firstDecimal(payload, "total_tax", "totalTax"), decimal(row.get("total_tax")));
-        BigDecimal discount = firstNonNullDecimal(
-                firstDecimal(payload, "total_discount", "totalDiscount"), decimal(row.get("total_discount")));
-        BigDecimal cost = firstNonNullDecimal(
-                firstDecimal(payload, "total_cost", "totalCost"), decimal(row.get("total_cost")));
-        if (tax != null) saleNode.put("total_tax", tax);
-        if (discount != null) saleNode.put("total_discount", discount);
-        if (cost != null) saleNode.put("total_cost", cost);
-        putText(saleNode, "customer_reference", stringValue(row.get("customer_reference")));
-
-        var lineItems = objectMapper.createArrayNode();
-        List<Map<String, Object>> mirrorItems = jdbc.queryForList(
-                "SELECT line_key, source_product_id, product_name, quantity, unit_price, line_total, cost, tax, raw_payload "
-                        + "FROM shopfront_sale_item WHERE store_key = ? AND external_sale_id = ? ORDER BY line_key",
-                storeKey, externalId);
-        if (mirrorItems.isEmpty() && payload.path("items").isArray()) {
-            lineItems.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("items"));
-        } else {
-            for (Map<String, Object> item : mirrorItems) {
-                var line = objectMapper.createObjectNode();
-                line.put("id", stringValue(item.get("line_key")));
-                putText(line, "source_product_id", stringValue(item.get("source_product_id")));
-                putText(line, "name", stringValue(item.get("product_name")));
-                line.put("quantity", decimal(item.get("quantity")));
-                line.put("unit_price", decimal(item.get("unit_price")));
-                line.put("line_total", decimal(item.get("line_total")));
-                line.put("cost", decimal(item.get("cost")));
-                line.put("tax", decimal(item.get("tax")));
-                JsonNode itemPayload = parsePayload(item.get("raw_payload"));
-                if (!itemPayload.isMissingNode() && !itemPayload.isNull()) {
-                    line.set("raw_payload", itemPayload);
-                }
-                lineItems.add(line);
-            }
-        }
-        saleNode.set("items", lineItems);
-
-        var payments = objectMapper.createArrayNode();
-        List<Map<String, Object>> mirrorPayments = jdbc.queryForList(
-                "SELECT payment_key, amount, status, subtype, raw_payload "
-                        + "FROM shopfront_sale_payment WHERE store_key = ? AND external_sale_id = ? ORDER BY payment_key",
-                storeKey, externalId);
-        if (mirrorPayments.isEmpty() && payload.path("payments").isArray()) {
-            payments.addAll((com.fasterxml.jackson.databind.node.ArrayNode) payload.path("payments"));
-        } else {
-            for (Map<String, Object> payment : mirrorPayments) {
-                var node = objectMapper.createObjectNode();
-                node.put("id", stringValue(payment.get("payment_key")));
-                node.put("amount", decimal(payment.get("amount")));
-                putText(node, "status", stringValue(payment.get("status")));
-                putText(node, "subtype", stringValue(payment.get("subtype")));
-                payments.add(node);
-            }
-        }
-        saleNode.set("payments", payments);
-        return saleNode;
+        throw new UnsupportedOperationException("Historical sales must be read from the crawler archive and sent through sales:upsert");
     }
 
     private UpsertOutcome upsertOne(String storeKey, long outletId, JsonNode sale, String externalId,
@@ -264,9 +140,11 @@ public class ShopfrontNativeSaleImporter {
                 }
                 BigDecimal cost = nullableMoney(decimalNode(item, "cost"));
                 BigDecimal tax = money(decimalNode(item, "tax"));
+                String externalLineId = truncate(firstNonBlank(
+                        text(item, "id"), text(item, "external_line_id"), text(item, "source_line_id")), 64);
                 itemRows.add(new Object[]{
                         productId, outletId, quantity, cost, unitPrice, lineTotal, tax,
-                        productId == null ? truncate(productName, 255) : null
+                        productId == null ? truncate(productName, 255) : null, externalLineId
                 });
             }
         }
@@ -303,9 +181,9 @@ public class ShopfrontNativeSaleImporter {
 
         for (Object[] row : itemRows) {
             jdbc.update("""
-                    INSERT INTO sale_item (sale_id, product_id, outlet_id, quantity, cost, base_price, total_price, tax, note)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, saleId, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]);
+                    INSERT INTO sale_item (sale_id, product_id, outlet_id, quantity, cost, base_price, total_price, tax, note, external_line_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, saleId, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]);
         }
 
         JsonNode payments = sale.path("payments");
@@ -314,10 +192,12 @@ public class ShopfrontNativeSaleImporter {
                 BigDecimal amount = money(decimalNode(payment, "amount"));
                 String paymentStatus = firstNonBlank(text(payment, "status"), "COMPLETED");
                 String subtype = text(payment, "subtype");
+                String externalPaymentId = truncate(firstNonBlank(
+                        text(payment, "id"), text(payment, "external_payment_id")), 64);
                 jdbc.update("""
-                        INSERT INTO sale_payment (sale_id, payment_method_id, subtype, status, amount, outlet_id)
-                        VALUES (?, NULL, ?, ?, ?, ?)
-                        """, saleId, subtype, paymentStatus, amount, outletId);
+                        INSERT INTO sale_payment (sale_id, payment_method_id, subtype, status, amount, outlet_id, external_payment_id)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?)
+                        """, saleId, subtype, paymentStatus, amount, outletId, externalPaymentId);
             }
         }
         return new UpsertOutcome(created, unmatchedLines);
@@ -414,19 +294,6 @@ public class ShopfrontNativeSaleImporter {
                 }
             } catch (Exception ignored) {
                 // fall through to barcode
-            }
-            try {
-                String barcode = jdbc.queryForObject(
-                        "SELECT barcode FROM shopfront_product WHERE store_key = ? AND source_id = ? LIMIT 1",
-                        String.class, storeKey, sourceProductId);
-                Long byBarcode = findProductByBarcode(outletId, barcode);
-                if (byBarcode != null) {
-                    productCache.put(sourceProductId, byBarcode);
-                    persistResolvedMapping(storeKey, sourceProductId, byBarcode);
-                    return byBarcode;
-                }
-            } catch (Exception ignored) {
-                // unmatched
             }
         }
         String barcode = firstNonBlank(text(item, "barcode"),
@@ -547,26 +414,6 @@ public class ShopfrontNativeSaleImporter {
         return new SoldAt(zoned.toLocalDate(), zoned.toLocalDateTime(), instant);
     }
 
-    private JsonNode parsePayload(Object raw) {
-        if (raw == null) {
-            return objectMapper.nullNode();
-        }
-        if (raw instanceof JsonNode node) {
-            return node;
-        }
-        try {
-            return objectMapper.readTree(String.valueOf(raw));
-        } catch (Exception e) {
-            return objectMapper.nullNode();
-        }
-    }
-
-    private static void putText(com.fasterxml.jackson.databind.node.ObjectNode node, String field, String value) {
-        if (value != null) {
-            node.put(field, value);
-        }
-    }
-
     private static String text(JsonNode node, String field) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
@@ -605,27 +452,6 @@ public class ShopfrontNativeSaleImporter {
             }
         }
         return null;
-    }
-
-    private static BigDecimal decimal(Object value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        if (value instanceof BigDecimal bd) {
-            return bd;
-        }
-        if (value instanceof Number number) {
-            return new BigDecimal(number.toString());
-        }
-        try {
-            return new BigDecimal(String.valueOf(value).trim());
-        } catch (Exception e) {
-            return BigDecimal.ZERO;
-        }
-    }
-
-    private static BigDecimal firstNonNullDecimal(BigDecimal primary, BigDecimal fallback) {
-        return primary != null ? primary : fallback;
     }
 
     private static BigDecimal money(BigDecimal value) {

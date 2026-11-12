@@ -56,7 +56,8 @@ public class SettingsPromoteController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "The Shopfront mapping is not assigned to this outlet");
         }
-        return ApiResult.ok(importService.promote(storeKey, outletId, true));
+        throw new ResponseStatusException(HttpStatus.GONE,
+                "Shopfront settings are now imported from the crawler source database; run settings sync in Shopfront Crawler");
     }
 
     @PostMapping("/dedupe")

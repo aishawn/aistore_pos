@@ -284,72 +284,41 @@ public class ReportQueryService {
 
     private Map<String, Object> purchaseSyncDiagnostics(long outletId, LocalDate from, LocalDate to) {
         Map<String, Object> diagnostics = new LinkedHashMap<>();
+        Long nativeAll = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM purchase_order
+                WHERE outlet_id = ? AND type = 'ORDER'
+                """, Long.class, outletId);
+        Long nativeInRange = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM purchase_order
+                WHERE outlet_id = ?
+                  AND type = 'ORDER'
+                  AND status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
+                  AND order_date IS NOT NULL
+                  AND order_date >= CAST(? AS DATE)
+                  AND order_date <= CAST(? AS DATE)
+                """, Long.class, outletId, sqlDate(from), sqlDate(to));
         diagnostics.put("available", true);
-        try {
-            Long mirror = jdbc.queryForObject("""
-                    SELECT COUNT(*) FROM shopfront_purchase_order spo
-                    WHERE spo.store_key IN (
-                      SELECT store_key FROM shopfront_store_mapping
-                      WHERE outlet_id = CAST(? AS VARCHAR)
-                    )
-                    """, Long.class, outletId);
-            Long mapped = jdbc.queryForObject("""
-                    SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping
-                    WHERE outlet_id = ? AND purchase_order_id > 0
-                    """, Long.class, outletId);
-            Long nativeAll = jdbc.queryForObject("""
-                    SELECT COUNT(*) FROM purchase_order
-                    WHERE outlet_id = ? AND type = 'ORDER'
-                    """, Long.class, outletId);
-            Long nativeInRange = jdbc.queryForObject("""
-                    SELECT COUNT(*) FROM purchase_order
-                    WHERE outlet_id = ?
-                      AND type = 'ORDER'
-                      AND status IN ('RECEIVED', 'PARTIALLY_RECEIVED')
-                      AND order_date IS NOT NULL
-                      AND order_date >= CAST(? AS DATE)
-                      AND order_date <= CAST(? AS DATE)
-                    """, Long.class, outletId, sqlDate(from), sqlDate(to));
-            diagnostics.put("mirrorPurchaseOrders", mirror == null ? 0 : mirror);
-            diagnostics.put("mappedPurchaseOrders", mapped == null ? 0 : mapped);
-            diagnostics.put("nativePurchaseOrders", nativeAll == null ? 0 : nativeAll);
-            diagnostics.put("nativeReportOrders", nativeInRange == null ? 0 : nativeInRange);
-        } catch (Exception ex) {
-            diagnostics.put("available", false);
-            diagnostics.put("message", "Purchase sync diagnostic tables are unavailable.");
-        }
+        diagnostics.put("source", "orithos_native_ledger");
+        diagnostics.put("nativePurchaseOrders", nativeAll == null ? 0 : nativeAll);
+        diagnostics.put("nativeReportOrders", nativeInRange == null ? 0 : nativeInRange);
         return diagnostics;
     }
 
     /** Native ledger only, including source sales imported into that ledger. No external fallback. */
     public Map<String, Object> nativeOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
         requireReportOutlet(vendorId, outletId);
-        // Prefer Shopfront mirror header cost/tax/discount when present so reports match
-        // the Shopfront sales-report DSL even if native promote left stale header costs.
         List<Map<String, Object>> daily = jdbc.queryForList("""
                 SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
                                 DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
                        COALESCE(SUM(s.total_price), 0) AS revenue,
-                       COALESCE(SUM(COALESCE(m.total_tax, s.total_tax)), 0) AS tax,
-                       COALESCE(SUM(COALESCE(m.total_discount, s.total_discount, 0)), 0) AS discount,
+                       COALESCE(SUM(s.total_tax), 0) AS tax,
+                       COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
                        COUNT(*) AS transaction_count,
-                       COUNT(*) FILTER (WHERE COALESCE(m.total_tax, s.total_tax) IS NULL) AS tax_missing_count,
-                       COUNT(*) FILTER (WHERE COALESCE(m.total_cost, s.total_cost) IS NULL AND
+                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
+                       COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
                          (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
-                       COALESCE(SUM(COALESCE(m.total_cost, s.total_cost, line.cost, 0)), 0) AS cost
+                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost
                 FROM sale s
-                LEFT JOIN shopfront_store_mapping map
-                  ON map.outlet_id = CAST(s.outlet_id AS VARCHAR)
-                LEFT JOIN LATERAL (
-                  SELECT ss.total_cost, ss.total_tax, ss.total_discount
-                  FROM shopfront_sale ss
-                  WHERE ss.external_id = s.external_id
-                  ORDER BY
-                    CASE WHEN map.store_key IS NOT NULL AND ss.store_key = map.store_key THEN 0 ELSE 1 END,
-                    CASE WHEN ss.total_cost IS NULL THEN 1 ELSE 0 END,
-                    ss.synced_at DESC NULLS LAST
-                  LIMIT 1
-                ) m ON s.external_id IS NOT NULL
                 LEFT JOIN LATERAL (
                   SELECT COUNT(*) AS line_count,
                          SUM(si.cost * si.quantity) AS cost,
