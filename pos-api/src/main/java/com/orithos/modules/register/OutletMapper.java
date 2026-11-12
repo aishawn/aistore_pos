@@ -26,9 +26,9 @@ public interface OutletMapper {
     int insert(Outlet o);
 
     @Update("UPDATE outlet SET name=#{outlet.name}, contact_id=#{outlet.contactId}, logo=#{outlet.logo}, "
-            + "business_number=#{outlet.businessNumber}, loyalty_enabled=#{outlet.loyaltyEnabled}, loyalty_name=#{outlet.loyaltyName}, "
+            + "business_number=#{outlet.businessNumber}, loyalty_enabled=CASE WHEN #{outlet.loyaltyEnabled} THEN 1 ELSE 0 END, loyalty_name=#{outlet.loyaltyName}, "
             + "loyalty_earn_rate=#{outlet.loyaltyEarnRate}, loyalty_redeem_rate=#{outlet.loyaltyRedeemRate}, "
-            + "has_kitchen_screen=#{outlet.hasKitchenScreen}, ticketing_price_set_id=#{outlet.ticketingPriceSetId} "
+            + "has_kitchen_screen=CASE WHEN #{outlet.hasKitchenScreen} THEN 1 ELSE 0 END, ticketing_price_set_id=#{outlet.ticketingPriceSetId} "
             + "WHERE id=#{outlet.id} AND vendor_id=#{vendorId}")
     int update(@Param("outlet") Outlet outlet, @Param("vendorId") Long vendorId);
 

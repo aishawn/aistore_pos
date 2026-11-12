@@ -28,7 +28,8 @@ public interface RegisterMapper {
     int insert(Register r);
 
     @Update("UPDATE register SET name=#{register.name}, outlet_id=#{register.outletId}, invoice_number=#{register.invoiceNumber}, "
-            + "open_time=#{register.openTime}, closed=#{register.closed} WHERE id=#{register.id} AND outlet_id IN "
+            + "open_time=#{register.openTime}, closed=CASE WHEN #{register.closed} THEN 1 ELSE 0 END, "
+            + "surcharging=CAST(#{register.surcharging} AS JSONB) WHERE id=#{register.id} AND outlet_id IN "
             + "(SELECT id FROM outlet WHERE vendor_id=#{vendorId})")
     int update(@Param("register") Register register, @Param("vendorId") Long vendorId);
 
@@ -41,7 +42,7 @@ public interface RegisterMapper {
     int overrideInvoiceNumber(@Param("id") Long id, @Param("vendorId") Long vendorId,
                               @Param("invoiceNumber") String invoiceNumber);
 
-    @Update("UPDATE register SET surcharging=#{surcharging} WHERE id=#{id} AND outlet_id IN "
+    @Update("UPDATE register SET surcharging=CAST(#{surcharging} AS JSONB) WHERE id=#{id} AND outlet_id IN "
             + "(SELECT id FROM outlet WHERE vendor_id=#{vendorId})")
     int updateSurcharging(@Param("id") Long id, @Param("vendorId") Long vendorId,
                           @Param("surcharging") String surcharging);
