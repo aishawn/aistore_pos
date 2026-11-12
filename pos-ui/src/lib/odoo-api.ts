@@ -171,6 +171,7 @@ export interface OdooCustomerRecord {
   ref: string | false;
   property_product_pricelist?: [number, string] | false;
   category_id?: number[];
+  category_name?: string | null;
   credit?: number;
   total_invoiced?: number;
   street?: string | false;
@@ -178,6 +179,7 @@ export interface OdooCustomerRecord {
   vat?: string | false;
   company_type?: "person" | "company" | string;
   active?: boolean;
+  performance_30d?: number[] | null;
 }
 
 export interface OdooPricelistRecord {
@@ -188,6 +190,7 @@ export interface OdooPricelistRecord {
   company: string;
   companyId: number | null;
   active: boolean;
+  customerCount: number;
 }
 
 export interface OdooCustomerGroupRecord {
@@ -961,7 +964,7 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
 /** Read a named dataset. Prefer Orithos ledger APIs after the native cutover. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
+  options: { groupId?: number; groupIds?: string; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; categoryIds?: number[]; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; productFilters?: ProductCatalogueFilters; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter; inventoryReport?: boolean; inventoryFilter?: "all" | "zero" | "negative"; sortBy?: import("./inventory-report").InventorySort; sortDirection?: import("./inventory-report").InventoryDirection; snapshotId?: string; refresh?: boolean } = {},
 ): Promise<OdooPage<T>> {
   if (type === "customers") {
     const pageNumber = Math.floor((options.offset ?? 0) / (options.limit ?? 40)) + 1;
@@ -969,19 +972,26 @@ export async function searchOdooRecords<T>(
     const page = await api.get<Page<{
       id: number; name: string; code?: string | null; phone?: string | null; email?: string | null;
       customerGroupId?: number | null; customerGroupName?: string | null; priceListId?: number | null;
-      currentOwing?: number | null;
+      currentOwing?: number | null; performance30d?: Array<number | string> | null;
     }>>("/api/customers", {
-      name: options.query, groupId: options.groupId, priceListId: options.pricelistId,
+      name: options.query,
+      groupId: options.groupId,
+      groupIds: options.groupIds,
+      priceListId: options.pricelistId,
       page: pageNumber, size,
     });
-    const priceLists = await getOdooPricelists(undefined, 0, 500).catch(() => ({ items: [] as OdooPricelistRecord[], hasNext: false }));
+    const priceLists = await getOdooPricelists(undefined, 0, 500).catch(() => ({ items: [] as OdooPricelistRecord[], total: 0, hasNext: false }));
     const priceListNames = new Map(priceLists.items.map((item) => [item.id, item.name]));
     const items = page.items.map((customer) => ({
       id: Number(customer.id), name: customer.name, phone: customer.phone || false,
       email: customer.email || false, customer_rank: 0, ref: customer.code || false,
       category_id: customer.customerGroupId ? [customer.customerGroupId] : [],
+      category_name: customer.customerGroupName || null,
       property_product_pricelist: customer.priceListId ? [customer.priceListId, priceListNames.get(customer.priceListId) ?? `Price list #${customer.priceListId}`] as [number, string] : false,
       credit: Number(customer.currentOwing ?? 0), active: true,
+      performance_30d: Array.isArray(customer.performance30d)
+        ? customer.performance30d.map((point) => Number(point)).filter((point) => Number.isFinite(point))
+        : null,
     } as OdooCustomerRecord));
     return { items: items as T[], total: page.total, limit: size, offset: options.offset ?? 0, hasNext: pageNumber * size < page.total, generatedAt: new Date().toISOString() };
   }
@@ -1549,11 +1559,21 @@ function nativeCustomerPayload(values: OdooCustomerWriteValues) {
 
 export async function getOdooPricelists(query?: string, offset = 0, limit = 50) {
   const pageNumber = Math.floor(offset / limit) + 1;
-  const page = await api.get<Page<{ id: number; name: string; outletId: number }>>("/api/price-lists", {
+  const page = await api.get<Page<{ id: number; name: string; outletId: number; customerCount?: number | null }>>("/api/price-lists", {
     name: query?.trim() || undefined, page: pageNumber, size: limit,
   });
   return {
-    items: page.items.map((item) => ({ id: Number(item.id), name: item.name, currency: "AUD", currencyId: null, company: "Orithos store", companyId: Number(item.outletId), active: true })),
+    items: page.items.map((item) => ({
+      id: Number(item.id),
+      name: item.name,
+      currency: "AUD",
+      currencyId: null,
+      company: "Orithos store",
+      companyId: Number(item.outletId),
+      active: true,
+      customerCount: Number(item.customerCount ?? 0),
+    })),
+    total: page.total,
     hasNext: pageNumber * limit < page.total,
   };
 }

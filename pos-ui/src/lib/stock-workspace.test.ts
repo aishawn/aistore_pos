@@ -35,6 +35,25 @@ test("Stock exposes its current workspaces and Purchasing is visible with any on
   assert.equal(getSidebarNavigation({ hasPermission: () => false }).some((entry) => entry.label === "Stock"), false);
 });
 
+test("Customers sidebar includes Pricelists after Gift Cards", () => {
+  const admin = getSidebarNavigation({ isAdmin: true });
+  const group = admin.find((entry) => entry.label === "Customers");
+  assert.ok(group && "items" in group);
+  assert.deepEqual(
+    group.items.map((item) => ("href" in item ? { label: item.label, href: item.href } : item.label)),
+    [
+      { label: "Customers", href: "/customers" },
+      { label: "Balances", href: "/customers/balances" },
+      { label: "Gift Cards", href: "/giftcards" },
+      { label: "Pricelists", href: "/pricelists" },
+    ],
+  );
+  const pricelistsOnly = getSidebarNavigation({ hasPermission: (key) => key === "customers.pricelists" });
+  const customers = pricelistsOnly.find((entry) => entry.label === "Customers");
+  assert.ok(customers && "items" in customers);
+  assert.deepEqual(customers.items.map((item) => item.label), ["Pricelists"]);
+});
+
 test("purchasing tabs and product dialogs remain available in mobile mode", () => {
   for (const href of ["/products?dialog=categories", "/products?dialog=stocktake", "/purchases?tab=replenishment", "/purchases?tab=invoices", "/invoices/new"]) assert.ok(isMobileAllowedHref(href), href);
 });

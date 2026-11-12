@@ -14,5 +14,7 @@ public class PriceList {
     private Boolean allowDiscountingPromotions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** Assigned active customers for this price list (list views). */
+    private Long customerCount;
     private List<PriceListItem> items;
 }

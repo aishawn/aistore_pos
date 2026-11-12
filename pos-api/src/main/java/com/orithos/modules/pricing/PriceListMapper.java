@@ -9,10 +9,20 @@ public interface PriceListMapper {
     @Select("SELECT * FROM price_list WHERE outlet_id = #{outletId} AND active = TRUE ORDER BY created_at DESC, id DESC")
     List<PriceList> findAll(@Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM price_list "
-            + "WHERE outlet_id = #{outletId} AND active = TRUE "
-            + "AND (CAST(#{name} AS VARCHAR) IS NULL OR name LIKE CONCAT('%', CAST(#{name} AS VARCHAR), '%') ESCAPE '!') "
-            + "ORDER BY created_at DESC, id DESC LIMIT #{size} OFFSET #{offset}")
+    @Select("""
+            SELECT pl.*, (
+                SELECT COUNT(*)
+                FROM customer c
+                WHERE c.price_list_id = pl.id
+                  AND c.outlet_id = pl.outlet_id
+                  AND c.deleted_at IS NULL
+            ) AS customer_count
+            FROM price_list pl
+            WHERE pl.outlet_id = #{outletId} AND pl.active = TRUE
+              AND (CAST(#{name} AS VARCHAR) IS NULL OR pl.name LIKE CONCAT('%', CAST(#{name} AS VARCHAR), '%') ESCAPE '!')
+            ORDER BY pl.created_at DESC, pl.id DESC
+            LIMIT #{size} OFFSET #{offset}
+            """)
     List<PriceList> page(@Param("name") String name, @Param("outletId") Long outletId, @Param("size") int size, @Param("offset") int offset);
 
     @Select("SELECT COUNT(*) FROM price_list "

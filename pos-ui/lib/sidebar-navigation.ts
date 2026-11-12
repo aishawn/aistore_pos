@@ -1,10 +1,9 @@
 /**
  * DEPRECATED — not imported by the live Sidebar.
- * Live nav: `pos-ui/src/lib/sidebar-navigation.ts` (Odoo-backed Customers only).
+ * Live nav: `pos-ui/src/lib/sidebar-navigation.ts`.
  *
- * This Shopfront-era five-item Customer section (Groups / Price Lists / Balances /
- * Gift Cards) must not be restored into SIDEBAR_MAIN. Classic routes remain
- * reference-only until each has an Odoo-backed replacement.
+ * Historic Shopfront-era Customer labels live here for reference only.
+ * Live Customers now includes Pricelists via `/pricelists` (Orithos-backed).
  */
 
 export interface SidebarItem {

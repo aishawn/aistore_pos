@@ -4,7 +4,7 @@
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
  * Customer sidebar:
- * - Directory with groups, receivables, price lists and capability-gated gift cards.
+ * - Directory, balances, capability-gated gift cards, and Orithos pricelists.
  * - Legacy `/…/odoo` paths are redirects only; do not revive Classic MySQL pages.
  */
 
@@ -82,6 +82,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Customers", href: "/customers", permission: "customers.view" },
       { label: "Balances", href: "/customers/balances", permission: "customers.balances" },
       { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
+      { label: "Pricelists", href: "/pricelists", permission: "customers.pricelists" },
     ],
   },
   {
