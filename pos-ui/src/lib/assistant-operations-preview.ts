@@ -30,12 +30,12 @@ type Product = {
   recommendationStatus: string; leadTimeDays?: number | null;
 };
 type Plan = {
-  products: Product[]; coverageDays: number; reviewRequiredCount: number;
-  excludedProductCount?: number; generatedAt: string; company: string;
+  products: Product[]; reviewRequiredCount: number;
+  weekStart: string; weekEnd: string;
 };
 type Sales = {
   period: string; revenue: number; transactions: number; currency: string;
-  from: string; to: string; timezone: string; company: string;
+  from: string; to: string; timezone: string; source: string; dataAsOf?: string;
 };
 
 class PreviewReadError extends Error {
@@ -53,11 +53,6 @@ function finite(value: unknown): value is number {
 
 function storeDay(timezone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
-function isoLocalMidnight(value: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
-  return `${parts.replaceAll("/", "-")} 00:00:00`;
 }
 
 async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal): Promise<Plan> {
@@ -96,11 +91,10 @@ async function readReplenishmentPlan(fetcher: typeof fetch, signal?: AbortSignal
       };
     });
   return {
-    company: "Orithos",
-    coverageDays: 21,
     reviewRequiredCount: products.filter((item) => item.recommendationStatus === "REVIEW_DATA").length,
     products,
-    generatedAt: new Date().toISOString(),
+    weekStart: body.data.weekStart ?? "",
+    weekEnd: body.data.weekEnd ?? "",
   };
 }
 
@@ -114,8 +108,14 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
     method: "GET", credentials: "same-origin", cache: "no-store", signal,
   });
   if (!response.ok) throw new PreviewReadError("Business data unavailable", response.status !== 401 && response.status !== 403);
-  const body = await response.json() as { data?: { source?: string; revenue?: number; transactions?: number } };
-  if (!body.data || body.data.source !== "orithos_ledger" || !finite(body.data.revenue) || !finite(body.data.transactions)) {
+  const body = await response.json() as {
+    data?: {
+      source?: string; revenue?: number; transactions?: number; from?: string; to?: string;
+      timeZone?: string; dataAsOf?: string;
+    };
+  };
+  if (!body.data || body.data.source !== "orithos_ledger" || !finite(body.data.revenue) || !finite(body.data.transactions)
+    || !body.data.from || !body.data.to || !body.data.timeZone) {
     throw new Error("Incomplete sales response");
   }
   return {
@@ -123,10 +123,11 @@ async function readWeekSales(fetcher: typeof fetch, signal?: AbortSignal): Promi
     revenue: Number(body.data.revenue),
     transactions: Number(body.data.transactions),
     currency: "AUD",
-    from: isoLocalMidnight(weekStart, timezone),
-    to: `${today} 00:00:00`,
-    timezone,
-    company: "Orithos",
+    from: body.data.from,
+    to: body.data.to,
+    timezone: body.data.timeZone,
+    source: body.data.source,
+    dataAsOf: body.data.dataAsOf,
   };
 }
 
@@ -146,17 +147,23 @@ export async function readOperationsPreview(
     source: "Orithos", status: "ready",
   };
   let dataAsOf: string | undefined;
+  let dataSource: string | undefined;
+  let reportPeriodFrom: string | undefined;
+  let reportPeriodTo: string | undefined;
+  let reportTimeZone: string | undefined;
+  let reportDataStatus: string | undefined;
   try {
     if (intent === "replenishment") {
       const plan = await readReplenishmentPlan(fetcher, signal);
-      if (!Array.isArray(plan.products) || !finite(plan.coverageDays) || !finite(plan.reviewRequiredCount)
-        || !plan.generatedAt || !plan.company) throw new Error("Incomplete replenishment response");
+      if (!Array.isArray(plan.products) || !finite(plan.reviewRequiredCount) || !plan.weekStart || !plan.weekEnd) {
+        throw new Error("Incomplete replenishment response");
+      }
       const eligible = plan.products.filter((item) => item.recommendationStatus === "READY"
         && finite(item.suggestedQuantity) && item.suggestedQuantity > 0);
       card.status = plan.reviewRequiredCount > 0 ? "partial" : eligible.length ? "ready" : "empty";
       card.summary = chinese
-        ? `${plan.company}：${eligible.length} 个商品有补货建议，覆盖 ${plan.coverageDays} 天。${plan.reviewRequiredCount} 个商品资料需复核，已排除。仅供预览，未创建采购单。`
-        : `${plan.company}: ${eligible.length} ${eligible.length === 1 ? "product has" : "products have"} suggestions for ${plan.coverageDays}-day cover. ${plan.reviewRequiredCount} products need data review and are excluded. Preview only; no purchase order created.`;
+        ? `${plan.weekStart} 至 ${plan.weekEnd} 的补货计划：${eligible.length} 个商品有建议数量。${plan.reviewRequiredCount} 个商品资料需复核，已排除。仅供预览，未创建采购单。`
+        : `Replenishment plan ${plan.weekStart} to ${plan.weekEnd}: ${eligible.length} ${eligible.length === 1 ? "product has" : "products have"} suggested quantities. ${plan.reviewRequiredCount} products need data review and are excluded. Preview only; no purchase order created.`;
       if (eligible.some((item) => item.leadTimeDays == null)) {
         card.summary += chinese ? " 部分供应商交期未知，请在采购前核实。" : " Some supplier lead times are unknown; verify before purchasing.";
       }
@@ -166,21 +173,27 @@ export async function readOperationsPreview(
       card.items = eligible.slice(0, 3).map((item) => ({
         id: item.id, label: `${item.name} — ${chinese ? "建议" : "suggested"} ${item.suggestedQuantity} ${item.unit ?? "units"}`,
       }));
-      dataAsOf = plan.generatedAt;
+      reportPeriodFrom = plan.weekStart;
+      reportPeriodTo = plan.weekEnd;
     } else {
       const sales = await readWeekSales(fetcher, signal);
       if (sales.period !== "this_week" || !finite(sales.revenue) || !finite(sales.transactions)
-        || !sales.from || !sales.to || !sales.timezone || !sales.company || !sales.currency) {
+        || !sales.from || !sales.to || !sales.timezone || !sales.source || !sales.currency) {
         throw new Error("Incomplete sales response");
       }
       const date = (value: string) => new Intl.DateTimeFormat(chinese ? "zh-CN" : "en-AU", {
-        timeZone: sales.timezone, day: "numeric", month: "short", year: "numeric",
-      }).format(new Date(`${value.replace(" ", "T")}Z`));
+        timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
+      }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`));
       const amount = new Intl.NumberFormat(chinese ? "zh-CN" : "en-AU", { style: "currency", currency: sales.currency }).format(sales.revenue);
       card.summary = chinese
-        ? `${sales.company}：本周净销售额 ${amount}，${sales.transactions} 笔销售。包含已退销售金额，含适用 GST。\n${date(sales.from)} 至 ${date(sales.to)}（${sales.timezone}，截至当前）。`
-        : `${sales.company}: net sales ${amount} from ${sales.transactions} sales. Net sales include refunds and applicable GST.\n${date(sales.from)} – ${date(sales.to)} (${sales.timezone}, week to date).`;
-      dataAsOf = `${sales.to.replace(" ", "T")}Z`;
+        ? `Orithos：本周净销售额 ${amount}，${sales.transactions} 笔销售。包含已退销售金额，含适用 GST。\n${date(sales.from)} 至 ${date(sales.to)}（${sales.timezone}）。`
+        : `Orithos: net sales ${amount} from ${sales.transactions} sales. Net sales include refunds and applicable GST.\n${date(sales.from)} – ${date(sales.to)} (${sales.timezone}).`;
+      dataAsOf = sales.dataAsOf;
+      dataSource = sales.source;
+      reportPeriodFrom = sales.from.slice(0, 10);
+      reportPeriodTo = sales.to.slice(0, 10);
+      reportTimeZone = sales.timezone;
+      reportDataStatus = "available";
     }
   } catch (error) {
     if (signal?.aborted) throw error;
@@ -196,6 +209,8 @@ export async function readOperationsPreview(
   return {
     threadId: threadId ?? "", intent: intent === "sales_week" ? "report_sales" : "navigate",
     intentSummary: title, answer: card.summary ?? title, slots: {}, ui: null, cards: [card],
-    writeRequests: [], source: "Orithos · read-only", dataAsOf, fastPathId: `operations_${intent}`, llmFallback: false,
+    writeRequests: [], source: "Orithos · read-only", dataAsOf, dataSource,
+    reportPeriodFrom, reportPeriodTo, reportTimeZone, reportDataStatus,
+    fastPathId: `operations_${intent}`, llmFallback: false,
   };
 }

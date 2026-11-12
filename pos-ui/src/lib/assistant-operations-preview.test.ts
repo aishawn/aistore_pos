@@ -35,6 +35,8 @@ test("only bounded read questions bypass the model/command parser", async () => 
 test("full catalogue suggestions survive unrelated review products", async () => {
   const result = await readOperationsPreview(question, "existing-thread", undefined, mockFetch({
     data: {
+      weekStart: "2026-11-09",
+      weekEnd: "2026-11-15",
       lines: [
         { productId: 1, productName: "Gift card", orderQty: 100, status: "REVIEW_DATA" },
         { productId: 501, productName: "Beer", orderQty: 8 },
@@ -43,8 +45,11 @@ test("full catalogue suggestions survive unrelated review products", async () =>
   }));
   assert.equal(result?.threadId, "existing-thread");
   assert.equal(result?.cards?.[0].status, "partial");
-  assert.match(result?.answer ?? "", /1 product has.*1 products/);
+  assert.match(result?.answer ?? "", /2026-11-09 to 2026-11-15: 1 product has.*1 products/);
   assert.equal(result?.cards?.[0].items?.[0].id, 501);
+  assert.equal(result?.dataAsOf, undefined);
+  assert.equal(result?.reportPeriodFrom, "2026-11-09");
+  assert.equal(result?.reportPeriodTo, "2026-11-15");
   assert.deepEqual(result?.writeRequests, []);
   assert.doesNotMatch(result?.answer ?? "", /Gift card/);
 });
@@ -52,6 +57,8 @@ test("full catalogue suggestions survive unrelated review products", async () =>
 test("all review is not a claim that no replenishment is needed", async () => {
   const result = await readOperationsPreview(question, null, undefined, mockFetch({
     data: {
+      weekStart: "2026-11-09",
+      weekEnd: "2026-11-15",
       lines: [
         { productId: 1, orderQty: 0, status: "REVIEW" },
         { productId: 2, orderQty: 0, status: "REVIEW" },
@@ -83,12 +90,22 @@ test("sales are read from the calendar week endpoint, preserving currency/refund
   const result = await readOperationsPreview("Show me this week's sales performance", null, undefined, async (url, init) => {
     assert.ok(String(url).startsWith("/api/reports/native-overview?"));
     return mockFetch({
-      data: { source: "orithos_ledger", revenue: -15.5, transactions: 2 },
+      data: {
+        source: "orithos_ledger", revenue: -15.5, transactions: 2,
+        from: "2026-11-09", to: "2026-11-12", timeZone: "Australia/Adelaide",
+      },
     })(url, init);
   });
   assert.equal(result?.cards?.[0].status, "ready");
   assert.match(result?.answer ?? "", /-\$15\.50/);
   assert.match(result?.answer ?? "", /Australia\/Adelaide/);
+  assert.match(result?.answer ?? "", /9 Nov 2026.*12 Nov 2026/);
+  assert.equal(result?.dataAsOf, undefined);
+  assert.equal(result?.dataSource, "orithos_ledger");
+  assert.equal(result?.reportPeriodFrom, "2026-11-09");
+  assert.equal(result?.reportPeriodTo, "2026-11-12");
+  assert.equal(result?.reportTimeZone, "Australia/Adelaide");
+  assert.equal(result?.reportDataStatus, "available");
   assert.deepEqual(result?.writeRequests, []);
 });
 
