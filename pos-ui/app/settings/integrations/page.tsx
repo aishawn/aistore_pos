@@ -9,17 +9,27 @@ import { useAuth } from "@/lib/auth";
 export default function IntegrationsSettingsPage() {
   const { hasPermission, ready } = useAuth();
   const canImport = ready && hasPermission("settings.integrations");
-  const [storeKey, setStoreKey] = useState("skr");
-  const [status, setStatus] = useState<{ last_store_key?: string; last_at?: string }>({});
+  const [status, setStatus] = useState<{ job_id?: number; status?: string; phase?: string; started_at?: string; finished_at?: string } | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void api.get<{ last_store_key?: string; last_at?: string }>("/api/settings/import/status")
+    if (!canImport) return;
+    void api.get<typeof status>("/api/settings/import/promote")
       .then(setStatus)
       .catch(() => undefined);
-  }, []);
+  }, [canImport]);
+
+  useEffect(() => {
+    if (!canImport || (status?.status !== "queued" && status?.status !== "running")) return;
+    const timer = setInterval(() => {
+      void api.get<typeof status>("/api/settings/import/promote")
+        .then(setStatus)
+        .catch(() => undefined);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [canImport, status?.status]);
 
   async function promote() {
     if (!canImport) return;
@@ -27,12 +37,9 @@ export default function IntegrationsSettingsPage() {
     setError(null);
     setResult(null);
     try {
-      const data = await api.post<Record<string, unknown>>("/api/settings/import/promote", { storeKey });
+      const data = await api.post<{ job_id?: number; status?: string; phase?: string; store?: string }>("/api/settings/import/promote", { storeKey: "skr" });
       setResult(JSON.stringify(data, null, 2));
-      setStatus({
-        last_store_key: String(data.store_key ?? storeKey),
-        last_at: new Date().toISOString(),
-      });
+      setStatus({ job_id: data.job_id, status: data.status, phase: data.phase, started_at: new Date().toISOString() });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Import promote failed");
     } finally {
@@ -62,15 +69,12 @@ export default function IntegrationsSettingsPage() {
       </section>
       <div className="grid max-w-xl gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-5">
         <p className="text-sm text-[var(--oh-muted)]">
-          Last promote: {status.last_store_key || "—"} {status.last_at ? `at ${status.last_at}` : ""}
+          Latest settings sync: {status ? `#${status.job_id ?? "—"} · ${status.status ?? "unknown"}${status.phase ? ` · ${status.phase}` : ""}` : "No sync recorded"}
         </p>
-        <label className="grid gap-1 text-sm font-medium">Store key
-          <input className="h-10 rounded-lg border px-3" value={storeKey} onChange={(e) => setStoreKey(e.target.value)} disabled={!canImport || busy} />
-        </label>
         {canImport ? (
           <>
             <button type="button" disabled={busy} onClick={() => void promote()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-              {busy ? "Working…" : "Re-import settings from staged Shopfront data"}
+              {busy ? "Working…" : "Sync settings from Shopfront"}
             </button>
             <button type="button" disabled={busy} onClick={() => void dedupe()} className="rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50">
               Deduplicate tax rates &amp; payment methods
