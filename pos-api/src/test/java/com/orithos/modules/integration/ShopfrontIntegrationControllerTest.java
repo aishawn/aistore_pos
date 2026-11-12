@@ -766,14 +766,33 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void normalizeTaxRateNameMapsShopfrontLabelsToOrithosGst() throws Exception {
+    void normalizeTaxRateNamePreservesShopfrontFacetLabels() throws Exception {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         Method normalize = ShopfrontIntegrationController.class.getDeclaredMethod("normalizeTaxRateName", String.class);
         normalize.setAccessible(true);
-        assertEquals("GST", normalize.invoke(controller, "Including GST"));
-        assertEquals("GST", normalize.invoke(controller, "Excluding GST"));
-        assertEquals("GST", normalize.invoke(controller, "10.0% GST"));
+        assertEquals("Including GST", normalize.invoke(controller, "Including GST"));
+        assertEquals("Excluding GST", normalize.invoke(controller, "Excluding GST"));
+        assertEquals("10.0% GST", normalize.invoke(controller, "10.0% GST"));
+        assertEquals("0.0% GST", normalize.invoke(controller, "0.0% GST"));
+        assertEquals("GST", normalize.invoke(controller, "GST"));
         assertEquals("GST Free", normalize.invoke(controller, "GST Free"));
+    }
+
+    @Test
+    void normalizeShopfrontProductStatusPreservesEnum() {
+        assertEquals("ACTIVE", ShopfrontIntegrationController.normalizeShopfrontProductStatus("ACTIVE", false));
+        assertEquals("NOT_SELLING", ShopfrontIntegrationController.normalizeShopfrontProductStatus("NOT_SELLING", false));
+        assertEquals("NOT_PURCHASING", ShopfrontIntegrationController.normalizeShopfrontProductStatus("Not Purchasing", false));
+        assertEquals("NOT_ACTIVE", ShopfrontIntegrationController.normalizeShopfrontProductStatus("INACTIVE", false));
+        assertEquals("NOT_ACTIVE", ShopfrontIntegrationController.normalizeShopfrontProductStatus("ACTIVE", true));
+    }
+
+    @Test
+    void taxRateAmountFromNameParsesPercentLabels() {
+        assertEquals(new java.math.BigDecimal("10.0"), ShopfrontIntegrationController.taxRateAmountFromName("10.0% GST"));
+        assertEquals(new java.math.BigDecimal("0.0"), ShopfrontIntegrationController.taxRateAmountFromName("0.0% GST"));
+        assertEquals(java.math.BigDecimal.TEN, ShopfrontIntegrationController.taxRateAmountFromName("Including GST"));
+        assertEquals(java.math.BigDecimal.ZERO, ShopfrontIntegrationController.taxRateAmountFromName("GST Free"));
     }
 
     @Test

@@ -63,7 +63,13 @@
             <if test="q.categoryId != null">
                 AND p.category_id = #{q.categoryId}
             </if>
-            <if test="q.brandId != null">
+            <if test="q.brandIds != null and q.brandIds != ''">
+                AND p.brand_id IN
+                <foreach collection="q.brandIdList" item="bid" open="(" separator="," close=")">
+                    #{bid}
+                </foreach>
+            </if>
+            <if test="(q.brandIds == null or q.brandIds == '') and q.brandId != null">
                 AND p.brand_id = #{q.brandId}
             </if>
             <if test="q.withoutBrand != null and q.withoutBrand">
@@ -91,10 +97,22 @@
                 AND EXISTS (SELECT 1 FROM product_tag pt
                             WHERE pt.product_id = p.id AND pt.tag_id = #{q.tagId})
             </if>
-            <if test="q.taxRateId != null">
+            <if test="q.taxRateIds != null and q.taxRateIds != ''">
+                AND p.tax_rate_id IN
+                <foreach collection="q.taxRateIdList" item="tid" open="(" separator="," close=")">
+                    #{tid}
+                </foreach>
+            </if>
+            <if test="(q.taxRateIds == null or q.taxRateIds == '') and q.taxRateId != null">
                 AND p.tax_rate_id = #{q.taxRateId}
             </if>
-            <if test="q.costTaxRateId != null">
+            <if test="q.costTaxRateIds != null and q.costTaxRateIds != ''">
+                AND p.cost_tax_rate_id IN
+                <foreach collection="q.costTaxRateIdList" item="tid" open="(" separator="," close=")">
+                    #{tid}
+                </foreach>
+            </if>
+            <if test="(q.costTaxRateIds == null or q.costTaxRateIds == '') and q.costTaxRateId != null">
                 AND p.cost_tax_rate_id = #{q.costTaxRateId}
             </if>
             <if test="q.supplierId != null">

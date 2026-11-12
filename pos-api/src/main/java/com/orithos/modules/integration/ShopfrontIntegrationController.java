@@ -2899,6 +2899,9 @@ public class ShopfrontIntegrationController {
         if (taxRates.containsKey(key)) return;
         Long taxRateId = findTaxRateId(normalized, outletId);
         if (taxRateId == null) {
+            taxRateId = createTaxRate(normalized, outletId);
+        }
+        if (taxRateId == null) {
             throw new IllegalArgumentException("Product " + sourceId + " has no matching Orithos GST rate: " + taxRateName);
         }
         taxRates.put(key, taxRateId);
@@ -2928,8 +2931,8 @@ public class ShopfrontIntegrationController {
         Long categoryId = ensureLookup("category", lookupName(item.get("category")), outletId, batch.lookupIds);
         Long brandId = ensureLookup("brand", lookupName(item.get("brand")), outletId, batch.lookupIds);
         Long familyId = ensureLookup("family", lookupName(item.get("family")), outletId, batch.lookupIds);
-        Long taxRateId = ensureTaxRate(effectiveTaxRateName(item, "tax_rate_name"), taxRates);
-        Long costTaxRateId = ensureTaxRate(effectiveTaxRateName(item, "cost_tax_rate_name"), taxRates);
+        Long taxRateId = ensureTaxRate(effectiveTaxRateName(item, "tax_rate_name"), taxRates, outletId);
+        Long costTaxRateId = ensureTaxRate(effectiveTaxRateName(item, "cost_tax_rate_name"), taxRates, outletId);
         BigDecimal caseQuantity = effectiveCaseQuantity(item);
         BigDecimal cost = decimal(item, "cost");
         String type = text(item, "source_type");
@@ -2941,7 +2944,8 @@ public class ShopfrontIntegrationController {
         boolean sourceDeleted = flag(item, "source_deleted", false) == 1
                 || rawPayload.path("deleted").asBoolean(false)
                 || !rawPayload.path("deletedAt").isMissingNode() && !rawPayload.path("deletedAt").isNull();
-        String productStatus = "ACTIVE".equalsIgnoreCase(sourceStatus) && !sourceDeleted ? "ACTIVE" : "INACTIVE";
+        // Preserve Shopfront ProductStatusEnum (ACTIVE / NOT_SELLING / NOT_PURCHASING / NOT_ACTIVE).
+        String productStatus = normalizeShopfrontProductStatus(sourceStatus, sourceDeleted);
         String alternateImages = item.has("alternate_images") ? objectMapper.writeValueAsString(item.get("alternate_images")) : "[]";
         if (productId == null) {
             // Shopfront allows duplicate display names across distinct source_ids.
@@ -3208,13 +3212,29 @@ public class ShopfrontIntegrationController {
     }
 
     private Long ensureTaxRate(String name, Map<String, Long> taxRates) {
+        return ensureTaxRate(name, taxRates, null);
+    }
+
+    private Long ensureTaxRate(String name, Map<String, Long> taxRates, Long outletId) {
         if (name == null || name.isBlank()) return null;
         String normalized = normalizeTaxRateName(name);
         if (normalized == null || normalized.isBlank()) {
             throw new IllegalArgumentException("No matching Orithos tax rate for source tax code: " + name);
         }
-        Long taxRateId = taxRates.get(normalized.trim().toLowerCase(Locale.ROOT));
+        String key = normalized.trim().toLowerCase(Locale.ROOT);
+        Long taxRateId = taxRates.get(key);
         if (taxRateId == null) taxRateId = taxRates.get(name.trim().toLowerCase(Locale.ROOT));
+        if (taxRateId == null && outletId != null && outletId > 0) {
+            taxRateId = findTaxRateId(normalized, outletId);
+            if (taxRateId == null) {
+                taxRateId = createTaxRate(normalized, outletId);
+            }
+            if (taxRateId != null) {
+                taxRates.put(key, taxRateId);
+                String originalKey = name.trim().toLowerCase(Locale.ROOT);
+                if (!originalKey.isBlank()) taxRates.put(originalKey, taxRateId);
+            }
+        }
         if (taxRateId == null) throw new IllegalArgumentException("No matching Orithos tax rate for source tax code: " + name);
         return taxRateId;
     }
@@ -3229,25 +3249,69 @@ public class ShopfrontIntegrationController {
         return matches.isEmpty() ? null : matches.get(0);
     }
 
+    private Long createTaxRate(String name, long outletId) {
+        BigDecimal amount = taxRateAmountFromName(name);
+        return jdbc.queryForObject(
+                "INSERT INTO tax_rate (name, amount, is_default, outlet_id) VALUES (?,?,false,?) RETURNING id",
+                Long.class, name, amount, outletId);
+    }
+
+    static BigDecimal taxRateAmountFromName(String name) {
+        if (name == null || name.isBlank()) return BigDecimal.TEN;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(\\d+(?:\\.\\d+)?)\\s*%")
+                .matcher(name);
+        if (matcher.find()) {
+            return new BigDecimal(matcher.group(1));
+        }
+        String key = name.trim().toLowerCase(Locale.ROOT);
+        if (key.contains("free") || key.equals("no gst") || key.equals("free")) {
+            return BigDecimal.ZERO;
+        }
+        // Including GST / Excluding GST / GST → standard AU 10%.
+        return BigDecimal.TEN;
+    }
+
     /**
-     * Shopfront uses labels like "Including GST" / "Excluding GST" / "10.0% GST".
-     * Orithos outlets currently carry {@code GST} and {@code GST Free}.
+     * Keep Shopfront tax labels distinct for catalogue facets
+     * (Including GST, Excluding GST, 10.0% GST, 0.0% GST, …).
      */
     private String normalizeTaxRateName(String name) {
         if (name == null) return null;
         String trimmed = name.trim();
         if (trimmed.isBlank()) return trimmed;
         String key = trimmed.toLowerCase(Locale.ROOT);
-        if (key.equals("gst") || key.equals("including gst") || key.equals("excluding gst")
-                || key.matches("\\d+(\\.\\d+)?%\\s*gst") || key.contains("gst inclusive")
-                || key.contains("gst exclusive")) {
-            return "GST";
-        }
         if (key.equals("gst free") || key.equals("gst-free") || key.equals("tax free")
                 || key.equals("tax-free") || key.equals("no gst") || key.equals("free")) {
             return "GST Free";
         }
+        // Preserve percentage and Including/Excluding labels for facet parity with Shopfront.
+        if (key.equals("gst")) {
+            return "GST";
+        }
         return trimmed;
+    }
+
+    /**
+     * Shopfront {@code ProductStatusEnum}: ACTIVE, NOT_SELLING, NOT_PURCHASING, NOT_ACTIVE.
+     */
+    static String normalizeShopfrontProductStatus(String sourceStatus, boolean sourceDeleted) {
+        if (sourceDeleted) {
+            return "NOT_ACTIVE";
+        }
+        if (sourceStatus == null || sourceStatus.isBlank()) {
+            return "NOT_ACTIVE";
+        }
+        String normalized = sourceStatus.trim().toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        return switch (normalized) {
+            case "ACTIVE", "NOT_SELLING", "NOT_PURCHASING", "NOT_ACTIVE" -> normalized;
+            case "INACTIVE", "ARCHIVED", "DELETED", "NOTACTIVE" -> "NOT_ACTIVE";
+            case "NOTSELLING" -> "NOT_SELLING";
+            case "NOTPURCHASING" -> "NOT_PURCHASING";
+            default -> "NOT_ACTIVE";
+        };
     }
 
     private String effectiveTaxRateName(JsonNode item, String field) {

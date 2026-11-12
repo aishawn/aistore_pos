@@ -12,6 +12,8 @@ public class ProductQuery {
     private String name;
     private Long categoryId;
     private Long brandId;
+    /** Comma-separated brand ids for multi-select (Shopfront brands: [ID]). */
+    private String brandIds;
     private Long familyId;
     /** When true, only products with no brand assigned. */
     private Boolean withoutBrand;
@@ -23,9 +25,13 @@ public class ProductQuery {
     private Long tagId;
     private String type;
     private Long taxRateId;
+    /** Comma-separated retail tax rate ids for multi-select. */
+    private String taxRateIds;
     private Long costTaxRateId;
+    /** Comma-separated purchase tax rate ids for multi-select. */
+    private String costTaxRateIds;
     private String status;
-    /** Comma-separated status values for multi-select (e.g. ACTIVE,INACTIVE). */
+    /** Comma-separated status values for multi-select (ACTIVE,NOT_SELLING,NOT_PURCHASING,NOT_ACTIVE). */
     private String statuses;
     /**
      * Inventory report stock filter (Shopfront report-type semantics):
@@ -44,13 +50,19 @@ public class ProductQuery {
     }
 
     public List<String> getStatusList() {
-        if (statuses == null || statuses.isBlank()) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(statuses.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
+        return splitCsv(statuses);
+    }
+
+    public List<Long> getBrandIdList() {
+        return splitIdCsv(brandIds);
+    }
+
+    public List<Long> getTaxRateIdList() {
+        return splitIdCsv(taxRateIds);
+    }
+
+    public List<Long> getCostTaxRateIdList() {
+        return splitIdCsv(costTaxRateIds);
     }
 
     /** Trim search text; status keywords (e.g. "inactive") become a status filter. */
@@ -71,11 +83,41 @@ public class ProductQuery {
             return null;
         }
         return switch (term.trim().toLowerCase()) {
-            case "inactive" -> "INACTIVE";
+            case "inactive", "not active", "not_active" -> "NOT_ACTIVE";
             case "active" -> "ACTIVE";
-            case "archived" -> "ARCHIVED";
+            case "not selling", "not_selling" -> "NOT_SELLING";
+            case "not purchasing", "not_purchasing" -> "NOT_PURCHASING";
+            case "archived" -> "NOT_ACTIVE";
             default -> null;
         };
+    }
+
+    private static List<String> splitCsv(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    private static List<Long> splitIdCsv(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(value -> {
+                    try {
+                        return Long.parseLong(value);
+                    } catch (NumberFormatException ignored) {
+                        return null;
+                    }
+                })
+                .filter(id -> id != null && id > 0)
+                .toList();
     }
 
     private static String blankToNull(String value) {

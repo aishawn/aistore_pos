@@ -66,12 +66,18 @@ export function FilterMultiSelect({
 
   const uniqueOptions = uniqueSelectOptions(options);
 
+  const selectedLabels = values
+    .map((value) => uniqueOptions.find((option) => option.value === value)?.label ?? value)
+    .filter(Boolean);
+  // Match Shopfront facet chips: show up to two labels, then "N More...".
   const display =
-    values.length === 0
+    selectedLabels.length === 0
       ? placeholder
-      : values.length === 1
-        ? (uniqueOptions.find((o) => o.value === values[0])?.label ?? `${values.length} Selected...`)
-        : `${values.length} Selected...`;
+      : selectedLabels.length === 1
+        ? selectedLabels[0]
+        : selectedLabels.length === 2
+          ? `${selectedLabels[0]}, ${selectedLabels[1]}`
+          : `${selectedLabels[0]}, ${selectedLabels[1]}, ${selectedLabels.length - 2} More...`;
 
   const toggle = (value: string) => {
     onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);

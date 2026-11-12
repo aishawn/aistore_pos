@@ -34,6 +34,7 @@ import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
 import { CostReconciliationPanel } from "@/components/CostReconciliationPanel";
 import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
 import { ClassificationsPanel } from "@/components/admin/ClassificationsPanel";
+import { FilterMultiSelect } from "@/components/admin/FilterMultiSelect";
 import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useShopfrontSyncRefresh } from "@/hooks/useShopfrontSyncRefresh";
@@ -54,8 +55,9 @@ import { shopfrontCostValue } from "@/lib/shopfront-cost";
 const PAGE_SIZE = 40;
 const PRODUCT_STATUS_OPTIONS = [
   { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Not Selling" },
-  { value: "ARCHIVED", label: "Archived" },
+  { value: "NOT_SELLING", label: "Not Selling" },
+  { value: "NOT_PURCHASING", label: "Not Purchasing" },
+  { value: "NOT_ACTIVE", label: "Inactive" },
 ] as const;
 const ALL_PRODUCT_STATUSES = PRODUCT_STATUS_OPTIONS.map((option) => option.value);
 
@@ -65,12 +67,13 @@ function parseFilterOptionId(id: string) {
 }
 
 function productStatusBadge(product: OdooProductRecord) {
-  const status = String(product.shopfront_source_status || (product.active ? "ACTIVE" : "INACTIVE")).toUpperCase();
-  const label = PRODUCT_STATUS_OPTIONS.find((option) => option.value === status)?.label
-    ?? (status === "INACTIVE" ? "Not Selling" : status === "ARCHIVED" ? "Archived" : "Active");
+  const raw = String(product.shopfront_source_status || (product.active ? "ACTIVE" : "NOT_ACTIVE")).toUpperCase();
+  const status = raw === "INACTIVE" || raw === "ARCHIVED" ? "NOT_ACTIVE" : raw;
+  const label = PRODUCT_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
   const activeTone = status === "ACTIVE";
+  const inactiveTone = status === "NOT_ACTIVE";
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${activeTone ? "bg-emerald-50 text-emerald-800" : status === "ARCHIVED" ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-900"}`}>
+    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${activeTone ? "bg-emerald-50 text-emerald-800" : inactiveTone ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-900"}`}>
       {label}
     </span>
   );
@@ -164,13 +167,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [debouncedQuery, setDebouncedQuery] = useState(() => searchParams.get("q") ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [brandId, setBrandId] = useState<number | null>(null);
+  const [brandIds, setBrandIds] = useState<string[]>([]);
   const [familyId, setFamilyId] = useState<number | null>(null);
   const [tagId, setTagId] = useState<number | null>(null);
   const [supplierId, setSupplierId] = useState<number | null>(null);
   const [productType, setProductType] = useState<string | null>(null);
-  const [taxRateId, setTaxRateId] = useState<number | null>(null);
-  const [costTaxRateId, setCostTaxRateId] = useState<number | null>(null);
+  const [taxRateIds, setTaxRateIds] = useState<string[]>([]);
+  const [costTaxRateIds, setCostTaxRateIds] = useState<string[]>([]);
   // Match Shopfront Products default: Status = Active.
   const [statusFilters, setStatusFilters] = useState<string[]>(() => ["ACTIVE"]);
   const [viiGiftCard, setViiGiftCard] = useState<"ignore" | "yes" | "no">("ignore");
@@ -318,31 +321,31 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const categoryOptions = useMemo(() => categoryGroups.map((group) => group[0]), [categoryGroups]);
 
   const catalogueProductFilters = useMemo((): ProductCatalogueFilters => ({
-    brandId,
+    brandIds: brandIds.length ? brandIds.join(",") : null,
     familyId,
     tagId,
     supplierId,
     type: productType,
-    taxRateId,
-    costTaxRateId,
+    taxRateIds: taxRateIds.length ? taxRateIds.join(",") : null,
+    costTaxRateIds: costTaxRateIds.length ? costTaxRateIds.join(",") : null,
     statuses: statusFilters.length === ALL_PRODUCT_STATUSES.length ? null : statusFilters.join(","),
     viiGiftCard: viiGiftCard === "ignore" ? null : viiGiftCard === "yes",
-  }), [brandId, costTaxRateId, familyId, productType, statusFilters, supplierId, tagId, taxRateId, viiGiftCard]);
+  }), [brandIds, costTaxRateIds, familyId, productType, statusFilters, supplierId, tagId, taxRateIds, viiGiftCard]);
 
   const catalogueFiltersActive = useCallback(() => Boolean(
     debouncedQuery
     || categoryId
-    || brandId
+    || brandIds.length
     || familyId
     || tagId
     || supplierId
     || productType
-    || taxRateId
-    || costTaxRateId
+    || taxRateIds.length
+    || costTaxRateIds.length
     || viiGiftCard !== "ignore"
     || !(statusFilters.length === 1 && statusFilters[0] === "ACTIVE")
     || catalogueView !== "all",
-  ), [brandId, catalogueView, categoryId, costTaxRateId, debouncedQuery, familyId, productType, statusFilters, supplierId, tagId, taxRateId, viiGiftCard]);
+  ), [brandIds, catalogueView, categoryId, costTaxRateIds, debouncedQuery, familyId, productType, statusFilters, supplierId, tagId, taxRateIds, viiGiftCard]);
 
   const showImportDisplayNote = useMemo(
     () => items.some((product) => {
@@ -546,13 +549,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         setLoadingMore(false);
       }
     }
-  }, [brandId, catalogueProductFilters, categoryId, categoryGroups, catalogueView, connected, costTaxRateId, debouncedQuery, dialog, familyId, inventoryFilter, inventoryReport, productType, sortBy, sortDirection, statusFilters, supplierId, tagId, taxRateId, viiGiftCard, refreshKey]);
+  }, [brandIds, catalogueProductFilters, categoryId, categoryGroups, catalogueView, connected, costTaxRateIds, debouncedQuery, dialog, familyId, inventoryFilter, inventoryReport, productType, sortBy, sortDirection, statusFilters, supplierId, tagId, taxRateIds, viiGiftCard, refreshKey]);
 
   useEffect(() => {
     if (dialog === "cost-reconciliation") { setLoading(false); return; }
     const key = JSON.stringify([
       categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter,
-      brandId, familyId, tagId, supplierId, productType, taxRateId, costTaxRateId, statusFilters, viiGiftCard,
+      brandIds, familyId, tagId, supplierId, productType, taxRateIds, costTaxRateIds, statusFilters, viiGiftCard,
     ]);
     if (loadedQuery.current !== key) {
       setItems([]);
@@ -561,7 +564,7 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadProducts();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter, dialog, brandId, familyId, tagId, supplierId, productType, taxRateId, costTaxRateId, statusFilters, viiGiftCard]);
+  }, [loadProducts, refreshKey, categoryId, categoryGroups, catalogueView, debouncedQuery, sortBy, sortDirection, inventoryFilter, dialog, brandIds, familyId, tagId, supplierId, productType, taxRateIds, costTaxRateIds, statusFilters, viiGiftCard]);
 
   useEffect(() => {
     if (!hasNext || resultsPending || loadingMore || error || !sentinel.current) return;
@@ -669,13 +672,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     setQuery("");
     setDebouncedQuery("");
     setCategoryId(null);
-    setBrandId(null);
+    setBrandIds([]);
     setFamilyId(null);
     setTagId(null);
     setSupplierId(null);
     setProductType(null);
-    setTaxRateId(null);
-    setCostTaxRateId(null);
+    setTaxRateIds([]);
+    setCostTaxRateIds([]);
     setStatusFilters(["ACTIVE"]);
     setViiGiftCard("ignore");
     setMoreFiltersOpen(false);
@@ -689,18 +692,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
     const path = inventoryReport ? "/reports/inventory" : "/products";
     router.replace(`${path}${params.size ? `?${params}` : ""}`, { scroll: false });
     setRefreshKey((value) => value + 1);
-  }
-
-  function toggleStatusFilter(status: string) {
-    requestRevision.current += 1;
-    setLoading(true);
-    setStatusFilters((current) => {
-      if (current.includes(status)) {
-        const next = current.filter((value) => value !== status);
-        return next.length ? next : current;
-      }
-      return [...current, status];
-    });
   }
 
   async function deleteEditingProduct() {
@@ -870,8 +861,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {inventoryReport && hasPermission("stock.products.view") && <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy || loading} aria-label="Export all matching inventory rows to CSV" title="Export all matching inventory rows" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white disabled:opacity-50">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}</button>}
           {inventoryReport && hasPermission("stock.products.view") && <button type="button" onClick={() => void printInventoryReport()} disabled={connected !== true || loading} aria-label="Print all matching inventory rows" title="Print all matching inventory rows" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white disabled:opacity-50"><Printer size={16} /></button>}
           {inventoryReport && <ReportColumnChooser columns={[...INVENTORY_COLUMNS]} selected={inventoryColumns} required={["product"]} onChange={toggleInventoryColumn} />}
-          {!inventoryReport && hasPermission("stock.products.edit") && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
-          <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("categories"); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold"><Tag size={16} /> Classifications</button>
+          {!inventoryReport && (canAuditCosts || hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] px-3 py-3 text-sm">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border bg-white p-2 shadow-lg">
+          {canAuditCosts && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("cost-reconciliation"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Cost Reconciliation</button>}
+          {hasPermission("stock.products.view") && <><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stock-list"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stock list</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("catalogue"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Catalogue</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("inventory"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Inventory</button></>}
+          {hasPermission("stock.stocktake") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stocktake"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Stocktake</button>}
+          {hasPermission("stock.products.edit") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("categories"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold">Classifications</button>}
+          {hasPermission("stock.products.import_export") && <><button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
+          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button></>}
+          {hasPermission("customers.pricelists") && <button type="button" onClick={() => setPriceListsOpen(true)} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><Tag size={16} /><span>Price Lists</span></button>}
           </div></details>}
         </div>
         )}
@@ -919,11 +916,14 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 <Search size={17} className="text-[var(--oh-muted)]" />
                 <input aria-label="Search products by name, barcode or SKU" value={query} onChange={(event) => { requestRevision.current += 1; setLoading(true); setQuery(event.target.value); }} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
               </label>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <select aria-label="Filter by brand" aria-busy={categoryLoading} value={brandId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setBrandId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
-                  <option value="">Brand</option>
-                  {(filterOptions?.brands ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-                </select>
+              <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <FilterMultiSelect
+                  label="Brand"
+                  placeholder="Brand"
+                  options={(filterOptions?.brands ?? []).map((option) => ({ value: option.id, label: option.name }))}
+                  values={brandIds}
+                  onChange={(values) => { requestRevision.current += 1; setLoading(true); setBrandIds(values); }}
+                />
                 <select aria-label="Filter by category" aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:opacity-60">
                   <option value="">Category</option>
                   {(filterOptions?.categories ?? []).map((option) => {
@@ -943,6 +943,13 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                   <option value="">Supplier</option>
                   {(filterOptions?.suppliers ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
                 </select>
+                <FilterMultiSelect
+                  label="Status"
+                  placeholder="Status"
+                  options={PRODUCT_STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                  values={statusFilters}
+                  onChange={(values) => { requestRevision.current += 1; setLoading(true); setStatusFilters(values); }}
+                />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button" onClick={() => setMoreFiltersOpen((open) => !open)} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
@@ -951,35 +958,27 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
                 {catalogueFiltersActive() && <button type="button" onClick={clearFilters} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={14} /> Clear filters</button>}
               </div>
               {moreFiltersOpen && (
-                <div className="grid gap-3 rounded-lg border border-[var(--oh-border)] bg-white p-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <fieldset className="grid gap-2 sm:col-span-2 lg:col-span-3">
-                    <legend className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Status</legend>
-                    <div className="flex flex-wrap gap-2">
-                      {PRODUCT_STATUS_OPTIONS.map((option) => (
-                        <button key={option.value} type="button" aria-pressed={statusFilters.includes(option.value)} onClick={() => toggleStatusFilter(option.value)} className={`min-h-10 rounded-lg border px-3 text-xs font-semibold ${statusFilters.includes(option.value) ? "border-[var(--oh-primary)] bg-[var(--oh-primary)] text-white" : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)]"}`}>
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
+                <div className="grid items-end gap-3 rounded-lg border border-[var(--oh-border)] bg-white p-3 sm:grid-cols-2 lg:grid-cols-3">
                   <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Type
                     <select aria-label="Filter by product type" value={productType ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setProductType(event.target.value || null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
                       <option value="">All types</option>
                       {(filterOptions?.types ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
                     </select>
                   </label>
-                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Retail tax
-                    <select aria-label="Filter by retail tax rate" value={taxRateId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setTaxRateId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
-                      <option value="">Any retail tax</option>
-                      {(filterOptions?.taxRates ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Purchase tax
-                    <select aria-label="Filter by purchase tax rate" value={costTaxRateId ?? ""} onChange={(event) => { requestRevision.current += 1; setLoading(true); setCostTaxRateId(event.target.value ? parseFilterOptionId(event.target.value) : null); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
-                      <option value="">Any purchase tax</option>
-                      {(filterOptions?.costTaxRates ?? []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-                    </select>
-                  </label>
+                  <FilterMultiSelect
+                    label="Retail Tax Rate"
+                    placeholder="Any retail tax"
+                    options={(filterOptions?.taxRates ?? []).map((option) => ({ value: option.id, label: option.name }))}
+                    values={taxRateIds}
+                    onChange={(values) => { requestRevision.current += 1; setLoading(true); setTaxRateIds(values); }}
+                  />
+                  <FilterMultiSelect
+                    label="Purchase Tax Rate"
+                    placeholder="Any purchase tax"
+                    options={(filterOptions?.costTaxRates ?? []).map((option) => ({ value: option.id, label: option.name }))}
+                    values={costTaxRateIds}
+                    onChange={(values) => { requestRevision.current += 1; setLoading(true); setCostTaxRateIds(values); }}
+                  />
                   <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Is Vii gift card
                     <select aria-label="Filter by Vii gift card products" value={viiGiftCard} onChange={(event) => { requestRevision.current += 1; setLoading(true); setViiGiftCard(event.target.value as "ignore" | "yes" | "no"); }} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
                       <option value="ignore">Ignore</option>

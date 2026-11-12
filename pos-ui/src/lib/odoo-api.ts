@@ -878,12 +878,18 @@ export interface ProductFilterOptions {
 
 export interface ProductCatalogueFilters {
   brandId?: number | null;
+  /** Comma-separated brand ids (Shopfront multi-select). */
+  brandIds?: string | null;
   familyId?: number | null;
   tagId?: number | null;
   supplierId?: number | null;
   type?: string | null;
   taxRateId?: number | null;
+  /** Comma-separated retail tax rate ids. */
+  taxRateIds?: string | null;
   costTaxRateId?: number | null;
+  /** Comma-separated purchase tax rate ids. */
+  costTaxRateIds?: string | null;
   /** Comma-separated status values; omit when all statuses are selected. */
   statuses?: string | null;
   viiGiftCard?: boolean | null;
@@ -915,12 +921,14 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
   const qty = product.stockQuantity == null ? 0 : Number(product.stockQuantity);
   const categoryId = product.categoryId == null ? null : Number(product.categoryId);
   const status = (product.status || "ACTIVE").toUpperCase();
+  // Shopfront: NOT_PURCHASING remains sellable; NOT_SELLING / NOT_ACTIVE do not.
+  const sellable = status === "ACTIVE" || status === "NOT_PURCHASING";
   const performance30d = product.performance30d?.map((point) => Number(point)).filter((point) => Number.isFinite(point)) ?? null;
   return {
     id: Number(product.id),
     name: product.name,
     display_name: product.name,
-    active: status === "ACTIVE",
+    active: sellable,
     barcode,
     default_code: false,
     list_price: price,
@@ -945,7 +953,7 @@ function mapNativeProduct(product: NativeProductRow): OdooProductRecord {
     free_qty: qty,
     uom_id: false,
     pos_categ_ids: categoryId ? [categoryId] : [],
-    available_in_pos: status === "ACTIVE",
+    available_in_pos: sellable,
   };
 }
 
@@ -985,13 +993,13 @@ export async function searchOdooRecords<T>(
       categoryId: options.categoryId ?? options.categoryIds?.[0],
       page: pageNumber,
       size,
-      ...(productFilters?.brandId != null ? { brandId: productFilters.brandId } : {}),
+      ...(productFilters?.brandIds ? { brandIds: productFilters.brandIds } : productFilters?.brandId != null ? { brandId: productFilters.brandId } : {}),
       ...(productFilters?.familyId != null ? { familyId: productFilters.familyId } : {}),
       ...(productFilters?.tagId != null ? { tagId: productFilters.tagId } : {}),
       ...(productFilters?.supplierId != null ? { supplierId: productFilters.supplierId } : {}),
       ...(productFilters?.type ? { type: productFilters.type } : {}),
-      ...(productFilters?.taxRateId != null ? { taxRateId: productFilters.taxRateId } : {}),
-      ...(productFilters?.costTaxRateId != null ? { costTaxRateId: productFilters.costTaxRateId } : {}),
+      ...(productFilters?.taxRateIds ? { taxRateIds: productFilters.taxRateIds } : productFilters?.taxRateId != null ? { taxRateId: productFilters.taxRateId } : {}),
+      ...(productFilters?.costTaxRateIds ? { costTaxRateIds: productFilters.costTaxRateIds } : productFilters?.costTaxRateId != null ? { costTaxRateId: productFilters.costTaxRateId } : {}),
       ...(productFilters?.statuses ? { statuses: productFilters.statuses } : {}),
       ...(productFilters?.viiGiftCard != null ? { viiGiftCard: productFilters.viiGiftCard } : {}),
     });
