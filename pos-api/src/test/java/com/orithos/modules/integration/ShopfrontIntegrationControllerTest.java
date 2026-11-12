@@ -74,6 +74,22 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void nativeProductDataUsesExistingMdbIdColumnForSkuField() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))
+                .thenReturn(List.of(Map.of("outlet_id", 48L, "shopfront_outlet", "skr", "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(*)"), eq(Integer.class), any(Object[].class))).thenReturn(0);
+        when(jdbc.queryForList(contains("SELECT m.source_product_id AS source_id"), any(Object[].class)))
+                .thenReturn(List.of());
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        controller.nativeData("token", "skr", "products", 1, 100);
+
+        verify(jdbc).queryForList(contains("p.mdb_id AS sku"), any(Object[].class));
+        verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
+    }
+
+    @Test
     void stagingFailureDoesNotExposeDatabaseErrorDetails() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.update(anyString())).thenThrow(new IllegalStateException("database password=secret"));

@@ -1287,7 +1287,7 @@ public class ShopfrontIntegrationController {
             countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED'";
-            rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.sku,p.status "
+            rowsSql = "SELECT m.source_product_id AS source_id,p.name,p.mdb_id AS sku,p.status "
                     + "FROM shopfront_product_mapping m JOIN product p "
                     + "ON p.id=m.pos_product_id AND p.outlet_id=? AND p.deleted_at IS NULL "
                     + "WHERE m.store_key=? AND m.status='MAPPED' "
