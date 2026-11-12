@@ -1,6 +1,7 @@
 package com.orithos.modules.pricing;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class PriceSetController {
 
     private final PriceSetMapper mapper;
+    private final PermissionAccess permissions;
 
-    public PriceSetController(PriceSetMapper mapper) {
+    public PriceSetController(PriceSetMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -27,12 +30,14 @@ public class PriceSetController {
 
     @PostMapping
     public ApiResult<PriceSet> create(@RequestBody PriceSet p) {
+        permissions.requirePermission("settings.store");
         mapper.insert(p);
         return ApiResult.ok(p);
     }
 
     @PutMapping("/{id}")
     public ApiResult<PriceSet> update(@PathVariable Long id, @RequestBody PriceSet p) {
+        permissions.requirePermission("settings.store");
         p.setId(id);
         mapper.update(p);
         return ApiResult.ok(p);
@@ -40,12 +45,14 @@ public class PriceSetController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.delete(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/{id}/clone")
     public ApiResult<PriceSet> clone(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         PriceSet p = mapper.findById(id);
         if (p == null) return ApiResult.ok(null);
         p.setName(p.getName() + " (copy)");

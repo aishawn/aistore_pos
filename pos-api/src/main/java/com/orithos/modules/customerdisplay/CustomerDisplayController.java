@@ -1,6 +1,7 @@
 package com.orithos.modules.customerdisplay;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class CustomerDisplayController {
 
     private final CustomerDisplayMapper mapper;
+    private final PermissionAccess permissions;
 
-    public CustomerDisplayController(CustomerDisplayMapper mapper) {
+    public CustomerDisplayController(CustomerDisplayMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -27,12 +30,14 @@ public class CustomerDisplayController {
 
     @PostMapping
     public ApiResult<CustomerDisplay> create(@RequestBody CustomerDisplay c) {
+        permissions.requirePermission("settings.store");
         mapper.insert(c);
         return ApiResult.ok(c);
     }
 
     @PutMapping("/{id}")
     public ApiResult<CustomerDisplay> update(@PathVariable Long id, @RequestBody CustomerDisplay c) {
+        permissions.requirePermission("settings.store");
         c.setId(id);
         mapper.update(c);
         return ApiResult.ok(c);
@@ -40,12 +45,14 @@ public class CustomerDisplayController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.delete(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/{id}/clone")
     public ApiResult<CustomerDisplay> clone(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         CustomerDisplay c = mapper.findById(id);
         if (c == null) return ApiResult.ok(null);
         c.setName(c.getName() + " (copy)");

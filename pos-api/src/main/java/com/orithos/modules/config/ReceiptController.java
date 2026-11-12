@@ -1,6 +1,7 @@
 package com.orithos.modules.config;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class ReceiptController {
 
     private final ReceiptMapper mapper;
+    private final PermissionAccess permissions;
 
-    public ReceiptController(ReceiptMapper mapper) {
+    public ReceiptController(ReceiptMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -27,6 +30,7 @@ public class ReceiptController {
 
     @PostMapping
     public ApiResult<Receipt> create(@RequestBody Receipt r) {
+        permissions.requirePermission("settings.store");
         if (r.getAccountReceipt() == null) r.setAccountReceipt(false);
         mapper.insert(r);
         return ApiResult.ok(r);
@@ -34,6 +38,7 @@ public class ReceiptController {
 
     @PutMapping("/{id}")
     public ApiResult<Receipt> update(@PathVariable Long id, @RequestBody Receipt r) {
+        permissions.requirePermission("settings.store");
         r.setId(id);
         mapper.update(r);
         return ApiResult.ok(r);
@@ -41,12 +46,14 @@ public class ReceiptController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.delete(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/{id}/clone")
     public ApiResult<Receipt> clone(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         Receipt r = mapper.findById(id);
         if (r == null) return ApiResult.ok(null);
         r.setName(r.getName() + " (copy)");

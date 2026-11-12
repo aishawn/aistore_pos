@@ -1,6 +1,7 @@
 package com.orithos.modules.config;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class StatementController {
 
     private final StatementMapper mapper;
+    private final PermissionAccess permissions;
 
-    public StatementController(StatementMapper mapper) {
+    public StatementController(StatementMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -34,12 +37,14 @@ public class StatementController {
 
     @PostMapping
     public ApiResult<Statement> create(@RequestBody Statement s) {
+        permissions.requirePermission("settings.store");
         mapper.insert(s);
         return ApiResult.ok(s);
     }
 
     @PutMapping("/{id}")
     public ApiResult<Statement> update(@PathVariable Long id, @RequestBody Statement s) {
+        permissions.requirePermission("settings.store");
         s.setId(id);
         mapper.update(s);
         return ApiResult.ok(s);
@@ -47,12 +52,14 @@ public class StatementController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.delete(id);
         return ApiResult.ok();
     }
 
     @PostMapping("/{id}/clone")
     public ApiResult<Statement> clone(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         Statement s = mapper.findById(id);
         if (s == null) return ApiResult.ok(null);
         s.setName(s.getName() + " (copy)");

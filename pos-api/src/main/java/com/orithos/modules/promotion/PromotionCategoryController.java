@@ -1,6 +1,7 @@
 package com.orithos.modules.promotion;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class PromotionCategoryController {
 
     private final PromotionCategoryMapper mapper;
+    private final PermissionAccess permissions;
 
-    public PromotionCategoryController(PromotionCategoryMapper mapper) {
+    public PromotionCategoryController(PromotionCategoryMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -27,6 +30,7 @@ public class PromotionCategoryController {
 
     @PostMapping
     public ApiResult<PromotionCategory> create(@RequestBody PromotionCategory c) {
+        permissions.requirePermission("settings.store");
         if (c.getShowOnOrder() == null) c.setShowOnOrder(false);
         if (c.getIncludeInIntegrations() == null) c.setIncludeInIntegrations(false);
         mapper.insert(c);
@@ -35,6 +39,7 @@ public class PromotionCategoryController {
 
     @PutMapping("/{id}")
     public ApiResult<PromotionCategory> update(@PathVariable Long id, @RequestBody PromotionCategory c) {
+        permissions.requirePermission("settings.store");
         c.setId(id);
         mapper.update(c);
         return ApiResult.ok(c);
@@ -42,6 +47,7 @@ public class PromotionCategoryController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.softDelete(id);
         return ApiResult.ok();
     }

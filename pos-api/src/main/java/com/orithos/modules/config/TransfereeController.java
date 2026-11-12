@@ -1,6 +1,7 @@
 package com.orithos.modules.config;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.PermissionAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class TransfereeController {
 
     private final TransfereeMapper mapper;
+    private final PermissionAccess permissions;
 
-    public TransfereeController(TransfereeMapper mapper) {
+    public TransfereeController(TransfereeMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -27,6 +30,7 @@ public class TransfereeController {
 
     @PostMapping
     public ApiResult<Transferee> create(@RequestBody Transferee t) {
+        permissions.requirePermission("settings.store");
         if (t.getOrderAutomaticEmail() == null) t.setOrderAutomaticEmail(false);
         if (t.getSendOrdersToAccountsFlow() == null) t.setSendOrdersToAccountsFlow(false);
         mapper.insert(t);
@@ -35,6 +39,7 @@ public class TransfereeController {
 
     @PutMapping("/{id}")
     public ApiResult<Transferee> update(@PathVariable Long id, @RequestBody Transferee t) {
+        permissions.requirePermission("settings.store");
         t.setId(id);
         mapper.update(t);
         return ApiResult.ok(t);
@@ -42,6 +47,7 @@ public class TransfereeController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.softDelete(id);
         return ApiResult.ok();
     }

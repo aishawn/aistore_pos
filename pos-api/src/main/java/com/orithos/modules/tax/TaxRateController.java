@@ -2,6 +2,7 @@ package com.orithos.modules.tax;
 
 import com.orithos.common.ApiResult;
 import com.orithos.security.CurrentUser;
+import com.orithos.security.PermissionAccess;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,11 @@ import java.util.List;
 public class TaxRateController {
 
     private final TaxRateMapper mapper;
+    private final PermissionAccess permissions;
 
-    public TaxRateController(TaxRateMapper mapper) {
+    public TaxRateController(TaxRateMapper mapper, PermissionAccess permissions) {
         this.mapper = mapper;
+        this.permissions = permissions;
     }
 
     @GetMapping
@@ -29,6 +32,7 @@ public class TaxRateController {
 
     @PostMapping
     public ApiResult<TaxRate> create(@RequestBody TaxRate t) {
+        permissions.requirePermission("settings.store");
         if (t.getName() != null && !t.getName().isBlank() && mapper.findByNameIgnoreCase(t.getName()) != null) {
             throw new IllegalArgumentException("tax_rate_name_exists");
         }
@@ -43,6 +47,7 @@ public class TaxRateController {
 
     @PutMapping("/{id}")
     public ApiResult<TaxRate> update(@PathVariable Long id, @RequestBody TaxRate t) {
+        permissions.requirePermission("settings.store");
         t.setId(id);
         mapper.update(t);
         return ApiResult.ok(t);
@@ -50,6 +55,7 @@ public class TaxRateController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.softDelete(id);
         return ApiResult.ok();
     }
@@ -57,6 +63,7 @@ public class TaxRateController {
     @PutMapping("/{id}/set-default")
     @Transactional
     public ApiResult<Void> setDefault(@PathVariable Long id) {
+        permissions.requirePermission("settings.store");
         mapper.clearDefaults();
         mapper.markDefault(id);
         return ApiResult.ok();
@@ -66,6 +73,7 @@ public class TaxRateController {
     @PutMapping("/{id}/merge")
     @Transactional
     public ApiResult<Void> merge(@PathVariable Long id, @RequestBody MergeRequest body) {
+        permissions.requirePermission("settings.store");
         if (body != null && body.sourceIds() != null) {
             for (Long src : body.sourceIds()) {
                 if (src == null || src.equals(id)) continue;
