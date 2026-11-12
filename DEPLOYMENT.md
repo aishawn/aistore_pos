@@ -11,8 +11,21 @@ POS code is maintained on `main` in `aishawn/aistore_pos`. Dokploy auto-deploys 
 | Demo Orithos store | <https://demo.orithos.com.au/> | `admin` / `INITIAL_ADMIN_PASSWORD` | Default read-only UAT target and parity comparison with SKR. |
 | Orithos control plane | <https://app.orithos.com.au/> | `admin` / `INITIAL_ADMIN_PASSWORD` | Platform administration. |
 | Shopfront crawler | <https://crawler.orithos.com.au/> | `SHOPFRONT_INTEGRATION_TOKEN` for POS integration | Reads source APIs/web reports and syncs mapped data to Orithos. API docs: <https://developer.onshopfront.com/documentation/General/About>. |
-| POS database | — | `POSTGRESQL_URL` | Database access for approved diagnostics; never print the value. |
+| POS database (live) | host `45.63.26.89:5432`, db `postgres` | `POSTGRESQL_URL` (aliases `POSTGRESQL_URL1` / `POS_POSTGRESQL_URL`) | Live Orithos ledger since 2026-11-12 cutover. Never print the URL/password. Retired prior host: `45.90.109.111:5888`. |
+| Crawler → POS ledger | same live POS host | crawler `DATABASE_URL` | Must match live `POSTGRESQL_URL` host; do not leave on the retired host. |
+| Crawler DB | `45.63.26.89:5679` | `CRAWL_DATABASE_URL` | Crawler-owned Postgres; not the POS ledger. |
 | Dokploy | <https://dokploy.orithos.com.au/> | `ORTHOS_DOKPLOY_USER` / `ORTHOS_DOKPLOY_PASS` | Deployment and environment management. |
+| App server SSH | `45.63.26.89` | `SERVER_USER` / `SERVER_PASS` | Approved host for docker/`psql` diagnostics when the workstation cannot reach PG. |
+
+## Database Cutover Reconciliation (2026-11-12)
+
+- Live POS and crawler ledger use `45.63.26.89:5432`; crawler's separate `CRAWL_DATABASE_URL` remains on `45.63.26.89:5679`. Runtime inspection confirmed both. The retired `45.90.109.111:5888` remains read-only for comparison and must not be re-enabled.
+- Restored 66 old-only Demo Shopfront sale identities for Adelaide 2026-11-06 from the new database mirror through the native importer. Final counts: old 2,372 / live 2,400 Shopfront identities; zero old keys missing, with 28 live-only identities preserved. The restored cohort matches its mirror exactly: $1,370.41, 113 sale items, 93 payments, zero unmatched items.
+- Corrected the lagging `sale` and `sale_item` sequences after auditing 125 owned sequences. Final sequence values matched table maxima; global orphan checks found zero `sale_item` or `sale_payment` rows.
+- Read-only day parity on 2026-11-06: Demo and SKR each have 189 native/mirror identities, 183 completed, revenue `$5,847.19`, and zero missing or amount differences. Four Demo and five SKR records differ only in status (`VOIDED` native vs `PARKED` mirror); native updates are newer than the mirror sync, so retain them pending source/action-history confirmation.
+- Latest bounded repair check (read-only, 2026-11-12): all 264 selected identities (Demo 263, SKR 1) are present in both layers. Header amount/date fields, mapped item multisets, and normalized payment multisets match; 550 item rows and 321 payment rows; zero unmatched item rows, duplicate identities, orphan children, or sequence lag.
+- Full historical scope remains unresolved: the live mirror currently has 157,059 `shopfront_sale` rows per store vs 1,089 Demo / 1,399 SKR native Shopfront `sale` rows. A natural-key join finds 311,631 mirror-only identities and one native-only identity. This cross-layer difference is not by itself proof of old-to-new database loss. Full-scope status differences total 30 (each store: 5 `VOIDED`/`CANCELLED`, 10 `VOIDED`/`PARKED`). Do not claim full-history parity, bulk-promote all mirror rows, or rewrite statuses until the intended native-history scope and retired-host snapshot/source action history are compared.
+- POS runtime SHA at verification: `8ff23f0576ac3e0d4de82a3fad268ca4e29f077c`. This reconciliation changed live data/sequence state only; it did not deploy code.
 
 Dokploy Compose services:
 

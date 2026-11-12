@@ -1,6 +1,6 @@
 # Handoff — Orithos Native Ledger Cutover
 
-> Generated: 2026-11-11 ~01:35 (UTC+8)  
+> Generated: 2026-11-12 (UTC+8)
 > Project: Orithos POS (`orithopos-master` / GitHub `aishawn/aistore_pos`, branch `main`)  
 > Session: Post-deploy Demo/SKR parity check + promote `business_date` fix + leftover UI cleanup  
 > Related Chinese notes: `../SHOPFRONT_ORITHOS_HANDOFF_2026-11-10.md`  
@@ -9,6 +9,16 @@
 ## Goal
 
 Orithos is the **live retail ledger** for Demo (vendor 1 / outlet 1) and SKR (vendor 55 / outlet 87). Shopfront remains the external SoT; crawler syncs into both tenants. Browser pages read **pos-api only**. Odoo stays non-writable (no dual-write).
+
+## Current live database reconciliation (2026-11-12)
+
+- POS runtime is up on the new PostgreSQL host, SHA `8ff23f0576ac3e0d4de82a3fad268ca4e29f077c`. Crawler runtime is running with `DATABASE_URL` on that same POS ledger; its separate `CRAWL_DATABASE_URL` remains on port `5679`.
+- Restored 66 old-only Demo sale identities for Adelaide 2026-11-06 from the new DB's Shopfront mirror via `sales:upsert`. The old/new key diff is now zero old-only keys (old 2,372; new 2,400); 28 identities created after cutover remain. The restored group matches old and mirror totals/status/date: `$1,370.41`, 113 items, 93 payments, zero unmatched items.
+- The live `sale` and `sale_item` sequences were advanced to their table maxima after auditing 125 owned sequences. Final checks show aligned sequence values and zero orphan sale-item/payment rows.
+- Read-only native/mirror parity for 2026-11-06 is 189 identities / 183 completed / `$5,847.19` on each outlet, with zero missing identities or amount mismatches. Four Demo and five SKR records remain `VOIDED` in native rows and `PARKED` in mirror rows. Native updates are newer than mirror sync; preserve pending read-only Shopfront/action-history confirmation.
+- Latest bounded repair check (2026-11-12): 264 selected identities (Demo 263, SKR 1) exist in both native and mirror layers; header amount/date fields, mapped item multisets, and normalized payment multisets match (550 item rows, 321 payment rows). No unmatched native items, duplicate native/mirror sale identities, orphan sale items/payments, or sequence lag. This is not a full-history promotion check.
+- Full-scope follow-up is required before declaring complete historical parity: `shopfront_sale` has 157,059 rows per store vs native `sale` counts of 1,089 Demo and 1,399 SKR; natural-key join shows 311,631 mirror-only identities and one native-only identity. This is a cross-layer scope difference, not proof by itself of cutover loss. Full-scope status differences are 30 total (per store 5 native `VOIDED` vs mirror `CANCELLED`, 10 `VOIDED` vs `PARKED`). Compare intended native history against the retired-host snapshot and read-only Shopfront action history before any bulk promotion/status update.
+- No code was deployed for this reconciliation. Runtime SHA above is the already-running deployment.
 
 ## Owner direction: complete Odoo retirement (2026-11-10)
 
@@ -98,7 +108,9 @@ Local probes (ignored): `.local/probe-day-totals-mirror.cjs`, `probe-day-diff.cj
 | Odoo (retired writable SoT) | `https://odoo.orithos.com.au/` | `ODOO_USER` / `ODOO_PASS` |
 | Crawler | `https://crawler.orithos.com.au/` | `SHOPFRONT_INTEGRATION_TOKEN` |
 | Dokploy | `https://dokploy.orithos.com.au/` | `ORTHOS_DOKPLOY_USER` / `ORTHOS_DOKPLOY_PASS` |
-| DB | — | `POSTGRESQL_URL` |
+| DB (live POS ledger) | host `45.63.26.89:5432` | `POSTGRESQL_URL` (cutover 2026-11-12; retired `45.90.109.111:5888`) |
+| Crawler → ledger | same live POS host | crawler `DATABASE_URL` must match live POS |
+| Crawler DB | `45.63.26.89:5679` | `CRAWL_DATABASE_URL` |
 
 Local repos (all `main`): POS `orithopos-master`, `shopfront-crawler`, `orithos-ai-services`, `orithos_odoo`, `shipany-template-dev`.  
 Compose: POS `V3BuMZuSCowVe-OKWIR6J`; crawler `JHfNJMWCJGqpq0_5aovzZ`.

@@ -47,6 +47,26 @@
 - After deployment, confirm Dokploy status and deployed/source SHA. For sync or data changes, check crawler status and read-only source/API/UI parity on both SKR and Demo; iterate on concrete differences.
 - Keep implementation, local checks, deployment, runtime identity, and online acceptance as separate claims. Record environment, scope, sample, result, limitations, source/runtime SHA, and links to evidence.
 
+## Live databases (cutover 2026-11-12) — do not reverse without owner ask
+
+| Role | Host:port | Env var(s) | Notes |
+|------|-----------|------------|--------|
+| **Live POS ledger** (pos-api) | `45.63.26.89:5432` / db `postgres` | `POSTGRESQL_URL` | Sole live Orithos retail ledger for SKR + Demo (shared DB). Docker Postgres service on the Dokploy server. Prefer `sslmode=disable` for this local docker target. |
+| Cutover alias (same URL) | same | `POSTGRESQL_URL1`, `POS_POSTGRESQL_URL` | Staging names used during migration; keep aligned with `POSTGRESQL_URL`. App runtime reads **`POSTGRESQL_URL` only**. |
+| **Retired** prior POS host | `45.90.109.111:5888` | — | Pre-cutover live ledger. Do **not** point POS or crawler back here unless the owner explicitly requests rollback. |
+| Crawler → POS ledger | same as live POS | crawler `DATABASE_URL` | Must target the **live POS** host (`45.63.26.89:5432`), not the retired host. |
+| Crawler own DB (future/migrate) | `45.63.26.89:5679` | `CRAWL_DATABASE_URL` | Separate Shopfront-crawler Postgres; not the POS ledger. |
+
+- After changing DB URLs: update **both** Dokploy Compose Environment (POS `V3BuMZuSCowVe-OKWIR6J`, crawler `JHfNJMWCJGqpq0_5aovzZ`) **and** recreate/redeploy services. Dokploy “Create Environment File” rewrites `/etc/dokploy/compose/.../code/.env` on deploy and can wipe SSH-only edits or `.env.bak-*`.
+- Do not confuse Dokploy/`DB_PASSWORD` with the Postgres URL password; they are different secrets. Never print either.
+- Local workstation Python/HTTP to store hosts is often blocked (Cloudflare 1010). Approved diagnostics: SSH to `45.63.26.89` (`SERVER_USER` / `SERVER_PASS`) and probe via docker `psql`, or use the browser on SKR/Demo/Dokploy.
+- Reconciliation completed (2026-11-12): all 66 old-only Demo Shopfront sale identities from Adelaide 2026-11-06 were restored from the new host's `shopfront_sale*` mirror through the native sales importer. New native ledger has 2,400 Shopfront identities vs 2,372 on the retired host: zero old identities missing, 28 new-only identities preserved. The repaired 66 have exact mirror parity: $1,370.41, 113 item rows, 93 payment rows, zero unmatched items, and no stock movements.
+- Sequence repair (2026-11-12): after checking all 125 owned sequences, only non-empty `sale.id` and `sale_item.id` were behind. Both were advanced under table write locks; final sequence values equaled their table maxima. Final anti-join found zero orphan `sale_item` and `sale_payment` rows.
+- Residual source/native status differences on 2026-11-06: day parity on both outlets is 189 native/mirror identities, 183 completed, $5,847.19, and zero missing or amount mismatches. Four Demo and five SKR outlet rows remain `VOIDED` in native `sale` but `PARKED` in the mirror. Native status updates are newer (Nov 11) than the mirror's last sync (Nov 10); do not overwrite these states without checking the Shopfront source/action history.
+- Latest bounded repair verification (2026-11-12): all 264 manifest sales (Demo 263, SKR 1) exist in both native and mirror data. Header amount/date fields, mapped item multisets, and normalized payment multisets match exactly (550 item rows, 321 payment rows); no unmatched native items, duplicate sale identities, orphan sale children, or sequence lag. This proves only the selected repair cohort, not full historical promotion.
+- Full-scope warning (2026-11-12 read-only check): `shopfront_sale` has 157,059 mirror identities per store, while native `sale` has 1,089 Demo and 1,399 SKR Shopfront identities. The scoped join found 311,631 mirror identities without native rows and one native identity without a mirror. These are two data layers; this count alone does not prove cutover loss. There are also 30 full-scope status differences: per store, 5 native `VOIDED` vs mirror `CANCELLED` and 10 native `VOIDED` vs mirror `PARKED`. Do not bulk-promote all mirror history or overwrite statuses until intended native-history scope and Shopfront source/action history are reconciled against the retired-host snapshot.
+- Runtime verification (2026-11-12): POS backend is up on live `POSTGRESQL_URL`, runtime SHA `8ff23f0576ac3e0d4de82a3fad268ca4e29f077c`; crawler is running with `DATABASE_URL` on the live POS host and `CRAWL_DATABASE_URL` on its separate `:5679` database. No code deployment was performed for this data reconciliation.
+
 ## Credentials and operating surfaces
 
 - Use only secret variable names in docs and reports. Never print or commit secret values, cookies, tokens, full database URLs, or login artifacts. The owner authorizes relevant local or Dokploy environment changes; record variable names, target service/environment, and verification without recording values.
