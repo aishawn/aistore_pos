@@ -147,10 +147,10 @@
 
     <sql id="inventoryJoin">
         LEFT JOIN (
-            SELECT product_id, SUM(quantity) AS total_qty
+            SELECT product_id, outlet_id, SUM(quantity) AS total_qty
             FROM product_inventory
-            GROUP BY product_id
-        ) inv ON inv.product_id = p.id
+            GROUP BY product_id, outlet_id
+        ) inv ON inv.product_id = p.id AND inv.outlet_id = p.outlet_id
     </sql>
 
     <!--
