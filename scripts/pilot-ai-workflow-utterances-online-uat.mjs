@@ -305,8 +305,8 @@ const cases = [
   { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
   { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
-  { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
-  { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
+  { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
+  { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
   { id: "sales-paraphrase-revenue-today", question: "What's our revenue today?", intent: "report_sales" },
@@ -670,19 +670,33 @@ try {
           const match = answer.match(new RegExp(`(?:Sales on ${escaped} were AUD |${escaped}营业额 AUD )([\\d.]+)`, "i"));
           return match ? Number(match[1]) : null;
         };
+        const responseSinglePeriodSales = (date) => {
+          const escaped = date.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const match = answer.match(new RegExp(`(?:Sales for ${escaped} were AUD |${escaped}营业额 AUD )([\\d.]+)`, "i"));
+          return match ? Number(match[1]) : null;
+        };
         const firstDate = item.reportFrom;
         const secondDate = item.reportTo;
         const noSales = Number(report.transactions) === 0;
+        const singlePeriodReport = item.singlePeriodReport === true;
         const salesMatches = noSales
           ? /no completed sales|均没有已完成销售记录/i.test(answer)
-          : responseSales(firstDate) === amount(firstDate, "revenue")
-            && responseSales(secondDate) === amount(secondDate, "revenue");
+          : singlePeriodReport
+            ? responseSinglePeriodSales(firstDate) === amount(firstDate, "revenue")
+            : responseSales(firstDate) === amount(firstDate, "revenue")
+              && responseSales(secondDate) === amount(secondDate, "revenue");
         const profitMatch = answer.match(/(?:gross profit was AUD |毛利分别为 AUD )([\d.]+)(?: and AUD | 和 AUD )([\d.]+)/i);
-        const profitMatches = profitMatch
-          ? report.costAvailable === true
-            && Number(profitMatch[1]) === amount(firstDate, "grossProfit")
-            && Number(profitMatch[2]) === amount(secondDate, "grossProfit")
-          : noSales || /gross profit comparison is unavailable|毛利对比暂不可用/i.test(answer);
+        const singlePeriodProfitMatch = answer.match(/gross profit was AUD ([\d.]+)|毛利 AUD ([\d.]+)/i);
+        const singlePeriodProfit = Number(singlePeriodProfitMatch?.[1] ?? singlePeriodProfitMatch?.[2]);
+        const profitMatches = singlePeriodReport
+          ? noSales || (report.costAvailable === true
+            ? singlePeriodProfit === amount(firstDate, "grossProfit")
+            : /gross profit is unavailable|毛利暂不可用/i.test(answer))
+          : profitMatch
+            ? report.costAvailable === true
+              && Number(profitMatch[1]) === amount(firstDate, "grossProfit")
+              && Number(profitMatch[2]) === amount(secondDate, "grossProfit")
+            : noSales || /gross profit comparison is unavailable|毛利对比暂不可用/i.test(answer);
         authoritativeReportCheck = reportResponse.ok() && reportBody.code === 0
           && report.source === "orithos_ledger" && report.from === firstDate && report.to === secondDate
           && salesMatches && profitMatches;
