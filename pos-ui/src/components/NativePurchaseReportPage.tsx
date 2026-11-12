@@ -433,7 +433,7 @@ export function NativePurchaseReportPage() {
           </div>
         ) : (
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-[var(--oh-border-strong)] bg-[var(--oh-primary)] text-white">
+            <thead className="sticky top-0 z-10 border-b border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)]/95 backdrop-blur-sm">
               <tr>
                 {visibleColumns.map((column) => {
                   const active = sortBy === column.key;
@@ -441,13 +441,13 @@ export function NativePurchaseReportPage() {
                     <th
                       key={column.key}
                       scope="col"
-                      className={`whitespace-nowrap px-4 py-2.5 text-[13px] font-semibold ${cellAlign(column.key)}`}
+                      className={`whitespace-nowrap px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-muted)] ${cellAlign(column.key)}`}
                     >
                       <button
                         type="button"
                         onClick={() => toggleSort(column.key)}
-                        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors ${
-                          active ? "bg-white/15 text-white" : "text-white/90 hover:bg-white/10"
+                        className={`inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:text-[var(--oh-text)] ${
+                          active ? "text-[var(--oh-primary)]" : "text-[var(--oh-muted)]"
                         }`}
                       >
                         {column.label}
@@ -478,10 +478,13 @@ export function NativePurchaseReportPage() {
               ))}
             </tbody>
             {report ? (
-              <tfoot className="sticky bottom-0 border-t border-[var(--oh-border-strong)] bg-[var(--oh-primary)]/15 font-semibold text-[var(--oh-text)]">
+              <tfoot
+                className="sticky bottom-0 z-10 border-t-2 border-[var(--oh-border-strong)] bg-[var(--oh-surface-muted)] font-semibold text-[var(--oh-text)]"
+                aria-label="Purchase report totals"
+              >
                 <tr>
                   {visibleColumns.map((column) => (
-                    <td key={column.key} className={`px-4 py-3 tabular-nums ${cellAlign(column.key)}`}>
+                    <td key={column.key} className={`px-4 py-3 text-sm tabular-nums ${cellAlign(column.key)}`}>
                       {footerCell(footerTotals, column.key, report)}
                     </td>
                   ))}
