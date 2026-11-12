@@ -71,7 +71,13 @@ public interface PaymentMethodMapper {
             + "CASE WHEN #{useRounding} THEN 1 ELSE 0 END, CASE WHEN #{defaultPayExact} THEN 1 ELSE 0 END, #{backgroundColour}, #{textColour}, #{outletId})")
     int insert(PaymentMethod p);
 
-    @Update("UPDATE payment_method SET name=#{method.name}, type=#{method.type}, surcharge=#{method.surcharge} WHERE id=#{method.id} AND outlet_id=#{outletId}")
+    @Update("UPDATE payment_method SET name=#{method.name}, type=#{method.type}, surcharge=#{method.surcharge}, "
+            + "always_open_drawer=CASE WHEN #{method.alwaysOpenDrawer} THEN 1 ELSE 0 END, "
+            + "always_print=CASE WHEN #{method.alwaysPrint} THEN 1 ELSE 0 END, "
+            + "use_rounding=CASE WHEN #{method.useRounding} THEN 1 ELSE 0 END, "
+            + "default_pay_exact=CASE WHEN #{method.defaultPayExact} THEN 1 ELSE 0 END, "
+            + "background_colour=#{method.backgroundColour}, text_colour=#{method.textColour} "
+            + "WHERE id=#{method.id} AND outlet_id=#{outletId}")
     int update(@Param("method") PaymentMethod method, @Param("outletId") Long outletId);
 
     @Update("UPDATE payment_method SET deleted_at = NOW() WHERE id=#{id} AND outlet_id=#{outletId}")

@@ -217,10 +217,30 @@ public class SettingsImportService {
                 BigDecimal oldSurcharge = existing.getSurcharge() != null
                         ? existing.getSurcharge() : BigDecimal.ZERO;
                 BigDecimal surcharge = decimal(raw, "surcharge", oldSurcharge);
-                if (!type.equals(existing.getType()) || surcharge.compareTo(oldSurcharge) != 0) {
+                Boolean alwaysOpenDrawer = bool(raw, "alwaysOpenDrawer");
+                Boolean alwaysPrint = bool(raw, "alwaysPrint");
+                Boolean useRounding = bool(raw, "useRounding");
+                Boolean defaultPayExact = bool(raw, "defaultPayExact");
+                String backgroundColour = raw.has("backgroundColour")
+                        ? text(raw, "backgroundColour") : existing.getBackgroundColour();
+                String textColour = raw.has("textColour")
+                        ? text(raw, "textColour") : existing.getTextColour();
+                if (!type.equals(existing.getType()) || surcharge.compareTo(oldSurcharge) != 0
+                        || !java.util.Objects.equals(alwaysOpenDrawer, existing.getAlwaysOpenDrawer())
+                        || !java.util.Objects.equals(alwaysPrint, existing.getAlwaysPrint())
+                        || !java.util.Objects.equals(useRounding, existing.getUseRounding())
+                        || !java.util.Objects.equals(defaultPayExact, existing.getDefaultPayExact())
+                        || !java.util.Objects.equals(backgroundColour, existing.getBackgroundColour())
+                        || !java.util.Objects.equals(textColour, existing.getTextColour())) {
                     existing.setName(name);
                     existing.setType(type);
                     existing.setSurcharge(surcharge);
+                    existing.setAlwaysOpenDrawer(alwaysOpenDrawer);
+                    existing.setAlwaysPrint(alwaysPrint);
+                    existing.setUseRounding(useRounding);
+                    existing.setDefaultPayExact(defaultPayExact);
+                    existing.setBackgroundColour(backgroundColour);
+                    existing.setTextColour(textColour);
                     paymentMethods.update(existing, outletId);
                     updated++;
                 }
@@ -235,6 +255,8 @@ public class SettingsImportService {
             p.setAlwaysPrint(bool(raw, "alwaysPrint"));
             p.setUseRounding(bool(raw, "useRounding"));
             p.setDefaultPayExact(bool(raw, "defaultPayExact"));
+            p.setBackgroundColour(text(raw, "backgroundColour"));
+            p.setTextColour(text(raw, "textColour"));
             p.setOutletId(outletId);
             paymentMethods.insert(p);
             created++;
