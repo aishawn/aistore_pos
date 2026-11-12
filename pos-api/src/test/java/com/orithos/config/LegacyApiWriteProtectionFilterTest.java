@@ -230,6 +230,7 @@ class LegacyApiWriteProtectionFilterTest {
         for (String path : new String[]{
                 "/api/reports/native-overview",
                 "/api/reports/native-sales-history",
+                "/api/reports/purchase",
                 "/api/customers",
                 "/api/customers/42",
                 "/api/customers/42/recent-sales",

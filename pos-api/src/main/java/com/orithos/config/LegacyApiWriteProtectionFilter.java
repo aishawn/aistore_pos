@@ -122,11 +122,12 @@ public final class LegacyApiWriteProtectionFilter extends OncePerRequestFilter {
         if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {
             return false;
         }
-        // Only the new outlet-scoped ledger report is live; keep legacy
-        // reporting routes behind the reference-API protection.
+        // Outlet-scoped Orithos ledger reports are live; keep Classic/reference
+        // reporting routes (POST /api/reports, saved-report CRUD, etc.) gated.
         if ("GET".equalsIgnoreCase(method)
                 && (path.equals("/api/reports/native-overview")
-                || path.equals("/api/reports/native-sales-history"))) {
+                || path.equals("/api/reports/native-sales-history")
+                || path.equals("/api/reports/purchase"))) {
             return false;
         }
         // Customer directory / groups / price lists are native Orithos after

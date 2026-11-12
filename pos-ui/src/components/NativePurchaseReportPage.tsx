@@ -215,11 +215,21 @@ export function NativePurchaseReportPage() {
     const url = new URL(window.location.href);
     url.searchParams.set("groupBy", groupBy);
     window.history.replaceState({}, "", `${url.pathname}?${url.searchParams.toString()}`);
-    fetchOrithosApi(`/reports/purchase?${params}`, { signal: controller.signal })
+    fetchOrithosApi(`/api/reports/purchase?${params}`, { signal: controller.signal })
       .then(async (response) => {
-        const body = await response.json().catch(() => null) as { data?: PurchaseReport; message?: string } | null;
-        if (!response.ok || !body?.data || body.data.source !== "orithos_ledger") {
-          throw new Error(body?.message || "Orithos purchase data is unavailable.");
+        const body = await response.json().catch(() => null) as {
+          code?: number;
+          data?: PurchaseReport;
+          message?: string;
+        } | null;
+        if (!response.ok || body == null || (typeof body.code === "number" && body.code !== 0)
+            || !body.data || body.data.source !== "orithos_ledger") {
+          throw new Error(
+            body?.message
+              || (response.status === 410
+                ? "Purchase report is not enabled on this API deployment yet."
+                : "Orithos purchase data is unavailable."),
+          );
         }
         setReport(body.data);
         setError(null);
