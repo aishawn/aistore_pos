@@ -6,6 +6,8 @@ import com.orithos.modules.classification.mapper.ClassificationMapper;
 import com.orithos.modules.classification.mapper.ClassificationMapper.DailyQuantity;
 import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.security.CurrentUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.util.Map;
 @Service
 public class ClassificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ClassificationService.class);
     private static final int PERFORMANCE_DAYS = 30;
 
     private final ClassificationMapper mapper;
@@ -48,10 +51,7 @@ public class ClassificationService {
     public Classification get(String type, Long id) {
         Long outletId = requireOutlet();
         ClassificationType ct = ClassificationType.from(type);
-        Classification item = mapper.findById(ct.table(), id, outletId);
-        if (item == null) {
-            throw new BusinessException(40401, "Classification not found.");
-        }
+        Classification item = requireVisible(ct, id, outletId);
         item.setType(ct.table());
         item.setProductCount(mapper.countProducts(ct, id, outletId));
         attachPerformance(ct, List.of(item), outletId);
@@ -80,13 +80,10 @@ public class ClassificationService {
             throw new BusinessException(40002, "Name is required.");
         }
         ClassificationType ct = ClassificationType.from(type);
-        Classification existing = mapper.findById(ct.table(), id, outletId);
-        if (existing == null) {
-            throw new BusinessException(40401, "Classification not found.");
-        }
+        Classification existing = requireVisible(ct, id, outletId);
         existing.setName(body.getName().trim());
         existing.setMdbId(body.getMdbId());
-        mapper.update(ct.table(), existing, outletId);
+        mapper.updateById(ct.table(), existing);
         existing.setType(ct.table());
         existing.setProductCount(mapper.countProducts(ct, id, outletId));
         return existing;
@@ -95,26 +92,20 @@ public class ClassificationService {
     public void delete(String type, Long id) {
         Long outletId = requireOutlet();
         ClassificationType ct = ClassificationType.from(type);
-        Classification existing = mapper.findById(ct.table(), id, outletId);
-        if (existing == null) {
-            throw new BusinessException(40401, "Classification not found.");
-        }
+        requireVisible(ct, id, outletId);
         if (mapper.countProducts(ct, id, outletId) > 0) {
             throw new BusinessException(
                     "This classification is linked to products and cannot be deleted. "
                             + "Remove the product associations first.");
         }
-        mapper.softDelete(ct.table(), id, outletId);
+        mapper.softDeleteById(ct.table(), id);
     }
 
     @Transactional
     public void setProducts(String type, Long id, List<Long> productIds) {
         Long outletId = requireOutlet();
         ClassificationType ct = ClassificationType.from(type);
-        Classification existing = mapper.findById(ct.table(), id, outletId);
-        if (existing == null) {
-            throw new BusinessException(40401, "Classification not found.");
-        }
+        requireVisible(ct, id, outletId);
         List<Long> ids = productIds == null ? List.of() : productIds.stream()
                 .filter(pid -> pid != null && pid > 0)
                 .distinct()
@@ -139,6 +130,14 @@ public class ClassificationService {
         }
     }
 
+    private Classification requireVisible(ClassificationType type, Long id, Long outletId) {
+        Classification item = mapper.findVisible(type, id, outletId);
+        if (item == null) {
+            throw new BusinessException(40401, "Classification not found.");
+        }
+        return item;
+    }
+
     private void attachPerformance(ClassificationType type, List<Classification> items, Long outletId) {
         if (items == null || items.isEmpty()) {
             return;
@@ -153,32 +152,38 @@ public class ClassificationService {
             series.put(id, zeroSeries());
         }
         if (!ids.isEmpty()) {
-            LocalDate endInclusive = AustraliaTime.today();
-            LocalDate start = endInclusive.minusDays(PERFORMANCE_DAYS - 1L);
-            String from = start.toString();
-            String to = endInclusive.plusDays(1).toString();
-            List<DailyQuantity> rows = switch (type) {
-                case BRAND -> mapper.brandSalesByDay(ids, outletId, from, to);
-                case CATEGORY -> mapper.categorySalesByDay(ids, outletId, from, to);
-                case FAMILY -> mapper.familySalesByDay(ids, outletId, from, to);
-                case TAG -> mapper.tagSalesByDay(ids, outletId, from, to);
-            };
-            if (rows != null) {
-                for (DailyQuantity row : rows) {
-                    if (row.getClassificationId() == null || row.getDay() == null) {
-                        continue;
+            try {
+                LocalDate endInclusive = AustraliaTime.today();
+                LocalDate start = endInclusive.minusDays(PERFORMANCE_DAYS - 1L);
+                String from = start.toString();
+                String to = endInclusive.plusDays(1).toString();
+                List<DailyQuantity> rows = switch (type) {
+                    case BRAND -> mapper.brandSalesByDay(ids, outletId, from, to);
+                    case CATEGORY -> mapper.categorySalesByDay(ids, outletId, from, to);
+                    case FAMILY -> mapper.familySalesByDay(ids, outletId, from, to);
+                    case TAG -> mapper.tagSalesByDay(ids, outletId, from, to);
+                };
+                if (rows != null) {
+                    for (DailyQuantity row : rows) {
+                        if (row.getClassificationId() == null || row.getDay() == null) {
+                            continue;
+                        }
+                        List<BigDecimal> values = series.get(row.getClassificationId());
+                        if (values == null) {
+                            continue;
+                        }
+                        long index = java.time.temporal.ChronoUnit.DAYS.between(start, row.getDay());
+                        if (index < 0 || index >= PERFORMANCE_DAYS) {
+                            continue;
+                        }
+                        BigDecimal quantity = row.getQuantity() == null ? BigDecimal.ZERO : row.getQuantity();
+                        values.set((int) index, quantity.setScale(2, RoundingMode.HALF_UP));
                     }
-                    List<BigDecimal> values = series.get(row.getClassificationId());
-                    if (values == null) {
-                        continue;
-                    }
-                    long index = java.time.temporal.ChronoUnit.DAYS.between(start, row.getDay());
-                    if (index < 0 || index >= PERFORMANCE_DAYS) {
-                        continue;
-                    }
-                    BigDecimal quantity = row.getQuantity() == null ? BigDecimal.ZERO : row.getQuantity();
-                    values.set((int) index, quantity.setScale(2, RoundingMode.HALF_UP));
                 }
+            } catch (RuntimeException ex) {
+                // Keep the classifications table usable even if sparkline sales SQL fails.
+                log.warn("Classification performance series unavailable for type={} outletId={}: {}",
+                        type.table(), outletId, ex.toString());
             }
         }
         for (Classification item : items) {

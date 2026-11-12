@@ -65,7 +65,7 @@ export function ClassificationsPanel({
   onBusyChange?: (busy: boolean) => void;
   onChanged?: () => void;
 }) {
-  const [types, setTypes] = useState<ClassificationTypeValue[]>(["brand", "category", "family", "tag"]);
+  const [types, setTypes] = useState<ClassificationTypeValue[]>(["category"]);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
   const [rows, setRows] = useState<ClassificationRow[]>([]);
@@ -136,7 +136,7 @@ export function ClassificationsPanel({
             onClick={() => setCreateOpen(true)}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[#5cb3e0] px-3 text-sm font-semibold text-white hover:bg-[#4aa3d0]"
           >
-            <PlusIcon size={16} /> Add Classification
+            <PlusIcon size={16} /> Add Category
           </button>
         </div>
         <p className="text-sm text-[var(--oh-muted)]">
@@ -208,7 +208,7 @@ export function ClassificationsPanel({
                       }}
                       className="inline-flex items-center gap-1 text-sm font-semibold text-[#dc2626]"
                     >
-                      <DeleteIcon size={15} /> Delete
+                      <DeleteIcon size={15} /> Delete Category
                     </button>
                   </div>
                 </td>
@@ -280,9 +280,9 @@ export function ClassificationsPanel({
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete classification"
+        title="Delete Category"
         message={deleting ? `Delete “${deleting.name}”? Products must be unassigned first.` : ""}
-        confirmLabel="Delete"
+        confirmLabel="Delete Category"
         variant="danger"
         busy={deleteBusy}
         error={deleteError}

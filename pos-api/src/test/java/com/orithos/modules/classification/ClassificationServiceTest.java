@@ -60,6 +60,23 @@ class ClassificationServiceTest {
     }
 
     @Test
+    void listSurvivesPerformanceQueryFailure() {
+        Classification row = new Classification();
+        row.setId(18L);
+        row.setName("BAKERY");
+        when(mapper.list(eq(ClassificationType.CATEGORY), isNull(), eq(3L))).thenReturn(List.of(row));
+        when(mapper.categorySalesByDay(eq(List.of(18L)), eq(3L), any(), any()))
+                .thenThrow(new RuntimeException("boom"));
+
+        List<Classification> items = service.list("category", null);
+
+        assertEquals(1, items.size());
+        assertEquals("BAKERY", items.get(0).getName());
+        assertNotNull(items.get(0).getPerformance30d());
+        assertEquals(30, items.get(0).getPerformance30d().size());
+    }
+
+    @Test
     void createPersistsOutletScopedRow() {
         when(mapper.insert(eq("brand"), any(Classification.class), eq(3L))).thenAnswer(invocation -> {
             Classification c = invocation.getArgument(1);
@@ -83,11 +100,11 @@ class ClassificationServiceTest {
         Classification existing = new Classification();
         existing.setId(5L);
         existing.setName("BAKERY");
-        when(mapper.findById("category", 5L, 3L)).thenReturn(existing);
+        when(mapper.findVisible(ClassificationType.CATEGORY, 5L, 3L)).thenReturn(existing);
         when(mapper.countProducts(ClassificationType.CATEGORY, 5L, 3L)).thenReturn(0);
 
         service.delete("category", 5L);
 
-        verify(mapper).softDelete("category", 5L, 3L);
+        verify(mapper).softDeleteById("category", 5L);
     }
 }
