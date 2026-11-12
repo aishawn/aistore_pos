@@ -55,19 +55,17 @@ function ActionLink({
   href,
   label,
   icon: Icon,
-  tone,
 }: {
   href: string;
   label: string;
   icon: typeof Eye;
-  tone: string;
 }) {
   return (
     <Link
       href={href}
-      className={`inline-flex min-h-11 items-center gap-1.5 font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${tone}`}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
     >
-      <Icon size={15} aria-hidden="true" />
+      <Icon size={14} aria-hidden="true" />
       {label}
     </Link>
   );
@@ -316,7 +314,7 @@ function SupplierDirectory() {
 
           <section className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Orithos suppliers" className="hidden w-full min-w-[860px] border-collapse text-left text-sm xl:table">
-              <thead className="sticky top-0 z-10 bg-sky-600 text-xs font-semibold uppercase tracking-wide text-white shadow-[0_1px_0_var(--oh-border)]">
+              <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Name</th>
                   <th scope="col" className="px-4 py-3 text-center">Product Count</th>
@@ -325,18 +323,22 @@ function SupplierDirectory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`supplier-skeleton-${index}`} aria-hidden="true" className={index % 2 ? "bg-[var(--oh-surface)]/60" : "bg-white"}>
+                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`supplier-skeleton-${index}`} aria-hidden="true">
                   <td colSpan={4} className="px-4 py-3"><div className="grid grid-cols-[1.6fr_.7fr_1fr_1.4fr] items-center gap-4">
                     <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="mx-auto h-4 w-10 animate-pulse rounded bg-[var(--oh-border)]" /><span className="mx-auto h-8 w-36 animate-pulse rounded bg-[var(--oh-border)]" /><span className="ml-auto h-4 w-48 animate-pulse rounded bg-[var(--oh-border)]" />
                   </div></td>
                 </tr>) : items.length === 0 ? (
                   <tr><td colSpan={4} className="p-0"><SupplierEmptyState hasSearch={Boolean(debouncedQuery)} onClear={clearSearch} onAdd={openCreateSupplier} /></td></tr>
-                ) : items.map((supplier, index) => {
+                ) : items.map((supplier) => {
                   const points = supplier.performance30d ?? [];
                   const units = points.reduce((sum, point) => sum + (Number(point) || 0), 0);
                   return (
-                    <tr key={supplier.id} className={`transition-colors hover:bg-sky-50/70 ${index % 2 ? "bg-[var(--oh-surface)]/50" : "bg-white"}`}>
-                      <td className="px-4 py-3"><span className="font-semibold uppercase tracking-wide text-[var(--oh-text)]">{supplier.name}</span></td>
+                    <tr key={supplier.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
+                      <td className="px-4 py-3">
+                        <Link href={`/suppliers/${supplier.id}/edit`} className="inline-flex min-h-11 items-center font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+                          {supplier.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-center tabular-nums text-[var(--oh-text)]">{Number(supplier.productCount ?? 0).toLocaleString("en-AU")}</td>
                       <td className="px-4 py-3">
                         <div className="mx-auto flex min-w-[140px] max-w-[180px] flex-col items-center gap-1" title="Units sold per day over the past 30 Adelaide business days">
@@ -345,18 +347,18 @@ function SupplierDirectory() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center justify-end gap-3">
-                          <ActionLink href={`/suppliers/${supplier.id}/edit`} label="View" icon={Eye} tone="text-sky-700" />
-                          {canManage && <ActionLink href={`/suppliers/${supplier.id}/edit`} label="Edit" icon={Pencil} tone="text-emerald-700" />}
-                          {canManage && <ActionLink href={`/suppliers/${supplier.id}/assign`} label="Assign" icon={UserPlus} tone="text-orange-600" />}
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <ActionLink href={`/suppliers/${supplier.id}/edit`} label="View" icon={Eye} />
+                          {canManage && <ActionLink href={`/suppliers/${supplier.id}/edit`} label="Edit" icon={Pencil} />}
+                          {canManage && <ActionLink href={`/suppliers/${supplier.id}/assign`} label="Assign" icon={UserPlus} />}
                           {canManage && (
                             <button
                               type="button"
                               onClick={() => void deleteSupplier(supplier)}
                               disabled={deletingId === supplier.id}
-                              className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-rose-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
+                              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 text-sm font-medium text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
                             >
-                              {deletingId === supplier.id ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} aria-hidden="true" />}
+                              {deletingId === supplier.id ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} aria-hidden="true" />}
                               Delete
                             </button>
                           )}
@@ -385,7 +387,9 @@ function SupplierDirectory() {
                   <article key={supplier.id} className="px-4 py-3.5">
                     <header className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="break-words text-sm font-semibold uppercase tracking-wide text-[var(--oh-text)]">{supplier.name}</p>
+                        <Link href={`/suppliers/${supplier.id}/edit`} className="break-words text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+                          {supplier.name}
+                        </Link>
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{Number(supplier.productCount ?? 0).toLocaleString("en-AU")} products</p>
                       </div>
                       <div className="shrink-0 text-right">
@@ -393,22 +397,23 @@ function SupplierDirectory() {
                         <p className="mt-1 text-[11px] tabular-nums text-[var(--oh-muted)]">{points.length ? `${units.toLocaleString("en-AU")} · 30d` : "No performance"}</p>
                       </div>
                     </header>
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      <ActionLink href={`/suppliers/${supplier.id}/edit`} label="View" icon={Eye} tone="text-sky-700" />
-                      {canManage && <ActionLink href={`/suppliers/${supplier.id}/edit`} label="Edit" icon={Pencil} tone="text-emerald-700" />}
-                      {canManage && <ActionLink href={`/suppliers/${supplier.id}/assign`} label="Assign" icon={UserPlus} tone="text-orange-600" />}
+                    <footer className="mt-3 flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] pt-3">
+                      <ActionLink href={`/suppliers/${supplier.id}/edit`} label="View" icon={Eye} />
+                      {canManage && <ActionLink href={`/suppliers/${supplier.id}/edit`} label="Edit" icon={Pencil} />}
+                      {canManage && <ActionLink href={`/suppliers/${supplier.id}/assign`} label="Assign" icon={UserPlus} />}
                       {canManage && (
                         <button
                           type="button"
                           onClick={() => void deleteSupplier(supplier)}
                           disabled={deletingId === supplier.id}
-                          className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-rose-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
+                          aria-label={`Delete ${supplier.name}`}
+                          title="Delete supplier"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
                         >
                           {deletingId === supplier.id ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} aria-hidden="true" />}
-                          Delete
                         </button>
                       )}
-                    </div>
+                    </footer>
                   </article>
                 );
               })}

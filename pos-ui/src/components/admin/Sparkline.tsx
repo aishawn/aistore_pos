@@ -1,4 +1,4 @@
-/** Tiny inline area sparkline matching the blue performance charts in lists. */
+/** Tiny inline area sparkline using Orithos chart tokens (brand module blue). */
 export function Sparkline({
   points = [],
   width = 160,
@@ -17,9 +17,9 @@ export function Sparkline({
   const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const area = `${line} L${w},${h} L0,${h} Z`;
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
-      <path d={area} fill="#5cb3e0" opacity={0.12} />
-      <path d={line} fill="none" stroke="#5cb3e0" strokeWidth={2} />
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible text-[var(--chart-1)]">
+      <path d={area} fill="currentColor" opacity={0.14} />
+      <path d={line} fill="none" stroke="currentColor" strokeWidth={2} />
     </svg>
   );
 }
