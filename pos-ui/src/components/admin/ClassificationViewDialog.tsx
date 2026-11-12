@@ -93,10 +93,10 @@ export function ClassificationViewDialog({
             <Sparkline points={row.performance30d} width={280} height={56} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onEdit} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-semibold text-[#16a34a]">
+            <button type="button" onClick={onEdit} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-emerald-700 hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
               <EditIcon size={15} /> Edit
             </button>
-            <button type="button" onClick={onAssign} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-semibold text-[#f59e0b]">
+            <button type="button" onClick={onAssign} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
               <AssignIcon size={15} /> Assign products
             </button>
           </div>

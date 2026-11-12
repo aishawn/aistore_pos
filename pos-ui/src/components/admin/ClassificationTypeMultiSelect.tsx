@@ -76,7 +76,7 @@ export function ClassificationTypeMultiSelect({
             type="checkbox"
             checked={values.includes(option.value)}
             onChange={() => toggle(option.value)}
-            className="h-4 w-4 accent-[#5cb3e0]"
+            className="h-4 w-4 accent-[var(--oh-primary)]"
           />
           {option.label}
         </label>

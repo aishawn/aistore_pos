@@ -134,7 +134,7 @@ export function ClassificationsPanel({
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[#5cb3e0] px-3 text-sm font-semibold text-white hover:bg-[#4aa3d0]"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <PlusIcon size={16} /> Add Category
           </button>
@@ -165,21 +165,21 @@ export function ClassificationsPanel({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--oh-border)] bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <table className="w-full min-w-[880px] border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-[#5cb3e0] text-white">
+          <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
             <tr>
-              <th className="px-4 py-3 font-semibold">Name</th>
-              <th className="px-4 py-3 font-semibold">Type</th>
-              <th className="px-4 py-3 font-semibold">Product Count</th>
-              <th className="px-4 py-3 font-semibold">Performance</th>
-              <th className="px-4 py-3 font-semibold">Actions</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Product Count</th>
+              <th className="px-4 py-3">Performance</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-[var(--oh-border)]">
             {filtered.map((row) => (
-              <tr key={`${row.type}-${row.id}`} className="odd:bg-white even:bg-[var(--oh-surface)] border-b border-[var(--oh-border)]">
-                <td className="px-4 py-3 font-medium uppercase tracking-wide text-[var(--oh-text)]">{row.name}</td>
+              <tr key={`${row.type}-${row.id}`} className="bg-white hover:bg-[var(--oh-surface)]">
+                <td className="px-4 py-3 font-semibold text-[var(--oh-text)]">{row.name}</td>
                 <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{TYPE_LABELS[row.type]}</td>
                 <td className="px-4 py-3 tabular-nums text-[var(--oh-text)]">{row.productCount.toLocaleString("en-AU")}</td>
                 <td className="px-4 py-3">
@@ -187,17 +187,17 @@ export function ClassificationsPanel({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap items-center gap-3">
-                    <button type="button" onClick={() => setViewing(row)} className="inline-flex items-center gap-1 text-sm font-semibold text-[#3b82f6]">
+                    <button type="button" onClick={() => setViewing(row)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-sky-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
                       <ViewIcon size={15} /> View
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditing({ type: row.type, item: { id: String(row.id), name: row.name, mdbId: row.mdbId ?? undefined } })}
-                      className="inline-flex items-center gap-1 text-sm font-semibold text-[#16a34a]"
+                      className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       <EditIcon size={15} /> Edit
                     </button>
-                    <button type="button" onClick={() => setAssigning(row)} className="inline-flex items-center gap-1 text-sm font-semibold text-[#f59e0b]">
+                    <button type="button" onClick={() => setAssigning(row)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
                       <AssignIcon size={15} /> Assign
                     </button>
                     <button
@@ -206,7 +206,7 @@ export function ClassificationsPanel({
                         setDeleteError(null);
                         setDeleting(row);
                       }}
-                      className="inline-flex items-center gap-1 text-sm font-semibold text-[#dc2626]"
+                      className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-red-700 hover:underline focus-visible:outline-2 focus-visible:outline-red-700"
                     >
                       <DeleteIcon size={15} /> Delete Category
                     </button>

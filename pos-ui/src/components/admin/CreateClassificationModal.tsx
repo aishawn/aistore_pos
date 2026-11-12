@@ -156,7 +156,7 @@ className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--oh-
                 onClick={() => selectType(t.value)}
                 className={`flex-1 rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${
                   type === t.value
-                    ? "bg-[#00a3ee] text-white shadow-sm"
+                    ? "bg-[var(--oh-primary)] text-white shadow-sm"
                     : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]"
                 }`}
               >
@@ -216,7 +216,7 @@ className="rounded-[var(--oh-radius)] bg-[var(--oh-surface-muted)] px-4 py-1.5 t
           <button
             type="submit"
             disabled={busy}
-            className="rounded-[var(--oh-radius)] bg-[#00a3ee] px-4 py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#0090d4] disabled:opacity-60"
+            className="rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-1.5 text-[14px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
           >
             {busy ? "Creating…" : "Create"}
           </button>
