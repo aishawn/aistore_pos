@@ -2,6 +2,7 @@ package com.orithos.modules.customer;
 
 import com.orithos.common.BusinessException;
 import com.orithos.common.CustomerValidationUtils;
+import com.orithos.common.PageResult;
 import com.orithos.common.SqlConstraintUtils;
 import com.orithos.modules.customer.mapper.ContactMapper;
 import com.orithos.modules.customer.mapper.CustomerEmailMapper;
@@ -12,15 +13,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CustomerService {
 
     public static final int DUPLICATE_CODE = 40904;
     public static final int DUPLICATE_EMAIL = 40905;
+    static final ZoneId STORE_ZONE = ZoneId.of("Australia/Adelaide");
+    static final int PERFORMANCE_DAYS = 30;
 
     private final CustomerMapper customerMapper;
     private final ContactMapper contactMapper;
@@ -41,6 +50,58 @@ public class CustomerService {
         this.revisionService = revisionService;
         this.saleMapper = saleMapper;
         this.customerGroupService = customerGroupService;
+    }
+
+    public PageResult<Customer> list(String name,
+                                     List<Long> groupIds,
+                                     boolean includeNoGroup,
+                                     boolean filterGroups,
+                                     Long priceListId,
+                                     boolean noPriceList,
+                                     boolean filterPriceList,
+                                     BigDecimal minOwing,
+                                     BigDecimal maxOwing,
+                                     LocalDateTime asOfEnd,
+                                     int page,
+                                     int size) {
+        Long outletId = requireCurrentOutlet();
+        int offset = Math.max(0, (page - 1) * size);
+        List<Customer> items = customerMapper.page(name, groupIds, includeNoGroup, filterGroups,
+                priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId, size, offset);
+        attachPerformance(items, LocalDate.now(STORE_ZONE));
+        return PageResult.of(items,
+                customerMapper.count(name, groupIds, includeNoGroup, filterGroups,
+                        priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId),
+                page, size);
+    }
+
+    /** Fills {@code performance30d} (oldest to newest, ending today) with units sold per business day. */
+    void attachPerformance(List<Customer> items, LocalDate today) {
+        if (items == null || items.isEmpty()) return;
+        LocalDate from = today.minusDays(PERFORMANCE_DAYS - 1L);
+        List<Long> customerIds = items.stream().map(Customer::getId).toList();
+        List<CustomerMapper.CustomerDailyQuantity> rows =
+                customerMapper.salesQuantityByDay(customerIds, from.toString(), today.toString());
+        Map<Long, List<Double>> seriesByCustomer = new HashMap<>();
+        if (rows != null) {
+            for (CustomerMapper.CustomerDailyQuantity row : rows) {
+                if (row.getCustomerId() == null || row.getDay() == null) continue;
+                long index = ChronoUnit.DAYS.between(from, row.getDay());
+                if (index < 0 || index >= PERFORMANCE_DAYS) continue;
+                BigDecimal quantity = row.getQuantity() == null ? BigDecimal.ZERO : row.getQuantity();
+                List<Double> series = seriesByCustomer.computeIfAbsent(row.getCustomerId(), k -> emptyPerformance());
+                series.set((int) index, series.get((int) index) + quantity.doubleValue());
+            }
+        }
+        for (Customer item : items) {
+            item.setPerformance30d(seriesByCustomer.getOrDefault(item.getId(), emptyPerformance()));
+        }
+    }
+
+    private static List<Double> emptyPerformance() {
+        List<Double> series = new ArrayList<>(PERFORMANCE_DAYS);
+        for (int i = 0; i < PERFORMANCE_DAYS; i++) series.add(0.0d);
+        return series;
     }
 
     public CustomerDetail getDetail(Long id) {

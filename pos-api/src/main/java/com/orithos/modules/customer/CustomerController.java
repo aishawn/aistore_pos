@@ -62,22 +62,15 @@ public class CustomerController {
                                                 @RequestParam(required = false) LocalDate asOf,
                                                 @RequestParam(defaultValue = "1") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
-        Long outletId = requireOutlet();
+        requireOutlet();
         GroupFilter filter = parseGroupFilter(groupIds, groupId);
         PriceListFilter priceListFilter = parsePriceListFilter(priceListId);
         String search = normalizeSearch(name);
         LocalDateTime asOfEnd = asOf != null ? asOf.plusDays(1).atStartOfDay() : null;
-        int offset = Math.max(0, (page - 1) * size);
-        var items = customerMapper.page(search, filter.ids(), filter.includeNoGroup(), filter.active(),
+        return ApiResult.ok(customerService.list(
+                search, filter.ids(), filter.includeNoGroup(), filter.active(),
                 priceListFilter.id(), priceListFilter.noPriceList(), priceListFilter.active(),
-                minOwing, maxOwing, asOfEnd, outletId, size, offset);
-        return ApiResult.ok(PageResult.of(
-                items,
-                customerMapper.count(search, filter.ids(), filter.includeNoGroup(), filter.active(),
-                        priceListFilter.id(), priceListFilter.noPriceList(), priceListFilter.active(),
-                        minOwing, maxOwing, asOfEnd, outletId),
-                page,
-                size));
+                minOwing, maxOwing, asOfEnd, page, size));
     }
 
     private static Long requireOutlet() {

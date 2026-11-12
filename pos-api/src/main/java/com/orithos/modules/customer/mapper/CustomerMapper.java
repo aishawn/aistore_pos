@@ -3,8 +3,10 @@ package com.orithos.modules.customer.mapper;
 import com.orithos.modules.customer.Customer;
 import com.orithos.modules.customer.CustomerDetail;
 import com.orithos.modules.customer.CustomerExportRow;
+import lombok.Data;
 import org.apache.ibatis.annotations.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -175,6 +177,33 @@ public interface CustomerMapper {
                @Param("maxOwing") BigDecimal maxOwing,
                @Param("asOfEnd") LocalDateTime asOfEnd,
                @Param("outletId") Long outletId);
+
+    @Select("""
+        <script>
+        SELECT s.customer_id AS customer_id,
+               COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) AS day,
+               COALESCE(SUM(si.quantity), 0) AS quantity
+        FROM sale s
+        INNER JOIN sale_item si ON si.sale_id = s.id
+        WHERE s.status = 'COMPLETED'
+          AND s.refund_reason IS NULL
+          AND s.customer_id IN
+          <foreach collection="customerIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &gt;= CAST(#{from} AS date)
+          AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &lt;= CAST(#{to} AS date)
+        GROUP BY s.customer_id, COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date))
+        </script>
+        """)
+    List<CustomerDailyQuantity> salesQuantityByDay(@Param("customerIds") List<Long> customerIds,
+                                                   @Param("from") String from,
+                                                   @Param("to") String to);
+
+    @Data
+    class CustomerDailyQuantity {
+        private Long customerId;
+        private LocalDate day;
+        private BigDecimal quantity;
+    }
 
     @Select("SELECT outlet_id FROM customer WHERE id = #{id} AND deleted_at IS NULL")
     Long findOutletId(@Param("id") Long id);

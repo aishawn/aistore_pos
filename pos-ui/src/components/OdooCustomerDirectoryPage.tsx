@@ -23,6 +23,7 @@ import {
   type OdooCustomerRecord,
   type OdooPricelistRecord,
 } from "@/lib/odoo-api";
+import { Sparkline } from "@/components/admin/Sparkline";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
@@ -57,13 +58,12 @@ export function OdooCustomerDirectoryPage() {
   const canBalance = hasPermission("customers.balances");
   const canGroups = hasPermission("customers.groups");
   const [groupFilter, setGroupFilter] = useState<number[]>([]);
-  const [priceFilter, setPriceFilter] = useState<number[]>([]);
+  const [includeNoGroup, setIncludeNoGroup] = useState(false);
   const [selectedPriceIds, setSelectedPriceIds] = useState<number[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [detail, setDetail] = useState<OdooCustomerRecord | null>(null);
   useDialogFocus(Boolean(detail), () => setDetail(null));
   useEffect(() => { if (searchParams.get("manage") === "groups" && canGroups) setGroupsOpen(true); }, [searchParams, canGroups]);
-  useEffect(() => { const id = Number(searchParams.get("pricelistId")); if (Number.isSafeInteger(id) && id > 0) setPriceFilter([id]); }, [searchParams]);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
@@ -170,6 +170,14 @@ export function OdooCustomerDirectoryPage() {
 
   useEffect(() => { void loadLookups(); }, [loadLookups, refreshKey]);
 
+  const groupIdsParam = (() => {
+    const parts = [
+      ...groupFilter.map(String),
+      ...(includeNoGroup ? ["__none__"] : []),
+    ];
+    return parts.length ? parts.join(",") : undefined;
+  })();
+
   const loadCustomers = useCallback(async (append = false) => {
     if (connected !== true) return;
     if (append && requestBusy.current) return;
@@ -180,7 +188,12 @@ export function OdooCustomerDirectoryPage() {
     if (append) setLoadingMore(true); else setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset, groupId: groupFilter[0], pricelistId: priceFilter[0] });
+      const page = await searchOdooRecords<OdooCustomerRecord>("customers", {
+        query: debouncedQuery,
+        limit: PAGE_SIZE,
+        offset,
+        groupIds: groupIdsParam,
+      });
       if (revision !== requestRevision.current) return;
       if (page.hasNext && !page.items.length) throw new Error("The next batch was empty. Retry to continue.");
       setItems((previous) => append ? [...previous, ...page.items.slice(0, PAGE_SIZE).filter((row) => !previous.some((item) => item.id === row.id))] : page.items.slice(0, PAGE_SIZE));
@@ -193,15 +206,15 @@ export function OdooCustomerDirectoryPage() {
     } finally {
       if (revision === requestRevision.current) { requestBusy.current = false; setLoading(false); setLoadingMore(false); }
     }
-  }, [connected, debouncedQuery, groupFilter, priceFilter]);
+  }, [connected, debouncedQuery, groupIdsParam]);
 
   useEffect(() => {
-    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, priceFilter]);
+    const filters = JSON.stringify([connected, debouncedQuery, groupFilter, includeNoGroup]);
     if (loadedFilters.current !== filters) { setItems([]); loadedFilters.current = filters; }
     scrollRoot.current?.scrollTo({ top: 0 });
     void loadCustomers();
     return () => { requestRevision.current += 1; requestBusy.current = false; };
-  }, [loadCustomers, refreshKey, connected, debouncedQuery, groupFilter, priceFilter]);
+  }, [loadCustomers, refreshKey, connected, debouncedQuery, groupFilter, includeNoGroup]);
   useEffect(() => {
     const node = sentinel.current; const root = scrollRoot.current;
     if (!node || !root) return;
@@ -284,10 +297,24 @@ export function OdooCustomerDirectoryPage() {
     }
   }
 
-  const groupName = (ids?: number[]) => {
+  const groupName = (customer: OdooCustomerRecord) => {
+    if (customer.category_name) return customer.category_name;
+    const ids = customer.category_id;
     if (!ids?.length) return "—";
     const names = ids.map((id) => groups.find((group) => group.id === id)?.name).filter(Boolean);
     return names.length ? names.join(", ") : `${ids.length} group${ids.length === 1 ? "" : "s"}`;
+  };
+
+  const contactCell = (customer: OdooCustomerRecord) => {
+    const phone = customer.phone || "";
+    const email = customer.email || "";
+    if (!phone && !email) return "—";
+    return (
+      <div className="grid gap-1 text-[var(--oh-text-secondary)]">
+        {phone ? <a className="inline-flex items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`tel:${encodeURIComponent(phone)}`}><Phone size={14} />{phone}</a> : null}
+        {email ? <a className="inline-flex max-w-full items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`mailto:${encodeURIComponent(email)}`}><Mail size={14} /><span className="break-all">{email}</span></a> : null}
+      </div>
+    );
   };
 
   return (
@@ -296,7 +323,7 @@ export function OdooCustomerDirectoryPage() {
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            Orithos customer directory{total !== null ? ` · ${total} matching customers` : ""} with price lists, groups and receivable balances.
+            Orithos customer directory{total !== null ? ` · ${total} matching customers` : ""} with groups, contact details and receivable balances.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
         </div>
@@ -325,16 +352,25 @@ export function OdooCustomerDirectoryPage() {
         </section>
       ) : (
         <>
-          <label className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+          <label className="flex h-11 w-full shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
             <Search size={17} className="text-[var(--oh-muted)]" />
-            <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Customers..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          <details className="rounded-lg border border-[var(--oh-border)] bg-white p-3 text-sm"><summary className="cursor-pointer font-semibold">Filters{groupFilter.length + priceFilter.length > 0 ? " · active" : ""}</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <CustomerLookup kind="groups" label="Customer group" values={groupFilter} onChange={(ids) => { setGroupFilter(ids); }} initialOptions={groups} />
-            <CustomerLookup kind="pricelists" label="Customer price list" values={priceFilter} onChange={(ids) => { setPriceFilter(ids); }} initialOptions={pricelists} />
-          </div></details>
+          <div className="grid max-w-xl gap-3">
+            <CustomerLookup
+              kind="groups"
+              label="Customer Group"
+              multiple
+              includeNone
+              noneSelected={includeNoGroup}
+              onNoneChange={setIncludeNoGroup}
+              values={groupFilter}
+              onChange={setGroupFilter}
+              initialOptions={groups}
+            />
+          </div>
           {resultsBusy && items.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer results…"} Existing rows are temporarily read-only.</p>}
-          {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Price list and group assignment may be limited until this recovers.</div>}
+          {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Group assignment may be limited until this recovers.</div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { clearNativeReadCache(); void loadCustomers(failedAppend.current); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section aria-busy={resultsBusy} className="shrink-0 overflow-visible rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
@@ -342,10 +378,9 @@ export function OdooCustomerDirectoryPage() {
               <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[0_1px_0_var(--oh-border)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Customer</th>
-                  <th scope="col" className="px-4 py-3">Phone</th>
-                  <th scope="col" className="px-4 py-3">Email</th>
-                  <th scope="col" className="px-4 py-3">Price list</th>
-                  <th scope="col" className="px-4 py-3">Groups</th>
+                  <th scope="col" className="px-4 py-3">Group</th>
+                  <th scope="col" className="px-4 py-3">Contact</th>
+                  <th scope="col" className="px-4 py-3 text-center">Performance</th>
                   {canBalance && <th scope="col" className="px-4 py-3 text-right">Owing</th>}
                   <th scope="col" className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -353,24 +388,32 @@ export function OdooCustomerDirectoryPage() {
               <tbody className="divide-y divide-[var(--oh-border)]">
                 {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => (
                   <tr key={`customer-skeleton-${index}`} aria-hidden="true">
-                    <td colSpan={7} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /></td>
+                    <td colSpan={canBalance ? 6 : 5} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /></td>
                   </tr>
                 )) : items.length === 0 ? (
-                  <tr><td colSpan={7} className="p-0"><CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} /></td></tr>
-                ) : items.map((customer) => (
+                  <tr><td colSpan={canBalance ? 6 : 5} className="p-0"><CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} /></td></tr>
+                ) : items.map((customer) => {
+                  const points = customer.performance_30d ?? [];
+                  const units = points.reduce((sum, point) => sum + (Number(point) || 0), 0);
+                  return (
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3">
                       <Link href={`/customers/${customer.id}/view`} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</Link>
                       <span className="ml-6 block text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{customer.phone ? <a className="inline-flex items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`tel:${encodeURIComponent(customer.phone)}`}><Phone size={14} />{customer.phone}</a> : "—"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{customer.email ? <a className="inline-flex max-w-full items-center gap-1.5 rounded px-1 hover:text-[var(--sf-link-blue)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]" href={`mailto:${encodeURIComponent(customer.email)}`}><Mail size={14} /><span className="break-all">{customer.email}</span></a> : "—"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "—"}</td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer.category_id)}</td>
+                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer)}</td>
+                    <td className="px-4 py-3">{contactCell(customer)}</td>
+                    <td className="px-4 py-3">
+                      <div className="mx-auto flex min-w-[140px] max-w-[180px] flex-col items-center gap-1" title="Units sold per day over the past 30 Adelaide business days">
+                        <Sparkline points={points} width={140} height={36} />
+                        <span className="text-[11px] tabular-nums text-[var(--oh-muted)]">{points.length ? `${units.toLocaleString("en-AU")} units · 30d` : "Performance unavailable"}</span>
+                      </div>
+                    </td>
                     {canBalance && <td className="px-4 py-3 text-right font-medium text-[var(--oh-text)]">{money(customer.credit)}</td>}
                     <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><Link href={`/customers/${customer.id}/view`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)]">View</Link>{canEdit && <details className="relative"><summary className="inline-flex min-h-11 list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium"><Ellipsis size={16} /> More</summary><div className="absolute right-0 z-20 mt-1 grid min-w-32 rounded-lg border bg-white p-1 text-left shadow-lg"><button type="button" onClick={() => openEdit(customer)} className="min-h-10 px-3 text-left text-sm hover:bg-[var(--oh-surface)]">Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} className="min-h-10 px-3 text-left text-sm text-rose-800 hover:bg-rose-50">Archive</button></div></details>}</div></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <div className="divide-y divide-[var(--oh-border)] xl:hidden">
@@ -378,7 +421,10 @@ export function OdooCustomerDirectoryPage() {
                 <p className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading customers…</p>
               ) : items.length === 0 ? (
                 <CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} />
-              ) : items.map((customer) => (
+              ) : items.map((customer) => {
+                const points = customer.performance_30d ?? [];
+                const units = points.reduce((sum, point) => sum + (Number(point) || 0), 0);
+                return (
                 <article key={customer.id} className="px-4 py-3.5">
                   <header className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -387,18 +433,20 @@ export function OdooCustomerDirectoryPage() {
                     </div>
                     {canBalance && <p className="shrink-0 text-sm font-semibold text-[var(--oh-text)]">{money(customer.credit)}</p>}
                   </header>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {customer.phone ? <a className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text-secondary)]" href={`tel:${encodeURIComponent(customer.phone)}`}><Phone size={15} className="shrink-0 text-[var(--oh-muted)]" /><span className="break-all">{customer.phone}</span></a> : <p className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-muted)]"><Phone size={15} />No phone</p>}
-                    {customer.email ? <a className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text-secondary)]" href={`mailto:${encodeURIComponent(customer.email)}`}><Mail size={15} className="shrink-0 text-[var(--oh-muted)]" /><span className="break-all">{customer.email}</span></a> : <p className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-muted)]"><Mail size={15} />No email</p>}
+                  <div className="mt-3 grid gap-2">
+                    <p className="text-sm text-[var(--oh-text-secondary)]">Group · {groupName(customer)}</p>
+                    {contactCell(customer)}
+                    <div className="flex min-w-0 items-center gap-2 rounded-lg bg-[var(--oh-surface)] px-3 py-2">
+                      <Sparkline points={points} width={96} height={28} />
+                      <span className="text-[11px] tabular-nums text-[var(--oh-muted)]">{points.length ? `${units.toLocaleString("en-AU")} · 30d` : "No performance"}</span>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-[var(--oh-muted)]">
-                    {Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "No price list"} · {groupName(customer.category_id)}
-                  </p>
                   <footer className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3">
                     <div className="flex gap-2"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} disabled={connected !== true || rowActionsDisabled || !canEdit || archivingCustomerId !== null} aria-label={`Archive ${customer.name}`} title="Archive customer" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-800 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50">{archivingCustomerId === customer.id ? <LoaderCircle size={15} className="animate-spin" /> : <Archive size={15} />}</button></div>
                   </footer>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -469,7 +517,7 @@ export function OdooCustomerDirectoryPage() {
         </section>
       </ModalOverlay>}
       {groupsOpen && <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-2 sm:p-4"><section role="dialog" aria-modal="true" aria-label="Manage customer groups" className="flex max-h-[95dvh] w-full max-w-5xl flex-col overflow-y-auto rounded-xl bg-white"><button type="button" onClick={() => { setGroupsOpen(false); setRefreshKey((value) => value + 1); }} className="m-3 min-h-11 self-end rounded border px-4">Close groups</button><OdooCustomerGroupsPage /></section></ModalOverlay>}
-      {detail && <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40"><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="h-full w-full max-w-lg overflow-y-auto bg-white p-5"><button type="button" onClick={() => setDetail(null)} className="min-h-11 rounded border px-3">Close details</button><h2 id="customer-detail-title" className="mt-4 text-xl font-semibold">{detail.name}</h2><dl className="mt-5 grid gap-3 text-sm">{[["Phone", detail.phone], ["Email", detail.email], ["Customer reference", detail.ref], ["Type", detail.company_type], ["Address", [detail.street, detail.city].filter(Boolean).join(", ")], ["ABN / VAT", detail.vat], ["Groups", groupName(detail.category_id)], ["Price list", Array.isArray(detail.property_product_pricelist) ? detail.property_product_pricelist[1] : "Store default"]].map(([label, value]) => <div key={String(label)}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium">{value || "—"}</dd></div>)}</dl>{canBalance && <div className="mt-5 grid gap-3 rounded-lg border p-3"><p>Current receivable: {money(detail.credit)}</p><Link href={`/customers/balances?customerId=${detail.id}&q=${encodeURIComponent(detail.name)}`} className="min-h-11 text-[var(--oh-primary)] underline">Open unpaid invoices</Link></div>}<div className="mt-5 flex flex-wrap gap-2">{canEdit && <button type="button" onClick={() => { setDetail(null); openEdit(detail); }} className="min-h-11 rounded border px-3">Edit customer</button>}<OdooRecordLink model="res.partner" id={detail.id}>Open in Orithos</OdooRecordLink></div></section></ModalOverlay>}
+      {detail && <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40"><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="h-full w-full max-w-lg overflow-y-auto bg-white p-5"><button type="button" onClick={() => setDetail(null)} className="min-h-11 rounded border px-3">Close details</button><h2 id="customer-detail-title" className="mt-4 text-xl font-semibold">{detail.name}</h2><dl className="mt-5 grid gap-3 text-sm">{[["Phone", detail.phone], ["Email", detail.email], ["Customer reference", detail.ref], ["Type", detail.company_type], ["Address", [detail.street, detail.city].filter(Boolean).join(", ")], ["ABN / VAT", detail.vat], ["Groups", groupName(detail)], ["Price list", Array.isArray(detail.property_product_pricelist) ? detail.property_product_pricelist[1] : "Store default"]].map(([label, value]) => <div key={String(label)}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium">{value || "—"}</dd></div>)}</dl>{canBalance && <div className="mt-5 grid gap-3 rounded-lg border p-3"><p>Current receivable: {money(detail.credit)}</p><Link href={`/customers/balances?customerId=${detail.id}&q=${encodeURIComponent(detail.name)}`} className="min-h-11 text-[var(--oh-primary)] underline">Open unpaid invoices</Link></div>}<div className="mt-5 flex flex-wrap gap-2">{canEdit && <button type="button" onClick={() => { setDetail(null); openEdit(detail); }} className="min-h-11 rounded border px-3">Edit customer</button>}<OdooRecordLink model="res.partner" id={detail.id}>Open in Orithos</OdooRecordLink></div></section></ModalOverlay>}
     </main>
   );
 }
