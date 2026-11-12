@@ -1249,8 +1249,82 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> extendedRecords(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                            @RequestBody JsonNode body) {
         authorize(supplied);
-        throw new ResponseStatusException(HttpStatus.GONE,
-                "Shopfront source records are owned by CRAWL_DATABASE_URL; use settings:import for native POS settings");
+        String store = text(body, "store_key");
+        if (store == null || !STORE_KEY.matcher(store).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key is required");
+        }
+        String entityType = text(body, "entity_type");
+        if (entityType == null || entityType.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "entity_type is required");
+        }
+        JsonNode items = body.get("items");
+        if (items == null || !items.isArray()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "items array is required");
+        }
+        String lookupTable = switch (entityType.trim().toLowerCase(Locale.ROOT)) {
+            case "brands", "brand" -> "brand";
+            case "categories", "category" -> "category";
+            case "families", "family" -> "family";
+            case "tags", "tag" -> "tag";
+            default -> null;
+        };
+        // Non-classification extended entities stay on CRAWL_DATABASE_URL; acknowledge
+        // so the crawler sync can finish without treating POS as a second source store.
+        if (lookupTable == null) {
+            return ApiResult.ok(Map.of(
+                    "status", "STAGED",
+                    "store_key", store,
+                    "entity_type", entityType,
+                    "accepted", items.size(),
+                    "promoted", 0,
+                    "business_write", false));
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappingRows = jdbc.queryForList(
+                "SELECT outlet_id, enabled FROM shopfront_store_mapping WHERE store_key = ?", store);
+        Map<String, Object> mapping = mappingRows.stream()
+                .filter(row -> isEnabled(row.get("enabled")))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No enabled shopfront_store_mapping for store_key=" + store));
+        long outletId = longValue(mapping.get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Shopfront mapping has no numeric POS outlet_id");
+        }
+        int promoted = 0;
+        int skipped = 0;
+        Map<String, Long> cache = new HashMap<>();
+        for (JsonNode item : items) {
+            JsonNode payload = item.has("raw_payload") && item.get("raw_payload").isObject()
+                    ? item.get("raw_payload") : item;
+            boolean deleted = payload.path("deleted").asBoolean(false)
+                    || "true".equalsIgnoreCase(text(payload, "deleted"));
+            String name = lookupName(payload.get("name"));
+            if (deleted || name == null || name.isBlank()) {
+                skipped++;
+                continue;
+            }
+            Long id = ensureLookup(lookupTable, name, outletId, cache);
+            if (id != null) {
+                Integer mdbId = payload.path("mdbId").isNumber() ? payload.path("mdbId").asInt()
+                        : (payload.path("mdb_id").isNumber() ? payload.path("mdb_id").asInt() : null);
+                if (mdbId != null) {
+                    jdbc.update("UPDATE " + lookupTable + " SET mdb_id = COALESCE(mdb_id, ?) WHERE id = ? AND outlet_id = ?",
+                            mdbId, id, outletId);
+                }
+                promoted++;
+            } else {
+                skipped++;
+            }
+        }
+        return ApiResult.ok(Map.of(
+                "status", "STAGED",
+                "store_key", store,
+                "entity_type", entityType,
+                "accepted", items.size(),
+                "promoted", promoted,
+                "skipped", skipped,
+                "business_write", promoted > 0));
     }
 
     @GetMapping("/snapshot")
@@ -3151,11 +3225,29 @@ public class ShopfrontIntegrationController {
 
     private Long ensureLookup(String table, String name, long outletId) {
         if (name == null || name.isBlank()) return null;
+        if (!Set.of("brand", "category", "family", "tag").contains(table)) {
+            throw new IllegalArgumentException("Unsupported classification table: " + table);
+        }
         try {
-            Long id = jdbc.queryForObject("SELECT id FROM " + table + " WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL LIMIT 1", Long.class, name);
-            if (id != null) return id;
+            // Prefer the caller's outlet row; fall back to a same-named active row
+            // already linked into this outlet via products (legacy shared lookups).
+            String linkedExists = "tag".equals(table)
+                    ? """
+                      EXISTS (
+                        SELECT 1 FROM product_tag pt
+                        INNER JOIN product p ON p.id = pt.product_id AND p.outlet_id = ? AND p.deleted_at IS NULL
+                        WHERE pt.tag_id = c.id)
+                      """
+                    : ("EXISTS (SELECT 1 FROM product p WHERE p." + table + "_id = c.id AND p.outlet_id = ? AND p.deleted_at IS NULL)");
+            List<Long> matches = jdbc.queryForList(
+                    "SELECT id FROM " + table + " c WHERE lower(trim(name))=lower(trim(?)) AND deleted_at IS NULL AND (outlet_id = ? OR "
+                            + linkedExists + ") ORDER BY CASE WHEN outlet_id = ? THEN 0 ELSE 1 END, id LIMIT 1",
+                    Long.class, name, outletId, outletId, outletId);
+            if (!matches.isEmpty()) return matches.get(0);
         } catch (Exception ignored) { }
-        return jdbc.queryForObject("INSERT INTO " + table + " (name) VALUES (?) RETURNING id", Long.class, name);
+        return jdbc.queryForObject(
+                "INSERT INTO " + table + " (name, outlet_id) VALUES (?,?) RETURNING id",
+                Long.class, name, outletId);
     }
 
     private Long ensureLookup(String table, String name, long outletId, Map<String, Long> cache) {
