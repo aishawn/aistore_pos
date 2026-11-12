@@ -165,7 +165,8 @@ public interface SupplyChainMapper {
             VALUES
               (#{planId}, #{outletId}, #{productId}, #{productName}, #{supplierId}, #{supplierName}, #{supplierSku},
                #{channel}, #{lastWeekSales}, #{currentStock}, #{incomingStock}, #{expectedDemand}, #{safetyStock},
-               #{orderQty}, #{caseQty}, #{caseSize}, #{unitCost}, #{lineCost}, #{saving}, #{confidence}, #{unusual},
+               #{orderQty}, #{caseQty}, #{caseSize}, #{unitCost}, #{lineCost}, #{saving}, #{confidence},
+               CASE WHEN #{unusual} THEN 1 ELSE 0 END,
                #{reason}, #{decision}, #{comparisonJson}, #{status}, #{orderId})
             """)
     int insertLine(SupplyChainRows.LineRow row);
@@ -182,7 +183,8 @@ public interface SupplyChainMapper {
               (#{row.planId}, #{row.outletId}, #{row.productId}, #{row.productName}, #{row.supplierId},
                #{row.supplierName}, #{row.supplierSku}, #{row.channel}, #{row.lastWeekSales}, #{row.currentStock},
                #{row.incomingStock}, #{row.expectedDemand}, #{row.safetyStock}, #{row.orderQty}, #{row.caseQty},
-               #{row.caseSize}, #{row.unitCost}, #{row.lineCost}, #{row.saving}, #{row.confidence}, #{row.unusual},
+               #{row.caseSize}, #{row.unitCost}, #{row.lineCost}, #{row.saving}, #{row.confidence},
+               CASE WHEN #{row.unusual} THEN 1 ELSE 0 END,
                #{row.reason}, #{row.decision}, #{row.comparisonJson}, #{row.status}, #{row.orderId})
             </foreach>
             </script>
