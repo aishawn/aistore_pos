@@ -435,7 +435,7 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(0, result.get("skipped"));
         org.mockito.ArgumentCaptor<Object[]> orderArgs = org.mockito.ArgumentCaptor.forClass(Object[].class);
         verify(jdbc).queryForObject(contains("INSERT INTO purchase_order"), eq(Long.class), orderArgs.capture());
-        assertNull(orderArgs.getValue()[1]);
+        assertEquals(null, orderArgs.getValue()[1]);
         verify(jdbc, org.mockito.Mockito.never()).update(contains("INSERT INTO order_product"), any(Object[].class));
     }
 
