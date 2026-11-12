@@ -138,7 +138,7 @@ export function SettingsCatalogCrud({
       toolbar={toolbar}
     >
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        Orithos-owned catalogue. Shopfront import only fills empty rows; daily sync does not overwrite these settings.
+        Managed in Orithos. Source-backed fields may be refreshed during Shopfront settings sync.
       </section>
       {duplicateNames.length > 0 && (
         <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">

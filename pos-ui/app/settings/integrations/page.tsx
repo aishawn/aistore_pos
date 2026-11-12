@@ -65,7 +65,7 @@ export default function IntegrationsSettingsPage() {
   return (
     <AdminPageLayout title="Integrations" subtitle="Shopfront import and connection tools">
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        Orithos owns settings after import. Re-import only fills empty / unowned values — it never overwrites values you saved in Orithos.
+        Shopfront sync updates tax rates and payment methods and adds missing register names. Company and other local settings stay in Orithos.
       </section>
       <div className="grid max-w-xl gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-5">
         <p className="text-sm text-[var(--oh-muted)]">
