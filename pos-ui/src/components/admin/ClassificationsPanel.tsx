@@ -158,7 +158,7 @@ export function ClassificationsPanel({
         />
       </label>
 
-      <ClassificationTypeMultiSelect values={types} onChange={setTypes} defaultOpen />
+      <ClassificationTypeMultiSelect values={types} onChange={setTypes} />
 
       {error && (
         <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900">
