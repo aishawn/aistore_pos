@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,5 +69,6 @@ class SettingsImportServiceTaxTest {
                 "Explicit".equals(rate.getName()) && new BigDecimal("7.5").compareTo(rate.getAmount()) == 0));
         verify(taxRates).insert(org.mockito.ArgumentMatchers.argThat(rate ->
                 "From rate alias".equals(rate.getName()) && BigDecimal.ZERO.compareTo(rate.getAmount()) == 0));
+        verify(jdbc, times(2)).queryForObject(contains("is_default <> 0"), eq(Boolean.class), eq(87L));
     }
 }

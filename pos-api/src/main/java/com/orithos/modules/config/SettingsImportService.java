@@ -151,7 +151,7 @@ public class SettingsImportService {
             t.setName(name);
             t.setAmount(amount);
             boolean hasDefault = Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL AND is_default = TRUE)",
+                    "SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL AND is_default <> 0)",
                     Boolean.class, outletId));
             t.setIsDefault(!hasDefault && (bool(raw, "isDefault") || bool(raw, "default")));
             t.setOutletId(outletId);
