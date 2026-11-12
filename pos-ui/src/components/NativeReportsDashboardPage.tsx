@@ -43,6 +43,8 @@ type NativeOverview = {
   topProducts: Array<{ id: number; name: string; revenue: number; quantity: number }>;
   inventoryAvailable?: boolean;
   inventoryUnits?: number | null;
+  inventoryCaseLevel?: number | null;
+  inventoryItemLevel?: number | null;
   inventoryStatus?: string | null;
   negativeStockProducts?: number | null;
 };
@@ -125,7 +127,8 @@ export function NativeReportsDashboardPage() {
       ? ((data.revenue - comparison.revenue) / Math.abs(comparison.revenue)) * 100
       : null;
   const negativeSkus = data?.inventoryAvailable ? Number(data.negativeStockProducts) || 0 : 0;
-  const inventoryUnits = data?.inventoryAvailable && data.inventoryUnits != null ? Number(data.inventoryUnits) : null;
+  const inventoryCaseLevel = data?.inventoryAvailable && data.inventoryCaseLevel != null ? Number(data.inventoryCaseLevel) : null;
+  const inventoryItemLevel = data?.inventoryAvailable && data.inventoryItemLevel != null ? Number(data.inventoryItemLevel) : null;
   const singleDay = from === to;
   const comparisonPanel =
     singleDay && data && comparison && compareRange
@@ -153,11 +156,11 @@ export function NativeReportsDashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Reports overview</h1>
           <p className="mt-1 text-xs text-[var(--oh-muted)]">
             {from === to ? from : `${from} → ${to}`}
-            {inventoryUnits != null ? (
+            {inventoryCaseLevel != null && inventoryItemLevel != null ? (
               <>
                 {" · "}
                 <Link href="/reports/inventory" className="font-medium text-[var(--oh-primary)] hover:underline">
-                  {reportNumber(inventoryUnits)} on-hand units
+                  {reportNumber(inventoryCaseLevel)} cases · {reportNumber(inventoryItemLevel)} items on hand
                 </Link>
               </>
             ) : null}

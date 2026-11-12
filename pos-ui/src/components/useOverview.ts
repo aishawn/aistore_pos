@@ -20,6 +20,8 @@ export type OverviewPulse = {
   lowStockCount?: number;
   newCustomers?: number;
   inventoryUnits?: number | null;
+  inventoryCaseLevel?: number | null;
+  inventoryItemLevel?: number | null;
   yesterdaySales?: number;
   yesterdaySalesAvailable?: boolean;
   yesterdayGrossMargin?: number | null;
@@ -52,12 +54,14 @@ type NativeOverview = {
   transactions: number;
   inventoryAvailable?: boolean;
   inventoryUnits?: number | null;
+  inventoryCaseLevel?: number | null;
+  inventoryItemLevel?: number | null;
   inventoryStatus?: string | null;
   negativeStockProducts?: number | null;
   dailyTrend: Array<{ date: string; revenue: number; transaction_count: number; tax: number | null; grossProfit: number | null; costAvailable: boolean; taxAvailable: boolean }>;
 };
 
-const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v2";
+const PULSE_STORAGE_KEY = "orithos-dashboard-pulse-native-v3";
 const PULSE_FRESH_MS = 60_000;
 
 function storeDay(date = new Date()) {
@@ -172,6 +176,12 @@ export function useOverview() {
         yesterdayFrom: yesterday,
         yesterdayTo: yesterday,
         inventoryUnits: result.inventoryAvailable ? Number(result.inventoryUnits ?? 0) : null,
+        inventoryCaseLevel: result.inventoryAvailable && result.inventoryCaseLevel != null
+          ? Number(result.inventoryCaseLevel)
+          : null,
+        inventoryItemLevel: result.inventoryAvailable && result.inventoryItemLevel != null
+          ? Number(result.inventoryItemLevel)
+          : null,
         inventoryAvailable: result.inventoryAvailable === true,
         inventoryStatus: result.inventoryAvailable ? (result.inventoryStatus || "complete") : "unavailable",
         inventoryCoverage: result.inventoryAvailable ? 1 : null,

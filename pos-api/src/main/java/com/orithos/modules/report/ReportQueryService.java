@@ -200,13 +200,40 @@ public class ReportQueryService {
                 GROUP BY COALESCE(p.id, 0), COALESCE(p.name, si.note, 'Unknown product')
                 ORDER BY revenue DESC LIMIT 10
                 """, outletId, sqlDate(from), sqlDate(to));
+        // Same ACTIVE / qty>0 / case·item split as Inventory On Hand (/api/products/on-hand-summary).
         Map<String, Object> inventory = jdbc.queryForMap("""
                 SELECT COUNT(*) AS sku_count,
-                       COUNT(*) FILTER (WHERE COALESCE(pi.quantity, 0) > 0) AS positive_skus,
-                       COUNT(*) FILTER (WHERE COALESCE(pi.quantity, 0) < 0) AS negative_skus,
-                       COALESCE(SUM(CASE WHEN pi.quantity > 0 THEN pi.quantity ELSE 0 END), 0) AS positive_units
-                FROM product_inventory pi
-                WHERE pi.outlet_id = ?
+                       COUNT(*) FILTER (WHERE COALESCE(inv.total_qty, 0) > 0) AS positive_skus,
+                       COUNT(*) FILTER (WHERE COALESCE(inv.total_qty, 0) < 0) AS negative_skus,
+                       COALESCE(SUM(CASE WHEN COALESCE(inv.total_qty, 0) > 0 THEN inv.total_qty ELSE 0 END), 0) AS positive_units,
+                       COALESCE(SUM(
+                           CASE
+                               WHEN COALESCE(inv.total_qty, 0) > 0
+                                    AND p.case_quantity IS NOT NULL AND p.case_quantity > 0
+                                   THEN TRUNC(inv.total_qty / p.case_quantity)
+                               ELSE 0
+                           END
+                       ), 0) AS case_level_total,
+                       COALESCE(SUM(
+                           CASE
+                               WHEN COALESCE(inv.total_qty, 0) > 0
+                                    AND p.case_quantity IS NOT NULL AND p.case_quantity > 0
+                                   THEN inv.total_qty
+                                        - TRUNC(inv.total_qty / p.case_quantity) * p.case_quantity
+                               WHEN COALESCE(inv.total_qty, 0) > 0
+                                   THEN inv.total_qty
+                               ELSE 0
+                           END
+                       ), 0) AS item_level_total
+                FROM product p
+                LEFT JOIN (
+                    SELECT product_id, SUM(quantity) AS total_qty
+                    FROM product_inventory
+                    GROUP BY product_id
+                ) inv ON inv.product_id = p.id
+                WHERE p.outlet_id = ?
+                  AND p.deleted_at IS NULL
+                  AND p.status = 'ACTIVE'
                 """, outletId);
         return nativeOverviewPayload(from, to, daily, products, inventory);
     }
@@ -287,6 +314,12 @@ public class ReportQueryService {
         result.put("inventoryAvailable", inventoryPresent);
         result.put("inventoryUnits", inventoryPresent
                 ? toDecimal(inventory.get("positive_units")).setScale(0, RoundingMode.HALF_UP).longValue()
+                : null);
+        result.put("inventoryCaseLevel", inventoryPresent
+                ? toDecimal(inventory.get("case_level_total")).setScale(0, RoundingMode.HALF_UP).longValue()
+                : null);
+        result.put("inventoryItemLevel", inventoryPresent
+                ? toDecimal(inventory.get("item_level_total")).setScale(0, RoundingMode.HALF_UP).longValue()
                 : null);
         result.put("inventorySkuCount", inventoryPresent ? toDecimal(inventory.get("sku_count")).longValue() : null);
         result.put("negativeStockProducts", inventoryPresent ? negativeSkus : null);

@@ -330,17 +330,17 @@ export function NativeInventoryReportPage() {
   }
 
   const toolBtn =
-    "inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50";
+    "inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50";
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
-        <div className="grid gap-px bg-[var(--oh-navy)] sm:grid-cols-2">
-          <label className="relative flex min-h-[4.25rem] cursor-pointer flex-col justify-center px-4 py-2 text-[var(--sf-on-dark)]">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--sf-on-dark)]/75">Report Type</span>
-            <span className="mt-0.5 flex items-center justify-between gap-2 text-lg font-semibold leading-tight">
+        <div className="grid gap-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 sm:grid-cols-2 md:px-6">
+          <label className="relative flex min-h-14 cursor-pointer flex-col justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-primary)]/40 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Report Type</span>
+            <span className="mt-0.5 flex items-center justify-between gap-2 text-base font-semibold leading-tight text-[var(--oh-text)]">
               {reportTypeLabel(reportType)}
-              <ChevronDown size={16} className="shrink-0 opacity-80" aria-hidden="true" />
+              <ChevronDown size={16} className="shrink-0 text-[var(--oh-primary)]" aria-hidden="true" />
             </span>
             <select
               aria-label="Report Type"
@@ -353,11 +353,11 @@ export function NativeInventoryReportPage() {
               ))}
             </select>
           </label>
-          <label className="relative flex min-h-[4.25rem] cursor-pointer flex-col justify-center px-4 py-2 text-[var(--sf-on-dark)]">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--sf-on-dark)]/75">Group By</span>
-            <span className="mt-0.5 flex items-center justify-between gap-2 text-lg font-semibold leading-tight">
+          <label className="relative flex min-h-14 cursor-pointer flex-col justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-primary)]/40 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Group By</span>
+            <span className="mt-0.5 flex items-center justify-between gap-2 text-base font-semibold leading-tight text-[var(--oh-text)]">
               {groupByLabel(groupBy)}
-              <ChevronDown size={16} className="shrink-0 opacity-80" aria-hidden="true" />
+              <ChevronDown size={16} className="shrink-0 text-[var(--oh-primary)]" aria-hidden="true" />
             </span>
             <select
               aria-label="Group By"
@@ -375,13 +375,13 @@ export function NativeInventoryReportPage() {
         </div>
 
         <div className="space-y-3 px-4 py-3 md:px-6">
-          <label className="flex min-h-11 w-full items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-1 focus-within:ring-[var(--oh-primary)]/25">
+          <label className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
             <Search size={16} className="shrink-0 text-[var(--oh-muted)]" aria-hidden="true" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search for anything"
-              className="min-w-0 flex-1 bg-transparent text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)]"
+              className="min-w-0 flex-1 bg-transparent text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
             />
           </label>
 
@@ -437,17 +437,17 @@ export function NativeInventoryReportPage() {
           </div>
         ) : (
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-[var(--chart-1)]">
+            <thead className="sticky top-0 z-10 bg-[var(--oh-surface-inverse)]">
               <tr>
                 {visibleColumns.map((column) => {
                   const sortable = ON_HAND_COLUMNS.some((entry) => entry.key === column.key);
                   return (
-                    <th key={column.key} scope="col" className={`whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--sf-on-dark)] ${cellAlign(column.key)}`}>
+                    <th key={column.key} scope="col" className={`whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--oh-on-inverse)] ${cellAlign(column.key)}`}>
                       {sortable ? (
                         <button
                           type="button"
                           onClick={() => toggleSort(column.key as OnHandSort)}
-                          className="inline-flex items-center gap-1.5 uppercase tracking-wide text-[var(--sf-on-dark)] hover:opacity-90"
+                          className="inline-flex items-center gap-1.5 uppercase tracking-wide text-[var(--oh-on-inverse)] hover:opacity-90"
                         >
                           {column.label}
                           {sortIcon(column.key as OnHandSort)}
@@ -511,33 +511,33 @@ export function NativeInventoryReportPage() {
                 </Fragment>
               ))}
             </tbody>
-            <tfoot className="sticky bottom-0 z-10 bg-[var(--chart-1)]" aria-label="Full catalog inventory totals">
+            <tfoot className="sticky bottom-0 z-10 bg-[var(--oh-surface-inverse)]" aria-label="Full catalog inventory totals">
               <tr>
                 {visibleColumns.map((column) => {
                   if (column.key === "caseLevel") {
                     return (
-                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--sf-on-dark)]">
+                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--oh-on-inverse)]">
                         {summaryBusy && items.length === 0 ? "…" : quantity(footerTotals.caseLevel)}
                       </td>
                     );
                   }
                   if (column.key === "itemLevel") {
                     return (
-                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--sf-on-dark)]">
+                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--oh-on-inverse)]">
                         {summaryBusy && items.length === 0 ? "…" : quantity(footerTotals.itemLevel)}
                       </td>
                     );
                   }
                   if (column.key === "valueIncLast") {
                     return (
-                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--sf-on-dark)]">
+                      <td key={column.key} className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-[var(--oh-on-inverse)]">
                         {summaryBusy && items.length === 0 ? "…" : money(footerTotals.valueIncLast)}
                       </td>
                     );
                   }
                   if (column.key === "name") {
                     return (
-                      <td key={column.key} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--sf-on-dark)]/90">
+                      <td key={column.key} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--oh-on-inverse)]/90">
                         Total
                       </td>
                     );

@@ -34,8 +34,16 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
   sandboxNote?: boolean;
 }) {
   const timestamp = updatedAt(data.sourceReportsFetchedAt ?? data.queryThrough, data.timezone);
-  const stockAvailable = data.inventoryAvailable && data.inventoryUnits != null && Number.isFinite(data.inventoryUnits)
-    && data.inventoryStatus !== "mixed_units" && data.inventoryStatus !== "unavailable";
+  const caseLevel = data.inventoryCaseLevel != null && Number.isFinite(data.inventoryCaseLevel) ? data.inventoryCaseLevel : null;
+  const itemLevel = data.inventoryItemLevel != null && Number.isFinite(data.inventoryItemLevel) ? data.inventoryItemLevel : null;
+  const stockAvailable = data.inventoryAvailable
+    && caseLevel != null
+    && itemLevel != null
+    && data.inventoryStatus !== "mixed_units"
+    && data.inventoryStatus !== "unavailable";
+  const stockValue = stockAvailable
+    ? `${caseLevel!.toLocaleString("en-AU")} · ${itemLevel!.toLocaleString("en-AU")}`
+    : "—";
   const marginAvailable = data.yesterdayGrossMargin != null;
   const marginNote = pulseMarginNote(data);
   const orithosMode = data.shopfrontReportsMode === "orithos";
@@ -86,18 +94,12 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           note={marginNote}
         />
         <Metric
-          label="Sellable units"
+          label="Inventory on hand"
           href={orithosMode || sourceMode ? "/reports/inventory" : "/products"}
           title={stockAvailable
-            ? orithosMode
-              ? "Sum of positive on-hand balances in the Orithos product ledger."
-              : sourceMode
-                ? data.inventoryStatus === "partial_inventory"
-                  ? "Estimated from Shopfront rows with complete case and item quantities."
-                  : "Positive on-hand quantity converted from Shopfront case and item levels."
-                : "Sum of positive on-hand balances by product across internal locations."
+            ? "Same Case Level · Item Level totals as Reports → Inventory (Inventory on Hand)."
             : undefined}
-          value={stockAvailable ? data.inventoryUnits!.toLocaleString("en-AU") : "—"}
+          value={stockValue}
           note={
             data.inventoryStatus === "partial_inventory"
               ? `Known subtotal · ${Math.round((data.inventoryCoverage ?? 0) * 100)}% of rows · ${data.inventoryIncompleteRows ?? 0} excluded`
@@ -112,12 +114,8 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
                         ? "Shopfront inventory report unavailable"
                         : "Temporarily unavailable"
                     : data.inventoryStatus === "negative_stock"
-                      ? `${data.negativeStockProducts ?? 0} SKUs below zero · review list`
-                      : orithosMode
-                        ? "Orithos on-hand · positive only"
-                        : sourceMode
-                          ? "Shopfront Inventory · positive on-hand only"
-                          : "Positive on-hand only"
+                      ? `Case · Item · ${data.negativeStockProducts ?? 0} SKUs below zero`
+                      : "Case level · Item level · positive only"
           }
           noteHref={data.inventoryStatus === "negative_stock" || (orithosMode && !stockAvailable) ? negativeStockHref : undefined}
         />
