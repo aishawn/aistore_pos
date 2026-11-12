@@ -37,7 +37,7 @@ public interface TaxRateMapper {
             + "VALUES (#{name}, #{amount}, #{mdbId}, CASE WHEN #{isDefault} THEN 1 ELSE 0 END, #{outletId})")
     int insert(TaxRate t);
 
-    @Update("UPDATE tax_rate SET name=#{rate.name}, amount=#{rate.amount}, is_default=#{rate.isDefault} WHERE id=#{rate.id} AND outlet_id=#{outletId}")
+    @Update("UPDATE tax_rate SET name=#{rate.name}, amount=#{rate.amount}, is_default=CASE WHEN #{rate.isDefault} THEN 1 ELSE 0 END WHERE id=#{rate.id} AND outlet_id=#{outletId}")
     int update(@Param("rate") TaxRate rate, @Param("outletId") Long outletId);
 
     @Update("UPDATE tax_rate SET deleted_at = NOW() WHERE id=#{id} AND outlet_id=#{outletId}")

@@ -56,10 +56,14 @@ public class SettingsImportService {
         }
         Map<String, Object> counts = new LinkedHashMap<>();
         counts.put("company_settings", 0);
-        TaxRatePromotionResult taxRateResult = promoteTaxRates(outletId, catalogues.path("tax_rates"));
-        counts.put("tax_rates", taxRateResult.written());
+        TaxRatePromotionResult taxRateResult = promoteTaxRates(outletId, catalogues.path("tax_rates"), forceEmptyOnly);
+        counts.put("tax_rates", taxRateResult.created());
+        counts.put("tax_rates_updated", taxRateResult.updated());
         counts.put("tax_rates_skipped_missing_amount", taxRateResult.skippedMissingAmount());
-        counts.put("payment_methods", promotePaymentMethods(outletId, catalogues.path("payment_methods")));
+        PaymentMethodPromotionResult paymentResult = promotePaymentMethods(
+                outletId, catalogues.path("payment_methods"), forceEmptyOnly);
+        counts.put("payment_methods", paymentResult.created());
+        counts.put("payment_methods_updated", paymentResult.updated());
         counts.put("outlets", 0);
         counts.put("registers", promoteRegisters(outletId, catalogues.path("registers")));
         counts.put("enterprise", 0);
@@ -128,13 +132,18 @@ public class SettingsImportService {
         return removed;
     }
 
-    private TaxRatePromotionResult promoteTaxRates(long outletId, JsonNode records) {
-        int written = 0;
+    private TaxRatePromotionResult promoteTaxRates(long outletId, JsonNode records, boolean forceEmptyOnly) {
+        int created = 0;
+        int updated = 0;
         int skippedMissingAmount = 0;
-        Set<String> seen = new HashSet<>();
-        for (String name : jdbc.queryForList(
-                "SELECT name FROM tax_rate WHERE deleted_at IS NULL AND outlet_id = ?", String.class, outletId))
-            if (name != null) seen.add(normalizeName(name));
+        boolean sourceHasDefault = !forceEmptyOnly && hasExplicitDefaultTaxRate(records);
+        boolean hasExistingDefault = taxRates.findAllActiveAsc(outletId).stream()
+                .anyMatch(rate -> Boolean.TRUE.equals(rate.getIsDefault()));
+        if (sourceHasDefault) {
+            taxRates.clearDefaults(outletId);
+            hasExistingDefault = false;
+        }
+        Long sourceDefaultId = null;
         for (JsonNode raw : records) {
             if (raw == null) continue;
             String name = text(raw, "name");
@@ -145,26 +154,53 @@ public class SettingsImportService {
                 skippedMissingAmount++;
                 continue;
             }
-            String key = normalizeName(name);
-            if (!seen.add(key)) continue;
+            boolean isSourceDefault = bool(raw, "isDefault") || bool(raw, "default");
+            TaxRate existing = taxRates.findByNameIgnoreCase(name, outletId);
+            if (existing != null) {
+                if (forceEmptyOnly) continue;
+                BigDecimal oldAmount = existing.getAmount();
+                Boolean oldDefault = existing.getIsDefault();
+                existing.setName(name);
+                existing.setAmount(amount);
+                if (sourceHasDefault) existing.setIsDefault(isSourceDefault);
+                if (oldAmount == null || oldAmount.compareTo(amount) != 0
+                        || (sourceHasDefault && !Boolean.valueOf(isSourceDefault).equals(oldDefault))) {
+                    taxRates.update(existing, outletId);
+                    updated++;
+                }
+                if (isSourceDefault) sourceDefaultId = existing.getId();
+                continue;
+            }
             TaxRate t = new TaxRate();
             t.setName(name);
             t.setAmount(amount);
-            boolean hasDefault = Boolean.TRUE.equals(jdbc.queryForObject(
-                    "SELECT EXISTS (SELECT 1 FROM tax_rate WHERE outlet_id = ? AND deleted_at IS NULL AND is_default <> 0)",
-                    Boolean.class, outletId));
-            t.setIsDefault(!hasDefault && (bool(raw, "isDefault") || bool(raw, "default")));
+            boolean makeDefault = sourceHasDefault ? isSourceDefault : !hasExistingDefault && isSourceDefault;
+            t.setIsDefault(makeDefault);
             t.setOutletId(outletId);
             taxRates.insert(t);
-            written++;
+            created++;
+            if (isSourceDefault) {
+                sourceDefaultId = t.getId();
+                if (makeDefault) hasExistingDefault = true;
+            }
         }
-        return new TaxRatePromotionResult(written, skippedMissingAmount);
+        if (sourceHasDefault && sourceDefaultId != null) taxRates.markDefault(sourceDefaultId, outletId);
+        return new TaxRatePromotionResult(created, updated, skippedMissingAmount);
     }
 
-    private record TaxRatePromotionResult(int written, int skippedMissingAmount) {}
+    private boolean hasExplicitDefaultTaxRate(JsonNode records) {
+        for (JsonNode raw : records) {
+            if (raw == null || !(bool(raw, "isDefault") || bool(raw, "default"))) continue;
+            if (decimal(raw, "amount", null) != null || decimal(raw, "rate", null) != null) return true;
+        }
+        return false;
+    }
 
-    private int promotePaymentMethods(long outletId, JsonNode records) {
-        int written = 0;
+    private record TaxRatePromotionResult(int created, int updated, int skippedMissingAmount) {}
+
+    private PaymentMethodPromotionResult promotePaymentMethods(long outletId, JsonNode records, boolean forceEmptyOnly) {
+        int created = 0;
+        int updated = 0;
         Set<String> seen = new HashSet<>();
         for (String name : jdbc.queryForList(
                 "SELECT name FROM payment_method WHERE deleted_at IS NULL AND outlet_id = ?", String.class, outletId))
@@ -174,6 +210,22 @@ public class SettingsImportService {
             String name = text(raw, "name");
             if (name == null || name.isBlank()) continue;
             String key = normalizeName(name);
+            PaymentMethod existing = paymentMethods.findByName(name, outletId);
+            if (existing != null) {
+                if (forceEmptyOnly) continue;
+                String type = text(raw, "type") != null ? text(raw, "type") : "OTHER";
+                BigDecimal oldSurcharge = existing.getSurcharge() != null
+                        ? existing.getSurcharge() : BigDecimal.ZERO;
+                BigDecimal surcharge = decimal(raw, "surcharge", oldSurcharge);
+                if (!type.equals(existing.getType()) || surcharge.compareTo(oldSurcharge) != 0) {
+                    existing.setName(name);
+                    existing.setType(type);
+                    existing.setSurcharge(surcharge);
+                    paymentMethods.update(existing, outletId);
+                    updated++;
+                }
+                continue;
+            }
             if (!seen.add(key)) continue;
             PaymentMethod p = new PaymentMethod();
             p.setName(name);
@@ -185,10 +237,12 @@ public class SettingsImportService {
             p.setDefaultPayExact(bool(raw, "defaultPayExact"));
             p.setOutletId(outletId);
             paymentMethods.insert(p);
-            written++;
+            created++;
         }
-        return written;
+        return new PaymentMethodPromotionResult(created, updated);
     }
+
+    private record PaymentMethodPromotionResult(int created, int updated) {}
 
     private int promoteRegisters(long outletId, JsonNode records) {
         int written = 0;
