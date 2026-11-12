@@ -6,20 +6,20 @@ import java.util.List;
 @Mapper
 public interface PaymentMethodMapper {
 
-    @Select("SELECT * FROM payment_method WHERE deleted_at IS NULL ORDER BY id DESC")
-    List<PaymentMethod> findAll();
+    @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND deleted_at IS NULL ORDER BY id DESC")
+    List<PaymentMethod> findAll(@Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM payment_method WHERE id = #{id}")
-    PaymentMethod findById(Long id);
+    @Select("SELECT * FROM payment_method WHERE id = #{id} AND outlet_id=#{outletId}")
+    PaymentMethod findById(@Param("id") Long id, @Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM payment_method WHERE type = #{type} AND deleted_at IS NULL ORDER BY name LIMIT 1")
-    PaymentMethod findByType(String type);
+    @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND type = #{type} AND deleted_at IS NULL ORDER BY name LIMIT 1")
+    PaymentMethod findByType(@Param("type") String type, @Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM payment_method WHERE LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
-    PaymentMethod findByName(String name);
+    @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})) AND deleted_at IS NULL ORDER BY id LIMIT 1")
+    PaymentMethod findByName(@Param("name") String name, @Param("outletId") Long outletId);
 
-    @Select("SELECT * FROM payment_method WHERE deleted_at IS NULL ORDER BY id ASC")
-    List<PaymentMethod> findAllActiveAsc();
+    @Select("SELECT * FROM payment_method WHERE outlet_id=#{outletId} AND deleted_at IS NULL ORDER BY id ASC")
+    List<PaymentMethod> findAllActiveAsc(@Param("outletId") Long outletId);
 
     @Update("UPDATE sale_payment SET payment_method_id=#{target} WHERE payment_method_id=#{source}")
     int reassignSalePayment(@Param("target") Long target, @Param("source") Long source);
@@ -71,9 +71,9 @@ public interface PaymentMethodMapper {
             + "CASE WHEN #{useRounding} THEN 1 ELSE 0 END, CASE WHEN #{defaultPayExact} THEN 1 ELSE 0 END, #{backgroundColour}, #{textColour}, #{outletId})")
     int insert(PaymentMethod p);
 
-    @Update("UPDATE payment_method SET name=#{name}, type=#{type}, surcharge=#{surcharge} WHERE id=#{id}")
-    int update(PaymentMethod p);
+    @Update("UPDATE payment_method SET name=#{method.name}, type=#{method.type}, surcharge=#{method.surcharge} WHERE id=#{method.id} AND outlet_id=#{outletId}")
+    int update(@Param("method") PaymentMethod method, @Param("outletId") Long outletId);
 
-    @Update("UPDATE payment_method SET deleted_at = NOW() WHERE id=#{id}")
-    int softDelete(Long id);
+    @Update("UPDATE payment_method SET deleted_at = NOW() WHERE id=#{id} AND outlet_id=#{outletId}")
+    int softDelete(@Param("id") Long id, @Param("outletId") Long outletId);
 }

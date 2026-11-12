@@ -255,6 +255,7 @@ public class NativeCustomerImportService {
             if (sourceId == null) { skipped++; continue; }
             try {
                 String customerSourceId = text(raw.path("customer"), "id");
+                if (customerSourceId == null) customerSourceId = text(item, "customer_source_id");
                 Long customerId = resolveMappedCustomer(storeKey, customerSourceId, outletId);
                 if (customerId == null) throw new IllegalArgumentException("Shopfront payment customer has no native customer mapping");
                 BigDecimal amount = decimal(raw, "amount");
@@ -264,7 +265,9 @@ public class NativeCustomerImportService {
                 LocalDateTime cancelledAt = dateTime(raw, "cancelledAt", "cancelled_at");
                 String status = cancelledAt != null || "CANCELLED".equalsIgnoreCase(text(raw, "status"))
                         || "VOIDED".equalsIgnoreCase(text(raw, "status")) ? "VOIDED" : "COMPLETED";
-                Long paymentMethodId = resolvePaymentMethodId(outletId, text(raw.path("paymentMethod"), "name"));
+                String paymentMethodName = text(raw.path("paymentMethod"), "name");
+                if (paymentMethodName == null) paymentMethodName = text(item, "payment_method_name");
+                Long paymentMethodId = resolvePaymentMethodId(outletId, paymentMethodName);
                 BigDecimal startBalance = decimal(raw, "startBalance", "start_balance");
                 BigDecimal rounding = decimal(raw, "rounding");
                 String reference = text(raw, "reference");

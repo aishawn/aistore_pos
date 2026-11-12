@@ -207,4 +207,31 @@ class NativeCustomerImportServiceTest {
                 eq(LocalDateTime.parse("2024-01-16T09:46:19")),
                 eq(LocalDateTime.parse("2024-01-17T14:33:05")), eq(87L));
     }
+
+    @Test
+    void importsCompactCustomerPaymentFieldsFromCrawlerBoundary() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
+            String sql = call.getArgument(0, String.class);
+            if (sql.contains("SELECT customer_id FROM shopfront_customer_mapping")) return List.of(321L);
+            if (sql.contains("SELECT id FROM payment_method")) return List.of(987L);
+            return List.of();
+        });
+        when(jdbc.queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class), any(Object[].class)))
+                .thenReturn(654L);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-payment-compact","customer_source_id":"sf-customer-1",
+                  "payment_method_name":"Cash","amount":"25.50",
+                  "timestamp":"2026-11-09T12:30:00+10:30","reference":"RCPT-compact"}]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importPayments("skr", 87, items);
+
+        assertEquals(1, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        verify(jdbc).queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class),
+                eq(321L), eq(987L), eq("RCPT-compact"), eq("COMPLETED"), eq(null),
+                eq(new BigDecimal("25.50")), eq(null),
+                eq(LocalDateTime.parse("2026-11-09T12:30:00")), eq(null), eq(87L));
+    }
 }
