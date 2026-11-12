@@ -65,7 +65,8 @@ export function ClassificationsPanel({
   onBusyChange?: (busy: boolean) => void;
   onChanged?: () => void;
 }) {
-  const [types, setTypes] = useState<ClassificationTypeValue[]>(["category"]);
+  // Match Shopfront Classifications default: all types (Brand/Category/Family/Tag).
+  const [types, setTypes] = useState<ClassificationTypeValue[]>(["brand", "category", "family", "tag"]);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 250);
   const [rows, setRows] = useState<ClassificationRow[]>([]);
@@ -87,8 +88,11 @@ export function ClassificationsPanel({
     try {
       const pages = await Promise.all(
         selected.map(async (type) => {
+          // Always send a query string. Some edge caches still serve a stale 410 for
+          // the bare `/api/classifications/category` path from before the native allowlist.
           const items = await api.get<ApiClassification[]>(`/api/classifications/${type}`, {
-            name: debouncedQuery.trim() || undefined,
+            name: debouncedQuery.trim(),
+            v: "1",
           });
           return (items || []).map((item) => mapRow(item, type));
         }),
