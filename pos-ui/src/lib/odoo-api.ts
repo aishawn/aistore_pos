@@ -993,6 +993,9 @@ export async function searchOdooRecords<T>(
       categoryId: options.categoryId ?? options.categoryIds?.[0],
       page: pageNumber,
       size,
+      // Shopfront Products default: name ascending (symbol → digit → letter).
+      sortBy: "name",
+      sortDirection: options.sortDirection === "desc" ? "desc" : "asc",
       ...(productFilters?.brandIds ? { brandIds: productFilters.brandIds } : productFilters?.brandId != null ? { brandId: productFilters.brandId } : {}),
       ...(productFilters?.familyId != null ? { familyId: productFilters.familyId } : {}),
       ...(productFilters?.tagId != null ? { tagId: productFilters.tagId } : {}),

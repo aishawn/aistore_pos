@@ -42,6 +42,13 @@ public class ProductQuery {
     private Boolean viiGiftCard;
     private int page = 1;
     private int size = 10;
+    /**
+     * Catalogue sort field. Default {@code name} matches Shopfront Products
+     * (symbol → digit → letter). {@code created_at} keeps newest-first.
+     */
+    private String sortBy = "name";
+    /** {@code asc} (default) or {@code desc}. */
+    private String sortDirection = "asc";
     private Long vendorId;
     private Long outletId;
 
@@ -75,6 +82,26 @@ public class ProductQuery {
                 name = null;
             }
         }
+        sortBy = normalizeSortBy(sortBy);
+        sortDirection = normalizeSortDirection(sortDirection);
+    }
+
+    static String normalizeSortBy(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "name";
+        }
+        return switch (raw.trim().toLowerCase()) {
+            case "created_at", "created", "newest" -> "created_at";
+            case "name", "product", "title" -> "name";
+            default -> "name";
+        };
+    }
+
+    static String normalizeSortDirection(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "asc";
+        }
+        return "desc".equalsIgnoreCase(raw.trim()) ? "desc" : "asc";
     }
 
     /** Maps a search term to a product status when it is an exact status keyword. */

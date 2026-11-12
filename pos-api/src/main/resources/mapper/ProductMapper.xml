@@ -153,6 +153,27 @@
         ) inv ON inv.product_id = p.id
     </sql>
 
+    <!--
+      Shopfront Products default order: leading symbol → digit → letter,
+      then case-insensitive name. Hyphen-prefixed names (-196 …) sort before
+      currency-prefixed names ($100 …), matching the Shopfront catalogue UI.
+    -->
+    <sql id="shopfrontCatalogueNameOrder">
+        CASE
+            WHEN left(btrim(p.name), 1) ~ '[0-9]' THEN 2
+            WHEN left(btrim(p.name), 1) ~ '[A-Za-z]' THEN 3
+            ELSE 1
+        END ASC,
+        CASE left(btrim(p.name), 1)
+            WHEN '-' THEN 0
+            WHEN '$' THEN 1
+            ELSE ascii(coalesce(nullif(left(btrim(p.name), 1), ''), chr(32)))
+        END ASC,
+        lower(btrim(p.name)) ASC,
+        p.name ASC,
+        p.id ASC
+    </sql>
+
     <select id="page" resultMap="ProductMap">
         SELECT p.*,
                c.name AS category_name,
@@ -165,7 +186,33 @@
         LEFT JOIN brand b ON b.id = p.brand_id
         <include refid="inventoryJoin"/>
         <include refid="filters"/>
-        ORDER BY p.created_at DESC, p.id DESC
+        <choose>
+            <when test="q.sortBy == 'created_at' and q.sortDirection == 'asc'">
+                ORDER BY p.created_at ASC, p.id ASC
+            </when>
+            <when test="q.sortBy == 'created_at'">
+                ORDER BY p.created_at DESC, p.id DESC
+            </when>
+            <when test="q.sortBy == 'name' and q.sortDirection == 'desc'">
+                ORDER BY
+                CASE
+                    WHEN left(btrim(p.name), 1) ~ '[0-9]' THEN 2
+                    WHEN left(btrim(p.name), 1) ~ '[A-Za-z]' THEN 3
+                    ELSE 1
+                END DESC,
+                CASE left(btrim(p.name), 1)
+                    WHEN '-' THEN 0
+                    WHEN '$' THEN 1
+                    ELSE ascii(coalesce(nullif(left(btrim(p.name), 1), ''), chr(32)))
+                END DESC,
+                lower(btrim(p.name)) DESC,
+                p.name DESC,
+                p.id DESC
+            </when>
+            <otherwise>
+                ORDER BY <include refid="shopfrontCatalogueNameOrder"/>
+            </otherwise>
+        </choose>
         LIMIT #{q.size} OFFSET #{q.offset}
     </select>
 

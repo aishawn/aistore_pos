@@ -521,7 +521,12 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
         offset: append ? nextOffset.current : 0,
         categoryIds: categoryId ? (categoryGroups.find((group) => group.some((item) => item.id === categoryId))?.map((item) => item.id) ?? [categoryId]) : undefined,
         catalogueView,
-        ...(!inventoryReport ? { productFilters: catalogueProductFilters } : {}),
+        ...(!inventoryReport ? {
+          productFilters: catalogueProductFilters,
+          // Catalogue defaults to Shopfront name order; Product column toggles asc/desc.
+          sortBy: "name",
+          sortDirection: sortBy === "name" ? sortDirection : "asc",
+        } : {}),
         ...(inventoryReport ? {
           inventoryReport: true,
           sortBy,
