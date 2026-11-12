@@ -1,6 +1,7 @@
 package com.orithos.modules.classification;
 
 import com.orithos.common.ApiResult;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +27,10 @@ public class ClassificationController {
 
     @GetMapping("/{type}")
     public ApiResult<List<Classification>> list(@PathVariable String type,
-                                                @RequestParam(required = false) String name) {
+                                                @RequestParam(required = false) String name,
+                                                HttpServletResponse response) {
+        // Prevent intermediary caches from retaining retired-route 410 responses.
+        response.setHeader("Cache-Control", "no-store");
         return ApiResult.ok(service.list(type, name));
     }
 
