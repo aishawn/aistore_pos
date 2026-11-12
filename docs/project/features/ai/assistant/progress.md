@@ -19,10 +19,11 @@
 | AI-A03 | P1 | 历史修复仅局部线上证实 | OPEN | 后端 owner 待指定 | 保留确定性销售报表成功和 fallback 50210；对修复后同版本 greeting、导航、查数及旧空会话分别回归。 |
 | AI-A04 | P1 | 销售/库存答案缺少可见数据来源和实际返回日期 | OPEN | 前端/QA owner 待指定 | 部署候选 `8f9c9171` 后在 SKR 与 Demo 用同一 7 日问法，只读确认数据来源、路由、请求区间、实际行日期和最新销售日均显示正确；保存精确运行 SHA 与零业务写入证据。 |
 | AI-A05 | P1 | 客单价空期间会把缺失平均值显示成 AUD 0 | FIXED IN CANDIDATE | AI/QA owner 待指定 | 零交易应返回无记录；正交易但平均值或销售额缺失应拒绝补零。远程 Java 21 全套及部署后只读对账通过后关闭候选验收。 |
+| AI-A06 | P0 | `ReportQueryService` 增加多个构造器后 Spring 未能选择 JDBC 注入构造器，导致 POS 后端启动失败 | FIXED IN SOURCE; DEPLOY PENDING | Backend owner 待指定 | 显式标记生产注入构造器；Spring 容器回归 1/1、后端全套通过；推送修复并确认两店 backend runtime SHA 与 `/api/health` 正常后关闭。 |
 
 2026-11-13 候选复用 Orithos `nativeOverview` 计算客单价，拆分销售额/退款额与对应笔数，并增加零交易和权威指标缺失的 fail-closed 处理。验证见[session](../../../../test-sessions/2026-11-13-ai-assistant-aov-integrity.md)；Java 21 远程构建、SKR/Demo 部署与在线对账仍未完成。
 
-2026-11-13 本地工作树继续补齐报表元数据与补货观测：助手复用权威 overview 取得数据时间，按 vendor/outlet/期间缓存 10 秒；补货权限在缓存读取前检查，并对拒绝、数据缺口和服务失败分类记录耗时。UI 用 API 期间与请求范围分开显示，历史详情恢复来源、期间、时区、状态和数据时间；中英文高频昨日销售问法有参数化路由用例。当前后端 658/658、UI 201/201、TypeScript 检查通过。尚未完成精确 SHA 发布后的 SKR/Demo 报表对账、线上只读问答、语音与历史/清空/取消流程验收；详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
+2026-11-13 本地工作树继续补齐报表元数据与补货观测：助手复用权威 overview 取得数据时间，按 vendor/outlet/期间缓存 10 秒；补货权限在缓存读取前检查，并对拒绝、数据缺口和服务失败分类记录耗时。UI 用 API 期间与请求范围分开显示，历史详情恢复来源、期间、时区、状态和数据时间；中英文高频昨日销售问法有参数化路由用例。候选 `b62930bc` 已在两店前端运行，但后端因 Spring 构造器选择故障启动失败；源码已增加显式注入和容器启动回归，修复候选后端 660/660 通过。新修复部署与 SKR/Demo 报表对账、线上只读问答、语音与历史/清空/取消流程仍未完成；详细范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
 
 ## 验证闭环
 

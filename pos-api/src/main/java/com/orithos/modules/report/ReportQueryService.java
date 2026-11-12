@@ -2,6 +2,7 @@ package com.orithos.modules.report;
 
 import com.orithos.common.AustraliaTime;
 import com.orithos.modules.ai.report.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +51,7 @@ public class ReportQueryService {
     private final Duration nativeOverviewTtl;
     private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeOverviewCache = new ConcurrentHashMap<>();
 
+    @Autowired
     public ReportQueryService(JdbcTemplate jdbc) {
         this(jdbc, Clock.systemUTC(), NATIVE_OVERVIEW_TTL);
     }

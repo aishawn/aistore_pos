@@ -8,7 +8,7 @@
 
 ## 2026-11-13 本地候选全套回归
 
-当前 `main` 工作树基于 `845e479f` 且包含未提交的 AI 报表/补货/UI 改动。`mvn -B test` 658/658 PASS，POS UI 单测 201/201 PASS，`npm run typecheck` PASS，目标控制器定向测试 4/4 PASS。AI 洞察中的旧 Odoo 仪表盘/工作流提示已改为 Orithos。机器和源码范围、用例边界见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
+候选 `b62930bc` 已推送且两店前端已运行，但后端启动失败。脱敏启动日志显示 Spring 为 `ReportQueryService` 选择不存在的无参构造器；原因是新增缓存测试构造器后存在多个构造器且生产构造器未标注。修复候选添加 `@Autowired` 并新增 Spring 容器装配测试。Java 21 下定向测试 1/1、`mvn -B test` 660/660 PASS；POS UI 单测 201/201、TypeScript 检查 PASS，AI 洞察中的旧 Odoo 仪表盘/工作流提示已改为 Orithos。修复提交尚未推送/部署，完整范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
 
 这些是本地测试，不构成精确候选远端构建或线上部署/对账证据。SKR/Demo 当前运行 SHA、真实数据报表一致性、模型调用费用、麦克风语音、完整历史/清空/取消/重试仍待验收；本轮未发送线上 AI 请求，业务写入为 0。
 

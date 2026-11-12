@@ -9,9 +9,9 @@
 | Operator | Codex |
 | Branch | `main` |
 | Base SHA | `845e479f` (working tree dirty) |
-| Runtime SHA | Unknown; no deployment performed in this session |
-| Environment | Local POS checkout, Windows; Maven test, Node unit tests, TypeScript |
-| Database | No live data reads; tests use mocks/fixed inputs |
+| Runtime SHA | Frontend `b62930bc4f0af0ac96049ace5f76f753bbb76462` on SKR/Demo; backend unavailable during candidate startup failure |
+| Environment | Local POS checkout, Windows; Maven test, Node unit tests, TypeScript; read-only SKR/Demo version and server container checks |
+| Database | No live business data reads; only public runtime identity and server container state |
 | Real business writes | 0 |
 | Online AI/model calls | 0 |
 
@@ -19,10 +19,12 @@
 
 | Suite | Command | Result | Scope |
 |---|---|---|---|
-| Backend | `mvn -B test` | PASS 658/658 | Full POS API unit/integration test suite; not container `clean verify` |
+| Backend | `mvn -B test` | PASS 660/660 | Full POS API unit/integration test suite; not container `clean verify` |
 | Assistant controller | `mvn -B -Dtest=AiAssistantControllerTest test` | PASS 4/4 | Response metadata, history append, safe provider failure |
 | POS UI unit | `npm run test:unit` | PASS 201/201 | UI library test suite, including provenance/history helpers |
 | POS UI types | `npm run typecheck` | PASS | TypeScript only; no production bundle |
+| Deploy probe | `GET /api/public/version`, `/api/health`, server `docker ps` and filtered backend logs | FAIL / FIX IN PROGRESS | Both frontends reported `b62930bc`; backend was restarting and returned `null`; logs identified Spring constructor selection failure |
+| Constructor regression | `mvn -B -Dtest=ReportQueryServiceSpringInjectionTest test` | PASS 1/1 | Spring context creates report service through the annotated JDBC constructor |
 
 ## Changes covered
 
@@ -32,10 +34,12 @@
 - High-frequency Chinese and English yesterday-sales utterances route deterministically.
 - AI dashboard prompt now identifies the Orithos POS dashboard and Orithos workflow.
 - The pasted Docker failure is fixed in the current tree: `AiAssistantControllerTest` verifies the full 15-argument history append including provenance.
+- Deployment exposed another startup regression missed by unit tests: multiple `ReportQueryService` constructors required explicit Spring injection selection. The production constructor is now annotated and guarded by a Spring context test.
 
 ## Limits and follow-up
 
-- These tests do not establish equivalence to live SKR/Demo report figures. No online read-only question was submitted and runtime SHA is unknown.
+- The first candidate frontend SHA `b62930bc4f0af0ac96049ace5f76f753bbb76462` is live on SKR/Demo; its backend did not start. The constructor fix has not yet been pushed or deployed, so no healthy backend runtime SHA is established.
+- These tests do not establish equivalence to live SKR/Demo report figures. No online read-only question was submitted.
 - No model cost, rate limit, provider timeout/retry, prompt injection, cross-tenant runtime, or real microphone behavior was exercised in this session.
 - Full UI history restore/clear, voice failure recovery, request cancellation/retry, navigation and `writeRequests=[]` still require fixed-identity online read-only acceptance.
-- Current `mvn -B test` ran locally; it is not exact-SHA Java 21 remote workflow evidence and does not validate Docker packaging.
+- Current `mvn -B test` ran locally on Java 21; it is not exact-SHA remote workflow evidence and does not validate Docker packaging.
