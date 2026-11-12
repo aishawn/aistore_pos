@@ -266,6 +266,39 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void createsInactiveHistoricalProductMappingForRetiredPurchaseOrderItems() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForObject(contains("INSERT INTO product"), eq(Long.class), any(Object[].class)))
+                .thenReturn(901L);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true, true);
+        Method createHistorical = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "createHistoricalPurchaseProduct", String.class, long.class,
+                com.fasterxml.jackson.databind.JsonNode.class, Map.class);
+        createHistorical.setAccessible(true);
+        Map<String, Long> cache = new java.util.HashMap<>();
+        var sourceItem = new ObjectMapper().readTree(
+                "{\"id\":\"legacy-product-12345678\",\"name\":\"Retired snack\",\"caseQuantity\":12}");
+
+        Long productId = (Long) createHistorical.invoke(controller, "skr", 87L, sourceItem, cache);
+
+        assertEquals(901L, productId);
+        assertEquals(901L, cache.get("legacy-product-12345678"));
+        ArgumentCaptor<Object[]> productArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbc).queryForObject(contains("INSERT INTO product"), eq(Long.class), productArgs.capture());
+        assertEquals("Retired snack [Shopfront legacy legacy-product-12345678]", productArgs.getValue()[0]);
+        assertEquals(new BigDecimal("12"), productArgs.getValue()[1]);
+        verify(jdbc).update(contains("SHOPFRONT_HISTORICAL"), eq("skr"),
+                eq("legacy-product-12345678"), eq(901L));
+    }
+
+    @Test
     void rejectsSupplierImportWhenStoreMappingCompanyDoesNotOwnOutlet() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(contains("SELECT vendor_id FROM outlet"), eq(Long.class), eq(87L)))

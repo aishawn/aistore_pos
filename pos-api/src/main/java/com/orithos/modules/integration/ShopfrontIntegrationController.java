@@ -2301,11 +2301,14 @@ public class ShopfrontIntegrationController {
                 String productSourceId = text(line.path("item"), "id");
                 Long productId = cachedMappedProductId(store, productSourceId, outletId, productCache);
                 if (productId == null) {
-                    skippedLines++;
-                    if (errors.size() < 25) {
-                        errors.add("Purchase order " + sourceId + " skipped unmapped product " + productSourceId);
+                    productId = createHistoricalPurchaseProduct(store, outletId, line.path("item"), productCache);
+                    if (productId == null) {
+                        skippedLines++;
+                        if (errors.size() < 25) {
+                            errors.add("Purchase order " + sourceId + " skipped unmapped product " + productSourceId);
+                        }
+                        continue;
                     }
-                    continue;
                 }
                 BigDecimal ordered = decimal(line, "orderedQuantity");
                 BigDecimal received = decimal(line, "receivedQuantity");
@@ -2439,6 +2442,48 @@ public class ShopfrontIntegrationController {
         result.put("skipped", skipped);
         result.put("errors", errors);
         return result;
+    }
+
+    /** Preserve historical PO lines whose Shopfront product has left the current catalogue. */
+    private Long createHistoricalPurchaseProduct(String store, long outletId, JsonNode sourceItem,
+                                                  Map<String, Long> productCache) {
+        String sourceId = text(sourceItem, "id");
+        String sourceName = text(sourceItem, "name");
+        if (sourceId == null || sourceId.isBlank() || sourceId.length() > 160
+                || sourceName == null || sourceName.isBlank()) {
+            return null;
+        }
+        String suffix = " [Shopfront legacy " + sourceId + "]";
+        String name = sourceName.trim();
+        if (name.length() + suffix.length() > 255) {
+            name = name.substring(0, Math.max(1, 255 - suffix.length()));
+        }
+        name += suffix;
+        BigDecimal caseQuantity = decimal(sourceItem, "caseQuantity");
+        if (caseQuantity == null || caseQuantity.signum() <= 0) caseQuantity = BigDecimal.ONE;
+
+        Long productId;
+        if (isPostgres()) {
+            productId = jdbc.queryForObject("""
+                    INSERT INTO product (name,type,status,case_quantity,track_inventory,outlet_id)
+                    VALUES (?,'NORMAL','NOT_ACTIVE',?,0,?) RETURNING id
+                    """, Long.class, name, caseQuantity, outletId);
+        } else {
+            jdbc.update("""
+                    INSERT INTO product (name,type,status,case_quantity,track_inventory,outlet_id)
+                    VALUES (?,'NORMAL','NOT_ACTIVE',?,0,?)
+                    """, name, caseQuantity, outletId);
+            productId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        }
+        if (productId == null || productId <= 0) {
+            throw new IllegalStateException("Unable to create historical Shopfront product");
+        }
+        String mappingSql = isPostgres()
+                ? "INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT_HISTORICAL','MAPPED') ON CONFLICT (store_key,source_product_id) DO UPDATE SET pos_product_id=EXCLUDED.pos_product_id,match_type=EXCLUDED.match_type,status='MAPPED',updated_at=CURRENT_TIMESTAMP"
+                : "INSERT INTO shopfront_product_mapping (store_key,source_product_id,pos_product_id,match_type,status) VALUES (?,?,?,'SHOPFRONT_HISTORICAL','MAPPED') ON DUPLICATE KEY UPDATE pos_product_id=VALUES(pos_product_id),match_type='SHOPFRONT_HISTORICAL',status='MAPPED',updated_at=CURRENT_TIMESTAMP";
+        jdbc.update(mappingSql, store, sourceId, productId);
+        productCache.put(sourceId, productId);
+        return productId;
     }
 
     private void ensurePurchaseOrderBusinessMappingTable() {
