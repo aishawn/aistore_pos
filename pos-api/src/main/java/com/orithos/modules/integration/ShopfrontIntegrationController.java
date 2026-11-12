@@ -2337,11 +2337,13 @@ public class ShopfrontIntegrationController {
             for (Object[] lineRow : lineRows) {
                 BigDecimal ordered = (BigDecimal) lineRow[4];
                 BigDecimal received = (BigDecimal) lineRow[5];
-                if (received.compareTo(ordered) < 0) {
+                if (ordered.signum() <= 0 || received.compareTo(ordered) < 0) {
                     allReceived = false;
                     break;
                 }
             }
+
+            String status = purchaseOrderStatus(raw, lineRows.size(), receivedTotal, allReceived);
 
             // Include imported-line cardinality so newly mapped catalogue rows
             // can expand a previously partial PO on the next upsert. Re-digest
@@ -2351,7 +2353,24 @@ public class ShopfrontIntegrationController {
             List<Map<String, Object>> prior = jdbc.queryForList(
                     "SELECT purchase_order_id,source_hash FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
                     store, sourceId, outletId);
-            if (!prior.isEmpty() && hash.equals(String.valueOf(prior.getFirst().get("source_hash")))) {
+            String previousHash = prior.isEmpty() ? null : String.valueOf(prior.getFirst().get("source_hash"));
+            boolean onlyStatusChanged = !prior.isEmpty() && !hash.equals(previousHash)
+                    && purchaseOrderHashWithStatus(raw, null, lineRows.size(), skippedLines).equals(previousHash);
+            if (!prior.isEmpty() && (hash.equals(previousHash) || onlyStatusChanged)) {
+                Long existingOrderId = longValue(prior.getFirst().get("purchase_order_id"));
+                if (existingOrderId != null && existingOrderId > 0) {
+                    List<Map<String, Object>> existingOrders = jdbc.queryForList(
+                            "SELECT status FROM purchase_order WHERE id=? AND outlet_id=? AND type='ORDER'",
+                            existingOrderId, outletId);
+                    if (!existingOrders.isEmpty() && !status.equals(String.valueOf(existingOrders.getFirst().get("status")))) {
+                        jdbc.update("UPDATE purchase_order SET status=? WHERE id=? AND outlet_id=? AND type='ORDER'",
+                                status, existingOrderId, outletId);
+                    }
+                    if (onlyStatusChanged) {
+                        jdbc.update("UPDATE shopfront_purchase_order_business_mapping SET source_hash=?,updated_at=CURRENT_TIMESTAMP WHERE store_key=? AND source_id=? AND outlet_id=?",
+                                hash, store, sourceId, outletId);
+                    }
+                }
                 updated++;
                 continue;
             }
@@ -2369,7 +2388,6 @@ public class ShopfrontIntegrationController {
                 }
             }
 
-            String status = purchaseOrderStatus(raw, lineRows.size(), receivedTotal, allReceived);
             String invoiceNumber = text(raw, "invoiceNumber");
             if (invoiceNumber == null || invoiceNumber.isBlank()) invoiceNumber = sourceId;
             if (invoiceNumber.length() > 64 || sourceId.length() > 128) {
@@ -2552,6 +2570,15 @@ public class ShopfrontIntegrationController {
         }
     }
 
+    private String purchaseOrderHashWithStatus(JsonNode raw, String status, int importedLines, int skippedLines) {
+        if (!raw.isObject()) return "";
+        com.fasterxml.jackson.databind.node.ObjectNode normalized = ((com.fasterxml.jackson.databind.node.ObjectNode) raw).deepCopy();
+        if (status == null) normalized.putNull("status");
+        else normalized.put("status", status);
+        return purchaseOrderSourceHash(
+                purchaseOrderSourceHash(normalized) + ":imported=" + importedLines + ":skipped=" + skippedLines);
+    }
+
     private String purchaseOrderSourceHash(String material) {
         return purchaseOrderSourceHash(material.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
@@ -2583,15 +2610,14 @@ public class ShopfrontIntegrationController {
         if (normalized.contains("PARTIAL")) {
             return "PARTIALLY_RECEIVED";
         }
-        if (normalized.equals("SENT") || normalized.equals("OPEN") || normalized.equals("OUTSTANDING")) {
-            if (received != null && received.signum() > 0 && !allReceived) {
-                return "PARTIALLY_RECEIVED";
-            }
-            return normalized.equals("OPEN") ? "OPEN" : "SENT";
+        if (normalized.equals("OPEN")) return "OPEN";
+        if (normalized.equals("SENT") || normalized.equals("OUTSTANDING")) {
+            return "SENT";
         }
         if (normalized.contains("RECEIV") || normalized.contains("COMPLET") || normalized.equals("CLOSED")) {
             return "RECEIVED";
         }
+        if (text(raw, "sentAt") != null) return "SENT";
         if (lineCount > 0 && allReceived) return "RECEIVED";
         if (received != null && received.signum() > 0) return "PARTIALLY_RECEIVED";
         if (text(raw, "sentAt") != null) return "SENT";

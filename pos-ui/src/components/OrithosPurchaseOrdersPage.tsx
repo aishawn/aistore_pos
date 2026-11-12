@@ -258,7 +258,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                       {order.reference && <p className="mt-0.5 text-xs text-[var(--oh-muted)]">{order.reference}</p>}
                       {mismatch && (
                         <p className="mt-1 text-xs text-amber-800">
-                          Header total from Shopfront; line sum ${Number(order.linesTotalCost).toFixed(2)} — some lines may be unmapped.
+                          Shopfront header total; ordered line total ${Number(order.linesTotalCost).toFixed(2)}. Source totals can include received items, tax, and freight.
                         </p>
                       )}
                     </td>

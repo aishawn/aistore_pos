@@ -333,6 +333,37 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void sentShopfrontOrderWithZeroOrderedAndPositiveReceivedQuantityStaysSent() throws Exception {
+        Method statusMethod = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "purchaseOrderStatus", com.fasterxml.jackson.databind.JsonNode.class,
+                int.class, BigDecimal.class, boolean.class);
+        statusMethod.setAccessible(true);
+        var raw = new ObjectMapper().readTree("{\"sentAt\":\"2026-11-11T23:46:55Z\"}");
+
+        assertEquals("SENT", statusMethod.invoke(
+                new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true),
+                raw, 17, new BigDecimal("44"), false));
+        assertEquals("SENT", statusMethod.invoke(
+                new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true),
+                raw, 17, new BigDecimal("44"), true));
+    }
+
+    @Test
+    void purchaseOrderStatusOnlyChangeKeepsThePreviousSourceFingerprint() throws Exception {
+        Method hashMethod = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "purchaseOrderHashWithStatus", com.fasterxml.jackson.databind.JsonNode.class,
+                String.class, int.class, int.class);
+        hashMethod.setAccessible(true);
+        ObjectMapper mapper = new ObjectMapper();
+        var before = mapper.readTree("{\"status\":null,\"totalCost\":20,\"products\":[]}");
+        var after = mapper.readTree("{\"status\":\"SENT\",\"totalCost\":20,\"products\":[]}");
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), mapper, "token", true);
+
+        assertEquals(hashMethod.invoke(controller, before, null, 0, 0),
+                hashMethod.invoke(controller, after, null, 0, 0));
+    }
+
+    @Test
     void purchaseOrderImportKeepsMappedLinesWhenSiblingLineIsUnmapped() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         DataSource dataSource = mock(DataSource.class);
