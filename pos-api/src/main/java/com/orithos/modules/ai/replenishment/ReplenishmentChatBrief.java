@@ -42,12 +42,19 @@ public class ReplenishmentChatBrief {
                 logOutcome("service_unavailable", 0, startedAt);
                 return unavailableMessage(question);
             }
-            int dataGapCount = plan.dataGaps().size();
+            int dataGapCount = plan.dataGapCount();
             String sourceNote = chinese
                     ? "数据来源：Orithos 库存与销售账本；销售数据最后更新时间：" + dataDate(plan.dataAsOf(), true)
                             + "。库存记录没有独立更新时间。"
                     : "Source: Orithos inventory and sales ledger; sales data updated at "
                             + dataDate(plan.dataAsOf(), false) + ". Inventory records have no separate update timestamp.";
+            if ("NO_DATA".equalsIgnoreCase(plan.dataQualityStatus())) {
+                logOutcome("no_sales_data", dataGapCount, startedAt);
+                return chinese
+                        ? "所选期间没有可验证的销售历史，未生成补货数量。请先同步销售数据或打开补货页面核查。" + sourceNote
+                        : "No verifiable sales history is available for this period, so no replenishment quantities were generated. "
+                                + "Sync sales data or open replenishment to review." + sourceNote;
+            }
             if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())
                     && (plan.top() == null || plan.top().isEmpty())) {
                 logOutcome("incomplete_data", dataGapCount, startedAt);

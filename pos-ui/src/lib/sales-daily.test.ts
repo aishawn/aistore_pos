@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   mapShopfrontSalesTrend,
   mergeDailySalesGroups,
-  parseDailySalesGroup,
   parseShopfrontDailyTrendRow,
   shopfrontSalesHistoryWindow,
 } from "./sales-daily.ts";
@@ -25,18 +24,7 @@ test("keeps sales-only and refund-only days", () => {
   ]);
 });
 
-test("parses the actual Odoo localized label using its UTC range", () => {
-  const row = parseDailySalesGroup({ "date_order:day": "02 Nov 2026", __count: 134, amount_total: 3579.98, amount_tax: 307.67, __range: { "date_order:day": { from: "2026-11-01 13:30:00", to: "2026-11-02 13:30:00" } } }, "Australia/Adelaide");
-  assert.equal(row.date, "2026-11-02");
-  assert.equal(row.transactions, 134);
-});
-test("does not report a malformed Odoo bucket as an empty sales history", () => {
-  assert.throws(() => parseDailySalesGroup({ "date_order:day": "02 Nov 2026" }, "Australia/Adelaide"));
-});
-test("handles daylight-saving date boundaries", () => {
-  for (const [from, expected] of [["2026-10-03 14:30:00", "2026-10-04"], ["2026-10-04 13:30:00", "2026-10-05"]]) {
-    assert.equal(parseDailySalesGroup({ __range: { "date_order:day": { from } } }, "Australia/Adelaide").date, expected);
-  }
+test("returns no rows when the selected period has no sales", () => {
   assert.deepEqual(mergeDailySalesGroups([]), []);
 });
 

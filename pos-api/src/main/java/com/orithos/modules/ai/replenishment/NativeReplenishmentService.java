@@ -104,14 +104,21 @@ public class NativeReplenishmentService {
 
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
+        int dataGapCount = 0;
         Instant dataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
+        if (dataAsOf == null) {
+            return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
+                    List.of("sales history unavailable"), null, rows.isEmpty() ? 0 : rows.size());
+        }
         for (Row row : rows) {
             if (row.onHand() == null) {
+                dataGapCount++;
                 gaps.add(row.name() + ": inventory unavailable");
                 continue;
             }
             if (!row.hasSupplier()) {
+                dataGapCount++;
                 gaps.add(row.name() + ": supplier unavailable");
                 continue;
             }
@@ -133,7 +140,8 @@ public class NativeReplenishmentService {
                 .thenComparing(Comparator.comparingDouble(ReplenishmentSuggestion::unitsPerDay).reversed())
                 .thenComparing(ReplenishmentSuggestion::name));
         return new ReplenishmentPlan(cover, suggestions.size(), suggestions.stream().limit(limit).toList(),
-                gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(), dataAsOf);
+                gaps.isEmpty() ? "VALID" : "DATA_INCOMPLETE", gaps.stream().distinct().limit(20).toList(),
+                dataAsOf, dataGapCount);
     }
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,

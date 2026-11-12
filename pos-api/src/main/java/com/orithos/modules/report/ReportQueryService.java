@@ -485,6 +485,7 @@ public class ReportQueryService {
         long refundTransactions = 0;
         long costMissingCount = 0;
         long taxMissingCount = 0;
+        boolean salesBreakdownComplete = true;
         List<Map<String, Object>> dailyTrend = new ArrayList<>();
         for (Map<String, Object> row : daily) {
             revenue = revenue.add(toDecimal(row.get("revenue")));
@@ -498,6 +499,9 @@ public class ReportQueryService {
             refundTransactions += toDecimal(row.get("refund_transaction_count")).longValue();
             costMissingCount += toDecimal(row.get("cost_missing_count")).longValue();
             taxMissingCount += toDecimal(row.get("tax_missing_count")).longValue();
+            salesBreakdownComplete &= row.containsKey("sales_amount")
+                    && row.containsKey("refund_amount")
+                    && row.containsKey("refund_transaction_count");
             Map<String, Object> day = new LinkedHashMap<>(row);
             boolean dayCostAvailable = toDecimal(row.get("cost_missing_count")).signum() == 0;
             boolean dayTaxAvailable = toDecimal(row.get("tax_missing_count")).signum() == 0;
@@ -518,9 +522,13 @@ public class ReportQueryService {
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("source", "orithos_ledger");
+        result.put("dataSource", "orithos_ledger");
         result.put("from", from.toString());
         result.put("to", to.toString());
         result.put("timeZone", AustraliaTime.ZONE.getId());
+        result.put("reportPeriodFrom", from.toString());
+        result.put("reportPeriodTo", to.toString());
+        result.put("reportTimeZone", AustraliaTime.ZONE.getId());
         result.put("revenue", money(revenue));
         result.put("grossSales", money(salesAmount));
         result.put("refunds", money(refundAmount));
@@ -530,6 +538,8 @@ public class ReportQueryService {
         result.put("discount", money(discount));
         result.put("taxAvailable", taxMissingCount == 0);
         result.put("costAvailable", costMissingCount == 0);
+        result.put("reportDataStatus", daily.isEmpty() ? "no_data"
+                : costMissingCount > 0 || taxMissingCount > 0 || !salesBreakdownComplete ? "incomplete" : "available");
         result.put("grossProfit", costMissingCount == 0 ? money(revenue.subtract(cost)) : null);
         result.put("profitMargin", costMissingCount == 0 && revenue.signum() > 0
                 ? revenue.subtract(cost).multiply(new BigDecimal("100"))

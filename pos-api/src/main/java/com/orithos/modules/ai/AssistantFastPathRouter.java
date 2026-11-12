@@ -21,12 +21,13 @@ public final class AssistantFastPathRouter {
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
             "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|show(?:\\s+me)?\\s+yesterday'?s?\\s+sales|"
                     + "what were yesterday'?s?\\s+sales|yesterday'?s?\\s+takings|"
-                    + "how much did we (?:make|take|sell) yesterday|what did we (?:make|take|sell) yesterday|how were (?:sales|we) yesterday|"
+                    + "how much did we (?:make|take|sell) yesterday|how much (?:were|was) (?:(?:our|the) )?(?:sales|revenue|takings|turnover) yesterday|"
+                    + "what did we (?:make|take|sell) yesterday|how were (?:sales|we) yesterday|"
                     + "how (?:were|was) yesterday'?s? (?:sales|revenue|takings|turnover)|"
                     + "what (?:were|was) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "what(?:'s| is) yesterday'?s? (?:sales|revenue|takings|turnover)|"
-                    + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少|(?:昨天|昨日)(?:的)?(?:销售额|营业额|流水|收入)(?:如何|怎么样|多少)?|"
+                    + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少|(?:昨天|昨日)(?:的)?(?:销售额|营业额|流水|收入)(?:如何|怎么样|(?:是|有)?多少)?|"
                     + "昨天(?:生意|业绩)(?:如何|怎么样)|(?:昨天|昨日)(?:销售|营业)?(?:情况|表现)(?:如何|怎么样)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_PROFIT = Pattern.compile(

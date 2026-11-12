@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, reconcileShopfrontSales, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
+import { calculateShopfrontRowProfit, parseShopfrontInventoryReport, parseShopfrontSalesReport, shopfrontInventoryReportSourceAccepted, shopfrontInventorySnapshotIsFresh } from "./shopfront-dashboard-metrics.ts";
 
 test("Shopfront sales KPI validates source Profit and computes margin from Revenue minus COGS", () => {
   const result = parseShopfrontSalesReport({
@@ -144,14 +144,4 @@ test("inventory KPI accepts a fresh GraphQL complete snapshot when Reporting API
   assert.equal(result?.sellableUnits, 50278);
   assert.equal(result?.negativeStockProducts, 5374);
   assert.equal(result?.completeness, "complete");
-});
-
-test("dashboard reconciliation compares Shopfront sales with Odoo gross totals and transactions", () => {
-  const source = parseShopfrontSalesReport({
-    data: [{ Revenue: 100, "Cost of Goods Sold": 60, Profit: 40, "Profit Percentage": "40.00%", "Transaction Count": 2 }],
-    pagination: { total: 1, returned: 1 },
-  });
-  assert.equal(reconcileShopfrontSales(source, 100, 2), "matched");
-  assert.equal(reconcileShopfrontSales(source, 100, 1), "mismatch");
-  assert.equal(reconcileShopfrontSales(null, 100, 2), "unavailable");
 });

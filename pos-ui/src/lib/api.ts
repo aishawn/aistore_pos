@@ -948,6 +948,13 @@ export interface AssistantCard {
   items?: Record<string, unknown>[];
   source?: string | null;
   generatedAt?: string | null;
+  dataAsOf?: string | null;
+  dataSource?: string | null;
+  storeScope?: string | null;
+  reportPeriodFrom?: string | null;
+  reportPeriodTo?: string | null;
+  reportTimeZone?: string | null;
+  reportDataStatus?: string | null;
   emptyReason?: string | null;
   status?: "ready" | "empty" | "unavailable" | string;
   ctaLabel?: string | null;

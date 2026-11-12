@@ -10,15 +10,23 @@ public record ReplenishmentPlan(
         List<ReplenishmentSuggestion> top,
         String dataQualityStatus,
         List<String> dataGaps,
-        Instant dataAsOf
+        Instant dataAsOf,
+        int dataGapCount
 ) {
     public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top) {
-        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null);
+        this(coverageDays, itemsNeedingOrder, top, "VALID", List.of(), null, 0);
+    }
+
+    public ReplenishmentPlan(int coverageDays, int itemsNeedingOrder, List<ReplenishmentSuggestion> top,
+                             String dataQualityStatus, List<String> dataGaps, Instant dataAsOf) {
+        this(coverageDays, itemsNeedingOrder, top, dataQualityStatus, dataGaps, dataAsOf,
+                dataGaps == null ? 0 : dataGaps.size());
     }
 
     public ReplenishmentPlan {
         dataQualityStatus = dataQualityStatus == null || dataQualityStatus.isBlank()
                 ? "VALID" : dataQualityStatus;
         dataGaps = dataGaps == null ? List.of() : List.copyOf(dataGaps);
+        dataGapCount = Math.max(dataGapCount, dataGaps.size());
     }
 }

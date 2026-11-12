@@ -18,6 +18,28 @@ test("restores historical cards and binds retry to their original question", () 
   });
 });
 
+test("restores report provenance from the persisted assistant message onto its card", () => {
+  const restored = restoredAssistantCardFields([card("ready")], "What were sales yesterday?", {
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    dataAsOf: "2026-11-13T01:00:00Z",
+    reportPeriodFrom: "2026-11-12",
+    reportPeriodTo: "2026-11-12",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+  });
+  assert.deepEqual(restored.cards?.[0], {
+    ...card("ready"),
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    dataAsOf: "2026-11-13T01:00:00Z",
+    reportPeriodFrom: "2026-11-12",
+    reportPeriodTo: "2026-11-12",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+  });
+});
+
 test("does not restore retry controls for ready cards or missing cards", () => {
   assert.deepEqual(restoredAssistantCardFields([card("ready")], "Show wine picks"), {
     cards: [card("ready")],

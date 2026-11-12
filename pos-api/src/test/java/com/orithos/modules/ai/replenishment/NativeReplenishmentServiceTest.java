@@ -125,6 +125,37 @@ class NativeReplenishmentServiceTest {
         assertEquals(updatedAt, plan.dataAsOf());
     }
 
+    @Test
+    void missingSalesHistoryFailsClosedWithoutGeneratingQuantities() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet row = mock(ResultSet.class);
+        try {
+            when(row.getLong("id")).thenReturn(5L);
+            when(row.getString("name")).thenReturn("Shiraz");
+            when(row.getDouble("case_quantity")).thenReturn(6d);
+            when(row.getObject("on_hand")).thenReturn(0d);
+            when(row.getDouble("on_order")).thenReturn(0d);
+            when(row.getDouble("recent_units")).thenReturn(0d);
+            when(row.getDouble("previous_units")).thenReturn(0d);
+            when(row.getBoolean("has_supplier")).thenReturn(true);
+            when(row.getDouble("minimum_order")).thenReturn(1d);
+            when(row.getTimestamp("sales_data_as_of")).thenReturn(null);
+        } catch (java.sql.SQLException e) {
+            throw new AssertionError(e);
+        }
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals("NO_DATA", plan.dataQualityStatus());
+        assertEquals(1, plan.dataGapCount());
+        assertEquals(List.of(), plan.top());
+        assertEquals(0, plan.itemsNeedingOrder());
+    }
+
     private static TenantContext tenant(long vendorId, long outletId) {
         return new TenantContext(vendorId, 7L, outletId, List.of(outletId), Set.of(TenantContext.PERM_QUERY));
     }

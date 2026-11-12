@@ -169,15 +169,16 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
-    void missingSalesTimestampIsReportedAsUnknownInsteadOfEpochOrRequestTime() {
+    void missingSalesHistoryDoesNotClaimThatNoRestockIsNeeded() {
         NativeReplenishmentService client = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
-        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(21, 0, List.of()));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 0, List.of(), "NO_DATA", List.of("sales history unavailable"), null, 4));
 
         String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
 
-        assertTrue(text.contains("sales data updated at unknown"));
-        assertTrue(text.contains("Inventory records have no separate update timestamp"));
+        assertTrue(text.contains("No verifiable sales history"));
+        assertTrue(text.contains("no replenishment quantities were generated"));
         assertFalse(text.contains("1970-01-01"));
     }
 

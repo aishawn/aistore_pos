@@ -227,7 +227,12 @@ class AssistantFastPathRouterTest {
             "昨天营业额怎么样？",
             "昨天的营业额怎么样？",
             "昨日营业额如何？",
+            "昨天销售额是多少？",
+            "昨天营业额是多少？",
+            "昨天销售额有多少？",
             "How were yesterday's takings?",
+            "How much were our sales yesterday?",
+            "How much was the turnover yesterday?",
             "What was our turnover yesterday?"
     })
     void routesHighFrequencyYesterdaySalesQuestionsDeterministically(String question) {

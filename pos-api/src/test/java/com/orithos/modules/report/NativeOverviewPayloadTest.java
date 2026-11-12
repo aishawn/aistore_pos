@@ -42,6 +42,7 @@ class NativeOverviewPayloadTest {
         assertEquals(true, result.get("taxAvailable"));
         assertNull(result.get("cost"));
         assertNull(result.get("grossProfit"));
+        assertEquals("incomplete", result.get("reportDataStatus"));
         @SuppressWarnings("unchecked")
         Map<String, Object> trend = ((List<Map<String, Object>>) result.get("dailyTrend")).getFirst();
         assertNull(trend.get("grossProfit"));
@@ -67,6 +68,7 @@ class NativeOverviewPayloadTest {
         assertEquals(new BigDecimal("5.00"), result.get("discount"));
         assertEquals(new BigDecimal("45.45"), result.get("profitMargin"));
         assertEquals(new BigDecimal("110.00"), result.get("averageSale"));
+        assertEquals("incomplete", result.get("reportDataStatus"));
     }
 
     @Test
@@ -88,6 +90,11 @@ class NativeOverviewPayloadTest {
                 LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 12), List.of(day), List.of());
 
         assertEquals(new BigDecimal("5173.94"), result.get("revenue"));
+        assertEquals("orithos_ledger", result.get("dataSource"));
+        assertEquals("2026-11-12", result.get("reportPeriodFrom"));
+        assertEquals("2026-11-12", result.get("reportPeriodTo"));
+        assertEquals("Australia/Adelaide", result.get("reportTimeZone"));
+        assertEquals("available", result.get("reportDataStatus"));
         assertEquals(new BigDecimal("5178.94"), result.get("grossSales"));
         assertEquals(new BigDecimal("5.00"), result.get("refunds"));
         assertEquals(185L, result.get("transactions"));
@@ -114,5 +121,13 @@ class NativeOverviewPayloadTest {
         assertEquals(15645L, result.get("inventoryItemLevel"));
         assertEquals(2L, result.get("negativeStockProducts"));
         assertEquals("negative_stock", result.get("inventoryStatus"));
+    }
+
+    @Test
+    void marksAnEmptySalesPeriodAsNoData() {
+        Map<String, Object> result = ReportQueryService.nativeOverviewPayload(
+                LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 12), List.of(), List.of());
+
+        assertEquals("no_data", result.get("reportDataStatus"));
     }
 }

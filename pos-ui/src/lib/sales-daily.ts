@@ -126,15 +126,3 @@ export function mergeDailySalesGroups(groups: DailySalesGroup[]): DailySalesSumm
   }
   return [...merged.values()].sort((a, b) => b.date.localeCompare(a.date));
 }
-
-/** Odoo labels are localized; __range contains the authoritative UTC boundary. */
-export function parseDailySalesGroup(row: Record<string, unknown>, timezone: string): DailySalesGroup {
-  const ranges = row.__range as Record<string, { from?: string }> | undefined;
-  const from = ranges?.["date_order:day"]?.from;
-  if (!from) throw new Error("Daily sales date range is missing");
-  const instant = new Date(from.includes("T") ? from : `${from.replace(" ", "T")}Z`);
-  if (!Number.isFinite(instant.getTime())) throw new Error("Daily sales date range is invalid");
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(instant);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return { date: `${values.year}-${values.month}-${values.day}`, transactions: Number(row.__count ?? row.date_order_count ?? 0), amount: Number(row.amount_total ?? 0), tax: Number(row.amount_tax ?? 0) };
-}

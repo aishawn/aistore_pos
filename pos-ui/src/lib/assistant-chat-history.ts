@@ -13,11 +13,22 @@ export function retryQuestionForAssistantCards(
 export function restoredAssistantCardFields(
   cards: AssistantCard[] | null | undefined,
   previousQuestion?: string,
+  metadata?: Partial<AssistantCard>,
 ): { cards?: AssistantCard[]; retryQuestion?: string } {
   if (!cards?.length) return {};
   const retryQuestion = retryQuestionForAssistantCards(cards, previousQuestion);
+  const restoredCards = metadata ? cards.map((card) => ({
+    ...card,
+    dataAsOf: card.dataAsOf ?? metadata.dataAsOf ?? null,
+    dataSource: card.dataSource ?? metadata.dataSource ?? null,
+    storeScope: card.storeScope ?? metadata.storeScope ?? null,
+    reportPeriodFrom: card.reportPeriodFrom ?? metadata.reportPeriodFrom ?? null,
+    reportPeriodTo: card.reportPeriodTo ?? metadata.reportPeriodTo ?? null,
+    reportTimeZone: card.reportTimeZone ?? metadata.reportTimeZone ?? null,
+    reportDataStatus: card.reportDataStatus ?? metadata.reportDataStatus ?? null,
+  })) : cards;
   return {
-    cards,
+    cards: restoredCards,
     ...(retryQuestion ? { retryQuestion } : {}),
   };
 }

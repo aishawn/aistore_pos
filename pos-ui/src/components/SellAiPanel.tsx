@@ -30,7 +30,7 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
-import { assistantProvenanceFields, assistantReportDataStatus, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
+import { assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -937,7 +937,7 @@ export function SellAiPanel({
             role: m.role as "user" | "assistant",
             text: m.text || "",
             ...(m.role === "assistant" ? { reportId: m.reportId ?? null, table: m.table ?? null } : {}),
-            ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
+            ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion, m) : {}),
             ...(m.role === "assistant" ? {
               ...assistantProvenanceFields(m),
               suggestedFollowUps: m.suggestedFollowUps ?? null,
@@ -2009,6 +2009,15 @@ function DialogueView({
                   const cardCta = cardCtas[cardIndex];
                   const chineseCard = /[\u3400-\u9fff]/.test(`${msg.question ?? ""} ${card.summary ?? ""}`);
                   const title = assistantCardTitle(card.type, card.title, chineseCard);
+                  const cardDataSource = card.dataSource ?? msg.dataSource;
+                  const cardPeriod = card.reportPeriodFrom ?? msg.reportPeriodFrom;
+                  const cardPeriodTo = card.reportPeriodTo ?? msg.reportPeriodTo;
+                  const cardTimeZone = card.reportTimeZone ?? msg.reportTimeZone;
+                  const cardDataStatus = card.reportDataStatus ?? msg.reportDataStatus;
+                  const cardDataAsOf = card.dataAsOf ?? msg.dataAsOf;
+                  const periodLabel = cardPeriod
+                    ? assistantReportDateRange(cardPeriod, cardPeriodTo) ?? cardPeriod
+                    : null;
                   return (
                   <section
                     key={`${card.type}-${cardIndex}`}
@@ -2037,6 +2046,15 @@ function DialogueView({
                     {card.summary ? (
                       <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--oh-text-secondary)]">
                         {card.summary}
+                      </p>
+                    ) : null}
+                    {(cardDataSource || periodLabel || cardTimeZone || cardDataStatus || cardDataAsOf) ? (
+                      <p className="mt-1 text-[11px] text-[var(--oh-muted)]">
+                        {cardDataSource ? `${chineseCard ? "数据来源" : "Source"}: ${cardDataSource}` : ""}
+                        {periodLabel ? `${cardDataSource ? " · " : ""}${chineseCard ? "期间" : "Period"}: ${periodLabel}` : ""}
+                        {cardTimeZone ? `${cardDataSource || periodLabel ? " · " : ""}${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : ""}
+                        {cardDataStatus ? `${cardDataSource || periodLabel || cardTimeZone ? " · " : ""}${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : ""}
+                        {cardDataAsOf ? `${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${formatAssistantDataAsOf(cardDataAsOf)}` : ""}
                       </p>
                     ) : null}
                     {card.items && card.items.length > 0 ? (

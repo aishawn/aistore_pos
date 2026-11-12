@@ -204,8 +204,12 @@ class AiChatHistoryServiceTest {
         AiChatMessage persisted = captor.getAllValues().get(1);
         assertEquals("Orithos native sales ledger", persisted.getDataSource());
         assertEquals("deterministic", persisted.getSource());
+        assertEquals("2026-11-12T01:00:00Z", persisted.getDataAsOf());
         assertEquals("outlet:3", persisted.getStoreScope());
+        assertEquals("2026-11-11", persisted.getReportPeriodFrom());
+        assertEquals("2026-11-11", persisted.getReportPeriodTo());
         assertEquals("Australia/Adelaide", persisted.getReportTimeZone());
+        assertEquals("AVAILABLE", persisted.getReportDataStatus());
 
         AiChatMessage user = message(1L, "user", "Yesterday sales?", null, null);
         when(mapper.findOwned(21L, tenant.vendorId(), tenant.userId())).thenReturn(thread);
@@ -214,7 +218,10 @@ class AiChatHistoryServiceTest {
         List<Map<String, Object>> restored = (List<Map<String, Object>>) service.getThread(tenant, 21L).get("messages");
         assertEquals("Orithos native sales ledger", restored.get(1).get("dataSource"));
         assertEquals("deterministic", restored.get(1).get("source"));
+        assertEquals("2026-11-12T01:00:00Z", restored.get(1).get("dataAsOf"));
         assertEquals("2026-11-11", restored.get(1).get("reportPeriodFrom"));
+        assertEquals("2026-11-11", restored.get(1).get("reportPeriodTo"));
+        assertEquals("Australia/Adelaide", restored.get(1).get("reportTimeZone"));
         assertEquals("AVAILABLE", restored.get(1).get("reportDataStatus"));
     }
 
