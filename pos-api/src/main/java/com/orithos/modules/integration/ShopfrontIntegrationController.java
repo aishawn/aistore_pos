@@ -2077,7 +2077,12 @@ public class ShopfrontIntegrationController {
         Map<String, Long> supplierCache = preloadSupplierMappings(store, outletId);
         Map<String, Long> productCache = preloadProductMappings(store, outletId);
         for (JsonNode item : items) {
+            // Crawler may send GraphQL shape (`id`) or normalized (`source_id`).
             String sourceId = text(item, "source_id");
+            if (sourceId == null || sourceId.isBlank()) {
+                sourceId = text(item, "id");
+            }
+            // Prefer nested raw_payload when present; flattened GraphQL items also work.
             JsonNode raw = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
             if (sourceId == null || sourceId.isBlank() || !seen.add(sourceId)) {
                 skipped++;
@@ -2096,6 +2101,9 @@ public class ShopfrontIntegrationController {
                 continue;
             }
             String supplierSourceId = text(item, "supplier_source_id");
+            if (supplierSourceId == null || supplierSourceId.isBlank()) {
+                supplierSourceId = text(raw, "supplier_source_id");
+            }
             if (supplierSourceId == null || supplierSourceId.isBlank()) {
                 for (JsonNode line : sourceLines) {
                     String candidate = text(line.path("supplier"), "id");
@@ -2412,11 +2420,24 @@ public class ShopfrontIntegrationController {
 
     private String purchaseOrderStatus(JsonNode raw, int lineCount, BigDecimal received, boolean allReceived) {
         String status = text(raw, "status");
-        String normalized = status == null ? "" : status.toUpperCase(Locale.ROOT);
+        String normalized = status == null ? "" : status.toUpperCase(Locale.ROOT).replace(' ', '_');
         if (normalized.contains("CANCEL") || normalized.contains("VOID")) return "CANCELLED";
-        if (normalized.contains("RECEIV") || normalized.contains("COMPLET") || normalized.equals("CLOSED")) return "RECEIVED";
+        // Prefer explicit Shopfront workflow states. SENT rows can still report
+        // receivedQuantity == orderedQuantity while remaining receivable in UI.
+        if (normalized.contains("PARTIAL")) {
+            return "PARTIALLY_RECEIVED";
+        }
+        if (normalized.equals("SENT") || normalized.equals("OPEN") || normalized.equals("OUTSTANDING")) {
+            if (received != null && received.signum() > 0 && !allReceived) {
+                return "PARTIALLY_RECEIVED";
+            }
+            return normalized.equals("OPEN") ? "OPEN" : "SENT";
+        }
+        if (normalized.contains("RECEIV") || normalized.contains("COMPLET") || normalized.equals("CLOSED")) {
+            return "RECEIVED";
+        }
         if (lineCount > 0 && allReceived) return "RECEIVED";
-        if (received.signum() > 0) return "PARTIALLY_RECEIVED";
+        if (received != null && received.signum() > 0) return "PARTIALLY_RECEIVED";
         if (text(raw, "sentAt") != null) return "SENT";
         return "OPEN";
     }

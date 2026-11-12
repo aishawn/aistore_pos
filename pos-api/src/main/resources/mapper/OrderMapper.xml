@@ -62,7 +62,7 @@
                   AND tenant_outlet.deleted_at IS NULL
             )
             <if test="q.outstanding">
-                AND po.status IN ('OPEN', 'SENT')
+                AND po.status IN ('OPEN', 'SENT', 'PARTIALLY_RECEIVED')
             </if>
             <if test="q.status != null and q.status != ''">
                 AND po.status = #{q.status}

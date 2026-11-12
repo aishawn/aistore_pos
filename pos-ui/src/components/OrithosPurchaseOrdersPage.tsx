@@ -18,8 +18,7 @@ type Order = {
   enteredAs?: string | null;
 };
 
-// Default "All statuses": Shopfront-promoted history is almost entirely RECEIVED,
-// so Outstanding-only makes the list look empty after catch-up.
+// Outstanding = OPEN / SENT / PARTIALLY_RECEIVED (Shopfront-style open queue).
 const statuses = [
   ["", "All statuses"],
   ["OUTSTANDING", "Outstanding"],
@@ -157,7 +156,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
             </h2>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
               {filtered
-                ? "Try All statuses or clear the search — received Shopfront orders are hidden by Outstanding."
+                ? "Try All statuses or clear the search — Outstanding only shows open, sent, and partially received orders."
                 : "Create a purchase order to begin receiving stock."}
             </p>
             {status === "OUTSTANDING" && (
