@@ -39,9 +39,9 @@ test("accepts ISO report dates and rejects impossible calendar dates", () => {
   ]), "2026-11-01");
 });
 
-test("only labels known report intents with their underlying Odoo source", () => {
-  assert.equal(assistantDataSource("report_sales"), "Odoo POS sales report");
-  assert.equal(assistantDataSource("report_stock"), "Odoo live inventory lookup");
+test("does not invent a data source when the API did not return provenance", () => {
+  assert.equal(assistantDataSource("report_sales"), null);
+  assert.equal(assistantDataSource("report_stock"), null);
   assert.equal(assistantDataSource("report_adhoc"), null);
 });
 

@@ -105,4 +105,19 @@ class ReplenishmentChatBriefTest {
         assertTrue(text.contains("Manual review is required"));
         assertTrue(text.contains("no quantities were generated"));
     }
+
+    @Test
+    void partialDataGapIsShownAlongsideAvailableSuggestions() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 1, List.of(new ReplenishmentSuggestion(1, "VB Cans", "Units", 24, 3.0, 2.0)),
+                "DATA_INCOMPLETE", List.of("Shiraz: supplier unavailable"), Instant.now()));
+
+        String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+
+        assertTrue(text.contains("VB Cans"));
+        assertTrue(text.contains("Some items were excluded because data is missing"));
+        assertTrue(text.contains("Shiraz: supplier unavailable"));
+    }
 }

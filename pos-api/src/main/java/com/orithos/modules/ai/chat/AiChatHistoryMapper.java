@@ -91,15 +91,23 @@ public interface AiChatHistoryMapper {
     int touchThread(@Param("id") long id, @Param("title") String title);
 
     @Insert("""
-            INSERT INTO ai_chat_message (thread_id, role, text_content, intent, report_id, slots_json)
-            VALUES (#{threadId}, #{role}, #{textContent}, #{intent}, #{reportId}, #{slotsJson})
+            INSERT INTO ai_chat_message (thread_id, role, text_content, intent, report_id, slots_json,
+                source, data_as_of, data_source, store_scope, report_period_from, report_period_to,
+                report_time_zone, report_data_status)
+            VALUES (#{threadId}, #{role}, #{textContent}, #{intent}, #{reportId}, #{slotsJson},
+                #{source}, #{dataAsOf}, #{dataSource}, #{storeScope}, #{reportPeriodFrom}, #{reportPeriodTo},
+                #{reportTimeZone}, #{reportDataStatus})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertMessage(AiChatMessage message);
 
     @Select("""
             SELECT id, thread_id AS threadId, role, text_content AS textContent,
-                   intent, report_id AS reportId, slots_json AS slotsJson, created_at AS createdAt
+                   intent, report_id AS reportId, slots_json AS slotsJson,
+                   source, data_as_of AS dataAsOf, data_source AS dataSource, store_scope AS storeScope,
+                   report_period_from AS reportPeriodFrom, report_period_to AS reportPeriodTo,
+                   report_time_zone AS reportTimeZone, report_data_status AS reportDataStatus,
+                   created_at AS createdAt
             FROM ai_chat_message
             WHERE thread_id = #{threadId}
             ORDER BY id ASC
@@ -109,7 +117,11 @@ public interface AiChatHistoryMapper {
 
     @Select("""
             SELECT m.id, m.thread_id AS threadId, m.role, m.text_content AS textContent,
-                   m.intent, m.report_id AS reportId, m.slots_json AS slotsJson, m.created_at AS createdAt
+                   m.intent, m.report_id AS reportId, m.slots_json AS slotsJson,
+                   m.source, m.data_as_of AS dataAsOf, m.data_source AS dataSource, m.store_scope AS storeScope,
+                   m.report_period_from AS reportPeriodFrom, m.report_period_to AS reportPeriodTo,
+                   m.report_time_zone AS reportTimeZone, m.report_data_status AS reportDataStatus,
+                   m.created_at AS createdAt
             FROM ai_chat_message m
             JOIN ai_chat_thread t ON t.id = m.thread_id
             WHERE t.session_key = #{sessionKey}

@@ -24,7 +24,8 @@ public final class AssistantFastPathRouter {
                     + "how much did we (?:make|take|sell) yesterday|what did we (?:make|take|sell) yesterday|how were (?:sales|we) yesterday|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "what(?:'s| is) yesterday'?s? (?:sales|revenue|takings|turnover)|"
-                    + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少)[?.!。！？]*$",
+                    + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少|昨天(?:的)?(?:销售额|营业额|流水|收入)(?:如何|怎么样|多少)?|"
+                    + "昨天(?:生意|业绩)(?:如何|怎么样)|(?:昨天|昨日)(?:销售|营业)?(?:情况|表现)(?:如何|怎么样)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_PROFIT = Pattern.compile(
             "^(?:(?:what was|what is|what's|show(?: me)?|tell me) (?:our )?(?:gross )?(?:profit|margin) (?:for )?yesterday|"

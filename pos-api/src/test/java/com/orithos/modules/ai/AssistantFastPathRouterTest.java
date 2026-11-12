@@ -253,7 +253,12 @@ class AssistantFastPathRouterTest {
                 "What's yesterday's revenue?",
                 "What's our takings yesterday?",
                 "What were yesterday's sales?",
-                "昨天营业额"
+                "昨天营业额",
+                "昨天销售额如何？",
+                "昨天营业额怎么样？",
+                "昨天的流水多少",
+                "昨日销售情况如何",
+                "How were sales yesterday?"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);

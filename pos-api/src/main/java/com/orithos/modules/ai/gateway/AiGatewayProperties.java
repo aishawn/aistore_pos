@@ -12,8 +12,8 @@ public class AiGatewayProperties {
     private String serviceToken = "";
     private boolean enabled = true;
     private int maxInputChars = 12000;
-    private int maxRetries = 2;
-    private int timeoutSeconds = 40;
+    private int maxRetries = 1;
+    private int timeoutSeconds = 20;
     private int requestsPerMinute = 60;
     private int tokensPerHour = 200000;
     private String primaryModel = "qwen-plus";
@@ -34,9 +34,9 @@ public class AiGatewayProperties {
     public int getMaxInputChars() { return maxInputChars; }
     public void setMaxInputChars(int maxInputChars) { this.maxInputChars = Math.max(100, maxInputChars); }
     public int getMaxRetries() { return maxRetries; }
-    public void setMaxRetries(int maxRetries) { this.maxRetries = Math.max(0, Math.min(5, maxRetries)); }
+    public void setMaxRetries(int maxRetries) { this.maxRetries = Math.max(0, Math.min(1, maxRetries)); }
     public int getTimeoutSeconds() { return timeoutSeconds; }
-    public void setTimeoutSeconds(int timeoutSeconds) { this.timeoutSeconds = Math.max(1, timeoutSeconds); }
+    public void setTimeoutSeconds(int timeoutSeconds) { this.timeoutSeconds = Math.max(1, Math.min(30, timeoutSeconds)); }
     public int getRequestsPerMinute() { return requestsPerMinute; }
     public void setRequestsPerMinute(int requestsPerMinute) { this.requestsPerMinute = Math.max(1, requestsPerMinute); }
     public int getTokensPerHour() { return tokensPerHour; }

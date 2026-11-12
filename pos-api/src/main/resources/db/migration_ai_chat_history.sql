@@ -17,6 +17,14 @@ CREATE TABLE IF NOT EXISTS ai_chat_message (
   intent VARCHAR(64) NULL,
   report_id BIGINT NULL,
   slots_json TEXT NULL,
+  source VARCHAR(40) NULL,
+  data_as_of VARCHAR(80) NULL,
+  data_source VARCHAR(160) NULL,
+  store_scope VARCHAR(255) NULL,
+  report_period_from VARCHAR(40) NULL,
+  report_period_to VARCHAR(40) NULL,
+  report_time_zone VARCHAR(80) NULL,
+  report_data_status VARCHAR(40) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_ai_chat_message_thread
     FOREIGN KEY (thread_id) REFERENCES ai_chat_thread (id) ON DELETE CASCADE

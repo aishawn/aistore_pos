@@ -2,6 +2,10 @@ package com.orithos.modules.ai.replenishment;
 
 import com.orithos.modules.ai.AssistantDisplayText;
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.config.CorrelationIdContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +21,8 @@ import java.time.format.DateTimeFormatter;
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class ReplenishmentChatBrief {
 
+    private static final Logger log = LoggerFactory.getLogger(ReplenishmentChatBrief.class);
+
     private static final DateTimeFormatter DATA_DATE = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
 
     private final NativeReplenishmentService client;
@@ -26,6 +32,7 @@ public class ReplenishmentChatBrief {
     }
 
     public String brief(String question, TenantContext tenant) {
+        long startedAt = System.nanoTime();
         boolean chinese = isChinese(question);
         if (tenant == null) {
             return unavailableMessage(question);
@@ -75,10 +82,41 @@ public class ReplenishmentChatBrief {
             }
             sb.append(chinese ? "\n\n打开补货页面审核数量并确认订单。"
                     : "\n\nTap below to review quantities and confirm any order.");
+            if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())) {
+                String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
+                sb.append(chinese ? "\n\n注意：部分商品因数据缺失未纳入建议：" : "\n\nSome items were excluded because data is missing: ")
+                        .append(gaps).append(".");
+            }
             return sb.toString();
+        } catch (DataAccessException e) {
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+            String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : null;
+            log.warn("AI replenishment query failed correlationId={} category={} exceptionType={} sqlState={} elapsedMs={}",
+                    CorrelationIdContext.current(), sqlState != null && sqlState.startsWith("08") ? "connection"
+                            : "query", e.getClass().getSimpleName(), sqlState,
+                    (System.nanoTime() - startedAt) / 1_000_000L);
+            return unavailableMessage(question, sqlState);
         } catch (Exception e) {
+            log.warn("AI replenishment failed correlationId={} exceptionType={} elapsedMs={}",
+                    CorrelationIdContext.current(), e.getClass().getSimpleName(),
+                    (System.nanoTime() - startedAt) / 1_000_000L);
             return unavailableMessage(question);
         }
+    }
+
+    private static String unavailableMessage(String question, String sqlState) {
+        if (sqlState != null && sqlState.startsWith("42")) {
+            return isChinese(question)
+                    ? "补货数据权限或查询配置异常，尚未生成建议。请联系管理员检查门店数据访问权限。"
+                    : "Replenishment data access is not configured correctly, so no suggestions were generated. Ask an administrator to check store data permissions.";
+        }
+        if ("57014".equals(sqlState)) {
+            return isChinese(question)
+                    ? "补货查询超时，未生成建议。请稍后重试或打开补货页面。"
+                    : "The replenishment query timed out, so no suggestions were generated. Retry shortly or open replenishment.";
+        }
+        return unavailableMessage(question);
     }
 
     private static String unavailableMessage(String question) {

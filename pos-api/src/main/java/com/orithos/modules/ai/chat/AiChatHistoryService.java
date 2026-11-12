@@ -54,6 +54,15 @@ public class AiChatHistoryService {
 
     public void appendTurn(TenantContext tenant, String sessionKey, String question,
                            String intent, String answer, Long reportId, Map<String, String> slots) {
+        appendTurn(tenant, sessionKey, question, intent, answer, reportId, slots,
+                null, null, null, null, null, null, null, null);
+    }
+
+    public void appendTurn(TenantContext tenant, String sessionKey, String question,
+                           String intent, String answer, Long reportId, Map<String, String> slots,
+                           String source, String dataAsOf, String dataSource, String storeScope,
+                           String reportPeriodFrom, String reportPeriodTo,
+                           String reportTimeZone, String reportDataStatus) {
         if (tenant == null || sessionKey == null || sessionKey.isBlank()
                 || question == null || question.isBlank()) {
             return;
@@ -83,7 +92,9 @@ public class AiChatHistoryService {
             mapper.insertMessage(userMsg);
 
             if ((answer != null && !answer.isBlank()) || reportId != null
-                    || (slots != null && !slots.isEmpty())) {
+                    || (slots != null && !slots.isEmpty()) || source != null || dataAsOf != null
+                    || dataSource != null || storeScope != null || reportPeriodFrom != null
+                    || reportPeriodTo != null || reportTimeZone != null || reportDataStatus != null) {
                 AiChatMessage assistantMsg = new AiChatMessage();
                 assistantMsg.setThreadId(thread.getId());
                 assistantMsg.setRole("assistant");
@@ -91,6 +102,14 @@ public class AiChatHistoryService {
                 assistantMsg.setIntent(intent);
                 assistantMsg.setReportId(reportId);
                 assistantMsg.setSlotsJson(serializeSlots(slots));
+                assistantMsg.setSource(source);
+                assistantMsg.setDataAsOf(dataAsOf);
+                assistantMsg.setDataSource(dataSource);
+                assistantMsg.setStoreScope(storeScope);
+                assistantMsg.setReportPeriodFrom(reportPeriodFrom);
+                assistantMsg.setReportPeriodTo(reportPeriodTo);
+                assistantMsg.setReportTimeZone(reportTimeZone);
+                assistantMsg.setReportDataStatus(reportDataStatus);
                 mapper.insertMessage(assistantMsg);
             }
         } catch (DataAccessException e) {
@@ -143,6 +162,14 @@ public class AiChatHistoryService {
             row.put("text", m.getTextContent());
             row.put("intent", m.getIntent());
             row.put("createdAt", m.getCreatedAt());
+            row.put("source", m.getSource());
+            row.put("dataAsOf", m.getDataAsOf());
+            row.put("dataSource", m.getDataSource());
+            row.put("storeScope", m.getStoreScope());
+            row.put("reportPeriodFrom", m.getReportPeriodFrom());
+            row.put("reportPeriodTo", m.getReportPeriodTo());
+            row.put("reportTimeZone", m.getReportTimeZone());
+            row.put("reportDataStatus", m.getReportDataStatus());
             if ("assistant".equalsIgnoreCase(m.getRole()) && m.getReportId() != null) {
                 try {
                     var report = reportSnapshotService.getOwned(m.getReportId(), tenant);

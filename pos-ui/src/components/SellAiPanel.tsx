@@ -176,6 +176,10 @@ interface ChatMessage {
   dataSource?: string | null;
   storeScope?: string | null;
   dataAsOf?: string | null;
+  reportPeriodFrom?: string | null;
+  reportPeriodTo?: string | null;
+  reportTimeZone?: string | null;
+  reportDataStatus?: string | null;
   requestedDateRange?: string | null;
   suggestedFollowUps?: string[] | null;
   clarificationRequired?: boolean;
@@ -935,8 +939,18 @@ export function SellAiPanel({
             ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
             ...(m.role === "assistant" ? {
               source: m.source ?? null,
-              dataSource: assistantDataSource(m.intent) ?? null,
+              dataSource: m.dataSource ?? assistantDataSource(m.intent),
               dataAsOf: assistantDataAsOf(m.dataAsOf),
+              storeScope: m.storeScope ?? null,
+              reportPeriodFrom: m.reportPeriodFrom ?? null,
+              reportPeriodTo: m.reportPeriodTo ?? null,
+              reportTimeZone: m.reportTimeZone ?? null,
+              reportDataStatus: m.reportDataStatus ?? null,
+              requestedDateRange: m.reportPeriodFrom
+                ? m.reportPeriodTo && m.reportPeriodTo !== m.reportPeriodFrom
+                  ? `${m.reportPeriodFrom} to ${m.reportPeriodTo}`
+                  : m.reportPeriodFrom
+                : null,
               suggestedFollowUps: m.suggestedFollowUps ?? null,
               clarificationRequired: m.clarificationRequired === true,
               clarifyingQuestion: m.clarifyingQuestion ?? null,
@@ -2157,7 +2171,7 @@ function DialogueView({
                 ))}
               </div>
             ) : null}
-            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.diagnostics?.intent === "report_sales") ? (
+            {msg.role === "assistant" && (msg.dataSource || msg.source || msg.dataAsOf || msg.requestedDateRange || msg.reportTimeZone || msg.reportDataStatus || msg.diagnostics?.intent === "report_sales") ? (
               <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
                 {msg.dataSource
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
@@ -2186,6 +2200,12 @@ function DialogueView({
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
                     ? `数据时间：${formatAssistantDataAsOf(msg.dataAsOf)}`
                     : `Data timestamp: ${formatAssistantDataAsOf(msg.dataAsOf)}`
+                  : ""}
+                {msg.reportTimeZone
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "时区" : "Timezone"}: ${msg.reportTimeZone}`
+                  : ""}
+                {msg.reportDataStatus && msg.reportDataStatus !== "AVAILABLE"
+                  ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "数据状态" : "Data status"}: ${msg.reportDataStatus}`
                   : ""}
               </p>
             ) : null}

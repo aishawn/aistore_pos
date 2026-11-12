@@ -184,6 +184,41 @@ class AiChatHistoryServiceTest {
     }
 
     @Test
+    void persistsAndRestoresReportProvenanceWithTheAssistantMessage() {
+        AiChatHistoryMapper mapper = mock(AiChatHistoryMapper.class);
+        ObjectProvider<AiConversationMemory> memory = mock(ObjectProvider.class);
+        when(memory.getIfAvailable()).thenReturn(null);
+        AiReportSnapshotService snapshots = mock(AiReportSnapshotService.class);
+        TenantContext tenant = tenant();
+        AiChatThread thread = thread(21L, "session-a");
+        when(mapper.findBySessionKey("session-a")).thenReturn(thread);
+        AiChatHistoryService service = service(mapper, memory, snapshots);
+
+        service.appendTurn(tenant, "session-a", "Yesterday sales?", "report_sales", "$1,240", null,
+                Map.of("from", "2026-11-11", "to", "2026-11-11"), "deterministic",
+                "2026-11-12T01:00:00Z", "Orithos native sales ledger", "outlet:3",
+                "2026-11-11", "2026-11-11", "Australia/Adelaide", "AVAILABLE");
+
+        ArgumentCaptor<AiChatMessage> captor = ArgumentCaptor.forClass(AiChatMessage.class);
+        verify(mapper, times(2)).insertMessage(captor.capture());
+        AiChatMessage persisted = captor.getAllValues().get(1);
+        assertEquals("Orithos native sales ledger", persisted.getDataSource());
+        assertEquals("deterministic", persisted.getSource());
+        assertEquals("outlet:3", persisted.getStoreScope());
+        assertEquals("Australia/Adelaide", persisted.getReportTimeZone());
+
+        AiChatMessage user = message(1L, "user", "Yesterday sales?", null, null);
+        when(mapper.findOwned(21L, tenant.vendorId(), tenant.userId())).thenReturn(thread);
+        when(mapper.listMessages(21L, 200)).thenReturn(List.of(user, persisted));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> restored = (List<Map<String, Object>>) service.getThread(tenant, 21L).get("messages");
+        assertEquals("Orithos native sales ledger", restored.get(1).get("dataSource"));
+        assertEquals("deterministic", restored.get(1).get("source"));
+        assertEquals("2026-11-11", restored.get(1).get("reportPeriodFrom"));
+        assertEquals("AVAILABLE", restored.get(1).get("reportDataStatus"));
+    }
+
+    @Test
     void historyRestoreRehydratesTheStoredSlots() {
         AiChatHistoryMapper mapper = mock(AiChatHistoryMapper.class);
         ObjectProvider<AiConversationMemory> memoryProvider = mock(ObjectProvider.class);

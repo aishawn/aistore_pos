@@ -102,7 +102,9 @@ public class AiAssistantController {
 
         auditService.recordAssistant(tenant, result.intent(), true, elapsedMs(startedAt), request.question(), result.answer());
         chatHistoryService.appendTurn(tenant, result.threadId(), request.question(), result.intent(),
-                result.answer(), result.reportId(), result.slots());
+                result.answer(), result.reportId(), result.slots(), result.source(), result.dataAsOf(), result.dataSource(),
+                result.storeScope(), result.reportPeriodFrom(), result.reportPeriodTo(),
+                result.reportTimeZone(), result.reportDataStatus());
         log.info("AI assistant observed fastPathId={} intent={} source={} llmFallback={} sourceCommit={} runtimeCommit={} writeRequests={}",
                 result.fastPathId(), result.intent(), result.source(), result.llmFallback(),
                 sourceCommit, runtimeCommit(), result.writeRequests());

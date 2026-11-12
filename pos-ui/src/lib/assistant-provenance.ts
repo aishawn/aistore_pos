@@ -25,9 +25,7 @@ function reportDate(value: unknown): string | null {
   return month ? validIsoDate(Number(localized[3]), Number(month), Number(localized[1])) : null;
 }
 
-export function assistantDataSource(intent: string | null | undefined): string | null {
-  if (intent === "report_sales") return "Odoo POS sales report";
-  if (intent === "report_stock") return "Odoo live inventory lookup";
+export function assistantDataSource(_intent: string | null | undefined): string | null {
   return null;
 }
 

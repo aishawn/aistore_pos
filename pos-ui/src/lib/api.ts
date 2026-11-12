@@ -1092,6 +1092,10 @@ export interface AiChatThreadDetail {
     dataAsOf?: string | null;
     dataSource?: string | null;
     storeScope?: string | null;
+    reportPeriodFrom?: string | null;
+    reportPeriodTo?: string | null;
+    reportTimeZone?: string | null;
+    reportDataStatus?: string | null;
     suggestedFollowUps?: string[] | null;
     clarificationRequired?: boolean;
     clarifyingQuestion?: string | null;

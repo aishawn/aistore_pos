@@ -8,14 +8,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Builds a read-only reorder preview from the tenant's Orithos ledger. */
 @Service
 public class NativeReplenishmentService {
     private static final int PERIOD_DAYS = 28;
     private static final int DEFAULT_COVERAGE_DAYS = 21;
+    private static final int QUERY_TIMEOUT_SECONDS = 5;
+    private static final long CACHE_TTL_MILLIS = 15_000;
 
     private final JdbcTemplate jdbc;
+    private final ConcurrentHashMap<CacheKey, CachedPlan> cache = new ConcurrentHashMap<>();
 
     public NativeReplenishmentService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
@@ -31,7 +35,19 @@ public class NativeReplenishmentService {
         if (tenant == null || tenant.requireOutletId() == null) return null;
         int cover = coverageDays > 0 ? Math.min(coverageDays, 180) : DEFAULT_COVERAGE_DAYS;
         int limit = Math.max(1, Math.min(50, suggestionLimit));
-        List<Row> rows = jdbc.query("""
+        CacheKey key = new CacheKey(tenant.vendorId(), tenant.requireOutletId(), cover, limit);
+        long now = System.currentTimeMillis();
+        cache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
+        CachedPlan cached = cache.get(key);
+        if (cached != null && cached.expiresAtMillis() > now) return cached.plan();
+        if (cached != null) cache.remove(key, cached);
+        return cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit),
+                System.currentTimeMillis() + CACHE_TTL_MILLIS)).plan();
+    }
+
+    private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit) {
+        List<Row> rows = jdbc.query(connection -> {
+            var statement = connection.prepareStatement("""
                 WITH sales AS (
                     SELECT si.product_id,
                            SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
@@ -58,10 +74,15 @@ public class NativeReplenishmentService {
                 LEFT JOIN sales s ON s.product_id = p.id
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                 ORDER BY p.name, p.id
-                """, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
+                """);
+            statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+            statement.setLong(1, tenant.requireOutletId());
+            statement.setLong(2, tenant.requireOutletId());
+            return statement;
+        }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
                 rs.getDouble("recent_units"), rs.getDouble("previous_units"), rs.getBoolean("has_supplier"),
-                rs.getDouble("minimum_order")), tenant.requireOutletId(), tenant.requireOutletId());
+                rs.getDouble("minimum_order")));
 
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
@@ -97,6 +118,9 @@ public class NativeReplenishmentService {
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
                        double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder) { }
+
+    private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit) { }
+    private record CachedPlan(ReplenishmentPlan plan, long expiresAtMillis) { }
 
     private static Double asDouble(Object value) {
         return value instanceof Number number ? number.doubleValue() : null;
