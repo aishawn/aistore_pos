@@ -777,7 +777,7 @@ try {
         ...(item.reportStatus ? {
           reportMetadataCheck,
           reportDataStatus: data.reportDataStatus ?? null,
-          reportDataSource: data.reportDataSource ?? null,
+          reportDataSource: data.dataSource ?? null,
           reportPeriodFrom: data.reportPeriodFrom ?? null,
           reportPeriodTo: data.reportPeriodTo ?? null,
           reportTimeZone: data.reportTimeZone ?? null,
