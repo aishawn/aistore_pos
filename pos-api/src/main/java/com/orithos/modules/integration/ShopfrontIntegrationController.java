@@ -1261,8 +1261,8 @@ public class ShopfrontIntegrationController {
         if (page < 1 || size < 1 || size > 500) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 500");
         }
-        if (!Set.of("products", "inventory").contains(type)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products or inventory");
+        if (!Set.of("products", "inventory", "sales", "payments").contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, or payments");
         }
         ensureMappingTable();
         ensureShadowTables();
@@ -1294,7 +1294,7 @@ public class ShopfrontIntegrationController {
                     + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId, storeKey};
             rowArgs = new Object[]{outletId, storeKey, size, (page - 1) * size};
-        } else {
+        } else if ("inventory".equals(type)) {
             countSql = "SELECT COUNT(*) FROM shopfront_product_mapping m JOIN product_inventory pi "
                     + "ON pi.product_id=m.pos_product_id AND pi.outlet_id=? "
                     + "JOIN product p ON p.id=pi.product_id AND p.deleted_at IS NULL "
@@ -1308,6 +1308,26 @@ public class ShopfrontIntegrationController {
                     + "ORDER BY m.source_product_id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId, storeKey};
             rowArgs = new Object[]{mapping.get("shopfront_outlet"), outletId, outletId, storeKey, size, (page - 1) * size};
+        } else if ("sales".equals(type)) {
+            countSql = "SELECT COUNT(*) FROM sale s WHERE s.outlet_id=? AND s.source_system='shopfront'";
+            rowsSql = "SELECT s.external_id, s.invoice_id, s.status, s.created_at, s.business_date::text AS business_date, "
+                    + "s.total_price, s.total_tax, s.total_discount, s.total_cost, "
+                    + "(SELECT COUNT(*) FROM sale_item si WHERE si.sale_id=s.id AND si.outlet_id=s.outlet_id) AS item_count, "
+                    + "(SELECT COUNT(*) FROM sale_payment sp WHERE sp.sale_id=s.id AND sp.outlet_id=s.outlet_id) AS payment_count, "
+                    + "COALESCE((SELECT SUM(sp.amount) FROM sale_payment sp WHERE sp.sale_id=s.id AND sp.outlet_id=s.outlet_id),0) AS payment_total "
+                    + "FROM sale s WHERE s.outlet_id=? AND s.source_system='shopfront' "
+                    + "ORDER BY s.external_id, s.id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId};
+            rowArgs = new Object[]{outletId, size, (page - 1) * size};
+        } else {
+            countSql = "SELECT COUNT(*) FROM sale_payment sp JOIN sale s ON s.id=sp.sale_id AND s.outlet_id=sp.outlet_id "
+                    + "WHERE s.outlet_id=? AND s.source_system='shopfront'";
+            rowsSql = "SELECT s.external_id AS external_sale_id, sp.external_payment_id, sp.amount, sp.status, sp.subtype "
+                    + "FROM sale_payment sp JOIN sale s ON s.id=sp.sale_id AND s.outlet_id=sp.outlet_id "
+                    + "WHERE s.outlet_id=? AND s.source_system='shopfront' "
+                    + "ORDER BY s.external_id, sp.external_payment_id NULLS LAST, sp.id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId};
+            rowArgs = new Object[]{outletId, size, (page - 1) * size};
         }
         int total = jdbc.queryForObject(countSql, Integer.class, countArgs);
         Map<String, Object> result = new LinkedHashMap<>();
