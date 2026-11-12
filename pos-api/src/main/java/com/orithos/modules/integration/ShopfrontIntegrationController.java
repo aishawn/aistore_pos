@@ -2343,7 +2343,7 @@ public class ShopfrontIntegrationController {
                 }
             }
 
-            String status = purchaseOrderStatus(raw, lineRows.size(), receivedTotal, allReceived);
+            String status = purchaseOrderStatus(raw, lineRows.size(), orderedTotal, receivedTotal, allReceived);
 
             // Include imported-line cardinality so newly mapped catalogue rows
             // can expand a previously partial PO on the next upsert. Re-digest
@@ -2601,7 +2601,7 @@ public class ShopfrontIntegrationController {
         }
     }
 
-    private String purchaseOrderStatus(JsonNode raw, int lineCount, BigDecimal received, boolean allReceived) {
+    private String purchaseOrderStatus(JsonNode raw, int lineCount, BigDecimal ordered, BigDecimal received, boolean allReceived) {
         String status = text(raw, "status");
         String normalized = status == null ? "" : status.toUpperCase(Locale.ROOT).replace(' ', '_');
         if (normalized.contains("CANCEL") || normalized.contains("VOID")) return "CANCELLED";
@@ -2618,6 +2618,8 @@ public class ShopfrontIntegrationController {
             return "RECEIVED";
         }
         if (text(raw, "sentAt") != null) return "SENT";
+        if (lineCount > 0 && ordered != null && ordered.signum() == 0
+                && received != null && received.signum() > 0) return "SENT";
         if (lineCount > 0 && allReceived) return "RECEIVED";
         if (received != null && received.signum() > 0) return "PARTIALLY_RECEIVED";
         if (text(raw, "sentAt") != null) return "SENT";

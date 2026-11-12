@@ -336,16 +336,20 @@ class ShopfrontIntegrationControllerTest {
     void sentShopfrontOrderWithZeroOrderedAndPositiveReceivedQuantityStaysSent() throws Exception {
         Method statusMethod = ShopfrontIntegrationController.class.getDeclaredMethod(
                 "purchaseOrderStatus", com.fasterxml.jackson.databind.JsonNode.class,
-                int.class, BigDecimal.class, boolean.class);
+                int.class, BigDecimal.class, BigDecimal.class, boolean.class);
         statusMethod.setAccessible(true);
-        var raw = new ObjectMapper().readTree("{\"sentAt\":\"2026-11-11T23:46:55Z\"}");
+        var raw = new ObjectMapper().readTree("{}");
 
         assertEquals("SENT", statusMethod.invoke(
                 new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true),
-                raw, 17, new BigDecimal("44"), false));
+                raw, 17, BigDecimal.ZERO, new BigDecimal("44"), false));
         assertEquals("SENT", statusMethod.invoke(
                 new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true),
-                raw, 17, new BigDecimal("44"), true));
+                raw, 17, BigDecimal.ZERO, new BigDecimal("44"), true));
+        var explicitSent = new ObjectMapper().readTree("{\"status\":\"SENT\"}");
+        assertEquals("SENT", statusMethod.invoke(
+                new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true),
+                explicitSent, 17, new BigDecimal("10"), new BigDecimal("4"), false));
     }
 
     @Test
