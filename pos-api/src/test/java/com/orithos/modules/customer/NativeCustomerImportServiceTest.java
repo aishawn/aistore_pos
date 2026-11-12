@@ -27,7 +27,9 @@ class NativeCustomerImportServiceTest {
     void importsCustomerBusinessFieldsAndAllEmailsIntoNativeRows() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
-        when(jdbc.queryForObject(contains("INSERT INTO customer"), eq(Long.class), any(Object[].class)))
+        when(jdbc.queryForObject(contains("INSERT INTO customer_group"), eq(Long.class), any(Object[].class)))
+                .thenReturn(55L);
+        when(jdbc.queryForObject(contains("INSERT INTO customer ("), eq(Long.class), any(Object[].class)))
                 .thenReturn(321L);
         ObjectMapper mapper = new ObjectMapper();
         var items = mapper.readTree("""
@@ -68,7 +70,7 @@ class NativeCustomerImportServiceTest {
         assertEquals(0, receipt.get("skipped"));
         Invocation insert = mockingDetails(jdbc).getInvocations().stream()
                 .filter(call -> call.getMethod().getName().equals("queryForObject")
-                        && call.getArgument(0, String.class).contains("INSERT INTO customer"))
+                        && call.getArgument(0, String.class).contains("INSERT INTO customer ("))
                 .findFirst().orElseThrow();
         Object[] values = (Object[]) insert.getRawArguments()[2];
         assertEquals(27, values.length);
@@ -76,11 +78,36 @@ class NativeCustomerImportServiceTest {
         assertEquals(LocalDate.parse("1990-01-02"), values[5]);
         assertEquals(0, values[12]);
         assertEquals("Invoice note", values[13]);
+        assertEquals(55L, values[15]);
         assertEquals(1, values[17]);
         assertEquals(new BigDecimal("123.45"), values[24]);
         assertEquals(87L, values[26]);
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("primary@example.test"), eq(0), any(), eq(87L));
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("accounts@example.test"), eq(1), any(), eq(87L));
+    }
+
+    @Test
+    void importsCustomerGroupCatalogIncludingEmptyGroups() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(contains("INSERT INTO customer_group"), eq(Long.class), any(Object[].class)))
+                .thenReturn(701L, 702L);
+        var items = new ObjectMapper().readTree("""
+                [
+                  {"source_id":"g1","name":"Staff Group"},
+                  {"source_id":"g2","name":"Out of Dates"}
+                ]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importCustomerGroups("skr", 87, items);
+
+        assertEquals(2, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        assertEquals(true, receipt.get("enabled"));
+        verify(jdbc).update(contains("INSERT INTO shopfront_customer_group_mapping"),
+                eq("skr"), eq("g1"), eq(87L), eq(701L));
+        verify(jdbc).update(contains("INSERT INTO shopfront_customer_group_mapping"),
+                eq("skr"), eq("g2"), eq(87L), eq(702L));
     }
 
     @Test

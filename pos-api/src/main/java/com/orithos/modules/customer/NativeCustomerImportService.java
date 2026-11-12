@@ -53,6 +53,7 @@ public class NativeCustomerImportService {
                 } else if (!code.startsWith("SF-" + storeKey + "-")) {
                     code = "SF-" + storeKey + "-" + code;
                 }
+                // Prefer flattened crawler fields; keep raw_payload only for legacy batches.
                 JsonNode source = item.path("raw_payload").isObject() ? item.path("raw_payload") : item;
                 String firstName = text(source, "firstName", "first_name");
                 String lastName = text(source, "lastName", "last_name");
@@ -72,10 +73,10 @@ public class NativeCustomerImportService {
                 BigDecimal loyaltyPoints = decimal(source, "loyaltyPoints", "loyalty_points");
                 BigDecimal accountLimit = decimal(source, "accountLimit", "account_limit");
                 BigDecimal currentOwing = decimal(source, "currentOwing", "current_owing");
-                JsonNode customerGroup = source.path("customerGroup").isObject() ? source.path("customerGroup") : source.path("customer_group");
-                JsonNode priceList = source.path("priceList").isObject() ? source.path("priceList") : source.path("price_list");
-                Long customerGroupId = resolveCustomerGroupId(outletId, text(customerGroup, "name"));
-                Long priceListId = resolvePriceListId(outletId, text(priceList, "name"));
+                Long customerGroupId = ensureCustomerGroupId(outletId,
+                        firstNonBlank(customerGroupName(item), customerGroupName(source)));
+                Long priceListId = resolvePriceListId(outletId,
+                        firstNonBlank(priceListName(item), priceListName(source)));
                 boolean allowMarketingEmails = bool(source, true, "allowMarketingEmails", "allow_marketing_emails");
                 boolean loyaltyEnabled = bool(source, false, "loyaltyEnabled", "loyalty_enabled");
                 boolean disablePromotions = bool(source, false, "disablePromotions", "disable_promotions");
@@ -126,6 +127,56 @@ public class NativeCustomerImportService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("created", created); result.put("updated", updated); result.put("skipped", skipped);
         result.put("errors", errors); result.put("enabled", true);
+        return result;
+    }
+
+    /**
+     * Idempotent Shopfront customer-group catalog import. Creates missing native
+     * groups by name and retains source mappings so retries stay stable, including
+     * empty groups that no customer currently references.
+     */
+    @Transactional
+    public Map<String, Object> importCustomerGroups(String storeKey, long outletId, JsonNode items) {
+        if (storeKey == null || storeKey.isBlank() || outletId <= 0 || items == null || !items.isArray()) {
+            throw new IllegalArgumentException("store_key, outlet_id and customer group items are required");
+        }
+        ensureGroupMappingTable();
+        int created = 0, updated = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+        for (JsonNode item : items) {
+            String sourceId = text(item, "source_id", "id");
+            String name = text(item, "name");
+            if (sourceId == null || name == null || name.isBlank()) {
+                skipped++;
+                continue;
+            }
+            try {
+                Long mapped = findGroupMapping(storeKey, sourceId, outletId);
+                Long groupId = mapped != null ? mapped : ensureCustomerGroupId(outletId, name);
+                if (groupId == null) throw new IllegalStateException("Unable to resolve customer group");
+                jdbc.update("UPDATE customer_group SET name=? WHERE id=? AND outlet_id=? AND deleted_at IS NULL",
+                        name.trim(), groupId, outletId);
+                if (mapped == null) {
+                    jdbc.update(
+                            "INSERT INTO shopfront_customer_group_mapping (store_key, source_id, outlet_id, customer_group_id) VALUES (?, ?, ?, ?)",
+                            storeKey, sourceId, outletId, groupId);
+                    created++;
+                } else {
+                    updated++;
+                }
+            } catch (RuntimeException ex) {
+                skipped++;
+                if (errors.size() < 25) {
+                    errors.add(sourceId + ": " + (ex.getMessage() == null ? "group import failed" : ex.getMessage()));
+                }
+            }
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("created", created);
+        result.put("updated", updated);
+        result.put("skipped", skipped);
+        result.put("errors", errors);
+        result.put("enabled", true);
         return result;
     }
 
@@ -195,6 +246,10 @@ public class NativeCustomerImportService {
         jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
     }
 
+    private void ensureGroupMappingTable() {
+        jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_group_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_group_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+    }
+
     private void ensurePaymentMappingTable() {
         jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_payment_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_payment_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
     }
@@ -224,11 +279,32 @@ public class NativeCustomerImportService {
         return ids.isEmpty() ? null : ids.getFirst();
     }
 
-    private Long resolveCustomerGroupId(long outletId, String name) {
-        if (name == null) return null;
-        List<Long> ids = jdbc.query("SELECT id FROM customer_group WHERE outlet_id=? AND deleted_at IS NULL AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
-                (rs, row) -> rs.getLong(1), outletId, name);
-        return ids.size() == 1 ? ids.getFirst() : null;
+    private Long findGroupMapping(String storeKey, String sourceId, long outletId) {
+        List<Long> ids = jdbc.query(
+                "SELECT customer_group_id FROM shopfront_customer_group_mapping WHERE store_key=? AND source_id=? AND outlet_id=?",
+                (rs, row) -> rs.getLong(1), storeKey, sourceId, outletId);
+        return ids.isEmpty() ? null : ids.getFirst();
+    }
+
+    private Long ensureCustomerGroupId(long outletId, String name) {
+        if (name == null || name.isBlank()) return null;
+        String trimmed = name.trim();
+        List<Long> ids = jdbc.query(
+                "SELECT id FROM customer_group WHERE outlet_id=? AND deleted_at IS NULL AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
+                (rs, row) -> rs.getLong(1), outletId, trimmed);
+        if (ids.size() == 1) return ids.getFirst();
+        if (ids.size() > 1) {
+            throw new IllegalStateException("Ambiguous customer group name in this outlet: " + trimmed);
+        }
+        return jdbc.queryForObject(
+                """
+                INSERT INTO customer_group (name, loyalty_enabled, disable_promotions, allow_account_sales,
+                  auto_print_receipt, auto_print_parked_receipt, auto_email_receipt, auto_print_payment_receipt,
+                  require_order_reference, outlet_id)
+                VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, ?)
+                RETURNING id
+                """,
+                Long.class, trimmed, outletId);
     }
 
     private Long resolvePriceListId(long outletId, String name) {
@@ -236,6 +312,34 @@ public class NativeCustomerImportService {
         List<Long> ids = jdbc.query("SELECT id FROM price_list WHERE outlet_id=? AND active=TRUE AND LOWER(TRIM(name))=LOWER(TRIM(?)) ORDER BY id LIMIT 2",
                 (rs, row) -> rs.getLong(1), outletId, name);
         return ids.size() == 1 ? ids.getFirst() : null;
+    }
+
+    private static String customerGroupName(JsonNode source) {
+        JsonNode customerGroup = source.path("customerGroup").isObject()
+                ? source.path("customerGroup")
+                : source.path("customer_group");
+        if (customerGroup.isObject()) {
+            return text(customerGroup, "name");
+        }
+        return text(source, "customer_group", "customer_group_name", "customerGroupName", "customerGroup");
+    }
+
+    private static String priceListName(JsonNode source) {
+        JsonNode priceList = source.path("priceList").isObject()
+                ? source.path("priceList")
+                : source.path("price_list");
+        if (priceList.isObject()) {
+            return text(priceList, "name");
+        }
+        return text(source, "price_list", "price_list_name", "priceListName", "priceList");
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return null;
     }
 
     private void syncEmails(Long customerId, long outletId, List<String> emails, boolean deleted) {

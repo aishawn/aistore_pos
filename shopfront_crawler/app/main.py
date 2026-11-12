@@ -67,6 +67,50 @@ def should_include_catalog(job_type: str | None, existing_products: int, existin
     return job_type == "daily_sync" or existing_products == 0 or existing_inventory == 0
 
 
+def _normalized_supplier_pos_item(item: ShopfrontSupplier) -> dict[str, Any]:
+    """Flatten crawler supplier rows for POS upsert (raw_payload is rejected)."""
+    raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+    payload = {
+        **raw,
+        "source_id": item.source_id or raw.get("id"),
+        "id": item.source_id or raw.get("id"),
+        "name": item.name or raw.get("name"),
+        "businessNumber": item.business_number or raw.get("businessNumber"),
+        "status": item.status or raw.get("status"),
+    }
+    payload.pop("raw_payload", None)
+    payload.pop("rawPayload", None)
+    return payload
+
+
+def _normalized_purchase_order_pos_item(item: ShopfrontPurchaseOrder) -> dict[str, Any]:
+    """Flatten crawler PO GraphQL payload for native purchase-orders:upsert."""
+    raw = dict(item.raw_payload) if isinstance(item.raw_payload, dict) else {}
+    source_id = item.source_id or str(raw.get("id") or "").strip()
+    payload = {
+        **raw,
+        "source_id": source_id,
+        "id": source_id or raw.get("id"),
+        "supplier_source_id": item.supplier_source_id or raw.get("supplier_source_id"),
+        "status": item.status or raw.get("status"),
+        "orderDate": raw.get("orderDate") or item.order_date,
+        "totalCost": raw.get("totalCost") if raw.get("totalCost") is not None else item.total_cost,
+    }
+    if not payload.get("supplier_source_id"):
+        products = payload.get("products") if isinstance(payload.get("products"), list) else []
+        for line in products:
+            if not isinstance(line, dict):
+                continue
+            supplier = line.get("supplier") if isinstance(line.get("supplier"), dict) else {}
+            candidate = str(supplier.get("id") or "").strip()
+            if candidate:
+                payload["supplier_source_id"] = candidate
+                break
+    payload.pop("raw_payload", None)
+    payload.pop("rawPayload", None)
+    return payload
+
+
 def audit_odoo_sales_batch(response: dict[str, Any], expected_count: int) -> dict[str, int]:
     """Verify every source sale reached Odoo without inventing POS orders."""
     payload = response.get("result", response) if isinstance(response, dict) else {}
@@ -1841,25 +1885,13 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
             secondary = (settings.pos_api_secondary_store_key or "").strip()
             if secondary and secondary != store.store_key:
                 target_store_keys.append(secondary)
+            # POS rejects raw_payload; flatten Shopfront GraphQL fields into the item.
             supplier_items = [
-                {
-                    "source_id": item.source_id,
-                    "name": item.name,
-                    "business_number": item.business_number,
-                    "status": item.status,
-                    "raw_payload": item.raw_payload,
-                }
+                _normalized_supplier_pos_item(item)
                 for item in supplier_rows
             ]
             order_items = [
-                {
-                    "source_id": item.source_id,
-                    "supplier_source_id": item.supplier_source_id,
-                    "status": item.status,
-                    "order_date": item.order_date,
-                    "total_cost": item.total_cost,
-                    "raw_payload": item.raw_payload,
-                }
+                _normalized_purchase_order_pos_item(item)
                 for item in order_rows
             ]
             for target_store in target_store_keys:
@@ -1870,9 +1902,9 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
                         "items": batch,
                     }))
                     staged = response.get("data", response)
-                    if staged.get("status") != "STAGED":
+                    if staged.get("status") not in {"STAGED", "IMPORTED"}:
                         raise PosIntegrationError(
-                            f"Supplier mirror batch was not staged for {target_store}: {staged.get('status', 'unknown')}"
+                            f"Supplier batch failed for {target_store}: {staged.get('status', 'unknown')}"
                         )
                 for offset in range(0, len(order_items), 50):
                     batch = order_items[offset:offset + 50]
@@ -1881,24 +1913,21 @@ async def sync_supply_chain(db: Session, store: Store) -> dict:
                         "items": batch,
                     }))
                     staged = response.get("data", response)
-                    if staged.get("status") != "STAGED":
+                    if staged.get("status") not in {"STAGED", "IMPORTED"}:
                         raise PosIntegrationError(
-                            f"Purchase-order mirror batch was not staged for {target_store}: {staged.get('status', 'unknown')}"
+                            f"Purchase-order batch failed for {target_store}: {staged.get('status', 'unknown')}"
                         )
-            # Library-side promote: pos-api reads shopfront_purchase_order via JDBC
-            # and writes native purchase_order. Small request body, no CF payload bloat.
-            # Uses POS_API_BASE_URL (internal http://backend:8080) — public CF times out.
-            promote_summary: dict[str, Any] = {}
-            for target_store in target_store_keys:
-                promote_summary[target_store] = await _promote_purchase_orders_loop(
-                    pos_client, target_store, limit=100, max_loops=80, retry_skipped=False,
-                )
+            # Native ledger write happens inside purchase-orders:upsert when business
+            # write is enabled. Mirror-side promote-native is retired on pos-api.
             result["pos_staged"] = {
                 "suppliers": len(supplier_rows),
                 "purchase_orders": len(order_rows),
                 "store_keys": target_store_keys,
             }
-            result["pos_promoted"] = promote_summary
+            result["pos_promoted"] = {
+                target: {"via": "purchase-orders:upsert", "count": len(order_items)}
+                for target in target_store_keys
+            }
         finally:
             await pos_client.close()
     try:
@@ -3615,6 +3644,56 @@ async def run_supply_chain_job(job_id: int) -> None:
         db.close()
 
 
+def _normalized_customer_item(item: ShopfrontCustomer) -> dict[str, Any]:
+    """Flatten Shopfront customer fields for Orithos (no raw_payload)."""
+    raw = item.raw_payload if isinstance(item.raw_payload, dict) else {}
+    group = raw.get("customerGroup") if isinstance(raw.get("customerGroup"), dict) else {}
+    price_list = raw.get("priceList") if isinstance(raw.get("priceList"), dict) else {}
+    group_name = group.get("name") or item.customer_group
+    payload: dict[str, Any] = {
+        "source_id": item.source_id,
+        "client_id": item.client_id,
+        "code": item.code,
+        "name": item.name,
+        "email": item.email,
+        "phone": item.phone,
+        "mobile": item.mobile,
+        "deleted": item.deleted,
+        "first_name": raw.get("firstName") or item.first_name,
+        "last_name": raw.get("lastName") or item.last_name,
+        "company": raw.get("company") or item.company,
+        "business_number": raw.get("businessNumber"),
+        "birthday": raw.get("birthday"),
+        "gender": raw.get("gender"),
+        "emails": raw.get("emails") if isinstance(raw.get("emails"), list) else ([item.email] if item.email else []),
+        "fax": raw.get("fax"),
+        "invoice_message": raw.get("invoiceMessage"),
+        "comments": raw.get("comments"),
+        "loyalty_enabled": raw.get("loyaltyEnabled"),
+        "loyalty_rate": raw.get("loyaltyRate"),
+        "loyalty_points": raw.get("loyaltyPoints") if raw.get("loyaltyPoints") is not None else item.loyalty_points,
+        "disable_promotions": raw.get("disablePromotions"),
+        "require_order_reference": raw.get("requireOrderReference"),
+        "account_limit": raw.get("accountLimit"),
+        "current_owing": raw.get("currentOwing") if raw.get("currentOwing") is not None else item.current_owing,
+        "allow_marketing_emails": raw.get("allowMarketingEmails"),
+        "override_customer_group": raw.get("overrideCustomerGroup"),
+    }
+    if group_name:
+        payload["customer_group"] = {"id": group.get("id"), "name": group_name}
+    if isinstance(price_list, dict) and price_list.get("name"):
+        payload["price_list"] = {"id": price_list.get("id"), "name": price_list.get("name")}
+    return payload
+
+
+def _normalized_customer_group_item(source: dict[str, Any]) -> dict[str, Any] | None:
+    source_id = str(source.get("id") or source.get("source_id") or "").strip()
+    name = str(source.get("name") or "").strip()
+    if not source_id or not name:
+        return None
+    return {"source_id": source_id, "name": name}
+
+
 async def run_customers_job(job_id: int) -> None:
     db = next(get_db())
     try:
@@ -3634,6 +3713,33 @@ async def run_customers_job(job_id: int) -> None:
         if settings.pos_import_enabled:
             pos_client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, True)
             try:
+                # Import the Shopfront group catalog first so filter options and
+                # customer assignments resolve even for empty groups.
+                try:
+                    token = await access_token(db, settings, store)
+                    client = get_client(settings, store)
+                    try:
+                        group_rows = await client.fetch_customer_groups(token)
+                    finally:
+                        await client.close()
+                    group_items = [
+                        normalized for source in group_rows
+                        if (normalized := _normalized_customer_group_item(source)) is not None
+                    ]
+                    for offset in range(0, len(group_items), 250):
+                        batch = group_items[offset:offset + 250]
+                        response = await pos_client.upsert_customer_groups(jsonable_encoder({
+                            "store_key": store.store_key,
+                            "items": batch,
+                        }))
+                        receipt = response.get("data", response)
+                        if receipt.get("enabled") is not True:
+                            raise PosIntegrationError("Customer group import was not acknowledged")
+                    job.payload["pos_customer_groups"] = {"count": len(group_items)}
+                except Exception as group_exc:
+                    job.payload["pos_customer_groups"] = {"status": "failed", "error": str(group_exc)[:200]}
+                    raise
+
                 customer_rows = db.scalars(
                     select(ShopfrontCustomer)
                     .where(ShopfrontCustomer.store_key == store.store_key)
@@ -3643,37 +3749,20 @@ async def run_customers_job(job_id: int) -> None:
                     batch = customer_rows[offset:offset + 250]
                     response = await pos_client.upsert_customers(jsonable_encoder({
                         "store_key": store.store_key,
-                        "items": [{
-                            "source_id": item.source_id,
-                            "client_id": item.client_id,
-                            "code": item.code,
-                            "name": item.name,
-                            "email": item.email,
-                            "phone": item.phone,
-                            "mobile": item.mobile,
-                            "deleted": item.deleted,
-                            "raw_payload": item.raw_payload,
-                        } for item in batch],
+                        "items": [_normalized_customer_item(item) for item in batch],
                     }))
                     staged = response.get("data", response)
-                    if staged.get("status") != "STAGED":
-                        raise PosIntegrationError(f"Customer mirror batch was not staged: {staged.get('status', 'unknown')}")
+                    status = staged.get("status")
+                    if status not in {"STAGED", "IMPORTED"}:
+                        raise PosIntegrationError(f"Customer batch was not imported: {status or 'unknown'}")
                 job.payload["pos_staged"] = {"customers": len(customer_rows)}
-                balance_rows = db.scalars(select(ShopfrontExtendedRecord).where(
+                # Balance snapshots stay in the crawler DB; POS extended:upsert is retired (410).
+                balance_count = db.scalar(select(func.count(ShopfrontExtendedRecord.id)).where(
                     ShopfrontExtendedRecord.store_key == store.store_key,
                     ShopfrontExtendedRecord.entity_type == "customer_balances",
-                ).order_by(ShopfrontExtendedRecord.source_id)).all()
-                for offset in range(0, len(balance_rows), 200):
-                    batch = balance_rows[offset:offset + 200]
-                    response = await pos_client.upsert_extended({
-                        "store_key": store.store_key,
-                        "entity_type": "customer_balances",
-                        "items": [{"source_id": item.source_id, "raw_payload": item.raw_payload} for item in batch],
-                    })
-                    staged = response.get("data", response)
-                    if staged.get("status") != "STAGED":
-                        raise PosIntegrationError("Customer balance snapshots were not staged")
-                job.payload["pos_staged"]["customer_balances"] = len(balance_rows)
+                )) or 0
+                job.payload["pos_staged"]["customer_balances"] = int(balance_count)
+                job.payload["pos_staged"]["customer_balances_note"] = "crawler_owned"
             finally:
                 await pos_client.close()
         # Odoo is the customer business source of truth. Staging success is

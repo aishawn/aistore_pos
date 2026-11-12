@@ -894,6 +894,33 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "customers", body);
     }
 
+    @PostMapping("/customer-groups:upsert")
+    @Transactional
+    public ApiResult<Map<String, Object>> customerGroups(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
+                                                         @RequestBody JsonNode body) {
+        authorize(supplied);
+        String storeKey = body.path("store_key").asText("").trim();
+        JsonNode items = body.path("items");
+        if (!STORE_KEY.matcher(storeKey).matches() || !items.isArray() || items.size() > 250) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key and up to 250 items are required");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id FROM shopfront_store_mapping WHERE store_key=? AND enabled=?", storeKey,
+                isPostgres() ? Boolean.TRUE : 1);
+        if (mappings.size() != 1 || longValue(mappings.getFirst().get("outlet_id")) <= 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Enabled Shopfront outlet mapping was not found");
+        }
+        try {
+            return ApiResult.ok(nativeCustomerImportService.importCustomerGroups(
+                    storeKey, longValue(mappings.getFirst().get("outlet_id")), items));
+        } catch (Exception ex) {
+            log.error("Shopfront native customer group import failed store={}", storeKey, ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to import Shopfront customer groups", ex);
+        }
+    }
+
     @PostMapping("/customer-payments:upsert-native")
     @Transactional
     public ApiResult<Map<String, Object>> customerPayments(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
