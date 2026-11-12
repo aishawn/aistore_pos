@@ -10,9 +10,19 @@
 
 候选 `b62930bc` 已推送且两店前端已运行，但后端启动失败。脱敏启动日志显示 Spring 为 `ReportQueryService` 选择不存在的无参构造器；原因是新增缓存测试构造器后存在多个构造器且生产构造器未标注。修复候选添加 `@Autowired` 并新增 Spring 容器装配测试。Java 21 下定向测试 1/1、`mvn -B test` 660/660 PASS；POS UI 单测 201/201、TypeScript 检查 PASS，AI 洞察中的旧 Odoo 仪表盘/工作流提示已改为 Orithos。修复提交尚未推送/部署，完整范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-readiness-followup.md)。
 
-这些是本地测试，不构成精确候选远端构建或线上部署/对账证据。SKR/Demo 当前运行 SHA、真实数据报表一致性、模型调用费用、麦克风语音、完整历史/清空/取消/重试仍待验收；本轮未发送线上 AI 请求，业务写入为 0。
+这些是本地测试，不构成精确候选远端构建或线上部署/对账证据。后续线上复核见下节；Demo 数值对账、模型调用费用、麦克风语音、完整历史/清空/取消/重试仍待验收。真实 POS 业务写入为 0。
 
-更新日期：2026-11-13。本页区分本地候选回归与历史线上证据；候选线上业务测试尚未运行，真实业务写入 0。
+## 2026-11-13 部署恢复与窄范围线上对账
+
+Dokploy POS Compose 将 `695eee7d`（ReportQueryService Spring 注入修复）和后续 `da91a4a4` 部署标记为 Done。SKR 与 Demo 的 `/api/public/version` 均返回前端/后端 `da91a4a4bea832be67abc1a225fe0e63f0384bb6`；未认证 `/api/health` 返回 401，说明代理已到达受认证后端，初期 502 已消失。
+
+SKR 只读登录后读取 2026-11-12 Adelaide `native-overview`，再分别提问 `What were sales yesterday?` 与已覆盖中文变体 `昨天销售额如何？`。两次均返回 `intent=report_sales`、`source=deterministic`、`llmFallback=false`、`reportDataStatus=available`、`Australia/Adelaide`，销售 AUD 5,173.94、毛利 AUD 1,985.28、`writeRequests=[]`；两项与同期间 overview 完全相同。中文 fast-path HTTP 200 / API code 0，实测耗时 531 ms。结果只证明 SKR 单日的这两种表达及数据口径。
+
+此前在 SKR、Demo 各尝试中文 `昨天销售额是多少？`，PowerShell harness 未保留响应体或 HTTP 状态，字段读取结果为空，因此列为 INCONCLUSIVE；该确切表达不在显式 fast-path 变体列表，不能假定它不触发模型兜底。模型调用成本未取到，AUD 10 费用上限尚未被证明。没有执行 POS 业务写入。
+
+尚未覆盖：Demo 英文金额对账、中文成功路径、7 日行日期和 UI 元数据、历史恢复/清空、多轮追问、麦克风真机与失败恢复、请求取消/重试、提示注入、跨门店隔离以及其他意图全目录。不能据此宣称 POS 助手所有功能已正常。
+
+更新日期：2026-11-13。本页区分本地候选回归与线上只读问题；真实 POS 业务写入 0。
 
 ## 2026-11-04 本地来源说明回归
 
