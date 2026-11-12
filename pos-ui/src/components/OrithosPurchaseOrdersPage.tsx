@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { Modal } from "@/components/admin/Modal";
 import { CreatePurchaseOrderModal } from "@/components/admin/CreatePurchaseOrderModal";
 import { useAuth } from "@/lib/auth";
+import { formatPurchaseQuantity } from "@/lib/purchase-quantity";
 
 type Order = {
   id: number | string;
@@ -28,6 +29,7 @@ type ReceiptOrder = Order & {
     id: number | string;
     productId: number | string;
     productName?: string;
+    caseQuantity?: number;
     orderedQuantity?: number;
     receivedQuantity?: number;
   }>;
@@ -324,8 +326,8 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
             {receivingLines.map((line) => {
               const outstanding = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
               return <label key={line.id} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 text-sm">
-                <span className="min-w-0"><span className="block truncate font-medium">{line.productName || `Product ${line.productId}`}</span><span className="text-xs text-[var(--oh-muted)]">Outstanding {outstanding}</span></span>
-                <input type="number" min="0" max={outstanding} step="0.0001" inputMode="decimal" aria-label={`Receive quantity for ${line.productName || line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => { receiptKey.current = null; setQuantities((current) => ({ ...current, [line.id]: event.target.value })); }} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-3 text-right tabular-nums" />
+                <span className="min-w-0"><span className="block truncate font-medium">{line.productName || `Product ${line.productId}`}</span><span className="text-xs text-[var(--oh-muted)]">Outstanding {formatPurchaseQuantity(outstanding, line.caseQuantity)}</span></span>
+                <input type="number" min="0" max={outstanding} step="0.0001" inputMode="decimal" aria-label={`Receive items for ${line.productName || line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => { receiptKey.current = null; setQuantities((current) => ({ ...current, [line.id]: event.target.value })); }} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-3 text-right tabular-nums" />
               </label>;
             })}
           </div>}

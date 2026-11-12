@@ -9,11 +9,13 @@ import { api } from "@/lib/api";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { ArrowLeftIcon, EditIcon } from "@/components/icons";
 import { formatAuDate } from "@/lib/au";
+import { formatPurchaseQuantity } from "@/lib/purchase-quantity";
 
 interface OrderProduct {
   id: string;
   productId: string | number;
   supplierCode?: string;
+  caseQuantity?: number;
   orderedQuantity?: number;
   receivedQuantity?: number;
   orderedCost?: number;
@@ -109,11 +111,11 @@ function PurchaseReceiptPanel({ order, onReceived }: { order: OrderDetail; onRec
         <h2 id="receive-stock-heading" className="text-sm font-semibold">Receive stock</h2>
       </div>
       <div className="space-y-3 p-4">
-        <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive</span></div>
+        <div className="grid grid-cols-[1fr_100px] gap-3 text-xs font-semibold text-[var(--oh-muted)]"><span>Product ID · outstanding</span><span>Receive items</span></div>
         {outstanding.map((line) => {
           const remaining = Number(line.orderedQuantity ?? 0) - Number(line.receivedQuantity ?? 0);
           return <label key={line.id} className="grid grid-cols-[1fr_100px] items-center gap-3 text-sm">
-            <span className="min-w-0 truncate">{display(line.productId)} · {remaining}</span>
+            <span className="min-w-0 truncate">{display(line.productId)} · {formatPurchaseQuantity(remaining, line.caseQuantity)}</span>
             <input type="number" min="0" max={remaining} step="0.0001" inputMode="decimal" aria-label={`Receive quantity for product ${line.productId}`} value={quantities[line.id] ?? ""} onChange={(event) => {
               idempotencyKey.current = null;
               setQuantities((current) => ({ ...current, [line.id]: event.target.value }));
@@ -249,8 +251,8 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
                             <tr key={product.id} className="transition-colors hover:bg-[var(--oh-surface)]/60">
                               <td className="px-4 py-3.5 font-medium text-[var(--oh-text)] sm:px-5">{display(product.productId)}</td>
                               <td className="px-4 py-3.5 text-[var(--oh-text-secondary)]">{display(product.supplierCode)}</td>
-                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{product.orderedQuantity ?? "—"}</td>
-                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{product.receivedQuantity ?? "—"}</td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{formatPurchaseQuantity(product.orderedQuantity, product.caseQuantity)}</td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{formatPurchaseQuantity(product.receivedQuantity, product.caseQuantity)}</td>
                               <td className="px-4 py-3.5 text-right font-medium tabular-nums text-[var(--oh-text)] sm:px-5">{money(product.orderedCost)}</td>
                             </tr>
                           ))}
