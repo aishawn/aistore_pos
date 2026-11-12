@@ -2270,7 +2270,8 @@ public class ShopfrontIntegrationController {
                 }
             }
             Long supplierId = cachedMappedSupplierId(store, supplierSourceId, outletId, supplierCache);
-            if (supplierId == null) {
+            boolean emptySupplierlessOrder = supplierId == null && sourceLines.isArray() && sourceLines.isEmpty();
+            if (supplierId == null && !emptySupplierlessOrder) {
                 skipped++;
                 markPurchaseOrderSkipped(store, sourceId, outletId, "unmapped_supplier");
                 if (errors.size() < 25) {
@@ -2312,7 +2313,7 @@ public class ShopfrontIntegrationController {
                 }
                 BigDecimal ordered = decimal(line, "orderedQuantity");
                 BigDecimal received = decimal(line, "receivedQuantity");
-                if (ordered == null || ordered.signum() < 0 || (received != null && received.signum() < 0)) {
+                if (ordered == null || ordered.signum() < 0) {
                     skippedLines++;
                     if (errors.size() < 25) {
                         errors.add("Purchase order " + sourceId + " skipped a line with an invalid quantity");
@@ -2326,7 +2327,7 @@ public class ShopfrontIntegrationController {
                         decimal(line, "caseQuantity"), ordered, received, decimal(line, "baseCost"),
                         decimal(line, "orderedCost"), outletId});
             }
-            if (lineRows.isEmpty()) {
+            if (lineRows.isEmpty() && !emptySupplierlessOrder) {
                 skipped++;
                 markPurchaseOrderSkipped(store, sourceId, outletId,
                         "no_importable_lines:" + skippedLines);

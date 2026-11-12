@@ -1,0 +1,10 @@
+ALTER TABLE purchase_order
+    ALTER COLUMN total_cost TYPE NUMERIC(20,8),
+    ALTER COLUMN expected_total TYPE NUMERIC(20,8);
+
+ALTER TABLE order_product
+    ALTER COLUMN base_cost TYPE NUMERIC(20,8),
+    ALTER COLUMN ordered_cost TYPE NUMERIC(20,8),
+    ALTER COLUMN fees TYPE NUMERIC(20,8),
+    ALTER COLUMN freight TYPE NUMERIC(20,8),
+    ALTER COLUMN rebate TYPE NUMERIC(20,8);
