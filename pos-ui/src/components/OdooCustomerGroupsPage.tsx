@@ -17,7 +17,7 @@ import {
 
 const PAGE_SIZE = 40;
 
-export function OdooCustomerGroupsPage() {
+export function OdooCustomerGroupsPage({ onClose }: { onClose?: () => void } = {}) {
   const { hasPermission } = useAuth();
   const isAdmin = hasPermission("customers.groups");
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -153,6 +153,7 @@ export function OdooCustomerGroupsPage() {
         <div className="flex shrink-0 items-center gap-2">
           {isAdmin && <button type="button" onClick={openCreate} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New group</button>}
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={resultsBusy || connected !== true} aria-label="Refresh customer groups" title="Refresh customer groups" className="grid size-11 place-items-center rounded-lg border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={16} /></button>
+          {onClose && <button type="button" onClick={onClose} aria-label="Close" className="grid size-11 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>}
         </div>
       </header>
 

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { OdooRecordLink } from "@/components/OdooRecordLink";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import { AlertCircle, ChevronLeft, LoaderCircle, RefreshCw, Search, Wallet } from "lucide-react";
+import { AlertCircle, ChevronLeft, LoaderCircle, RefreshCw, Search, Wallet, X } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import {
   getOdooCustomerBalances,
@@ -220,7 +220,7 @@ export function OdooCustomerBalancesPage() {
                 <h2 id="balance-invoices-title" className="text-lg font-semibold text-[var(--oh-text)]">{selected.name}</h2>
                 <p className="mt-1 text-sm text-[var(--oh-muted)]">Owing {money(selected.credit, selected.currency)} · open posted invoices</p>
               </div>
-              <button type="button" onClick={() => setSelected(null)} className="hidden h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold sm:inline-flex sm:items-center">Close</button>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="hidden h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:grid"><X size={18} /></button>
             </header>
             {invoiceLoading ? (
               <p className="mt-6 flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading invoices…</p>

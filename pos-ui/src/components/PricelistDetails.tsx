@@ -3,6 +3,7 @@
 import { ModalOverlay } from "@/components/ModalOverlay";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { api, type Page } from "@/lib/api";
 import type { OdooPricelistRecord } from "@/lib/odoo-api";
@@ -60,9 +61,13 @@ export function PricelistDetails({ list, onClose }: { list: OdooPricelistRecord;
   return (
     <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40">
       <section role="dialog" aria-modal="true" aria-labelledby="price-details-title" className="h-full w-full max-w-2xl overflow-y-auto bg-white p-4 sm:p-6">
-        <button type="button" onClick={onClose} className="min-h-11 rounded border px-3">Close price list</button>
-        <h2 id="price-details-title" className="mt-4 text-xl font-semibold">{list.name}</h2>
-        <p className="my-3 text-sm text-[var(--oh-muted)]">{list.currency || "AUD"} · Orithos price list rules and assigned customers.</p>
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="price-details-title" className="text-xl font-semibold">{list.name}</h2>
+            <p className="mt-3 text-sm text-[var(--oh-muted)]">{list.currency || "AUD"} · Orithos price list rules and assigned customers.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
+        </header>
         {busy && <p role="status" className="py-4">Loading details…</p>}
         {error && (
           <p role="alert" className="py-4 text-red-800">
