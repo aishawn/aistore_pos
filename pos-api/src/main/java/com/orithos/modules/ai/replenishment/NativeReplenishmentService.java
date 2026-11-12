@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.replenishment;
 
 import com.orithos.modules.ai.report.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class NativeReplenishmentService {
     private final LongSupplier currentTimeMillis;
     private final ConcurrentHashMap<CacheKey, CachedPlan> cache = new ConcurrentHashMap<>();
 
+    @Autowired
     public NativeReplenishmentService(JdbcTemplate jdbc) {
         this(jdbc, System::currentTimeMillis);
     }

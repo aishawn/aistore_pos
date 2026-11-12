@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -27,6 +28,18 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class NativeReplenishmentServiceTest {
+
+    @Test
+    void springUsesJdbcConstructorWhenTestClockConstructorAlsoExists() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class));
+            context.register(NativeReplenishmentService.class);
+
+            context.refresh();
+
+            org.junit.jupiter.api.Assertions.assertNotNull(context.getBean(NativeReplenishmentService.class));
+        }
+    }
 
     @Test
     void isolatesCachedPlansByVendorOutletParametersAndExpiresThem() {
