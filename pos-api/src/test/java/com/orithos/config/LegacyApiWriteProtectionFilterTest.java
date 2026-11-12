@@ -184,6 +184,26 @@ class LegacyApiWriteProtectionFilterTest {
     }
 
     @Test
+    void nativeClassificationRoutesPassThroughAfterShopfrontCutover() throws Exception {
+        LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
+        for (var route : new String[][]{
+                {"GET", "/api/classifications/category"},
+                {"GET", "/api/classifications/brand/mdb-references"},
+                {"POST", "/api/classifications/category"},
+                {"PUT", "/api/classifications/category/12"},
+                {"DELETE", "/api/classifications/tag/3"},
+                {"PUT", "/api/classifications/family/9/products"}
+        }) {
+            MockHttpServletRequest request = new MockHttpServletRequest(route[0], route[1]);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilter(request, response, chain);
+            assertEquals(200, response.getStatus(), route[0] + " " + route[1]);
+            assertSame(request, (ServletRequest) chain.getRequest());
+        }
+    }
+
+    @Test
     void nativeSupplyPlanAndCartPassThroughWhileLegacySupplyWritesRemainRetired() throws Exception {
         LegacyApiWriteProtectionFilter filter = new LegacyApiWriteProtectionFilter(true);
         for (var route : new String[][]{

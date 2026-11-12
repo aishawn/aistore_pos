@@ -111,11 +111,12 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedDefaultTags() {
         try {
-            if (classificationMapper.count(ClassificationType.TAG.table()) > 0) return;
+            long outletId = 1L;
+            if (classificationMapper.count(ClassificationType.TAG.table(), outletId) > 0) return;
             for (String name : DEFAULT_TAGS) {
                 Classification tag = new Classification();
                 tag.setName(name);
-                classificationMapper.insert(ClassificationType.TAG.table(), tag);
+                classificationMapper.insert(ClassificationType.TAG.table(), tag, outletId);
             }
             System.out.println("[DataInitializer] Seeded default product tags.");
         } catch (DataAccessException e) {
@@ -125,11 +126,12 @@ public class DataInitializer implements CommandLineRunner {
 
     private void seedDefaultFamilies() {
         try {
-            if (classificationMapper.count(ClassificationType.FAMILY.table()) > 0) return;
+            long outletId = 1L;
+            if (classificationMapper.count(ClassificationType.FAMILY.table(), outletId) > 0) return;
             for (String name : DEFAULT_FAMILIES) {
                 Classification family = new Classification();
                 family.setName(name);
-                classificationMapper.insert(ClassificationType.FAMILY.table(), family);
+                classificationMapper.insert(ClassificationType.FAMILY.table(), family, outletId);
             }
             System.out.println("[DataInitializer] Seeded default product families.");
         } catch (DataAccessException e) {

@@ -97,6 +97,10 @@ public final class LegacyApiWriteProtectionFilter extends OncePerRequestFilter {
         if (path.equals("/api/products") || path.startsWith("/api/products/")) {
             return false;
         }
+        // Brand / category / family / tag CRUD is outlet-scoped via ClassificationService.
+        if (path.equals("/api/classifications") || path.startsWith("/api/classifications/")) {
+            return false;
+        }
         if (path.equals("/api/supply-chain/plan")
                 || path.equals("/api/supply-chain/settings")
                 || path.matches("/api/supply-chain/suppliers/[0-9]+/cart")) {
