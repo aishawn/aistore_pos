@@ -280,12 +280,12 @@ public interface ProductMapper {
     // Always CAST(... AS TEXT). Scope to the caller's vendor/outlet like product list.
 
     @Select("""
-            SELECT CAST(b.id AS TEXT) AS id, b.name AS name, COUNT(*) AS product_count
-            FROM product p
-            INNER JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = #{vendorId}
+            SELECT CAST(b.id AS TEXT) AS id, b.name AS name, COUNT(p.id) AS product_count
+            FROM brand b
+            INNER JOIN outlet o ON o.id = b.outlet_id AND o.vendor_id = #{vendorId}
               AND o.id = #{outletId} AND o.deleted_at IS NULL
-            INNER JOIN brand b ON b.id = p.brand_id
-            WHERE p.deleted_at IS NULL
+            LEFT JOIN product p ON p.brand_id = b.id AND p.outlet_id = b.outlet_id AND p.deleted_at IS NULL
+            WHERE b.deleted_at IS NULL
             GROUP BY b.id, b.name
             ORDER BY b.name
             """)
@@ -366,27 +366,27 @@ public interface ProductMapper {
                                                     @Param("outletId") Long outletId);
 
     @Select("""
-            SELECT CAST(tr.id AS TEXT) AS id, tr.name AS name, COUNT(*) AS product_count
-            FROM product p
-            INNER JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = #{vendorId}
+            SELECT CAST(tr.id AS TEXT) AS id, tr.name AS name, COUNT(p.id) AS product_count
+            FROM tax_rate tr
+            INNER JOIN outlet o ON o.id = tr.outlet_id AND o.vendor_id = #{vendorId}
               AND o.id = #{outletId} AND o.deleted_at IS NULL
-            INNER JOIN tax_rate tr ON tr.id = p.tax_rate_id
-            WHERE p.deleted_at IS NULL
-            GROUP BY tr.id, tr.name
-            ORDER BY tr.name
+            LEFT JOIN product p ON p.tax_rate_id = tr.id AND p.outlet_id = tr.outlet_id AND p.deleted_at IS NULL
+            WHERE tr.deleted_at IS NULL
+            GROUP BY tr.id, tr.name, tr.amount
+            ORDER BY tr.amount, tr.name
             """)
     List<ProductFilterOption> listTaxRateFilterOptions(@Param("vendorId") Long vendorId,
                                                        @Param("outletId") Long outletId);
 
     @Select("""
-            SELECT CAST(tr.id AS TEXT) AS id, tr.name AS name, COUNT(*) AS product_count
-            FROM product p
-            INNER JOIN outlet o ON o.id = p.outlet_id AND o.vendor_id = #{vendorId}
+            SELECT CAST(tr.id AS TEXT) AS id, tr.name AS name, COUNT(p.id) AS product_count
+            FROM tax_rate tr
+            INNER JOIN outlet o ON o.id = tr.outlet_id AND o.vendor_id = #{vendorId}
               AND o.id = #{outletId} AND o.deleted_at IS NULL
-            INNER JOIN tax_rate tr ON tr.id = p.cost_tax_rate_id
-            WHERE p.deleted_at IS NULL
-            GROUP BY tr.id, tr.name
-            ORDER BY tr.name
+            LEFT JOIN product p ON p.cost_tax_rate_id = tr.id AND p.outlet_id = tr.outlet_id AND p.deleted_at IS NULL
+            WHERE tr.deleted_at IS NULL
+            GROUP BY tr.id, tr.name, tr.amount
+            ORDER BY tr.amount, tr.name
             """)
     List<ProductFilterOption> listCostTaxRateFilterOptions(@Param("vendorId") Long vendorId,
                                                            @Param("outletId") Long outletId);
