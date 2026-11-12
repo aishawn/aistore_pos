@@ -18,7 +18,10 @@ import {
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
-const money = (amount: number, currency?: string | null) => `${currency ?? ""} ${Number(amount).toFixed(2)}`;
+const money = (amount: number | null | undefined, currency?: string | null) =>
+  amount == null || Number.isNaN(Number(amount))
+    ? "—"
+    : `${currency ?? ""} ${Number(amount).toFixed(2)}`;
 
 export function OdooCustomerBalancesPage() {
   const revision = useRef(0);
@@ -119,7 +122,7 @@ export function OdooCustomerBalancesPage() {
   return (
     <AdminPageLayout
       title="Receivables"
-      subtitle="Current receivables and open invoices. Record and reconcile payments in Orithos Accounting."
+      subtitle="Shopfront-synced customer balances (current owing). Total invoiced rebuild is not enabled yet."
       compact
       count={loading || error ? undefined : items.length}
       countLabel="Customers on this page"
@@ -157,7 +160,7 @@ export function OdooCustomerBalancesPage() {
             <tr>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Price list</th>
-              <th className="px-4 py-3 text-right">Total invoiced</th>
+              <th className="px-4 py-3 text-right">Invoiced total</th>
               <th className="px-4 py-3 text-right">Owing</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>

@@ -208,7 +208,8 @@ export interface OdooCustomerBalanceRecord {
   ref: string | null;
   credit: number;
   currency?: string | null;
-  totalInvoiced: number;
+  /** Null when Orithos has no AR invoice rebuild yet; UI should show em dash, not $0.00. */
+  totalInvoiced: number | null;
   pricelist: string | null;
 }
 
@@ -1606,19 +1607,23 @@ export async function getOdooCustomerBalances(options: { query?: string; owingOn
     name: options.query,
     page: pageNumber,
     size,
+    ...(options.owingOnly ? { minOwing: 0.01 } : {}),
   });
-  let items: OdooCustomerBalanceRecord[] = page.items.map((customer) => ({
-    id: Number(customer.id),
-    name: customer.name,
-    phone: customer.phone || null,
-    email: customer.email || null,
-    ref: customer.code || null,
-    credit: Number(customer.currentOwing ?? 0),
-    currency: "AUD",
-    totalInvoiced: 0,
-    pricelist: customer.priceListName || null,
-  }));
-  if (options.owingOnly) items = items.filter((item) => item.credit > 0);
+  const items: OdooCustomerBalanceRecord[] = page.items.map((customer) => {
+    const credit = Number(customer.currentOwing ?? 0);
+    return {
+      id: Number(customer.id),
+      name: customer.name,
+      phone: customer.phone || null,
+      email: customer.email || null,
+      ref: customer.code || null,
+      credit,
+      currency: "AUD",
+      // Snapshot balances come from Shopfront currentOwing; invoice totals are not rebuilt yet.
+      totalInvoiced: null,
+      pricelist: customer.priceListName || null,
+    };
+  });
   return {
     items,
     limit: size,
