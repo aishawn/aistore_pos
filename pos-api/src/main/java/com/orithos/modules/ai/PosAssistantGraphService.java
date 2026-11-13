@@ -237,7 +237,9 @@ public class PosAssistantGraphService {
         String lower = text.toLowerCase(java.util.Locale.ROOT);
         boolean unavailable = "stock_history".equals(type)
                 || answer == null || answer.isBlank() || lower.contains("unavailable")
+                || lower.contains("timeout") || lower.contains("timed out")
                 || lower.contains("not available") || lower.contains("不可用")
+                || lower.contains("超时")
                 || lower.contains("无法取得") || lower.contains("无法获取")
                 || lower.contains("暂时无法") || lower.contains("无法查询")
                 || lower.contains("not configured")

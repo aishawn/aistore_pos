@@ -410,6 +410,23 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
+    void mapsReplenishmentTimeoutResponsesToRetryableUnavailableCards() {
+        for (String[] sample : new String[][]{
+                {"What should I restock?", "The replenishment query timed out, so no suggestions were generated."},
+                {"补货建议", "补货查询超时，未生成建议。请稍后重试或打开补货页面。"}
+        }) {
+            AssistantCard card = PosAssistantGraphService.cardsFor(
+                    "navigate",
+                    new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
+                    sample[1], sample[0]).getFirst();
+
+            assertEquals("unavailable", card.status(), sample[1]);
+            assertTrue(card.retryable(), sample[1]);
+            assertTrue(card.items().isEmpty(), sample[1]);
+        }
+    }
+
+    @Test
     void mapsUnavailableGroceryRecommendationsWithoutExtractingItems() {
         AssistantCard card = PosAssistantGraphService.cardsFor(
                 "navigate",
