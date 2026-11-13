@@ -73,6 +73,11 @@ public class GenerateResponseNode implements NodeAction {
             return Map.of("answer", summary);
         }
 
+        String routeSource = state.value("route_source", String.class).orElse("");
+        if ("unknown".equals(intent) && "deterministic".equals(routeSource)) {
+            return Map.of("answer", deterministicFallback(question, intent));
+        }
+
         // Generic stock questions have no product entity to resolve. Keep them
         // deterministic so a provider delay cannot turn a clarification into a
         // 30-second timeout.
@@ -148,7 +153,9 @@ public class GenerateResponseNode implements NodeAction {
     private static String deterministicFallback(String question, String intent) {
         boolean chinese = isChinese(question);
         String normalized = question == null ? "" : question.trim().toLowerCase();
-        if (normalized.matches(".*(?:/admin/|/internal/|ignore previous|previous instructions|越权|管理员页面).*")) {
+        if (normalized.matches(".*(?:/(?:admin|platform|internal|debug)/|"
+                + "ignore previous|previous instructions|忽略之前(?:的)?(?:指令|规则)|"
+                + "越权|管理员页面).*")) {
             return chinese
                     ? "我不能打开未授权页面。请从当前门店菜单选择你有权限的功能。"
                     : "I cannot open an unauthorised page. Please choose an available function from this store menu.";
