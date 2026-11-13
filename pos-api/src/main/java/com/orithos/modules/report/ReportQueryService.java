@@ -131,8 +131,18 @@ public class ReportQueryService {
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL THEN s.total_price ELSE 0 END), 0) AS sales_amount,
                        COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
                        COALESCE(SUM(s.total_price), 0) AS net_sales,
-                       COALESCE(SUM(s.total_tax), 0) AS tax
+                       COALESCE(SUM(COALESCE(s.total_tax, line.tax)), 0) AS tax,
+                       COUNT(*) FILTER (WHERE s.total_tax IS NULL
+                         AND (COALESCE(line.item_count, 0) = 0
+                           OR COALESCE(line.tax_missing_count, 1) > 0)) AS tax_missing_count
                 FROM sale s
+                LEFT JOIN LATERAL (
+                  SELECT SUM(si.tax) AS tax,
+                         COUNT(*) AS item_count,
+                         COUNT(*) FILTER (WHERE si.tax IS NULL) AS tax_missing_count
+                  FROM sale_item si
+                  WHERE si.sale_id = s.id
+                ) line ON TRUE
                 WHERE s.outlet_id = ?
                   AND """ + REPORTABLE_SALE_STATUS_SQL + """
                   AND COALESCE(s.business_date, DATE(s.local_sold_at),
@@ -155,7 +165,11 @@ public class ReportQueryService {
             day.put("salesAmount", toDecimal(row.get("sales_amount")).setScale(2, RoundingMode.HALF_UP));
             day.put("refundAmount", toDecimal(row.get("refund_amount")).setScale(2, RoundingMode.HALF_UP));
             day.put("netSales", toDecimal(row.get("net_sales")).setScale(2, RoundingMode.HALF_UP));
-            day.put("tax", toDecimal(row.get("tax")).setScale(2, RoundingMode.HALF_UP));
+            boolean taxAvailable = toDecimal(row.get("tax_missing_count")).signum() == 0;
+            day.put("taxAvailable", taxAvailable);
+            day.put("tax", taxAvailable
+                    ? toDecimal(row.get("tax")).setScale(2, RoundingMode.HALF_UP)
+                    : null);
             days.add(day);
         }
         Map<String, Object> result = new LinkedHashMap<>();
