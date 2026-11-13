@@ -118,7 +118,20 @@
     <select id="page" resultMap="OrderListMap">
         <include refid="listSelect"/>
         <include refid="filters"/>
-        ORDER BY po.created_at DESC
+        ORDER BY
+            CASE WHEN NULLIF(BTRIM(COALESCE(sup.name, from_outlet.name)), '') IS NULL THEN 1 ELSE 0 END ASC,
+            ARRAY(
+                SELECT CASE
+                    WHEN token[1] ~ '^[0-9]+$' THEN
+                        '0:' || LPAD(LENGTH(COALESCE(NULLIF(LTRIM(token[1], '0'), ''), '0'))::TEXT, 3, '0')
+                             || ':' || COALESCE(NULLIF(LTRIM(token[1], '0'), ''), '0')
+                    ELSE '1:' || token[1]
+                END
+                FROM regexp_matches(lower(COALESCE(sup.name, from_outlet.name, '')),
+                                    '([0-9]+|[^0-9]+)', 'g') WITH ORDINALITY AS parts(token, ordinality)
+                ORDER BY ordinality
+            ) ASC,
+            po.id ASC
         LIMIT #{q.size} OFFSET #{q.offset}
     </select>
 

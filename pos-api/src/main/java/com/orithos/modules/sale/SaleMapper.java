@@ -91,16 +91,16 @@ public interface SaleMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
         INSERT INTO sale (register_id, user_id, customer_id, outlet_id, status, invoice_id, note,
-                          total_quantity, total_price, total_tax, outstanding, total_change, cashout,
+                          total_quantity, total_price, total_tax, total_discount, outstanding, total_change, cashout,
                           business_date, local_sold_at)
         VALUES (#{registerId}, #{userId}, #{customerId}, #{outletId}, #{status}, #{invoiceId}, #{note},
-                #{totalQuantity}, #{totalPrice}, #{totalTax}, #{outstanding}, #{totalChange}, #{cashout},
+                #{totalQuantity}, #{totalPrice}, #{totalTax}, #{totalDiscount}, #{outstanding}, #{totalChange}, #{cashout},
                 #{businessDate}, #{localSoldAt})
         """)
     int insert(Sale s);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO sale (linked_sale_id, register_id, user_id, customer_id, outlet_id, status, invoice_id, refund_reason, total_quantity, total_price, total_tax, outstanding, total_change, total_rounding, business_date, local_sold_at) VALUES (#{linkedSaleId}, #{registerId}, #{userId}, #{customerId}, #{outletId}, 'COMPLETED', #{invoiceId}, #{refundReason}, #{totalQuantity}, #{totalPrice}, #{totalTax}, 0, 0, #{totalRounding}, #{businessDate}, #{localSoldAt})")
+    @Insert("INSERT INTO sale (linked_sale_id, register_id, user_id, customer_id, outlet_id, status, invoice_id, refund_reason, total_quantity, total_price, total_tax, total_discount, outstanding, total_change, total_rounding, business_date, local_sold_at) VALUES (#{linkedSaleId}, #{registerId}, #{userId}, #{customerId}, #{outletId}, 'COMPLETED', #{invoiceId}, #{refundReason}, #{totalQuantity}, #{totalPrice}, #{totalTax}, #{totalDiscount}, 0, 0, #{totalRounding}, #{businessDate}, #{localSoldAt})")
     int insertRefund(Sale sale);
 
     @Update("UPDATE sale SET status='REFUNDED' WHERE id=#{id} AND status='COMPLETED' AND outlet_id=#{outletId}")
@@ -161,6 +161,15 @@ public interface SaleMapper {
     @Select("SELECT COUNT(*) FROM customer c JOIN outlet o ON o.id=c.outlet_id WHERE c.id=#{id} AND o.vendor_id=#{vendorId} AND o.id=#{outletId} AND o.deleted_at IS NULL")
     long customerExists(@Param("id") Long id, @Param("vendorId") Long vendorId,
                         @Param("outletId") Long outletId);
+
+    @Select("""
+        SELECT COALESCE(MAX(CASE WHEN c.price_list_id IS NOT NULL OR cg.price_list_id IS NOT NULL THEN 1 ELSE 0 END), 0)
+        FROM customer c
+        LEFT JOIN customer_group cg ON cg.id = c.customer_group_id
+          AND cg.outlet_id = c.outlet_id AND cg.deleted_at IS NULL
+        WHERE c.id = #{customerId} AND c.outlet_id = #{outletId} AND c.deleted_at IS NULL
+        """)
+    int customerHasAssignedPriceList(@Param("customerId") Long customerId, @Param("outletId") Long outletId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""

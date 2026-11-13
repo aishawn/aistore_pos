@@ -187,6 +187,7 @@ public interface CustomerMapper {
         INNER JOIN sale_item si ON si.sale_id = s.id
         WHERE s.status = 'COMPLETED'
           AND s.refund_reason IS NULL
+          AND s.outlet_id = #{outletId}
           AND s.customer_id IN
           <foreach collection="customerIds" item="id" open="(" separator="," close=")">#{id}</foreach>
           AND COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date)) &gt;= CAST(#{from} AS date)
@@ -194,7 +195,8 @@ public interface CustomerMapper {
         GROUP BY s.customer_id, COALESCE(s.business_date, CAST(s.local_sold_at AS date), CAST(s.created_at AS date))
         </script>
         """)
-    List<CustomerDailyQuantity> salesQuantityByDay(@Param("customerIds") List<Long> customerIds,
+    List<CustomerDailyQuantity> salesQuantityByDay(@Param("outletId") Long outletId,
+                                                   @Param("customerIds") List<Long> customerIds,
                                                    @Param("from") String from,
                                                    @Param("to") String to);
 

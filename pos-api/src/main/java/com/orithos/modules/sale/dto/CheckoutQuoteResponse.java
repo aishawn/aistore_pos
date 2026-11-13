@@ -10,6 +10,6 @@ public record CheckoutQuoteResponse(
         BigDecimal gst,
         BigDecimal total) {
     public record Line(Long productId, String name, BigDecimal quantity,
-                       BigDecimal unitPrice, BigDecimal total, BigDecimal taxRate,
+                       BigDecimal unitPrice, BigDecimal discountPercent, BigDecimal total, BigDecimal taxRate,
                        BigDecimal gst) {}
 }

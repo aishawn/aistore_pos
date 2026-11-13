@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Truck } from "lucide-react";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
+import { naturalSortRows } from "@/lib/natural-sort";
 
 type SupplierRow = {
   id: number | string;
@@ -27,6 +28,10 @@ export function NativeSupplierDirectoryPage() {
     page,
     size: PAGE_SIZE,
   });
+  const sortedItems = useMemo(
+    () => naturalSortRows(items, (supplier) => supplier.name, (supplier) => supplier.id),
+    [items],
+  );
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -56,7 +61,7 @@ export function NativeSupplierDirectoryPage() {
                 <tr><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Contact</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {items.map((supplier) => (
+                {sortedItems.map((supplier) => (
                   <tr key={String(supplier.id)} className="hover:bg-[var(--oh-surface)]">
                     <td className="px-4 py-3"><Link href={`/suppliers/${supplier.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">{supplier.name}</Link>{supplier.code ? <span className="ml-2 text-xs text-[var(--oh-muted)]">{supplier.code}</span> : null}</td>
                     <td className="px-4 py-3 text-[var(--oh-muted)]">{supplier.phone || supplier.email || "—"}</td>

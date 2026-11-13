@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PackageSearch, Search } from "lucide-react";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
+import { naturalSortRows } from "@/lib/natural-sort";
 
 type ProductRow = {
   id: number | string;
@@ -28,6 +29,10 @@ export function NativeProductCataloguePage() {
     page,
     size: PAGE_SIZE,
   });
+  const sortedItems = useMemo(
+    () => naturalSortRows(items, (product) => product.name, (product) => product.id),
+    [items],
+  );
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -57,7 +62,7 @@ export function NativeProductCataloguePage() {
                 <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Brand</th><th className="px-4 py-3 text-right">Price</th><th className="px-4 py-3 text-right">Stock</th><th className="px-4 py-3" /></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {items.map((product) => (
+                {sortedItems.map((product) => (
                   <tr key={String(product.id)} className="hover:bg-[var(--oh-surface)]">
                     <td className="px-4 py-3"><Link href={`/products/${product.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">{product.name}</Link></td>
                     <td className="px-4 py-3 text-[var(--oh-muted)]">{product.categoryName || "—"}</td>

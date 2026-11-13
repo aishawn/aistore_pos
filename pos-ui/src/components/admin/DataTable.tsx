@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { naturalCompare } from "@/lib/natural-sort";
 
 export interface Column {
   /** Header label (rendered uppercase). */
@@ -22,6 +23,10 @@ export function DataTable({
   totals?: (React.ReactNode | null)[];
   className?: string;
 }) {
+  const sortedRows = rows.map((row, index) => ({ row, index })).sort((a, b) => {
+    const compared = naturalCompare(cellText(a.row[0]), cellText(b.row[0]));
+    return compared || a.index - b.index;
+  }).map(({ row }) => row);
   const alignCls = (a?: Column["align"]) =>
     a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
 
@@ -44,7 +49,7 @@ export function DataTable({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, r) => (
+        {sortedRows.map((row, r) => (
           <tr key={r}>
             {row.map((cell, c) => (
               <td
@@ -77,4 +82,13 @@ export function DataTable({
       </tbody>
     </table>
   );
+}
+
+function cellText(value: React.ReactNode): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map(cellText).join(" ");
+  if (value && typeof value === "object" && "props" in value) {
+    return cellText((value as React.ReactElement<{ children?: React.ReactNode }>).props.children);
+  }
+  return "";
 }

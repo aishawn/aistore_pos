@@ -38,6 +38,7 @@ public class SaleController {
     @PostMapping("/quote")
     public ApiResult<CheckoutQuoteResponse> quote(@RequestBody CheckoutRequest req) {
         nativePosGate.requireEnabled();
+        requireDiscountPermission(req);
         return ApiResult.ok(checkoutService.quote(req));
     }
 
@@ -45,6 +46,7 @@ public class SaleController {
     public ApiResult<CheckoutResponse> checkout(@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                 @RequestBody CheckoutRequest req) {
         nativePosGate.requireEnabled();
+        requireDiscountPermission(req);
         return ApiResult.ok(checkoutService.checkout(req, idempotencyKey));
     }
 
@@ -100,6 +102,14 @@ public class SaleController {
     private static ResponseStatusException retiredSaleMutation() {
         return new ResponseStatusException(HttpStatus.GONE,
                 "Direct sale mutations are retired. Use the tendered checkout or refund workflow.");
+    }
+
+    private void requireDiscountPermission(CheckoutRequest request) {
+        if (request != null && request.getItems() != null && request.getItems().stream()
+                .anyMatch(item -> item != null && item.getDiscountPercent() != null
+                        && item.getDiscountPercent().signum() > 0)) {
+            permissionAccess.requirePermission("sell.discount");
+        }
     }
 
     private Long requireVendor() {

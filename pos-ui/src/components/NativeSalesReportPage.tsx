@@ -195,7 +195,7 @@ export function NativeSalesReportPage() {
                 </tr>
               </thead>
               <tbody>
-                {report?.dailyTrend.map((row, index) => (
+                {[...(report?.dailyTrend ?? [])].sort((a, b) => a.date.localeCompare(b.date)).map((row, index) => (
                   <tr
                     key={String(row.date)}
                     className={index % 2 === 0 ? "bg-[var(--oh-surface-elevated)]" : "bg-[var(--oh-surface)]"}

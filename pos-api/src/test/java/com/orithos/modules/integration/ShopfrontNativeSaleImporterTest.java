@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
 import java.sql.ResultSet;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -86,6 +87,32 @@ class ShopfrontNativeSaleImporterTest {
         verify(jdbc).update(contains("external_payment_id"), any(Object[].class));
         verify(jdbc, never()).update(contains("inventory_movement"), any(Object[].class));
         verify(jdbc, never()).update(contains("product_inventory"), any(Object[].class));
+    }
+
+    @Test
+    void preservesShopfrontFourDecimalUnitPrices() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(java.util.List.of());
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenAnswer(invocation -> invocation.getArgument(0, String.class).contains("INSERT INTO sale")
+                        ? 99L : null);
+
+        var payload = new ObjectMapper().readTree("""
+                [{"external_id":"sf-four-decimal","status":"COMPLETED",
+                  "created_at":"2026-11-09T03:15:00Z","total_price":2.35,"total_tax":0.21,
+                  "items":[{"id":"line-1","quantity":1,"unit_price":2.3456,"line_total":2.35}]}]
+                """);
+
+        var result = new ShopfrontNativeSaleImporter(jdbc).upsertSales("skr", 87L, payload);
+
+        assertEquals(1, result.get("created"));
+        var saleItemInsert = org.mockito.Mockito.mockingDetails(jdbc).getInvocations().stream()
+                .filter(call -> call.getMethod().getName().equals("update")
+                        && call.getArgument(0, String.class).contains("INSERT INTO sale_item"))
+                .findFirst().orElseThrow();
+        Object[] values = (Object[]) saleItemInsert.getRawArguments()[1];
+        assertEquals(new BigDecimal("2.3456"), values[5]);
     }
 
     @Test

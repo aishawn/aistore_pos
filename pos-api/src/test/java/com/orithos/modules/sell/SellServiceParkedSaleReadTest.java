@@ -2,6 +2,7 @@ package com.orithos.modules.sell;
 
 import com.orithos.modules.customer.mapper.CustomerMapper;
 import com.orithos.modules.product.mapper.ProductMapper;
+import com.orithos.modules.sale.Sale;
 import com.orithos.modules.sale.SaleMapper;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.Test;
@@ -26,25 +27,35 @@ class SellServiceParkedSaleReadTest {
         ProductMapper products = mock(ProductMapper.class);
         CustomerMapper customers = mock(CustomerMapper.class);
         SaleMapper sales = mock(SaleMapper.class);
-        when(sales.page(3L, 12L, "PARKED", null, 50, 0)).thenReturn(List.of());
+        Sale parked = new Sale();
+        parked.setId(91L);
+        parked.setStatus("PARKED");
+        parked.setBusinessDate(com.orithos.common.AustraliaTime.today());
+        when(sales.page(3L, 12L, "PARKED", null, 50, 0)).thenReturn(List.of(parked));
 
         SellService service = new SellService(products, customers, sales);
 
-        assertEquals(List.of(), service.listParked());
+        assertEquals(List.of(parked), service.listParked());
+        assertEquals(false, parked.getStale());
         verify(sales).page(3L, 12L, "PARKED", null, 50, 0);
         verify(sales, never()).expireParkedBefore(any(), any());
     }
 
     @Test
-    void odooOnlyListingReturnsEmptyWithoutLegacyRead() {
+    void nativePosOnlyListingReadsParkedSalesFromOrithosLedger() {
         ProductMapper products = mock(ProductMapper.class);
         CustomerMapper customers = mock(CustomerMapper.class);
         SaleMapper sales = mock(SaleMapper.class);
+        Sale parked = new Sale();
+        parked.setId(92L);
+        parked.setStatus("PARKED");
+        parked.setBusinessDate(com.orithos.common.AustraliaTime.today());
+        when(sales.page(3L, 12L, "PARKED", null, 50, 0)).thenReturn(List.of(parked));
 
         SellService service = new SellService(products, customers, sales, true);
 
-        assertEquals(List.of(), service.listParked());
-        verify(sales, never()).page("PARKED", null, 50, 0);
+        assertEquals(List.of(parked), service.listParked());
+        verify(sales).page(3L, 12L, "PARKED", null, 50, 0);
         verify(sales, never()).expireParkedBefore(any(), any());
     }
 

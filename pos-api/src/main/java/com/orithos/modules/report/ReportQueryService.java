@@ -50,6 +50,7 @@ public class ReportQueryService {
     private final Clock clock;
     private final Duration nativeOverviewTtl;
     private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeOverviewCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<OverviewCacheKey, CachedOverview> nativeSalesOverviewCache = new ConcurrentHashMap<>();
 
     @Autowired
     public ReportQueryService(JdbcTemplate jdbc) {
@@ -351,41 +352,7 @@ public class ReportQueryService {
         CachedOverview cached = nativeOverviewCache.get(cacheKey);
         if (cached != null && now.isBefore(cached.expiresAt())) return copyOverviewPayload(cached.payload());
         if (cached != null) nativeOverviewCache.remove(cacheKey, cached);
-        List<Map<String, Object>> daily = jdbc.queryForList("""
-                SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
-                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
-                       COALESCE(SUM(s.total_price), 0) AS revenue,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
-                                         THEN s.total_price ELSE 0 END), 0) AS sales_amount,
-                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL
-                                         THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
-                       COALESCE(SUM(s.total_tax), 0) AS tax,
-                       COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL)
-                           AS transaction_count,
-                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL)
-                           AS refund_transaction_count,
-                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
-                       COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
-                         (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
-                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost,
-                       MAX(s.updated_at AT TIME ZONE 'UTC') AS data_as_of
-                FROM sale s
-                LEFT JOIN LATERAL (
-                  SELECT COUNT(*) AS line_count,
-                         SUM(si.cost * si.quantity) AS cost,
-                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count
-                  FROM sale_item si
-                  WHERE si.sale_id = s.id AND si.outlet_id = s.outlet_id
-                ) line ON TRUE
-                WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
-                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
-                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
-                GROUP BY 1
-                ORDER BY date
-                """, outletId, sqlDate(from), sqlDate(to));
+        List<Map<String, Object>> daily = nativeSalesByDay(outletId, from, to);
         List<Map<String, Object>> products = jdbc.queryForList("""
                 SELECT COALESCE(p.id, 0) AS id,
                        COALESCE(p.name, si.note, 'Unknown product') AS name,
@@ -438,10 +405,71 @@ public class ReportQueryService {
                 """, outletId);
         Map<String, Object> payload = nativeOverviewPayload(from, to, daily, products, inventory);
         payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
-        if (nativeOverviewCache.size() >= MAX_NATIVE_OVERVIEW_CACHE_ENTRIES) nativeOverviewCache.clear();
-        nativeOverviewCache.put(cacheKey, new CachedOverview(now.plus(nativeOverviewTtl),
-                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(payload))));
+        cache(nativeOverviewCache, cacheKey, now, payload);
         return copyOverviewPayload(payload);
+    }
+
+    /** Sales-only projection of the native overview, without product-ranking or inventory scans. */
+    public Map<String, Object> nativeSalesOverview(long vendorId, long outletId, LocalDate from, LocalDate to) {
+        requireReportOutlet(vendorId, outletId);
+        OverviewCacheKey cacheKey = new OverviewCacheKey(vendorId, outletId, from, to);
+        Instant now = clock.instant();
+        CachedOverview overview = nativeOverviewCache.get(cacheKey);
+        if (overview != null && now.isBefore(overview.expiresAt())) return copyOverviewPayload(overview.payload());
+        CachedOverview cached = nativeSalesOverviewCache.get(cacheKey);
+        if (cached != null && now.isBefore(cached.expiresAt())) return copyOverviewPayload(cached.payload());
+        if (cached != null) nativeSalesOverviewCache.remove(cacheKey, cached);
+
+        List<Map<String, Object>> daily = nativeSalesByDay(outletId, from, to);
+        Map<String, Object> payload = nativeOverviewPayload(from, to, daily, List.of());
+        payload.put("dataAsOf", nativeOverviewDataAsOf(daily));
+        cache(nativeSalesOverviewCache, cacheKey, now, payload);
+        return copyOverviewPayload(payload);
+    }
+
+    private List<Map<String, Object>> nativeSalesByDay(long outletId, LocalDate from, LocalDate to) {
+        return jdbc.queryForList("""
+                SELECT COALESCE(s.business_date, DATE(s.local_sold_at),
+                                DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) AS date,
+                       COALESCE(SUM(s.total_price), 0) AS revenue,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL
+                                         THEN s.total_price ELSE 0 END), 0) AS sales_amount,
+                       COALESCE(SUM(CASE WHEN COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL
+                                         THEN ABS(s.total_price) ELSE 0 END), 0) AS refund_amount,
+                       COALESCE(SUM(s.total_tax), 0) AS tax,
+                       COALESCE(SUM(COALESCE(s.total_discount, 0)), 0) AS discount,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) >= 0 AND s.refund_reason IS NULL)
+                           AS transaction_count,
+                       COUNT(*) FILTER (WHERE COALESCE(s.total_price, 0) < 0 OR s.refund_reason IS NOT NULL)
+                           AS refund_transaction_count,
+                       COUNT(*) FILTER (WHERE s.total_tax IS NULL) AS tax_missing_count,
+                       COUNT(*) FILTER (WHERE s.total_cost IS NULL AND
+                         (line.line_count = 0 OR line.missing_cost_count > 0)) AS cost_missing_count,
+                       COALESCE(SUM(COALESCE(s.total_cost, line.cost, 0)), 0) AS cost,
+                       MAX(s.updated_at AT TIME ZONE 'UTC') AS data_as_of
+                FROM sale s
+                LEFT JOIN LATERAL (
+                  SELECT COUNT(*) AS line_count,
+                         SUM(si.cost * si.quantity) AS cost,
+                         COUNT(*) FILTER (WHERE si.cost IS NULL) AS missing_cost_count
+                  FROM sale_item si
+                  WHERE si.sale_id = s.id AND si.outlet_id = s.outlet_id
+                ) line ON TRUE
+                WHERE s.outlet_id = ? AND """ + REPORTABLE_SALE_STATUS_SQL + """
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) >= CAST(? AS DATE)
+                  AND COALESCE(s.business_date, DATE(s.local_sold_at),
+                               DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')) <= CAST(? AS DATE)
+                GROUP BY 1
+                ORDER BY date
+                """, outletId, sqlDate(from), sqlDate(to));
+    }
+
+    private void cache(ConcurrentHashMap<OverviewCacheKey, CachedOverview> target,
+                       OverviewCacheKey key, Instant now, Map<String, Object> payload) {
+        if (target.size() >= MAX_NATIVE_OVERVIEW_CACHE_ENTRIES) target.clear();
+        target.put(key, new CachedOverview(now.plus(nativeOverviewTtl),
+                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(payload))));
     }
 
     private static Map<String, Object> copyOverviewPayload(Map<String, Object> payload) {

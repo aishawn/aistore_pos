@@ -85,7 +85,8 @@ public class CheckoutService {
             BigDecimal lineTotal = lineAmount(item);
             BigDecimal rate = taxPercent(item.getProductId());
             return new CheckoutQuoteResponse.Line(item.getProductId(), item.getName(), item.getQuantity(),
-                    item.getUnitPrice(), lineTotal, rate, GstMath.includedGst(lineTotal, rate));
+                    item.getUnitPrice(), item.getDiscountPercent(), lineTotal, rate,
+                    GstMath.includedGst(lineTotal, rate));
         }).toList();
         return new CheckoutQuoteResponse(lines, total.subtract(gst).setScale(2, RoundingMode.HALF_UP), gst, total);
     }
@@ -120,6 +121,9 @@ public class CheckoutService {
             throw new BusinessException(40000, "Each checkout line must include its confirmed quote price and GST rate.");
         }
         String tenderType = resolveTenderType(req.getTender());
+        if ("GIFT_CARD".equals(tenderType)) {
+            throw new BusinessException(40900, "Gift card payments are unavailable until the gift-card balance ledger is enabled.");
+        }
         boolean cash = "CASH".equals(tenderType);
         BigDecimal cashout = nonNeg(req.getCashout());
 
@@ -302,6 +306,8 @@ public class CheckoutService {
             intent.put("tender", req.getTender());
             intent.put("tendered", req.getTendered() == null ? null : req.getTendered().stripTrailingZeros().toPlainString());
             intent.put("cashout", req.getCashout() == null ? null : req.getCashout().stripTrailingZeros().toPlainString());
+            intent.put("expectedTotal", req.getExpectedTotal() == null ? null : req.getExpectedTotal().stripTrailingZeros().toPlainString());
+            intent.put("expectedGst", req.getExpectedGst() == null ? null : req.getExpectedGst().stripTrailingZeros().toPlainString());
             if (req.getItems() != null) {
                 ArrayNode items = intent.putArray("items");
                 for (CheckoutRequest.Item item : req.getItems()) {
@@ -309,6 +315,11 @@ public class CheckoutService {
                     line.put("productId", item.getProductId());
                     BigDecimal quantity = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
                     line.put("quantity", quantity.stripTrailingZeros().toPlainString());
+                    putDecimal(line, "unitPrice", item.getUnitPrice());
+                    BigDecimal discount = item.getDiscountPercent() == null
+                            ? BigDecimal.ZERO : item.getDiscountPercent();
+                    putDecimal(line, "discountPercent", discount);
+                    putDecimal(line, "expectedTaxRate", item.getExpectedTaxRate());
                 }
             }
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(objectMapper.writeValueAsBytes(intent));
@@ -361,6 +372,11 @@ public class CheckoutService {
         }
 
         BigDecimal gst = gstForItems(req.getItems());
+        BigDecimal discountTotal = BigDecimal.ZERO;
+        for (CheckoutRequest.Item item : req.getItems()) {
+            BigDecimal gross = item.getQuantity().multiply(item.getUnitPrice());
+            discountTotal = discountTotal.add(gross.subtract(lineAmount(item)));
+        }
         Sale sale = new Sale();
         sale.setStatus("PENDING");
         sale.setRegisterId(req.getRegisterId());
@@ -370,6 +386,7 @@ public class CheckoutService {
         sale.setTotalQuantity(quantity);
         sale.setTotalPrice(total);
         sale.setTotalTax(gst);
+        sale.setTotalDiscount(discountTotal.setScale(2, RoundingMode.HALF_UP));
         sale.setOutstanding(total);
         sale.setTotalChange(BigDecimal.ZERO);
         sale.setBusinessDate(AustraliaTime.today());
@@ -383,9 +400,11 @@ public class CheckoutService {
             BigDecimal qty = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
             BigDecimal unit = item.getUnitPrice();
             BigDecimal lineTotal = lineAmount(item);
+            BigDecimal gross = qty.multiply(unit);
             si.setQuantity(qty);
             si.setBasePrice(unit);
             si.setTotalPrice(lineTotal);
+            si.setSavings(gross.subtract(lineTotal).setScale(2, RoundingMode.HALF_UP));
             Long productId = item.getProductId();
             Product product = productMapper.findSellableForOutlet(productId, CurrentUser.vendorId(),
                     CurrentUser.outletId(), qty);
@@ -415,14 +434,26 @@ public class CheckoutService {
     }
 
     void prepareSellItems(CheckoutRequest req, Long vendorId, Long outletId) {
+        if (req.getCustomerId() != null
+                && saleMapper.customerHasAssignedPriceList(req.getCustomerId(), outletId) > 0) {
+            throw new BusinessException(40900,
+                    "This customer has an assigned price list. Customer-specific pricing is not yet supported; remove the customer or use a supported price before selling.");
+        }
         for (CheckoutRequest.Item item : req.getItems()) {
             if (item == null || item.getProductId() == null) {
                 throw new BusinessException(40000, "Each sale line must reference a catalogue product.");
             }
             BigDecimal quantity = item.getQuantity() == null ? BigDecimal.ONE : item.getQuantity();
             if (quantity.signum() <= 0) throw new BusinessException(40000, "Sale quantity must be greater than zero.");
+            BigDecimal discount = item.getDiscountPercent() == null ? BigDecimal.ZERO : item.getDiscountPercent();
+            if (discount.signum() < 0 || discount.compareTo(new BigDecimal("100")) > 0) {
+                throw new BusinessException(40000, "Line discount must be between 0 and 100 percent.");
+            }
             Product product = productMapper.findSellableForOutlet(item.getProductId(), vendorId, outletId, quantity);
             if (product == null) throw new BusinessException("Product is not available at this outlet.");
+            if (discount.signum() > 0 && Boolean.TRUE.equals(product.getPreventManualDiscounts())) {
+                throw new BusinessException(40900, "Manual discounts are disabled for " + product.getName() + ".");
+            }
             BigDecimal unitPrice = product.getPrice();
             if (unitPrice == null || unitPrice.signum() < 0) {
                 throw new BusinessException("Product has no valid outlet price. Configure a price before selling.");
@@ -439,7 +470,10 @@ public class CheckoutService {
             }
             item.setQuantity(quantity);
             item.setUnitPrice(unitPrice);
-            item.setLineTotal(quantity.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP));
+            item.setDiscountPercent(discount);
+            BigDecimal gross = quantity.multiply(unitPrice);
+            item.setLineTotal(gross.multiply(BigDecimal.ONE.subtract(discount.movePointLeft(2)))
+                    .setScale(2, RoundingMode.HALF_UP));
             item.setExpectedTaxRate(taxPercent);
             item.setName(product.getName());
         }
@@ -455,6 +489,10 @@ public class CheckoutService {
         BigDecimal unit = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
         if (item.getLineTotal() != null) return item.getLineTotal().setScale(2, RoundingMode.HALF_UP);
         return qty.multiply(unit).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private static void putDecimal(ObjectNode node, String field, BigDecimal value) {
+        node.put(field, value == null ? null : value.stripTrailingZeros().toPlainString());
     }
 
     PaymentMethod resolvePaymentMethod(Long registerId, Long outletId, String tenderType, String tenderLabel) {
