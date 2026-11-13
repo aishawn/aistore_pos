@@ -1,5 +1,11 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-13 高频昨日销售路由增量
+
+Node `v22.22.2` 本地 POS UI 全量单测 207/207 PASS、`npm run typecheck` PASS。Java 21.0.12 单独编译当前 `AssistantFastPathRouter.java` PASS；JShell 在已编译类路径对 9 条中英文正例和 3 条负例（商品拆分歧义、无日期问法、伪造 `/admin` 提示）探测通过。`mvn -B -Dtest=AssistantFastPathRouterTest test` 未到测试阶段：本机脏工作树中的未提交 `PurchaseReportSnapshotService.java` 调用私有的 `ReportQueryService.requireReportOutlet(jdbc, ...)`，主源码编译失败；此采购报表文件未改动。故新增 JUnit 参数化回归尚未由 Maven 执行。项目文档检查在补充根 AGENTS.md 的事实库入口链接后通过。
+
+源码 HEAD `cfe8c3cf5f4e13b408b06b7edf6ce8a67c683c81`；当前远端线上 SHA、模型/prompt/config 版本未在本轮确认；环境为本地 fixture/helper 与源码行为探测。POS 业务写入 0，部署/线上问答/权威数字对账 NOT RUN。证据与限制见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
+
 ## 2026-11-13 双店双语报表抽样与聚合日期文案
 
 Java 21.0.12 AI 相关定向回归 245/245 PASS；Node 22.22.2 UI 全量单测 205/205 PASS、typecheck 和 provenance/history helper ESLint PASS。线上 SKR、Demo runtime 都是 `173dacfe1db75504187fac8f5a5ba24e21ea8c64`。两店 `sales last 7 days` 与 `昨天营业额怎么样？` 均为 `report_sales` / deterministic。前者 Adelaide 2026-11-07..13：销售 AUD 27,782.79、毛利 AUD 9,029.92、1,004 笔；后者 Adelaide 2026-11-12：销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔。每项均与同一门店同期间 `/api/reports/native-overview` 一致，四次 `writeRequests=[]`。

@@ -39,6 +39,8 @@
 
 ## 验证闭环
 
+2026-11-13 本轮高频话术迭代：补充“昨天营业额怎么样”等中文及英文口语表述；历史元数据测试改用 Orithos 当前来源，不再构造 `legacy_source` / `other_store`。UI 全量单测 207/207 PASS、typecheck PASS；Java router 独立编译及 JShell 行为探测 9 条正例、3 条歧义/提示注入负例 PASS。Maven 定向测试被本地未提交采购报表服务的编译错误阻断，未进入测试阶段；未部署、未做线上问答或业务写入。详见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
+
 历史问题链：E-HISTORY-FINDING 记录列表 id=null → 详情 /threads/null HTTP 400；显式 mapper 映射修复后仍需上线证据。E-HISTORY 的 0d3d0bc3 记录数字 ID 和 session/timestamp 存在、报表产生 2 条消息（局部关闭）；旧会话 0 消息及 greeting/navigation 的 50210 未关闭。这是“发现→修复→测试→局部关闭”的样例，不能写成历史功能全面修复。
 
 ## 迭代策略

@@ -5,6 +5,7 @@
 - This is the POS repository: `aishawn/aistore_pos`, branch `main`. The maintained local checkout is `orithopos-master`; do POS work here, not in `pos-main`, old clones, or worktrees unless a task names one explicitly.
 - At task start, confirm this repository, `main`, HEAD, and `git status`. Preserve unrelated local changes and stage only files in the task scope.
 - Read this file, the root [HANDOFF](HANDOFF.md), and only the task's relevant tracked design/progress docs and tests. The root handoff is the single current operational status; older dated notes are historical evidence.
+- For feature state, evidence, and current validation boundaries, use the [project fact library](docs/project/README.md) when its corpus is present.
 - A local `docs/project/` fact library may be available but is ignored from deployment clones; consult it when present, and do not make runtime or release instructions depend on local-only files. Run `python scripts/check-project-docs.py` after editing that library, when its required corpus is present.
 
 ## System boundaries

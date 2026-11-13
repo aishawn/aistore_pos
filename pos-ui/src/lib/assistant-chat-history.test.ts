@@ -43,8 +43,8 @@ test("restores report provenance from the persisted assistant message onto its c
 test("authoritative message provenance overrides stale card provenance", () => {
   const staleCard = {
     ...card("ready"),
-    dataSource: "legacy_source",
-    storeScope: "other_store",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
     dataAsOf: "2026-11-10T01:00:00Z",
     reportPeriodFrom: "2026-11-09",
     reportPeriodTo: "2026-11-09",
@@ -76,8 +76,8 @@ test("authoritative message provenance overrides stale card provenance", () => {
 test("explicitly missing message provenance does not fall back to stale card values", () => {
   const staleCard = {
     ...card("ready"),
-    dataSource: "legacy_source",
-    storeScope: "other_store",
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
     dataAsOf: "2026-11-10T01:00:00Z",
     reportPeriodFrom: "2026-11-09",
     reportPeriodTo: "2026-11-09",

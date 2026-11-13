@@ -27,6 +27,9 @@ public final class AssistantFastPathRouter {
                     + "what (?:were|was) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "what(?:'s| is) yesterday'?s? (?:sales|revenue|takings|turnover)|"
+                    + "how did yesterday'?s? (?:sales|revenue|takings|turnover) go|"
+                    + "how did (?:sales|revenue|takings|turnover) go yesterday|"
+                    + "what (?:were|was) (?:sales|revenue|takings|turnover) like yesterday|"
                     + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少|(?:昨天|昨日)(?:的)?(?:销售额|营业额|流水|收入)(?:如何|怎么样|(?:是|有)?多少)?|"
                     + "昨天(?:生意|业绩)(?:如何|怎么样)|(?:昨天|昨日)(?:销售|营业)?(?:情况|表现)(?:如何|怎么样)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
