@@ -74,28 +74,35 @@ public class NativeReplenishmentService {
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
-                      AND COALESCE(s.business_date, s.local_sold_at::date)
-                          >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56
+                      AND (s.business_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56
+                           OR (s.business_date IS NULL AND s.local_sold_at::date
+                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56))
                     GROUP BY si.product_id
+                ), supplier AS (
+                    SELECT ps.product_id, ps.outlet_id, TRUE AS has_supplier,
+                           MAX(ps.minimum_order_quantity) AS minimum_order
+                    FROM product_supplier ps
+                    WHERE ps.outlet_id = ?
+                    GROUP BY ps.product_id, ps.outlet_id
                 )
                 SELECT p.id, p.name, p.case_quantity, i.quantity AS on_hand,
                        COALESCE(i.on_order, 0) AS on_order,
                        COALESCE(s.recent_units, 0) AS recent_units,
                        COALESCE(s.previous_units, 0) AS previous_units,
                        s.sales_data_as_of,
-                       EXISTS (SELECT 1 FROM product_supplier ps
-                               WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id) AS has_supplier,
-                       COALESCE((SELECT MAX(ps.minimum_order_quantity) FROM product_supplier ps
-                                 WHERE ps.product_id = p.id AND ps.outlet_id = p.outlet_id), 1) AS minimum_order
+                       supplier.has_supplier,
+                       COALESCE(supplier.minimum_order, 1) AS minimum_order
                 FROM product p
                 LEFT JOIN product_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
                 LEFT JOIN sales s ON s.product_id = p.id
+                LEFT JOIN supplier ON supplier.product_id = p.id AND supplier.outlet_id = p.outlet_id
                 WHERE p.outlet_id = ? AND p.deleted_at IS NULL AND p.status = 'ACTIVE'
                 ORDER BY p.name, p.id
                 """);
             statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
             statement.setLong(1, tenant.requireOutletId());
             statement.setLong(2, tenant.requireOutletId());
+            statement.setLong(3, tenant.requireOutletId());
             return statement;
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),

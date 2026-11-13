@@ -2,6 +2,7 @@ package com.orithos.modules.ai.replenishment;
 
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
@@ -18,7 +19,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -79,6 +82,34 @@ class NativeReplenishmentServiceTest {
         verify(statement).setQueryTimeout(5);
         verify(statement).setLong(1, 87L);
         verify(statement).setLong(2, 87L);
+        verify(statement).setLong(3, 87L);
+    }
+
+    @Test
+    void queryKeepsSalesDateIndexableAndAggregatesSuppliersOnce() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        Connection connection = mock(Connection.class);
+        PreparedStatement statement = mock(PreparedStatement.class);
+        when(connection.prepareStatement(any(String.class))).thenReturn(statement);
+        doAnswer(invocation -> {
+            PreparedStatementCreator creator = invocation.getArgument(0);
+            creator.createPreparedStatement(connection);
+            return List.of();
+        }).when(jdbc).query(any(PreparedStatementCreator.class), any(RowMapper.class));
+
+        new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(connection).prepareStatement(sql.capture());
+        assertTrue(sql.getValue().contains("s.business_date >="));
+        assertTrue(sql.getValue().contains("s.business_date IS NULL"));
+        assertTrue(sql.getValue().contains("GROUP BY ps.product_id, ps.outlet_id"));
+        assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
+        assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
+        assertFalse(sql.getValue().contains("(SELECT MAX(ps.minimum_order_quantity)"));
+        verify(statement).setLong(1, 87L);
+        verify(statement).setLong(2, 87L);
+        verify(statement).setLong(3, 87L);
     }
 
     @Test
