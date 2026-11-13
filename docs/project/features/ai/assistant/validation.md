@@ -56,6 +56,12 @@ provider 用量/费用不可见；AUD 10 上限未证实。完整 utterance cata
 
 POS UI 全量 `npm run test:unit` 207/207 PASS，`npm run typecheck` PASS；本地 Chrome fixture 在 1440/1024/768/390px 全部 PASS。fixture 使用 `report_sales` 有效聚合行（无日期）、API `dataAsOf=null` 及带旧时间戳的缓存卡片；四个视口均显示“Sales data was returned without readable daily dates”与“Data timestamp unavailable”，未显示卡片旧来源/时间，无页面错误。三个脚本语法检查 PASS。改动文件 ESLint 启动后超过一分钟没有输出，已停止，故未验证。真实 SKR/Demo 仍运行 `173dacfe`，因此线上 UI 旧文案未解决到部署环境。无业务写入。
 
+### 2026-11-13 部署后 SKR/Demo 回归
+
+提交 `3ebc29e41dc4bd31a62d55352d6d31eb691fe2f3` 已推送至 `main`，SKR 与 Demo 的 `/api/public/version` 均确认前后端运行该 SHA。
+
+两店各以只读浏览器问答 `昨天销售额是多少？` 复验，7 项检查全部 PASS：来源 `orithos_ledger`、请求期间和实际报表期间、时区、状态、数据时间、deterministic 路由、聚合行缺少逐日日期时的诚实说明；销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔与各自 Adelaide 2026-11-12 `native-overview` 完全一致，`writeRequests=[]`。生产业务写入为 0。模型 provider 用量不可见，AUD 10 上限仍未证实；其他能力不由本次窄范围通过推断。
+
 更新日期：2026-11-13。本页区分本地候选回归与线上只读问题；真实 POS 业务写入 0。
 
 ## 2026-11-04 本地来源说明回归
