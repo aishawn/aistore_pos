@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AssistantCard } from "@/lib/api";
-import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "./assistant-chat-history.ts";
+import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "./assistant-chat-history.ts";
 
 const card = (status: AssistantCard["status"]): AssistantCard => ({
   type: "sommelier",
@@ -38,6 +38,71 @@ test("restores report provenance from the persisted assistant message onto its c
     reportTimeZone: "Australia/Adelaide",
     reportDataStatus: "available",
   });
+});
+
+test("authoritative message provenance overrides stale card provenance", () => {
+  const staleCard = {
+    ...card("ready"),
+    dataSource: "legacy_source",
+    storeScope: "other_store",
+    dataAsOf: "2026-11-10T01:00:00Z",
+    reportPeriodFrom: "2026-11-09",
+    reportPeriodTo: "2026-11-09",
+    reportTimeZone: "UTC",
+    reportDataStatus: "incomplete",
+  };
+  const restored = restoredAssistantCardFields([staleCard], "What were sales yesterday?", {
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    dataAsOf: "2026-11-13T01:00:00Z",
+    reportPeriodFrom: "2026-11-12",
+    reportPeriodTo: "2026-11-12",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+  });
+
+  assert.deepEqual(restored.cards?.[0], {
+    ...staleCard,
+    dataSource: "orithos_ledger",
+    storeScope: "current_authenticated_store",
+    dataAsOf: "2026-11-13T01:00:00Z",
+    reportPeriodFrom: "2026-11-12",
+    reportPeriodTo: "2026-11-12",
+    reportTimeZone: "Australia/Adelaide",
+    reportDataStatus: "available",
+  });
+});
+
+test("explicitly missing message provenance does not fall back to stale card values", () => {
+  const staleCard = {
+    ...card("ready"),
+    dataSource: "legacy_source",
+    storeScope: "other_store",
+    dataAsOf: "2026-11-10T01:00:00Z",
+    reportPeriodFrom: "2026-11-09",
+    reportPeriodTo: "2026-11-09",
+    reportTimeZone: "UTC",
+    reportDataStatus: "incomplete",
+  };
+  const metadata = {
+    dataSource: null,
+    storeScope: null,
+    dataAsOf: null,
+    reportPeriodFrom: null,
+    reportPeriodTo: null,
+    reportTimeZone: null,
+    reportDataStatus: null,
+  };
+  const restored = restoredAssistantCardFields([staleCard], "What were sales yesterday?", metadata);
+
+  assert.deepEqual(restored.cards?.[0], { ...staleCard, ...metadata });
+  assert.equal(assistantCardMetadataValue(metadata, staleCard, "dataAsOf"), null);
+});
+
+test("older history without message provenance keeps compatible card metadata", () => {
+  const cachedCard = { ...card("ready"), dataAsOf: "2026-11-10T01:00:00Z" };
+  assert.equal(assistantCardMetadataValue({}, cachedCard, "dataAsOf"), "2026-11-10T01:00:00Z");
+  assert.equal(restoredAssistantCardFields([cachedCard], "Question?")?.cards?.[0].dataAsOf, "2026-11-10T01:00:00Z");
 });
 
 test("does not restore retry controls for ready cards or missing cards", () => {

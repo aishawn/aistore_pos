@@ -1,5 +1,17 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-13 双店双语报表抽样与聚合日期文案
+
+Java 21.0.12 AI 相关定向回归 245/245 PASS；Node 22.22.2 UI 全量单测 205/205 PASS、typecheck 和 provenance/history helper ESLint PASS。线上 SKR、Demo runtime 都是 `173dacfe1db75504187fac8f5a5ba24e21ea8c64`。两店 `sales last 7 days` 与 `昨天营业额怎么样？` 均为 `report_sales` / deterministic。前者 Adelaide 2026-11-07..13：销售 AUD 27,782.79、毛利 AUD 9,029.92、1,004 笔；后者 Adelaide 2026-11-12：销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔。每项均与同一门店同期间 `/api/reports/native-overview` 一致，四次 `writeRequests=[]`。
+
+每个查询返回一个无日期列的聚合指标行；已上线 UI 错把它显示为“没有返回销售行”。这是实际观察到的前端缺陷。本地候选改为说明“已返回销售数据，但没有可识别的逐日日期”，并有中英文 helper 回归；还未部署。模型 provider 用量未取到，AUD 10 成本上限未证实。浏览器历史脚本在 dashboard SSR/auth 处受本地无后端配置阻断，历史、清空及续问的本轮浏览器证据缺失。完整范围见[session](../../../../test-sessions/2026-11-13-ai-assistant-bilingual-reconciliation.md)。
+
+## 2026-11-13 本地来源元数据回归
+
+本地 POS checkout 基线 `39eb296e`（工作树有其他未提交改动，落后 `origin/main` 3 个提交），Node `v22.22.2`。UI 全量单测 `npm run test:unit`：204/204 PASS；`npm run typecheck` PASS；assistant provenance/history/routing helper 定向 ESLint PASS；`git diff --check` PASS。包括 API 消息来源覆盖旧卡片来源，以及缺少可信数据时间时中英文明确显示未提供的测试。一次包含大型 `SellAiPanel.tsx` 的定向 ESLint 因本机进程繁忙运行超过一分钟后中止；因此该组件 lint 未验证。
+
+源码候选为脏工作树，未生成可复现候选 SHA；未运行后端 Maven、未部署、未在线问答或报表对账，也没有进行 POS 业务写入。不能将此本地 UI 回归等同于全功能验收。
+
 ## 2026-11-13 持续目标本地回归
 
 源码基线提交 `3f070701`（本地 main 比 origin/main ahead 1）；AI 助手候选仍在未提交工作树。Java `mvn -B clean verify` 通过：675 tests, 0 failures/errors/skips。POS UI `npm run test:unit` 通过：199 tests, 0 failures；`npm run typecheck` 与 `npm run build` 通过。回归覆盖高频中英文确定性问法、报表日期/成本与无数据边界、补货权限/资料缺口/超时提示、会话元数据恢复及无写请求。线上 SKR/Demo 当前前后端均为 `3a18364fa8dd05c9f2df0a236fbf56ebcd527329`，尚未包含候选改动；线上只读回归、UI 浏览器流程和模型费用证据尚未完成，不得将本地结果视为线上验收。
@@ -27,6 +39,22 @@ SKR 只读登录后读取 2026-11-12 Adelaide `native-overview`，再分别提�
 此前在 SKR、Demo 各尝试中文 `昨天销售额是多少？`，PowerShell harness 未保留响应体或 HTTP 状态，字段读取结果为空，因此列为 INCONCLUSIVE；该确切表达不在显式 fast-path 变体列表，不能假定它不触发模型兜底。模型调用成本未取到，AUD 10 费用上限尚未被证明。没有执行 POS 业务写入。
 
 尚未覆盖：Demo 英文金额对账、中文成功路径、7 日行日期和 UI 元数据、历史恢复/清空、多轮追问、麦克风真机与失败恢复、请求取消/重试、提示注入、跨门店隔离以及其他意图全目录。不能据此宣称 POS 助手所有功能已正常。
+
+## 2026-11-13 高频问法与历史界面续验
+
+对当前线上 runtime `173dacfe1db75504187fac8f5a5ba24e21ea8c64`，在 SKR 与 Demo 各执行一次只读浏览器问答 `昨天销售额是多少？`。两店均返回 `intent=report_sales`、`source=deterministic`，期间为 Adelaide 2026-11-12；销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔与各自同期间 `native-overview` 一致，`writeRequests=[]`。因此该问法的线上路由和业务数值通过，先前“不确定”已被本次证据替代。
+
+两店 UI 均显示“没有返回销售行”，但 API 含一条 `sales/grossProfit/transactions` 聚合行，仅不含逐日日期字段。日期说明检查失败，整体状态为 REVIEW；不影响数值对账通过。修正已在本地候选及单测中，需部署后复验。
+
+本地 Windows Chrome + `127.0.0.1:3100`，API 全部由固定 fixture 拦截：桌面/平板/手机 1440、1024、768、390px 的历史会话 UI 用例全部通过，包含历史详情来源、期间、时区、状态和数据时间，刷新恢复、续问、报表链接、新建清空、返回/前进、空/失效历史；无页面错误。Java 21 助手/路由/补货定向回归 62/62、UI 单测 205/205、`npm run typecheck` 和三个 UAT 脚本 `node --check` 均通过。此 fixture 不代表真实历史 API、语音、取消/重试或线上 UI。
+
+provider 用量/费用不可见；AUD 10 上限未证实。完整 utterance catalog、Demo/SKR 其他意图、提示注入、跨店隔离及麦克风真机仍未验收。
+
+## 2026-11-13 API 空元数据优先级与组件级历史回归
+
+卡片字段采用消息元数据字段存在性判断。消息显式返回 `null` 时不再从旧卡片缓存恢复该值；旧历史消息完全没有此字段时保留缓存兼容。新增两项单测分别覆盖显式缺失和旧记录兼容。
+
+POS UI 全量 `npm run test:unit` 207/207 PASS，`npm run typecheck` PASS；本地 Chrome fixture 在 1440/1024/768/390px 全部 PASS。fixture 使用 `report_sales` 有效聚合行（无日期）、API `dataAsOf=null` 及带旧时间戳的缓存卡片；四个视口均显示“Sales data was returned without readable daily dates”与“Data timestamp unavailable”，未显示卡片旧来源/时间，无页面错误。三个脚本语法检查 PASS。改动文件 ESLint 启动后超过一分钟没有输出，已停止，故未验证。真实 SKR/Demo 仍运行 `173dacfe`，因此线上 UI 旧文案未解决到部署环境。无业务写入。
 
 更新日期：2026-11-13。本页区分本地候选回归与线上只读问题；真实 POS 业务写入 0。
 

@@ -19,16 +19,32 @@ export function restoredAssistantCardFields(
   const retryQuestion = retryQuestionForAssistantCards(cards, previousQuestion);
   const restoredCards = metadata ? cards.map((card) => ({
     ...card,
-    dataAsOf: card.dataAsOf ?? metadata.dataAsOf ?? null,
-    dataSource: card.dataSource ?? metadata.dataSource ?? null,
-    storeScope: card.storeScope ?? metadata.storeScope ?? null,
-    reportPeriodFrom: card.reportPeriodFrom ?? metadata.reportPeriodFrom ?? null,
-    reportPeriodTo: card.reportPeriodTo ?? metadata.reportPeriodTo ?? null,
-    reportTimeZone: card.reportTimeZone ?? metadata.reportTimeZone ?? null,
-    reportDataStatus: card.reportDataStatus ?? metadata.reportDataStatus ?? null,
+    dataAsOf: metadataValue(metadata, card, "dataAsOf"),
+    dataSource: metadataValue(metadata, card, "dataSource"),
+    storeScope: metadataValue(metadata, card, "storeScope"),
+    reportPeriodFrom: metadataValue(metadata, card, "reportPeriodFrom"),
+    reportPeriodTo: metadataValue(metadata, card, "reportPeriodTo"),
+    reportTimeZone: metadataValue(metadata, card, "reportTimeZone"),
+    reportDataStatus: metadataValue(metadata, card, "reportDataStatus"),
   })) : cards;
   return {
     cards: restoredCards,
     ...(retryQuestion ? { retryQuestion } : {}),
   };
+}
+
+export function assistantCardMetadataValue<K extends keyof AssistantCard>(
+  metadata: Partial<AssistantCard>,
+  card: AssistantCard,
+  key: K,
+): AssistantCard[K] {
+  return (Object.hasOwn(metadata, key) ? metadata[key] : card[key]) as AssistantCard[K];
+}
+
+function metadataValue<K extends keyof AssistantCard>(
+  metadata: Partial<AssistantCard>,
+  card: AssistantCard,
+  key: K,
+): AssistantCard[K] | null {
+  return assistantCardMetadataValue(metadata, card, key) ?? null;
 }

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assistantDataAsOf,
+  assistantDataTimestampLabel,
   assistantProvenanceFields,
+  assistantReturnedSalesDateSummary,
   assistantReportDataStatus,
   assistantReportDateRange,
   assistantRouteLabel,
@@ -26,6 +28,16 @@ test("reports actual returned range separately from the latest returned day", ()
   assert.equal(latestReportDataDate(rows), "2026-11-02");
   assert.equal(returnedReportDateRange([{ date: "2026-11-02" }]), "2026-11-02");
   assert.equal(returnedReportDateRange([]), null);
+});
+
+test("distinguishes missing sales rows from aggregated rows without dates", () => {
+  assert.equal(assistantReturnedSalesDateSummary([], false), "No sales rows returned");
+  assert.equal(assistantReturnedSalesDateSummary([{ Metric: "Sales", Value: "123.45" }], false),
+    "Sales data was returned without readable daily dates");
+  assert.equal(assistantReturnedSalesDateSummary([{ 指标: "营业额", 金额: "123.45" }], true),
+    "已返回销售数据，但没有可识别的逐日日期");
+  assert.equal(assistantReturnedSalesDateSummary([{ date: "2026-11-12", Sales: "123.45" }], false),
+    "Rows span: 2026-11-12 · Latest returned sales date: 2026-11-12");
 });
 
 test("formats the requested sales range only from valid report slots", () => {
@@ -102,4 +114,10 @@ test("localizes report data states without changing unknown backend values", () 
 
 test("keeps date-only provenance timezone-stable", () => {
   assert.equal(formatAssistantDataAsOf("2026-11-02"), "2026-11-02");
+});
+
+test("states when the backend does not provide a trusted data timestamp", () => {
+  assert.equal(assistantDataTimestampLabel(null, true), "数据时间未提供");
+  assert.equal(assistantDataTimestampLabel(undefined, false), "Data timestamp unavailable");
+  assert.equal(assistantDataTimestampLabel("2026-11-02", true), "2026-11-02");
 });

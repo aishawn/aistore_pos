@@ -59,6 +59,23 @@ export function returnedReportDateRange(rows: ReportRow[] | null | undefined): s
   return dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} to ${dates.at(-1)}`;
 }
 
+export function assistantReturnedSalesDateSummary(
+  rows: ReportRow[] | null | undefined,
+  chinese: boolean,
+): string {
+  const range = returnedReportDateRange(rows);
+  if (range) {
+    const latest = latestReportDataDate(rows);
+    return chinese
+      ? `返回行日期范围：${range} · 最新返回销售日：${latest}`
+      : `Rows span: ${range} · Latest returned sales date: ${latest}`;
+  }
+  if (!rows?.length) return chinese ? "没有返回销售行" : "No sales rows returned";
+  return chinese
+    ? "已返回销售数据，但没有可识别的逐日日期"
+    : "Sales data was returned without readable daily dates";
+}
+
 export function requestedSalesDateRange(
   intent: string | null | undefined,
   slots: Record<string, unknown> | null | undefined,
@@ -117,4 +134,13 @@ export function formatAssistantDataAsOf(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const parsed = new Date(value);
   return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString();
+}
+
+export function assistantDataTimestampLabel(
+  value: string | null | undefined,
+  chinese: boolean,
+): string {
+  return value
+    ? formatAssistantDataAsOf(value)
+    : chinese ? "数据时间未提供" : "Data timestamp unavailable";
 }

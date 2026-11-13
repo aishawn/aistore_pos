@@ -1,6 +1,7 @@
 "use client";
 
 import { assistantRequestTimeoutMs, assistantTimeoutMessage, operationsPreviewIntent, readOperationsPreview } from "@/lib/assistant-operations-preview";
+import { looksLikeAssistantWriteCommand } from "@/lib/assistant-command-routing";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { AssistantComposer } from "@/components/AssistantComposer";
@@ -29,8 +30,8 @@ import {
 } from "@/lib/ai-entity-actions";
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
-import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
-import { assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantRouteLabel, formatAssistantDataAsOf, latestReportDataDate, requestedSalesDateRange, returnedReportDateRange } from "@/lib/assistant-provenance";
+import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
+import { assistantDataTimestampLabel, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -1054,7 +1055,7 @@ export function SellAiPanel({
         return;
       }
     }
-    const looksLikeCommand = /(?:把|将|改成|设置为|提高|降低|上调|下调|修改|更新|rename|change|update|raise|increase|lower|decrease|replenish|restock|补货|客户.*(?:电话|邮箱)|customer.*(?:phone|email))/i.test(text);
+    const looksLikeCommand = looksLikeAssistantWriteCommand(text);
     if (looksLikeCommand && !operationsPreviewIntent(text)) {
       try {
         const command = await parseAiCommand(text, threadId, surfaceFromPath(pathname));
@@ -2009,12 +2010,12 @@ function DialogueView({
                   const cardCta = cardCtas[cardIndex];
                   const chineseCard = /[\u3400-\u9fff]/.test(`${msg.question ?? ""} ${card.summary ?? ""}`);
                   const title = assistantCardTitle(card.type, card.title, chineseCard);
-                  const cardDataSource = card.dataSource ?? msg.dataSource;
-                  const cardPeriod = card.reportPeriodFrom ?? msg.reportPeriodFrom;
-                  const cardPeriodTo = card.reportPeriodTo ?? msg.reportPeriodTo;
-                  const cardTimeZone = card.reportTimeZone ?? msg.reportTimeZone;
-                  const cardDataStatus = card.reportDataStatus ?? msg.reportDataStatus;
-                  const cardDataAsOf = card.dataAsOf ?? msg.dataAsOf;
+                  const cardDataSource = assistantCardMetadataValue(msg, card, "dataSource");
+                  const cardPeriod = assistantCardMetadataValue(msg, card, "reportPeriodFrom");
+                  const cardPeriodTo = assistantCardMetadataValue(msg, card, "reportPeriodTo");
+                  const cardTimeZone = assistantCardMetadataValue(msg, card, "reportTimeZone");
+                  const cardDataStatus = assistantCardMetadataValue(msg, card, "reportDataStatus");
+                  const cardDataAsOf = assistantCardMetadataValue(msg, card, "dataAsOf");
                   const periodLabel = cardPeriod
                     ? assistantReportDateRange(cardPeriod, cardPeriodTo) ?? cardPeriod
                     : null;
@@ -2054,7 +2055,7 @@ function DialogueView({
                         {periodLabel ? `${cardDataSource ? " · " : ""}${chineseCard ? "期间" : "Period"}: ${periodLabel}` : ""}
                         {cardTimeZone ? `${cardDataSource || periodLabel ? " · " : ""}${chineseCard ? "时区" : "Timezone"}: ${cardTimeZone}` : ""}
                         {cardDataStatus ? `${cardDataSource || periodLabel || cardTimeZone ? " · " : ""}${chineseCard ? "数据状态" : "Data status"}: ${assistantReportDataStatus(cardDataStatus, chineseCard)}` : ""}
-                        {cardDataAsOf ? `${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${formatAssistantDataAsOf(cardDataAsOf)}` : ""}
+                        {`${cardDataSource || periodLabel || cardTimeZone || cardDataStatus ? " · " : ""}${chineseCard ? "数据时间" : "Data as of"}: ${assistantDataTimestampLabel(cardDataAsOf, chineseCard)}`}
                       </p>
                     ) : null}
                     {card.items && card.items.length > 0 ? (
@@ -2197,16 +2198,14 @@ function DialogueView({
                 {msg.diagnostics?.intent === "report_sales" ? (
                   <>
                     {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange) ? " · " : ""}
-                    {returnedReportDateRange(msg.table?.rows)
-                      ? `${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "返回行日期范围" : "Rows span"}: ${returnedReportDateRange(msg.table?.rows)} · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "最新返回销售日" : "Latest returned sales date"}: ${latestReportDataDate(msg.table?.rows)}`
-                      : /[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "没有返回销售行" : "No sales rows returned"}
+                    {assistantReturnedSalesDateSummary(msg.table?.rows, /[\u3400-\u9fff]/.test(msg.question ?? msg.text))}
                   </>
                 ) : null}
-                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales") && msg.dataAsOf ? " · " : ""}
-                {msg.dataAsOf
+                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales") ? " · " : ""}
+                {(msg.dataSource || msg.source || msg.requestedDateRange || msg.reportPeriodRange || msg.diagnostics?.intent === "report_sales")
                   ? /[\u3400-\u9fff]/.test(msg.question ?? msg.text)
-                    ? `数据时间：${formatAssistantDataAsOf(msg.dataAsOf)}`
-                    : `Data timestamp: ${formatAssistantDataAsOf(msg.dataAsOf)}`
+                    ? `数据时间：${assistantDataTimestampLabel(msg.dataAsOf, true)}`
+                    : `Data timestamp: ${assistantDataTimestampLabel(msg.dataAsOf, false)}`
                   : ""}
                 {msg.reportTimeZone
                   ? ` · ${/[\u3400-\u9fff]/.test(msg.question ?? msg.text) ? "时区" : "Timezone"}: ${msg.reportTimeZone}`
