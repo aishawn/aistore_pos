@@ -35,6 +35,7 @@ public class NativeCustomerImportService {
             throw new IllegalArgumentException("store_key, outlet_id and customer items are required");
         }
         ensureMappingTable();
+        ensurePriceListMappingTable();
         int created = 0, updated = 0, skipped = 0;
         List<String> errors = new ArrayList<>();
         for (JsonNode item : items) {

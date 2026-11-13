@@ -71,6 +71,7 @@ class NativeCustomerImportServiceTest {
 
         assertEquals(1, receipt.get("created"));
         assertEquals(0, receipt.get("skipped"));
+        verify(jdbc).execute(contains("CREATE TABLE IF NOT EXISTS shopfront_price_list_mapping"));
         Invocation insert = mockingDetails(jdbc).getInvocations().stream()
                 .filter(call -> call.getMethod().getName().equals("queryForObject")
                         && call.getArgument(0, String.class).contains("INSERT INTO customer ("))
