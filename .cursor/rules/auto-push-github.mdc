@@ -9,6 +9,6 @@ When a task that changes the repo is **finished** (feature, UI, fix, docs in-rep
 
 1. **Commit** the relevant files with a clear message (PowerShell-safe; no HEREDOC if broken on Windows).
 2. **Push** to `origin` on the current branch (`git push -u origin HEAD` when needed) so Dokploy / deploy can pick it up.
-3. Do **not** wait for the user to say「上传 github」unless they explicitly asked to keep changes local-only.
+3. Do **not** wait for the user to say「上传 github」— owner confirmed (2026-11-13) that fixes and optimizations should land on `main` by default; only skip push when they explicitly ask to keep changes local-only in the current chat.
 4. Never commit secrets (`.env`, `.local/`, credentials). Never force-push `main`/`master`.
 5. After push, briefly confirm the commit hash / that `origin` is updated.

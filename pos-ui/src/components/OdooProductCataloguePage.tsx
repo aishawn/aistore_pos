@@ -30,9 +30,7 @@ import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 import { useAuth } from "@/lib/auth";
 import { StockWorkspaceDialog } from "@/components/admin/StockWorkspaceDialog";
 import { StockListPage } from "@/components/admin/StockListPage";
-import { WorkspaceRecordsPanel } from "@/components/WorkspaceRecordsPanel";
 import { CostReconciliationPanel } from "@/components/CostReconciliationPanel";
-import { OdooPricelistsPage } from "@/components/OdooPricelistsPage";
 import { ClassificationsPanel } from "@/components/admin/ClassificationsPanel";
 import { FilterMultiSelect } from "@/components/admin/FilterMultiSelect";
 import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
@@ -160,7 +158,8 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   useEffect(() => {
     // Catalogue workspace dialog retired from Products → More.
     if (dialog === "catalogue") setDialog(null);
-  }, [dialog]);
+    if (dialog === "inventory") router.replace("/reports/inventory");
+  }, [dialog, router]);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
@@ -248,7 +247,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importResult, setImportResult] = useState<{ created: number; skipped: Array<{ line: number; reason: string }> } | null>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const [priceListsOpen, setPriceListsOpen] = useState(false);
   const resultsPending = loading || query.trim() !== debouncedQuery;
   const renderedProductCount = printItems?.length ?? items.length;
   const requestRevision = useRef(0);
@@ -264,7 +262,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
   }, undefined, newProductNameInputRef);
-  useDialogFocus(priceListsOpen, () => setPriceListsOpen(false));
   useEffect(() => {
     if (requestedView && CATALOGUE_VIEWS.some((view) => view.value === requestedView)) {
       setCatalogueView(requestedView as CatalogueView);
@@ -870,34 +867,20 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
           {inventoryReport && hasPermission("stock.products.view") && <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy || loading} aria-label="Export all matching inventory rows to CSV" title="Export all matching inventory rows" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white disabled:opacity-50">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}</button>}
           {inventoryReport && hasPermission("stock.products.view") && <button type="button" onClick={() => void printInventoryReport()} disabled={connected !== true || loading} aria-label="Print all matching inventory rows" title="Print all matching inventory rows" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white disabled:opacity-50"><Printer size={16} /></button>}
           {inventoryReport && <ReportColumnChooser columns={[...INVENTORY_COLUMNS]} selected={inventoryColumns} required={["product"]} onChange={toggleInventoryColumn} />}
-          {!inventoryReport && (canAuditCosts || hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.stocktake") || hasPermission("stock.products.import_export") || hasPermission("customers.pricelists")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-[var(--oh-border)] bg-white p-2 shadow-[var(--oh-shadow-card)]">
-          {canAuditCosts && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("cost-reconciliation"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Cost Reconciliation</button>}
-          {hasPermission("stock.products.view") && <><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stock-list"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Stock list</button><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("inventory"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Inventory</button></>}
-          {hasPermission("stock.stocktake") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("stocktake"); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Stocktake</button>}
+          {!inventoryReport && (hasPermission("stock.products.view") || hasPermission("stock.products.edit") || hasPermission("stock.products.import_export")) && <details className="relative"><summary className="cursor-pointer rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">More</summary><div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-2 rounded-lg border border-[var(--oh-border)] bg-white p-2 shadow-[var(--oh-shadow-card)]">
+          {hasPermission("stock.products.view") && <Link href="/reports/inventory" onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] flex items-center">Inventory</Link>}
           {hasPermission("stock.products.edit") && <button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); setDialog("categories"); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><Tag size={16} /> Classifications</button>}
           {hasPermission("stock.products.import_export") && <><button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button></>}
-          {hasPermission("customers.pricelists") && <button type="button" onClick={() => setPriceListsOpen(true)} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><Tag size={16} /><span>Price Lists</span></button>}
           </div></details>}
         </div>
         )}
       </header>
 
-      {dialog === "inventory" && hasPermission("stock.products.view") && <StockWorkspaceDialog title="Inventory" variant="records" busy={false} onClose={() => setDialog(null)}><WorkspaceRecordsPanel type="inventory" fillHeight refreshKey={refreshKey} /></StockWorkspaceDialog>}
       {dialog === "stock-list" && hasPermission("stock.products.view") && <StockWorkspaceDialog title="Stock list" variant="records" busy={false} onClose={() => setDialog(null)}><StockListPage /></StockWorkspaceDialog>}
       {dialog === "cost-reconciliation" && canAuditCosts && <StockWorkspaceDialog title="Cost Reconciliation" busy={false} onClose={() => setDialog(null)} actions={<Link href="/products/cost-reconciliation" className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm">Expand to full page</Link>}><CostReconciliationPanel /></StockWorkspaceDialog>}
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Classifications" variant="records" busy={categoryBusy} onClose={() => setDialog(null)}><ClassificationsPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
       {dialog === "stocktake" && hasPermission("stock.stocktake") && <StockWorkspaceDialog title="Stocktake" busy={stockBusy} onClose={() => setDialog(null)} actions={<button type="button" disabled={stockBusy} onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete("dialog"); next.set("tab", "stocktake"); router.replace(`/products?${next}`, { scroll: false }); }} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Expand to full page</button>}><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></StockWorkspaceDialog>}
-      {priceListsOpen && <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setPriceListsOpen(false); }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="products-price-lists-title" className="h-[min(90dvh,900px)] w-full max-w-6xl overflow-hidden rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] shadow-2xl">
-          <header className="flex items-center justify-between border-b border-[var(--oh-border)] bg-white px-4 py-3">
-            <h2 id="products-price-lists-title" className="text-base font-semibold text-[var(--oh-text)]">Price Lists</h2>
-            <button type="button" onClick={() => setPriceListsOpen(false)} aria-label="Close price lists" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
-          </header>
-          <div className="h-[calc(100%-65px)]"><OdooPricelistsPage embedded /></div>
-        </section>
-      </div>}
-
       {connected === false ? (
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
@@ -1045,9 +1028,6 @@ export function OdooProductCataloguePage({ inventoryReport = false }: { inventor
               : "Orithos ledger catalogue with shelf prices and on-hand stock."}
             {inventoryReport && <span className="ml-1">· Prepared {lastLoadedAt !== null ? formatStoreEpoch(lastLoadedAt, storeTimezone) : "—"}</span>}
           </p>
-          {shopfrontSyncBanner && (
-            <p role="status" className="shrink-0 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">Shopfront sync finished · catalogue and stock were refreshed.</p>
-          )}
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadProducts(!expired && items.length > 0 && (!inventoryReport || Boolean(snapshotId.current)))} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} {expired ? "Refresh results" : "Retry"}</button></div>}
 
