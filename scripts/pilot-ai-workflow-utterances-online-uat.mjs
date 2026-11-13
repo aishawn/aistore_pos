@@ -197,7 +197,7 @@ const cases = [
   { id: "report-negative-bills-en", question: "How many supplier bills did we receive?", intent: "report_adhoc", noRoute: true },
   { id: "report-negative-bills-received-en", question: "Have we received any bills?", intent: "report_adhoc", noRoute: true },
   { id: "report-negative-bills-received-zh", question: "收到账单了吗？", intent: "report_adhoc", noRoute: true },
-  { id: "product-lookup-en", question: "look up product DEMO", intent: "search_product", route: "/products", query: "DEMO", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found|product catalogue is unavailable" },
+  { id: "product-lookup-en", question: "look up product DEMO", intent: "search_product", route: "/products", query: "DEMO", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
   { id: "product-count-zh", question: "一共有多少产品", intent: "product_count", route: "/products", answerIncludes: ["可售商品"], answerExcludes: ["Open Products to browse", "打开商品目录查看"], answerRegex: "\\b\\d+\\b" },
   { id: "product-count-zh-variant", question: "商品有几种？", intent: "product_count", route: "/products", answerIncludes: ["可售商品"], answerExcludes: ["Open Products to browse", "打开商品目录查看"], answerRegex: "\\b\\d+\\b" },
   { id: "product-count-zh-store", question: "店里有多少种商品？", intent: "product_count", route: "/products", answerIncludes: ["可售商品"], answerExcludes: ["Open Products to browse", "打开商品目录查看"], answerRegex: "\\b\\d+\\b" },
@@ -217,10 +217,10 @@ const cases = [
   { id: "safety-edit-product-zh", question: "编辑这个产品", intent: "guided_action", writeGuided: true, route: "/products", answerLanguage: "zh" },
   { id: "safety-delete-product-en", question: "Delete product VB Cans", intent: "guided_action", writeGuided: true, route: "/products" },
   { id: "safety-receive-stock-en", question: "Receive this stock", intent: "guided_action", writeGuided: true, route: "/stock/replenishment" },
-  { id: "product-lookup-natural-en", question: "Search for the product VB Cans", intent: "search_product", route: "/products", query: "VB Cans", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found|product catalogue is unavailable" },
-  { id: "product-lookup-bare-en", question: "Search for Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found|product catalogue is unavailable" },
-  { id: "product-lookup-find-en", question: "Find Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found|product catalogue is unavailable" },
-  { id: "product-lookup-zh", question: "帮我查一下 Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "找到以下商品：|商品目录中没有找到|商品目录不可用|暂时无法查询商品目录" },
+  { id: "product-lookup-natural-en", question: "Search for the product VB Cans", intent: "search_product", route: "/products", query: "VB Cans", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
+  { id: "product-lookup-bare-en", question: "Search for Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
+  { id: "product-lookup-find-en", question: "Find Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "Matching products:|No catalogue matches found" },
+  { id: "product-lookup-zh", question: "帮我查一下 Shiraz", intent: "search_product", route: "/products", query: "Shiraz", answerExcludes: ["Opened products.", "Searching…", "Searching..."], answerRegex: "找到以下商品：|商品目录中没有找到" },
   { id: "product-lookup-conversational-find-en", question: "Can you find Shiraz?", intent: "search_product", route: "/products", query: "Shiraz" },
   { id: "product-lookup-conversational-look-en", question: "Please look for VB Cans", intent: "search_product", route: "/products", query: "VB Cans" },
   { id: "product-lookup-zh-search", question: "帮我搜一下 Shiraz", intent: "search_product", route: "/products", query: "Shiraz" },
@@ -539,7 +539,7 @@ const retryDelayMs = (response, body, attempt) => {
   if (body?.code === 42901 || response?.status?.() === 429) return Math.min(60000, 15000 * (attempt + 1));
   return Math.min(8000, 500 * (2 ** attempt));
 };
-const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable|(?:live )?product (?:count|total).*(?:unavailable|permission)|商品总数.*(?:暂不可用|无法获取|无权限|没有权限)/i.test(answer);
+const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable|(?:live )?product (?:count|total).*(?:unavailable|permission)|product catalogue is unavailable|catalogue is unavailable|商品目录(?:暂不可用|不可用|无法查询)|商品总数.*(?:暂不可用|无法获取|无权限|没有权限)/i.test(answer);
 const isTransientNetworkError = (value) => /ECONNRESET|ECONNREFUSED|ETIMEDOUT|TimeoutError|timeout|socket hang up|disconnected before secure TLS/i.test(String(value));
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
@@ -753,10 +753,9 @@ try {
       : null;
     const productCountCardCheck = item.intent !== "product_count"
       || Boolean(productCountCard
-        && ["ready", "empty", "unavailable"].includes(productCountCard.status)
+        && ["ready", "empty"].includes(productCountCard.status)
         && productCountCard.cta?.route === "/products"
-        && (productCountCard.status === "unavailable"
-          || (productCountCard.status === "ready"
+        && ((productCountCard.status === "ready"
             && /\d+/.test(String(productCountCard.summary ?? "")))
           || (productCountCard.status === "empty"
             && /\b0\b|no sellable products|没有可售商品|没有商品/i.test(String(productCountCard.summary ?? ""))))
@@ -764,6 +763,8 @@ try {
     const answerChecks = (item.answerIncludes ?? []).map((text) => answer.includes(text));
     const answerExcludesCheck = (item.answerExcludes ?? []).every((text) => !answer.includes(text));
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
+    const productLookupAnswerCheck = item.intent !== "search_product"
+      || /matching products:|no catalogue matches found|找到以下商品：|商品目录中没有找到/i.test(answer);
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const responseSourceCheck = !item.responseSource || data.source === item.responseSource;
@@ -787,6 +788,7 @@ try {
       && answerChecks.every(Boolean)
       && answerExcludesCheck
       && answerRegexCheck
+      && productLookupAnswerCheck
       && answerLanguageCheck
       && responseSourceCheck
       && productCountCardCheck
@@ -847,6 +849,7 @@ try {
         } : {}),
         ...(item.answerExcludes ? { answerExcludesCheck } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex, answerRegexCheck } : {}),
+        ...(item.intent === "search_product" ? { productLookupAnswerCheck } : {}),
         ...(item.answerLanguage ? { answerLanguageCheck } : {}),
         ...(item.responseSource ? { responseSource: data.source ?? null, responseSourceCheck } : {}),
         ...(process.env.PILOT_RECORD_RESPONSES === "1" ? {

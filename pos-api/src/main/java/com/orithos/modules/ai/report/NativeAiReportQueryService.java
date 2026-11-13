@@ -126,21 +126,64 @@ public class NativeAiReportQueryService {
         if (error != null) return ProductSearchResult.fail(error);
         if (query == null || query.isBlank()) return ProductSearchResult.fail("NEED_PRODUCT");
         try {
-            String match = "%" + query.trim() + "%";
-            List<Map<String, Object>> rows = dataSources.jdbc(tenant.requireOutletId()).queryForList("""
+            long outletId = tenant.requireOutletId();
+            int rowLimit = Math.max(1, Math.min(limit <= 0 ? 8 : limit, MAX_LIST_ROWS));
+            String term = query.trim();
+            String match = "%" + term + "%";
+            var jdbc = dataSources.jdbc(outletId);
+            List<Map<String, Object>> candidates = jdbc.queryForList("""
+                    SELECT p.id, p.name
+                    FROM ai_rpt_product_count p
+                    WHERE p.outlet_id = ? AND p.status = 'ACTIVE' AND p.name ILIKE ?
+                    ORDER BY p.name, p.id
+                    LIMIT ?
+                    """, outletId, match, rowLimit);
+
+            String barcodePredicate = term.matches("\\d{6,14}") ? "b.code = ?" : "b.code ILIKE ?";
+            List<Map<String, Object>> barcodeCandidates = jdbc.queryForList("""
+                    SELECT p.id, p.name
+                    FROM ai_rpt_product_barcode b
+                    JOIN ai_rpt_product_count p ON p.id = b.product_id AND p.outlet_id = b.outlet_id
+                    WHERE b.outlet_id = ? AND %s AND p.status = 'ACTIVE'
+                    ORDER BY p.name, p.id
+                    LIMIT ?
+                    """.formatted(barcodePredicate), outletId,
+                    term.matches("\\d{6,14}") ? term : match, rowLimit);
+
+            Map<Long, String> matchedProducts = new LinkedHashMap<>();
+            addProductCandidates(matchedProducts, candidates);
+            addProductCandidates(matchedProducts, barcodeCandidates);
+            List<Map.Entry<Long, String>> selected = matchedProducts.entrySet().stream()
+                    .sorted(Map.Entry.<Long, String>comparingByValue(String.CASE_INSENSITIVE_ORDER)
+                            .thenComparingLong(Map.Entry::getKey))
+                    .limit(rowLimit)
+                    .toList();
+            if (selected.isEmpty()) return ProductSearchResult.ok(List.of());
+
+            List<Object> detailParams = new ArrayList<>();
+            detailParams.add(outletId);
+            selected.forEach(entry -> detailParams.add(entry.getKey()));
+            String idPlaceholders = String.join(",", java.util.Collections.nCopies(selected.size(), "?"));
+            List<Map<String, Object>> rows = jdbc.queryForList("""
                     SELECT p.id, p.name, p.barcode, p.list_price,
                            COALESCE(i.quantity, 0) AS quantity
                     FROM ai_rpt_product p
                     LEFT JOIN ai_rpt_inventory i ON i.product_id = p.id AND i.outlet_id = p.outlet_id
-                    WHERE p.outlet_id = ? AND p.status = 'ACTIVE'
-                      AND (p.name ILIKE ? OR COALESCE(p.barcode, '') ILIKE ?)
+                    WHERE p.outlet_id = ? AND p.status = 'ACTIVE' AND p.id IN (%s)
                     ORDER BY p.name, p.id
-                    LIMIT ?
-                    """, tenant.requireOutletId(), match, match,
-                    Math.max(1, Math.min(limit <= 0 ? 8 : limit, MAX_LIST_ROWS)));
+                    """.formatted(idPlaceholders), detailParams.toArray());
             return ProductSearchResult.ok(rows);
         } catch (DataAccessException | IllegalStateException e) {
             return ProductSearchResult.fail("NATIVE_REPORT_UNAVAILABLE");
+        }
+    }
+
+    private static void addProductCandidates(Map<Long, String> target, List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            if (row.get("id") instanceof Number id && id.longValue() > 0) {
+                String name = row.get("name") == null ? "" : row.get("name").toString();
+                target.putIfAbsent(id.longValue(), name);
+            }
         }
     }
 

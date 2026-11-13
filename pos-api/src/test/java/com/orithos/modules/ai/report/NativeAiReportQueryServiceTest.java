@@ -120,6 +120,73 @@ class NativeAiReportQueryServiceTest {
     }
 
     @Test
+    void searchesProductCandidatesBeforeLoadingPriceAndInventoryDetails() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(dataSources.jdbc(87L)).thenReturn(jdbc);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%VB Cans%"), eq(8)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB Cans 375ML")));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_barcode b"),
+                eq(87L), eq("%VB Cans%"), eq(8))).thenReturn(List.of());
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product p"),
+                eq(87L), eq(42L)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB Cans 375ML", "barcode", "9312345678901",
+                        "list_price", 8.50, "quantity", 12)));
+
+        NativeAiReportQueryService.ProductSearchResult result = service.searchProducts(tenant, "VB Cans", 8);
+
+        assertEquals(null, result.error());
+        assertEquals("VB Cans 375ML", result.rows().get(0).get("name"));
+        assertEquals(12, result.rows().get(0).get("quantity"));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%VB Cans%"), eq(8));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product p"),
+                eq(87L), eq(42L));
+    }
+
+    @Test
+    void searchesNumericBarcodeExactlyThroughTheOutletScopedBarcodeView() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(dataSources.jdbc(87L)).thenReturn(jdbc);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%9312345678901%"), eq(8))).thenReturn(List.of());
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_barcode b"),
+                eq(87L), eq("9312345678901"), eq(8)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB Cans 375ML")));
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product p"),
+                eq(87L), eq(42L)))
+                .thenReturn(List.of(Map.of("id", 42L, "name", "VB Cans 375ML", "barcode", "9312345678901",
+                        "list_price", 8.50, "quantity", 12)));
+
+        NativeAiReportQueryService.ProductSearchResult result = service.searchProducts(tenant, "9312345678901", 8);
+
+        assertEquals(null, result.error());
+        assertEquals("VB Cans 375ML", result.rows().get(0).get("name"));
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.contains("ai_rpt_product_barcode"),
+                eq(87L), eq("9312345678901"), eq(8));
+    }
+
+    @Test
+    void returnsNoMatchesWithoutExpandingTheDetailedProductView() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(dataSources.jdbc(87L)).thenReturn(jdbc);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_count p"),
+                eq(87L), eq("%missing%"), eq(8))).thenReturn(List.of());
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product_barcode b"),
+                eq(87L), eq("%missing%"), eq(8))).thenReturn(List.of());
+
+        NativeAiReportQueryService.ProductSearchResult result = service.searchProducts(tenant, "missing", 8);
+
+        assertEquals(null, result.error());
+        assertEquals(List.of(), result.rows());
+        verify(jdbc, never()).queryForList(org.mockito.ArgumentMatchers.contains("FROM ai_rpt_product p"),
+                any(Object[].class));
+    }
+
+    @Test
     void recommendationCatalogUsesSingleBoundedQueryAndCachesPerOutletUntilTtlExpires() {
         long[] now = {1_000L};
         NativeAiReportQueryService cachedService = new NativeAiReportQueryService(

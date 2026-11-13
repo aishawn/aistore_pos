@@ -46,9 +46,14 @@ WHERE p.deleted_at IS NULL;
 
 -- Minimal product fields for count-only questions; avoid evaluating price/barcode joins.
 CREATE OR REPLACE VIEW ai_rpt_product_count AS
-SELECT p.id, p.outlet_id, p.status
+SELECT p.id, p.outlet_id, p.status, p.name
 FROM product p
 WHERE p.deleted_at IS NULL;
+
+-- Lightweight exact/contains barcode lookup for bounded product search.
+CREATE OR REPLACE VIEW ai_rpt_product_barcode AS
+SELECT pb.product_id, pb.outlet_id, pb.code
+FROM product_barcode pb;
 
 -- On-hand inventory by outlet.
 CREATE OR REPLACE VIEW ai_rpt_inventory AS

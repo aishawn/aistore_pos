@@ -31,5 +31,6 @@ class AiReportTenantSchemaTest {
     @Test
     void provisionsTheMinimalProductCountViewForEachOutlet() {
         assertTrue(Arrays.asList(AiReportTenantProvisioner.VIEWS).contains("ai_rpt_product_count"));
+        assertTrue(Arrays.asList(AiReportTenantProvisioner.VIEWS).contains("ai_rpt_product_barcode"));
     }
 }
