@@ -1,10 +1,12 @@
 package com.orithos.modules.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
+import java.sql.ResultSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -14,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +86,41 @@ class ShopfrontNativeSaleImporterTest {
         verify(jdbc).update(contains("external_payment_id"), any(Object[].class));
         verify(jdbc, never()).update(contains("inventory_movement"), any(Object[].class));
         verify(jdbc, never()).update(contains("product_inventory"), any(Object[].class));
+    }
+
+    @Test
+    void resolvesCustomerReferenceFromNativeClientIdMapping() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_product_mapping"), any(Object[].class)))
+                .thenReturn(java.util.List.of());
+        doAnswer(invocation -> {
+            RowCallbackHandler callback = invocation.getArgument(1);
+            ResultSet row = mock(ResultSet.class);
+            when(row.next()).thenReturn(true, false);
+            when(row.getString("reference")).thenReturn("client-customer-1");
+            when(row.getLong("customer_id")).thenReturn(321L);
+            callback.processRow(row);
+            return null;
+        }).when(jdbc).query(contains("client_id AS reference"), any(RowCallbackHandler.class), any(Object[].class));
+        when(jdbc.queryForObject(anyString(), eq(Long.class), any(Object[].class)))
+                .thenAnswer(invocation -> invocation.getArgument(0, String.class).contains("INSERT INTO sale")
+                        ? 99L : null);
+
+        var payload = new ObjectMapper().readTree("""
+                [{"external_id":"sf-customer-sale","invoice_id":"INV-2","status":"COMPLETED",
+                  "customer_reference":"client-customer-1","created_at":"2026-11-09T03:15:00Z",
+                  "total_price":12.50,"total_tax":1.14,"items":[]}]
+                """);
+
+        var result = new ShopfrontNativeSaleImporter(jdbc).upsertSales("skr", 87L, payload);
+
+        assertEquals(1, result.get("created"));
+        var saleInsert = org.mockito.Mockito.mockingDetails(jdbc).getInvocations().stream()
+                .filter(call -> call.getMethod().getName().equals("queryForObject")
+                        && call.getArgument(0, String.class).contains("INSERT INTO sale"))
+                .findFirst().orElseThrow();
+        Object[] values = (Object[]) saleInsert.getRawArguments()[2];
+        assertEquals(321L, values[4]);
     }
 
     @Test

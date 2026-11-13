@@ -157,6 +157,7 @@ function CustomerHomePanel({
           onRetry={onRetry}
         >
           <ListTable
+            defaultSort={false}
             columns={[
               { label: "Timestamp", width: "w-[180px]" },
               { label: "User", width: "w-[140px]" },
@@ -220,6 +221,7 @@ function CustomerStatementModal({
         </div>
 
         <ListTable
+          defaultSort={false}
           columns={[
             { label: "Date", width: "w-[160px]" },
             { label: "Description" },
@@ -331,6 +333,7 @@ function CustomerBalancePanel({
           onRetry={onRetrySales}
         >
           <ListTable
+            defaultSort={false}
             columns={[
               { label: "Invoice", width: "w-[140px]" },
               { label: "Date", width: "w-[180px]" },
@@ -357,6 +360,7 @@ function CustomerBalancePanel({
           onRetry={onRetryPayments}
         >
           <ListTable
+            defaultSort={false}
             columns={[
               { label: "Date", width: "w-[180px]" },
               { label: "Method", width: "w-[120px]" },
@@ -413,6 +417,7 @@ function CustomerRevisionPanel({
       onRetry={onRetry}
     >
       <ListTable
+        defaultSort={false}
         columns={[
           { label: "Date", width: "w-[180px]" },
           { label: "User", width: "w-[140px]" },
@@ -430,7 +435,7 @@ function CustomerRevisionPanel({
   );
 }
 
-export function CustomerViewPage({ customerId }: { customerId: string }) {
+export function CustomerViewPage({ customerId, onClose }: { customerId: string; onClose?: () => void }) {
   const router = useRouter();
   const [nav, setNav] = useState<NavId>("home");
   const [deleting, setDeleting] = useState(false);
@@ -469,7 +474,8 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
     setActionError(null);
     try {
       await api.del(`/api/customers/${customerId}`);
-      router.push("/customers");
+      if (onClose) onClose();
+      else router.push("/customers");
     } catch (e) {
       setDeleteConfirmOpen(false);
       setActionError(e instanceof Error ? e.message : "Failed to delete customer");
@@ -506,7 +512,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
       <div className="relative flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-left sm:px-6 md:justify-center md:text-center">
-        <button type="button" onClick={() => router.push("/customers")} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-[var(--oh-text-secondary)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:absolute md:left-4">
+        <button type="button" onClick={onClose ?? (() => router.push("/customers"))} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-[var(--oh-text-secondary)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:absolute md:left-4">
           <ArrowLeftIcon size={16} /> <span>Customers</span>
         </button>
         <h1 className="min-w-0 flex-1 break-words text-lg font-semibold leading-6 text-[var(--oh-text)] md:flex-none md:text-xl">

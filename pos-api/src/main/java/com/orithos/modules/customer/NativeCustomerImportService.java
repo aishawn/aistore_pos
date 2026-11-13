@@ -47,6 +47,7 @@ public class NativeCustomerImportService {
             try {
                 Long existing = findMapping(storeKey, sourceId, outletId);
                 // Keep codes outlet-unique across Demo/SKR mirrors of the same Shopfront source ids.
+                String clientId = text(item, "client_id", "clientId");
                 String code = text(item, "code", "client_id");
                 if (code == null || code.isBlank()) {
                     code = "SF-" + storeKey + "-" + sourceId;
@@ -98,7 +99,7 @@ public class NativeCustomerImportService {
                             customerGroupId, overrideCustomerGroup ? 1 : 0, loyaltyEnabled ? 1 : 0, loyaltyRate, loyaltyPoints,
                             disablePromotions ? 1 : 0, priceListId, requireOrderReference ? 1 : 0, accountLimit, currentOwing,
                             deleted, outletId);
-                    jdbc.update("INSERT INTO shopfront_customer_mapping (store_key, source_id, outlet_id, customer_id) VALUES (?, ?, ?, ?)", storeKey, sourceId, outletId, customerId);
+                    jdbc.update("INSERT INTO shopfront_customer_mapping (store_key, source_id, client_id, outlet_id, customer_id) VALUES (?, ?, ?, ?, ?)", storeKey, sourceId, clientId, outletId, customerId);
                     created++;
                 } else {
                     customerId = existing;
@@ -115,6 +116,8 @@ public class NativeCustomerImportService {
                         overrideCustomerGroup ? 1 : 0, loyaltyEnabled ? 1 : 0, loyaltyRate, loyaltyPoints,
                         disablePromotions ? 1 : 0, priceListId, requireOrderReference ? 1 : 0, accountLimit,
                         currentOwing, deleted, customerId, outletId);
+                    jdbc.update("UPDATE shopfront_customer_mapping SET client_id=?, updated_at=CURRENT_TIMESTAMP WHERE store_key=? AND source_id=? AND outlet_id=?",
+                            clientId, storeKey, sourceId, outletId);
                     updated++;
                 }
                 syncEmails(customerId, outletId, emails, deleted);
@@ -123,10 +126,30 @@ public class NativeCustomerImportService {
                 if (errors.size() < 25) errors.add(sourceId + ": " + (ex.getMessage() == null ? "import failed" : ex.getMessage()));
             }
         }
+        int customerSalesLinked = linkShopfrontSales(storeKey, outletId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("created", created); result.put("updated", updated); result.put("skipped", skipped);
+        result.put("customer_sales_linked", customerSalesLinked);
         result.put("errors", errors); result.put("enabled", true);
         return result;
+    }
+
+    private int linkShopfrontSales(String storeKey, long outletId) {
+        return jdbc.update("""
+                WITH matches AS (
+                  SELECT s.id AS sale_id, MIN(m.customer_id) AS customer_id
+                  FROM sale s
+                  JOIN shopfront_customer_mapping m
+                    ON m.store_key = ? AND m.outlet_id = s.outlet_id
+                   AND (m.source_id = s.note OR m.client_id = s.note)
+                  WHERE s.outlet_id = ? AND s.source_system = 'shopfront'
+                    AND s.customer_id IS NULL AND NULLIF(TRIM(s.note), '') IS NOT NULL
+                  GROUP BY s.id
+                  HAVING COUNT(DISTINCT m.customer_id) = 1
+                )
+                UPDATE sale s SET customer_id = matches.customer_id
+                FROM matches WHERE s.id = matches.sale_id AND s.customer_id IS NULL
+                """, storeKey, outletId);
     }
 
     /**
@@ -307,7 +330,8 @@ public class NativeCustomerImportService {
     }
 
     private void ensureMappingTable() {
-        jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, outlet_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, client_id VARCHAR(160), outlet_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+        jdbc.execute("ALTER TABLE shopfront_customer_mapping ADD COLUMN IF NOT EXISTS client_id VARCHAR(160)");
     }
 
     private void ensureGroupMappingTable() {

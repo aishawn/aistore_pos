@@ -54,6 +54,7 @@ public class ShopfrontNativeSaleImporter {
             return result;
         }
         Map<String, Long> productCache = loadProductMappings(storeKey);
+        Map<String, Long> customerCache = loadCustomerMappings(storeKey, outletId);
         for (JsonNode sale : items) {
             try {
                 String externalId = text(sale, "external_id");
@@ -62,7 +63,7 @@ public class ShopfrontNativeSaleImporter {
                     continue;
                 }
                 validateImportableSale(sale);
-                UpsertOutcome outcome = upsertOne(storeKey, outletId, sale, externalId, productCache);
+                UpsertOutcome outcome = upsertOne(storeKey, outletId, sale, externalId, productCache, customerCache);
                 if (outcome.created()) {
                     created++;
                 } else {
@@ -102,7 +103,7 @@ public class ShopfrontNativeSaleImporter {
     }
 
     private UpsertOutcome upsertOne(String storeKey, long outletId, JsonNode sale, String externalId,
-                                    Map<String, Long> productCache) {
+                                    Map<String, Long> productCache, Map<String, Long> customerCache) {
         String status = mapStatus(text(sale, "status"));
         String invoiceId = text(sale, "invoice_id");
         SoldAt soldAt = parseSoldAt(text(sale, "created_at"));
@@ -111,6 +112,7 @@ public class ShopfrontNativeSaleImporter {
         BigDecimal totalDiscount = money(decimalNode(sale, "total_discount"));
         BigDecimal totalCost = nullableMoney(decimalNode(sale, "total_cost"));
         String note = text(sale, "customer_reference");
+        Long customerId = note == null ? null : customerCache.get(note);
 
         JsonNode saleItems = sale.path("items");
         int totalQuantity = 0;
@@ -167,12 +169,12 @@ public class ShopfrontNativeSaleImporter {
         long saleId;
         boolean created;
         if (existingId == null) {
-            saleId = insertSale(outletId, externalId, invoiceId, status, note, totalQuantity,
+            saleId = insertSale(outletId, externalId, invoiceId, status, note, customerId, totalQuantity,
                     totalPrice, totalTax, totalDiscount, totalCost, soldAt);
             created = true;
         } else {
             saleId = existingId;
-            updateSale(saleId, outletId, externalId, invoiceId, status, note, totalQuantity,
+            updateSale(saleId, outletId, externalId, invoiceId, status, note, customerId, totalQuantity,
                     totalPrice, totalTax, totalDiscount, totalCost, soldAt);
             jdbc.update("DELETE FROM sale_payment WHERE sale_id = ?", saleId);
             jdbc.update("DELETE FROM sale_item WHERE sale_id = ?", saleId);
@@ -203,28 +205,28 @@ public class ShopfrontNativeSaleImporter {
         return new UpsertOutcome(created, unmatchedLines);
     }
 
-    private long insertSale(long outletId, String externalId, String invoiceId, String status, String note,
+    private long insertSale(long outletId, String externalId, String invoiceId, String status, String note, Long customerId,
                             int totalQuantity, BigDecimal totalPrice, BigDecimal totalTax, BigDecimal totalDiscount,
                             BigDecimal totalCost, SoldAt soldAt) {
         return jdbc.queryForObject("""
-                INSERT INTO sale (outlet_id, status, invoice_id, note, total_quantity, total_price, total_tax,
+                INSERT INTO sale (outlet_id, status, invoice_id, note, customer_id, total_quantity, total_price, total_tax,
                                   total_discount, total_cost, outstanding, total_change, cashout,
                                   business_date, local_sold_at, created_at, updated_at, source_system, external_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, ?, ?)
                 RETURNING id
                 """, Long.class,
-                outletId, status, invoiceId, note, totalQuantity, totalPrice, totalTax, totalDiscount, totalCost,
+                outletId, status, invoiceId, note, customerId, totalQuantity, totalPrice, totalTax, totalDiscount, totalCost,
                 soldAt == null ? null : Date.valueOf(soldAt.businessDate()),
                 soldAt == null ? null : Timestamp.valueOf(soldAt.localSoldAt()),
                 soldAt == null ? null : Timestamp.from(soldAt.createdAtUtc()),
                 SOURCE_SYSTEM, externalId);
     }
 
-    private void updateSale(long saleId, long outletId, String externalId, String invoiceId, String status, String note,
+    private void updateSale(long saleId, long outletId, String externalId, String invoiceId, String status, String note, Long customerId,
                             int totalQuantity, BigDecimal totalPrice, BigDecimal totalTax, BigDecimal totalDiscount,
                             BigDecimal totalCost, SoldAt soldAt) {
         jdbc.update("""
-                UPDATE sale SET status = ?, invoice_id = ?, note = ?, total_quantity = ?, total_price = ?,
+                UPDATE sale SET status = ?, invoice_id = ?, note = ?, customer_id = COALESCE(?, customer_id), total_quantity = ?, total_price = ?,
                        total_tax = ?, total_discount = ?, total_cost = ?, outstanding = 0,
                        business_date = COALESCE(?, business_date),
                        local_sold_at = COALESCE(?, local_sold_at),
@@ -233,11 +235,40 @@ public class ShopfrontNativeSaleImporter {
                        source_system = ?, external_id = ?
                 WHERE id = ? AND outlet_id = ?
                 """,
-                status, invoiceId, note, totalQuantity, totalPrice, totalTax, totalDiscount, totalCost,
+                status, invoiceId, note, customerId, totalQuantity, totalPrice, totalTax, totalDiscount, totalCost,
                 soldAt == null ? null : Date.valueOf(soldAt.businessDate()),
                 soldAt == null ? null : Timestamp.valueOf(soldAt.localSoldAt()),
                 soldAt == null ? null : Timestamp.from(soldAt.createdAtUtc()),
                 SOURCE_SYSTEM, externalId, saleId, outletId);
+    }
+
+    private Map<String, Long> loadCustomerMappings(String storeKey, long outletId) {
+        jdbc.execute("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping (store_key VARCHAR(64) NOT NULL, source_id VARCHAR(160) NOT NULL, client_id VARCHAR(160), outlet_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (store_key, source_id, outlet_id))");
+        jdbc.execute("ALTER TABLE shopfront_customer_mapping ADD COLUMN IF NOT EXISTS client_id VARCHAR(160)");
+        Map<String, Long> mappings = new HashMap<>();
+        List<String> ambiguous = new ArrayList<>();
+        jdbc.query("""
+                SELECT reference, customer_id FROM (
+                  SELECT source_id AS reference, customer_id
+                  FROM shopfront_customer_mapping
+                  WHERE store_key = ? AND outlet_id = ?
+                  UNION ALL
+                  SELECT client_id AS reference, customer_id
+                  FROM shopfront_customer_mapping
+                  WHERE store_key = ? AND outlet_id = ? AND client_id IS NOT NULL
+                ) candidates
+                WHERE reference IS NOT NULL AND reference <> ''
+                GROUP BY reference, customer_id
+                """, rs -> {
+            while (rs.next()) {
+                String sourceId = rs.getString("reference");
+                Long customerId = rs.getLong("customer_id");
+                Long previous = mappings.putIfAbsent(sourceId, customerId);
+                if (previous != null && !previous.equals(customerId)) ambiguous.add(sourceId);
+            }
+        }, storeKey, outletId, storeKey, outletId);
+        ambiguous.forEach(mappings::remove);
+        return mappings;
     }
 
     private Long findExistingSaleId(long outletId, String externalId) {

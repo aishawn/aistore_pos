@@ -37,6 +37,7 @@ class NativeCustomerImportServiceTest {
         var items = mapper.readTree("""
                 [{
                   "source_id":"sf-customer-1",
+                  "client_id":"client-customer-1",
                   "name":"A Customer",
                   "code":"AC-1",
                   "email":"primary@example.test",
@@ -84,6 +85,9 @@ class NativeCustomerImportServiceTest {
         assertEquals(1, values[17]);
         assertEquals(new BigDecimal("123.45"), values[24]);
         assertEquals(87L, values[26]);
+        verify(jdbc).update(contains("INSERT INTO shopfront_customer_mapping"), eq("skr"),
+                eq("sf-customer-1"), eq("client-customer-1"), eq(87L), eq(321L));
+        verify(jdbc).update(contains("UPDATE sale"), eq("skr"), eq(87L));
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("primary@example.test"), eq(0), any(), eq(87L));
         verify(jdbc).update(contains("INSERT INTO customer_email"), eq(321L), eq("accounts@example.test"), eq(1), any(), eq(87L));
     }

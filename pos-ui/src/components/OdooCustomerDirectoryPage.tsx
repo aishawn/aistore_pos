@@ -8,7 +8,6 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { CustomerLookup } from "@/components/CustomerLookup";
 import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
-import { OdooRecordLink } from "@/components/OdooRecordLink";
 import { FilterMultiSelect } from "@/components/admin/FilterMultiSelect";
 import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useSearchParams } from "next/navigation";
@@ -28,6 +27,7 @@ import {
 import { Sparkline } from "@/components/admin/Sparkline";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { CustomerViewPage } from "@/components/admin/CustomerViewPage";
 
 const PAGE_SIZE = 40;
 const money = (amount?: number | null) => typeof amount === "number" && Number.isFinite(amount) ? `$${amount.toFixed(2)}` : "—";
@@ -427,7 +427,7 @@ export function OdooCustomerDirectoryPage() {
                   return (
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3">
-                      <Link href={`/customers/${customer.id}/view`} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</Link>
+                      <button type="button" onClick={() => setDetail(customer)} className="flex min-h-11 items-center gap-2 text-left font-medium text-[var(--oh-primary)]"><UserRound size={16} />{customer.name}</button>
                       <span className="ml-6 block text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</span>
                     </td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer)}</td>
@@ -439,7 +439,7 @@ export function OdooCustomerDirectoryPage() {
                       </div>
                     </td>
                     {canBalance && <td className="px-4 py-3 text-right font-medium text-[var(--oh-text)]">{money(customer.credit)}</td>}
-                    <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><Link href={`/customers/${customer.id}/view`} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)]">View</Link>{canEdit && <details className="relative"><summary className="inline-flex min-h-11 list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium"><Ellipsis size={16} /> More</summary><div className="absolute right-0 z-20 mt-1 grid min-w-32 rounded-lg border bg-white p-1 text-left shadow-lg"><button type="button" onClick={() => openEdit(customer)} className="min-h-10 px-3 text-left text-sm hover:bg-[var(--oh-surface)]">Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} className="min-h-10 px-3 text-left text-sm text-rose-800 hover:bg-rose-50">Archive</button></div></details>}</div></td>
+                    <td className="px-4 py-3 text-right"><div className="flex justify-end gap-2"><button type="button" onClick={() => setDetail(customer)} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)]">View</button>{canEdit && <details className="relative"><summary className="inline-flex min-h-11 list-none cursor-pointer items-center gap-1 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium"><Ellipsis size={16} /> More</summary><div className="absolute right-0 z-20 mt-1 grid min-w-32 rounded-lg border bg-white p-1 text-left shadow-lg"><button type="button" onClick={() => openEdit(customer)} className="min-h-10 px-3 text-left text-sm hover:bg-[var(--oh-surface)]">Edit</button><button type="button" onClick={() => void archiveCustomer(customer)} className="min-h-10 px-3 text-left text-sm text-rose-800 hover:bg-rose-50">Archive</button></div></details>}</div></td>
                   </tr>
                   );
                 })}
@@ -457,7 +457,7 @@ export function OdooCustomerDirectoryPage() {
                 <article key={customer.id} className="px-4 py-3.5">
                   <header className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <Link href={`/customers/${customer.id}/view`} className="flex min-h-11 items-center break-words text-left text-sm font-semibold text-[var(--oh-primary)]">{customer.name}</Link>
+                      <button type="button" onClick={() => setDetail(customer)} className="flex min-h-11 items-center break-words text-left text-sm font-semibold text-[var(--oh-primary)]">{customer.name}</button>
                       <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Orithos #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</p>
                     </div>
                     {canBalance && <p className="shrink-0 text-sm font-semibold text-[var(--oh-text)]">{money(customer.credit)}</p>}
@@ -546,7 +546,7 @@ export function OdooCustomerDirectoryPage() {
         </section>
       </ModalOverlay>}
       {groupsOpen && <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/40 p-2 sm:p-4"><section role="dialog" aria-modal="true" aria-label="Manage customer groups" className="flex max-h-[95dvh] w-full max-w-5xl flex-col overflow-y-auto rounded-xl bg-white"><OdooCustomerGroupsPage onClose={() => { setGroupsOpen(false); setRefreshKey((value) => value + 1); }} /></section></ModalOverlay>}
-      {detail && <ModalOverlay className="fixed inset-0 z-[90] flex justify-end bg-slate-950/40"><section role="dialog" aria-modal="true" aria-labelledby="customer-detail-title" className="h-full w-full max-w-lg overflow-y-auto bg-white p-5"><header className="flex items-start justify-between gap-3"><h2 id="customer-detail-title" className="text-xl font-semibold">{detail.name}</h2><button type="button" onClick={() => setDetail(null)} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header><dl className="mt-5 grid gap-3 text-sm">{[["Phone", detail.phone], ["Email", detail.email], ["Customer reference", detail.ref], ["Type", detail.company_type], ["Address", [detail.street, detail.city].filter(Boolean).join(", ")], ["ABN / VAT", detail.vat], ["Groups", groupName(detail)], ["Price list", Array.isArray(detail.property_product_pricelist) ? detail.property_product_pricelist[1] : "Store default"]].map(([label, value]) => <div key={String(label)}><dt className="text-[var(--oh-muted)]">{label}</dt><dd className="break-words font-medium">{value || "—"}</dd></div>)}</dl>{canBalance && <div className="mt-5 grid gap-3 rounded-lg border p-3"><p>Current receivable: {money(detail.credit)}</p><Link href={`/customers/balances?customerId=${detail.id}&q=${encodeURIComponent(detail.name)}`} className="min-h-11 text-[var(--oh-primary)] underline">Open unpaid invoices</Link></div>}<div className="mt-5 flex flex-wrap gap-2">{canEdit && <button type="button" onClick={() => { setDetail(null); openEdit(detail); }} className="min-h-11 rounded border px-3">Edit customer</button>}<OdooRecordLink model="res.partner" id={detail.id}>Open in Orithos</OdooRecordLink></div></section></ModalOverlay>}
+      {detail && <ModalOverlay className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/50 p-0 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetail(null); }}><section role="dialog" aria-modal="true" aria-label={`${detail.name} customer details`} className="h-[95dvh] w-full overflow-hidden bg-white shadow-2xl sm:h-[min(92dvh,900px)] sm:w-[min(96vw,1680px)] sm:rounded-lg sm:border sm:border-[var(--oh-border)]"><CustomerViewPage customerId={String(detail.id)} onClose={() => setDetail(null)} /></section></ModalOverlay>}
     </main>
   );
 }

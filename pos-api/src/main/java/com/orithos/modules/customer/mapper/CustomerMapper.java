@@ -93,7 +93,7 @@ public interface CustomerMapper {
               <otherwise>AND c.price_list_id = #{priceListId}</otherwise>
             </choose>
           </if>
-        ORDER BY c.created_at DESC, c.id DESC LIMIT #{size} OFFSET #{offset}
+        ORDER BY lower(c.name) COLLATE "C" ASC, c.id ASC LIMIT #{size} OFFSET #{offset}
         </script>
         """)
     List<Customer> page(@Param("name") String name,
