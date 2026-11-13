@@ -66,6 +66,18 @@ class RegisterPaymentMethodControllerTest {
         verifyNoInteractions(paymentMethods);
     }
 
+    @Test
+    void rejectsEmptyAssignmentsBeforeClearingTheRegister() {
+        authenticate();
+        when(registers.findByIdAndVendor(11L, 3L)).thenReturn(register(11L, 12L));
+
+        assertThrows(BusinessException.class, () -> controller.replace(11L,
+                new RegisterPaymentMethodController.AssignmentRequest(List.of())));
+
+        verify(paymentMethods, never()).deleteRegisterAssignments(anyLong(), anyLong());
+        verify(paymentMethods, never()).insertRegisterAssignment(anyLong(), anyLong(), anyLong());
+    }
+
     private static void authenticate() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthUser(7L, "manager", false, 12L, 3L), null, List.of()));

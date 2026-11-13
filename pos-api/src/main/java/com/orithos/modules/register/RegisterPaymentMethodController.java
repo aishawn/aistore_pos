@@ -47,7 +47,10 @@ public class RegisterPaymentMethodController {
             throw new BusinessException(40000, "Payment method ids must be positive.");
         }
         List<Long> ids = List.copyOf(new LinkedHashSet<>(requestedIds));
-        if (!ids.isEmpty() && paymentMethods.countActiveIdsInOutlet(ids, register.getOutletId()) != ids.size()) {
+        if (ids.isEmpty()) {
+            throw new BusinessException(40000, "A register must accept at least one payment method.");
+        }
+        if (paymentMethods.countActiveIdsInOutlet(ids, register.getOutletId()) != ids.size()) {
             throw new BusinessException(40000, "Payment methods must be active and belong to this outlet.");
         }
         paymentMethods.deleteRegisterAssignments(registerId, register.getOutletId());

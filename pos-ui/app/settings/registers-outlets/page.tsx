@@ -250,8 +250,11 @@ export default function RegistersOutletsPage() {
                     ))}
                     {paymentMethods.length === 0 && <p className="text-sm text-[var(--oh-muted)]">No payment methods configured.</p>}
                   </div>
+                  {selectedPaymentMethodIds.length === 0 && (
+                    <p role="status" className="text-sm text-amber-700">Select at least one payment method.</p>
+                  )}
                   <div className="flex gap-3">
-                    {canEdit && <button type="button" onClick={() => void saveRegisterPayments(register.id)} disabled={saving} className="font-semibold text-[var(--oh-primary)]">Save payments</button>}
+                    {canEdit && <button type="button" onClick={() => void saveRegisterPayments(register.id)} disabled={saving || selectedPaymentMethodIds.length === 0} className="font-semibold text-[var(--oh-primary)] disabled:opacity-50">Save payments</button>}
                     <button type="button" onClick={() => setPaymentEditorRegisterId(null)} disabled={saving} className="text-[var(--oh-muted)]">Cancel</button>
                   </div>
                 </li>
