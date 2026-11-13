@@ -45,7 +45,8 @@ class NativeReportQueryNodeTest {
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-16"), LocalDate.parse("2026-10-16")))
                 .thenReturn(Map.of("revenue", 100.00, "grossProfit", 30.00, "profitMargin", 30.00,
                         "costAvailable", true, "transactions", 3,
-                        "dataAsOf", "2026-10-16T14:30:00+10:30"));
+                        "dataAsOf", "2026-10-16T14:30:00+10:30", "dataSource", "orithos_ledger",
+                        "reportDataStatus", "available"));
 
         Map<String, Object> result = node.apply(state);
 
@@ -54,6 +55,34 @@ class NativeReportQueryNodeTest {
         assertEquals("available", result.get("report_data_status"));
         assertEquals("2026-10-16T14:30:00+10:30", result.get("report_data_as_of"));
         assertEquals(30.00, ((Map<?, ?>) ((List<?>) result.get("report_rows")).get(0)).get("grossProfit"));
+    }
+
+    @Test
+    void salesOverviewWithoutAnAuthoritativeDataStatusIsIncomplete() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService,
+                new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDateTime from = LocalDateTime.of(2026, 10, 16, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 10, 17, 0, 0);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("yesterday sales"));
+        when(state.value("report_from")).thenReturn(Optional.of(from));
+        when(state.value("report_to")).thenReturn(Optional.of(to));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("can_report_cost")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
+        when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-16"), LocalDate.parse("2026-10-16")))
+                .thenReturn(Map.of("revenue", 100.00, "transactions", 3,
+                        "dataAsOf", "2026-10-16T14:30:00+10:30", "dataSource", "orithos_ledger"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("incomplete", result.get("report_data_status"));
     }
 
     @Test
@@ -77,7 +106,7 @@ class NativeReportQueryNodeTest {
         when(queryService.query(any(TenantContext.class), eq("report_aov"), any(), any()))
                 .thenReturn(new NativeAiReportQueryService.Result(
                         List.of(Map.of("aov", 27.99, "tickets", 185, "sales", 5178.94)), null,
-                        "2026-11-12T14:30:00Z"));
+                        "2026-11-12T14:30:00Z", "orithos_ledger"));
 
         Map<String, Object> result = node.apply(state);
 
@@ -128,10 +157,12 @@ class NativeReportQueryNodeTest {
         when(state.value("slots")).thenReturn(Optional.of(Map.of()));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-14"), LocalDate.parse("2026-10-14")))
                 .thenReturn(Map.of("revenue", 100.0, "grossProfit", 30.0, "costAvailable", true,
-                        "transactions", 2, "dataAsOf", "2026-10-14T12:00:00Z"));
+                        "transactions", 2, "dataAsOf", "2026-10-14T12:00:00Z", "dataSource", "orithos_ledger",
+                        "reportDataStatus", "available"));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-15"), LocalDate.parse("2026-10-15")))
                 .thenReturn(Map.of("revenue", 120.0, "grossProfit", 35.0, "costAvailable", true,
-                        "transactions", 3, "dataAsOf", "2026-10-15T12:00:00Z"));
+                        "transactions", 3, "dataAsOf", "2026-10-15T12:00:00Z", "dataSource", "orithos_ledger",
+                        "reportDataStatus", "available"));
 
         Map<String, Object> result = node.apply(state);
         @SuppressWarnings("unchecked")
@@ -223,16 +254,69 @@ class NativeReportQueryNodeTest {
         when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
         when(queryService.query(any(TenantContext.class), anyString(), any(), any()))
                 .thenReturn(new NativeAiReportQueryService.Result(
-                        List.of(Map.of("date", "2026-10-16", "sales", 7738.14)), null));
+                        List.of(Map.of("date", "2026-10-16", "sales", 7738.14,
+                                "dataSource", "authoritative_api_source")), null));
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("orithos_ledger", result.get("report_data_source"));
+        assertEquals("authoritative_api_source", result.get("report_data_source"));
         assertEquals("orithos_template", result.get("sql_path"));
         assertEquals("current_authenticated_store", result.get("report_store_scope"));
         assertNull(result.get("report_data_as_of"));
         assertEquals("2026-10-16", result.get("report_period_from"));
         assertEquals("Australia/Adelaide", result.get("report_time_zone"));
+        assertEquals("incomplete", result.get("report_data_status"));
+    }
+
+    @Test
+    void reportSourceIsNotInventedWhenTheDataServiceOmitsIt() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportPeriodResolver resolver = mock(ReportPeriodResolver.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, resolver, reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDateTime from = LocalDateTime.of(2026, 10, 16, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 10, 17, 0, 0);
+
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_qty"));
+        when(state.value("report_from")).thenReturn(Optional.of(from));
+        when(state.value("report_to")).thenReturn(Optional.of(to));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
+        when(queryService.query(any(TenantContext.class), anyString(), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(
+                        List.of(Map.of("date", "2026-10-16", "sales", 7738.14)), null,
+                        "2026-10-16T12:00:00Z"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertNull(result.get("report_data_source"));
+        assertEquals("incomplete", result.get("report_data_status"));
+    }
+
+    @Test
+    void conflictingRowSourcesAreIncompleteAndNotCollapsedToOneSource() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportPeriodResolver resolver = mock(ReportPeriodResolver.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, resolver, reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        LocalDateTime from = LocalDateTime.of(2026, 10, 16, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 10, 17, 0, 0);
+
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_qty"));
+        when(state.value("report_from")).thenReturn(Optional.of(from));
+        when(state.value("report_to")).thenReturn(Optional.of(to));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-16", "to", "2026-10-16")));
+        when(queryService.query(any(TenantContext.class), anyString(), any(), any()))
+                .thenReturn(new NativeAiReportQueryService.Result(List.of(
+                        Map.of("date", "2026-10-16", "dataSource", "ledger_a", "dataAsOf", "2026-10-16T12:00:00Z"),
+                        Map.of("date", "2026-10-17", "dataSource", "ledger_b", "dataAsOf", "2026-10-17T12:00:00Z")), null));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertNull(result.get("report_data_source"));
         assertEquals("incomplete", result.get("report_data_status"));
     }
 }

@@ -44,6 +44,12 @@ LEFT JOIN LATERAL (
 ) barcode ON TRUE
 WHERE p.deleted_at IS NULL;
 
+-- Minimal product fields for count-only questions; avoid evaluating price/barcode joins.
+CREATE OR REPLACE VIEW ai_rpt_product_count AS
+SELECT p.id, p.outlet_id, p.status
+FROM product p
+WHERE p.deleted_at IS NULL;
+
 -- On-hand inventory by outlet.
 CREATE OR REPLACE VIEW ai_rpt_inventory AS
 SELECT

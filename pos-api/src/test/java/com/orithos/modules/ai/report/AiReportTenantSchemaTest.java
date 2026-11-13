@@ -2,6 +2,8 @@ package com.orithos.modules.ai.report;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,5 +26,10 @@ class AiReportTenantSchemaTest {
     @Test
     void rejectsNonPositiveOutlet() {
         assertThrows(SqlGuardException.class, () -> AiReportTenantSchema.schemaName(0));
+    }
+
+    @Test
+    void provisionsTheMinimalProductCountViewForEachOutlet() {
+        assertTrue(Arrays.asList(AiReportTenantProvisioner.VIEWS).contains("ai_rpt_product_count"));
     }
 }

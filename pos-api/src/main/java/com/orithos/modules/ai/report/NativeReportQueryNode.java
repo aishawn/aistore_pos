@@ -46,7 +46,7 @@ public class NativeReportQueryNode implements NodeAction {
             refused.put("sql_error", "NATIVE_REPORT_UNSUPPORTED");
             refused.put("report_rows", List.of());
             refused.put("report_columns", List.of());
-            addProvenance(refused, window, "unavailable", null);
+            addProvenance(refused, window, "unavailable", null, null);
             return refused;
         }
         TenantContext tenant = ReportGraphState.tenant(state);
@@ -72,8 +72,17 @@ public class NativeReportQueryNode implements NodeAction {
                     row.put("secondDate", dates.get(1).toString());
                     row.put("first", salesMetrics(first, tenant.canQueryCost()));
                     row.put("second", salesMetrics(second, tenant.canQueryCost()));
-                    row.put("transactions", ReportQueryService.toDecimal(first.get("transactions"))
-                            .add(ReportQueryService.toDecimal(second.get("transactions"))));
+                    Object firstTransactions = ((Map<?, ?>) row.get("first")).get("transactions");
+                    Object secondTransactions = ((Map<?, ?>) row.get("second")).get("transactions");
+                    row.put("transactions", firstTransactions instanceof Number firstCount
+                            && secondTransactions instanceof Number secondCount
+                            ? ReportQueryService.toDecimal(firstCount).add(ReportQueryService.toDecimal(secondCount))
+                            : null);
+                    String firstSource = normalizedDataSource(first);
+                    String secondSource = normalizedDataSource(second);
+                    row.put("dataSource", firstSource != null && firstSource.equals(secondSource)
+                            ? firstSource : null);
+                    row.put("reportDataStatus", comparisonStatus(first, second));
                     row.put("dataAsOf", latestDataAsOf(first, second));
                     result = new NativeAiReportQueryService.Result(List.of(row), null);
                 } catch (RuntimeException e) {
@@ -107,31 +116,108 @@ public class NativeReportQueryNode implements NodeAction {
         out.put("report_columns", result.rows().isEmpty()
                 ? List.of() : List.copyOf(result.rows().get(0).keySet()));
         boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row ->
-                row.containsKey("transactions") && ReportQueryService.toDecimal(row.get("transactions")).signum() == 0
-                || row.containsKey("tickets") && ReportQueryService.toDecimal(row.get("tickets")).signum() == 0);
+                row.get("transactions") instanceof Number transactions && transactions.doubleValue() == 0
+                || row.get("tickets") instanceof Number tickets && tickets.doubleValue() == 0);
         String dataAsOf = result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
+        String rowStatus = reportDataStatus(result.rows());
+        String reportSource = dataSource(result.rows(), result.dataSource());
         String dataStatus = result.error() != null ? "unavailable"
-                : noData ? "no_data" : dataAsOf == null ? "incomplete" : "available";
-        addProvenance(out, window, dataStatus, dataAsOf);
+                : "unavailable".equals(rowStatus) ? "unavailable"
+                : hasConflictingDataSources(result.rows(), result.dataSource()) ? "incomplete"
+                : reportSource == null ? "incomplete"
+                : noData || "no_data".equals(rowStatus) ? "no_data"
+                : "incomplete".equals(rowStatus) || dataAsOf == null ? "incomplete" : "available";
+        addProvenance(out, window, dataStatus, dataAsOf, reportSource);
         return out;
     }
 
     private static Map<String, Object> salesMetrics(Map<String, Object> overview, boolean canViewCost) {
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("sales", overview.get("revenue"));
-        metrics.put("grossProfit", canViewCost ? overview.get("grossProfit") : null);
+        String status = overview.get("reportDataStatus") == null ? null
+                : overview.get("reportDataStatus").toString().trim().toLowerCase(java.util.Locale.ROOT);
+        boolean hasData = !"no_data".equals(status) && !"unavailable".equals(status);
+        metrics.put("sales", hasData ? overview.get("revenue") : null);
+        metrics.put("grossProfit", hasData && canViewCost ? overview.get("grossProfit") : null);
         metrics.put("costAvailable", canViewCost && Boolean.TRUE.equals(overview.get("costAvailable")));
         if (!canViewCost) metrics.put("profitUnavailableReason", "permission");
-        metrics.put("transactions", overview.get("transactions"));
+        metrics.put("transactions", hasData ? overview.get("transactions") : null);
         metrics.put("dataAsOf", overview.get("dataAsOf"));
+        metrics.put("dataSource", normalizedDataSource(overview));
+        metrics.put("reportDataStatus", overview.get("reportDataStatus"));
         return metrics;
     }
 
+    private static String reportDataStatus(List<Map<String, Object>> rows) {
+        boolean incomplete = false;
+        boolean noData = !rows.isEmpty();
+        for (Map<String, Object> row : rows) {
+            Object rawStatus = row.get("reportDataStatus");
+            String status = rawStatus == null ? null
+                    : rawStatus.toString().trim().toLowerCase(java.util.Locale.ROOT);
+            if ("unavailable".equals(status)) return "unavailable";
+            if ("incomplete".equals(status) || Boolean.FALSE.equals(row.get("costAvailable"))) incomplete = true;
+            if (status != null && !status.isBlank()
+                    && !List.of("available", "no_data", "incomplete", "unavailable").contains(status)) {
+                incomplete = true;
+            }
+            if (!"no_data".equals(status)) noData = false;
+        }
+        if (incomplete) return "incomplete";
+        return noData ? "no_data" : null;
+    }
+
+    private static String dataSource(List<Map<String, Object>> rows, String serviceSource) {
+        java.util.Set<String> sources = new java.util.LinkedHashSet<>();
+        if (serviceSource != null && !serviceSource.isBlank()) sources.add(serviceSource.trim());
+        collectDataSources(rows, sources);
+        return sources.size() == 1 ? sources.iterator().next() : null;
+    }
+
+    private static void collectDataSources(List<Map<String, Object>> rows, java.util.Set<String> sources) {
+        for (Map<String, Object> row : rows) {
+            Object rawSource = row.get("dataSource");
+            if (rawSource instanceof String source && !source.isBlank()) sources.add(source.trim());
+            for (String key : List.of("first", "second")) {
+                Object nested = row.get(key);
+                if (nested instanceof Map<?, ?> map) {
+                    Object nestedSource = map.get("dataSource");
+                    if (nestedSource instanceof String source && !source.isBlank()) sources.add(source.trim());
+                }
+            }
+        }
+    }
+
+    private static boolean hasConflictingDataSources(List<Map<String, Object>> rows, String serviceSource) {
+        java.util.Set<String> sources = new java.util.LinkedHashSet<>();
+        if (serviceSource != null && !serviceSource.isBlank()) sources.add(serviceSource.trim());
+        collectDataSources(rows, sources);
+        return sources.size() > 1;
+    }
+
+    private static String normalizedDataSource(Map<String, Object> row) {
+        Object rawSource = row.get("dataSource");
+        return rawSource instanceof String source && !source.isBlank() ? source.trim() : null;
+    }
+
+    private static String comparisonStatus(Map<String, Object> first, Map<String, Object> second) {
+        String firstSource = normalizedDataSource(first);
+        String secondSource = normalizedDataSource(second);
+        if (firstSource == null || secondSource == null || !firstSource.equals(secondSource)) return "incomplete";
+        String firstStatus = reportDataStatus(List.of(first));
+        String secondStatus = reportDataStatus(List.of(second));
+        if ("unavailable".equals(firstStatus) || "unavailable".equals(secondStatus)) return "unavailable";
+        if ("incomplete".equals(firstStatus) || "incomplete".equals(secondStatus)) return "incomplete";
+        if ("no_data".equals(firstStatus) && "no_data".equals(secondStatus)) return "no_data";
+        if ("no_data".equals(firstStatus) || "no_data".equals(secondStatus)) return "incomplete";
+        if (latestDataAsOf(first, second) == null) return "incomplete";
+        return "available";
+    }
+
     private static void addProvenance(Map<String, Object> target, ReportPeriodResolver.Window window,
-                                      String status, String dataAsOf) {
+                                      String status, String dataAsOf, String dataSource) {
         ZoneId timezone = com.orithos.common.AustraliaTime.ZONE;
         if (dataAsOf != null && !dataAsOf.isBlank()) target.put("report_data_as_of", dataAsOf);
-        target.put("report_data_source", "orithos_ledger");
+        target.put("report_data_source", dataSource);
         target.put("report_store_scope", "current_authenticated_store");
         target.put("report_period_from", window.from().toLocalDate().toString());
         target.put("report_period_to", window.toExclusive().minusNanos(1).toLocalDate().toString());

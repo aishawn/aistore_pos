@@ -147,6 +147,21 @@ test("keeps card status behavior when the API has no report data status", () => 
   });
 });
 
+test("unknown or missing report and card statuses never appear ready", () => {
+  assert.deepEqual(assistantCardDisplayStatus("pending_validation", "ready", false), {
+    tone: "partial",
+    label: "Unknown data status: pending_validation",
+  });
+  assert.deepEqual(assistantCardDisplayStatus("available", "stale", true), {
+    tone: "partial",
+    label: "未知卡片状态：stale",
+  });
+  assert.deepEqual(assistantCardDisplayStatus(null, null, false), {
+    tone: "partial",
+    label: "Status not provided",
+  });
+});
+
 test("keeps date-only provenance timezone-stable", () => {
   assert.equal(formatAssistantDataAsOf("2026-11-02"), "2026-11-02");
 });

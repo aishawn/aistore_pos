@@ -3,12 +3,18 @@ package com.orithos.modules.ai.report;
 import com.orithos.modules.report.ReportQueryService;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 
 /** Executes fixed AI report templates against the tenant's Orithos read-only views. */
 @Service
@@ -17,17 +23,30 @@ public class NativeAiReportQueryService {
     private static final int MAX_LIST_ROWS = 50;
     private static final int MAX_CATALOG_ROWS = 10_000;
     private static final int PAGE_SIZE = 500;
+    static final long TEMPLATE_CACHE_TTL_MILLIS = 5_000;
+    private static final int MAX_TEMPLATE_CACHE_ENTRIES = 512;
 
     private final AiReportDataSourceRegistry dataSources;
     private final ReportTemplateRegistry templates;
     private final ReportQueryService reportQueryService;
+    private final LongSupplier currentTimeMillis;
+    private final ConcurrentHashMap<QueryCacheKey, CachedResult> templateCache = new ConcurrentHashMap<>();
 
+    @Autowired
     public NativeAiReportQueryService(AiReportDataSourceRegistry dataSources,
                                       ReportTemplateRegistry templates,
                                       ReportQueryService reportQueryService) {
+        this(dataSources, templates, reportQueryService, System::currentTimeMillis);
+    }
+
+    NativeAiReportQueryService(AiReportDataSourceRegistry dataSources,
+                               ReportTemplateRegistry templates,
+                               ReportQueryService reportQueryService,
+                               LongSupplier currentTimeMillis) {
         this.dataSources = dataSources;
         this.templates = templates;
         this.reportQueryService = reportQueryService;
+        this.currentTimeMillis = currentTimeMillis;
     }
 
     public Result query(TenantContext tenant, String intent, Map<String, String> slots,
@@ -57,7 +76,7 @@ public class NativeAiReportQueryService {
                     return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
                 }
                 if (transactions.signum() == 0) {
-                    return Result.ok(List.of());
+                    return Result.ok(List.of(), null, stringValue(overview.get("dataSource")));
                 }
                 if (averageSale == null) {
                     return Result.fail("AUTHORITATIVE_REPORT_INCOMPLETE");
@@ -65,13 +84,23 @@ public class NativeAiReportQueryService {
                 return Result.ok(List.of(Map.of(
                         "aov", averageSale,
                         "tickets", transactionValue,
-                        "sales", grossSales)), stringValue(overview.get("dataAsOf")));
+                        "sales", grossSales)), stringValue(overview.get("dataAsOf")),
+                        stringValue(overview.get("dataSource")));
             }
             ReportTemplateRegistry.BoundSql bound = templates.bind(intent, tenant, slots, window);
             if (bound.error() != null) return Result.fail(bound.error());
+            QueryCacheKey key = QueryCacheKey.of(tenant, intent, slots, window);
+            long now = currentTimeMillis.getAsLong();
+            CachedResult cached = templateCache.get(key);
+            if (cached != null && cached.expiresAtMillis() > now) return cached.result();
+            if (cached != null) templateCache.remove(key, cached);
             List<Map<String, Object>> rows = dataSources.jdbc(tenant.requireOutletId())
                     .queryForList(bound.sql(), bound.params().toArray());
-            return Result.ok(rows);
+            Result result = Result.ok(rows, null, AiReportDataSourceRegistry.DATA_SOURCE_NAME);
+            if (templateCache.size() >= MAX_TEMPLATE_CACHE_ENTRIES) templateCache.clear();
+            templateCache.put(key, CachedResult.of(result,
+                    currentTimeMillis.getAsLong() + TEMPLATE_CACHE_TTL_MILLIS));
+            return result;
         } catch (DataAccessException | IllegalStateException e) {
             return Result.fail("NATIVE_REPORT_UNAVAILABLE");
         }
@@ -82,7 +111,7 @@ public class NativeAiReportQueryService {
         if (error != null) return ProductCountResult.fail(error);
         try {
             Integer count = dataSources.jdbc(tenant.requireOutletId()).queryForObject(
-                    "SELECT COUNT(*) FROM ai_rpt_product WHERE outlet_id = ? AND status = 'ACTIVE'",
+                    "SELECT COUNT(*) FROM ai_rpt_product_count WHERE outlet_id = ? AND status = 'ACTIVE'",
                     Integer.class, tenant.requireOutletId());
             return ProductCountResult.ok(count == null ? 0 : count);
         } catch (DataAccessException | IllegalStateException e) {
@@ -181,21 +210,51 @@ public class NativeAiReportQueryService {
         return value instanceof String text && !text.isBlank() ? text : null;
     }
 
-    public record Result(List<Map<String, Object>> rows, String error, String dataAsOf) {
+    public record Result(List<Map<String, Object>> rows, String error, String dataAsOf, String dataSource) {
         public Result(List<Map<String, Object>> rows, String error) {
-            this(rows, error, null);
+            this(rows, error, null, null);
+        }
+
+        public Result(List<Map<String, Object>> rows, String error, String dataAsOf) {
+            this(rows, error, dataAsOf, null);
         }
 
         static Result ok(List<Map<String, Object>> rows) {
-            return new Result(rows, null, null);
+            return new Result(rows, null, null, AiReportDataSourceRegistry.DATA_SOURCE_NAME);
         }
 
         static Result ok(List<Map<String, Object>> rows, String dataAsOf) {
-            return new Result(rows, null, dataAsOf);
+            return new Result(rows, null, dataAsOf, AiReportDataSourceRegistry.DATA_SOURCE_NAME);
+        }
+
+        static Result ok(List<Map<String, Object>> rows, String dataAsOf, String dataSource) {
+            return new Result(rows, null, dataAsOf, dataSource);
         }
 
         static Result fail(String error) {
             return new Result(List.of(), error, null);
+        }
+    }
+
+    private record QueryCacheKey(long vendorId, long outletId, String intent, Map<String, String> slots,
+                                 java.time.LocalDateTime from, java.time.LocalDateTime toExclusive,
+                                 boolean canQueryCost) {
+        static QueryCacheKey of(TenantContext tenant, String intent, Map<String, String> slots,
+                                ReportPeriodResolver.Window window) {
+            Map<String, String> normalizedSlots = slots == null ? Map.of()
+                    : Collections.unmodifiableMap(new TreeMap<>(slots));
+            return new QueryCacheKey(tenant.vendorId(), tenant.requireOutletId(), intent, normalizedSlots,
+                    window.from(), window.toExclusive(), tenant.canQueryCost());
+        }
+    }
+
+    private record CachedResult(Result result, long expiresAtMillis) {
+        static CachedResult of(Result result, long expiresAtMillis) {
+            List<Map<String, Object>> rows = result.rows().stream()
+                    .map(row -> Collections.unmodifiableMap(new LinkedHashMap<>(row)))
+                    .toList();
+            return new CachedResult(new Result(rows, result.error(), result.dataAsOf(), result.dataSource()),
+                    expiresAtMillis);
         }
     }
 

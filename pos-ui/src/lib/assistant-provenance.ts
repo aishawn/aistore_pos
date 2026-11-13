@@ -138,6 +138,7 @@ export function assistantCardDisplayStatus(
   const reportStatus = reportDataStatus?.trim().toLowerCase();
   const states: Record<string, { tone: "ready" | "empty" | "partial" | "unavailable"; rank: number }> = {
     available: { tone: "ready", rank: 0 },
+    ready: { tone: "ready", rank: 0 },
     no_data: { tone: "empty", rank: 1 },
     incomplete: { tone: "partial", rank: 2 },
     unavailable: { tone: "unavailable", rank: 3 },
@@ -145,23 +146,31 @@ export function assistantCardDisplayStatus(
   const fallback = cardStatus?.trim().toLowerCase();
   const cardKey = fallback === "empty" ? "no_data"
     : fallback === "partial" ? "incomplete" : fallback;
-  const reportState = reportStatus ? states[reportStatus] : undefined;
-  const cardState = cardKey ? states[cardKey] : undefined;
+  const unknownState = { tone: "partial" as const, rank: 2 };
+  const reportState = reportStatus ? states[reportStatus] ?? unknownState : undefined;
+  const cardState = cardKey ? states[cardKey] ?? unknownState : undefined;
   const reportStateWins = Boolean(reportState && (!cardState || reportState.rank >= cardState.rank));
   const selected = reportState && cardState
     ? reportStateWins ? reportState : cardState
-    : reportState ?? cardState ?? states.available;
+    : reportState ?? cardState ?? unknownState;
   const labels: Record<typeof selected.tone, string> = {
     ready: chinese ? "可用" : "Ready",
     empty: chinese ? "暂无建议" : "No suggestions",
     partial: chinese ? "部分数据需复核" : "Review needed",
     unavailable: chinese ? "暂不可用" : "Unavailable",
   };
+  const statusMissing = !reportStatus && !cardKey;
   return {
     tone: selected.tone,
     label: reportStateWins && reportStatus
-      ? assistantReportDataStatus(reportStatus, chinese) ?? labels[selected.tone]
-      : labels[selected.tone],
+      ? states[reportStatus]
+        ? assistantReportDataStatus(reportStatus, chinese) ?? labels[selected.tone]
+        : chinese ? `未知数据状态：${reportDataStatus}` : `Unknown data status: ${reportDataStatus}`
+      : !states[cardKey ?? ""] && cardKey
+        ? chinese ? `未知卡片状态：${cardStatus}` : `Unknown card status: ${cardStatus}`
+        : statusMissing
+          ? chinese ? "状态未提供" : "Status not provided"
+          : labels[selected.tone],
   };
 }
 

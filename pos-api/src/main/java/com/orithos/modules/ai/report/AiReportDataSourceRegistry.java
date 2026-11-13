@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class AiReportDataSourceRegistry {
 
+    public static final String DATA_SOURCE_NAME = "orithos_ledger";
+
     private static final Logger log = LoggerFactory.getLogger(AiReportDataSourceRegistry.class);
 
     private final String primaryJdbcUrl;

@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -49,8 +50,7 @@ class NativeAiReportQueryServiceTest {
         TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
         when(reportQuery.nativeOverview(55L, 87L, window.from().toLocalDate(),
                 window.toExclusive().minusNanos(1).toLocalDate()))
-                .thenReturn(Map.of("averageSale", 27.99, "transactions", 185, "grossSales", 5178.94,
-                        "dataAsOf", "2026-11-12T14:30:00Z"));
+                .thenReturn(Map.of("averageSale", 27.99, "transactions", 185, "grossSales", 5178.94));
 
         NativeAiReportQueryService.Result result = service.query(tenant, "report_aov", Map.of(), window);
 
@@ -58,7 +58,6 @@ class NativeAiReportQueryServiceTest {
         assertEquals(27.99, result.rows().get(0).get("aov"));
         assertEquals(185, result.rows().get(0).get("tickets"));
         assertEquals(5178.94, result.rows().get(0).get("sales"));
-        assertEquals("2026-11-12T14:30:00Z", result.dataAsOf());
         verify(reportQuery).nativeOverview(55L, 87L, window.from().toLocalDate(),
                 window.toExclusive().minusNanos(1).toLocalDate());
         verify(templates, never()).bind(anyString(), any(), any(), any());
@@ -102,6 +101,21 @@ class NativeAiReportQueryServiceTest {
         assertEquals("NO_COST_PERMISSION", result.error());
         verify(dataSources, never()).jdbc(anyLong());
         verify(templates, never()).bind(anyString(), any(), any(), any());
+    }
+
+    @Test
+    void countsSellableProductsThroughTheLightweightOutletScopedView() {
+        TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        String sql = "SELECT COUNT(*) FROM ai_rpt_product_count WHERE outlet_id = ? AND status = 'ACTIVE'";
+        when(dataSources.jdbc(87L)).thenReturn(jdbc);
+        when(jdbc.queryForObject(eq(sql), eq(Integer.class), eq(87L))).thenReturn(10_852);
+
+        NativeAiReportQueryService.ProductCountResult result = service.countSellableProducts(tenant);
+
+        assertEquals(null, result.error());
+        assertEquals(10_852, result.count());
+        verify(jdbc).queryForObject(eq(sql), eq(Integer.class), eq(87L));
     }
 
     private static TenantContext tenant(Set<String> permissions) {

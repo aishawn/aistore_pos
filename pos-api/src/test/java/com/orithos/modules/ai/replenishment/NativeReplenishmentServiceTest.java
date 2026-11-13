@@ -247,6 +247,44 @@ class NativeReplenishmentServiceTest {
         assertTrue(plan.top().isEmpty());
     }
 
+    @Test
+    void inventoryTimestampAtTheTwentyFourHourCutoffIsStillFresh() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        Instant now = Instant.parse("2026-11-13T12:00:00Z");
+        ResultSet row = replenishmentRow(5L, "Shiraz", 3d, true);
+        when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(now.minusSeconds(24 * 60 * 60)));
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc, now::toEpochMilli)
+                .plan(tenant(55L, 87L));
+
+        assertEquals("VALID", plan.dataQualityStatus());
+        assertEquals(0, plan.inventoryGapCount());
+    }
+
+    @Test
+    void futureInventoryTimestampMarksPlanIncompleteAndSkipsProduct() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        Instant now = Instant.parse("2026-11-13T12:00:00Z");
+        ResultSet row = replenishmentRow(5L, "Shiraz", 3d, true);
+        when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(now.plusMillis(1)));
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc, now::toEpochMilli)
+                .plan(tenant(55L, 87L));
+
+        assertEquals("DATA_INCOMPLETE", plan.dataQualityStatus());
+        assertEquals(1, plan.inventoryGapCount());
+        assertTrue(plan.dataGaps().get(0).contains("inventory data stale"));
+        assertTrue(plan.top().isEmpty());
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);
