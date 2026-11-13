@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assistantDataAsOf,
   assistantDataTimestampLabel,
+  assistantCardDisplayStatus,
   assistantProvenanceFields,
   assistantReturnedSalesDateSummary,
   assistantReportDataStatus,
@@ -110,6 +111,36 @@ test("localizes report data states without changing unknown backend values", () 
   assert.equal(assistantReportDataStatus("unavailable", true), "暂不可用");
   assert.equal(assistantReportDataStatus("custom_state", false), "custom_state");
   assert.equal(assistantReportDataStatus(null, true), null);
+});
+
+test("uses authoritative report data status for assistant card badges", () => {
+  assert.deepEqual(assistantCardDisplayStatus("unavailable", "ready", false), {
+    tone: "unavailable",
+    label: "Unavailable",
+  });
+  assert.deepEqual(assistantCardDisplayStatus("incomplete", "ready", true), {
+    tone: "partial",
+    label: "数据不完整",
+  });
+  assert.deepEqual(assistantCardDisplayStatus("no_data", "ready", true), {
+    tone: "empty",
+    label: "无数据",
+  });
+  assert.deepEqual(assistantCardDisplayStatus("available", "unavailable", false), {
+    tone: "ready",
+    label: "Available",
+  });
+});
+
+test("keeps card status behavior when the API has no report data status", () => {
+  assert.deepEqual(assistantCardDisplayStatus(null, "partial", true), {
+    tone: "partial",
+    label: "部分数据需复核",
+  });
+  assert.deepEqual(assistantCardDisplayStatus(null, "empty", false), {
+    tone: "empty",
+    label: "No suggestions",
+  });
 });
 
 test("keeps date-only provenance timezone-stable", () => {

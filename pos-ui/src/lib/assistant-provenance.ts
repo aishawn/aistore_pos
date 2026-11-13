@@ -130,6 +130,34 @@ export function assistantReportDataStatus(
   return labels[status.trim().toLowerCase()]?.[chinese ? 1 : 0] ?? status;
 }
 
+export function assistantCardDisplayStatus(
+  reportDataStatus: string | null | undefined,
+  cardStatus: string | null | undefined,
+  chinese: boolean,
+): { tone: "ready" | "empty" | "partial" | "unavailable"; label: string } {
+  const reportStatus = reportDataStatus?.trim().toLowerCase();
+  const reportStates: Record<string, { tone: "ready" | "empty" | "partial" | "unavailable"; label: string }> = {
+    available: { tone: "ready", label: chinese ? "可用" : "Available" },
+    no_data: { tone: "empty", label: chinese ? "无数据" : "No data" },
+    incomplete: { tone: "partial", label: chinese ? "数据不完整" : "Incomplete" },
+    unavailable: { tone: "unavailable", label: chinese ? "暂不可用" : "Unavailable" },
+  };
+  const reportState = reportStatus ? reportStates[reportStatus] : undefined;
+  if (reportState) return reportState;
+
+  const fallback = cardStatus?.trim().toLowerCase();
+  if (fallback === "unavailable") {
+    return { tone: "unavailable", label: chinese ? "暂不可用" : "Unavailable" };
+  }
+  if (fallback === "partial") {
+    return { tone: "partial", label: chinese ? "部分数据需复核" : "Review needed" };
+  }
+  if (fallback === "empty") {
+    return { tone: "empty", label: chinese ? "暂无建议" : "No suggestions" };
+  }
+  return { tone: "ready", label: chinese ? "可用" : "Ready" };
+}
+
 export function formatAssistantDataAsOf(value: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const parsed = new Date(value);

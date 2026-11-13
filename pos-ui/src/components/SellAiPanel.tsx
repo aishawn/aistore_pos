@@ -32,7 +32,7 @@ import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-rou
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
 import { assistantAbortOutcome, type AssistantAbortReason } from "@/lib/assistant-request-state";
-import { assistantDataTimestampLabel, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
+import { assistantCardDisplayStatus, assistantDataTimestampLabel, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
@@ -2042,6 +2042,7 @@ function DialogueView({
                   const cardTimeZone = assistantCardMetadataValue(msg, card, "reportTimeZone");
                   const cardDataStatus = assistantCardMetadataValue(msg, card, "reportDataStatus");
                   const cardDataAsOf = assistantCardMetadataValue(msg, card, "dataAsOf");
+                  const displayStatus = assistantCardDisplayStatus(cardDataStatus, card.status, chineseCard);
                   const periodLabel = cardPeriod
                     ? assistantReportDateRange(cardPeriod, cardPeriodTo) ?? cardPeriod
                     : null;
@@ -2055,19 +2056,13 @@ function DialogueView({
                       <strong className="text-[13px] text-[var(--oh-text)]">{title}</strong>
                       <span className={cn(
                         "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
-                        card.status === "unavailable"
+                        displayStatus.tone === "unavailable"
                           ? "bg-rose-50 text-rose-700"
-                          : (card.status === "empty" || card.status === "partial")
+                          : (displayStatus.tone === "empty" || displayStatus.tone === "partial")
                             ? "bg-amber-50 text-amber-700"
                             : "bg-emerald-50 text-emerald-700",
                       )}>
-                        {card.status === "unavailable"
-                          ? chineseCard ? "暂不可用" : "Unavailable"
-                          : card.status === "partial"
-                            ? chineseCard ? "部分数据需复核" : "Review needed"
-                          : card.status === "empty"
-                            ? chineseCard ? "暂无建议" : "No suggestions"
-                            : chineseCard ? "可用" : "Ready"}
+                        {displayStatus.label}
                       </span>
                     </div>
                     {card.summary ? (
