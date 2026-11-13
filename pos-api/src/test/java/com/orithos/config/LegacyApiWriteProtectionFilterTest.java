@@ -89,7 +89,9 @@ class LegacyApiWriteProtectionFilterTest {
         for (String[] route : new String[][]{
                 {"GET", "/api/registers"},
                 {"GET", "/api/registers/11"},
+                {"GET", "/api/registers/11/payment-methods"},
                 {"POST", "/api/registers"},
+                {"PUT", "/api/registers/11/payment-methods"},
                 {"PUT", "/api/registers/11/surcharging"},
                 {"PUT", "/api/registers/11/invoice-number"},
                 {"DELETE", "/api/registers/11"}
@@ -104,6 +106,7 @@ class LegacyApiWriteProtectionFilterTest {
         for (String[] route : new String[][]{
                 {"POST", "/api/registers/11/close"},
                 {"POST", "/api/registers/11/movements"},
+                {"POST", "/api/registers/11/payment-methods"},
                 {"PATCH", "/api/registers/11"}
         }) {
             MockHttpServletResponse response = new MockHttpServletResponse();
