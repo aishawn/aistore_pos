@@ -56,7 +56,7 @@ class ReplenishmentChatBriefTest {
 
         assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
         assertTrue(text.contains("\n• Shiraz — 建议订购 12（约剩 5.0 天）"));
-        assertTrue(text.contains("数据来源：Orithos 库存与销售账本；销售数据最后更新时间：未知。库存记录没有独立更新时间。"));
+        assertTrue(text.contains("数据来源：Orithos 库存与销售账本；账本最新可用数据时间：未知。"));
         assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
     }
 
@@ -175,9 +175,27 @@ class ReplenishmentChatBriefTest {
 
         String text = new ReplenishmentChatBrief(client).brief("What do we need to buy?", tenant);
 
-        assertTrue(text.contains("sales data updated at 2026-11-03T04:00:00Z"));
+        assertTrue(text.contains("latest available ledger data at 2026-11-03T04:00:00Z"));
         assertTrue(text.contains("Manual review is required"));
         assertTrue(text.contains("no quantities were generated"));
+    }
+
+    @Test
+    void incompleteBriefSeparatesInventoryAndSupplierDataGapsInBothLanguages() {
+        NativeReplenishmentService client = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 0, List.of(), "DATA_INCOMPLETE",
+                List.of("VB Cans: inventory data stale", "Shiraz: supplier unavailable"),
+                Instant.parse("2026-11-03T04:00:00Z"), 3, 2, 1));
+
+        String english = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+        String chinese = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
+
+        assertTrue(english.contains("inventory is missing, stale or has no update timestamp for 2 items"));
+        assertTrue(english.contains("supplier details are incomplete for 1 item"));
+        assertTrue(chinese.contains("库存记录缺失、过期或更新时间不可用 2 项"));
+        assertTrue(chinese.contains("供应商资料不完整 1 项"));
     }
 
     @Test

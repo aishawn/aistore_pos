@@ -44,10 +44,9 @@ public class ReplenishmentChatBrief {
             }
             int dataGapCount = plan.dataGapCount();
             String sourceNote = chinese
-                    ? "数据来源：Orithos 库存与销售账本；销售数据最后更新时间：" + dataDate(plan.dataAsOf(), true)
-                            + "。库存记录没有独立更新时间。"
-                    : "Source: Orithos inventory and sales ledger; sales data updated at "
-                            + dataDate(plan.dataAsOf(), false) + ". Inventory records have no separate update timestamp.";
+                    ? "数据来源：Orithos 库存与销售账本；账本最新可用数据时间：" + dataDate(plan.dataAsOf(), true) + "。"
+                    : "Source: Orithos inventory and sales ledger; latest available ledger data at "
+                            + dataDate(plan.dataAsOf(), false) + ".";
             if ("NO_DATA".equalsIgnoreCase(plan.dataQualityStatus())) {
                 logOutcome("no_sales_data", dataGapCount, startedAt);
                 return chinese
@@ -61,10 +60,10 @@ public class ReplenishmentChatBrief {
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
                 return chinese
                         ? "补货建议数据不完整，暂不生成数量：" + gaps + "。" + sourceNote
-                                + "已转人工审核；请补齐库存或供应商资料后重试。"
+                                + "已转人工审核；" + incompleteDataGuidance(plan, true)
                         : "Replenishment data is incomplete, so no quantities were generated: "
                                 + gaps + ". " + sourceNote
-                                + " Manual review is required; complete inventory or supplier data and retry.";
+                                + " Manual review is required. " + incompleteDataGuidance(plan, false);
             }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
                 logOutcome("success_empty", dataGapCount, startedAt);
@@ -97,7 +96,7 @@ public class ReplenishmentChatBrief {
             if ("DATA_INCOMPLETE".equalsIgnoreCase(plan.dataQualityStatus())) {
                 String gaps = String.join(", ", plan.dataGaps().stream().limit(3).toList());
                 sb.append(chinese ? "\n\n注意：部分商品因数据缺失未纳入建议：" : "\n\nSome items were excluded because data is missing: ")
-                        .append(gaps).append(".");
+                        .append(gaps).append(". ").append(incompleteDataGuidance(plan, chinese));
             }
             logOutcome(dataGapCount == 0 ? "success" : "partial_data", dataGapCount, startedAt);
             return sb.toString();
@@ -149,6 +148,46 @@ public class ReplenishmentChatBrief {
     private static void logFailureOutcome(String category, long startedAt) {
         log.info("AI replenishment brief correlationId={} category={} dataGapCount=unknown elapsedMs={}",
                 CorrelationIdContext.current(), category, elapsedMs(startedAt));
+    }
+
+    private static String incompleteDataGuidance(ReplenishmentPlan plan, boolean chinese) {
+        int inventoryGaps = plan.inventoryGapCount();
+        int supplierGaps = plan.supplierGapCount();
+        if (inventoryGaps == 0 && supplierGaps == 0) {
+            return chinese
+                    ? "请人工核对库存记录和供应商资料后重试。"
+                    : "Review inventory records and supplier details, then retry.";
+        }
+        if (chinese) {
+            StringBuilder guidance = new StringBuilder("数据缺口：");
+            if (inventoryGaps > 0) {
+                guidance.append("库存记录缺失、过期或更新时间不可用 ").append(inventoryGaps).append(" 项");
+            }
+            if (supplierGaps > 0) {
+                if (inventoryGaps > 0) guidance.append("；");
+                guidance.append("供应商资料不完整 ").append(supplierGaps).append(" 项");
+            }
+            guidance.append("。");
+            if (inventoryGaps > 0 && supplierGaps > 0) guidance.append("请更新库存记录并补齐供应商资料后重试。");
+            else if (inventoryGaps > 0) guidance.append("请更新库存记录后重试。");
+            else guidance.append("请补齐供应商资料后重试。");
+            return guidance.toString();
+        }
+        StringBuilder guidance = new StringBuilder("Data gaps: ");
+        if (inventoryGaps > 0) {
+            guidance.append("inventory is missing, stale or has no update timestamp for ")
+                    .append(inventoryGaps).append(" item").append(inventoryGaps == 1 ? "" : "s");
+        }
+        if (supplierGaps > 0) {
+            if (inventoryGaps > 0) guidance.append("; ");
+            guidance.append("supplier details are incomplete for ")
+                    .append(supplierGaps).append(" item").append(supplierGaps == 1 ? "" : "s");
+        }
+        guidance.append(". ");
+        if (inventoryGaps > 0 && supplierGaps > 0) guidance.append("Update inventory and complete supplier records, then retry.");
+        else if (inventoryGaps > 0) guidance.append("Update inventory records, then retry.");
+        else guidance.append("Complete supplier records, then retry.");
+        return guidance.toString();
     }
 
     private static long elapsedMs(long startedAt) {
