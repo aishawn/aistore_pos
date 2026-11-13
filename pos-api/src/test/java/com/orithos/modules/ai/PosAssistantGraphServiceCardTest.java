@@ -427,6 +427,31 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
+    void keepsPartialReplenishmentSuggestionsReadyWhenExcludedItemsHaveSupplierGaps() {
+        for (String[] sample : new String[][]{
+                {"What should I restock?", "Top restock suggestions (21d cover): 3 items need order.\n"
+                        + "Source: Orithos inventory and sales ledger.\n\n"
+                        + "• VB Cans — order 24\n\n"
+                        + "Some items were excluded because data is missing: Shiraz: supplier unavailable."},
+                {"给我补货建议", "建议补货（覆盖 21 天）：3 个商品需要补货。\n"
+                        + "数据来源：Orithos 库存与销售账本。\n\n"
+                        + "• VB Cans — 建议订购 24\n\n"
+                        + "注意：部分商品因数据缺失未纳入建议：Shiraz: supplier unavailable。"}
+        }) {
+            AssistantCard card = PosAssistantGraphService.cardsFor(
+                    "navigate",
+                    new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
+                    sample[1], sample[0]).getFirst();
+
+            assertEquals("ready", card.status(), sample[1]);
+            assertEquals(false, card.retryable(), sample[1]);
+            assertEquals(1, card.items().size(), sample[1]);
+            assertEquals("VB Cans — " + (sample[0].contains("给我") ? "建议订购 24" : "order 24"),
+                    card.items().getFirst().get("label"), sample[1]);
+        }
+    }
+
+    @Test
     void mapsUnavailableGroceryRecommendationsWithoutExtractingItems() {
         AssistantCard card = PosAssistantGraphService.cardsFor(
                 "navigate",

@@ -235,10 +235,14 @@ public class PosAssistantGraphService {
 
         String text = answer == null ? "" : answer;
         String lower = text.toLowerCase(java.util.Locale.ROOT);
+        List<Map<String, Object>> parsedItems = cardItems(type, answer);
+        boolean hasPartialReplenishmentResults = "replenishment".equals(type) && !parsedItems.isEmpty();
         boolean unavailable = "stock_history".equals(type)
-                || answer == null || answer.isBlank() || lower.contains("unavailable")
+                || answer == null || answer.isBlank()
                 || lower.contains("timeout") || lower.contains("timed out")
-                || lower.contains("not available") || lower.contains("不可用")
+                || lower.contains("not available") && !hasPartialReplenishmentResults
+                || lower.contains("unavailable") && !hasPartialReplenishmentResults
+                || lower.contains("不可用") && !hasPartialReplenishmentResults
                 || lower.contains("超时")
                 || lower.contains("无法取得") || lower.contains("无法获取")
                 || lower.contains("暂时无法") || lower.contains("无法查询")
@@ -280,7 +284,7 @@ public class PosAssistantGraphService {
                 : "/recommend/grocery".equals(route) ? "/recommend/grocery"
                 : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
                 : "/stock/replenishment";
-        List<Map<String, Object>> items = unavailable || empty ? List.of() : cardItems(type, answer);
+        List<Map<String, Object>> items = unavailable || empty ? List.of() : parsedItems;
         String unavailableReason = unavailableReason(type, text, chinese);
         String source = "sommelier".equals(type) || "recommend".equals(type) ? "catalogue"
                 : "guided_action".equals(type) ? "assistant" : "orithos";
