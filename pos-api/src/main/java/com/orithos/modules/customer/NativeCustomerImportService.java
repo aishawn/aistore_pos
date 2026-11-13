@@ -246,6 +246,7 @@ public class NativeCustomerImportService {
         if (storeKey == null || storeKey.isBlank() || outletId <= 0 || items == null || !items.isArray()) {
             throw new IllegalArgumentException("store_key, outlet_id and payment items are required");
         }
+        ensureMappingTable();
         ensurePaymentMappingTable();
         int created = 0, updated = 0, skipped = 0;
         List<String> errors = new ArrayList<>();

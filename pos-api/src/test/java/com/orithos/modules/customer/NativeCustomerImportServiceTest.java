@@ -151,6 +151,29 @@ class NativeCustomerImportServiceTest {
     }
 
     @Test
+    void createsCustomerMappingTableBeforeResolvingHistoricalPaymentCustomer() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
+            String sql = call.getArgument(0, String.class);
+            return sql.contains("SELECT customer_id FROM shopfront_customer_mapping") ? List.of(321L) : List.of();
+        });
+        when(jdbc.queryForObject(contains("INSERT INTO customer_payment"), eq(Long.class), any(Object[].class)))
+                .thenReturn(654L);
+        var items = new ObjectMapper().readTree("""
+                [{"source_id":"sf-payment-without-customer-import","raw_payload":{
+                  "amount":25.50,"timestamp":"2026-11-09T12:30:00+10:30",
+                  "customer":{"id":"sf-customer-1"}
+                }}]
+                """);
+
+        var receipt = new NativeCustomerImportService(jdbc).importPayments("skr", 87, items);
+
+        assertEquals(1, receipt.get("created"));
+        assertEquals(0, receipt.get("skipped"));
+        verify(jdbc).execute(contains("CREATE TABLE IF NOT EXISTS shopfront_customer_mapping"));
+    }
+
+    @Test
     void importsHistoricalCustomerPaymentsIdempotentlyWithoutTouchingOwing() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
