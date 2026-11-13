@@ -136,26 +136,33 @@ export function assistantCardDisplayStatus(
   chinese: boolean,
 ): { tone: "ready" | "empty" | "partial" | "unavailable"; label: string } {
   const reportStatus = reportDataStatus?.trim().toLowerCase();
-  const reportStates: Record<string, { tone: "ready" | "empty" | "partial" | "unavailable"; label: string }> = {
-    available: { tone: "ready", label: chinese ? "可用" : "Available" },
-    no_data: { tone: "empty", label: chinese ? "无数据" : "No data" },
-    incomplete: { tone: "partial", label: chinese ? "数据不完整" : "Incomplete" },
-    unavailable: { tone: "unavailable", label: chinese ? "暂不可用" : "Unavailable" },
+  const states: Record<string, { tone: "ready" | "empty" | "partial" | "unavailable"; rank: number }> = {
+    available: { tone: "ready", rank: 0 },
+    no_data: { tone: "empty", rank: 1 },
+    incomplete: { tone: "partial", rank: 2 },
+    unavailable: { tone: "unavailable", rank: 3 },
   };
-  const reportState = reportStatus ? reportStates[reportStatus] : undefined;
-  if (reportState) return reportState;
-
   const fallback = cardStatus?.trim().toLowerCase();
-  if (fallback === "unavailable") {
-    return { tone: "unavailable", label: chinese ? "暂不可用" : "Unavailable" };
-  }
-  if (fallback === "partial") {
-    return { tone: "partial", label: chinese ? "部分数据需复核" : "Review needed" };
-  }
-  if (fallback === "empty") {
-    return { tone: "empty", label: chinese ? "暂无建议" : "No suggestions" };
-  }
-  return { tone: "ready", label: chinese ? "可用" : "Ready" };
+  const cardKey = fallback === "empty" ? "no_data"
+    : fallback === "partial" ? "incomplete" : fallback;
+  const reportState = reportStatus ? states[reportStatus] : undefined;
+  const cardState = cardKey ? states[cardKey] : undefined;
+  const reportStateWins = Boolean(reportState && (!cardState || reportState.rank >= cardState.rank));
+  const selected = reportState && cardState
+    ? reportStateWins ? reportState : cardState
+    : reportState ?? cardState ?? states.available;
+  const labels: Record<typeof selected.tone, string> = {
+    ready: chinese ? "可用" : "Ready",
+    empty: chinese ? "暂无建议" : "No suggestions",
+    partial: chinese ? "部分数据需复核" : "Review needed",
+    unavailable: chinese ? "暂不可用" : "Unavailable",
+  };
+  return {
+    tone: selected.tone,
+    label: reportStateWins && reportStatus
+      ? assistantReportDataStatus(reportStatus, chinese) ?? labels[selected.tone]
+      : labels[selected.tone],
+  };
 }
 
 export function formatAssistantDataAsOf(value: string): string {

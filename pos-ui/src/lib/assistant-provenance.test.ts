@@ -127,8 +127,12 @@ test("uses authoritative report data status for assistant card badges", () => {
     label: "无数据",
   });
   assert.deepEqual(assistantCardDisplayStatus("available", "unavailable", false), {
-    tone: "ready",
-    label: "Available",
+    tone: "unavailable",
+    label: "Unavailable",
+  });
+  assert.deepEqual(assistantCardDisplayStatus("available", "partial", true), {
+    tone: "partial",
+    label: "部分数据需复核",
   });
 });
 
