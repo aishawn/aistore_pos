@@ -108,7 +108,7 @@ export async function triggerSettingsImport(request: Request) {
   try {
     const body = await request.json() as { storeKey?: unknown };
     if (body.storeKey !== undefined && body.storeKey !== STORE_KEY) {
-      return failure("Only the configured Shopfront source store can be imported", 400);
+      return failure("Only the configured source store can be imported", 400);
     }
     if (body.storeKey) storeKey = String(body.storeKey);
   } catch {
@@ -121,8 +121,8 @@ export async function triggerSettingsImport(request: Request) {
     const message = status === 409
       ? "A crawler sync is already active for this store"
       : status === 503
-        ? "Shopfront crawler integration is not configured"
-        : "Shopfront settings import could not be started";
+        ? "Store import integration is not configured"
+        : "Settings import could not be started";
     return failure(message, status);
   }
 
@@ -135,7 +135,7 @@ export async function readSettingsImportStatus(request: Request) {
 
   const result = await crawlerRequest(`/api/sync/status?store=${STORE_KEY}`, "GET");
   if (result.status < 200 || result.status >= 300 || !result.payload) {
-    return failure("Shopfront settings import status is unavailable", 502);
+    return failure("Settings import status is unavailable", 502);
   }
 
   const rows = Array.isArray(result.payload.data) ? result.payload.data : [];

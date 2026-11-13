@@ -122,7 +122,7 @@ export function OdooCustomerBalancesPage() {
   return (
     <AdminPageLayout
       title="Receivables"
-      subtitle="Shopfront-synced customer balances (current owing). Total invoiced rebuild is not enabled yet."
+      subtitle="Customer balances (current owing). Total invoiced rebuild is not enabled yet."
       compact
       count={loading || error ? undefined : items.length}
       countLabel="Customers on this page"

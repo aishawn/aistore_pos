@@ -63,7 +63,7 @@ export default function AccountSecurityPage() {
         <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
           <h2 className="text-base font-semibold text-[var(--oh-text)]">Orithos billing</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
-            Shopfront subscription billing is not cloned. Orithos billing and invoices will appear here later. Until then, account access is managed by your Orithos administrator.
+            Legacy subscription billing is not cloned. Orithos billing and invoices will appear here later. Until then, account access is managed by your Orithos administrator.
           </p>
           <div className="mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3 text-sm text-[var(--oh-muted)]">
             Coming later — Orithos billing

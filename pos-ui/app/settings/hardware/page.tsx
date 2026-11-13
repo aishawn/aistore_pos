@@ -43,7 +43,7 @@ export default function HardwareSettingsPage() {
       {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
       {notice && <p className="mb-3 text-sm text-emerald-800">{notice}</p>}
       <p className="mb-3 text-sm text-[var(--oh-muted)]">
-        Device pairing providers can be wired later. Preferences persist in Orithos and are not overwritten by daily Shopfront sync.
+        Device pairing providers can be wired later. Preferences persist in Orithos and are not overwritten by scheduled import.
       </p>
       <textarea
         className="min-h-48 w-full rounded-lg border border-[var(--oh-border)] p-3 font-mono text-sm"

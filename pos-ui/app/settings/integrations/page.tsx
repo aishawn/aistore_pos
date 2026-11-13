@@ -63,9 +63,9 @@ export default function IntegrationsSettingsPage() {
   }
 
   return (
-    <AdminPageLayout title="Integrations" subtitle="Shopfront import and connection tools">
+    <AdminPageLayout title="Integrations" subtitle="Store data import and connection tools">
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        Shopfront sync updates tax rates and payment methods and adds missing register names. Company and other local settings stay in Orithos.
+        Scheduled import updates tax rates and payment methods and adds missing register names. Company and other local settings stay in Orithos.
       </section>
       <div className="grid max-w-xl gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-5">
         <p className="text-sm text-[var(--oh-muted)]">
@@ -74,7 +74,7 @@ export default function IntegrationsSettingsPage() {
         {canImport ? (
           <>
             <button type="button" disabled={busy} onClick={() => void promote()} className="rounded-lg bg-[var(--oh-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-              {busy ? "Working…" : "Sync settings from Shopfront"}
+              {busy ? "Working…" : "Import settings"}
             </button>
             <button type="button" disabled={busy} onClick={() => void dedupe()} className="rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50">
               Deduplicate tax rates &amp; payment methods

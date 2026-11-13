@@ -233,7 +233,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                 const lineCount = order.lineCount ?? 0;
                 const reference = formatOrderListReference(order.reference);
                 const mismatchTitle = mismatch
-                  ? `Shopfront header total differs from ordered line total ($${Number(order.linesTotalCost).toFixed(2)}). Source totals can include received items, tax, and freight.`
+                  ? `Order header total differs from ordered line total ($${Number(order.linesTotalCost).toFixed(2)}). Totals can include received items, tax, and freight.`
                   : undefined;
                 return (
                   <tr key={order.id} className="hover:bg-[var(--oh-surface)]">

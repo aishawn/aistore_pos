@@ -323,7 +323,7 @@ export function NativePurchaseReportPage() {
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 md:px-6">
           <div>
-            <p className="text-xs font-medium text-[var(--oh-muted)]">Shopfront report · Australia/Adelaide</p>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos report · Australia/Adelaide</p>
             <h1 className="text-lg font-semibold tracking-tight text-[var(--oh-text)]">Purchase report</h1>
             <p className="mt-0.5 text-sm text-[var(--oh-muted)]">
               Received purchase spend by order date · {from === to ? from : `${from} → ${to}`}
@@ -507,17 +507,17 @@ export function NativePurchaseReportPage() {
 
         <div className="space-y-2 px-4 py-4 text-xs text-[var(--oh-muted)] md:px-6">
           <p>
-            Purchase values and charges from the Shopfront Reporting API, by source report date.
+            Purchase values and charges from Orithos purchase data, by order date.
           </p>
           {diagnostics?.available ? (
             <>
               <p>
-                Source {diagnostics.sourceStoreKey ?? "Shopfront"} · {diagnostics.cache ?? "unknown"}
+                Store {diagnostics.sourceStoreKey ?? "Orithos"} · {diagnostics.cache ?? "unknown"}
                 {diagnostics.fetchedAt ? ` · fetched ${diagnostics.fetchedAt}` : ""}
               </p>
               {diagnostics.freshness && diagnostics.freshness !== "fresh" ? (
                 <p role="status" className="text-amber-800">
-                  The latest Shopfront refresh is not confirmed. Showing the cached source report.
+                  The latest refresh is not confirmed. Showing cached report data.
                 </p>
               ) : null}
             </>

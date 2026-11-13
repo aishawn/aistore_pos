@@ -64,12 +64,12 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           <div className="ov-pulse-title"><BarChart3 size={18} aria-hidden="true" /><h2 id="ov-pulse-title">Store pulse</h2></div>
           {timestamp && (
             <p className="ov-pulse-updated">
-              {orithosMode ? "Orithos ledger · " : sourceMode ? "Shopfront reports · " : "Updated "}
+              {orithosMode ? "Orithos ledger · " : sourceMode ? "Reports · " : "Updated "}
               {timestamp}
             </p>
           )}
-          {sourceMode && !timestamp && <p className="ov-pulse-updated">Shopfront reports unavailable</p>}
-          {sandboxNote && <p className="ov-pulse-updated">Sandbox snapshot · not live Shopfront sync</p>}
+          {sourceMode && !timestamp && <p className="ov-pulse-updated">Reports unavailable</p>}
+          {sandboxNote && <p className="ov-pulse-updated">Sandbox snapshot · not live data sync</p>}
         </div>
         <button type="button" className="ov-pulse-refresh" disabled={loading} aria-label={loading ? "Refreshing store summary" : "Refresh store summary"} aria-busy={loading} title={loading ? "Refreshing…" : "Refresh"} onClick={onRefresh}>
           <RefreshCw size={17} aria-hidden="true" />
@@ -83,8 +83,8 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
           value={data.yesterdaySalesAvailable === false ? "—" : money(data.yesterdaySales ?? 0, data.currency)}
           note={
             data.yesterdaySalesAvailable === false
-              ? orithosMode ? "Orithos ledger unavailable" : sourceMode ? "Shopfront report unavailable" : "Temporarily unavailable"
-              : orithosMode ? "Orithos ledger · including tax" : sourceMode ? "Shopfront Sales report" : "Including tax"
+              ? orithosMode ? "Orithos ledger unavailable" : sourceMode ? "Report unavailable" : "Temporarily unavailable"
+              : orithosMode ? "Orithos ledger · including tax" : sourceMode ? "Sales report" : "Including tax"
           }
         />
         <Metric
@@ -106,12 +106,12 @@ export function OverviewStorePulse({ data, loading, canReport, onRefresh, sandbo
               : data.inventoryStatus === "mixed_units"
                 ? "Mixed units of measure"
                 : data.inventoryStatus === "stale"
-                  ? "Shopfront inventory report is stale"
+                  ? "Inventory report is stale"
                   : !stockAvailable
                     ? orithosMode
                       ? "Open inventory report for Orithos on-hand"
                       : sourceMode
-                        ? "Shopfront inventory report unavailable"
+                        ? "Inventory report unavailable"
                         : "Temporarily unavailable"
                     : data.inventoryStatus === "negative_stock"
                       ? `Case · Item · ${data.negativeStockProducts ?? 0} SKUs below zero`

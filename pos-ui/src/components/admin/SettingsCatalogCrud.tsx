@@ -138,7 +138,7 @@ export function SettingsCatalogCrud({
       toolbar={toolbar}
     >
       <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        Managed in Orithos. Source-backed fields may be refreshed during Shopfront settings sync.
+        Managed in Orithos. Source-backed fields may be refreshed during scheduled settings import.
       </section>
       {duplicateNames.length > 0 && (
         <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
@@ -189,7 +189,7 @@ export function SettingsCatalogCrud({
         <div className="rounded-lg border border-[var(--oh-border)] bg-white p-8 text-sm text-[var(--oh-muted)]">Loading…</div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
-          No records yet. Import from Shopfront or add one here.
+          No records yet. Import from integrations or add one here.
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">

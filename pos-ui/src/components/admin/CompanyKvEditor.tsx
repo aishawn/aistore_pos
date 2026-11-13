@@ -61,7 +61,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
       }
       await api.put("/api/settings/company", payload);
       await load();
-      setNotice("Settings saved to Orithos. Daily Shopfront sync will not overwrite these values.");
+      setNotice("Settings saved to Orithos. Scheduled import will not overwrite these values.");
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : "Could not save settings.");
     } finally {
@@ -82,7 +82,7 @@ export function CompanyKvEditor({ section }: { section: CompanySection }) {
       <div className="w-full">
         <div className="mb-5 flex items-start justify-between gap-4">
           <p className="text-sm leading-6 text-[var(--oh-muted)]">
-            Orithos is the source of truth for these settings. Import from Shopfront only fills empty values.
+            Orithos is the source of truth for these settings. Import from integrations only fills empty values.
           </p>
           {dirty && <span className="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Unsaved changes</span>}
         </div>
