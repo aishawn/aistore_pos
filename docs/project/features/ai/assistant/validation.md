@@ -1,8 +1,14 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-13 当前发布 SHA 全量构建与双店只读销售回归
+
+提交 `d2f61cd1e5973d4a8d09bda3042ae4dfd98e798f` 在干净 detached checkout 执行 `mvn -B clean verify`，708/708 Java 测试通过并打包成功。SKR 与 Demo `/api/public/version` 的前后端均运行同一 SHA。两店各执行“昨天销售额如何？”与“昨天营业额怎么样？”：4/4 case 为 deterministic `report_sales`、`llmFallback=false`、`writeRequests=[]`；来源 `orithos_ledger`，期间 2026-11-12（Australia/Adelaide）。每店销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔，逐项与本店同期间 native overview 一致。原始 runner JSON 保存在忽略目录 `.local/ai-eval/online-cancel-followup-{skr,demo}-d2f61cd1.json`。
+
+runner 顶层状态为 BLOCKED，仅因维护 checkout 有与这些 case 无关的未提交文件；selected cases 均 PASS 且 runtime 匹配源码。4 次请求均未触发模型 fallback；没有 provider 用量端点，故不推断总体模型费用。仅本组问法通过；语音、完整历史/清空、跨店隔离和其余完整话术目录仍未验收。
+
 ## 2026-11-13 用户取消请求回归
 
-新增问答运行中的取消按钮；用户取消与硬超时使用不同状态，用户取消不追加超时/失败消息，硬超时仍走原重试提示。UI 全量单测 208/208、TypeScript `--noEmit` PASS，定向 ESLint 0 errors（4 条原有 effect 警告），`git diff --check` PASS。只验证本地实现；无真实浏览器/API 取消验收，本轮没有 POS 写入、部署或线上请求。完整历史清空、语音识别质量、跨门店隔离和全话术目录仍未完成。
+新增问答运行中的取消按钮；用户取消与硬超时使用不同状态，用户取消不追加超时/失败消息，硬超时仍走原重试提示。UI 全量单测 208/208、TypeScript `--noEmit` PASS，定向 ESLint 0 errors（4 条原有 effect 警告），`git diff --check` PASS。取消按钮本身只验证了本地实现；没有真实浏览器/API 取消验收。完整历史清空、语音识别质量、跨门店隔离和全话术目录仍未完成。
 
 ## 2026-11-13 高频昨日销售路由增量
 

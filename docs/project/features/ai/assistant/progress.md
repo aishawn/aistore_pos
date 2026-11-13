@@ -2,6 +2,8 @@
 
 更新日期：2026-11-13。负责人待分配，优先级 P0 为发布/数据安全阻断，P1 为功能质量，P2 为效果增强。
 
+2026-11-13 当前 SHA `d2f61cd1` 的干净 checkout 后端 `mvn -B clean verify` 708/708 通过；SKR/Demo runtime SHA 一致。两店“昨天销售额如何？”和“昨天营业额怎么样？”共 4/4 只读用例 deterministic、同日 overview 对账一致且 `writeRequests=[]`。runner 顶层因维护 checkout 有其他未提交改动显示 BLOCKED，不影响逐条 PASS。完整功能验收继续开放。
+
 2026-11-13 新增问答请求取消控件，区分用户主动取消与硬超时；用户取消不显示为失败，超时仍保留重试提示。UI 单测 208/208、TypeScript 检查通过；ESLint 无 error，存在 4 条既有 effect 警告。本地验证尚未覆盖浏览器真实取消、部署运行时和线上响应。全功能验收继续开放。
 
 2026-11-13 双店线上对账发现并复现一个 UI 缺陷：销售 API 返回一行有效聚合结果（available），但没有日期列；UI 将其误报为“没有返回销售行”。本地候选区分无行与聚合行缺少逐日日期。两店 7 日英文销售/毛利/笔数和昨日中文营业额/毛利/笔数均与各自同期间 native overview 对账一致，四类请求都 deterministic 且 `writeRequests=[]`。候选未部署；历史浏览器回归受本机没有后端配置阻断。详见[continuation session](../../../../test-sessions/2026-11-13-ai-assistant-bilingual-reconciliation.md)。
