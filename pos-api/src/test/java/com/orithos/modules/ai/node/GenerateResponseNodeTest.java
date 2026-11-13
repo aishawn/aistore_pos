@@ -144,4 +144,23 @@ class GenerateResponseNodeTest {
             verifyNoInteractions(chatClient, config, properties, tools);
         }
     }
+
+    @Test
+    void deterministicQaSummaryReturnsWithoutCallingTheModel() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        AiProperties properties = mock(AiProperties.class);
+        PosAssistantTools tools = mock(PosAssistantTools.class);
+        OverAllState state = mock(OverAllState.class);
+        String answer = "I can help with sales, stock, products and POS workflows.";
+        when(state.value("question", String.class)).thenReturn(Optional.of("What can you do?"));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("qa"));
+        when(state.value("intent_summary", String.class)).thenReturn(Optional.of(answer));
+        when(state.value("route_source", String.class)).thenReturn(Optional.of("deterministic"));
+
+        GenerateResponseNode node = new GenerateResponseNode(chatClient, config, properties, tools);
+
+        assertEquals(answer, node.apply(state).get("answer"));
+        verifyNoInteractions(chatClient, config, properties, tools);
+    }
 }

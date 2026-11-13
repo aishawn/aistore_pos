@@ -77,6 +77,9 @@ public class GenerateResponseNode implements NodeAction {
         if ("unknown".equals(intent) && "deterministic".equals(routeSource)) {
             return Map.of("answer", deterministicFallback(question, intent));
         }
+        if ("qa".equals(intent) && "deterministic".equals(routeSource) && !summary.isBlank()) {
+            return Map.of("answer", summary);
+        }
 
         // Generic stock questions have no product entity to resolve. Keep them
         // deterministic so a provider delay cannot turn a clarification into a
