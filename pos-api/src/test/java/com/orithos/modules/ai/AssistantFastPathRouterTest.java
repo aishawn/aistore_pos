@@ -139,6 +139,19 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesExplicitSalesDateRangesWithoutTheClassifier() {
+        for (String question : new String[]{
+                "Sales from 14 October to 16 October 2026",
+                "Revenue from 14/10/2026 to 16/10/2026",
+                "销售额从2026年10月14日到2026年10月16日"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_sales", match.intent(), question);
+        }
+    }
+
+    @Test
     void routesNamedProductSearchAndStockQuestionsWithoutTheClassifier() {
         AssistantFastPathRouter.Match product = AssistantFastPathRouter.maybeMatch("look up product DEMO");
         assertEquals("search_product", product.intent());

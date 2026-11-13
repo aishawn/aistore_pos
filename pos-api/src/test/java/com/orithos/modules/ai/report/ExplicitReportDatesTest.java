@@ -32,4 +32,10 @@ class ExplicitReportDatesTest {
         assertTrue(ExplicitReportDates.parsePair("Compare sales on 31 Feb 2026 with 1 Mar 2026").isEmpty());
         assertTrue(ExplicitReportDates.parsePair("Compare sales on 14 Oct, 15 Oct and 16 Oct").isEmpty());
     }
+
+    @Test
+    void doesNotInterpretDateRangesAsComparisons() {
+        assertTrue(ExplicitReportDates.parsePair("Sales from 14 October to 16 October 2026").isEmpty());
+        assertTrue(ExplicitReportDates.parsePair("销售额从2026年10月14日到2026年10月16日").isEmpty());
+    }
 }

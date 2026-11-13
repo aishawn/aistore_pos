@@ -16,6 +16,8 @@ import java.util.regex.Pattern;
 
 /** Parses exactly two explicit single dates for the supported sales comparison. */
 final class ExplicitReportDates {
+    private static final Pattern COMPARISON_MARKER = Pattern.compile(
+            "(?i)\\b(?:compare(?:d)?|comparison|versus|vs\\.?)\\b|比较|对比|相比");
     private static final Pattern DATE = Pattern.compile(
             "(?i)(?:\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}/\\d{1,2}/\\d{4}|"
                     + "\\d{1,2}(?:st|nd|rd|th)?[\\s,.-]+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:[\\s,.-]+\\d{4})?|"
@@ -27,7 +29,7 @@ final class ExplicitReportDates {
     private ExplicitReportDates() {}
 
     static Optional<List<LocalDate>> parsePair(String question) {
-        if (question == null) return Optional.empty();
+        if (question == null || !COMPARISON_MARKER.matcher(question).find()) return Optional.empty();
         Matcher matcher = DATE.matcher(question);
         List<Match> matches = new ArrayList<>();
         while (matcher.find()) {

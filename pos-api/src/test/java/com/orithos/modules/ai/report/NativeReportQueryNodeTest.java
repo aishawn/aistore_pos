@@ -147,6 +147,41 @@ class NativeReportQueryNodeTest {
     }
 
     @Test
+    void explicitSalesDateRangeUsesOneAggregateInsteadOfAComparison() {
+        NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
+        ReportQueryService reportQuery = mock(ReportQueryService.class);
+        NativeReportQueryNode node = new NativeReportQueryNode(queryService, new ReportPeriodResolver(), reportQuery);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value(anyString())).thenReturn(Optional.empty());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("question", String.class)).thenReturn(Optional.of("Sales from 14 October to 16 October 2026"));
+        when(state.value("report_from")).thenReturn(Optional.of(LocalDateTime.of(2026, 10, 14, 0, 0)));
+        when(state.value("report_to")).thenReturn(Optional.of(LocalDateTime.of(2026, 10, 17, 0, 0)));
+        when(state.value("vendor_id")).thenReturn(Optional.of(55L));
+        when(state.value("outlet_id")).thenReturn(Optional.of(87L));
+        when(state.value("can_report_query")).thenReturn(Optional.of(true));
+        when(state.value("can_report_cost")).thenReturn(Optional.of(true));
+        when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-10-14", "to", "2026-10-16")));
+        when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-14"), LocalDate.parse("2026-10-16")))
+                .thenReturn(Map.of("revenue", 360.0, "grossProfit", 100.0, "costAvailable", true,
+                        "transactions", 9));
+
+        Map<String, Object> result = node.apply(state);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> row = (Map<String, Object>) ((List<?>) result.get("report_rows")).get(0);
+
+        assertNull(row.get("comparison"));
+        assertEquals(360.0, row.get("sales"));
+        assertEquals("2026-10-14", result.get("report_period_from"));
+        assertEquals("2026-10-16", result.get("report_period_to"));
+        verify(reportQuery).nativeOverview(55L, 87L, LocalDate.parse("2026-10-14"), LocalDate.parse("2026-10-16"));
+        verify(reportQuery, never()).nativeOverview(any(Long.class), any(Long.class),
+                eq(LocalDate.parse("2026-10-14")), eq(LocalDate.parse("2026-10-14")));
+        verify(reportQuery, never()).nativeOverview(any(Long.class), any(Long.class),
+                eq(LocalDate.parse("2026-10-16")), eq(LocalDate.parse("2026-10-16")));
+    }
+
+    @Test
     void salesRemainAvailableButProfitIsRedactedWithoutCostPermission() {
         NativeAiReportQueryService queryService = mock(NativeAiReportQueryService.class);
         ReportQueryService reportQuery = mock(ReportQueryService.class);
