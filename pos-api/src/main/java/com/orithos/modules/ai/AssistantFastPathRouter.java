@@ -239,7 +239,8 @@ public final class AssistantFastPathRouter {
                     + "^(?:店里|我们店里|门店)还有\\s*(.+?)(?:\\s*(?:吗|没有|没了))?[？?。]*$|"
                     + "^(?:店里|我们店里|门店)有\\s*(.+?)吗[？?。]*$|"
                     + "^(?!(?:订单|客户|供应商|发票))(.+?)(?:还有吗|还有没有|有吗)[？?。]*$|"
-                    + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)[？?。]*$",
+                    + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)[？?。]*$|"
+                    + "^(.+?)(?:现在|当前)(?:有多少|有几件)(?:库存|货|现货)[？?。]*$",
             Pattern.CASE_INSENSITIVE);
     /**
      * Explicit "stock of/for <product>" wording must extract only the product.
@@ -256,7 +257,8 @@ public final class AssistantFastPathRouter {
                     + "^(?:查|搜索|查询)(?:一下)?\\s*(?:条码|barcode)\\s*[:：]?\\s*([A-Za-z0-9-]{4,})[？?。.!]*$|"
                     + "^(?:找|搜索|查询)(?:一下)?\\s*(?:SKU|sku)\\s*[:：]?\\s*([A-Za-z0-9_-]{2,})[？?。.!]*$|"
                     + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:barcode)\\s*[:#]?\\s*([A-Za-z0-9-]{4,})[?.!]*$|"
-                    + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:SKU|sku)\\s*[:#]?\\s*([A-Za-z0-9_-]{2,})[?.!]*$",
+                    + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:SKU|sku)\\s*[:#]?\\s*([A-Za-z0-9_-]{2,})[?.!]*$|"
+                    + "^(?:current|on[ -]?hand)\\s+(?:stock|inventory)(?:\\s+(?:level|quantity))?\\s+(?:of|for)\\s+(.+?)[?.!]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -460,7 +462,7 @@ public final class AssistantFastPathRouter {
                     directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
                     directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
                     directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9),
-                    directStockQuery.group(10)));
+                    directStockQuery.group(10), directStockQuery.group(11)));
             if (query != null) {
                 return new Match("report_stock", "Stock report", Map.of("query", query), "", "", "", "");
             }
@@ -582,7 +584,7 @@ public final class AssistantFastPathRouter {
                     stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12),
                     stockQuery.group(13), stockQuery.group(14), stockQuery.group(15), stockQuery.group(16),
                     stockQuery.group(17), stockQuery.group(18), stockQuery.group(19), stockQuery.group(20),
-                    stockQuery.group(21)));
+                    stockQuery.group(21), stockQuery.group(22)));
             if (query != null) {
                 return new Match(
                         "report_stock",

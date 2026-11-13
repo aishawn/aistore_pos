@@ -56,7 +56,7 @@ try {
   for (const sample of [
     { id: "en", question: "sales last 7 days", followUp: "and yesterday?", surface: "sell", kind: "sales" },
     { id: "en-previous-day", question: "sales yesterday", followUp: "and the day before?", surface: "reports", kind: "sales", expectPreviousDay: true },
-    { id: "zh", question: "上周五啤酒销售额", followUp: "那昨天呢", surface: "reports", kind: "sales" },
+    { id: "zh", question: "近7天销售额", followUp: "那昨天呢", surface: "reports", kind: "sales" },
     { id: "stock-en", question: "current stock for Shiraz", followUp: "and yesterday?", repeatFollowUp: "and the day before?", surface: "stock", kind: "stock-history" },
     { id: "stock-zh", question: "西拉现在有多少库存", followUp: "那昨天呢", repeatFollowUp: "那前一天呢", surface: "stock", kind: "stock-history" },
   ]) {
