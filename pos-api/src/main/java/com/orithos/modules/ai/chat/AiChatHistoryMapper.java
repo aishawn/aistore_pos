@@ -20,7 +20,7 @@ public interface AiChatHistoryMapper {
                    created_at AS thread_created_at, updated_at AS thread_updated_at
             FROM ai_chat_thread
             WHERE vendor_id = #{vendorId} AND user_id = #{userId}
-            ORDER BY updated_at DESC, id DESC
+            ORDER BY updated_at DESC NULLS LAST, id DESC
             LIMIT #{limit}
             """)
     @Results(id = "aiChatThreadMapping", value = {

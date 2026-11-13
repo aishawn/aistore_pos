@@ -12,6 +12,6 @@ class AiChatHistoryMapperTest {
         var listThreads = AiChatHistoryMapper.class.getMethod("listThreads", long.class, long.class, int.class);
         String query = String.join(" ", listThreads.getAnnotation(Select.class).value());
 
-        assertTrue(query.contains("ORDER BY updated_at DESC, id DESC"));
+        assertTrue(query.contains("ORDER BY updated_at DESC NULLS LAST, id DESC"));
     }
 }
