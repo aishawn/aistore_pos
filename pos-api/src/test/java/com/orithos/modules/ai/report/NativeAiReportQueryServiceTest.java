@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -116,6 +117,38 @@ class NativeAiReportQueryServiceTest {
         assertEquals(null, result.error());
         assertEquals(10_852, result.count());
         verify(jdbc).queryForObject(eq(sql), eq(Integer.class), eq(87L));
+    }
+
+    @Test
+    void recommendationCatalogUsesSingleBoundedQueryAndCachesPerOutletUntilTtlExpires() {
+        long[] now = {1_000L};
+        NativeAiReportQueryService cachedService = new NativeAiReportQueryService(
+                dataSources, templates, reportQuery, () -> now[0]);
+        TenantContext firstOutlet = tenant(Set.of(TenantContext.PERM_QUERY));
+        TenantContext secondOutlet = new TenantContext(55L, 12L, 88L, List.of(88L),
+                Set.of(TenantContext.PERM_QUERY));
+        JdbcTemplate firstJdbc = mock(JdbcTemplate.class);
+        JdbcTemplate secondJdbc = mock(JdbcTemplate.class);
+        List<Map<String, Object>> products = List.of(Map.of(
+                "id", 1L, "name", "Harbour Lager", "list_price", 12.50,
+                "sell_price", 12.50, "quantity", 8, "category", "Beer"));
+        when(dataSources.jdbc(87L)).thenReturn(firstJdbc);
+        when(dataSources.jdbc(88L)).thenReturn(secondJdbc);
+        when(firstJdbc.queryForList(anyString(), any(Object[].class))).thenReturn(products);
+        when(secondJdbc.queryForList(anyString(), any(Object[].class))).thenReturn(products);
+
+        cachedService.listRecommendationProducts(firstOutlet);
+        cachedService.listRecommendationProducts(firstOutlet);
+        cachedService.listRecommendationProducts(secondOutlet);
+
+        verify(firstJdbc, times(1)).queryForList(anyString(), any(Object[].class));
+        verify(secondJdbc, times(1)).queryForList(anyString(), any(Object[].class));
+        verify(firstJdbc).queryForList(org.mockito.ArgumentMatchers.contains("LIMIT ?"), eq(87L), eq(10_000));
+
+        now[0] += 15_000L;
+        cachedService.listRecommendationProducts(firstOutlet);
+
+        verify(firstJdbc, times(2)).queryForList(anyString(), any(Object[].class));
     }
 
     private static TenantContext tenant(Set<String> permissions) {

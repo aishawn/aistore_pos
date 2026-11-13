@@ -22,15 +22,17 @@ public class NativeAiReportQueryService {
 
     private static final int MAX_LIST_ROWS = 50;
     private static final int MAX_CATALOG_ROWS = 10_000;
-    private static final int PAGE_SIZE = 500;
     static final long TEMPLATE_CACHE_TTL_MILLIS = 5_000;
+    static final long CATALOG_CACHE_TTL_MILLIS = 15_000;
     private static final int MAX_TEMPLATE_CACHE_ENTRIES = 512;
+    private static final int MAX_CATALOG_CACHE_ENTRIES = 64;
 
     private final AiReportDataSourceRegistry dataSources;
     private final ReportTemplateRegistry templates;
     private final ReportQueryService reportQueryService;
     private final LongSupplier currentTimeMillis;
     private final ConcurrentHashMap<QueryCacheKey, CachedResult> templateCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<CatalogCacheKey, CachedCatalog> catalogCache = new ConcurrentHashMap<>();
 
     @Autowired
     public NativeAiReportQueryService(AiReportDataSourceRegistry dataSources,
@@ -145,11 +147,17 @@ public class NativeAiReportQueryService {
     public ProductCatalogResult listRecommendationProducts(TenantContext tenant) {
         String error = validateCatalogTenant(tenant);
         if (error != null) return ProductCatalogResult.fail(error);
-        try {
-            List<Map<String, Object>> rows = new ArrayList<>();
-            var jdbc = dataSources.jdbc(tenant.requireOutletId());
-            for (int offset = 0; offset < MAX_CATALOG_ROWS; offset += PAGE_SIZE) {
-                List<Map<String, Object>> page = jdbc.queryForList("""
+        long now = currentTimeMillis.getAsLong();
+        catalogCache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
+        CatalogCacheKey key = new CatalogCacheKey(tenant.vendorId(), tenant.requireOutletId());
+        CachedCatalog cached = catalogCache.get(key);
+        if (cached != null && cached.expiresAtMillis() > now) return cached.result();
+        if (cached != null) catalogCache.remove(key, cached);
+        if (catalogCache.size() >= MAX_CATALOG_CACHE_ENTRIES) catalogCache.clear();
+
+        CachedCatalog loaded = catalogCache.computeIfAbsent(key, ignored -> {
+            try {
+                List<Map<String, Object>> rows = dataSources.jdbc(tenant.requireOutletId()).queryForList("""
                         SELECT p.id, p.name, p.list_price, p.list_price AS sell_price,
                                i.quantity, COALESCE(p.category_name, '') AS category
                         FROM ai_rpt_product p
@@ -157,15 +165,15 @@ public class NativeAiReportQueryService {
                         WHERE p.outlet_id = ? AND p.status = 'ACTIVE'
                           AND p.list_price > 0 AND i.quantity > 0
                         ORDER BY p.name, p.id
-                        LIMIT ? OFFSET ?
-                        """, tenant.requireOutletId(), PAGE_SIZE, offset);
-                rows.addAll(page);
-                if (page.size() < PAGE_SIZE) break;
+                        LIMIT ?
+                        """, tenant.requireOutletId(), MAX_CATALOG_ROWS);
+                ProductCatalogResult result = ProductCatalogResult.ok(List.copyOf(rows));
+                return new CachedCatalog(result, currentTimeMillis.getAsLong() + CATALOG_CACHE_TTL_MILLIS);
+            } catch (DataAccessException | IllegalStateException e) {
+                return null;
             }
-            return ProductCatalogResult.ok(rows);
-        } catch (DataAccessException | IllegalStateException e) {
-            return ProductCatalogResult.fail("NATIVE_REPORT_UNAVAILABLE");
-        }
+        });
+        return loaded == null ? ProductCatalogResult.fail("NATIVE_REPORT_UNAVAILABLE") : loaded.result();
     }
 
     public ProductCatalogResult searchPriceProducts(TenantContext tenant, BigDecimal threshold,
@@ -257,6 +265,9 @@ public class NativeAiReportQueryService {
                     expiresAtMillis);
         }
     }
+
+    private record CatalogCacheKey(long vendorId, long outletId) {}
+    private record CachedCatalog(ProductCatalogResult result, long expiresAtMillis) {}
 
     public record ProductCountResult(Integer count, String error) {
         static ProductCountResult ok(int count) { return new ProductCountResult(count, null); }
