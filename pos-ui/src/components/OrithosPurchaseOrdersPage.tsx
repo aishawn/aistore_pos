@@ -3,11 +3,19 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, PackageCheck, Plus, RefreshCw, Search } from "lucide-react";
+import { Eye, FileText, PackageCheck, Plus, RefreshCw } from "lucide-react";
+import { formatAuDate } from "@/lib/au";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { Modal } from "@/components/admin/Modal";
 import { CreatePurchaseOrderModal } from "@/components/admin/CreatePurchaseOrderModal";
+import {
+  DEFAULT_ORDER_FILTERS,
+  orderFiltersToQuery,
+  OrdersFilterPanel,
+  purchaseOrderFiltersActive,
+  type OrderFilters,
+} from "@/components/admin/OrdersFilterPanel";
 import { useAuth } from "@/lib/auth";
 import { formatPurchaseQuantity } from "@/lib/purchase-quantity";
 
@@ -17,7 +25,9 @@ type Order = {
   invoiceNumber?: string;
   reference?: string;
   fromName?: string;
+  toName?: string;
   orderDate?: string;
+  dueDate?: string;
   totalCost?: number | null;
   linesTotalCost?: number | null;
   lineCount?: number;
@@ -34,19 +44,6 @@ type ReceiptOrder = Order & {
     receivedQuantity?: number;
   }>;
 };
-
-type Named = { id: number | string; name: string };
-
-// Outstanding = OPEN / SENT / PARTIALLY_RECEIVED (Shopfront-style open queue).
-const statuses = [
-  ["", "All statuses"],
-  ["OUTSTANDING", "Outstanding"],
-  ["OPEN", "Open"],
-  ["SENT", "Sent"],
-  ["PARTIALLY_RECEIVED", "Partially received"],
-  ["RECEIVED", "Received"],
-  ["CANCELLED", "Cancelled"],
-] as const;
 
 function statusClass(status?: string) {
   if (status === "RECEIVED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
@@ -66,11 +63,8 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
   const router = useRouter();
   const { hasPermission } = useAuth();
   const canReceive = hasPermission("stock.purchases") && hasPermission("stock.receive");
-  const [status, setStatus] = useState("OUTSTANDING");
-  const [search, setSearch] = useState("");
-  const [supplierId, setSupplierId] = useState("");
-  const [orderDateFrom, setOrderDateFrom] = useState("");
-  const [orderDateTo, setOrderDateTo] = useState("");
+  const [draftFilters, setDraftFilters] = useState<OrderFilters>(() => ({ ...DEFAULT_ORDER_FILTERS }));
+  const [appliedFilters, setAppliedFilters] = useState<OrderFilters>(() => ({ ...DEFAULT_ORDER_FILTERS }));
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [receivingOrderId, setReceivingOrderId] = useState<string | number | null>(null);
@@ -78,20 +72,27 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
   const [receiveBusy, setReceiveBusy] = useState(false);
   const [receiveError, setReceiveError] = useState<string | null>(null);
   const receiptKey = useRef<string | null>(null);
-  const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const receivingOrder = useApi<ReceiptOrder>(receivingOrderId == null ? null : `/api/orders/${receivingOrderId}`);
   const receivingLines = (receivingOrder.data?.products ?? []).filter((line) => Number(line.orderedQuantity ?? 0) > Number(line.receivedQuantity ?? 0));
   const result = useApiList<Order>("/api/orders", {
     page,
     size: 40,
     type: "ORDER",
-    status,
-    supplierId: supplierId || undefined,
-    invoiceNumber: search.trim() || undefined,
-    orderDateFrom: orderDateFrom || undefined,
-    orderDateTo: orderDateTo || undefined,
+    ...orderFiltersToQuery(appliedFilters),
   });
-  const filtered = Boolean(status) || Boolean(search.trim()) || Boolean(supplierId) || Boolean(orderDateFrom) || Boolean(orderDateTo);
+  const filtered = purchaseOrderFiltersActive(appliedFilters);
+
+  function applyFilters() {
+    setAppliedFilters({ ...draftFilters });
+    setPage(1);
+  }
+
+  function showAllStatuses() {
+    const next = { ...appliedFilters, status: "" };
+    setDraftFilters((current) => ({ ...current, status: "" }));
+    setAppliedFilters(next);
+    setPage(1);
+  }
 
   async function receiveOrder() {
     const lines = (receivingOrder.data?.products ?? [])
@@ -123,80 +124,35 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
   }
   const body = (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_180px_180px_180px_auto_auto]">
-        <label className="flex h-11 min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 focus-within:border-[var(--oh-primary)]">
-          <Search size={17} className="text-[var(--oh-muted)]" />
-                        <input
-            aria-label="Search Orithos purchase orders"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Search invoice / order number"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-          />
-        </label>
-        <select
-          aria-label="Purchase order status"
-          value={status}
-          onChange={(event) => {
-            setStatus(event.target.value);
-            setPage(1);
-          }}
-          className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm"
-        >
-          {statuses.map(([value, label]) => (
-            <option key={value || "all"} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Purchase order supplier"
-          value={supplierId}
-          onChange={(event) => { setSupplierId(event.target.value); setPage(1); }}
-          className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm"
-        >
-          <option value="">All suppliers</option>
-          {suppliers.items.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
-        </select>
-        <label className="flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-muted)]">
-          From
-          <input
-            type="date"
-            aria-label="Order date from"
-            value={orderDateFrom}
-            onChange={(event) => {
-              setOrderDateFrom(event.target.value);
-              setPage(1);
-            }}
-            className="bg-transparent text-[var(--oh-text)] outline-none"
-          />
-        </label>
-        <label className="flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-muted)]">
-          To
-          <input
-            type="date"
-            aria-label="Order date to"
-            value={orderDateTo}
-            onChange={(event) => {
-              setOrderDateTo(event.target.value);
-              setPage(1);
-            }}
-            className="bg-transparent text-[var(--oh-text)] outline-none"
-          />
-        </label>
+      <section
+        aria-label="Purchase order filters"
+        className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5"
+      >
+        <OrdersFilterPanel
+          filters={draftFilters}
+          onChange={setDraftFilters}
+          onFilter={applyFilters}
+          hideType
+          filtering={result.loading}
+        />
+      </section>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           onClick={result.reload}
           disabled={result.loading}
-          className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:opacity-60"
         >
-          <RefreshCw size={16} className={result.loading ? "animate-spin" : ""} /> Refresh
+          <RefreshCw size={16} className={result.loading ? "animate-spin" : ""} aria-hidden />
+          Refresh
         </button>
-        <button type="button" onClick={() => setCreateOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">
-          <Plus size={16} /> New purchase order
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+        >
+          <Plus size={16} aria-hidden />
+          New purchase order
         </button>
       </div>
       {result.error && (
@@ -219,13 +175,10 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                 ? "Try All statuses or clear the search — Outstanding only shows open, sent, and partially received orders."
                 : "Create a purchase order to begin receiving stock."}
             </p>
-            {status === "OUTSTANDING" && (
+            {appliedFilters.status === "OUTSTANDING" && (
               <button
                 type="button"
-                onClick={() => {
-                  setStatus("");
-                  setPage(1);
-                }}
+                onClick={showAllStatuses}
                 className="mt-4 text-sm font-semibold text-[var(--oh-primary)] hover:underline"
               >
                 Show all statuses
@@ -236,13 +189,14 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
       )}
       {result.items.length > 0 && (
         <section className="overflow-x-auto rounded-xl border border-[var(--oh-border)] bg-white">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
+          <table className="w-full min-w-[1080px] text-left text-sm">
+            <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
               <tr>
-                <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">Supplier</th>
+                <th className="px-4 py-3">From</th>
+                <th className="px-4 py-3">To</th>
                 <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Lines</th>
+                <th className="px-4 py-3">Invoice Number</th>
+                <th className="px-4 py-3">Supplier</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actions</th>
@@ -251,24 +205,44 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
             <tbody className="divide-y divide-[var(--oh-border)]">
               {result.items.map((order) => {
                 const mismatch = headerMismatch(order);
+                const lineCount = order.lineCount ?? 0;
                 return (
                   <tr key={order.id} className="hover:bg-[var(--oh-surface)]">
                     <td className="px-4 py-3">
-                      <Link href={`/orders/${order.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">
+                      <p className="font-semibold text-[var(--oh-text)]">{order.fromName || "—"}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Supplier</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-[var(--oh-text)]">{order.toName || "—"}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Outlet</p>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      <p className="font-medium text-[var(--oh-text)]">{order.orderDate ? formatAuDate(order.orderDate) : "—"}</p>
+                      {order.dueDate && (
+                        <p className="mt-1 text-xs text-[var(--oh-muted)]">
+                          Due <span className="tabular-nums text-[var(--oh-text-secondary)]">{formatAuDate(order.dueDate)}</span>
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/orders/${order.id}/view`} className="font-semibold tabular-nums text-[var(--oh-primary)] hover:underline">
                         {order.invoiceNumber || `Order ${order.id}`}
                       </Link>
                       {order.reference && <p className="mt-0.5 text-xs text-[var(--oh-muted)]">{order.reference}</p>}
                       {mismatch && (
-                        <p className="mt-1 text-xs text-amber-800">
+                        <p className="mt-1 max-w-xs text-xs text-amber-800">
                           Shopfront header total; ordered line total ${Number(order.linesTotalCost).toFixed(2)}. Source totals can include received items, tax, and freight.
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3">{order.fromName || "—"}</td>
-                    <td className="px-4 py-3 tabular-nums">{order.orderDate || "—"}</td>
-                    <td className="px-4 py-3 tabular-nums">{order.lineCount ?? 0}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{order.fromName || "—"}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {order.totalCost == null ? "—" : `$${Number(order.totalCost).toFixed(2)}`}
+                      <p className="font-semibold text-[var(--oh-text)]">
+                        {order.totalCost == null ? "—" : `$${Number(order.totalCost).toFixed(2)}`}
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+                        {lineCount} {lineCount === 1 ? "line" : "lines"}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(order.status)}`}>
@@ -277,8 +251,25 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 whitespace-nowrap">
-                        <Link href={`/orders/${order.id}/view`} className="font-semibold text-[var(--oh-primary)] hover:underline">View</Link>
-                        {canReceive && ["OPEN", "SENT", "PARTIALLY_RECEIVED"].includes(order.status ?? "") && <button type="button" onClick={() => { receiptKey.current = null; setReceivingOrderId(order.id); setReceiveError(null); setQuantities({}); }} className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-emerald-700 hover:underline"><PackageCheck size={15} /> Receive</button>}
+                        <Link href={`/orders/${order.id}/view`} className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-[var(--oh-primary)] hover:underline">
+                          <Eye size={15} aria-hidden />
+                          View
+                        </Link>
+                        {canReceive && ["OPEN", "SENT", "PARTIALLY_RECEIVED"].includes(order.status ?? "") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              receiptKey.current = null;
+                              setReceivingOrderId(order.id);
+                              setReceiveError(null);
+                              setQuantities({});
+                            }}
+                            className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-emerald-700 hover:underline"
+                          >
+                            <PackageCheck size={15} aria-hidden />
+                            Receive
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

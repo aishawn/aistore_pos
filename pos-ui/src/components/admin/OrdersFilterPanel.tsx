@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
+import { useState } from "react";
 import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
 import { FilterSelect } from "@/components/admin/FilterSelect";
@@ -61,12 +61,14 @@ export function orderFiltersToQuery(filters: OrderFilters): Record<string, strin
   };
 }
 
-const labelClass = "mb-0.5 text-[13px] font-medium text-[var(--oh-text-secondary)]";
+const labelClass = "mb-1 text-xs font-medium text-[var(--oh-text-secondary)]";
 const inputClass =
-"min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
-const fieldClass = "flex min-w-0 flex-col font-sans";
-const filterGridClass =
-  "grid grid-cols-[repeat(4,minmax(0,1fr))] gap-x-5 gap-y-5";
+  "min-h-10 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
+const fieldClass = "flex min-w-0 flex-col";
+const basicGridClass =
+  "grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7";
+const advancedGridClass =
+  "grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
 
 function FilterInput({
   label,
@@ -97,7 +99,7 @@ function FilterDateInput({
   return (
     <label className={fieldClass}>
       <span className={labelClass}>{label}</span>
-      <div className="[&_button]:min-h-11 [&_button]:rounded-md [&_button]:px-2.5 [&_button]:text-[13px]">
+      <div className="[&_button]:min-h-10 [&_button]:rounded-lg [&_button]:border-[var(--oh-border)] [&_button]:bg-white [&_button]:px-3 [&_button]:text-sm [&_button]:focus:border-[var(--oh-primary)] [&_button]:focus:ring-2 [&_button]:focus:ring-[var(--oh-primary)]/15">
         <FormDatePicker value={value} onChange={onChange} ariaLabel={label} placeholder="DD/MM/YYYY" compact />
       </div>
     </label>
@@ -105,9 +107,11 @@ function FilterDateInput({
 }
 
 const STATUS_OPTIONS = [
+  { label: "All statuses", value: "" },
   { label: "Outstanding", value: "OUTSTANDING" },
   { label: "Open", value: "OPEN" },
   { label: "Sent", value: "SENT" },
+  { label: "Partially received", value: "PARTIALLY_RECEIVED" },
   { label: "Received", value: "RECEIVED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
@@ -127,11 +131,17 @@ export function OrdersFilterPanel({
   filters,
   onChange,
   onFilter,
+  hideType = false,
+  filtering = false,
 }: {
   filters: OrderFilters;
   onChange: (filters: OrderFilters) => void;
   onFilter: () => void;
+  /** Purchase Orders tab always scopes to ORDER; hide the Type control. */
+  hideType?: boolean;
+  filtering?: boolean;
 }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const suppliers = useApi<{ items: Named[] }>("/api/suppliers", { size: 200 });
   const transferees = useApi<Named[]>("/api/transferees");
   const outlets = useApi<Named[]>("/api/outlets");
@@ -153,21 +163,23 @@ export function OrdersFilterPanel({
           { label: "Users", error: users.error, loading: users.loading, onRetry: users.reload },
         ]}
       />
-      <div className={filterGridClass}>
+      <div className={basicGridClass}>
         <FilterSelect
           label="Status"
           value={filters.status}
           onChange={(v) => set("status", v)}
           options={STATUS_OPTIONS}
-          placeholder="All"
+          placeholder="All statuses"
         />
-        <FilterSelect
-          label="Type"
-          value={filters.type}
-          onChange={(v) => set("type", v)}
-          options={TYPE_OPTIONS}
-          placeholder="All"
-        />
+        {!hideType && (
+          <FilterSelect
+            label="Type"
+            value={filters.type}
+            onChange={(v) => set("type", v)}
+            options={TYPE_OPTIONS}
+            placeholder="All"
+          />
+        )}
         <FilterInput label="Invoice Number" value={filters.invoiceNumber} onChange={(v) => set("invoiceNumber", v)} />
         <FilterDateInput
           label="Order / Invoice Date"
@@ -182,47 +194,84 @@ export function OrdersFilterPanel({
           onChange={(v) => set("supplierId", v)}
           options={toOptions(suppliers.data?.items)}
         />
-        <FilterSelect
-          label="Transferor"
-          value={filters.transferorId}
-          onChange={(v) => set("transferorId", v)}
-          options={toOptions(transferees.data)}
-        />
-        <FilterSelect
-          label="Outlet"
-          value={filters.outletId}
-          onChange={(v) => set("outletId", v)}
-          options={toOptions(outlets.data)}
-        />
-        <FilterSelect
-          label="Product"
-          value={filters.productId}
-          onChange={(v) => set("productId", v)}
-          options={toOptions(products.data?.items)}
-        />
-        <FilterSelect
-          label="Created By"
-          value={filters.createdById}
-          onChange={(v) => set("createdById", v)}
-          options={toOptions(users.data)}
-        />
-        <FilterSelect
-          label="Sent By"
-          value={filters.sentById}
-          onChange={(v) => set("sentById", v)}
-          options={toOptions(users.data)}
-        />
-        <FilterSelect
-          label="Received By"
-          value={filters.receivedById}
-          onChange={(v) => set("receivedById", v)}
-          options={toOptions(users.data)}
-        />
       </div>
 
-      <div className="mt-6 flex items-center justify-end">
-        <AdminPrimaryButton onClick={onFilter}>Filter</AdminPrimaryButton>
+      {advancedOpen && (
+        <div className={`${advancedGridClass} mt-4 border-t border-[var(--oh-border)] pt-4`}>
+          <FilterSelect
+            label="Transferee"
+            value={filters.transferorId}
+            onChange={(v) => set("transferorId", v)}
+            options={toOptions(transferees.data)}
+          />
+          <FilterSelect
+            label="Outlet"
+            value={filters.outletId}
+            onChange={(v) => set("outletId", v)}
+            options={toOptions(outlets.data)}
+          />
+          <FilterSelect
+            label="Product"
+            value={filters.productId}
+            onChange={(v) => set("productId", v)}
+            options={toOptions(products.data?.items)}
+          />
+          <FilterSelect
+            label="Created By"
+            value={filters.createdById}
+            onChange={(v) => set("createdById", v)}
+            options={toOptions(users.data)}
+          />
+          <FilterSelect
+            label="Sent By"
+            value={filters.sentById}
+            onChange={(v) => set("sentById", v)}
+            options={toOptions(users.data)}
+          />
+          <FilterSelect
+            label="Received By"
+            value={filters.receivedById}
+            onChange={(v) => set("receivedById", v)}
+            options={toOptions(users.data)}
+          />
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="inline-flex min-h-10 items-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        >
+          {advancedOpen ? "Hide advanced filters" : "Show advanced filters"}
+        </button>
+        <button
+          type="button"
+          onClick={onFilter}
+          disabled={filtering}
+          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-6 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
+        >
+          {filtering ? "Filtering…" : "Filter"}
+        </button>
       </div>
     </div>
+  );
+}
+
+export function purchaseOrderFiltersActive(filters: OrderFilters): boolean {
+  const f = filters;
+  return (
+    f.status !== DEFAULT_ORDER_FILTERS.status ||
+    f.invoiceNumber.trim() !== "" ||
+    f.orderDate !== "" ||
+    f.dueDate !== "" ||
+    f.reference.trim() !== "" ||
+    f.supplierId !== "" ||
+    f.transferorId !== "" ||
+    f.outletId !== "" ||
+    f.productId !== "" ||
+    f.createdById !== "" ||
+    f.sentById !== "" ||
+    f.receivedById !== ""
   );
 }
