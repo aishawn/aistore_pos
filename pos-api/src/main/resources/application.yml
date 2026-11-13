@@ -85,6 +85,8 @@ app:
     integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}
     integration-token: ${SHOPFRONT_INTEGRATION_TOKEN:}
     business-write-enabled: ${SHOPFRONT_BUSINESS_WRITE_ENABLED:${SHOPFRONT_INTEGRATION_ENABLED:false}}
+    source-report-base-url: ${SHOPFRONT_SOURCE_REPORT_BASE_URL:http://shopfront-crawler:8000}
+    source-report-store-key: ${SHOPFRONT_SOURCE_REPORT_STORE_KEY:skr}
   invoice:
     # Reserved for future supplier-provided invoice APIs. Keep false until an adapter exists.
     supplier-ingest-enabled: ${SUPPLIER_INVOICE_INGEST_ENABLED:false}

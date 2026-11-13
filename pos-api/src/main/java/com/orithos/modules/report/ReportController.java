@@ -24,16 +24,19 @@ public class ReportController {
     private final RedisTemplate<String, Object> redis;
     private final ReportMapper reportMapper;
     private final ReportQueryService reportQueryService;
+    private final ShopfrontPurchaseReportService shopfrontPurchaseReportService;
     private final TenantContextFactory tenantContextFactory;
     private final PermissionAccess permissionAccess;
 
     public ReportController(RedisTemplate<String, Object> redis, ReportMapper reportMapper,
                             ReportQueryService reportQueryService,
+                            ShopfrontPurchaseReportService shopfrontPurchaseReportService,
                             TenantContextFactory tenantContextFactory,
                             PermissionAccess permissionAccess) {
         this.redis = redis;
         this.reportMapper = reportMapper;
         this.reportQueryService = reportQueryService;
+        this.shopfrontPurchaseReportService = shopfrontPurchaseReportService;
         this.tenantContextFactory = tenantContextFactory;
         this.permissionAccess = permissionAccess;
     }
@@ -97,7 +100,7 @@ public class ReportController {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "Choose a valid range of up to 801 days.");
         }
-        return ApiResult.ok(reportQueryService.nativePurchaseReport(vendorId, outletId, from, to, groupBy));
+        return ApiResult.ok(shopfrontPurchaseReportService.purchaseReport(vendorId, outletId, from, to, groupBy));
     }
 
     @GetMapping("/weekly-sales")

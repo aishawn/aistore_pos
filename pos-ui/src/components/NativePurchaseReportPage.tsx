@@ -40,7 +40,7 @@ import {
 } from "@/lib/report-date-selection";
 
 type PurchaseReport = {
-  source: "orithos_ledger";
+  source: "shopfront_reporting_api";
   from: string;
   to: string;
   groupBy: PurchaseGroupBy;
@@ -59,10 +59,11 @@ type PurchaseReport = {
   taxAvailable: boolean;
   diagnostics?: {
     available?: boolean;
-    mirrorPurchaseOrders?: number;
-    mappedPurchaseOrders?: number;
-    nativePurchaseOrders?: number;
-    nativeReportOrders?: number;
+    source?: string;
+    freshness?: string;
+    cache?: string;
+    fetchedAt?: string;
+    sourceStoreKey?: string;
     message?: string;
   };
   parityNotes?: string[];
@@ -223,7 +224,7 @@ export function NativePurchaseReportPage() {
           message?: string;
         } | null;
         if (!response.ok || body == null || (typeof body.code === "number" && body.code !== 0)
-            || !body.data || body.data.source !== "orithos_ledger") {
+            || !body.data || body.data.source !== "shopfront_reporting_api") {
           throw new Error(
             body?.message
               || (response.status === 410
@@ -322,7 +323,7 @@ export function NativePurchaseReportPage() {
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 md:px-6">
           <div>
-            <p className="text-xs font-medium text-[var(--oh-muted)]">Orithos ledger · Australia/Adelaide</p>
+            <p className="text-xs font-medium text-[var(--oh-muted)]">Shopfront report · Australia/Adelaide</p>
             <h1 className="text-lg font-semibold tracking-tight text-[var(--oh-text)]">Purchase report</h1>
             <p className="mt-0.5 text-sm text-[var(--oh-muted)]">
               Received purchase spend by order date · {from === to ? from : `${from} → ${to}`}
@@ -506,17 +507,20 @@ export function NativePurchaseReportPage() {
 
         <div className="space-y-2 px-4 py-4 text-xs text-[var(--oh-muted)] md:px-6">
           <p>
-            Native ledger purchase report. Includes received and partially received orders (type ORDER) by order date.
-            Fees, freight, payment fees, and tax show as unavailable until those fields are stored on imported lines.
-            This page is not the Purchases order workflow, and does not proxy Shopfront /reports/purchase.
+            Purchase values and charges from the Shopfront Reporting API, by source report date.
           </p>
           {diagnostics?.available ? (
-            <p>
-              Sync diagnostics: mirror {reportNumber(diagnostics.mirrorPurchaseOrders ?? 0)} · mapped{" "}
-              {reportNumber(diagnostics.mappedPurchaseOrders ?? 0)} · native{" "}
-              {reportNumber(diagnostics.nativePurchaseOrders ?? 0)} · in range{" "}
-              {reportNumber(diagnostics.nativeReportOrders ?? 0)}. Unmapped mirror orders are excluded from totals.
-            </p>
+            <>
+              <p>
+                Source {diagnostics.sourceStoreKey ?? "Shopfront"} · {diagnostics.cache ?? "unknown"}
+                {diagnostics.fetchedAt ? ` · fetched ${diagnostics.fetchedAt}` : ""}
+              </p>
+              {diagnostics.freshness && diagnostics.freshness !== "fresh" ? (
+                <p role="status" className="text-amber-800">
+                  The latest Shopfront refresh is not confirmed. Showing the cached source report.
+                </p>
+              ) : null}
+            </>
           ) : diagnostics?.message ? (
             <p>{diagnostics.message}</p>
           ) : null}
