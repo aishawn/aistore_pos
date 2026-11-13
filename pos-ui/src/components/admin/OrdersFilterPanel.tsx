@@ -67,6 +67,8 @@ const inputClass =
 const fieldClass = "flex min-w-0 flex-col";
 const basicGridClass =
   "grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7";
+const purchaseBasicGridClass =
+  "grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
 const advancedGridClass =
   "grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
 
@@ -127,12 +129,81 @@ const TYPE_OPTIONS = [
 const toOptions = (rows?: Array<{ id: string | number; name: string }> | null) =>
   (rows ?? []).map((r) => ({ label: r.name, value: String(r.id) }));
 
+const statusLabelByValue = Object.fromEntries(STATUS_OPTIONS.map((o) => [o.value, o.label]));
+
+function resolveName(rows: Array<{ id: string | number; name: string }> | null | undefined, id: string) {
+  if (!id) return null;
+  return rows?.find((row) => String(row.id) === id)?.name ?? `ID ${id}`;
+}
+
+export function OrderFilterChips({
+  filters,
+  supplierOptions,
+  transfereeOptions,
+  outletOptions,
+  productOptions,
+  userOptions,
+  onClear,
+}: {
+  filters: OrderFilters;
+  supplierOptions?: Named[];
+  transfereeOptions?: Named[];
+  outletOptions?: Named[];
+  productOptions?: Named[];
+  userOptions?: Named[];
+  onClear: (next: OrderFilters) => void;
+}) {
+  if (!purchaseOrderFiltersActive(filters)) return null;
+
+  const chips: Array<{ key: keyof OrderFilters; label: string }> = [];
+  if (filters.status && filters.status !== DEFAULT_ORDER_FILTERS.status) {
+    chips.push({ key: "status", label: statusLabelByValue[filters.status] || filters.status });
+  }
+  if (filters.invoiceNumber.trim()) chips.push({ key: "invoiceNumber", label: `Invoice ${filters.invoiceNumber.trim()}` });
+  if (filters.orderDate) chips.push({ key: "orderDate", label: `Order date ${filters.orderDate}` });
+  if (filters.dueDate) chips.push({ key: "dueDate", label: `Due ${filters.dueDate}` });
+  if (filters.reference.trim()) chips.push({ key: "reference", label: `Ref ${filters.reference.trim()}` });
+  if (filters.supplierId) chips.push({ key: "supplierId", label: resolveName(supplierOptions, filters.supplierId) || "Supplier" });
+  if (filters.transferorId) chips.push({ key: "transferorId", label: resolveName(transfereeOptions, filters.transferorId) || "Transferee" });
+  if (filters.outletId) chips.push({ key: "outletId", label: resolveName(outletOptions, filters.outletId) || "Outlet" });
+  if (filters.productId) chips.push({ key: "productId", label: resolveName(productOptions, filters.productId) || "Product" });
+  if (filters.createdById) chips.push({ key: "createdById", label: `Created by ${resolveName(userOptions, filters.createdById)}` });
+  if (filters.sentById) chips.push({ key: "sentById", label: `Sent by ${resolveName(userOptions, filters.sentById)}` });
+  if (filters.receivedById) chips.push({ key: "receivedById", label: `Received by ${resolveName(userOptions, filters.receivedById)}` });
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--oh-border)] pt-4">
+      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Active</span>
+      {chips.map((chip) => (
+        <button
+          key={chip.key}
+          type="button"
+          onClick={() => onClear({ ...filters, [chip.key]: chip.key === "status" ? DEFAULT_ORDER_FILTERS.status : "" })}
+          className="inline-flex max-w-xs items-center gap-1.5 truncate rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1 text-xs font-medium text-[var(--oh-text)] hover:border-[var(--oh-primary)]/40 hover:bg-white"
+        >
+          <span className="truncate">{chip.label}</span>
+          <span aria-hidden className="text-[var(--oh-muted)]">×</span>
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => onClear({ ...DEFAULT_ORDER_FILTERS })}
+        className="text-xs font-semibold text-[var(--oh-primary)] hover:underline"
+      >
+        Clear all
+      </button>
+    </div>
+  );
+}
+
 export function OrdersFilterPanel({
   filters,
   onChange,
   onFilter,
   hideType = false,
   filtering = false,
+  appliedFilters,
+  onAppliedClear,
 }: {
   filters: OrderFilters;
   onChange: (filters: OrderFilters) => void;
@@ -140,30 +211,47 @@ export function OrdersFilterPanel({
   /** Purchase Orders tab always scopes to ORDER; hide the Type control. */
   hideType?: boolean;
   filtering?: boolean;
+  appliedFilters?: OrderFilters;
+  onAppliedClear?: (next: OrderFilters) => void;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const applied = appliedFilters ?? filters;
+  const needsAdvancedLookups =
+    advancedOpen ||
+    Boolean(
+      applied.transferorId ||
+        applied.outletId ||
+        applied.productId ||
+        applied.createdById ||
+        applied.sentById ||
+        applied.receivedById,
+    );
   const suppliers = useApi<{ items: Named[] }>("/api/suppliers", { size: 200 });
-  const transferees = useApi<Named[]>("/api/transferees");
-  const outlets = useApi<Named[]>("/api/outlets");
-  const products = useApi<{ items: Named[] }>("/api/products", { size: 200 });
-  const users = useApi<Named[]>("/api/users");
+  const transferees = useApi<Named[]>(needsAdvancedLookups ? "/api/transferees" : null);
+  const outlets = useApi<Named[]>(needsAdvancedLookups ? "/api/outlets" : null);
+  const products = useApi<{ items: Named[] }>(needsAdvancedLookups ? "/api/products" : null, { size: 200 });
+  const users = useApi<Named[]>(needsAdvancedLookups ? "/api/users" : null);
 
   const set = <K extends keyof OrderFilters>(key: K, value: OrderFilters[K]) => {
     onChange({ ...filters, [key]: value });
   };
 
-  return (
-    <div>
-      <AsyncDependencyNotice
-        dependencies={[
-          { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
+  const dependencyNotices = [
+    { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
+    ...(needsAdvancedLookups
+      ? [
           { label: "Transferees", error: transferees.error, loading: transferees.loading, onRetry: transferees.reload },
           { label: "Outlets", error: outlets.error, loading: outlets.loading, onRetry: outlets.reload },
           { label: "Products", error: products.error, loading: products.loading, onRetry: products.reload },
           { label: "Users", error: users.error, loading: users.loading, onRetry: users.reload },
-        ]}
-      />
-      <div className={basicGridClass}>
+        ]
+      : []),
+  ];
+
+  return (
+    <div>
+      <AsyncDependencyNotice dependencies={dependencyNotices} />
+      <div className={hideType ? purchaseBasicGridClass : basicGridClass}>
         <FilterSelect
           label="Status"
           value={filters.status}
@@ -254,8 +342,29 @@ export function OrdersFilterPanel({
           {filtering ? "Filtering…" : "Filter"}
         </button>
       </div>
+      {appliedFilters && onAppliedClear && (
+        <OrderFilterChips
+          filters={appliedFilters}
+          supplierOptions={suppliers.data?.items}
+          transfereeOptions={transferees.data ?? undefined}
+          outletOptions={outlets.data ?? undefined}
+          productOptions={products.data?.items}
+          userOptions={users.data ?? undefined}
+          onClear={onAppliedClear}
+        />
+      )}
     </div>
   );
+}
+
+/** Trim technical Shopfront sync references for dense list rows. */
+export function formatOrderListReference(reference?: string | null): { short: string; full: string } | null {
+  const full = (reference || "").trim();
+  if (!full) return null;
+  const looksTechnical = /^[0-9a-f-]{24,}$/i.test(full) || (full.length > 36 && !/\s/.test(full));
+  if (!looksTechnical) return { short: full, full };
+  const short = full.length > 20 ? `${full.slice(0, 8)}…${full.slice(-6)}` : full;
+  return { short, full };
 }
 
 export function purchaseOrderFiltersActive(filters: OrderFilters): boolean {

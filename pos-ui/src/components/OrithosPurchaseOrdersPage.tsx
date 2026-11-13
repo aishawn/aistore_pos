@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, FileText, PackageCheck, Plus, RefreshCw } from "lucide-react";
+import { AlertTriangle, Eye, FileText, PackageCheck, Plus, RefreshCw } from "lucide-react";
 import { formatAuDate } from "@/lib/au";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { api } from "@/lib/api";
@@ -11,6 +11,7 @@ import { Modal } from "@/components/admin/Modal";
 import { CreatePurchaseOrderModal } from "@/components/admin/CreatePurchaseOrderModal";
 import {
   DEFAULT_ORDER_FILTERS,
+  formatOrderListReference,
   orderFiltersToQuery,
   OrdersFilterPanel,
   purchaseOrderFiltersActive,
@@ -47,7 +48,7 @@ type ReceiptOrder = Order & {
 
 function statusClass(status?: string) {
   if (status === "RECEIVED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (status === "SENT" || status === "OPEN") return "border-amber-200 bg-amber-50 text-amber-900";
+  if (status === "SENT" || status === "OPEN") return "border-orange-200 bg-orange-50 text-orange-900";
   if (status === "PARTIALLY_RECEIVED") return "border-sky-200 bg-sky-50 text-sky-800";
   if (status === "CANCELLED") return "border-slate-200 bg-slate-100 text-slate-600";
   return "border-sky-200 bg-sky-50 text-sky-800";
@@ -94,6 +95,12 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
     setPage(1);
   }
 
+  function clearAppliedFilters(next: OrderFilters) {
+    setDraftFilters(next);
+    setAppliedFilters(next);
+    setPage(1);
+  }
+
   async function receiveOrder() {
     const lines = (receivingOrder.data?.products ?? [])
       .map((line) => ({ orderProductId: Number(line.id), quantity: Number(quantities[line.id] ?? 0) }))
@@ -134,27 +141,10 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
           onFilter={applyFilters}
           hideType
           filtering={result.loading}
+          appliedFilters={appliedFilters}
+          onAppliedClear={clearAppliedFilters}
         />
       </section>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={result.reload}
-          disabled={result.loading}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:opacity-60"
-        >
-          <RefreshCw size={16} className={result.loading ? "animate-spin" : ""} aria-hidden />
-          Refresh
-        </button>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
-        >
-          <Plus size={16} aria-hidden />
-          New purchase order
-        </button>
-      </div>
       {result.error && (
         <div role="alert" className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           <span>{result.error}</span>
@@ -175,37 +165,76 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                 ? "Try All statuses or clear the search — Outstanding only shows open, sent, and partially received orders."
                 : "Create a purchase order to begin receiving stock."}
             </p>
-            {appliedFilters.status === "OUTSTANDING" && (
-              <button
-                type="button"
-                onClick={showAllStatuses}
-                className="mt-4 text-sm font-semibold text-[var(--oh-primary)] hover:underline"
-              >
-                Show all statuses
-              </button>
-            )}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              {appliedFilters.status === "OUTSTANDING" && (
+                <button
+                  type="button"
+                  onClick={showAllStatuses}
+                  className="text-sm font-semibold text-[var(--oh-primary)] hover:underline"
+                >
+                  Show all statuses
+                </button>
+              )}
+              {filtered && (
+                <button
+                  type="button"
+                  onClick={() => clearAppliedFilters({ ...DEFAULT_ORDER_FILTERS })}
+                  className="text-sm font-semibold text-[var(--oh-primary)] hover:underline"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
       {result.items.length > 0 && (
-        <section className="overflow-x-auto rounded-xl border border-[var(--oh-border)] bg-white">
-          <table className="w-full min-w-[1080px] text-left text-sm">
-            <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+        <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3">
+            <p className="text-sm text-[var(--oh-muted)]">
+              <span className="font-semibold tabular-nums text-[var(--oh-text)]">{result.total}</span> purchase orders
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={result.reload}
+                disabled={result.loading}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:opacity-60"
+              >
+                <RefreshCw size={16} className={result.loading ? "animate-spin" : ""} aria-hidden />
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+              >
+                <Plus size={16} aria-hidden />
+                New purchase order
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)] shadow-[inset_0_-1px_0_var(--oh-border)]">
               <tr>
                 <th className="px-4 py-3">From</th>
                 <th className="px-4 py-3">To</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Invoice Number</th>
-                <th className="px-4 py-3">Supplier</th>
                 <th className="px-4 py-3 text-right">Total</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--oh-border)]">
               {result.items.map((order) => {
                 const mismatch = headerMismatch(order);
                 const lineCount = order.lineCount ?? 0;
+                const reference = formatOrderListReference(order.reference);
+                const mismatchTitle = mismatch
+                  ? `Shopfront header total differs from ordered line total ($${Number(order.linesTotalCost).toFixed(2)}). Source totals can include received items, tax, and freight.`
+                  : undefined;
                 return (
                   <tr key={order.id} className="hover:bg-[var(--oh-surface)]">
                     <td className="px-4 py-3">
@@ -225,17 +254,25 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Link href={`/orders/${order.id}/view`} className="font-semibold tabular-nums text-[var(--oh-primary)] hover:underline">
-                        {order.invoiceNumber || `Order ${order.id}`}
-                      </Link>
-                      {order.reference && <p className="mt-0.5 text-xs text-[var(--oh-muted)]">{order.reference}</p>}
-                      {mismatch && (
-                        <p className="mt-1 max-w-xs text-xs text-amber-800">
-                          Shopfront header total; ordered line total ${Number(order.linesTotalCost).toFixed(2)}. Source totals can include received items, tax, and freight.
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <Link
+                          href={`/orders/${order.id}/view`}
+                          className="font-semibold tabular-nums text-[var(--oh-primary)] hover:underline"
+                        >
+                          {order.invoiceNumber || `Order ${order.id}`}
+                        </Link>
+                        {mismatch && (
+                          <span title={mismatchTitle} className="inline-flex shrink-0">
+                            <AlertTriangle size={15} className="text-amber-700" aria-label={mismatchTitle} />
+                          </span>
+                        )}
+                      </div>
+                      {reference && (
+                        <p className="mt-0.5 max-w-[14rem] truncate text-xs text-[var(--oh-muted)]" title={reference.full}>
+                          {reference.short}
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{order.fromName || "—"}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       <p className="font-semibold text-[var(--oh-text)]">
                         {order.totalCost == null ? "—" : `$${Number(order.totalCost).toFixed(2)}`}
@@ -250,7 +287,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-3 whitespace-nowrap">
                         <Link href={`/orders/${order.id}/view`} className="inline-flex min-h-9 items-center gap-1.5 font-semibold text-[var(--oh-primary)] hover:underline">
                           <Eye size={15} aria-hidden />
                           View
@@ -277,6 +314,7 @@ export function OrithosPurchaseOrdersPage({ embedded = false }: { embedded?: boo
               })}
             </tbody>
           </table>
+          </div>
         </section>
       )}
       {result.total > 40 && (
