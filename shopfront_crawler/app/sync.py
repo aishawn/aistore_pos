@@ -1004,10 +1004,15 @@ async def sync_store(
                 # Catalog schema/permission problems must not discard successful sales data.
                 products = []
                 counts["warnings"].append({"stage": "products", "message": str(exc)[:500]})
+        catalogue_statuses = {"ACTIVE", "NOT_SELLING", "NOT_PURCHASING"}
+        seen_catalog_ids: set[str] = set()
         for item in products:
             product_id = first(item, "id", "ID")
             if not product_id:
                 continue
+            status = str(first(item, "status", "Status") or "UNKNOWN").upper()
+            if status in catalogue_statuses:
+                seen_catalog_ids.add(str(product_id))
             product = db.scalar(select(Product).where(Product.store_key == store.store_key, Product.shopfront_product_id == str(product_id)))
             if product is None:
                 product = Product(store_key=store.store_key, shopfront_product_id=str(product_id))
@@ -1025,7 +1030,10 @@ async def sync_store(
             product.price = parse_decimal(first(item, "price", "Price", "retailPrice")) or shelf_unit_price(item)
             product.raw_payload = item
             product.synced_at = datetime.now(timezone.utc)
-            product.catalog_last_seen_at = product.synced_at
+            if status in catalogue_statuses:
+                product.catalog_last_seen_at = product.synced_at
+            else:
+                product.catalog_last_seen_at = None
             counts["products"] += 1
             inventory = item.get("inventory")
             inventory_rows = inventory if isinstance(inventory, list) else ([inventory] if isinstance(inventory, dict) else [])
@@ -1056,6 +1064,22 @@ async def sync_store(
                     existing_inventory.inventory_timestamp = datetime.now(timezone.utc)
                     existing_inventory.raw_payload = inventory_row
                     counts["inventory"] += 1
+        if include_catalog and catalog_sync_complete and not products_updated_after and seen_catalog_ids:
+            stale_rows = db.scalars(select(Product).where(
+                Product.store_key == store.store_key,
+                Product.catalog_last_seen_at.is_not(None),
+                Product.shopfront_product_id.notin_(seen_catalog_ids),
+            )).all()
+            if stale_rows:
+                retired = 0
+                for stale in stale_rows:
+                    stale.catalog_last_seen_at = None
+                    raw = stale.raw_payload if isinstance(stale.raw_payload, dict) else {}
+                    updated = dict(raw)
+                    updated["status"] = "NOT_ACTIVE"
+                    stale.raw_payload = updated
+                    retired += 1
+                counts["catalog_stale_retired"] = retired
         if include_catalog and catalog_sync_complete and products_updated_after and not refresh_inventory:
             manifest = db.scalar(select(InventorySnapshotManifest).where(
                 InventorySnapshotManifest.store_key == store.store_key,
