@@ -65,7 +65,7 @@ public class NativeAiReportQueryService {
                 return Result.ok(List.of(Map.of(
                         "aov", averageSale,
                         "tickets", transactionValue,
-                        "sales", grossSales)));
+                        "sales", grossSales)), stringValue(overview.get("dataAsOf")));
             }
             ReportTemplateRegistry.BoundSql bound = templates.bind(intent, tenant, slots, window);
             if (bound.error() != null) return Result.fail(bound.error());
@@ -177,13 +177,25 @@ public class NativeAiReportQueryService {
         return tenant.canQueryReport() ? null : "NO_PERMISSION";
     }
 
-    public record Result(List<Map<String, Object>> rows, String error) {
+    private static String stringValue(Object value) {
+        return value instanceof String text && !text.isBlank() ? text : null;
+    }
+
+    public record Result(List<Map<String, Object>> rows, String error, String dataAsOf) {
+        public Result(List<Map<String, Object>> rows, String error) {
+            this(rows, error, null);
+        }
+
         static Result ok(List<Map<String, Object>> rows) {
-            return new Result(rows, null);
+            return new Result(rows, null, null);
+        }
+
+        static Result ok(List<Map<String, Object>> rows, String dataAsOf) {
+            return new Result(rows, null, dataAsOf);
         }
 
         static Result fail(String error) {
-            return new Result(List.of(), error);
+            return new Result(List.of(), error, null);
         }
     }
 

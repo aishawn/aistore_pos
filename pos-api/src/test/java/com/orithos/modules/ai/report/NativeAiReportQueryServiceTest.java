@@ -49,7 +49,8 @@ class NativeAiReportQueryServiceTest {
         TenantContext tenant = tenant(Set.of(TenantContext.PERM_QUERY));
         when(reportQuery.nativeOverview(55L, 87L, window.from().toLocalDate(),
                 window.toExclusive().minusNanos(1).toLocalDate()))
-                .thenReturn(Map.of("averageSale", 27.99, "transactions", 185, "grossSales", 5178.94));
+                .thenReturn(Map.of("averageSale", 27.99, "transactions", 185, "grossSales", 5178.94,
+                        "dataAsOf", "2026-11-12T14:30:00Z"));
 
         NativeAiReportQueryService.Result result = service.query(tenant, "report_aov", Map.of(), window);
 
@@ -57,6 +58,7 @@ class NativeAiReportQueryServiceTest {
         assertEquals(27.99, result.rows().get(0).get("aov"));
         assertEquals(185, result.rows().get(0).get("tickets"));
         assertEquals(5178.94, result.rows().get(0).get("sales"));
+        assertEquals("2026-11-12T14:30:00Z", result.dataAsOf());
         verify(reportQuery).nativeOverview(55L, 87L, window.from().toLocalDate(),
                 window.toExclusive().minusNanos(1).toLocalDate());
         verify(templates, never()).bind(anyString(), any(), any(), any());

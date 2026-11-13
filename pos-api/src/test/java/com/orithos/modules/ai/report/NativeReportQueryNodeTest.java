@@ -76,7 +76,8 @@ class NativeReportQueryNodeTest {
         when(state.value("slots")).thenReturn(Optional.of(Map.of("from", "2026-11-12", "to", "2026-11-12")));
         when(queryService.query(any(TenantContext.class), eq("report_aov"), any(), any()))
                 .thenReturn(new NativeAiReportQueryService.Result(
-                        List.of(Map.of("aov", 27.99, "tickets", 185, "sales", 5178.94)), null));
+                        List.of(Map.of("aov", 27.99, "tickets", 185, "sales", 5178.94)), null,
+                        "2026-11-12T14:30:00Z"));
 
         Map<String, Object> result = node.apply(state);
 
@@ -85,6 +86,7 @@ class NativeReportQueryNodeTest {
         assertEquals(27.99, row.get("aov"));
         assertEquals(185, row.get("tickets"));
         assertEquals("available", result.get("report_data_status"));
+        assertEquals("2026-11-12T14:30:00Z", result.get("report_data_as_of"));
         verify(queryService).query(any(TenantContext.class), eq("report_aov"), any(), any());
         verify(reportQuery, never()).nativeOverview(any(Long.class), any(Long.class), any(LocalDate.class), any(LocalDate.class));
     }
@@ -125,9 +127,11 @@ class NativeReportQueryNodeTest {
         when(state.value("can_report_cost")).thenReturn(Optional.of(true));
         when(state.value("slots")).thenReturn(Optional.of(Map.of()));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-14"), LocalDate.parse("2026-10-14")))
-                .thenReturn(Map.of("revenue", 100.0, "grossProfit", 30.0, "costAvailable", true, "transactions", 2));
+                .thenReturn(Map.of("revenue", 100.0, "grossProfit", 30.0, "costAvailable", true,
+                        "transactions", 2, "dataAsOf", "2026-10-14T12:00:00Z"));
         when(reportQuery.nativeOverview(55L, 87L, LocalDate.parse("2026-10-15"), LocalDate.parse("2026-10-15")))
-                .thenReturn(Map.of("revenue", 120.0, "grossProfit", 35.0, "costAvailable", true, "transactions", 3));
+                .thenReturn(Map.of("revenue", 120.0, "grossProfit", 35.0, "costAvailable", true,
+                        "transactions", 3, "dataAsOf", "2026-10-15T12:00:00Z"));
 
         Map<String, Object> result = node.apply(state);
         @SuppressWarnings("unchecked")
@@ -194,6 +198,6 @@ class NativeReportQueryNodeTest {
         assertNull(result.get("report_data_as_of"));
         assertEquals("2026-10-16", result.get("report_period_from"));
         assertEquals("Australia/Adelaide", result.get("report_time_zone"));
-        assertEquals("available", result.get("report_data_status"));
+        assertEquals("incomplete", result.get("report_data_status"));
     }
 }

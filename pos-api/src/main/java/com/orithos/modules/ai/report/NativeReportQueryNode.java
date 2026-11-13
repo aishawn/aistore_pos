@@ -109,8 +109,10 @@ public class NativeReportQueryNode implements NodeAction {
         boolean noData = result.rows().isEmpty() || result.rows().stream().anyMatch(row ->
                 row.containsKey("transactions") && ReportQueryService.toDecimal(row.get("transactions")).signum() == 0
                 || row.containsKey("tickets") && ReportQueryService.toDecimal(row.get("tickets")).signum() == 0);
-        addProvenance(out, window, result.error() != null ? "unavailable" : noData ? "no_data" : "available",
-                latestDataAsOf(result.rows()));
+        String dataAsOf = result.dataAsOf() == null ? latestDataAsOf(result.rows()) : result.dataAsOf();
+        String dataStatus = result.error() != null ? "unavailable"
+                : noData ? "no_data" : dataAsOf == null ? "incomplete" : "available";
+        addProvenance(out, window, dataStatus, dataAsOf);
         return out;
     }
 
