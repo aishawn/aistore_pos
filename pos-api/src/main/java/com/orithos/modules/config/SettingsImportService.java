@@ -30,6 +30,7 @@ import java.util.Set;
 public class SettingsImportService {
 
     private static final Logger log = LoggerFactory.getLogger(SettingsImportService.class);
+    private static final BigDecimal MAX_TAX_RATE_PERCENT = new BigDecimal("100");
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
@@ -60,6 +61,7 @@ public class SettingsImportService {
         counts.put("tax_rates", taxRateResult.created());
         counts.put("tax_rates_updated", taxRateResult.updated());
         counts.put("tax_rates_skipped_missing_amount", taxRateResult.skippedMissingAmount());
+        counts.put("tax_rates_skipped_invalid_amount", taxRateResult.skippedInvalidAmount());
         PaymentMethodPromotionResult paymentResult = promotePaymentMethods(
                 outletId, catalogues.path("payment_methods"), forceEmptyOnly);
         counts.put("payment_methods", paymentResult.created());
@@ -136,6 +138,7 @@ public class SettingsImportService {
         int created = 0;
         int updated = 0;
         int skippedMissingAmount = 0;
+        int skippedInvalidAmount = 0;
         boolean sourceHasDefault = !forceEmptyOnly && hasExplicitDefaultTaxRate(records);
         boolean hasExistingDefault = taxRates.findAllActiveAsc(outletId).stream()
                 .anyMatch(rate -> Boolean.TRUE.equals(rate.getIsDefault()));
@@ -152,6 +155,10 @@ public class SettingsImportService {
             if (amount == null) amount = decimal(raw, "rate", null);
             if (amount == null) {
                 skippedMissingAmount++;
+                continue;
+            }
+            if (!isValidTaxRate(amount)) {
+                skippedInvalidAmount++;
                 continue;
             }
             boolean isSourceDefault = bool(raw, "isDefault") || bool(raw, "default");
@@ -185,18 +192,25 @@ public class SettingsImportService {
             }
         }
         if (sourceHasDefault && sourceDefaultId != null) taxRates.markDefault(sourceDefaultId, outletId);
-        return new TaxRatePromotionResult(created, updated, skippedMissingAmount);
+        return new TaxRatePromotionResult(created, updated, skippedMissingAmount, skippedInvalidAmount);
     }
 
     private boolean hasExplicitDefaultTaxRate(JsonNode records) {
         for (JsonNode raw : records) {
             if (raw == null || !(bool(raw, "isDefault") || bool(raw, "default"))) continue;
-            if (decimal(raw, "amount", null) != null || decimal(raw, "rate", null) != null) return true;
+            BigDecimal amount = decimal(raw, "amount", null);
+            if (amount == null) amount = decimal(raw, "rate", null);
+            if (isValidTaxRate(amount)) return true;
         }
         return false;
     }
 
-    private record TaxRatePromotionResult(int created, int updated, int skippedMissingAmount) {}
+    private static boolean isValidTaxRate(BigDecimal amount) {
+        return amount != null && amount.signum() >= 0 && amount.compareTo(MAX_TAX_RATE_PERCENT) <= 0;
+    }
+
+    private record TaxRatePromotionResult(int created, int updated, int skippedMissingAmount,
+                                          int skippedInvalidAmount) {}
 
     private PaymentMethodPromotionResult promotePaymentMethods(long outletId, JsonNode records, boolean forceEmptyOnly) {
         int created = 0;

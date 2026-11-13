@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { StoreSettingsPage as AdminPageLayout } from "@/components/admin/StoreSettingsPage";
 import { AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 
 type Outlet = { id: number; name: string; [key: string]: unknown };
 type Register = { id: number; name: string; outletId?: number; invoiceNumber?: string; closed?: boolean; [key: string]: unknown };
+type PaymentMethod = { id: number; name: string; type: string };
 
 export default function RegistersOutletsPage() {
   const { hasPermission, ready } = useAuth();
@@ -21,26 +22,30 @@ export default function RegistersOutletsPage() {
   const [registerOutletId, setRegisterOutletId] = useState<number | "">("");
   const [editingOutlet, setEditingOutlet] = useState<Outlet | null>(null);
   const [editingRegister, setEditingRegister] = useState<Register | null>(null);
+  const [paymentEditorRegisterId, setPaymentEditorRegisterId] = useState<number | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedPaymentMethodIds, setSelectedPaymentMethodIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
-  async function load() {
-    setError(null);
+  const load = useCallback(async () => {
     try {
       const [outletRows, registerRows] = await Promise.all([
         api.get<Outlet[]>("/api/outlets"),
         api.get<Register[]>("/api/registers"),
       ]);
+      setError(null);
       setOutlets(Array.isArray(outletRows) ? outletRows : []);
       setRegisters(Array.isArray(registerRows) ? registerRows : []);
-      if (outletRows?.[0] && registerOutletId === "") setRegisterOutletId(outletRows[0].id);
+      if (outletRows?.[0]) setRegisterOutletId((current) => current === "" ? outletRows[0].id : current);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load registers and outlets");
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, []);
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function addOutlet() {
     if (!canEdit || !outletName.trim()) return;
@@ -105,6 +110,37 @@ export default function RegistersOutletsPage() {
     }
   }
 
+  async function editRegisterPayments(registerId: number) {
+    setError(null);
+    try {
+      const [methods, assignedIds] = await Promise.all([
+        api.get<PaymentMethod[]>("/api/payment-methods"),
+        api.get<number[]>(`/api/registers/${registerId}/payment-methods`),
+      ]);
+      setPaymentMethods(Array.isArray(methods) ? methods : []);
+      setSelectedPaymentMethodIds(Array.isArray(assignedIds) ? assignedIds : []);
+      setPaymentEditorRegisterId(registerId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load register payment methods");
+    }
+  }
+
+  async function saveRegisterPayments(registerId: number) {
+    if (!canEdit) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.put(`/api/registers/${registerId}/payment-methods`, {
+        paymentMethodIds: selectedPaymentMethodIds,
+      });
+      setPaymentEditorRegisterId(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save register payment methods");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <AdminPageLayout
       title="Registers & Outlets"
@@ -152,7 +188,8 @@ export default function RegistersOutletsPage() {
           <h2 className="font-semibold">Registers</h2>
           <ul className="mt-3 divide-y">
             {registers.map((register) => (
-              <li key={register.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+              <Fragment key={register.id}>
+              <li className="flex items-center justify-between gap-2 py-2 text-sm">
                 {editingRegister?.id === register.id ? (
                   <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                     <input
@@ -188,9 +225,38 @@ export default function RegistersOutletsPage() {
                     <button type="button" onClick={() => setEditingRegister(null)} disabled={saving} className="text-[var(--oh-muted)]">Cancel</button>
                   </span>
                 ) : (
-                  <button type="button" onClick={() => setEditingRegister({ ...register })} className="shrink-0 font-semibold text-[var(--oh-primary)]">Edit</button>
+                  <span className="flex shrink-0 gap-3">
+                    <button type="button" onClick={() => void editRegisterPayments(register.id)} className="font-semibold text-[var(--oh-primary)]">Payments</button>
+                    <button type="button" onClick={() => setEditingRegister({ ...register })} className="font-semibold text-[var(--oh-primary)]">Edit</button>
+                  </span>
                 ))}
               </li>
+              {paymentEditorRegisterId === register.id && (
+                <li className="grid gap-3 border-b py-3">
+                  <h3 className="text-sm font-semibold">Accepted payment methods</h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {paymentMethods.map((method) => (
+                      <label key={method.id} className="flex min-h-10 items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedPaymentMethodIds.includes(method.id)}
+                          disabled={!canEdit || saving}
+                          onChange={(event) => setSelectedPaymentMethodIds((current) => event.target.checked
+                            ? [...current, method.id]
+                            : current.filter((id) => id !== method.id))}
+                        />
+                        <span>{method.name} <span className="text-xs text-[var(--oh-muted)]">{method.type}</span></span>
+                      </label>
+                    ))}
+                    {paymentMethods.length === 0 && <p className="text-sm text-[var(--oh-muted)]">No payment methods configured.</p>}
+                  </div>
+                  <div className="flex gap-3">
+                    {canEdit && <button type="button" onClick={() => void saveRegisterPayments(register.id)} disabled={saving} className="font-semibold text-[var(--oh-primary)]">Save payments</button>}
+                    <button type="button" onClick={() => setPaymentEditorRegisterId(null)} disabled={saving} className="text-[var(--oh-muted)]">Cancel</button>
+                  </div>
+                </li>
+              )}
+              </Fragment>
             ))}
             {registers.length === 0 && <li className="py-6 text-sm text-[var(--oh-muted)]">No registers yet.</li>}
           </ul>

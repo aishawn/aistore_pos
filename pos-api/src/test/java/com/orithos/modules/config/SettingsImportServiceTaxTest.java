@@ -118,6 +118,30 @@ class SettingsImportServiceTaxTest {
     }
 
     @Test
+    void skipsOutOfRangeRatesWithoutChangingAnExistingDefault() throws Exception {
+        TaxRate gst = rate(204L, "GST", new BigDecimal("10"), true);
+        when(taxRates.findAllActiveAsc(87L)).thenReturn(List.of(gst));
+        when(taxRates.findByNameIgnoreCase("GST", 87L)).thenReturn(gst);
+        var catalogues = new ObjectMapper().readTree("""
+                {"tax_rates":[
+                  {"name":"GST","amount":132.4,"isDefault":true},
+                  {"name":"Impossible","amount":240.7}
+                ]}
+                """);
+
+        Map<String, Object> result = service.promote("skr", 87L, false, catalogues);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> counts = (Map<String, Object>) result.get("counts");
+        assertEquals(2, counts.get("tax_rates_skipped_invalid_amount"));
+        assertEquals(new BigDecimal("10"), gst.getAmount());
+        assertEquals(true, gst.getIsDefault());
+        verify(taxRates, org.mockito.Mockito.never()).clearDefaults(87L);
+        verify(taxRates, org.mockito.Mockito.never()).insert(any(TaxRate.class));
+        verify(taxRates, org.mockito.Mockito.never()).update(any(TaxRate.class), eq(87L));
+    }
+
+    @Test
     void forceEmptyOnlyPreservesExistingTaxRate() throws Exception {
         TaxRate existing = rate(208L, "Excluding GST", new BigDecimal("10"), false);
         when(taxRates.findByNameIgnoreCase("Excluding GST", 87L)).thenReturn(existing);

@@ -64,6 +64,20 @@ public interface PaymentMethodMapper {
     List<RegisterPaymentMethodView> findAssignedForOutlet(@Param("vendorId") Long vendorId,
                                                           @Param("outletId") Long outletId);
 
+    @Select("SELECT payment_method_id FROM register_payment_method WHERE register_id=#{registerId} AND outlet_id=#{outletId} ORDER BY payment_method_id")
+    List<Long> findIdsForRegister(@Param("registerId") Long registerId, @Param("outletId") Long outletId);
+
+    @Select("<script>SELECT COUNT(DISTINCT id) FROM payment_method WHERE outlet_id=#{outletId} AND deleted_at IS NULL AND id IN "
+            + "<foreach item='id' collection='ids' open='(' separator=',' close=')'>#{id}</foreach></script>")
+    int countActiveIdsInOutlet(@Param("ids") List<Long> ids, @Param("outletId") Long outletId);
+
+    @Delete("DELETE FROM register_payment_method WHERE register_id=#{registerId} AND outlet_id=#{outletId}")
+    int deleteRegisterAssignments(@Param("registerId") Long registerId, @Param("outletId") Long outletId);
+
+    @Insert("INSERT INTO register_payment_method (register_id, payment_method_id, outlet_id) VALUES (#{registerId}, #{paymentMethodId}, #{outletId})")
+    int insertRegisterAssignment(@Param("registerId") Long registerId, @Param("paymentMethodId") Long paymentMethodId,
+                                 @Param("outletId") Long outletId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO payment_method (name, type, surcharge, always_open_drawer, always_print, "
             + "use_rounding, default_pay_exact, background_colour, text_colour, outlet_id) "
