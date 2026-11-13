@@ -41,6 +41,34 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void linksOnlyCustomerIdForExistingMappedShopfrontSales() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("outlet_id", 87L)));
+        when(jdbc.query(contains("SELECT DISTINCT customer_id FROM shopfront_customer_mapping"),
+                any(org.springframework.jdbc.core.RowMapper.class), any(Object[].class)))
+                .thenReturn(List.of(321L));
+        when(jdbc.update(contains("UPDATE sale SET customer_id=?"), any(Object[].class))).thenReturn(1);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        var response = controller.linkSaleCustomers("token", new ObjectMapper().readTree("""
+                {"store_key":"skr","items":[{"external_id":"sale-1","customer_reference":"customer-1"}]}
+                """));
+
+        assertEquals(1, response.data().get("updated"));
+        verify(jdbc).update(contains("UPDATE sale SET customer_id=?"), eq(321L), eq(87L), eq("sale-1"), eq(321L));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM sale_item"), any(Object[].class));
+        verify(jdbc, org.mockito.Mockito.never()).update(contains("DELETE FROM sale_payment"), any(Object[].class));
+    }
+
+    @Test
     void postgresMappingTableUsesBooleanEnabledColumn() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);

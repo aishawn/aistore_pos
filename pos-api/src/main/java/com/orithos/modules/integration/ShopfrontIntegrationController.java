@@ -509,6 +509,69 @@ public class ShopfrontIntegrationController {
         return stage(supplied, "sales", body);
     }
 
+    @PostMapping("/sales:link-customers")
+    @Transactional
+    public ApiResult<Map<String, Object>> linkSaleCustomers(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        String storeKey = body.path("store_key").asText("").trim();
+        JsonNode items = body.path("items");
+        if (!STORE_KEY.matcher(storeKey).matches() || !items.isArray() || items.size() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid store_key and up to 500 items are required");
+        }
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id FROM shopfront_store_mapping WHERE store_key=? AND enabled=?", storeKey,
+                isPostgres() ? Boolean.TRUE : 1);
+        if (mappings.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No enabled POS outlet mapping for store_key=" + storeKey);
+        }
+        long outletId = longValue(mappings.getFirst().get("outlet_id"));
+        int updated = 0;
+        int unchanged = 0;
+        int missingSales = 0;
+        int unmappedCustomers = 0;
+        int ambiguousCustomers = 0;
+        for (JsonNode item : items) {
+            String externalId = item.path("external_id").asText("").trim();
+            String reference = item.path("customer_reference").asText("").trim();
+            if (externalId.isEmpty() || reference.isEmpty()) {
+                unmappedCustomers++;
+                continue;
+            }
+            List<Long> customerIds = jdbc.query("""
+                    SELECT DISTINCT customer_id FROM shopfront_customer_mapping
+                    WHERE store_key=? AND outlet_id=? AND (source_id=? OR client_id=?)
+                    """, (rs, rowNum) -> rs.getLong(1), storeKey, outletId, reference, reference);
+            if (customerIds.isEmpty()) {
+                unmappedCustomers++;
+                continue;
+            }
+            if (customerIds.size() != 1) {
+                ambiguousCustomers++;
+                continue;
+            }
+            int changed = jdbc.update("""
+                    UPDATE sale SET customer_id=?
+                    WHERE outlet_id=? AND source_system='shopfront' AND external_id=?
+                      AND (customer_id IS NULL OR customer_id <> ?)
+                    """, customerIds.getFirst(), outletId, externalId, customerIds.getFirst());
+            if (changed == 1) updated++;
+            else {
+                Integer found = jdbc.queryForObject("""
+                        SELECT COUNT(*) FROM sale
+                        WHERE outlet_id=? AND source_system='shopfront' AND external_id=?
+                        """, Integer.class, outletId, externalId);
+                if (found == null || found == 0) missingSales++;
+                else unchanged++;
+            }
+        }
+        return ApiResult.ok(Map.of("store_key", storeKey, "scanned", items.size(), "updated", updated,
+                "unchanged", unchanged, "missing_sales", missingSales,
+                "unmapped_customers", unmappedCustomers, "ambiguous_customers", ambiguousCustomers));
+    }
+
     /**
      * One-shot promotion of durable {@code shopfront_sale*} rows into the native
      * {@code sale}/{@code sale_item} ledger for mapped outlets (no stock moves).
