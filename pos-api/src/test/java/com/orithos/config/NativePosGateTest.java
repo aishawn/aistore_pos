@@ -33,6 +33,32 @@ class NativePosGateTest {
     }
 
     @Test
+    void acceptanceAllowsOnlyExplicitlyEnabledTenantsOnItsIsolatedDatabase() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("orithos_acceptance");
+        NativePosGate gate = new NativePosGate(
+                "1,2", "orithos_acceptance", "orithos_acceptance", "acceptance", false, jdbc);
+
+        authenticate(1L);
+        assertDoesNotThrow(gate::requireEnabled);
+        authenticate(2L);
+        assertDoesNotThrow(gate::requireEnabled);
+        authenticate(3L);
+        assertEquals(40300, assertThrows(BusinessException.class, gate::requireEnabled).getCode());
+    }
+
+    @Test
+    void acceptanceRequiresItsConfiguredIsolationDatabaseToMatchTheExpectedDatabase() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("orithos_acceptance");
+        NativePosGate gate = new NativePosGate(
+                "1,2", "orithos_acceptance", "another_database", "acceptance", false, jdbc);
+        authenticate(1L);
+
+        assertEquals(40300, assertThrows(BusinessException.class, gate::requireEnabled).getCode());
+    }
+
+    @Test
     void databaseIdentityMustMatchAndUatMustUseItsExplicitIsolationDatabase() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("production");

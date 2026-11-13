@@ -38,6 +38,11 @@ public final class PosDatabaseIdentity {
         return !name.isEmpty() && SHARED_DATABASE_NAMES.contains(name.toLowerCase(Locale.ROOT));
     }
 
+    public static boolean isIsolatedTestEnvironment(String environment) {
+        String name = normalize(environment);
+        return "uat".equalsIgnoreCase(name) || "acceptance".equalsIgnoreCase(name);
+    }
+
     private static String normalize(String value) {
         return value == null ? "" : value.trim();
     }

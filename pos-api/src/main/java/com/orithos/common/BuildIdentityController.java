@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Immutable metadata written into the image by the remote builder. */
@@ -45,13 +46,13 @@ public class BuildIdentityController {
         boolean posDatabaseVerified = posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED
                 || sharedAuthorized;
         // Shared-database cutover can authorize writes, but never claims tenant isolation.
-        boolean posTenantIsolated = "uat".equals(runtimeEnvironment)
+        Set<String> enabledTenants = Arrays.stream(enabledPosVendorIds == null ? new String[0] : enabledPosVendorIds.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet());
+        boolean posTenantIsolated = PosDatabaseIdentity.isIsolatedTestEnvironment(runtimeEnvironment)
                 && posDatabaseStatus == PosDatabaseIdentity.VerificationStatus.VERIFIED
                 && !isolationPosDatabase.isBlank() && isolationPosDatabase.equals(expectedPosDatabase)
-                && enabledPosVendorIds != null
-                && Arrays.stream(enabledPosVendorIds.split(","))
-                .map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toSet()).size() == 1;
-        boolean isolated = "uat".equals(environment) && posTenantIsolated;
+                && !enabledTenants.isEmpty();
+        boolean isolated = PosDatabaseIdentity.isIsolatedTestEnvironment(environment) && posTenantIsolated;
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("isolated", isolated);
         result.put("posDatabaseVerified", posDatabaseVerified);

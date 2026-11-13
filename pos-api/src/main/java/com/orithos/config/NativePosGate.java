@@ -53,7 +53,7 @@ public final class NativePosGate {
                 expectedDatabase, expectedDatabase, allowSharedDatabase)) {
             return false;
         }
-        if ("uat".equalsIgnoreCase(runtimeEnvironment)
+        if (PosDatabaseIdentity.isIsolatedTestEnvironment(runtimeEnvironment)
                 && (isolationDatabase.isEmpty() || !expectedDatabase.equals(isolationDatabase))) {
             return false;
         }

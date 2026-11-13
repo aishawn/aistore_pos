@@ -11,7 +11,7 @@ import static org.mockito.Mockito.*;
 
 class BuildIdentityControllerTest {
     @Test
-    void uatContextRequiresActualPosDatabaseAndSingleTenantAllowlist() {
+    void uatContextRequiresActualPosDatabaseAndExplicitTenantAllowlist() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("pos_demo_uat");
         BuildIdentityController controller = new BuildIdentityController(jdbc);
@@ -35,6 +35,45 @@ class BuildIdentityControllerTest {
         assertEquals(false, wrongDatabase.get("isolated"));
         assertEquals(false, wrongDatabase.get("posDatabaseVerified"));
         assertEquals("DATABASE_NAME_MISMATCH", wrongDatabase.get("posDatabaseStatus"));
+    }
+
+    @Test
+    void acceptanceContextAttestsIsolatedDatabaseWithExplicitMultipleTenantAllowlist() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("orithos_acceptance");
+        BuildIdentityController controller = new BuildIdentityController(jdbc);
+        ReflectionTestUtils.setField(controller, "environment", "acceptance");
+        ReflectionTestUtils.setField(controller, "runtimeEnvironment", "acceptance");
+        ReflectionTestUtils.setField(controller, "expectedPosDatabase", "orithos_acceptance");
+        ReflectionTestUtils.setField(controller, "isolationPosDatabase", "orithos_acceptance");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "1,2");
+
+        Map<String, Object> result = controller.uatContext().getBody();
+
+        assertNotNull(result);
+        assertEquals(true, result.get("isolated"));
+        assertEquals(true, result.get("posDatabaseVerified"));
+        assertEquals("VERIFIED", result.get("posDatabaseStatus"));
+        assertEquals(true, result.get("posTenantIsolated"));
+    }
+
+    @Test
+    void acceptanceContextDoesNotAttestWithoutExplicitTenantAllowlist() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("select current_database()", String.class)).thenReturn("orithos_acceptance");
+        BuildIdentityController controller = new BuildIdentityController(jdbc);
+        ReflectionTestUtils.setField(controller, "environment", "acceptance");
+        ReflectionTestUtils.setField(controller, "runtimeEnvironment", "acceptance");
+        ReflectionTestUtils.setField(controller, "expectedPosDatabase", "orithos_acceptance");
+        ReflectionTestUtils.setField(controller, "isolationPosDatabase", "orithos_acceptance");
+        ReflectionTestUtils.setField(controller, "enabledPosVendorIds", "");
+
+        Map<String, Object> result = controller.uatContext().getBody();
+
+        assertNotNull(result);
+        assertEquals(false, result.get("isolated"));
+        assertEquals(true, result.get("posDatabaseVerified"));
+        assertEquals(false, result.get("posTenantIsolated"));
     }
 
     @Test
