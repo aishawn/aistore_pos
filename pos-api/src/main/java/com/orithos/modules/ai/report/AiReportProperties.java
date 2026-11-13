@@ -62,7 +62,7 @@ public class AiReportProperties {
     }
 
     public void setQueryTimeoutSeconds(int queryTimeoutSeconds) {
-        this.queryTimeoutSeconds = queryTimeoutSeconds;
+        this.queryTimeoutSeconds = Math.max(1, Math.min(30, queryTimeoutSeconds));
     }
 
     public int getMaxRows() {

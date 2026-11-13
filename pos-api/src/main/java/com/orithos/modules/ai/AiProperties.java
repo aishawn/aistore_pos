@@ -42,6 +42,8 @@ public record AiProperties(
         }
         if (timeoutSeconds <= 0) {
             timeoutSeconds = 40;
+        } else {
+            timeoutSeconds = Math.max(5, Math.min(60, timeoutSeconds));
         }
         if (conversationMemoryTurns <= 0) {
             conversationMemoryTurns = 6;
