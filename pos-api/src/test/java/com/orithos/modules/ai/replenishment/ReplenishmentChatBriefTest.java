@@ -1,7 +1,9 @@
 package com.orithos.modules.ai.replenishment;
 
 import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.config.CorrelationIdContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.List;
 import java.util.Set;
@@ -9,6 +11,8 @@ import java.time.Instant;
 import java.sql.SQLException;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.security.access.AccessDeniedException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -18,6 +22,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ReplenishmentChatBriefTest {
 
     @Test
@@ -72,15 +77,22 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
-    void briefMarksClientFailureUnavailableAndOffersRetry() {
+    void briefMarksClientFailureUnavailableAndLogsUnknownGapCount(CapturedOutput output) throws Exception {
         NativeReplenishmentService client = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
         when(client.plan(tenant)).thenThrow(new IllegalStateException("upstream unavailable"));
 
-        String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+        String correlationId = "c87e4ba1-fef2-4312-aea7-e38c7f2ee91d";
+        String text = CorrelationIdContext.with(correlationId,
+                () -> new ReplenishmentChatBrief(client).brief("What should I restock?", tenant));
 
         assertTrue(text.toLowerCase().contains("unavailable"));
         assertTrue(text.toLowerCase().contains("retry"));
+        assertTrue(output.getAll().contains("correlationId=" + correlationId));
+        assertTrue(output.getAll().contains("category=service"));
+        assertTrue(output.getAll().contains("dataGapCount=unknown"));
+        assertTrue(output.getAll().matches("(?s).*elapsedMs=\\d+.*"));
+        assertFalse(output.getAll().contains("upstream unavailable"));
     }
 
     @Test

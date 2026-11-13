@@ -33,13 +33,13 @@ public class ReplenishmentChatBrief {
         long startedAt = System.nanoTime();
         boolean chinese = isChinese(question);
         if (tenant == null) {
-            logOutcome("tenant_unavailable", 0, startedAt);
+            logFailureOutcome("tenant_unavailable", startedAt);
             return unavailableMessage(question);
         }
         try {
             ReplenishmentPlan plan = client.plan(tenant);
             if (plan == null) {
-                logOutcome("service_unavailable", 0, startedAt);
+                logFailureOutcome("service_unavailable", startedAt);
                 return unavailableMessage(question);
             }
             int dataGapCount = plan.dataGapCount();
@@ -102,20 +102,19 @@ public class ReplenishmentChatBrief {
             logOutcome(dataGapCount == 0 ? "success" : "partial_data", dataGapCount, startedAt);
             return sb.toString();
         } catch (AccessDeniedException e) {
-            log.info("AI replenishment brief correlationId={} category=permission dataGapCount=0 elapsedMs={}",
-                    CorrelationIdContext.current(), elapsedMs(startedAt));
+            logFailureOutcome("permission", startedAt);
             return unavailableMessage(question, "permission");
         } catch (DataAccessException e) {
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
             String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : null;
             String category = failureCategory(sqlState);
-            log.warn("AI replenishment query failed correlationId={} category={} exceptionType={} sqlState={} dataGapCount=0 elapsedMs={}",
+            log.warn("AI replenishment query failed correlationId={} category={} exceptionType={} sqlState={} dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), category, exceptionType(e), sqlState,
                     elapsedMs(startedAt));
             return unavailableMessage(question, category);
         } catch (Exception e) {
-            log.warn("AI replenishment failed correlationId={} category=service exceptionType={} dataGapCount=0 elapsedMs={}",
+            log.warn("AI replenishment failed correlationId={} category=service exceptionType={} dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), exceptionType(e), elapsedMs(startedAt));
             return unavailableMessage(question);
         }
@@ -145,6 +144,11 @@ public class ReplenishmentChatBrief {
     private static void logOutcome(String category, int dataGapCount, long startedAt) {
         log.info("AI replenishment brief correlationId={} category={} dataGapCount={} elapsedMs={}",
                 CorrelationIdContext.current(), category, dataGapCount, elapsedMs(startedAt));
+    }
+
+    private static void logFailureOutcome(String category, long startedAt) {
+        log.info("AI replenishment brief correlationId={} category={} dataGapCount=unknown elapsedMs={}",
+                CorrelationIdContext.current(), category, elapsedMs(startedAt));
     }
 
     private static long elapsedMs(long startedAt) {

@@ -2,10 +2,14 @@ package com.orithos.modules.ai.replenishment;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.AustraliaTime;
+import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import org.junit.jupiter.api.Test;
 import com.orithos.common.BusinessException;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -18,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 class AiAssistantReadOnlyReportControllerTest {
     @Test
     void returnsTenantScopedReadOnlyPlanWithAuthoritativeProvenance() {
@@ -68,7 +73,7 @@ class AiAssistantReadOnlyReportControllerTest {
     }
 
     @Test
-    void dataAccessFailureIsSanitizedForTheClient() {
+    void dataAccessFailureIsSanitizedAndLoggedWithUnknownGapCount(CapturedOutput output) throws Exception {
         TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
         NativeReplenishmentService replenishmentService = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(55L, 7L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
@@ -78,12 +83,41 @@ class AiAssistantReadOnlyReportControllerTest {
         AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
                 tenantContextFactory, replenishmentService);
 
-        BusinessException failure = org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
-                controller::replenishmentReport);
+        String correlationId = "5d7a1fd7-7309-47b8-9422-209e2052451a";
+        BusinessException failure = CorrelationIdContext.with(correlationId,
+                () -> org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
+                        controller::replenishmentReport));
 
         assertEquals(50321, failure.getCode());
         org.junit.jupiter.api.Assertions.assertTrue(failure.getMessage().contains("temporarily unavailable"));
         org.junit.jupiter.api.Assertions.assertFalse(failure.getMessage().contains("private-host"));
         org.junit.jupiter.api.Assertions.assertFalse(failure.getMessage().contains("schema private"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("correlationId=" + correlationId));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("dataGapCount=unknown"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().matches("(?s).*elapsedMs=\\d+.*"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("private-host"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("schema private"));
+    }
+
+    @Test
+    void businessFailureIsAuditedWithoutExposingItsMessage(CapturedOutput output) throws Exception {
+        TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
+        NativeReplenishmentService replenishmentService = mock(NativeReplenishmentService.class);
+        when(tenantContextFactory.fromSecurity()).thenThrow(new BusinessException(40310, "internal access detail"));
+        AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
+                tenantContextFactory, replenishmentService);
+
+        String correlationId = "6ed4fbe5-60ed-47a4-ab3e-7fb787f4b008";
+        BusinessException failure = CorrelationIdContext.with(correlationId,
+                () -> org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
+                        controller::replenishmentReport));
+
+        assertEquals(40310, failure.getCode());
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("correlationId=" + correlationId));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("category=business"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("code=40310"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("dataGapCount=unknown"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().matches("(?s).*elapsedMs=\\d+.*"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("internal access detail"));
     }
 }

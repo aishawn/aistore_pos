@@ -39,23 +39,25 @@ public class AiAssistantReadOnlyReportController {
                     plan.supplierGapCount(), elapsedMs(startedAt));
             return ApiResult.ok(AssistantReplenishmentPreviewResponse.from(plan, AustraliaTime.today()));
         } catch (AccessDeniedException e) {
-            log.info("AI replenishment report correlationId={} category=permission dataGapCount=0 elapsedMs={}",
+            log.info("AI replenishment report correlationId={} category=permission dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), elapsedMs(startedAt));
             throw new BusinessException(40310,
                     "You do not have permission to view replenishment data. Contact your administrator.");
         } catch (BusinessException e) {
+            log.info("AI replenishment report correlationId={} category=business code={} dataGapCount=unknown elapsedMs={}",
+                    CorrelationIdContext.current(), e.getCode(), elapsedMs(startedAt));
             throw e;
         } catch (DataAccessException e) {
             String sqlState = sqlState(e);
             String category = "57014".equals(sqlState) ? "timeout"
                     : sqlState != null && sqlState.startsWith("08") ? "connection" : "data_access";
-            log.warn("AI replenishment report failed correlationId={} category={} exceptionType={} sqlState={} dataGapCount=0 elapsedMs={}",
+            log.warn("AI replenishment report failed correlationId={} category={} exceptionType={} sqlState={} dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), category, e.getClass().getSimpleName(), sqlState,
                     elapsedMs(startedAt));
             throw new BusinessException(50321,
                     "Replenishment data is temporarily unavailable. Please retry shortly.");
         } catch (RuntimeException e) {
-            log.warn("AI replenishment report failed correlationId={} category=service exceptionType={} dataGapCount=0 elapsedMs={}",
+            log.warn("AI replenishment report failed correlationId={} category=service exceptionType={} dataGapCount=unknown elapsedMs={}",
                     CorrelationIdContext.current(), e.getClass().getSimpleName(), elapsedMs(startedAt));
             throw new BusinessException(50321,
                     "Replenishment data is temporarily unavailable. Please retry shortly.");
