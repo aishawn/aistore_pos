@@ -13,6 +13,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -55,7 +56,7 @@ class AiAssistantReadOnlyReportControllerTest {
     }
 
     @Test
-    void permissionFailureReturnsActionableMessage() {
+    void permissionFailureReturnsActionableMessageAndLogsSafeDiagnostics(CapturedOutput output) throws Exception {
         TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
         NativeReplenishmentService replenishmentService = mock(NativeReplenishmentService.class);
         TenantContext tenant = new TenantContext(55L, 7L, 87L, List.of(87L), Set.of());
@@ -64,12 +65,60 @@ class AiAssistantReadOnlyReportControllerTest {
         AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
                 tenantContextFactory, replenishmentService);
 
-        BusinessException failure = org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
-                controller::replenishmentReport);
+        String correlationId = "62a47161-a36f-4b8d-9c24-98b074e0a23a";
+        BusinessException failure = CorrelationIdContext.with(correlationId,
+                () -> org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
+                        controller::replenishmentReport));
 
         assertEquals(40310, failure.getCode());
         org.junit.jupiter.api.Assertions.assertTrue(failure.getMessage().contains("permission"));
         org.junit.jupiter.api.Assertions.assertFalse(failure.getMessage().contains("internal permission detail"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("category=permission"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("correlationId=" + correlationId));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().matches("(?s).*elapsedMs=\\d+.*"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("internal permission detail"));
+    }
+
+    @Test
+    void queryTimeoutIsLoggedAsTimeoutAndSanitized(CapturedOutput output) {
+        TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
+        NativeReplenishmentService replenishmentService = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(55L, 7L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
+        when(tenantContextFactory.fromSecurity()).thenReturn(tenant);
+        when(replenishmentService.plan(tenant)).thenThrow(
+                new DataAccessResourceFailureException("private timeout detail", new SQLException("private SQL detail", "57014")));
+        AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
+                tenantContextFactory, replenishmentService);
+
+        BusinessException failure = org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
+                controller::replenishmentReport);
+
+        assertEquals(50321, failure.getCode());
+        org.junit.jupiter.api.Assertions.assertTrue(failure.getMessage().contains("temporarily unavailable"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("category=timeout"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("private timeout detail"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("private SQL detail"));
+    }
+
+    @Test
+    void unexpectedRuntimeFailureIsLoggedAsServiceAndSanitized(CapturedOutput output) {
+        TenantContextFactory tenantContextFactory = mock(TenantContextFactory.class);
+        NativeReplenishmentService replenishmentService = mock(NativeReplenishmentService.class);
+        TenantContext tenant = new TenantContext(55L, 7L, 87L, List.of(87L), Set.of(TenantContext.PERM_QUERY));
+        when(tenantContextFactory.fromSecurity()).thenReturn(tenant);
+        when(replenishmentService.plan(tenant)).thenThrow(new IllegalStateException("private service detail"));
+        AiAssistantReadOnlyReportController controller = new AiAssistantReadOnlyReportController(
+                tenantContextFactory, replenishmentService);
+
+        BusinessException failure = org.junit.jupiter.api.Assertions.assertThrows(BusinessException.class,
+                controller::replenishmentReport);
+
+        assertEquals(50321, failure.getCode());
+        org.junit.jupiter.api.Assertions.assertTrue(failure.getMessage().contains("temporarily unavailable"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("category=service"));
+        org.junit.jupiter.api.Assertions.assertTrue(output.getAll().contains("exceptionType=IllegalStateException"));
+        org.junit.jupiter.api.Assertions.assertFalse(failure.getMessage().contains("private service detail"));
+        org.junit.jupiter.api.Assertions.assertFalse(output.getAll().contains("private service detail"));
     }
 
     @Test

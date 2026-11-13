@@ -21,6 +21,7 @@ public class NativeReplenishmentService {
     private static final int DEFAULT_COVERAGE_DAYS = 21;
     private static final int QUERY_TIMEOUT_SECONDS = 5;
     private static final long CACHE_TTL_MILLIS = 15_000;
+    private static final long INVENTORY_MAX_AGE_MILLIS = java.time.Duration.ofHours(24).toMillis();
 
     private final JdbcTemplate jdbc;
     private final LongSupplier currentTimeMillis;
@@ -85,7 +86,7 @@ public class NativeReplenishmentService {
                     WHERE ps.outlet_id = ?
                     GROUP BY ps.product_id, ps.outlet_id
                 )
-                SELECT p.id, p.name, p.case_quantity, i.quantity AS on_hand,
+                SELECT p.id, p.name, p.case_quantity, i.quantity AS on_hand, i.updated_at AS inventory_data_as_of,
                        COALESCE(i.on_order, 0) AS on_order,
                        COALESCE(s.recent_units, 0) AS recent_units,
                        COALESCE(s.previous_units, 0) AS previous_units,
@@ -107,24 +108,35 @@ public class NativeReplenishmentService {
         }, (rs, rowNum) -> new Row(rs.getLong("id"), rs.getString("name"),
                 rs.getDouble("case_quantity"), asDouble(rs.getObject("on_hand")), rs.getDouble("on_order"),
                 rs.getDouble("recent_units"), rs.getDouble("previous_units"), rs.getBoolean("has_supplier"),
-                rs.getDouble("minimum_order"), timestampInstant(rs.getTimestamp("sales_data_as_of"))));
+                rs.getDouble("minimum_order"), timestampInstant(rs.getTimestamp("sales_data_as_of")),
+                timestampInstant(rs.getTimestamp("inventory_data_as_of"))));
 
         List<ReplenishmentSuggestion> suggestions = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
         int dataGapCount = 0;
         int inventoryGapCount = 0;
         int supplierGapCount = 0;
-        Instant dataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
+        Instant salesDataAsOf = rows.stream().map(Row::salesDataAsOf).filter(java.util.Objects::nonNull)
                 .max(Instant::compareTo).orElse(null);
-        if (dataAsOf == null) {
+        if (salesDataAsOf == null) {
             return new ReplenishmentPlan(cover, 0, List.of(), "NO_DATA",
                     List.of("sales history unavailable"), null, rows.isEmpty() ? 0 : rows.size());
         }
+        Instant inventoryDataAsOf = rows.stream().map(Row::inventoryDataAsOf).filter(java.util.Objects::nonNull)
+                .max(Instant::compareTo).orElse(null);
+        Instant dataAsOf = inventoryDataAsOf == null || salesDataAsOf.isAfter(inventoryDataAsOf)
+                ? salesDataAsOf : inventoryDataAsOf;
+        long now = currentTimeMillis.getAsLong();
+        long inventoryFreshnessCutoff = now - INVENTORY_MAX_AGE_MILLIS;
         for (Row row : rows) {
-            if (row.onHand() == null) {
+            if (row.onHand() == null || row.inventoryDataAsOf() == null
+                    || row.inventoryDataAsOf().toEpochMilli() < inventoryFreshnessCutoff
+                    || row.inventoryDataAsOf().toEpochMilli() > now) {
                 dataGapCount++;
                 inventoryGapCount++;
-                gaps.add(row.name() + ": inventory unavailable");
+                String reason = row.onHand() == null ? "inventory unavailable"
+                        : row.inventoryDataAsOf() == null ? "inventory timestamp unavailable" : "inventory data stale";
+                gaps.add(row.name() + ": " + reason);
                 continue;
             }
             if (!row.hasSupplier()) {
@@ -157,7 +169,7 @@ public class NativeReplenishmentService {
 
     private record Row(long id, String name, double caseQuantity, Double onHand, double onOrder,
                        double recentUnits, double previousUnits, boolean hasSupplier, double minimumOrder,
-                       Instant salesDataAsOf) { }
+                       Instant salesDataAsOf, Instant inventoryDataAsOf) { }
 
     private record CacheKey(long vendorId, long outletId, int coverageDays, int suggestionLimit) { }
     private record CachedPlan(ReplenishmentPlan plan, long expiresAtMillis) { }

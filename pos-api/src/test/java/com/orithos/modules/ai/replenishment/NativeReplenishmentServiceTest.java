@@ -103,6 +103,7 @@ class NativeReplenishmentServiceTest {
         verify(connection).prepareStatement(sql.capture());
         assertTrue(sql.getValue().contains("s.business_date >="));
         assertTrue(sql.getValue().contains("s.business_date IS NULL"));
+        assertTrue(sql.getValue().contains("i.updated_at AS inventory_data_as_of"));
         assertTrue(sql.getValue().contains("GROUP BY ps.product_id, ps.outlet_id"));
         assertTrue(sql.getValue().contains("LEFT JOIN supplier"));
         assertFalse(sql.getValue().contains("EXISTS (SELECT 1 FROM product_supplier"));
@@ -143,6 +144,7 @@ class NativeReplenishmentServiceTest {
             when(row.getBoolean("has_supplier")).thenReturn(true);
             when(row.getDouble("minimum_order")).thenReturn(1d);
             when(row.getTimestamp("sales_data_as_of")).thenReturn(Timestamp.from(updatedAt));
+            when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(updatedAt));
         } catch (java.sql.SQLException e) {
             throw new AssertionError(e);
         }
@@ -151,7 +153,8 @@ class NativeReplenishmentServiceTest {
             return List.of(mapper.mapRow(row, 0));
         });
 
-        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc,
+                () -> updatedAt.plusSeconds(60).toEpochMilli()).plan(tenant(55L, 87L));
 
         assertEquals(updatedAt, plan.dataAsOf());
     }
@@ -204,6 +207,46 @@ class NativeReplenishmentServiceTest {
         assertEquals(1, plan.supplierGapCount());
     }
 
+    @Test
+    void missingInventoryTimestampMarksPlanIncompleteAndSkipsProduct() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet row = replenishmentRow(5L, "Shiraz", 3d, true);
+        when(row.getTimestamp("inventory_data_as_of")).thenReturn(null);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+        assertEquals("DATA_INCOMPLETE", plan.dataQualityStatus());
+        assertEquals(1, plan.dataGapCount());
+        assertEquals(1, plan.inventoryGapCount());
+        assertTrue(plan.dataGaps().get(0).contains("inventory timestamp unavailable"));
+        assertTrue(plan.top().isEmpty());
+    }
+
+    @Test
+    void staleInventoryTimestampMarksPlanIncompleteAndSkipsProduct() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        Instant now = Instant.parse("2026-11-13T12:00:00Z");
+        ResultSet row = replenishmentRow(5L, "Shiraz", 3d, true);
+        when(row.getTimestamp("inventory_data_as_of"))
+                .thenReturn(Timestamp.from(now.minusSeconds(24 * 60 * 60 + 1)));
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        ReplenishmentPlan plan = new NativeReplenishmentService(jdbc, now::toEpochMilli)
+                .plan(tenant(55L, 87L));
+
+        assertEquals("DATA_INCOMPLETE", plan.dataQualityStatus());
+        assertEquals(1, plan.inventoryGapCount());
+        assertTrue(plan.dataGaps().get(0).contains("inventory data stale"));
+        assertTrue(plan.top().isEmpty());
+    }
+
     private static ResultSet replenishmentRow(long id, String name, Double onHand, boolean supplier)
             throws Exception {
         ResultSet row = mock(ResultSet.class);
@@ -217,6 +260,7 @@ class NativeReplenishmentServiceTest {
         when(row.getBoolean("has_supplier")).thenReturn(supplier);
         when(row.getDouble("minimum_order")).thenReturn(1d);
         when(row.getTimestamp("sales_data_as_of")).thenReturn(Timestamp.from(Instant.parse("2026-11-12T07:30:00Z")));
+        when(row.getTimestamp("inventory_data_as_of")).thenReturn(Timestamp.from(Instant.now()));
         return row;
     }
 

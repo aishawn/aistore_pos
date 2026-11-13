@@ -361,6 +361,7 @@ CREATE TABLE product_inventory (
   max_quantity   DECIMAL(14,4) NULL,
   reorder_rounding VARCHAR(32) NULL DEFAULT 'NONE',
   on_order       DECIMAL(14,4) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (product_id, outlet_id));
 CREATE TABLE product_cost (
   product_id BIGINT NOT NULL,
