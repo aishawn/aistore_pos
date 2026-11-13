@@ -28,7 +28,7 @@ from .shopfront import CATALOG_QUERY, ShopfrontError
 from .pos import OrithosClient, PosIntegrationError
 from .source_reporting import dashboard_report_transaction_count, dashboard_sales_matching_report, inventory_manifest_status, inventory_report_totals, inventory_snapshot_is_fresh
 from .odoo import OdooSyncClient, receipt_count
-from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
+from .sync import access_token, ensure_stores, get_client, is_after, make_state, parse_decimal, sale_customer_reference, save_token, shelf_unit_price, sync_customers, sync_extended_data, sync_store, sync_supply_chain, verify_webhook, without_credentials
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
@@ -2799,7 +2799,7 @@ async def push_pos_snapshot(
             **sale_line_payload(item),
         } for item in sale.items]
         source_complete = source_sale_snapshot_is_complete(raw_sale, sale.items)
-        return {"external_id": sale.shopfront_sale_id, "source_complete": source_complete, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale.customer_reference, "payments": source_payments if isinstance(source_payments, list) else [], "raw_payload": raw_sale, "items": sale_items}
+        return {"external_id": sale.shopfront_sale_id, "source_complete": source_complete, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "total_discount": sale.total_discount, "total_cost": sale.total_cost, "customer_reference": sale_customer_reference(raw_sale), "payments": source_payments if isinstance(source_payments, list) else [], "raw_payload": raw_sale, "items": sale_items}
 
     def product_payload(product: Product) -> dict:
         raw = product.raw_payload if isinstance(product.raw_payload, dict) else {}
@@ -4294,7 +4294,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         source_items = raw.get("items")
         source_payments = raw.get("payments")
         items = [repair_line(item) for item in sale.items]
-        return {"external_id": sale.shopfront_sale_id, "source_complete": isinstance(source_items, list) and isinstance(source_payments, list) and len(source_items) == len(items), "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "payments": source_payments if isinstance(source_payments, list) else [], "items": items}
+        return {"external_id": sale.shopfront_sale_id, "source_complete": isinstance(source_items, list) and isinstance(source_payments, list) and len(source_items) == len(items), "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "customer_reference": sale_customer_reference(raw), "payments": source_payments if isinstance(source_payments, list) else [], "items": items}
 
     payload = jsonable_encoder({"store_key": store, "items": [repair_sale_payload(sale) for sale in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
@@ -4367,7 +4367,8 @@ def sale_detail(sale_id: str, store: str, db: Session = Depends(get_db)) -> dict
     row = db.scalar(select(Sale).where(Sale.store_key == store, Sale.shopfront_sale_id == sale_id))
     if row is None:
         raise HTTPException(404, "Sale not found")
-    return {"data": {"shopfront_sale_id": row.shopfront_sale_id, "invoice_id": row.invoice_id, "status": row.status, "created_at": row.created_at, "updated_at": row.updated_at, "total_price": row.total_price, "total_tax": row.total_tax, "total_discount": row.total_discount, "total_cost": row.total_cost, "raw_payload": row.raw_payload, "items": [{"product_id": x.shopfront_product_id, "name": x.product_name, "quantity": x.quantity, "unit_price": x.unit_price, "line_total": x.line_total, "cost": x.cost, "tax": x.tax} for x in row.items]}, "source": "shopfront_sales"}
+    raw_payload = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+    return {"data": {"shopfront_sale_id": row.shopfront_sale_id, "invoice_id": row.invoice_id, "status": row.status, "created_at": row.created_at, "updated_at": row.updated_at, "total_price": row.total_price, "total_tax": row.total_tax, "total_discount": row.total_discount, "total_cost": row.total_cost, "customer_reference": sale_customer_reference(raw_payload), "raw_payload": raw_payload, "items": [{"product_id": x.shopfront_product_id, "name": x.product_name, "quantity": x.quantity, "unit_price": x.unit_price, "line_total": x.line_total, "cost": x.cost, "tax": x.tax} for x in row.items]}, "source": "shopfront_sales"}
 
 
 @app.get("/api/products")

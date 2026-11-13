@@ -1,7 +1,7 @@
 from app.shopfront import CATALOG_QUERY, ShopfrontClient
 import app.main as main
 from app.main import sales_trend_missing_dates, source_product_row, source_sale_snapshot_is_complete
-from app.sync import _dedupe_sales, parse_decimal, verify_webhook
+from app.sync import _dedupe_sales, parse_decimal, sale_customer_reference, verify_webhook
 
 
 def test_authorization_url_contains_required_parameters():
@@ -15,6 +15,15 @@ def test_authorization_url_contains_required_parameters():
 def test_parse_decimal_handles_currency():
     assert parse_decimal("$1,234.50") == 1234.50
     assert parse_decimal("not-a-number") is None
+
+
+def test_sale_customer_reference_uses_nested_customer_not_sale_client_id():
+    assert sale_customer_reference({
+        "clientId": "sale-client-id",
+        "customer": {"id": "customer-source-id", "clientId": "customer-client-id"},
+    }) == "customer-source-id"
+    assert sale_customer_reference({"clientId": "sale-client-id", "customer": None}) is None
+    assert sale_customer_reference({"customerId": "customer-source-id"}) == "customer-source-id"
 
 
 def test_inventory_report_totals_can_parse_currency_formatted_snapshot_values():

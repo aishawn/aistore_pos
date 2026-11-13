@@ -122,6 +122,17 @@ def first(row: dict[str, Any], *names: str) -> Any:
     return None
 
 
+def sale_customer_reference(row: dict[str, Any]) -> str | None:
+    """Return the customer identity, never the sale's top-level clientId."""
+    customer = row.get("customer")
+    if isinstance(customer, dict):
+        value = first(customer, "id", "clientId", "client_id")
+        if value not in (None, ""):
+            return str(value)
+    value = first(row, "customerId", "customer_id", "customerReference", "customer_reference")
+    return str(value) if value not in (None, "") else None
+
+
 def parse_datetime(value: Any) -> datetime | None:
     if not value:
         return None
@@ -921,7 +932,7 @@ async def sync_store(
                 sale.total_tax = sale_tax_amount(row)
                 sale.total_discount = parse_decimal(first(row, "Discount Amount", "total_discount", "totalDiscount", "discount"))
                 sale.total_cost = parse_decimal(first(row, "Cost", "cost", "totalCost"))
-                sale.customer_reference = first(row, "clientId", "client_id", "customerReference")
+                sale.customer_reference = sale_customer_reference(row)
                 sale.raw_payload = row
                 for item in row.get("items", []) if isinstance(row.get("items"), list) else []:
                     item_id = first(item, "id", "ID")
