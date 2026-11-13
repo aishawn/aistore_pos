@@ -136,6 +136,9 @@ public final class LegacyApiWriteProtectionFilter extends OncePerRequestFilter {
         if (path.equals("/api/tax-rates") || path.startsWith("/api/tax-rates/")) {
             return false;
         }
+        if (path.equals("/api/buying-periods") || path.startsWith("/api/buying-periods/")) {
+            return false;
+        }
         // Orithos Settings 1:1 — company KV, catalogues, enterprise/push, import promote.
         // Controllers require authenticated vendor scope / settings.* permissions.
         if (path.equals("/api/settings") || path.startsWith("/api/settings/")) {
