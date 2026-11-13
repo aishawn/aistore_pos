@@ -6,10 +6,12 @@ import { transcribeAudio } from "@/lib/api";
 import { canUseMediaRecorder, startMediaRecording } from "@/lib/voice";
 
 /** Shared, editable composer. Attachments are included as text in the chat request. */
-export function AssistantComposer({ value, onChange, onSend, disabled = false, voiceAvailable, inputRef, placeholder = "Ask Orithos AI…" }: {
+export function AssistantComposer({ value, onChange, onSend, onCancel, cancelable = false, disabled = false, voiceAvailable, inputRef, placeholder = "Ask Orithos AI…" }: {
   value: string;
   onChange: (value: string) => void;
   onSend: (question: string) => void | Promise<void>;
+  onCancel?: () => void;
+  cancelable?: boolean;
   disabled?: boolean;
   voiceAvailable: boolean | null;
   inputRef?: RefObject<HTMLInputElement | null>;
@@ -114,7 +116,11 @@ export function AssistantComposer({ value, onChange, onSend, disabled = false, v
         <button type="button" aria-label="Attach files" title="Attach text, CSV, Markdown or JSON (20 KB total; message limit 4,000 characters)" disabled={locked || voiceBusyState} onClick={() => picker.current?.click()} className={`${button} text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]`}><Paperclip size={18} /></button>
         <input ref={field} aria-label="Ask Orithos AI" value={value} disabled={locked || !!status} onChange={event => onChange(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} placeholder={placeholder} className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]" />
         <button type="button" aria-label={recording ? "Stop voice input" : "Voice input"} aria-pressed={recording} title={voiceAvailable === true ? "Click to speak; click again to finish" : voiceAvailable == null ? "Checking voice availability…" : "Voice transcription is unavailable for this store"} disabled={locked || voiceAvailable !== true || (!!status && !recording)} onClick={() => void voice()} className={`${button} ${recording ? "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-orange-light)]"}`}>{recording ? <Square size={17} /> : <Mic size={18} />}</button>
-        <button type="submit" aria-label="Send message" title="Send message" disabled={locked || !!status || (!value.trim() && !files.length)} className={`${button} bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]`}><Send size={18} /></button>
+        {cancelable ? (
+          <button type="button" aria-label="Cancel request" title="Cancel request" onClick={onCancel} className={`${button} bg-[var(--oh-danger)] text-white hover:opacity-90`}><Square size={16} fill="currentColor" /></button>
+        ) : (
+          <button type="submit" aria-label="Send message" title="Send message" disabled={locked || !!status || (!value.trim() && !files.length)} className={`${button} bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]`}><Send size={18} /></button>
+        )}
       </form>
       {status && <p role="status" className="px-4 pt-2 text-xs text-[var(--oh-primary)]">{status}</p>}
       {error && <p role="alert" className="px-4 pt-2 text-xs text-[var(--oh-danger)]">{error}</p>}

@@ -2,6 +2,8 @@
 
 更新日期：2026-11-13。负责人待分配，优先级 P0 为发布/数据安全阻断，P1 为功能质量，P2 为效果增强。
 
+2026-11-13 新增问答请求取消控件，区分用户主动取消与硬超时；用户取消不显示为失败，超时仍保留重试提示。UI 单测 208/208、TypeScript 检查通过；ESLint 无 error，存在 4 条既有 effect 警告。本地验证尚未覆盖浏览器真实取消、部署运行时和线上响应。全功能验收继续开放。
+
 2026-11-13 双店线上对账发现并复现一个 UI 缺陷：销售 API 返回一行有效聚合结果（available），但没有日期列；UI 将其误报为“没有返回销售行”。本地候选区分无行与聚合行缺少逐日日期。两店 7 日英文销售/毛利/笔数和昨日中文营业额/毛利/笔数均与各自同期间 native overview 对账一致，四类请求都 deterministic 且 `writeRequests=[]`。候选未部署；历史浏览器回归受本机没有后端配置阻断。详见[continuation session](../../../../test-sessions/2026-11-13-ai-assistant-bilingual-reconciliation.md)。
 
 2026-11-13 本地 UI 继续回归：API 消息级来源元数据优先于卡片缓存字段；无可信 `dataAsOf` 时中英文明确显示“数据时间未提供 / Data timestamp unavailable”，不伪造当前时间。当前 POS UI 全量单测 204/204、typecheck PASS、助手 helper 定向 ESLint PASS；工作树脏且基线 `39eb296e` 落后 `origin/main` 3 个提交，未做线上验收或发布。完整功能验收仍开放。
@@ -39,7 +41,7 @@
 
 ## 验证闭环
 
-2026-11-13 本轮高频话术迭代：补充“昨天营业额怎么样”等中文及英文口语表述；历史元数据测试改用 Orithos 当前来源，不再构造 `legacy_source` / `other_store`。UI 全量单测 207/207 PASS、typecheck PASS；Java router 独立编译及 JShell 行为探测 9 条正例、3 条歧义/提示注入负例 PASS。Maven 定向测试被本地未提交采购报表服务的编译错误阻断，未进入测试阶段；未部署、未做线上问答或业务写入。详见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
+2026-11-13 本轮高频话术迭代：补充“昨天营业额怎么样”等中文及英文口语表述；历史元数据测试改用 Orithos 当前来源，不再构造 `legacy_source` / `other_store`。UI 全量单测 207/207 PASS、typecheck PASS；Java router 独立编译及 JShell 行为探测 9 条正例、3 条歧义/提示注入负例 PASS。部署 SHA `584672d7` 后，SKR 与 Demo 各 9/9 个昨日销售问法及 1/1 个提示注入用例 PASS，`writeRequests=[]`；数据对账见 session。UAT runner 整体状态仍为 BLOCKED，因为本地工作树包含无关未提交改动；Maven JUnit 也被本地未提交采购报表服务编译错误阻断，未进入测试阶段。线上 provider 调用计数/费用端点未提供，但本批所有销售与注入请求均为 deterministic、`llmFallback=false`。详见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
 
 历史问题链：E-HISTORY-FINDING 记录列表 id=null → 详情 /threads/null HTTP 400；显式 mapper 映射修复后仍需上线证据。E-HISTORY 的 0d3d0bc3 记录数字 ID 和 session/timestamp 存在、报表产生 2 条消息（局部关闭）；旧会话 0 消息及 greeting/navigation 的 50210 未关闭。这是“发现→修复→测试→局部关闭”的样例，不能写成历史功能全面修复。
 

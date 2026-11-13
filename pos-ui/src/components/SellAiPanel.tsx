@@ -31,6 +31,7 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { assistantCardMetadataValue, restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
+import { assistantAbortOutcome, type AssistantAbortReason } from "@/lib/assistant-request-state";
 import { assistantDataTimestampLabel, assistantProvenanceFields, assistantReportDataStatus, assistantReportDateRange, assistantReturnedSalesDateSummary, assistantRouteLabel, requestedSalesDateRange } from "@/lib/assistant-provenance";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -443,6 +444,7 @@ export function SellAiPanel({
     { role: "assistant", text: ENABLED_GREETING },
   ]);
   const [busy, setBusy] = useState(false);
+  const [requestCancelable, setRequestCancelable] = useState(false);
   const [orbCompleted, setOrbCompleted] = useState(false);
   const previousBusyRef = useRef(false);
   const [thinkingHint, setThinkingHint] = useState<string | null>(null);
@@ -463,6 +465,8 @@ export function SellAiPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const requestAbortReasonRef = useRef<AssistantAbortReason | null>(null);
   const floatRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -1094,10 +1098,18 @@ export function SellAiPanel({
       ),
     ];
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const hardTimeout = window.setTimeout(() => controller?.abort(), assistantRequestTimeoutMs(text));
+    requestControllerRef.current = controller;
+    requestAbortReasonRef.current = null;
+    setRequestCancelable(controller !== null);
+    const hardTimeout = window.setTimeout(() => {
+      if (!controller) return;
+      requestAbortReasonRef.current = "timeout";
+      controller.abort();
+    }, assistantRequestTimeoutMs(text));
     try {
       const result = await readOperationsPreview(text, threadId, controller?.signal)
         ?? await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
+      if (controller?.signal.aborted && requestAbortReasonRef.current === "user") return;
       if (result.threadId) {
         setThreadId(result.threadId);
         if (!new URLSearchParams(window.location.search).has("chat")) {
@@ -1105,6 +1117,7 @@ export function SellAiPanel({
         }
       }
       const outcome = await dispatchIntent(result);
+      if (controller?.signal.aborted && requestAbortReasonRef.current === "user") return;
       if (outcome.kind !== "messaged") {
         const deferredHref = outcome.kind === "deferred" ? outcome.href : null;
         const polished = polishAssistantAnswer(result.answer || "", result.intent);
@@ -1163,6 +1176,7 @@ export function SellAiPanel({
       const aborted =
         (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError") ||
         (e instanceof Error && e.name === "AbortError");
+      if (aborted && assistantAbortOutcome(requestAbortReasonRef.current ?? "timeout") === "cancelled") return;
       appendReply({
           role: "assistant",
           question: text,
@@ -1182,6 +1196,11 @@ export function SellAiPanel({
     } finally {
       window.clearTimeout(hardTimeout);
       for (const id of hintTimers) window.clearTimeout(id);
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+        requestAbortReasonRef.current = null;
+        setRequestCancelable(false);
+      }
       busyRef.current = false;
       setBusy(false);
       setThinkingHint(null);
@@ -1193,6 +1212,13 @@ export function SellAiPanel({
         inputRef.current?.blur();
       }
     }
+  }
+
+  function cancelAssistantRequest() {
+    const controller = requestControllerRef.current;
+    if (!controller || controller.signal.aborted) return;
+    requestAbortReasonRef.current = "user";
+    controller.abort();
   }
 
   function appendCommandReply(command: AiCommandResponse, text: string, retryExistingMessage: boolean) {
@@ -1475,7 +1501,7 @@ export function SellAiPanel({
   useEffect(() => { submitPendingQuestion(); }, [pagePresentation, clientConfigReady]);
 
   const composer = (
-    <AssistantComposer value={input} onChange={setInput} inputRef={inputRef} disabled={busy || historyLoading || (workspace && !!historyError) || chatOff || !expanded} voiceAvailable={transcriptionAvailable} placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"} onSend={async question => {
+    <AssistantComposer value={input} onChange={setInput} inputRef={inputRef} disabled={busy || historyLoading || (workspace && !!historyError) || chatOff || !expanded} cancelable={requestCancelable} onCancel={cancelAssistantRequest} voiceAvailable={transcriptionAvailable} placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"} onSend={async question => {
       if (busyRef.current || chatOff) return;
       setQuickActionsOpen(false);
       await runIntent(question);

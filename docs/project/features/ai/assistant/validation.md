@@ -1,10 +1,20 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-13 用户取消请求回归
+
+新增问答运行中的取消按钮；用户取消与硬超时使用不同状态，用户取消不追加超时/失败消息，硬超时仍走原重试提示。UI 全量单测 208/208、TypeScript `--noEmit` PASS，定向 ESLint 0 errors（4 条原有 effect 警告），`git diff --check` PASS。只验证本地实现；无真实浏览器/API 取消验收，本轮没有 POS 写入、部署或线上请求。完整历史清空、语音识别质量、跨门店隔离和全话术目录仍未完成。
+
 ## 2026-11-13 高频昨日销售路由增量
 
 Node `v22.22.2` 本地 POS UI 全量单测 207/207 PASS、`npm run typecheck` PASS。Java 21.0.12 单独编译当前 `AssistantFastPathRouter.java` PASS；JShell 在已编译类路径对 9 条中英文正例和 3 条负例（商品拆分歧义、无日期问法、伪造 `/admin` 提示）探测通过。`mvn -B -Dtest=AssistantFastPathRouterTest test` 未到测试阶段：本机脏工作树中的未提交 `PurchaseReportSnapshotService.java` 调用私有的 `ReportQueryService.requireReportOutlet(jdbc, ...)`，主源码编译失败；此采购报表文件未改动。故新增 JUnit 参数化回归尚未由 Maven 执行。项目文档检查在补充根 AGENTS.md 的事实库入口链接后通过。
 
 源码 HEAD `cfe8c3cf5f4e13b408b06b7edf6ce8a67c683c81`；当前远端线上 SHA、模型/prompt/config 版本未在本轮确认；环境为本地 fixture/helper 与源码行为探测。POS 业务写入 0，部署/线上问答/权威数字对账 NOT RUN。证据与限制见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
+
+## 2026-11-13 部署后昨日销售变体只读验收
+
+生产代码提交 `584672d75719ff00429af421e8a7d12e7d335a5e` 已推送到 `main` 并由 Dokploy 自动部署；SKR 与 Demo 的 `/api/public/version` 均确认前端/后端运行同一 SHA。每店 9 条昨日销售中文/英文口语问法均 PASS：`report_sales`、`source=deterministic`、`llmFallback=false`、来源 `orithos_ledger`、期间 Adelaide `2026-11-12`、状态 `available`、`writeRequests=[]`。销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔分别与各店同期间 `native-overview` 相同。每店提示注入拒绝用例也 PASS（`unknown`、无 route、deterministic、无业务写入）。
+
+在线 runner 结果文件：SKR `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261113T044953354Z_584672d7.json`、`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261113T045217109Z_584672d7.json`；Demo `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261113T045113211Z_584672d7.json`、`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261113T045259944Z_584672d7.json`。每份文件的选中用例均全部通过，但 runner 顶层状态是 BLOCKED，因为维护 checkout 中还存在与 AI 无关的未提交文件；这不推翻逐项在线检查结果。模型调用费用没有 provider 用量证据；本批用例均 `llmFallback=false`，因此助手没有调用问答模型。全功能目录、语音、完整历史清空/续问、取消/重试及其他安全和租户用例仍未验收。
 
 ## 2026-11-13 双店双语报表抽样与聚合日期文案
 
