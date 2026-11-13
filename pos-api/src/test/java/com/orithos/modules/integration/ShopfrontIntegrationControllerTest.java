@@ -41,6 +41,19 @@ import static org.mockito.Mockito.when;
 class ShopfrontIntegrationControllerTest {
 
     @Test
+    void postgresMappingTableUsesBooleanEnabledColumn() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        Method ensureMappingTable = ShopfrontIntegrationController.class.getDeclaredMethod("ensureMappingTable");
+        ensureMappingTable.setAccessible(true);
+
+        ensureMappingTable.invoke(controller);
+
+        verify(jdbc).update(contains("enabled BOOLEAN NOT NULL DEFAULT TRUE"));
+        verify(jdbc, never()).update(contains("enabled SMALLINT NOT NULL DEFAULT 1"));
+    }
+
+    @Test
     void reservesStableNamesForDuplicateShopfrontProducts() {
         Map<String, Long> reserved = new java.util.LinkedHashMap<>();
 
