@@ -305,8 +305,18 @@ const cases = [
   { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", answerRegex: "(?:2026-10-16营业额 AUD|2026-10-16没有已完成销售记录)", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-16", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-en", question: "Compare sales on 14 Oct 2026 with 15 Oct 2026", intent: "report_sales", noRoute: true, compareReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-zh", question: "比较2026年10月14日和2026年10月15日销售额", intent: "report_sales", noRoute: true, compareReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-14", reportTo: "2026-10-15", reportTimeZone: "Australia/Adelaide" },
+  { id: "report-sales-range-en", question: "Sales from 14 October to 16 October 2026", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, aggregateReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: "2026-10-14", reportTo: "2026-10-16", reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for 2026-10-14 to 2026-10-16 were AUD .*|No completed sales found" },
   { id: "sales-profit-yesterday-zh", question: "昨天销售额如何？利润如何？", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "营业额.*(?:毛利 AUD|毛利暂不可用)|没有已完成销售记录" },
   { id: "sales-profit-yesterday-en", question: "What were sales and profit yesterday?", intent: "report_sales", noRoute: true, compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide", answerRegex: "Sales for .* and gross profit was AUD|gross profit is unavailable|No completed sales found" },
+  { id: "sales-yesterday-how-zh", question: "昨天销售额如何？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-turnover-zh", question: "昨天营业额怎么样？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-how-were-en", question: "How were sales yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-turnover-en", question: "How was yesterday's turnover?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-go-en", question: "How did sales go yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-go-order-en", question: "How did yesterday's sales go?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-takings-like-en", question: "What were takings like yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-turnover-like-en", question: "What was turnover like yesterday?", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
+  { id: "sales-yesterday-turnover-order-zh", question: "昨日的营业额如何？", intent: "report_sales", noRoute: true, responseSource: "deterministic", compareReport: true, singlePeriodReport: true, answerLanguage: "zh", reportStatus: ["available", "no_data"], reportSource: "orithos_ledger", reportFrom: yesterdayAdelaide, reportTo: yesterdayAdelaide, reportTimeZone: "Australia/Adelaide" },
   { id: "date-compare-ambiguous-refusal", question: "Compare sales last week with this week", intent: "report_adhoc", noRoute: true },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
   { id: "sales-paraphrase-revenue-today", question: "What's our revenue today?", intent: "report_sales" },
@@ -361,7 +371,6 @@ const cases = [
   { id: "report-ticket-count-en", question: "How many transactions did we have today?", intent: "report_aov" },
   { id: "report-average-sale-en", question: "What was our average sale today?", intent: "report_aov" },
   { id: "report-quantity-week-zh", question: "这周卖了多少件", intent: "report_qty" },
-  { id: "report-sales-range-en", question: "Sales from 14 October to 16 October 2026", intent: "report_sales" },
   { id: "report-dead-stock-en", question: "Which products have had no sales for 30 days?", intent: "report_dead_stock", noRoute: true },
   { id: "report-dead-stock-zh", question: "连续30天没有销售的商品有哪些？", intent: "report_dead_stock", noRoute: true, answerLanguage: "zh" },
   { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true },
@@ -610,8 +619,10 @@ try {
     let body = {};
     let requestError = null;
     let attempts = 0;
+    let assistantElapsedMs = 0;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       attempts = attempt + 1;
+      const attemptStartedAt = Date.now();
       try {
         response = await context.request.post(`${base}/api/ai/assistant`, {
           data: { question: item.question },
@@ -632,6 +643,8 @@ try {
           continue;
         }
         break;
+      } finally {
+        assistantElapsedMs += Date.now() - attemptStartedAt;
       }
     }
     if (!response) {
@@ -642,7 +655,12 @@ try {
         question: item.question,
         status: blocked ? "BLOCKED" : "FAIL",
         expected: { intent: item.writeGuided ? "guided_action" : item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true },
-        evidence: { attempts, errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
+        evidence: {
+          attempts,
+          assistantElapsedMs,
+          errorType: requestError instanceof Error ? requestError.name : "UnknownError",
+          error: detail,
+        },
       });
       return;
     }
@@ -675,12 +693,21 @@ try {
           const match = answer.match(new RegExp(`(?:Sales for ${escaped} were AUD |${escaped}营业额 AUD )([\\d.]+)`, "i"));
           return match ? Number(match[1]) : null;
         };
+        const responseAggregateSales = (from, to) => {
+          const escapedFrom = from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const escapedTo = to.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const match = answer.match(new RegExp(`Sales for ${escapedFrom} to ${escapedTo} were AUD ([\\d.]+)`, "i"));
+          return match ? Number(match[1]) : null;
+        };
         const firstDate = item.reportFrom;
         const secondDate = item.reportTo;
         const noSales = Number(report.transactions) === 0;
         const singlePeriodReport = item.singlePeriodReport === true;
+        const aggregateReport = item.aggregateReport === true;
         const salesMatches = noSales
           ? /no completed sales|(?:均)?没有已完成销售记录/i.test(answer)
+          : aggregateReport
+            ? responseAggregateSales(firstDate, secondDate) === Number(report.revenue)
           : singlePeriodReport
             ? responseSinglePeriodSales(firstDate) === amount(firstDate, "revenue")
             : responseSales(firstDate) === amount(firstDate, "revenue")
@@ -688,7 +715,11 @@ try {
         const profitMatch = answer.match(/(?:gross profit was AUD |毛利分别为 AUD )([\d.]+)(?: and AUD | 和 AUD )([\d.]+)/i);
         const singlePeriodProfitMatch = answer.match(/gross profit was AUD ([\d.]+)|毛利 AUD ([\d.]+)/i);
         const singlePeriodProfit = Number(singlePeriodProfitMatch?.[1] ?? singlePeriodProfitMatch?.[2]);
-        const profitMatches = singlePeriodReport
+        const profitMatches = aggregateReport
+          ? noSales || (report.costAvailable === true
+            ? singlePeriodProfit === Number(report.grossProfit)
+            : /gross profit is unavailable|毛利暂不可用/i.test(answer))
+          : singlePeriodReport
           ? noSales || (report.costAvailable === true
             ? singlePeriodProfit === amount(firstDate, "grossProfit")
             : /gross profit is unavailable|毛利暂不可用/i.test(answer))
@@ -735,6 +766,7 @@ try {
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
+    const responseSourceCheck = !item.responseSource || data.source === item.responseSource;
     const reportMetadataCheck = !item.reportStatus || (item.reportStatus.includes(data.reportDataStatus)
       && data.dataSource === item.reportSource
       && data.reportPeriodFrom === item.reportFrom
@@ -756,6 +788,7 @@ try {
       && answerExcludesCheck
       && answerRegexCheck
       && answerLanguageCheck
+      && responseSourceCheck
       && productCountCardCheck
       && authoritativeReportCheck
       && reportMetadataCheck
@@ -778,10 +811,12 @@ try {
         ...(item.answerExcludes ? { answerExcludes: item.answerExcludes } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex } : {}),
         ...(item.answerLanguage ? { answerLanguage: item.answerLanguage } : {}),
+        ...(item.aggregateReport ? { aggregateReport: true } : {}),
       },
       evidence: {
         httpStatus: response.status(),
         attempts,
+        assistantElapsedMs,
         code: body.code,
         intent: data.intent ?? null,
         route,
@@ -813,6 +848,7 @@ try {
         ...(item.answerExcludes ? { answerExcludesCheck } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex, answerRegexCheck } : {}),
         ...(item.answerLanguage ? { answerLanguageCheck } : {}),
+        ...(item.responseSource ? { responseSource: data.source ?? null, responseSourceCheck } : {}),
         ...(process.env.PILOT_RECORD_RESPONSES === "1" ? {
           answer: answer.slice(0, 800),
           cards: Array.isArray(data.cards) ? data.cards.slice(0, 3).map((card) => ({
