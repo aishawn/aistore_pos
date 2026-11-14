@@ -710,6 +710,51 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
+    void businessProductImportAcceptsPriceTierForBarcodePackageQuantity() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Method validate = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "validateProductBusinessFields", com.fasterxml.jackson.databind.JsonNode.class, long.class, Map.class);
+        validate.setAccessible(true);
+        Map<String, Long> taxRates = new java.util.HashMap<>();
+        taxRates.put("gst", 7L);
+
+        validate.invoke(controller, new ObjectMapper().readTree("""
+                {"source_id":"pack-4","name":"Four pack","case_quantity":24,
+                 "prices":[{"quantity":4,"price":7.99,"priceEx":7.263636}],
+                 "barcodes":[{"code":"9300004","quantity":4}],
+                 "tax_rate_name":"GST","source_status":"ACTIVE"}
+                """), 48L, taxRates);
+    }
+
+    @Test
+    void packagePriceTierIsConvertedToPosUnitPriceOnlyForMatchingBarcodeQuantity() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 17L, new ObjectMapper().readTree("""
+                {"prices":[{"quantity":4,"price":7.99,"priceEx":7.263636}],
+                 "barcodes":[{"code":"9300004","quantity":4}]}
+                """), 48L, batch);
+        collect.invoke(controller, 18L, new ObjectMapper().readTree("""
+                {"prices":[{"quantity":10,"price":64.99}],
+                 "barcodes":[{"code":"9300030","quantity":30}]}
+                """), 48L, batch);
+
+        java.lang.reflect.Field field = batchType.getDeclaredField("pricesByProduct");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, List<Object[]>> prices = (Map<Long, List<Object[]>>) field.get(batch);
+        assertEquals(new BigDecimal("1.9975"), prices.get(17L).get(0)[2]);
+        assertEquals(new BigDecimal("1.8159"), prices.get(17L).get(0)[3]);
+        assertEquals(new BigDecimal("64.99"), prices.get(18L).get(0)[2]);
+    }
+
+    @Test
     void normalizeTaxRateNamePreservesShopfrontFacetLabels() throws Exception {
         var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
         Method normalize = ShopfrontIntegrationController.class.getDeclaredMethod("normalizeTaxRateName", String.class);

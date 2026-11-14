@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -2787,7 +2788,8 @@ public class ShopfrontIntegrationController {
         if (caseQuantity == null || caseQuantity.signum() <= 0) {
             throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
         }
-        if ((price == null || price.signum() < 0) && !hasUnitPrice(item)) {
+        if ((price == null || price.signum() < 0) && !hasUnitPrice(item)
+                && !hasPackagePriceForBarcodeQuantity(item)) {
             throw new IllegalArgumentException("Product " + sourceId + " has no valid shelf price");
         }
         if (taxRateName == null || taxRateName.isBlank()) {
@@ -3188,6 +3190,35 @@ public class ShopfrontIntegrationController {
         return false;
     }
 
+    private Set<BigDecimal> barcodePackQuantities(JsonNode item) {
+        Set<BigDecimal> quantities = new HashSet<>();
+        JsonNode barcodes = item.path("barcodes");
+        if (!barcodes.isArray()) return quantities;
+        for (JsonNode barcode : barcodes) {
+            BigDecimal quantity = decimal(barcode, "quantity");
+            if (quantity != null && quantity.compareTo(BigDecimal.ONE) > 0) {
+                quantities.add(quantity.stripTrailingZeros());
+            }
+        }
+        return quantities;
+    }
+
+    private boolean hasPackagePriceForBarcodeQuantity(JsonNode item) {
+        Set<BigDecimal> barcodeQuantities = barcodePackQuantities(item);
+        JsonNode prices = item.path("prices");
+        if (!prices.isArray()) return false;
+        for (JsonNode price : prices) {
+            BigDecimal quantity = decimal(price, "quantity");
+            BigDecimal value = decimal(price, "price");
+            if (quantity != null && quantity.compareTo(BigDecimal.ONE) > 0
+                    && value != null && value.signum() >= 0
+                    && barcodeQuantities.contains(quantity.stripTrailingZeros())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private long upsertBusinessProduct(JsonNode item, String store, long outletId, Map<String, Long> taxRates,
                                        Long resolvedProductId, ProductImportBatch batch) throws Exception {
         String sourceId = text(item, "source_id");
@@ -3379,6 +3410,7 @@ public class ShopfrontIntegrationController {
     private void collectProductPrices(long productId, JsonNode item, long outletId, ProductImportBatch batch) {
         List<Object[]> prices = new ArrayList<>();
         boolean hasUnitPrice = false;
+        Set<BigDecimal> barcodeQuantities = barcodePackQuantities(item);
         JsonNode sourcePrices = item.get("prices");
         if (sourcePrices != null && sourcePrices.isArray()) {
             for (JsonNode price : sourcePrices) {
@@ -3387,6 +3419,11 @@ public class ShopfrontIntegrationController {
                 if (quantity == null || quantity.signum() <= 0 || value == null) continue;
                 BigDecimal priceEx = decimal(price, "price_ex");
                 if (priceEx == null) priceEx = decimal(price, "priceEx");
+                if (quantity.compareTo(BigDecimal.ONE) > 0
+                        && barcodeQuantities.contains(quantity.stripTrailingZeros())) {
+                    value = value.divide(quantity, 4, RoundingMode.HALF_UP);
+                    if (priceEx != null) priceEx = priceEx.divide(quantity, 4, RoundingMode.HALF_UP);
+                }
                 prices.add(new Object[]{productId, quantity, value, priceEx, outletId});
                 if (quantity.compareTo(BigDecimal.ONE) == 0) hasUnitPrice = true;
             }
