@@ -35,6 +35,11 @@ public final class ReportAdhocRouter {
                     + "(?:units|quantity|销量|件数|库存|stock).*|.*(?:units|quantity|销量|件数|库存|stock).*"
                     + "(?:sales|revenue|takings|销售额|营业额|收入|profit|gross profit|毛利|利润).*"
     );
+    private static final Pattern RAW_SQL_STATEMENT = Pattern.compile(
+            "(?is)\\b(?:select\\s+.+?\\s+from\\s+|insert\\s+into\\s+|update\\s+[\\w.]+\\s+set\\s+|"
+                    + "delete\\s+from\\s+|drop\\s+(?:table|schema|database)\\s+|"
+                    + "alter\\s+(?:table|schema)\\s+|truncate\\s+(?:table\\s+)?)[\\w.]+"
+    );
 
     private static final Pattern ADHOC = Pattern.compile(
             "分别|混[合问]|"
@@ -72,6 +77,9 @@ public final class ReportAdhocRouter {
         String q = question.toLowerCase(Locale.ROOT);
         if (TICKET_COUNT.matcher(q).find()) {
             return false;
+        }
+        if (RAW_SQL_STATEMENT.matcher(question).find()) {
+            return true;
         }
         // Exactly two explicit dates with one supported sales metric use the
         // native overview path rather than the unsupported-query gate.

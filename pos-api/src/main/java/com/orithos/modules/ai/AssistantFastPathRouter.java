@@ -190,6 +190,10 @@ public final class AssistantFastPathRouter {
             "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)|"
                     + "(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern PROMPT_INJECTION = Pattern.compile(
+            "(?:ignore|disregard)\\s+(?:(?:all|the)\\s+)?(?:previous|prior|above|earlier)\\s+(?:system\\s+)?instructions?|"
+                    + "忽略(?:所有|之前|以上|先前)(?:的)?(?:系统)?指令",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern GIBBERISH = Pattern.compile("^(?:asdfghjkl|qwertyuiop|啊啊啊+)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern HELP = Pattern.compile(
@@ -274,6 +278,16 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "unknown",
                     "I can only help with supported store tasks. I cannot open that route.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (PROMPT_INJECTION.matcher(question.trim()).find()) {
+            return new Match(
+                    "unknown",
+                    "I can only help with supported store tasks.",
                     Map.of(),
                     "",
                     "",
@@ -597,6 +611,12 @@ public final class AssistantFastPathRouter {
             }
         }
         return null;
+    }
+
+    public static boolean isPromptInjection(String question) {
+        if (question == null || question.isBlank()) return false;
+        String trimmed = question.trim();
+        return FORGED_ROUTE.matcher(trimmed).find() || PROMPT_INJECTION.matcher(trimmed).find();
     }
 
     private static String firstNonNull(String... values) {

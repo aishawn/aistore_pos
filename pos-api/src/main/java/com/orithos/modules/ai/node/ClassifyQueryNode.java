@@ -140,6 +140,17 @@ public class ClassifyQueryNode implements NodeAction {
     public Map<String, Object> apply(OverAllState state) {
         String question = state.value("question", String.class)
                 .orElseThrow(() -> new IllegalStateException("question is required"));
+        if (AssistantFastPathRouter.isPromptInjection(question)) {
+            log.info("Prompt-injection request rejected before routing");
+            Map<String, Object> result = shortcutResult(
+                    "unknown",
+                    isChinese(question)
+                            ? "我只能协助处理受支持的门店任务。"
+                            : "I can only help with supported store tasks.",
+                    Map.of(), "", "", "", "");
+            result.put("fast_path_id", "prompt_injection");
+            return result;
+        }
         String lastIntent = optionalString(state, "last_intent");
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
         String conversationHistory = optionalString(state, "conversation_history");

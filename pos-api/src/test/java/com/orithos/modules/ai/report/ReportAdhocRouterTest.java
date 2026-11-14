@@ -126,4 +126,16 @@ class ReportAdhocRouterTest {
         assertFalse(ReportAdhocRouter.shouldUseNl2Sql("Show me the price suggestions"));
         assertFalse(ReportAdhocRouter.shouldUseNl2Sql("给我看看价格建议"));
     }
+
+    @Test
+    void rawSqlStatementsAreRejectedByTheUnsupportedQueryGate() {
+        for (String question : new String[]{
+                "SELECT * FROM sale",
+                "Run SQL: SELECT id, total FROM sale WHERE outlet_id = 1",
+                "Please execute SELECT name FROM product"
+        }) {
+            assertTrue(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+            assertEquals("report_adhoc", ReportAdhocRouter.maybeOverride(question, "unknown"), question);
+        }
+    }
 }
