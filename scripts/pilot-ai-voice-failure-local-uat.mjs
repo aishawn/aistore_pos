@@ -1,16 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright";
+
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? "playwright");
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3000";
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_EXECUTABLE });
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
 });
-await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
+await context.addCookies([
+  { name: "orithos_access_token", value: "local-uat-session", url: base },
+  { name: "orithos_local_preview", value: "1", url: base },
+]);
 await context.addInitScript(() => {
   localStorage.setItem("sf_token", "local-uat-session");
   localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }));
@@ -63,23 +69,19 @@ await page.route("**/api/**", async (route) => {
 
 let result;
 try {
-  await page.goto(`${base}/overview?__uat_voice_failure=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const trigger = page.getByRole("button", { name: /Open Orithos AI/ }).first();
-  await trigger.waitFor({ state: "visible", timeout: 30000 });
-  await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
-  await dialog.waitFor({ state: "visible", timeout: 10000 });
-  const composer = dialog.getByRole("textbox", { name: "Ask Orithos AI" });
-  const hold = dialog.getByRole("button", { name: "Hold to speak" });
-  await hold.dispatchEvent("pointerdown", { pointerId: 1, pointerType: "mouse", button: 0 });
-  const release = dialog.getByRole("button", { name: "Release to stop voice input" });
-  await release.waitFor({ state: "visible", timeout: 10000 });
-  await release.dispatchEvent("pointerup", { pointerId: 1, pointerType: "mouse", button: 0 });
-  const alert = page.getByRole("alertdialog");
+  await page.goto(`${base}/assistant?__uat_voice_failure=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const composer = page.getByRole("textbox", { name: "Ask Orithos AI" });
+  const voiceButton = page.getByRole("button", { name: "Voice input" });
+  await voiceButton.waitFor({ state: "visible", timeout: 30000 });
+  await voiceButton.click();
+  const stop = page.getByRole("button", { name: "Stop voice input" });
+  await stop.waitFor({ state: "visible", timeout: 10000 });
+  await stop.click();
+  const alert = page.getByRole("alert").filter({ hasText: "Cloud transcription failed. Please try again." });
   await alert.waitFor({ state: "visible", timeout: 10000 });
   const message = await alert.textContent();
   result = {
-    safeRetryMessage: /type your request instead/i.test(message ?? ""),
+    safeRetryMessage: /try again/i.test(message ?? ""),
     noTranscriptInserted: (await composer.inputValue()) === "",
     noAssistantSubmit: assistantRequests === 0,
     transcribeRequests,

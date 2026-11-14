@@ -139,6 +139,22 @@ async function createContext(browser, width, errors) {
         await historyPage.reload({ waitUntil: 'networkidle' });
         await historyPage.getByRole('region', { name: 'Sales summary' }).waitFor();
         check(`${width}px session-key URL restores chat`, true);
+        const unexpectedDeleteRequests = [];
+        historyPage.on('request', (request) => {
+          if (request.method() === 'DELETE') unexpectedDeleteRequests.push(request.url());
+        });
+        await historyPage.getByRole('button', { name: 'Clear chat', exact: true }).click();
+        await historyPage.getByRole('region', { name: 'Sales summary' }).waitFor({ state: 'hidden' });
+        check(`${width}px Clear chat clears current dialogue and URL`,
+          new URL(historyPage.url()).search === ''
+          && await historyPage.getByRole('region', { name: 'Sales summary' }).count() === 0);
+        check(`${width}px Clear chat does not delete persisted history`, unexpectedDeleteRequests.length === 0);
+        await historyPage.getByRole('button', { name: 'History', exact: true }).click();
+        await historyPage.getByText(thread.title).waitFor();
+        await historyPage.getByRole('button').filter({ has: historyPage.getByText(thread.title, { exact: true }) }).click();
+        await historyPage.getByRole('region', { name: 'Sales summary' }).waitFor();
+        check(`${width}px cleared thread remains recoverable from history`, true);
+        check(`${width}px history restoration has no stale Clear chat URL`, new URL(historyPage.url()).searchParams.get('chat') === '7');
         await historyPage.getByRole('button', { name: 'Suggested workflows' }).click();
         check(`${width}px workspace remains accessible`, await historyPage.getByText('Suggested workflows').count() === 1);
         await historyPage.getByRole('button', { name: 'Low stock analysis' }).click();
@@ -170,7 +186,7 @@ async function createContext(browser, width, errors) {
         await page.getByRole('alert').filter({ hasText: 'no recoverable messages' }).waitFor();
         check('empty saved history explicitly reports unavailable messages', await page.getByRole('region', { name: 'Sales summary' }).count() === 0);
         await page.goto(`${base}/assistant?chat=missing`, { waitUntil: 'networkidle' });
-        await page.getByRole('alert').waitFor();
+        await page.getByRole('alert').filter({ hasText: 'The assistant could not connect' }).waitFor();
         check('missing chat shows error without previous dialogue', await page.getByRole('region', { name: 'Sales summary' }).count() === 0);
         check('390px mobile logo is link', await page.getByRole('link', { name: 'Open Dashboard' }).count() === 1);
       }
