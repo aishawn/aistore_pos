@@ -30,8 +30,15 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
 const checks = [];
 const record = (id, status, evidence) => checks.push({ id, status, evidence });
-const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-const workingTreeDirty = Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim());
+const sourceCommit = process.env.PILOT_SOURCE_COMMIT?.trim()
+  || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const workingTreeDirty = Boolean(execFileSync("git", ["status", "--porcelain", "--", "pos-api"], {
+  cwd: root,
+  encoding: "utf8",
+}).trim()) || Boolean(execFileSync("git", ["diff", "--name-only", sourceCommit, "HEAD", "--", "pos-api"], {
+  cwd: root,
+  encoding: "utf8",
+}).trim());
 let runtimeCommit = null;
 try {
   const version = await context.request.get(`${base}/api/public/version`, { timeout: 30000 });
