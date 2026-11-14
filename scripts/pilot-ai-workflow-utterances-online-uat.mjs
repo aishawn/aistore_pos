@@ -803,7 +803,12 @@ try {
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
     const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const responseSourceCheck = !item.responseSource || data.source === item.responseSource;
-    const reportMetadataCheck = !item.reportStatus || (item.reportStatus.includes(data.reportDataStatus)
+    const verifiedCostGap = item.compareReport
+      && authoritativeReportCheck
+      && authoritativeReportEvidence?.costAvailable === false;
+    const reportStatusMatches = item.reportStatus?.includes(data.reportDataStatus)
+      || (data.reportDataStatus === "incomplete" && verifiedCostGap);
+    const reportMetadataCheck = !item.reportStatus || (reportStatusMatches
       && data.dataSource === item.reportSource
       && data.reportPeriodFrom === item.reportFrom
       && data.reportPeriodTo === item.reportTo
