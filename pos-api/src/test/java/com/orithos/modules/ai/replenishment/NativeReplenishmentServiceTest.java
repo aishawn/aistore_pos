@@ -1,8 +1,15 @@
 package com.orithos.modules.ai.replenishment;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.report.TenantContext;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
@@ -122,6 +129,53 @@ class NativeReplenishmentServiceTest {
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.plan(tenant));
         verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void queryFailureLogsCorrelationAndCategoryWithoutExceptionDetails() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class)))
+                .thenThrow(new DataAccessResourceFailureException("jdbc-secret-host"));
+        NativeReplenishmentService service = new NativeReplenishmentService(jdbc);
+        CapturedLogs captured = captureLogs();
+        try {
+            CorrelationIdContext.with("a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d", () -> {
+                assertThrows(DataAccessResourceFailureException.class, () -> service.plan(tenant(55L, 87L)));
+                return null;
+            });
+
+            String message = captured.appender().list.getLast().getFormattedMessage();
+            assertTrue(message.contains("correlationId=a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d"), message);
+            assertTrue(message.contains("category=data_access"), message);
+            assertTrue(message.contains("elapsedMs="), message);
+            assertTrue(message.contains("exceptionType=DataAccessResourceFailureException"), message);
+            assertFalse(message.contains("jdbc-secret-host"), message);
+        } finally {
+            releaseLogs(captured);
+        }
+    }
+
+    @Test
+    void completedPlanLogsGapCountButNotProductNames() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ResultSet inventoryMissing = replenishmentRow(5L, "Private Shiraz", null, true);
+        ResultSet supplierMissing = replenishmentRow(6L, "Private Beer", 4d, false);
+        when(jdbc.query(any(PreparedStatementCreator.class), any(RowMapper.class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(inventoryMissing, 0), mapper.mapRow(supplierMissing, 1));
+        });
+        CapturedLogs captured = captureLogs();
+        try {
+            new NativeReplenishmentService(jdbc).plan(tenant(55L, 87L));
+
+            String message = captured.appender().list.getLast().getFormattedMessage();
+            assertTrue(message.contains("dataGapCount=2"), message);
+            assertTrue(message.contains("dataStatus=DATA_INCOMPLETE"), message);
+            assertFalse(message.contains("Private Shiraz"), message);
+            assertFalse(message.contains("Private Beer"), message);
+        } finally {
+            releaseLogs(captured);
+        }
     }
 
     @Test
@@ -305,4 +359,23 @@ class NativeReplenishmentServiceTest {
     private static TenantContext tenant(long vendorId, long outletId) {
         return new TenantContext(vendorId, 7L, outletId, List.of(outletId), Set.of(TenantContext.PERM_QUERY));
     }
+
+    private static CapturedLogs captureLogs() {
+        Logger logger = (Logger) LoggerFactory.getLogger(NativeReplenishmentService.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        logger.setLevel(Level.INFO);
+        return new CapturedLogs(appender, previousLevel);
+    }
+
+    private static void releaseLogs(CapturedLogs captured) {
+        Logger logger = (Logger) LoggerFactory.getLogger(NativeReplenishmentService.class);
+        logger.detachAppender(captured.appender());
+        logger.setLevel(captured.previousLevel());
+        captured.appender().stop();
+    }
+
+    private record CapturedLogs(ListAppender<ILoggingEvent> appender, Level previousLevel) { }
 }

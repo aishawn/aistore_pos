@@ -146,13 +146,14 @@ public class AiChatHistoryService {
         }
         thread = numericId != null
                 ? mapper.findOwned(numericId, tenant.vendorId(), tenant.userId())
-                : mapper.findBySessionKey(identifier);
+                : mapper.findOwnedBySessionKey(identifier, tenant.vendorId(), tenant.userId());
         if (thread == null) {
             throw new BusinessException(40410, "Chat thread not found");
         }
         List<AiChatMessage> messages = thread.getId() != null
                 ? mapper.listMessages(thread.getId(), MAX_MESSAGES)
-                : mapper.listMessagesBySessionKey(thread.getSessionKey(), MAX_MESSAGES);
+                : mapper.listMessagesBySessionKey(thread.getSessionKey(), tenant.vendorId(), tenant.userId(),
+                        MAX_MESSAGES);
         List<Map<String, Object>> msgOut = new ArrayList<>();
         String pendingQuestion = null;
         for (AiChatMessage m : messages) {

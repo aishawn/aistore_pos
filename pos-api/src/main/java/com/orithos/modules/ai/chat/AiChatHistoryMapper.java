@@ -4,6 +4,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -56,6 +57,19 @@ public interface AiChatHistoryMapper {
     AiChatThread findOwned(@Param("id") long id,
                            @Param("vendorId") long vendorId,
                            @Param("userId") long userId);
+
+    @Select("""
+            SELECT id AS thread_id, vendor_id AS thread_vendor_id, user_id AS thread_user_id,
+                   session_key AS thread_session_key, title AS thread_title,
+                   created_at AS thread_created_at, updated_at AS thread_updated_at
+            FROM ai_chat_thread
+            WHERE session_key = #{sessionKey} AND vendor_id = #{vendorId} AND user_id = #{userId}
+            LIMIT 1
+            """)
+    @ResultMap("aiChatThreadOwnedMapping")
+    AiChatThread findOwnedBySessionKey(@Param("sessionKey") String sessionKey,
+                                       @Param("vendorId") long vendorId,
+                                       @Param("userId") long userId);
 
     @Select("""
             SELECT id AS thread_id, vendor_id AS thread_vendor_id, user_id AS thread_user_id,
@@ -124,10 +138,12 @@ public interface AiChatHistoryMapper {
                    m.created_at AS createdAt
             FROM ai_chat_message m
             JOIN ai_chat_thread t ON t.id = m.thread_id
-            WHERE t.session_key = #{sessionKey}
+            WHERE t.session_key = #{sessionKey} AND t.vendor_id = #{vendorId} AND t.user_id = #{userId}
             ORDER BY m.id ASC
             LIMIT #{limit}
             """)
     List<AiChatMessage> listMessagesBySessionKey(@Param("sessionKey") String sessionKey,
+                                                 @Param("vendorId") long vendorId,
+                                                 @Param("userId") long userId,
                                                  @Param("limit") int limit);
 }

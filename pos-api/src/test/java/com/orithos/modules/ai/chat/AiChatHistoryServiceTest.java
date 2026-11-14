@@ -17,13 +17,33 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
 class AiChatHistoryServiceTest {
+
+    @Test
+    void sessionKeyHistoryLookupIsScopedToTheCurrentOwner() {
+        AiChatHistoryMapper mapper = mock(AiChatHistoryMapper.class);
+        ObjectProvider<AiConversationMemory> memory = mock(ObjectProvider.class);
+        when(memory.getIfAvailable()).thenReturn(null);
+        AiReportSnapshotService snapshots = mock(AiReportSnapshotService.class);
+        TenantContext tenant = tenant();
+        when(mapper.findBySessionKey("secret-session"))
+                .thenReturn(thread(99L, "secret-session"));
+
+        AiChatHistoryService service = service(mapper, memory, snapshots);
+
+        assertThrows(BusinessException.class, () -> service.getThread(tenant, "secret-session"));
+        verify(mapper).findOwnedBySessionKey("secret-session", tenant.vendorId(), tenant.userId());
+        verify(mapper, never()).listMessagesBySessionKey("secret-session",
+                tenant.vendorId(), tenant.userId(), 200);
+    }
 
     @Test
     void persistsReportSnapshotIdOnTheAssistantMessage() {
@@ -148,8 +168,10 @@ class AiChatHistoryServiceTest {
         AiChatThread legacyThread = thread(0L, "legacy-session-key");
         legacyThread.setId(null);
         AiChatMessage user = message(1L, "user", "Check today's sales", null, null);
-        when(mapper.findBySessionKey("legacy-session-key")).thenReturn(legacyThread);
-        when(mapper.listMessagesBySessionKey("legacy-session-key", 200)).thenReturn(List.of(user));
+        when(mapper.findOwnedBySessionKey("legacy-session-key", tenant.vendorId(), tenant.userId()))
+                .thenReturn(legacyThread);
+        when(mapper.listMessagesBySessionKey("legacy-session-key", tenant.vendorId(), tenant.userId(), 200))
+                .thenReturn(List.of(user));
 
         Map<String, Object> detail = service(mapper, memory, snapshots)
                 .getThread(tenant, "legacy-session-key");
@@ -158,7 +180,7 @@ class AiChatHistoryServiceTest {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> messages = (List<Map<String, Object>>) detail.get("messages");
         assertEquals("Check today's sales", messages.getFirst().get("text"));
-        verify(mapper).listMessagesBySessionKey("legacy-session-key", 200);
+        verify(mapper).listMessagesBySessionKey("legacy-session-key", tenant.vendorId(), tenant.userId(), 200);
     }
 
     @Test

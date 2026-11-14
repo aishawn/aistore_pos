@@ -1,11 +1,16 @@
 package com.orithos.modules.ai.replenishment;
 
+import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.report.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,6 +22,7 @@ import java.util.function.LongSupplier;
 /** Builds a read-only reorder preview from the tenant's Orithos ledger. */
 @Service
 public class NativeReplenishmentService {
+    private static final Logger log = LoggerFactory.getLogger(NativeReplenishmentService.class);
     private static final int PERIOD_DAYS = 28;
     private static final int DEFAULT_COVERAGE_DAYS = 21;
     private static final int QUERY_TIMEOUT_SECONDS = 5;
@@ -46,8 +52,16 @@ public class NativeReplenishmentService {
     }
 
     public ReplenishmentPlan plan(TenantContext tenant, int coverageDays, int suggestionLimit) {
-        if (tenant == null || tenant.requireOutletId() == null) return null;
+        long startedAt = System.nanoTime();
+        String correlationId = CorrelationIdContext.current();
+        if (tenant == null || tenant.requireOutletId() == null) {
+            log.warn("AI replenishment query failed correlationId={} category=tenant_unavailable elapsedMs={} dataGapCount=unknown",
+                    correlationId, elapsedMs(startedAt));
+            return null;
+        }
         if (!tenant.canQueryReport()) {
+            log.warn("AI replenishment query failed correlationId={} category=permission elapsedMs={} dataGapCount=0",
+                    correlationId, elapsedMs(startedAt));
             throw new AccessDeniedException("AI report query permission is required");
         }
         int cover = coverageDays > 0 ? Math.min(coverageDays, 180) : DEFAULT_COVERAGE_DAYS;
@@ -56,10 +70,42 @@ public class NativeReplenishmentService {
         long now = currentTimeMillis.getAsLong();
         cache.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
         CachedPlan cached = cache.get(key);
-        if (cached != null && cached.expiresAtMillis() > now) return cached.plan();
+        if (cached != null && cached.expiresAtMillis() > now) {
+            logPlan(correlationId, startedAt, cached.plan(), true);
+            return cached.plan();
+        }
         if (cached != null) cache.remove(key, cached);
-        return cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit),
-                currentTimeMillis.getAsLong() + CACHE_TTL_MILLIS)).plan();
+        try {
+            ReplenishmentPlan plan = cache.computeIfAbsent(key, ignored -> new CachedPlan(calculate(tenant, cover, limit),
+                    currentTimeMillis.getAsLong() + CACHE_TTL_MILLIS)).plan();
+            logPlan(correlationId, startedAt, plan, false);
+            return plan;
+        } catch (RuntimeException e) {
+            log.warn("AI replenishment query failed correlationId={} category={} elapsedMs={} dataGapCount=unknown exceptionType={}",
+                    correlationId, failureCategory(e), elapsedMs(startedAt), e.getClass().getSimpleName());
+            throw e;
+        }
+    }
+
+    private static void logPlan(String correlationId, long startedAt, ReplenishmentPlan plan, boolean cacheHit) {
+        log.info("AI replenishment query completed correlationId={} category=none elapsedMs={} dataGapCount={} dataStatus={} cacheHit={}",
+                correlationId, elapsedMs(startedAt), plan.dataGapCount(), plan.dataQualityStatus(), cacheHit);
+    }
+
+    private static int elapsedMs(long startedAt) {
+        return (int) Math.max(0, (System.nanoTime() - startedAt) / 1_000_000L);
+    }
+
+    private static String failureCategory(Throwable error) {
+        java.util.Set<Throwable> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (Throwable current = error; current != null && seen.add(current); current = current.getCause()) {
+            if (current instanceof java.util.concurrent.TimeoutException
+                    || current.getClass().getSimpleName().toLowerCase(java.util.Locale.ROOT).contains("timeout")) {
+                return "timeout";
+            }
+            if (current instanceof DataAccessException || current instanceof SQLException) return "data_access";
+        }
+        return "service";
     }
 
     private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit) {
