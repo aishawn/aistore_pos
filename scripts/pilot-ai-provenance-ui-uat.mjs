@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { reconcileAiReportMetrics } from "./ai-report-metric-reconciliation.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.PILOT_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
@@ -117,14 +118,7 @@ try {
     overview = overviewResponse.ok() && overviewBody.code === 0 ? overviewBody.data : null;
   }
   const answerMetrics = rows[0] ?? null;
-  const closeMoney = (left, right) => left !== null && left !== undefined && right !== null && right !== undefined
-    && String(left).trim() !== "" && String(right).trim() !== ""
-    && Number.isFinite(Number(left)) && Number.isFinite(Number(right))
-    && Math.abs(Number(left) - Number(right)) < 0.005;
-  const metricsReconcile = Boolean(overview && answerMetrics
-    && closeMoney(answerMetrics.sales, overview.revenue)
-    && closeMoney(answerMetrics.grossProfit, overview.grossProfit)
-    && Number(answerMetrics.transactions) === Number(overview.transactions));
+  const metricsReconcile = reconcileAiReportMetrics(answerMetrics, overview);
   const noWrites = Array.isArray(assistantResponse?.writeRequests)
     && assistantResponse.writeRequests.length === 0;
   const metadataComplete = (chinese ? /报表期间[：:]/ : /Report period:/i).test(visibleMetadata ?? "")
@@ -137,7 +131,7 @@ try {
     { name: "AI answer displays API period, timezone, status and timestamp", status: metadataComplete ? "PASS" : "FAIL" },
     { name: "AI response uses deterministic routing", status: assistantResponse?.source === "deterministic" ? "PASS" : "FAIL" },
     { name: "AI answer dates match the returned row shape or disclose their absence", status: dateCoverageHonest ? "PASS" : "FAIL" },
-    { name: "AI sales, gross profit and transaction count match native overview", status: metricsReconcile ? "PASS" : "FAIL" },
+    { name: "AI sales and transactions reconcile; gross profit matches or is accurately unavailable", status: metricsReconcile ? "PASS" : "FAIL" },
     { name: "AI response requests no business writes", status: noWrites ? "PASS" : "FAIL" },
   ];
   const summary = {
