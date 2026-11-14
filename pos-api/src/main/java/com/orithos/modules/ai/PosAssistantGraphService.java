@@ -77,6 +77,7 @@ public class PosAssistantGraphService {
         initialState.put("last_slots", pack.lastSlots());
         initialState.put("ui_surface", pack.surface());
         initialState.put(CorrelationIdContext.STATE_KEY, CorrelationIdContext.current());
+        clearTurnOutputState(initialState);
         if (tenant != null) {
             initialState.put("vendor_id", tenant.vendorId());
             initialState.put("user_id", tenant.userId());
@@ -194,6 +195,39 @@ public class PosAssistantGraphService {
             return null;
         }
         return new ReportTable(columns, tableRows);
+    }
+
+    static void clearTurnOutputState(Map<String, Object> state) {
+        state.put("intent", "");
+        state.put("intent_summary", "");
+        state.put("fast_path_id", "");
+        state.put("source", "");
+        state.put("route_source", "");
+        state.put("llm_fallback", false);
+        state.put("slots", Map.of());
+        state.put("ui_panel", "");
+        state.put("ui_view", "");
+        state.put("ui_route", "");
+        state.put("ui_action", "");
+        state.put("answer", "");
+        state.put("assistant_card", "");
+        state.put("sql", "");
+        state.put("sql_raw", "");
+        state.put("sql_path", "");
+        state.put("sql_params", List.of());
+        state.put("sql_error", "");
+        state.put("report_rows", List.of());
+        state.put("report_columns", List.of());
+        state.put("report_from", "");
+        state.put("report_to", "");
+        state.put("report_t0", "");
+        state.put("report_data_as_of", "");
+        state.put("report_data_source", "");
+        state.put("report_store_scope", "");
+        state.put("report_period_from", "");
+        state.put("report_period_to", "");
+        state.put("report_time_zone", "");
+        state.put("report_data_status", "");
     }
 
     static String resolveThreadId(String threadId, TenantContext tenant) {

@@ -15,6 +15,38 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PosAssistantGraphServiceCardTest {
 
     @Test
+    void clearsPreviousTurnReportPayloadAndProvenanceBeforeRunningTheNextTurn() {
+        Map<String, Object> state = new java.util.HashMap<>();
+        state.put("report_rows", List.of(Map.of("stock", 12)));
+        state.put("report_columns", List.of("stock"));
+        state.put("report_data_as_of", "2026-11-12T10:00:00+10:30");
+        state.put("report_data_source", "orithos_ledger");
+        state.put("report_store_scope", "current_authenticated_store");
+        state.put("report_data_status", "available");
+        state.put("report_period_from", "2026-11-12");
+        state.put("report_period_to", "2026-11-12");
+        state.put("answer", "Previous report answer");
+        state.put("assistant_card", "previous card");
+        state.put("conversation_history", "preserve conversation history");
+        state.put("last_slots", Map.of("query", "Shiraz"));
+
+        PosAssistantGraphService.clearTurnOutputState(state);
+
+        assertEquals(List.of(), state.get("report_rows"));
+        assertEquals(List.of(), state.get("report_columns"));
+        assertEquals("", state.get("report_data_as_of"));
+        assertEquals("", state.get("report_data_source"));
+        assertEquals("", state.get("report_store_scope"));
+        assertEquals("", state.get("report_data_status"));
+        assertEquals("", state.get("report_period_from"));
+        assertEquals("", state.get("report_period_to"));
+        assertEquals("", state.get("answer"));
+        assertEquals("", state.get("assistant_card"));
+        assertEquals("preserve conversation history", state.get("conversation_history"));
+        assertEquals(Map.of("query", "Shiraz"), state.get("last_slots"));
+    }
+
+    @Test
     void scopesConversationThreadsByTenantAndUser() {
         TenantContext firstUser = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of());
         TenantContext anotherUser = new TenantContext(42L, 8L, 3L, List.of(3L), Set.of());

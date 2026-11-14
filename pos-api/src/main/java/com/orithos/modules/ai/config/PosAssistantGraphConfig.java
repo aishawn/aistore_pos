@@ -85,6 +85,7 @@ public class PosAssistantGraphConfig {
             strategies.put("intent_summary", new ReplaceStrategy());
             strategies.put("fast_path_id", new ReplaceStrategy());
             strategies.put("source", new ReplaceStrategy());
+            strategies.put("route_source", new ReplaceStrategy());
             strategies.put("llm_fallback", new ReplaceStrategy());
             strategies.put("slots", new ReplaceStrategy());
             strategies.put("ui_panel", new ReplaceStrategy());
