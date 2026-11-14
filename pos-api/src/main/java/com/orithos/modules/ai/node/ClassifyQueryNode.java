@@ -329,11 +329,8 @@ public class ClassifyQueryNode implements NodeAction {
      */
     private String workflowChatSummary(String route, String question) {
         TenantContext tenant = AssistantTenantContext.get();
-        if ("/sommelier".equals(route) && sommelierChatBrief != null) {
-            SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
-            if (brief != null) {
-                return brief.brief(question, tenant);
-            }
+        if ("/sommelier".equals(route)) {
+            return isChinese(question) ? "正在打开品鉴推荐页面。" : "Opening Sommelier recommendations.";
         }
         if ("/stock/replenishment".equals(route) && replenishmentChatBrief != null) {
             ReplenishmentChatBrief brief = replenishmentChatBrief.getIfAvailable();

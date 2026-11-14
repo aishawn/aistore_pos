@@ -9,6 +9,7 @@ import com.orithos.modules.ai.report.NativeAiReportQueryService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
+import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -26,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -794,6 +797,36 @@ class ClassifyQueryNodeTest {
         assertTrue(String.valueOf(result.get("intent_summary")).contains("Prices that need review"));
         assertFalse(String.valueOf(result.get("intent_summary")).contains("Opening the requested workflow"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sommelierNavigationSkipsRecommendationLookup() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ObjectProvider<SommelierChatBrief> sommelierProvider = mock(ObjectProvider.class);
+        SommelierChatBrief brief = mock(SommelierChatBrief.class);
+        when(sommelierProvider.getIfAvailable()).thenReturn(brief);
+        ClassifyQueryNode node = new ClassifyQueryNode(
+                chatClient, config, sanitizer, properties, null, sommelierProvider);
+
+        for (String question : new String[]{"Red wine for steak", "红酒配牛排"}) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("navigate", result.get("intent"), question);
+            assertEquals("/sommelier", result.get("ui_route"), question);
+            assertEquals(question.matches("(?s).*[\\u3400-\\u9fff].*")
+                    ? "正在打开品鉴推荐页面。" : "Opening Sommelier recommendations.",
+                    result.get("intent_summary"), question);
+        }
+
+        verify(sommelierProvider, never()).getIfAvailable();
+        verifyNoInteractions(brief, chatClient, config, sanitizer, properties);
     }
 
     @Test
