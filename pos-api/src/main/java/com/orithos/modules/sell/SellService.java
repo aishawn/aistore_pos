@@ -88,8 +88,6 @@ public class SellService {
 
     /** List parked (suspended) sales for the Parked Sales tab. */
     public List<Sale> listParked() {
-        // Parked sales remain unavailable until their Orithos ledger is implemented.
-        if (nativePosOnlyMode) return List.of();
         Long vendorId = requireVendorId();
         Long outletId = requireOutletId();
         LocalDate today = AustraliaTime.today();

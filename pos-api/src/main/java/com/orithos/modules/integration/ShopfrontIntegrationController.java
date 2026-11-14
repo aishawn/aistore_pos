@@ -1450,11 +1450,11 @@ public class ShopfrontIntegrationController {
         if (!STORE_KEY.matcher(storeKey).matches()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valid storeKey is required");
         }
-        if (page < 1 || size < 1 || size > 500) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 500");
+        if (page < 1 || size < 1 || size > 2500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 1 and size must be between 1 and 2500");
         }
-        if (!Set.of("products", "inventory", "sales", "payments", "purchase_orders").contains(type)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, payments, or purchase_orders");
+        if (!Set.of("products", "inventory", "sales", "sale_items", "payments", "purchase_orders").contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "type must be products, inventory, sales, sale_items, payments, or purchase_orders");
         }
         ensureMappingTable();
         ensureShadowTables();
@@ -1511,6 +1511,19 @@ public class ShopfrontIntegrationController {
                     + "ORDER BY s.external_id, s.id LIMIT ? OFFSET ?";
             countArgs = new Object[]{outletId};
             rowArgs = new Object[]{outletId, size, (page - 1) * size};
+        } else if ("sale_items".equals(type)) {
+            countSql = "SELECT COUNT(*) FROM sale_item si JOIN sale s ON s.id=si.sale_id AND s.outlet_id=si.outlet_id "
+                    + "WHERE s.outlet_id=? AND s.source_system='shopfront'";
+            rowsSql = "SELECT s.external_id AS external_sale_id, si.external_line_id, "
+                    + "pm.source_product_id, si.quantity, si.base_price AS unit_price, "
+                    + "si.total_price AS line_total, si.cost, si.tax "
+                    + "FROM sale_item si JOIN sale s ON s.id=si.sale_id AND s.outlet_id=si.outlet_id "
+                    + "LEFT JOIN shopfront_product_mapping pm ON pm.store_key=? "
+                    + "AND pm.pos_product_id=si.product_id AND pm.status='MAPPED' "
+                    + "WHERE s.outlet_id=? AND s.source_system='shopfront' "
+                    + "ORDER BY s.external_id, si.external_line_id NULLS LAST, si.id LIMIT ? OFFSET ?";
+            countArgs = new Object[]{outletId};
+            rowArgs = new Object[]{storeKey, outletId, size, (page - 1) * size};
         } else if ("purchase_orders".equals(type)) {
             ensurePurchaseOrderBusinessMappingTable();
             countSql = "SELECT COUNT(*) FROM shopfront_purchase_order_business_mapping WHERE store_key=? AND outlet_id=?";

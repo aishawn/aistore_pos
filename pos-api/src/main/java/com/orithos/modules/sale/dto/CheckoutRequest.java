@@ -36,6 +36,8 @@ public class CheckoutRequest {
         private String name;
         private BigDecimal quantity;
         private BigDecimal unitPrice;
+        /** Optional cashier-applied line discount, quoted and validated by the server. */
+        private BigDecimal discountPercent;
         /**
          * Cents the till already showed for this line. When set, this is the
          * amount charged — {@code quantity × rounded unit price} can drift by a cent.

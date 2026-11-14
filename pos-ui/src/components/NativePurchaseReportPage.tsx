@@ -180,8 +180,8 @@ export function NativePurchaseReportPage() {
     return saved.length > 0 ? saved : DEFAULT_PURCHASE_COLUMNS;
   });
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<PurchaseSort>("totalCost");
-  const [sortDirection, setSortDirection] = useState<PurchaseSortDirection>("desc");
+  const [sortBy, setSortBy] = useState<PurchaseSort>("name");
+  const [sortDirection, setSortDirection] = useState<PurchaseSortDirection>("asc");
   const [rangeReady, setRangeReady] = useState(false);
   const [report, setReport] = useState<PurchaseReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +278,7 @@ export function NativePurchaseReportPage() {
       return;
     }
     setSortBy(column);
-    setSortDirection(column === "name" ? "asc" : "desc");
+    setSortDirection("asc");
   }
 
   function savePrefs() {

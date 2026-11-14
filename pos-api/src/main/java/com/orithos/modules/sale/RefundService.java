@@ -106,6 +106,7 @@ public class RefundService {
         refund.setLocalSoldAt(AustraliaTime.localNow());
         refund.setTotalPrice(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         refund.setTotalTax(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+        refund.setTotalDiscount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         refund.setItems(new ArrayList<>());
         int totalQuantity = 0;
 
@@ -144,6 +145,7 @@ public class RefundService {
             refund.getItems().add(item);
             refund.setTotalPrice(refund.getTotalPrice().subtract(amount));
             refund.setTotalTax(refund.getTotalTax().subtract(tax));
+            refund.setTotalDiscount(refund.getTotalDiscount().add(nz(item.getSavings())));
             totalQuantity += quantity.intValue();
         }
 

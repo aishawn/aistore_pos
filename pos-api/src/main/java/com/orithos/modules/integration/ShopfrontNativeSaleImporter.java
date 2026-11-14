@@ -136,7 +136,7 @@ public class ShopfrontNativeSaleImporter {
                 String productName = firstNonBlank(text(item, "name"), text(item.path("raw_payload"), "name"),
                         text(item.path("raw_payload").path("item"), "name"), "Unmatched product");
                 BigDecimal lineTotal = money(firstDecimal(item, "line_total", "total_price"));
-                BigDecimal unitPrice = money(firstDecimal(item, "unit_price", "base_price"));
+                BigDecimal unitPrice = unitPrice(firstDecimal(item, "unit_price", "base_price"));
                 if (unitPrice.signum() == 0 && quantity.signum() != 0) {
                     unitPrice = lineTotal.divide(quantity, 4, RoundingMode.HALF_UP);
                 }
@@ -491,6 +491,10 @@ public class ShopfrontNativeSaleImporter {
 
     private static BigDecimal nullableMoney(BigDecimal value) {
         return value == null ? null : value.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal unitPrice(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value.setScale(4, RoundingMode.HALF_UP);
     }
 
     private static String stringValue(Object value) {

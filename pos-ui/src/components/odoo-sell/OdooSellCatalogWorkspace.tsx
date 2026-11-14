@@ -32,6 +32,7 @@ type OdooSellCatalogWorkspaceProps = {
   onDecrementQty: () => void;
   onCaseQuantity: () => void;
   onReturnItem: () => void;
+  canDiscount: boolean;
   onDiscount: () => void;
   onPark: () => void;
   onClear: () => void;
@@ -74,6 +75,7 @@ export function OdooSellCatalogWorkspace({
   onDecrementQty,
   onCaseQuantity,
   onReturnItem,
+  canDiscount,
   onDiscount,
   onPark,
   onClear,
@@ -137,7 +139,7 @@ export function OdooSellCatalogWorkspace({
         >
           Return Item
         </button>
-        <button
+        {canDiscount && <button
           type="button"
           disabled={!linesLength}
           onClick={onDiscount}
@@ -145,7 +147,7 @@ export function OdooSellCatalogWorkspace({
           className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           Discount
-        </button>
+        </button>}
         <button
           type="button"
           disabled={!linesLength || !parkedLoaded || !hasConfig || busy}

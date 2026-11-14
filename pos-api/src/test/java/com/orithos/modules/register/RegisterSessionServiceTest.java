@@ -124,6 +124,24 @@ class RegisterSessionServiceTest {
                 () -> service.close(11L, "close-1", new BigDecimal("194.00"), counted, null));
     }
 
+    @Test
+    void closeIsBlockedWhileAnUnsettledSaleRemainsOpen() {
+        LocalDateTime openedAt = LocalDateTime.of(2026, 11, 9, 9, 0);
+        Register register = new Register(); register.setId(11L); register.setOutletId(12L);
+        RegisterSession session = new RegisterSession();
+        session.setId(41L); session.setVendorId(3L); session.setOutletId(12L); session.setRegisterId(11L);
+        session.setOpenedAt(openedAt); session.setOpeningFloat(new BigDecimal("100.00"));
+        when(sessions.lockRegister(11L, 3L, 12L)).thenReturn(register);
+        when(sessions.lockActiveSession(11L, 3L, 12L)).thenReturn(session);
+        when(sessions.countUnsettledSales(eq(11L), eq(12L), eq(openedAt), any())).thenReturn(1);
+
+        assertThrows(BusinessException.class, () -> service.close(
+                11L, "close-with-unpaid-sale", new BigDecimal("100.00"), Map.of(), null));
+
+        verify(closures, never()).insert(any(RegisterClosure.class));
+        verify(sessions, never()).closeSession(any(RegisterSession.class));
+    }
+
     private static RegisterTenderLine tender(Long id, String type, String amount) {
         RegisterTenderLine line = new RegisterTenderLine();
         line.setPaymentMethodId(id); line.setPaymentMethodType(type); line.setAmount(new BigDecimal(amount));

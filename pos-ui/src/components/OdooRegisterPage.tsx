@@ -142,6 +142,7 @@ function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
 export function OdooRegisterPage() {
   const { hasPermission } = useAuth();
   const canSell = hasPermission("sell.checkout");
+  const canDiscount = hasPermission("sell.discount");
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
@@ -897,7 +898,7 @@ export function OdooRegisterPage() {
         paymentMethodId,
         tendered: tenderedAmount,
         customerId: customer?.id ?? null,
-        lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1]),
+        lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1, line.discountPercent || 0]),
       });
       if (!orderUuid.current || checkoutFingerprint.current !== fingerprint) {
         orderUuid.current = crypto.randomUUID();
@@ -1163,6 +1164,7 @@ export function OdooRegisterPage() {
   }
 
   function applyDiscount() {
+    if (!canDiscount) return;
     const line = targetCartLine();
     if (!line) return;
     const input = window.prompt("Discount percentage (0-100)", String(line.discountPercent ?? 0));
@@ -1420,6 +1422,7 @@ export function OdooRegisterPage() {
                 onDecrementQty={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }}
                 onCaseQuantity={applyCaseQuantity}
                 onReturnItem={() => openSalesHistory()}
+                canDiscount={canDiscount}
                 onDiscount={applyDiscount}
                 onPark={() => parkCurrentSale()}
                 onClear={requestClearSale}

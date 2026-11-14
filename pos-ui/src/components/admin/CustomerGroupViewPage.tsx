@@ -145,7 +145,7 @@ function CustomerListPanel({
       emptyText="No customers belong to this group yet."
       onRetry={onRetry}
     >
-      <ListTable
+        <ListTable
         columns={[
           { label: "Customers" },
           { label: "Actions", align: "right", width: "w-[120px]" },

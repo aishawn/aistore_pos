@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactElement } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { naturalCompare } from "@/lib/natural-sort";
 
 export interface ListColumn {
   label: React.ReactNode;
@@ -14,18 +15,6 @@ export interface ListColumn {
 }
 
 type SortState = { column: number; direction: "asc" | "desc" };
-const naturalCollator = new Intl.Collator("en-AU", { numeric: true, sensitivity: "base" });
-const dateValue = (value: string | number) => {
-  const match = String(value).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
-  return match
-    ? Date.UTC(Number(match[3]), Number(match[2]) - 1, Number(match[1]), Number(match[4] ?? 0), Number(match[5] ?? 0), Number(match[6] ?? 0))
-    : null;
-};
-const numericValue = (value: string | number) => {
-  if (typeof value === "number") return value;
-  const normalized = value.trim().replace(/[,$%\s]/g, "").replace(/^\((.*)\)$/, "-$1");
-  return /^-?\d+(?:\.\d+)?$/.test(normalized) ? Number(normalized) : null;
-};
 
 function cellText(value: React.ReactNode): string {
   if (typeof value === "string" || typeof value === "number") return String(value);
@@ -34,22 +23,6 @@ function cellText(value: React.ReactNode): string {
     return cellText((value as ReactElement<{ children?: React.ReactNode }>).props.children);
   }
   return "";
-}
-
-function compareValues(a: string | number | null | undefined, b: string | number | null | undefined) {
-  const aMissing = a == null || a === "";
-  const bMissing = b == null || b === "";
-  if (aMissing || bMissing) return aMissing === bMissing ? 0 : aMissing ? 1 : -1;
-  const presentA = a as string | number;
-  const presentB = b as string | number;
-  if (typeof presentA === "number" && typeof presentB === "number") return presentA - presentB;
-  const aDate = dateValue(presentA);
-  const bDate = dateValue(presentB);
-  if (aDate != null && bDate != null) return aDate - bDate;
-  const aNumber = numericValue(presentA);
-  const bNumber = numericValue(presentB);
-  if (aNumber != null && bNumber != null) return aNumber - bNumber;
-  return naturalCollator.compare(String(presentA), String(presentB));
 }
 
 /**
@@ -88,7 +61,7 @@ export function ListTable({
     return rows.map((row, index) => ({ row, index })).sort((a, b) => {
       const aValue = column.sortValue ? column.sortValue(a.row) : cellText(a.row[sort.column]);
       const bValue = column.sortValue ? column.sortValue(b.row) : cellText(b.row[sort.column]);
-      const compared = compareValues(aValue, bValue);
+      const compared = naturalCompare(aValue, bValue);
       const eitherMissing = aValue == null || aValue === "" || bValue == null || bValue === "";
       return (eitherMissing ? compared : compared * direction) || a.index - b.index;
     }).map(({ row }) => row);

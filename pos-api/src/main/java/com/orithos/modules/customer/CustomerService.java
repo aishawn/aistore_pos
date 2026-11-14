@@ -68,7 +68,7 @@ public class CustomerService {
         int offset = Math.max(0, (page - 1) * size);
         List<Customer> items = customerMapper.page(name, groupIds, includeNoGroup, filterGroups,
                 priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId, size, offset);
-        attachPerformance(items, LocalDate.now(STORE_ZONE));
+        attachPerformance(items, outletId, LocalDate.now(STORE_ZONE));
         return PageResult.of(items,
                 customerMapper.count(name, groupIds, includeNoGroup, filterGroups,
                         priceListId, noPriceList, filterPriceList, minOwing, maxOwing, asOfEnd, outletId),
@@ -76,12 +76,12 @@ public class CustomerService {
     }
 
     /** Fills {@code performance30d} (oldest to newest, ending today) with units sold per business day. */
-    void attachPerformance(List<Customer> items, LocalDate today) {
+    void attachPerformance(List<Customer> items, Long outletId, LocalDate today) {
         if (items == null || items.isEmpty()) return;
         LocalDate from = today.minusDays(PERFORMANCE_DAYS - 1L);
         List<Long> customerIds = items.stream().map(Customer::getId).toList();
         List<CustomerMapper.CustomerDailyQuantity> rows =
-                customerMapper.salesQuantityByDay(customerIds, from.toString(), today.toString());
+                customerMapper.salesQuantityByDay(outletId, customerIds, from.toString(), today.toString());
         Map<Long, List<Double>> seriesByCustomer = new HashMap<>();
         if (rows != null) {
             for (CustomerMapper.CustomerDailyQuantity row : rows) {

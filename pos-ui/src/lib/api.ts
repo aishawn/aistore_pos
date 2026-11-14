@@ -635,6 +635,7 @@ export interface CheckoutItem {
   unitPrice: number;
   /** Cent-rounded line net. Authoritative charge so qty × unit cannot drift. */
   lineTotal: number;
+  discountPercent?: number;
   /** GST rate from the server quote used to authorize the payment. */
   expectedTaxRate?: number;
 }
@@ -686,6 +687,7 @@ export interface CheckoutQuote {
     name: string;
     quantity: number;
     unitPrice: number;
+    discountPercent: number;
     total: number;
     taxRate: number;
     gst: number;
@@ -852,6 +854,7 @@ export interface CustomerListItem {
   customerGroupName?: string | null;
   loyaltyPoints?: number | null;
   currentOwing?: number | null;
+  performance30d?: number[] | null;
 }
 
 /** Search customers via the dedicated customers API (not sell unified search). */

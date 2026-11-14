@@ -125,10 +125,47 @@ class ShopfrontIntegrationControllerTest {
                 .thenReturn(List.of());
         var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
 
-        controller.nativeData("token", "skr", "products", 1, 100);
+        controller.nativeData("token", "skr", "products", 1, 2500);
 
         verify(jdbc).queryForList(contains("p.mdb_id AS sku"), any(Object[].class));
         verify(jdbc, never()).queryForList(contains("p.sku"), any(Object[].class));
+    }
+
+    @Test
+    void nativeDataRejectsPageSizesAboveReconciliationLimit() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        ResponseStatusException failure = assertThrows(ResponseStatusException.class,
+                () -> controller.nativeData("token", "skr", "products", 1, 2501));
+
+        assertEquals(HttpStatus.BAD_REQUEST, failure.getStatusCode());
+        verify(jdbc, never()).queryForList(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void nativeSaleItemDataReturnsStableSourceLineIdentityAndAmounts() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForList(contains("shopfront_store_mapping"), eq("skr")))
+                .thenReturn(List.of(Map.of("outlet_id", 48L, "shopfront_outlet", "skr", "enabled", true)));
+        when(jdbc.queryForObject(contains("COUNT(*)"), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(contains("FROM sale_item si JOIN sale s"), any(Object[].class)))
+                .thenReturn(List.of(new java.util.HashMap<>(Map.of(
+                        "external_sale_id", "sale-1", "external_line_id", "line-1",
+                        "source_product_id", "product-1", "quantity", new BigDecimal("2.0000"),
+                        "base_price", new BigDecimal("6.0000"), "total_price", new BigDecimal("12.00"),
+                        "cost", new BigDecimal("4.0000"), "tax", new BigDecimal("1.09")))));
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+
+        var result = controller.nativeData("token", "skr", "sale_items", 1, 100);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) result.data().get("data");
+        assertEquals(1, rows.size());
+        assertEquals("sale-1", rows.get(0).get("external_sale_id"));
+        assertEquals("line-1", rows.get(0).get("external_line_id"));
+        assertEquals("product-1", rows.get(0).get("source_product_id"));
+        verify(jdbc).queryForList(contains("FROM sale_item si JOIN sale s"), any(Object[].class));
     }
 
     @Test

@@ -1,3 +1,5 @@
+import { naturalCompare } from "./natural-sort.ts";
+
 /** Shopfront-aligned Purchase report column keys (Orithos native ledger). */
 export const PURCHASE_REPORT_COLUMNS = [
   { key: "name", label: "Name" },
@@ -98,15 +100,13 @@ export function sortPurchaseRows(
   return [...rows].sort((left, right) => {
     const a = sortValue(left, sortBy);
     const b = sortValue(right, sortBy);
-    if (a == null && b == null) return left.name.localeCompare(right.name);
+    if (a == null && b == null) return naturalCompare(left.name, right.name) || naturalCompare(left.id, right.id);
     if (a == null) return 1;
     if (b == null) return -1;
-    if (typeof a === "string" && typeof b === "string") {
-      const cmp = a.localeCompare(b);
-      return cmp === 0 ? left.name.localeCompare(right.name) : cmp * factor;
-    }
-    const cmp = Number(a) - Number(b);
-    return cmp === 0 ? left.name.localeCompare(right.name) : cmp * factor;
+    const cmp = naturalCompare(a, b);
+    return cmp === 0
+      ? naturalCompare(left.name, right.name) || naturalCompare(left.id, right.id)
+      : cmp * factor;
   });
 }
 

@@ -62,6 +62,31 @@ test("sortPurchaseRows orders by total cost descending with nulls last", () => {
   assert.equal(sorted[1].name, "Demo Outlet");
 });
 
+test("sortPurchaseRows defaults name values to natural ascending order with stable ids", () => {
+  const rows = [
+    { ...rowsTemplate("Item 10", 10), id: 3 },
+    { ...rowsTemplate("Item 2", 2), id: 2 },
+    { ...rowsTemplate("item 2", 1), id: 1 },
+  ];
+  assert.deepEqual(sortPurchaseRows(rows, "name", "asc").map((row) => row.id), [1, 2, 3]);
+});
+
+function rowsTemplate(name: string, orderCount: number): PurchaseReportRow {
+  return {
+    name,
+    orderCount,
+    totalCost: 0,
+    fees: null,
+    freight: null,
+    paymentFees: null,
+    taxAmount: null,
+    feesAvailable: false,
+    freightAvailable: false,
+    paymentFeesAvailable: false,
+    taxAvailable: false,
+  };
+}
+
 test("purchaseFooterTotals sums available money fields only", () => {
   const totals = purchaseFooterTotals(rows);
   assert.equal(totals.orderCount, 15);

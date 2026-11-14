@@ -92,6 +92,8 @@ export function NativeSalesHistoryPage({
     return () => controller.abort();
   }, [from, to, revision]);
 
+  const sortedRows = useMemo(() => [...rows].sort((a, b) => a.date.localeCompare(b.date)), [rows]);
+
   const totals = useMemo(() => rows.reduce((acc, row) => ({
     salesAmount: acc.salesAmount + Number(row.salesAmount),
     refundAmount: acc.refundAmount + Number(row.refundAmount),
@@ -147,7 +149,7 @@ export function NativeSalesHistoryPage({
             <tr>{["Business date", "Sales tx", "Refund tx", "Sales", "Refunds", "Net", "Tax"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
-            {rows.map((row) => (
+            {sortedRows.map((row) => (
               <tr key={row.date}>
                 <td className="px-3 py-2">{row.date}</td>
                 <td className="px-3 py-2">{Number(row.salesTransactions).toLocaleString("en-AU")}</td>

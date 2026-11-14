@@ -157,7 +157,6 @@ function CustomerHomePanel({
           onRetry={onRetry}
         >
           <ListTable
-            defaultSort={false}
             columns={[
               { label: "Timestamp", width: "w-[180px]" },
               { label: "User", width: "w-[140px]" },
@@ -221,7 +220,6 @@ function CustomerStatementModal({
         </div>
 
         <ListTable
-          defaultSort={false}
           columns={[
             { label: "Date", width: "w-[160px]" },
             { label: "Description" },
@@ -333,7 +331,6 @@ function CustomerBalancePanel({
           onRetry={onRetrySales}
         >
           <ListTable
-            defaultSort={false}
             columns={[
               { label: "Invoice", width: "w-[140px]" },
               { label: "Date", width: "w-[180px]" },
@@ -360,7 +357,6 @@ function CustomerBalancePanel({
           onRetry={onRetryPayments}
         >
           <ListTable
-            defaultSort={false}
             columns={[
               { label: "Date", width: "w-[180px]" },
               { label: "Method", width: "w-[120px]" },
@@ -417,7 +413,6 @@ function CustomerRevisionPanel({
       onRetry={onRetry}
     >
       <ListTable
-        defaultSort={false}
         columns={[
           { label: "Date", width: "w-[180px]" },
           { label: "User", width: "w-[140px]" },

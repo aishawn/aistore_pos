@@ -14,6 +14,7 @@ public class Sale {
     private String status;
     private BigDecimal totalPrice;
     private BigDecimal totalTax;
+    private BigDecimal totalDiscount;
     private BigDecimal totalRounding;
     private BigDecimal outstanding;
     private BigDecimal totalChange;

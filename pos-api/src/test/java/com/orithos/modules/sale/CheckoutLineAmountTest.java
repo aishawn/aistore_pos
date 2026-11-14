@@ -36,11 +36,13 @@ class CheckoutLineAmountTest {
     }
 
     @Test
-    void retryIdentityIgnoresClientPriceFields() {
+    void retryIdentityIncludesQuotedPriceButIgnoresClientLineTotal() {
         CheckoutRequest first = request("4.50", "9.00");
-        CheckoutRequest retry = request("0.01", "0.02");
+        CheckoutRequest sameQuote = request("4.50", "0.02");
+        CheckoutRequest changedQuote = request("4.51", "9.02");
 
-        assertEquals(service.requestHash(first), service.requestHash(retry));
+        assertEquals(service.requestHash(first), service.requestHash(sameQuote));
+        assertNotEquals(service.requestHash(first), service.requestHash(changedQuote));
     }
 
     @Test

@@ -578,7 +578,7 @@ type RetailPaymentMethodAssignment = {
 type NativeQuoteSignature = {
   expectedTotal: number;
   expectedGst: number;
-  lines: Array<{ productId: number; quantity: number; unitPrice: number; lineTotal: number; expectedTaxRate: number; name: string }>;
+  lines: Array<{ productId: number; quantity: number; unitPrice: number; discountPercent: number; lineTotal: number; expectedTaxRate: number; name: string }>;
 };
 
 function encodeQuoteSignature(quote: NativeQuoteSignature): string {
@@ -608,6 +608,7 @@ function mapCheckoutQuote(native: CheckoutQuote): OdooCheckoutQuote {
     quantity: Number(line.quantity),
     uomFactor: 1,
     unitPrice: Number(line.unitPrice),
+    discountPercent: Number(line.discountPercent ?? 0),
     priceSource: "orithos",
     subtotal: Number(line.total) - Number(line.gst),
     tax: Number(line.gst),
@@ -620,6 +621,7 @@ function mapCheckoutQuote(native: CheckoutQuote): OdooCheckoutQuote {
       productId: Number(line.productId),
       quantity: Number(line.quantity),
       unitPrice: Number(line.unitPrice),
+      discountPercent: Number(line.discountPercent ?? 0),
       lineTotal: Number(line.total),
       expectedTaxRate: Number(line.taxRate),
       name: line.name,
@@ -767,6 +769,7 @@ async function postOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckou
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,
         expectedTaxRate: line.expectedTaxRate,
+        discountPercent: line.discountPercent,
       })),
     });
     const saleId = Number(result.saleId);
@@ -819,6 +822,7 @@ export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "config
         quantity: line.quantity * (line.uomFactor && line.uomFactor > 0 ? line.uomFactor : 1),
         unitPrice: 0,
         lineTotal: 0,
+        discountPercent: line.discountPercent || 0,
       })),
     });
     return mapCheckoutQuote(native);
