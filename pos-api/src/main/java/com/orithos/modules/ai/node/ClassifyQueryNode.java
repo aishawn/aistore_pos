@@ -158,6 +158,16 @@ public class ClassifyQueryNode implements NodeAction {
                     "This custom report is not available yet.",
                     Map.of(), "", "", "", "");
         }
+        if (ReportAdhocRouter.containsSqlMutation(question)
+                && !ReportAdhocRouter.isRawSqlStatement(question)
+                && (WorkflowRouteRouter.hasWriteIntent(question)
+                || question.matches("(?is).*(?:删除|清空|销毁|修改|插入|更新).*(?:数据库|数据表|表|数据).*" )
+                || question.matches("(?is).*(?:delete|drop|truncate|alter|insert|update).*(?:database|table|data).*"))) {
+            log.info("Mixed natural-language SQL mutation request kept in guided flow");
+            String writeRoute = resolveGuidedActionRoute(question, null, optionalString(state, "ui_surface"));
+            return guidedActionResult(question, writeRoute,
+                    "/stock/replenishment".equals(writeRoute), "/stock/capped-pricing".equals(writeRoute));
+        }
         String lastIntent = optionalString(state, "last_intent");
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
         String conversationHistory = optionalString(state, "conversation_history");

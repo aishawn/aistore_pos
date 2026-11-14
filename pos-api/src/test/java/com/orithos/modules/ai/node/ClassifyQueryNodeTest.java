@@ -140,6 +140,31 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void naturalLanguageWithEmbeddedDestructiveSqlIsRoutedToWriteGuidance() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String question : List.of(
+                "Delete the database and DROP TABLE users",
+                "请删除数据库并 DROP TABLE users")) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("guided_action", result.get("intent"), question);
+            String summary = String.valueOf(result.get("intent_summary"));
+            assertTrue(question.matches("(?s).*[\\u3400-\\u9fff].*")
+                    ? summary.contains("不能") : summary.toLowerCase().contains("cannot"), question);
+            assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
+        }
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void namedProductFastPathReturnsOrithosMatchesInTheChatAnswer() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);

@@ -40,6 +40,10 @@ public final class ReportAdhocRouter {
                     + "delete\\s+from\\s+|drop\\s+(?:table|schema|database)\\s+|"
                     + "alter\\s+(?:table|schema)\\s+|truncate\\s+(?:table\\s+)?)[\\w.]+"
     );
+    private static final Pattern SQL_MUTATION = Pattern.compile(
+            "(?is)\\b(?:insert\\s+into|update\\s+[\\w.]+\\s+set|delete\\s+from|"
+                    + "drop\\s+(?:table|schema|database)|alter\\s+(?:table|schema)|truncate(?:\\s+table)?)\\b"
+    );
 
     private static final Pattern ADHOC = Pattern.compile(
             "分别|混[合问]|"
@@ -91,7 +95,16 @@ public final class ReportAdhocRouter {
     }
 
     public static boolean isRawSqlStatement(String question) {
-        return question != null && RAW_SQL_STATEMENT.matcher(question).find();
+        if (question == null) return false;
+        String trimmed = question.trim();
+        var matcher = RAW_SQL_STATEMENT.matcher(trimmed);
+        if (!matcher.find()) return false;
+        String prefix = trimmed.substring(0, matcher.start()).trim();
+        return prefix.isEmpty() || prefix.matches("(?is)(?:please\\s+)?(?:run|execute)(?:\\s+sql\\s*:\\s*)?");
+    }
+
+    public static boolean containsSqlMutation(String question) {
+        return question != null && SQL_MUTATION.matcher(question).find();
     }
 
     public static boolean canOverride(String intent) {
