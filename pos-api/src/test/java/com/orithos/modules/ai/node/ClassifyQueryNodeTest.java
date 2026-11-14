@@ -122,6 +122,24 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void rawDeleteStatementIsRejectedBeforeWriteIntentGuidance() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("DELETE FROM sale"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("report_adhoc", result.get("intent"));
+        assertEquals("", result.get("ui_route"));
+        assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void namedProductFastPathReturnsOrithosMatchesInTheChatAnswer() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
@@ -413,7 +431,7 @@ class ClassifyQueryNodeTest {
                 {"SELECT * FROM sale", "report_adhoc"},
                 {"Run SQL: SELECT id FROM product WHERE outlet_id = 1", "report_adhoc"},
                 {"DROP TABLE sale", "report_adhoc"},
-                {"DELETE FROM sale WHERE 1=1", "guided_action"}
+                {"DELETE FROM sale WHERE 1=1", "report_adhoc"}
         }) {
             OverAllState state = mock(OverAllState.class);
             when(state.value("question", String.class)).thenReturn(Optional.of(sample[0]));
@@ -428,6 +446,24 @@ class ClassifyQueryNodeTest {
             assertEquals(false, Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), sample[0]);
         }
 
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void naturalLanguageDeleteRequestStaysInNonWritingGuidedFlow() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("Delete all sales"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("guided_action", result.get("intent"));
+        assertEquals("/", result.get("ui_route"));
+        assertEquals("", result.get("ui_action"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

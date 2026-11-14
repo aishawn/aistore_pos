@@ -78,7 +78,7 @@ public final class ReportAdhocRouter {
         if (TICKET_COUNT.matcher(q).find()) {
             return false;
         }
-        if (RAW_SQL_STATEMENT.matcher(question).find()) {
+        if (isRawSqlStatement(question)) {
             return true;
         }
         // Exactly two explicit dates with one supported sales metric use the
@@ -88,6 +88,10 @@ public final class ReportAdhocRouter {
             return false;
         }
         return ADHOC.matcher(q).find();
+    }
+
+    public static boolean isRawSqlStatement(String question) {
+        return question != null && RAW_SQL_STATEMENT.matcher(question).find();
     }
 
     public static boolean canOverride(String intent) {

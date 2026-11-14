@@ -151,6 +151,13 @@ public class ClassifyQueryNode implements NodeAction {
             result.put("fast_path_id", "prompt_injection");
             return result;
         }
+        if (ReportAdhocRouter.isRawSqlStatement(question)) {
+            log.info("Raw SQL request rejected before write-intent routing");
+            return shortcutResult(
+                    "report_adhoc",
+                    "This custom report is not available yet.",
+                    Map.of(), "", "", "", "");
+        }
         String lastIntent = optionalString(state, "last_intent");
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
         String conversationHistory = optionalString(state, "conversation_history");
