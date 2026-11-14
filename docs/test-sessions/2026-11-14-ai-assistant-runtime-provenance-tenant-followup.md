@@ -5,8 +5,9 @@ Date: 2026-11-14 (Asia/Shanghai)
 ## Source and runtime
 
 - Repository: `aishawn/aistore_pos`.
-- Source candidate: `acda19240294e95f25c78fd2fc36200c8fe7ef28`.
-- SKR and Demo frontend/backend runtime: `acda19240294e95f25c78fd2fc36200c8fe7ef28`.
+- Source candidate at report update: `6b0b51af01faccb15f073d6f2c043ae83986ca3b`.
+- The original 30-case report/provenance batch used runtime `acda19240294e95f25c78fd2fc36200c8fe7ef28`.
+- A later runtime identity probe and the 47-case inventory batch verified both SKR and Demo frontend/backend at `6b0b51af01faccb15f073d6f2c043ae83986ca3b`.
 - Online questions used the authenticated assistant API and read-only report endpoints. No POS business writes were requested.
 
 ## Results
@@ -22,15 +23,18 @@ Date: 2026-11-14 (Asia/Shanghai)
 - Focused `AiAssistantControllerTest` passed 4/4 and `assistant-provenance.test.ts` passed 15/15 on the candidate source.
 - The maintenance checkout's UI unit suite passed 222/222 and typecheck passed, but that checkout was dirty at `011f0563`; these are not exact-candidate results. The clean candidate UI full suite was blocked at 220/221 because its isolated install lacked the `redis` package. The provenance-focused test passed on the candidate.
 - The current candidate's AI provenance/history UI helpers and tests contain no Odoo source constants or obsolete Odoo provenance assertions.
+- A further SKR run selected 47 inventory/quantity/AOV/dead-stock/stock-value utterances from the 402-case catalog. All 47 passed their route/slot and applicable answer assertions; all used deterministic paths, `llmFallback=false`, and `writeRequests=[]`. Median assistant latency was 376 ms and maximum was 2,304 ms. Runtime identity matched the source candidate.
+- Focused Java regression for the pasted `AiAssistantControllerTest.assistantResponseExposesAuthoritativeReportMetadata` failure passes 4/4 on this source. The current test verifies the expanded history call including provenance fields; the pasted log shows the older seven-argument expectation and is not reproducible on this candidate.
 - `python scripts/check-project-docs.py` remains blocked by 86 missing/invalid entries in the partially available fact library, including baseline README/evidence files and older session links. The new session link itself resolves in this checkout.
 
 ## Limits and remaining work
 
-- The online runner reports overall `BLOCKED` because only 30 of 402 catalog entries were selected. Full catalog acceptance remains open.
+- The online runner reports overall `BLOCKED` because only 47 of 402 catalog entries were selected in the latest batch. Full catalog acceptance remains open.
+- The 47-case inventory batch verifies intent, product query extraction, safe no-match behavior, and general answer shape. It does not compare each returned stock quantity with an independent authoritative inventory snapshot; stock-value and dead-stock totals also need source-level reconciliation before numeric correctness can be claimed.
 - The online test surface reports `estimatedTokensOnly`; provider billing in AUD cannot be independently verified. This batch had zero observed model fallback, but no invoice-level cost evidence was available.
 - The history probe crossed stores, not user accounts within one store. Cross-user ownership regressions are covered by backend mapper/service tests; an online second-user credential was not available for a same-store identity probe.
 - Existing local browser evidence for history, clear-chat, voice success/failure, and cancel/retry uses intercepted API fixtures. Real microphone/ASR behavior, live durable-history restoration, and server-side cancellation remain separate acceptance items.
-- Evidence JSON is stored under the candidate's ignored `.local/ai-eval/` directory as `metadata-30-skr-acda.json`, `metadata-30-demo-acda.json`, `deterministic-10-skr-acda.json`, and `deterministic-10-demo-acda.json`.
+- Evidence JSON is stored under the candidate's ignored `.local/ai-eval/` directory, including the latest `inventory-47-correct-skr-6b0b51af.json`. An earlier exploratory selection used an overbroad temporary filter and is excluded from results.
 - No POS sales, inventory, purchasing, pricing, invoice, or other business write was performed.
 
 ## Status

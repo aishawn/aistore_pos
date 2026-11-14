@@ -43,7 +43,9 @@
 
 ## 验证闭环
 
-2026-11-14 当前部署继续验收：源码与 SKR/Demo 前后端一致为 `acda19240294e95f25c78fd2fc36200c8fe7ef28`。在线目录共 402 个唯一话术；其中报表来源/状态/期间/时区与权威数据核对的 30 条在 SKR、Demo 均 30/30 通过，全部 deterministic、`llmFallback=false`、`writeRequests=[]`，延迟中位数分别 374ms/395ms。跨店请求伪造 tenant/outlet 参数检查 10/10 通过；SKR 既有会话在 Demo 上用数字 ID 与 session key 查询均返回 `40410`，无新建记录；本店现存会话恢复 2 条消息且来源/期间/时区/状态等 8 个元数据字段均存在。AI controller 定向测试 4/4、provenance UI 定向测试 15/15 通过。线上目录整体仍 BLOCKED：仅运行 30/402；provider 计费金额不可读取，真实麦克风/ASR 和服务端取消仍未全量验收。详见[本轮 session](../../../../test-sessions/2026-11-14-ai-assistant-runtime-provenance-tenant-followup.md)。
+2026-11-14 当前部署继续验收：最初 30 条报表来源/状态/期间/时区及权威数据核对在 SKR、Demo 均 30/30 通过（当时 runtime 为 `acda19240294e95f25c78fd2fc36200c8fe7ef28`），全部 deterministic、`llmFallback=false`、`writeRequests=[]`，延迟中位数分别 374ms/395ms。后续复核两店前后端 runtime 为 `6b0b51af01faccb15f073d6f2c043ae83986ca3b`。跨店请求伪造 tenant/outlet 参数检查 10/10 通过；SKR 既有会话在 Demo 上用数字 ID 与 session key 查询均返回 `40410`，无新建记录；本店现存会话恢复 2 条消息且来源/期间/时区/状态等 8 个元数据字段均存在。AI controller 定向测试 4/4、provenance UI 定向测试 15/15 通过。线上目录整体仍 BLOCKED：仅运行部分用例；provider 计费金额不可读取，真实麦克风/ASR 和服务端取消仍未全量验收。详见[本轮 session](../../../../test-sessions/2026-11-14-ai-assistant-runtime-provenance-tenant-followup.md)。
+
+2026-11-14 追加 SKR 库存类话术 47/47：库存 38、销量 2、客单价/笔数 4、滞销 2、库存金额 1；路由/商品槽位及适用的回答断言通过，全部 deterministic、`llmFallback=false`、`writeRequests=[]`，中位数 376ms，最高 2,304ms。SKR/Demo 当前前后端 runtime 实测均为 `6b0b51af`，与候选一致。该批仅验证意图/槽位和回答形态，没有将库存数量、滞销名单及库存金额逐项对账权威库存快照；完整目录和数值准确性仍开放。粘贴日志中的 controller 测试旧参数断言在当前候选定向回归 4/4 通过，不再复现。详见[本轮 session](../../../../test-sessions/2026-11-14-ai-assistant-runtime-provenance-tenant-followup.md)。
 
 2026-11-13 本轮高频话术迭代：补充“昨天营业额怎么样”等中文及英文口语表述；历史元数据测试改用 Orithos 当前来源，不再构造 `legacy_source` / `other_store`。UI 全量单测 207/207 PASS、typecheck PASS；Java router 独立编译及 JShell 行为探测 9 条正例、3 条歧义/提示注入负例 PASS。部署 SHA `584672d7` 后，SKR 与 Demo 各 9/9 个昨日销售问法及 1/1 个提示注入用例 PASS，`writeRequests=[]`；数据对账见 session。UAT runner 整体状态仍为 BLOCKED，因为本地工作树包含无关未提交改动；Maven JUnit 也被本地未提交采购报表服务编译错误阻断，未进入测试阶段。线上 provider 调用计数/费用端点未提供，但本批所有销售与注入请求均为 deterministic、`llmFallback=false`。详见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
 
