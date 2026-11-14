@@ -2191,6 +2191,7 @@ public class ShopfrontIntegrationController {
         int created = 0;
         int updated = 0;
         int skipped = 0;
+        int unpriced = 0;
         if ("products".equals(type)) {
             com.fasterxml.jackson.databind.node.ArrayNode eligible = objectMapper.createArrayNode();
             for (JsonNode item : items) {
@@ -2228,6 +2229,7 @@ public class ShopfrontIntegrationController {
                 for (JsonNode item : importable) {
                     String sourceId = text(item, "source_id");
                     try {
+                        if (!hasValidCataloguePrice(item)) unpriced++;
                         Long resolvedProductId = plan.productIds().get(sourceId);
                         String productName = reserveUniqueProductName(
                                 text(item, "name"), sourceId, resolvedProductId, batch.reservedProductNames);
@@ -2310,6 +2312,7 @@ public class ShopfrontIntegrationController {
         result.put("created", created);
         result.put("updated", updated);
         result.put("skipped", skipped);
+        if ("products".equals(type)) result.put("unpriced", unpriced);
         result.put("errors", errors);
         return result;
     }
@@ -2918,7 +2921,6 @@ public class ShopfrontIntegrationController {
         String sourceId = text(item, "source_id");
         String name = text(item, "name");
         BigDecimal caseQuantity = effectiveCaseQuantity(item);
-        BigDecimal price = decimal(item, "price");
         String taxRateName = effectiveTaxRateName(item, "tax_rate_name");
         String sourceStatus = text(item, "source_status");
         if (sourceId == null || sourceId.isBlank() || name == null || name.isBlank()) {
@@ -2926,10 +2928,6 @@ public class ShopfrontIntegrationController {
         }
         if (caseQuantity == null || caseQuantity.signum() <= 0) {
             throw new IllegalArgumentException("Product " + sourceId + " has no valid case quantity");
-        }
-        if ((price == null || price.signum() < 0) && !hasUnitPrice(item)
-                && !hasPackagePriceForBarcodeQuantity(item)) {
-            throw new IllegalArgumentException("Product " + sourceId + " has no valid shelf price");
         }
         if (taxRateName == null || taxRateName.isBlank()) {
             throw new IllegalArgumentException("Product " + sourceId + " has no mapped GST rate");
@@ -3317,14 +3315,15 @@ public class ShopfrontIntegrationController {
         if (!originalKey.isBlank()) taxRates.put(originalKey, taxRateId);
     }
 
-    private boolean hasUnitPrice(JsonNode item) {
+    private boolean hasValidCataloguePrice(JsonNode item) {
+        BigDecimal shelfPrice = decimal(item, "price");
+        if (shelfPrice != null && shelfPrice.signum() >= 0) return true;
         JsonNode prices = item.path("prices");
         if (!prices.isArray()) return false;
         for (JsonNode price : prices) {
             BigDecimal quantity = decimal(price, "quantity");
             BigDecimal value = decimal(price, "price");
-            if (quantity != null && quantity.compareTo(BigDecimal.ONE) == 0
-                    && value != null && value.signum() >= 0) return true;
+            if (quantity != null && quantity.signum() > 0 && value != null && value.signum() >= 0) return true;
         }
         return false;
     }
@@ -3572,6 +3571,18 @@ public class ShopfrontIntegrationController {
             prices.add(new Object[]{productId, BigDecimal.ONE, shelfPrice, null, outletId});
         }
         batch.pricesByProduct.put(productId, prices);
+    }
+
+    private boolean hasUnitPrice(JsonNode item) {
+        JsonNode prices = item.path("prices");
+        if (!prices.isArray()) return false;
+        for (JsonNode price : prices) {
+            BigDecimal quantity = decimal(price, "quantity");
+            BigDecimal value = decimal(price, "price");
+            if (quantity != null && quantity.compareTo(BigDecimal.ONE) == 0
+                    && value != null && value.signum() >= 0) return true;
+        }
+        return false;
     }
 
     private void collectProductBarcodes(long productId, JsonNode item, ProductImportBatch batch) {

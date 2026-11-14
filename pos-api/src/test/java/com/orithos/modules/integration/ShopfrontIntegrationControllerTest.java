@@ -747,7 +747,7 @@ class ShopfrontIntegrationControllerTest {
     }
 
     @Test
-    void businessProductImportRejectsMissingPriceAndDefaultsBlankTaxToGst() throws Exception {
+    void businessProductImportAllowsUnpricedCatalogRowsAndDefaultsBlankTaxToGst() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForList(contains("FROM tax_rate"), eq(Long.class), any(Object[].class)))
                 .thenReturn(List.of(7L));
@@ -763,11 +763,29 @@ class ShopfrontIntegrationControllerTest {
         validate.invoke(controller, mapper.readTree(
                 "{\"source_id\":\"p2\",\"name\":\"Product\",\"case_quantity\":6,\"price\":5,\"source_status\":\"ACTIVE\"}"),
                 48L, new java.util.HashMap<>());
-        InvocationTargetException failure = assertThrows(InvocationTargetException.class,
-                () -> validate.invoke(controller, mapper.readTree(
-                        "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}"),
-                        48L, new java.util.HashMap<>()));
-        org.junit.jupiter.api.Assertions.assertInstanceOf(IllegalArgumentException.class, failure.getCause());
+        validate.invoke(controller, mapper.readTree(
+                "{\"source_id\":\"p1\",\"name\":\"Product\",\"case_quantity\":6,\"tax_rate_name\":\"GST\",\"source_status\":\"ACTIVE\"}"),
+                48L, new java.util.HashMap<>());
+    }
+
+    @Test
+    void unpricedProductDoesNotCreateAFreeCataloguePrice() throws Exception {
+        var controller = new ShopfrontIntegrationController(mock(JdbcTemplate.class), new ObjectMapper(), "token", true, true);
+        Class<?> batchType = Class.forName(ShopfrontIntegrationController.class.getName() + "$ProductImportBatch");
+        Constructor<?> constructor = batchType.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        Object batch = constructor.newInstance();
+        Method collect = ShopfrontIntegrationController.class.getDeclaredMethod(
+                "collectProductPrices", long.class, com.fasterxml.jackson.databind.JsonNode.class, long.class, batchType);
+        collect.setAccessible(true);
+        collect.invoke(controller, 17L, new ObjectMapper().readTree("{\"price\":null,\"prices\":[]}"), 48L, batch);
+
+        java.lang.reflect.Field field = batchType.getDeclaredField("pricesByProduct");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Long, List<Object[]>> prices = (Map<Long, List<Object[]>>) field.get(batch);
+
+        assertTrue(prices.get(17L).isEmpty());
     }
 
     @Test
