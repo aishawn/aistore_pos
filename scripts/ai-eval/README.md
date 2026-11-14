@@ -72,8 +72,11 @@ be a command or write endpoint. A failed or unavailable endpoint is reported as
 `BLOCKED`, never as `PASS`.
 
 For live dynamic product checks, use `run-skr-live.mjs` with the generated
-JSONL. It checks the runtime SHA, intent, route, product query and empty
-`writeRequests`, with exponential retry for transient 502/503/504 responses.
+JSONL. A case passes only when the source and runtime SHAs match, the intent,
+route and product query match, the route is deterministic with no model
+fallback, and `writeRequests` is explicitly empty. Transient 502/503/504
+responses receive bounded exponential retries; an SHA mismatch or unavailable
+runtime is `BLOCKED`, never a pass.
 
 ## SKR forecast history (read-only)
 

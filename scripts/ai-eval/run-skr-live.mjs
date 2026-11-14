@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
+import { assistantFastPathSafety } from "./assistant-assertions.mjs";
 
 const base = (process.env.SKR_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
 const username = process.env.SKR_USERNAME || "shawn";
@@ -10,12 +11,12 @@ const casesPath = process.env.SKR_CASES || ".local/skr-utterances-fixed.jsonl";
 const outputPath = process.env.SKR_EVAL_OUTPUT || ".local/skr-live-eval.json";
 const limit = Number.parseInt(process.env.SKR_CASE_LIMIT || "30", 10);
 
-function writeBlocked(reason, error = null) {
+function writeBlocked(reason, error = null, observedRuntimeCommit = null) {
   const output = {
     generatedAt: new Date().toISOString(),
     target: base,
     sourceCommit: process.env.SKR_SOURCE_COMMIT || "unknown",
-    runtimeCommit: null,
+    runtimeCommit: observedRuntimeCommit,
     sourceRuntimeMatch: false,
     catalogPath: casesPath,
     selectedCount: 0,
@@ -69,6 +70,12 @@ const versionResponse = await request("GET", `${base}/api/public/version`);
 const version = await versionResponse.json().catch(() => ({}));
 const runtimeCommit = version.backend?.commit ?? version.backend?.sourceCommit ?? null;
 const sourceRuntimeMatch = typeof runtimeCommit === "string" && runtimeCommit === sourceCommit;
+if (!sourceRuntimeMatch) {
+  await browser.close();
+  writeBlocked("SOURCE_RUNTIME_MISMATCH", null, runtimeCommit);
+  process.exitCode = 2;
+  process.exit();
+}
 const maxAttempts = Math.min(8, Math.max(1, Number.parseInt(process.env.SKR_MAX_ATTEMPTS || "5", 10)));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const results = [];
@@ -99,6 +106,11 @@ for (const testCase of cases) {
   const route = data.ui?.route ?? null;
   const query = data.slots?.query ?? null;
   const writes = Array.isArray(data.writeRequests) ? data.writeRequests : null;
+  const safety = assistantFastPathSafety({
+    source: data.source,
+    llmFallback: data.llmFallback,
+    writeRequests: writes,
+  });
   const expectedIntent = expected.intent;
   const intentPass = Array.isArray(expectedIntent) ? expectedIntent.includes(data.intent) : data.intent === expectedIntent;
   const routePass = expected.route === undefined || (expected.route === null ? route === null : route === expected.route);
@@ -108,7 +120,9 @@ for (const testCase of cases) {
   results.push({
     id: testCase.id,
     question: testCase.question,
-    status: unavailable ? "BLOCKED" : intentPass && routePass && queryPass && noWrites ? "PASS" : "FAIL",
+    status: !sourceRuntimeMatch || unavailable ? "BLOCKED"
+      : intentPass && routePass && queryPass && noWrites
+        && safety.deterministicRoute && safety.writeSafety ? "PASS" : "FAIL",
     attempts,
     httpStatus: response?.status() ?? null,
     intent: data.intent ?? null,
@@ -117,14 +131,19 @@ for (const testCase of cases) {
     expectedRoute: expected.route ?? null,
     query,
     expectedQuery: expected.entities?.product ?? null,
+    source: data.source ?? null,
+    fastPathId: data.fastPathId ?? null,
+    llmFallback: data.llmFallback ?? null,
+    deterministicRoute: safety.deterministicRoute,
     writeRequests: writes,
+    writeSafety: safety.writeSafety,
     error: error?.message ?? null,
   });
 }
 const summary = {
   PASS: results.filter((item) => item.status === "PASS").length,
   FAIL: results.filter((item) => item.status === "FAIL").length,
-  BLOCKED: results.filter((item) => item.status === "BLOCKED").length,
+  BLOCKED: results.filter((item) => item.status === "BLOCKED").length + (sourceRuntimeMatch ? 0 : 1),
 };
 const output = {
   generatedAt: new Date().toISOString(),
@@ -143,3 +162,4 @@ fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
 console.log(JSON.stringify({ outputPath, sourceRuntimeMatch, ...summary }, null, 2));
 await browser.close();
 if (summary.FAIL > 0) process.exitCode = 1;
+else if (summary.BLOCKED > 0) process.exitCode = 2;

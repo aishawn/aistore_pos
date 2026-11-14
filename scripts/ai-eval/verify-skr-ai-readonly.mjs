@@ -1,6 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  replenishmentCardAcceptance,
+  assistantTraceability,
+  readOnlyApiAcceptanceStatus,
+} from "./assistant-assertions.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const envPath = process.env.SKR_ENV_FILE || path.join(root, ".env");
@@ -39,7 +44,9 @@ async function api(pathname, method = "GET", body) {
       signal: controller.signal,
     });
     const result = { status: response.status, body: await response.json().catch(() => ({})) };
-    if (!response.ok) apiFailures.push({ path: pathname, status: response.status, code: result.body.code ?? null });
+    if (!response.ok || (result.body.code !== undefined && result.body.code !== 0)) {
+      apiFailures.push({ path: pathname, status: response.status, code: result.body.code ?? null });
+    }
     return result;
   } finally {
     clearTimeout(timer);
@@ -73,6 +80,15 @@ function unwrap(body) {
     return body.data ?? body;
   }
   return body;
+}
+
+function safelyUnwrap(body) {
+  try {
+    return { data: unwrap(body), errorCode: null };
+  } catch (error) {
+    const code = /^API_CODE_(\d+)$/.exec(error instanceof Error ? error.message : "")?.[1];
+    return { data: null, errorCode: code ? Number(code) : null };
+  }
 }
 
 function assistantSummary(result) {
@@ -183,12 +199,26 @@ try {
     }),
     api("/api/ai/forecast/risks?horizonDays=7", "POST"),
   ]);
-  const replenishment = unwrap(replenishmentResult.body);
+  const replenishmentUnwrapped = safelyUnwrap(replenishmentResult.body);
+  const replenishment = replenishmentUnwrapped.data ?? {};
   const salesAssistant = assistantSummary(salesAssistantResult);
   const averageSaleAssistant = assistantSummary(averageSaleAssistantResult);
   const exactSalesAssistant = assistantSummary(exactSalesAssistantResult);
   const weeklySalesAssistant = assistantSummary(weeklySalesAssistantResult);
   const operationsAssistant = assistantSummary(operationsAssistantResult);
+  const replenishmentAssistantResult = await api("/api/ai/assistant", "POST", {
+    question: "What should I restock?", surface: "ai-eval-readonly",
+  });
+  const replenishmentAssistant = assistantSummary(replenishmentAssistantResult);
+  const replenishmentCard = replenishmentCardAcceptance(replenishmentAssistant);
+  replenishmentAssistant.acceptanceStatus = replenishmentAssistant.httpStatus >= 200
+    && replenishmentAssistant.httpStatus < 300 && replenishmentAssistant.code === 0
+    && replenishmentCard.passed
+    && Array.isArray(replenishmentAssistant.writeRequests)
+    && replenishmentAssistant.writeRequests.length === 0
+    ? "PASS" : replenishmentAssistant.httpStatus >= 200 && replenishmentAssistant.httpStatus < 300
+      ? "FAIL" : "BLOCKED";
+  replenishmentAssistant.cardAcceptance = replenishmentCard;
   operationsAssistant.acceptanceStatus = operationsAssistant.httpStatus >= 200
     && operationsAssistant.httpStatus < 300 && operationsAssistant.code === 0
     && operationsAssistant.intent === "navigate" && operationsAssistant.route === "/stock/replenishment"
@@ -214,19 +244,13 @@ try {
     const grossProfitMatch = reportData.costAvailable !== true ? null
       : amounts.some((amount) => Math.abs(amount - apiGrossProfit) < 0.005);
     const businessDateInAnswer = /\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+[A-Z][a-z]{2,8}\s+\d{4}\b/i.test(amountText);
-    const periodMatches = assistant.reportPeriodFrom === reportData.from && assistant.reportPeriodTo === reportData.to;
-    const timezoneMatches = assistant.reportTimeZone === reportData.timeZone;
-    const dataAvailable = assistant.reportDataStatus?.toLowerCase() === "available";
-    const sourceMatches = assistant.dataSource === "orithos";
-    const storeMatches = assistant.storeScope === "current_authenticated_store";
     const traceability = {
       dateOrRange: businessDateInAnswer,
-      dataAsOf: Boolean(assistant.dataAsOf),
-      storeScope: storeMatches,
-      dataSource: sourceMatches,
-      period: periodMatches,
-      timezone: timezoneMatches,
-      dataStatus: dataAvailable,
+      ...assistantTraceability(assistant, {
+        from: reportData.from,
+        to: reportData.to,
+        timeZone: reportData.timeZone,
+      }),
     };
     return {
       status: assistant.httpStatus >= 200 && assistant.httpStatus < 300 && assistant.code === 0
@@ -246,14 +270,11 @@ try {
   const averageSaleAmounts = [...averageSaleText.matchAll(/(?:AUD\s*)?\$?\s*([\d,]+\.\d{2})/gi)]
     .map((match) => Number(match[1].replaceAll(",", "")));
   const averageSaleMatch = averageSaleAmounts.some((amount) => Math.abs(amount - Number(report.averageSale)) < 0.005);
-  const averageSaleTraceability = {
-    period: averageSaleAssistant.reportPeriodFrom === report.from && averageSaleAssistant.reportPeriodTo === report.to,
-    timezone: averageSaleAssistant.reportTimeZone === report.timeZone,
-    dataStatus: averageSaleAssistant.reportDataStatus?.toLowerCase() === "available",
-    dataSource: averageSaleAssistant.dataSource === "orithos",
-    storeScope: averageSaleAssistant.storeScope === "current_authenticated_store",
-    dataAsOf: Boolean(averageSaleAssistant.dataAsOf),
-  };
+  const averageSaleTraceability = assistantTraceability(averageSaleAssistant, {
+    from: report.from,
+    to: report.to,
+    timeZone: report.timeZone,
+  });
   const averageSaleReconciliation = {
     status: averageSaleAssistant.httpStatus >= 200 && averageSaleAssistant.httpStatus < 300
       && averageSaleAssistant.code === 0 && averageSaleMatch
@@ -275,12 +296,11 @@ try {
     : exactExpectedAmounts.some((amount) => exactAnswerAmounts.some((answer) => Math.abs(amount - answer) < 0.005));
   const exactTraceability = {
     dateOrRange: exactAnswerText.includes(exactDate),
-    dataAsOf: Boolean(exactSalesAssistant.dataAsOf),
-    storeScope: exactSalesAssistant.storeScope === "current_authenticated_store",
-    dataSource: exactSalesAssistant.dataSource === "orithos",
-    period: exactSalesAssistant.reportPeriodFrom === exactDate && exactSalesAssistant.reportPeriodTo === exactDate,
-    timezone: exactSalesAssistant.reportTimeZone === "Australia/Adelaide",
-    dataStatus: exactSalesAssistant.reportDataStatus?.toLowerCase() === "available",
+    ...assistantTraceability(exactSalesAssistant, {
+      from: exactDate,
+      to: exactDate,
+      timeZone: "Australia/Adelaide",
+    }),
   };
   results = {
     generatedAt: new Date().toISOString(),
@@ -356,6 +376,7 @@ try {
       ...weeklyReconciliation,
     },
     operationsQuestion: operationsAssistant,
+    replenishmentQuestion: replenishmentAssistant,
     forecastApi: {
       httpStatus: replenishmentResult.status,
       status: replenishment.status ?? null,
@@ -364,10 +385,13 @@ try {
       stockoutAlertCount: Array.isArray(replenishment.stockoutAlerts) ? replenishment.stockoutAlerts.length : null,
       overstockAlertCount: Array.isArray(replenishment.overstockAlerts) ? replenishment.overstockAlerts.length : null,
       dataQualityAlertCount: Array.isArray(replenishment.dataQualityAlerts) ? replenishment.dataQualityAlerts.length : null,
-      acceptanceStatus: replenishmentResult.status === 200 && replenishment.status === "READ_ONLY"
+      acceptanceStatus: readOnlyApiAcceptanceStatus(
+        replenishmentResult.status,
+        replenishmentUnwrapped.errorCode,
+        replenishment.status === "READ_ONLY"
         && Array.isArray(replenishment.stockoutAlerts) && Array.isArray(replenishment.overstockAlerts)
-        && Array.isArray(replenishment.dataQualityAlerts) ? "PASS"
-        : replenishmentResult.status === 200 ? "FAIL" : "BLOCKED",
+        && Array.isArray(replenishment.dataQualityAlerts)),
+      errorCode: replenishmentUnwrapped.errorCode,
     },
     apiFailures,
   };
@@ -383,15 +407,18 @@ results.runtime.sourceRuntimeMatch = sourceRuntimeMatch;
 results.summary = {
   PASS: [results.salesQuestion.status, results.averageSaleQuestion.status,
     results.exactDateSalesQuestion.status, results.weeklySalesQuestion.status,
-    results.operationsQuestion.acceptanceStatus, results.forecastApi.acceptanceStatus]
+    results.operationsQuestion.acceptanceStatus, results.replenishmentQuestion.acceptanceStatus,
+    results.forecastApi.acceptanceStatus]
     .filter((status) => status === "PASS").length,
   FAIL: [results.salesQuestion.status, results.averageSaleQuestion.status,
     results.exactDateSalesQuestion.status, results.weeklySalesQuestion.status,
-    results.operationsQuestion.acceptanceStatus, results.forecastApi.acceptanceStatus]
+    results.operationsQuestion.acceptanceStatus, results.replenishmentQuestion.acceptanceStatus,
+    results.forecastApi.acceptanceStatus]
     .filter((status) => status === "FAIL").length,
   BLOCKED: [results.salesQuestion.status, results.averageSaleQuestion.status,
     results.exactDateSalesQuestion.status, results.weeklySalesQuestion.status,
-    results.operationsQuestion.acceptanceStatus, results.forecastApi.acceptanceStatus]
+    results.operationsQuestion.acceptanceStatus, results.replenishmentQuestion.acceptanceStatus,
+    results.forecastApi.acceptanceStatus]
     .filter((status) => status === "BLOCKED").length
     + (sourceRuntimeMatch ? 0 : 1)
     + (results.reportApi.httpStatus === 200 && results.reportApi.lastWeek.httpStatus === 200 ? 0 : 1),
@@ -450,6 +477,11 @@ console.log(JSON.stringify({
     route: results.operationsQuestion.route,
     writeRequests: results.operationsQuestion.writeRequests,
   },
+  replenishmentQuestion: {
+    acceptanceStatus: results.replenishmentQuestion.acceptanceStatus,
+    intent: results.replenishmentQuestion.intent,
+    cardAcceptance: results.replenishmentQuestion.cardAcceptance,
+  },
   forecast: {
     status: results.forecastApi.httpStatus,
     responseStatus: results.forecastApi.status,
@@ -461,5 +493,5 @@ console.log(JSON.stringify({
   },
   apiFailureCount: results.apiFailures.length,
 }, null, 2));
-if (results.summary.FAIL > 0 || results.apiFailures.length > 0) process.exitCode = 1;
-else if (results.summary.BLOCKED > 0) process.exitCode = 2;
+if (results.summary.FAIL > 0) process.exitCode = 1;
+else if (results.summary.BLOCKED > 0 || results.apiFailures.length > 0) process.exitCode = 2;

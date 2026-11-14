@@ -459,7 +459,7 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
-    void keepsPartialReplenishmentSuggestionsReadyWhenExcludedItemsHaveSupplierGaps() {
+    void marksPartialReplenishmentSuggestionsForReviewWhenItemsHaveSupplierGaps() {
         for (String[] sample : new String[][]{
                 {"What should I restock?", "Top restock suggestions (21d cover): 3 items need order.\n"
                         + "Source: Orithos inventory and sales ledger.\n\n"
@@ -475,11 +475,51 @@ class PosAssistantGraphServiceCardTest {
                     new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
                     sample[1], sample[0]).getFirst();
 
-            assertEquals("ready", card.status(), sample[1]);
+            assertEquals("partial", card.status(), sample[1]);
             assertEquals(false, card.retryable(), sample[1]);
             assertEquals(1, card.items().size(), sample[1]);
+            assertTrue(card.summary().contains("supplier unavailable"), sample[1]);
+            assertTrue(card.summary().contains("Orithos"), sample[1]);
             assertEquals("VB Cans — " + (sample[0].contains("给我") ? "建议订购 24" : "order 24"),
                     card.items().getFirst().get("label"), sample[1]);
+        }
+    }
+
+    @Test
+    void marksIncompleteReplenishmentWithoutSuggestionsForReviewRatherThanServiceUnavailable() {
+        for (String[] sample : new String[][]{
+                {"What should I restock?", "Replenishment data is incomplete, so no quantities were generated: "
+                        + "supplier details are missing. Manual review is required."},
+                {"给我补货建议", "补货建议数据不完整，暂不生成数量：供应商资料缺失。已转人工审核。"}
+        }) {
+            AssistantCard card = PosAssistantGraphService.cardsFor(
+                    "navigate",
+                    new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
+                    sample[1], sample[0]).getFirst();
+
+            assertEquals("partial", card.status(), sample[1]);
+            assertEquals(false, card.retryable(), sample[1]);
+            assertTrue(card.items().isEmpty(), sample[1]);
+        }
+    }
+
+    @Test
+    void marksMissingSalesHistoryAsEmptyInsteadOfReady() {
+        for (String[] sample : new String[][]{
+                {"What should I restock?", "No verifiable sales history is available for this period, "
+                        + "so no replenishment quantities were generated."},
+                {"给我补货建议", "所选期间没有可验证的销售历史，未生成补货数量。"}
+        }) {
+            AssistantCard card = PosAssistantGraphService.cardsFor(
+                    "navigate",
+                    new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
+                    sample[1], sample[0]).getFirst();
+
+            assertEquals("empty", card.status(), sample[1]);
+            assertEquals(false, card.retryable(), sample[1]);
+            assertTrue(card.items().isEmpty(), sample[1]);
+            assertEquals(sample[1], card.summary());
+            assertEquals(null, card.emptyReason());
         }
     }
 

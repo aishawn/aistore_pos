@@ -271,12 +271,22 @@ public class PosAssistantGraphService {
         String lower = text.toLowerCase(java.util.Locale.ROOT);
         List<Map<String, Object>> parsedItems = cardItems(type, answer);
         boolean hasPartialReplenishmentResults = "replenishment".equals(type) && !parsedItems.isEmpty();
+        boolean incompleteReplenishment = "replenishment".equals(type)
+                && (lower.contains("some items were excluded because data is missing")
+                || lower.contains("replenishment data is incomplete")
+                || lower.contains("data gaps:")
+                || lower.contains("部分商品因数据缺失未纳入建议")
+                || lower.contains("补货建议数据不完整")
+                || lower.contains("数据缺口："));
+        boolean missingReplenishmentSalesHistory = "replenishment".equals(type)
+                && (lower.contains("no verifiable sales history")
+                || lower.contains("没有可验证的销售历史"));
         boolean unavailable = "stock_history".equals(type)
                 || answer == null || answer.isBlank()
                 || lower.contains("timeout") || lower.contains("timed out")
-                || lower.contains("not available") && !hasPartialReplenishmentResults
-                || lower.contains("unavailable") && !hasPartialReplenishmentResults
-                || lower.contains("不可用") && !hasPartialReplenishmentResults
+                || lower.contains("not available") && !hasPartialReplenishmentResults && !incompleteReplenishment
+                || lower.contains("unavailable") && !hasPartialReplenishmentResults && !incompleteReplenishment
+                || lower.contains("不可用") && !hasPartialReplenishmentResults && !incompleteReplenishment
                 || lower.contains("超时")
                 || lower.contains("无法取得") || lower.contains("无法获取")
                 || lower.contains("暂时无法") || lower.contains("无法查询")
@@ -287,7 +297,9 @@ public class PosAssistantGraphService {
                 || lower.contains("not bound") || lower.contains("permission")
                 || lower.contains("没有权限") || lower.contains("无权限")
                 || lower.contains("权限不足") || lower.contains("无法访问");
-        boolean empty = !unavailable && ("product_count".equals(type) && productCountIsZero(text)
+        boolean partial = !unavailable && incompleteReplenishment;
+        boolean empty = !unavailable && !partial && (missingReplenishmentSalesHistory
+                || "product_count".equals(type) && productCountIsZero(text)
                 || lower.contains("no restock")
                 || lower.contains("no items need")
                 || lower.contains("no products need")
@@ -311,6 +323,7 @@ public class PosAssistantGraphService {
                 || lower.contains("没有符合条件的商品"));
         boolean chinese = isChinese(question);
         String title = cardTitle(type, chinese);
+        String unavailableReason = unavailableReason(type, text, chinese);
         String routeTarget = "product_count".equals(type) ? "/products"
                 : "stock_history".equals(type) ? "/stock/list"
                 : "guided_action".equals(type) ? route == null || route.isBlank() ? "/" : route
@@ -319,25 +332,27 @@ public class PosAssistantGraphService {
                 : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
                 : "/stock/replenishment";
         List<Map<String, Object>> items = unavailable || empty ? List.of() : parsedItems;
-        String unavailableReason = unavailableReason(type, text, chinese);
         String source = "sommelier".equals(type) || "recommend".equals(type) ? "catalogue"
                 : "guided_action".equals(type) ? "assistant" : "orithos";
         String ctaLabel = cardCtaLabel(type, routeTarget, chinese);
         String emptySummary = "product_count".equals(type)
-                ? productCountSummary(text) : emptyReason(type, chinese);
+                ? productCountSummary(text)
+                : missingReplenishmentSalesHistory ? text.trim() : emptyReason(type, chinese);
         boolean retryable = unavailable && !"stock_history".equals(type) && !isNonRetryableFailure(text);
         return List.of(new AssistantCard(
                 type,
                 title,
                 unavailable ? unavailableReason
                 : empty ? emptySummary
-                : "product_count".equals(type) ? productCountSummary(text) : cardSummary(answer, items),
+                : "product_count".equals(type) ? productCountSummary(text)
+                : partial ? cardDetailsSummary(answer) : cardSummary(answer, items),
                 items,
                 source,
                 Instant.now().toString(),
                 unavailable ? unavailableReason
-                        : empty ? emptyReason(type, isChinese(question)) : null,
-                unavailable ? "unavailable" : empty ? "empty" : "ready",
+                        : empty && !missingReplenishmentSalesHistory
+                            ? emptyReason(type, isChinese(question)) : null,
+                unavailable ? "unavailable" : partial ? "partial" : empty ? "empty" : "ready",
                 ctaLabel,
                 routeTarget,
                 new AssistantCardCta(ctaLabel, routeTarget),
@@ -566,6 +581,12 @@ public class PosAssistantGraphService {
         if (items.isEmpty()) return answer;
         return answer.lines().map(String::trim).filter(line -> cardItemText(line) == null)
                 .findFirst().orElse(answer);
+    }
+
+    private static String cardDetailsSummary(String answer) {
+        if (answer == null) return "";
+        return String.join("\n", answer.lines().map(String::trim)
+                .filter(line -> cardItemText(line) == null).toList());
     }
 
     private static String cardItemText(String line) {
