@@ -373,7 +373,7 @@ const cases = [
   { id: "report-quantity-week-zh", question: "这周卖了多少件", intent: "report_qty" },
   { id: "report-dead-stock-en", question: "Which products have had no sales for 30 days?", intent: "report_dead_stock", noRoute: true },
   { id: "report-dead-stock-zh", question: "连续30天没有销售的商品有哪些？", intent: "report_dead_stock", noRoute: true, answerLanguage: "zh" },
-  { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true },
+  { id: "report-stock-value-en", question: "Which inventory items tie up the most cash?", intent: "report_stock_value", noRoute: true, answerRegex: "(?:Inventory value is unavailable because no on-hand products have verifiable positive costs;|Known-cost on-hand inventory subtotal:)" },
   { id: "report-mixed-metrics-en", question: "Give me sales and units for yesterday", intent: "report_adhoc", noRoute: true },
   { id: "report-ranking-zh", question: "昨天卖得最好的商品是什么", intent: "report_adhoc", noRoute: true },
   { id: "stock-quantity-short-en", question: "How many Carlton Draught left?", intent: "report_stock", query: "Carlton Draught" },
@@ -416,7 +416,7 @@ const cases = [
   // deterministic so a provider fallback cannot turn a lookup into a write.
   { id: "natural-stock-short-en", question: "How many Carlton Draught left?", intent: "report_stock", noRoute: true, query: "Carlton Draught" },
   { id: "natural-stock-short-zh", question: "啤酒还剩多少", intent: "report_stock", noRoute: true, query: "啤酒" },
-  { id: "natural-stock-store-zh", question: "店里还有 Shiraz 吗？", intent: "report_stock", noRoute: true, query: "Shiraz" },
+  { id: "natural-stock-store-zh", question: "店里还有 Shiraz 吗？", intent: "report_stock", noRoute: true, query: "Shiraz", answerLanguage: "zh", stockOracle: true },
   { id: "stock-clarify-why-missing-en", question: "Why can't you find the stock?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
   { id: "stock-clarify-not-showing-en", question: "Why is the inventory not showing?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
   { id: "stock-clarify-find-inventory-en", question: "Why can't I find inventory?", intent: "qa", noRoute: true, answerIncludes: ["product name or barcode"] },
@@ -433,7 +433,7 @@ const cases = [
   { id: "stock-clarify-no-results-zh", question: "为什么没有结果？", intent: "qa", noRoute: true, answerIncludes: ["具体商品名称或条码"] },
   { id: "stock-clarify-nothing-found-zh", question: "什么都查不到", intent: "qa", noRoute: true, answerIncludes: ["具体商品名称或条码"] },
   { id: "stock-clarify-blank-search-zh", question: "库存搜索是空白", intent: "qa", noRoute: true, answerIncludes: ["具体商品名称或条码"] },
-  { id: "stock-no-catalogue-match-en", question: "Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?", intent: "report_stock", noRoute: true, query: "ORITHOS-UAT-NO-MATCH-84721", answerIncludes: ["No matching stock found"] },
+  { id: "stock-no-catalogue-match-en", question: "Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?", intent: "report_stock", noRoute: true, query: "ORITHOS-UAT-NO-MATCH-84721", answerIncludes: ["No matching stock found"], stockOracle: true },
   { id: "natural-sales-count-en", question: "How many transactions today?", intent: "report_aov", noRoute: true },
   { id: "natural-sales-count-zh", question: "今天有几笔交易？", intent: "report_aov", noRoute: true },
   { id: "natural-sales-short-zh", question: "今天卖了多少钱", intent: "report_sales", noRoute: true },
@@ -763,6 +763,41 @@ try {
     const answerChecks = (item.answerIncludes ?? []).map((text) => answer.includes(text));
     const answerExcludesCheck = (item.answerExcludes ?? []).every((text) => !answer.includes(text));
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
+    let stockOracleCheck = true;
+    let stockOracleEvidence = null;
+    if (item.stockOracle) {
+      try {
+        const stockResponse = await context.request.get(
+          `${base}/api/products?name=${encodeURIComponent(query ?? "")}&page=1&size=50`);
+        const stockBody = await stockResponse.json().catch(() => ({}));
+        const products = Array.isArray(stockBody.data?.items) ? stockBody.data.items : [];
+        const answerQuantity = (name) => {
+          const escapedName = name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+          const match = answer.match(new RegExp(`(?:^|[:：;；]\\s*)${escapedName}\\s+(-?\\d+(?:\\.\\d+)?)(?=$|\\s*[;；…])`));
+          return match ? Number(match[1]) : null;
+        };
+        const expectedProducts = products.slice(0, 8);
+        const quantitiesMatch = expectedProducts.every((product) => {
+          const actual = answerQuantity(String(product.name ?? ""));
+          const expected = Number(product.stockQuantity);
+          return Number.isFinite(expected) && actual !== null && Math.abs(actual - expected) < 0.000001;
+        });
+        const noMatchAnswerCheck = products.length > 0
+          || /no matching stock found|没有找到匹配库存/i.test(answer);
+        stockOracleCheck = stockResponse.ok() && stockBody.code === 0
+          && (products.length === 0 ? noMatchAnswerCheck : expectedProducts.length > 0 && quantitiesMatch);
+        stockOracleEvidence = {
+          httpStatus: stockResponse.status(),
+          productCount: Number(stockBody.data?.total ?? products.length),
+          comparedCount: products.length === 0 ? 0 : expectedProducts.length,
+          quantitiesMatch,
+          noMatchAnswerCheck,
+        };
+      } catch (error) {
+        stockOracleCheck = false;
+        stockOracleEvidence = { errorType: error instanceof Error ? error.name : "UnknownError" };
+      }
+    }
     const productLookupAnswerCheck = item.intent !== "search_product"
       || /matching products:|no catalogue matches found|找到以下商品：|商品目录中没有找到/i.test(answer);
     const answerLanguageCheck = item.answerLanguage !== "zh" || /[\u3400-\u9fff]/.test(answer);
@@ -788,6 +823,7 @@ try {
       && answerChecks.every(Boolean)
       && answerExcludesCheck
       && answerRegexCheck
+      && stockOracleCheck
       && productLookupAnswerCheck
       && answerLanguageCheck
       && responseSourceCheck
@@ -812,6 +848,7 @@ try {
         ...(item.answerIncludes ? { answerIncludes: item.answerIncludes } : {}),
         ...(item.answerExcludes ? { answerExcludes: item.answerExcludes } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex } : {}),
+        ...(item.stockOracle ? { stockOracle: true } : {}),
         ...(item.answerLanguage ? { answerLanguage: item.answerLanguage } : {}),
         ...(item.aggregateReport ? { aggregateReport: true } : {}),
       },
@@ -849,6 +886,7 @@ try {
         } : {}),
         ...(item.answerExcludes ? { answerExcludesCheck } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex, answerRegexCheck } : {}),
+        ...(item.stockOracle ? { stockOracleCheck, stockOracleEvidence } : {}),
         ...(item.intent === "search_product" ? { productLookupAnswerCheck } : {}),
         ...(item.answerLanguage ? { answerLanguageCheck } : {}),
         ...(item.responseSource ? { responseSource: data.source ?? null, responseSourceCheck } : {}),

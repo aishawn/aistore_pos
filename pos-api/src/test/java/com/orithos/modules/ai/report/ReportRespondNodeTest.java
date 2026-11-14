@@ -181,6 +181,19 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void stockAnswerFollowsChineseQuestionLanguage() {
+        OverAllState stock = state("", List.of(Map.of(
+                "name", "Blickinstal Black on Black Shiraz 750ML", "quantity", 3)));
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        when(stock.value("question", String.class)).thenReturn(Optional.of("店里还有 Shiraz 吗？"));
+        when(stock.value("slots")).thenReturn(Optional.of(Map.of(
+                "query", "Shiraz", "from", "2026-11-13", "to", "2026-11-14")));
+
+        assertEquals("Shiraz库存：Blickinstal Black on Black Shiraz 750ML 3",
+                node.apply(stock).get("answer"));
+    }
+
+    @Test
     void deadStockAndCashValueAnswersFollowChineseQuestionLanguage() {
         OverAllState deadStock = state("", List.of(Map.of("name", "Wine", "on_hand", 3, "sold_qty", 0)));
         when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
@@ -213,8 +226,9 @@ class ReportRespondNodeTest {
 
         String answer = (String) node.apply(stockValue).get("answer");
 
-        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("全店有记录成本的现有库存估值 AUD 550.00"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("已知成本库存小计 AUD 550.00"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("前 8 个商品小计 AUD 360.00"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("完整库存金额暂不可用"));
         org.junit.jupiter.api.Assertions.assertFalse(answer.contains("前 8 个合计 AUD 550.00"));
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Orithos"));
     }
@@ -229,6 +243,43 @@ class ReportRespondNodeTest {
         String answer = (String) node.apply(stockValue).get("answer");
 
         org.junit.jupiter.api.Assertions.assertTrue(answer.contains("不能视为全店总额"));
+    }
+
+    @Test
+    void stockValueWithNoTrustedCostCoverageDoesNotReportZeroAsStoreValue() {
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("name", "Uncosted wine");
+        summary.put("inventory_value", null);
+        summary.put("store_inventory_value_total", BigDecimal.ZERO);
+        summary.put("valued_product_count", 0);
+        summary.put("excluded_product_count", 3055);
+        OverAllState stockValue = state("", List.of(summary));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("当前库存占了多少钱？"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("没有可验证的商品成本"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("3055"));
+        org.junit.jupiter.api.Assertions.assertFalse(answer.contains("AUD 0.00"));
+    }
+
+    @Test
+    void stockValueDoesNotListUncostedProductsAsZeroValueLeaders() {
+        Map<String, Object> uncosted = new java.util.HashMap<>();
+        uncosted.put("name", "Uncosted wine");
+        uncosted.put("inventory_value", null);
+        uncosted.put("store_inventory_value_total", BigDecimal.TEN);
+        uncosted.put("valued_product_count", 1);
+        uncosted.put("excluded_product_count", 1);
+        OverAllState stockValue = state("", List.of(uncosted));
+        when(stockValue.value("intent", String.class)).thenReturn(Optional.of("report_stock_value"));
+        when(stockValue.value("question", String.class)).thenReturn(Optional.of("Which inventory ties up cash?"));
+
+        String answer = (String) node.apply(stockValue).get("answer");
+
+        org.junit.jupiter.api.Assertions.assertFalse(answer.contains("Uncosted wine AUD 0.00"));
+        org.junit.jupiter.api.Assertions.assertTrue(answer.contains("Known-cost on-hand inventory subtotal"));
     }
 
     @Test

@@ -65,7 +65,7 @@ public class ReportRespondNode implements NodeAction {
                     ? formatAuthoritativeSales(rows.get(0), from, to, chinese)
                     : formatSeries(rows, "sales", "Sales", from, to);
             case "report_aov" -> formatAov(rows.get(0), from, to, chinese);
-            case "report_stock" -> formatStock(rows, slots.get("query"));
+            case "report_stock" -> formatStock(rows, slots.get("query"), chinese);
             case "report_dead_stock" -> formatDead(rows, slots.getOrDefault("days", "30"), from, to, chinese);
             case "report_stock_value" -> formatStockValue(rows, chinese);
             case "report_qty" -> formatQuantitySeries(rows, from, to);
@@ -180,20 +180,22 @@ public class ReportRespondNode implements NodeAction {
                 : " sales transactions. Source: Orithos POS report.");
     }
 
-    private String formatStock(List<Map<String, Object>> rows, String query) {
+    private String formatStock(List<Map<String, Object>> rows, String query, boolean chinese) {
         StringBuilder sb = new StringBuilder();
-        sb.append(query == null || query.isBlank() ? "Stock" : query).append(": ");
+        String label = query == null || query.isBlank() ? (chinese ? "当前库存" : "Stock") : query;
+        sb.append(chinese ? label + "库存：" : label + ": ");
         int n = Math.min(rows.size(), 8);
         for (int i = 0; i < n; i++) {
             Map<String, Object> row = rows.get(i);
             if (i > 0) {
-                sb.append("; ");
+                sb.append(chinese ? "；" : "; ");
             }
             sb.append(row.getOrDefault("name", "")).append(" ")
                     .append(ReportQueryService.toDecimal(row.get("quantity")).stripTrailingZeros().toPlainString());
         }
         if (rows.size() > n) {
-            sb.append(" …and ").append(rows.size() - n).append(" more");
+            sb.append(chinese ? "……另有 " : " …and ").append(rows.size() - n)
+                    .append(chinese ? " 个商品" : " more");
         }
         return sb.toString();
     }
@@ -214,32 +216,39 @@ public class ReportRespondNode implements NodeAction {
         Map<String, Object> summary = rows.get(0);
         boolean hasStoreTotal = summary.containsKey("store_inventory_value_total");
         BigDecimal storeTotal = ReportQueryService.toDecimal(summary.get("store_inventory_value_total"));
+        int valuedCount = ReportQueryService.toDecimal(summary.get("valued_product_count")).intValue();
+        int excludedCount = ReportQueryService.toDecimal(summary.get("excluded_product_count")).intValue();
+        if (hasStoreTotal && valuedCount == 0) {
+            return chinese
+                    ? "库存金额暂不可用：没有可验证的商品成本；有库存但未计价的商品数为 " + excludedCount + "。"
+                    : "Inventory value is unavailable because no on-hand products have verifiable positive costs; "
+                            + excludedCount + " products were not valued.";
+        }
         BigDecimal topTotal = BigDecimal.ZERO;
         StringBuilder sb = new StringBuilder(chinese ? "库存资金占用最高的商品：" : "Top inventory cash usage: ");
         int n = Math.min(rows.size(), 8);
         int displayed = 0;
         for (int i = 0; i < n; i++) {
             Map<String, Object> row = rows.get(i);
-            if (!row.containsKey("inventory_value")) continue;
-            BigDecimal value = ReportQueryService.toDecimal(row.get("inventory_value"));
+            Object rawValue = row.get("inventory_value");
+            if (rawValue == null) continue;
+            BigDecimal value = ReportQueryService.toDecimal(rawValue);
             topTotal = topTotal.add(value);
             if (displayed++ > 0) sb.append("; ");
             sb.append(row.getOrDefault("name", "")).append(" AUD ").append(money(value));
         }
         if (hasStoreTotal) {
-            int valuedCount = ReportQueryService.toDecimal(summary.get("valued_product_count")).intValue();
-            int excludedCount = ReportQueryService.toDecimal(summary.get("excluded_product_count")).intValue();
             if (chinese) {
-                sb.append("。全店有记录成本的现有库存估值 AUD ").append(money(storeTotal))
+                sb.append("。已知成本库存小计 AUD ").append(money(storeTotal))
                         .append("，覆盖 ").append(valuedCount).append(" 个商品；另有 ")
-                        .append(excludedCount).append(" 个商品因库存或成本条件未计入。前 ")
+                        .append(excludedCount).append(" 个商品未计价，完整库存金额暂不可用。前 ")
                         .append(Math.min(8, valuedCount)).append(" 个商品小计 AUD ").append(money(topTotal))
                         .append("。数据来源：Orithos 当前库存和商品成本快照。");
             } else {
-                sb.append(". Storewide on-hand inventory value for products with recorded positive costs: AUD ")
+                sb.append(". Known-cost on-hand inventory subtotal: AUD ")
                         .append(money(storeTotal)).append(" across ").append(valuedCount)
                         .append(" products; ").append(excludedCount)
-                        .append(" products were excluded because stock or cost was not positive. Top ")
+                        .append(" products were not valued, so the complete inventory value is unavailable. Top ")
                         .append(Math.min(8, valuedCount)).append(" items subtotal AUD ").append(money(topTotal))
                         .append(" Source: Orithos on-hand quantities and product costs; current snapshot.");
             }
