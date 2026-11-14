@@ -21,6 +21,86 @@ function requiresAnswerContent(intent) {
     : ANSWER_CONTENT_INTENTS.has(intent);
 }
 
+const DATA_KEY_ALIASES = {
+  revenue: ["revenue", "sales", "grossSales"],
+  profit: ["profit", "grossProfit"],
+  aov: ["aov", "averageSale", "averageTicket"],
+  stock: ["stock", "stockQuantity", "qtyAvailable", "quantityOnHand"],
+  transactions: ["transactions", "tickets", "orders"],
+  quantity: ["quantity", "units", "qty"],
+};
+
+function normalizedKey(value) {
+  return String(value).replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function collectValuesForKeys(value, keys, found = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectValuesForKeys(item, keys, found);
+  } else if (value && typeof value === "object") {
+    for (const [key, item] of Object.entries(value)) {
+      if (keys.has(normalizedKey(key))) found.push(item);
+      collectValuesForKeys(item, keys, found);
+    }
+  }
+  return found;
+}
+
+function sameExpectedValue(actual, expected, key) {
+  const expectedNumber = Number(expected);
+  const actualNumber = Number(actual);
+  if (Number.isFinite(expectedNumber) && Number.isFinite(actualNumber)) {
+    const money = /sales|revenue|profit|cost|amount|value|price|aov/i.test(key);
+    return Math.abs(actualNumber - expectedNumber) < (money ? 0.005 : 0.000001);
+  }
+  return String(actual) === String(expected);
+}
+
+function answerContainsExpectedValue(answer, expected) {
+  if (typeof expected === "number" && Number.isFinite(expected)) {
+    const values = new Set([
+      String(expected),
+      new Intl.NumberFormat("en-AU", { useGrouping: false, maximumFractionDigits: 2 }).format(expected),
+      new Intl.NumberFormat("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(expected),
+    ]);
+    return [...values].some((value) => {
+      const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(?<![\\d.-])${escaped}(?![\\d]|[.-](?=\\d))`).test(answer);
+    });
+  }
+  return answer.includes(String(expected));
+}
+
+function answerDataChecks(expectedData, assistant, answer) {
+  const checks = {};
+  for (const [key, expected] of Object.entries(expectedData)) {
+    if (expected === null || expected === undefined) continue;
+    const aliases = DATA_KEY_ALIASES[key] ?? [key];
+    const values = collectValuesForKeys(
+      { table: assistant.table, cards: assistant.cards },
+      new Set(aliases.map(normalizedKey)),
+    );
+    checks[key] = values.length > 0
+      ? values.some((actual) => sameExpectedValue(actual, expected, key))
+      : answerContainsExpectedValue(answer, expected);
+  }
+  return checks;
+}
+
+function answerSlotChecks(expectedEntities, assistant) {
+  const checks = {};
+  for (const [key, expected] of Object.entries(expectedEntities)) {
+    if (key === "stock" || key === "product") continue;
+    if (key === "date") {
+      checks[key] = assistant.slots?.date === expected
+        || (assistant.reportPeriodFrom === expected && assistant.reportPeriodTo === expected);
+      continue;
+    }
+    checks[key] = assistant.slots?.[key] === expected;
+  }
+  return checks;
+}
+
 export function assistantFastPathSafety(assistant) {
   return {
     deterministicRoute: assistant.source === "deterministic" && assistant.llmFallback === false,
@@ -35,6 +115,12 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
   const expectedQuery = typeof expected.entities?.product === "string"
     ? expected.entities.product
     : typeof expected.query === "string" ? expected.query : null;
+  const expectedData = { ...(expected.data ?? {}) };
+  if (expected.entities?.stock !== undefined && expectedData.stock === undefined) {
+    expectedData.stock = expected.entities.stock;
+  }
+  const expectedDataChecks = answerDataChecks(expectedData, assistant, answer);
+  const entitySlotChecks = answerSlotChecks(expected.entities ?? {}, assistant);
   const expectedIntent = expected.intent;
   const answerIncludes = Array.isArray(expected.answerIncludes)
     ? expected.answerIncludes.filter((text) => typeof text === "string" && text.trim().length > 0)
@@ -43,7 +129,8 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
   const answerContentAssertionRequired = requiresAnswerContent(expectedIntent);
   const answerAssertionsPresent = !answerContentAssertionRequired
     || answerIncludes.length > 0
-    || (typeof expected.answerRegex === "string" && expected.answerRegex.trim().length > 0);
+    || (typeof expected.answerRegex === "string" && expected.answerRegex.trim().length > 0)
+    || Object.keys(expectedDataChecks).length > 0;
   let answerRegex = true;
   if (expected.answerRegex) {
     try {
@@ -59,7 +146,9 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
     route: !Object.hasOwn(expected, "route") || expected.route === route,
     noRoute: expected.noRoute !== true || route === null,
     query: expectedQuery === null || query === expectedQuery,
+    slots: Object.values(entitySlotChecks).every(Boolean),
     answerNonEmpty: answer.trim().length > 0,
+    answerData: Object.values(expectedDataChecks).every(Boolean),
     answerContentAssertionRequired,
     answerAssertionsPresent,
     answerIncludes: answerIncludes.every((text) => answer.includes(text)),
@@ -71,13 +160,19 @@ export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
         : !/\p{Script=Han}/u.test(answer)),
     ...safety,
   };
-  return { ...result, passed: Object.values(result).every(Boolean) };
+  return {
+    ...result,
+    entitySlotChecks,
+    expectedDataChecks,
+    passed: Object.values(result).every(Boolean),
+  };
 }
 
 export function assistantUtteranceStatus(acceptance, { sourceRuntimeMatch, unavailable, noWrites }) {
   const missingAnswerAssertions = !acceptance.answerAssertionsPresent;
   const behaviorPassed = Object.entries(acceptance)
-    .filter(([key]) => !["passed", "answerContentAssertionRequired", "answerAssertionsPresent"].includes(key))
+    .filter(([key, value]) => typeof value === "boolean"
+      && !["passed", "answerContentAssertionRequired", "answerAssertionsPresent"].includes(key))
     .every(([, passed]) => passed === true);
   const status = !sourceRuntimeMatch || unavailable ? "BLOCKED"
     : !behaviorPassed || !noWrites ? "FAIL"

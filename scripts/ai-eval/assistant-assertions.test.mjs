@@ -88,7 +88,9 @@ test("utterance acceptance checks answer content, language, routing, query and s
     route: true,
     noRoute: true,
     query: true,
+    slots: true,
     answerNonEmpty: true,
+    answerData: true,
     answerContentAssertionRequired: true,
     answerAssertionsPresent: true,
     answerIncludes: true,
@@ -97,6 +99,8 @@ test("utterance acceptance checks answer content, language, routing, query and s
     answerLanguage: true,
     deterministicRoute: true,
     writeSafety: true,
+    entitySlotChecks: {},
+    expectedDataChecks: {},
     passed: true,
   });
 });
@@ -126,7 +130,9 @@ test("utterance acceptance fails on wrong answer text, language, route, slot or 
     route: false,
     noRoute: false,
     query: false,
+    slots: true,
     answerNonEmpty: true,
+    answerData: true,
     answerContentAssertionRequired: true,
     answerAssertionsPresent: true,
     answerIncludes: true,
@@ -135,6 +141,8 @@ test("utterance acceptance fails on wrong answer text, language, route, slot or 
     answerLanguage: false,
     deterministicRoute: false,
     writeSafety: false,
+    entitySlotChecks: {},
+    expectedDataChecks: {},
     passed: false,
   });
 });
@@ -150,6 +158,113 @@ test("factual answers require explicit positive content expectations", () => {
 
   assert.equal(result.answerAssertionsPresent, false);
   assert.equal(result.answerContentAssertionRequired, true);
+  assert.equal(result.passed, false);
+});
+
+test("fixed-snapshot metrics match exact structured values and formatted answer values", () => {
+  const structured = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { revenue: 1840.5, transactions: 73 },
+  }, {
+    intent: "report_sales",
+    table: { revenue: "1840.50", transactions: 73 },
+    answer: "Sales were AUD 1,840.50 across 73 tickets.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(structured.expectedDataChecks, { revenue: true, transactions: true });
+  assert.equal(structured.answerData, true);
+  assert.equal(structured.answerAssertionsPresent, true);
+  assert.equal(structured.passed, true);
+
+  const formattedText = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { revenue: 1840.5 },
+  }, {
+    intent: "report_sales",
+    answer: "2026-10-28 营业额 AUD 1,840.50。",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.equal(formattedText.answerData, true);
+
+  const dateFragmentsAreNotMetrics = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { revenue: 10 },
+  }, {
+    intent: "report_sales",
+    answer: "No completed sales found for 2026-10-10.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.equal(dateFragmentsAreNotMetrics.answerData, false);
+});
+
+test("profit and average-ticket assertions reconcile against authoritative report field names", () => {
+  const correct = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { profit: 412.75, aov: 25.21, transactions: 73 },
+  }, {
+    intent: "report_sales",
+    table: { rows: [{ grossProfit: "412.75", averageSale: "25.21", tickets: 73 }] },
+    answer: "Gross profit was AUD 399.00 and average ticket AUD 20.00 across 73 transactions.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(correct.expectedDataChecks, { profit: true, aov: true, transactions: true });
+  assert.equal(correct.passed, true);
+
+  const sentenceEndingAmount = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { revenue: 1840.5 },
+  }, {
+    intent: "report_sales",
+    answer: "Sales were AUD 1,840.50.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.equal(sentenceEndingAmount.expectedDataChecks.revenue, true);
+
+  const conflictingCard = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    data: { profit: 412.75 },
+  }, {
+    intent: "report_sales",
+    table: { rows: [{ grossProfit: "401.00" }] },
+    answer: "Gross profit was AUD 412.75.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.equal(conflictingCard.answerData, false);
+  assert.equal(conflictingCard.passed, false);
+});
+
+test("structured wrong metrics and date or barcode slot mismatches fail", () => {
+  const result = assistantUtteranceAcceptance({
+    intent: "report_stock",
+    entities: { product: "VB Cans", stock: 48, barcode: "9310000001010", date: "2026-10-28" },
+  }, {
+    intent: "report_stock",
+    slots: { query: "VB Cans", barcode: "9310000001010" },
+    reportPeriodFrom: "2026-10-27",
+    reportPeriodTo: "2026-10-27",
+    table: { stockQuantity: 47 },
+    answer: "VB Cans: 48 units.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.query, true);
+  assert.deepEqual(result.entitySlotChecks, { barcode: true, date: false });
+  assert.deepEqual(result.expectedDataChecks, { stock: false });
+  assert.equal(result.answerData, false);
   assert.equal(result.passed, false);
 });
 
