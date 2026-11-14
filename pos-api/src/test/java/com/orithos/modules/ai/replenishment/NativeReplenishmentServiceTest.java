@@ -109,6 +109,9 @@ class NativeReplenishmentServiceTest {
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(connection).prepareStatement(sql.capture());
         assertTrue(sql.getValue().contains("s.business_date >="));
+        assertTrue(sql.getValue().contains("period.today - 27"));
+        assertTrue(sql.getValue().contains("period.today - 55"));
+        assertTrue(sql.getValue().contains("<= period.today"));
         assertTrue(sql.getValue().contains("s.business_date IS NULL"));
         assertTrue(sql.getValue().contains("i.updated_at AS inventory_data_as_of"));
         assertTrue(sql.getValue().contains("GROUP BY ps.product_id, ps.outlet_id"));

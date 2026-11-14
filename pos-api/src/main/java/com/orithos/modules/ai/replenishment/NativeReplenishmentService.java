@@ -111,20 +111,35 @@ public class NativeReplenishmentService {
     private ReplenishmentPlan calculate(TenantContext tenant, int cover, int limit) {
         List<Row> rows = jdbc.query(connection -> {
             var statement = connection.prepareStatement("""
-                WITH sales AS (
-                    SELECT si.product_id,
-                           SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS recent_units,
-                           SUM(si.quantity) FILTER (WHERE COALESCE(s.business_date, s.local_sold_at::date)
-                               < (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 28) AS previous_units,
-                           MAX(s.updated_at) AS sales_data_as_of
+                WITH period AS (
+                    SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date AS today
+                ), sales_rows AS (
+                    SELECT si.product_id, si.quantity,
+                           COALESCE(s.business_date, s.local_sold_at::date,
+                               (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')::date) AS sale_day,
+                           s.updated_at
                     FROM sale s
                     JOIN sale_item si ON si.sale_id = s.id AND si.outlet_id = s.outlet_id
+                    CROSS JOIN period
                     WHERE s.outlet_id = ? AND s.status = 'COMPLETED' AND s.refund_reason IS NULL
-                      AND (s.business_date >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56
-                           OR (s.business_date IS NULL AND s.local_sold_at::date
-                               >= (CURRENT_TIMESTAMP AT TIME ZONE 'Australia/Adelaide')::date - 56))
-                    GROUP BY si.product_id
+                      AND (
+                          (s.business_date >= period.today - 55 AND s.business_date <= period.today)
+                          OR (s.business_date IS NULL AND s.local_sold_at::date
+                              BETWEEN period.today - 55 AND period.today)
+                          OR (s.business_date IS NULL AND s.local_sold_at IS NULL
+                              AND (s.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Australia/Adelaide')::date
+                                  BETWEEN period.today - 55 AND period.today)
+                      )
+                ), sales AS (
+                    SELECT sales_rows.product_id,
+                           SUM(sales_rows.quantity) FILTER (WHERE sales_rows.sale_day
+                               BETWEEN period.today - 27 AND period.today) AS recent_units,
+                           SUM(sales_rows.quantity) FILTER (WHERE sales_rows.sale_day
+                               BETWEEN period.today - 55 AND period.today - 28) AS previous_units,
+                           MAX(sales_rows.updated_at) AS sales_data_as_of
+                    FROM sales_rows
+                    CROSS JOIN period
+                    GROUP BY sales_rows.product_id
                 ), supplier AS (
                     SELECT ps.product_id, ps.outlet_id, TRUE AS has_supplier,
                            MAX(ps.minimum_order_quantity) AS minimum_order
