@@ -47,6 +47,8 @@
 
 2026-11-14 追加 SKR 库存类话术 47/47：库存 38、销量 2、客单价/笔数 4、滞销 2、库存金额 1；路由/商品槽位及适用的回答断言通过，全部 deterministic、`llmFallback=false`、`writeRequests=[]`，中位数 376ms，最高 2,304ms。SKR/Demo 当前前后端 runtime 实测均为 `6b0b51af`，与候选一致。该批仅验证意图/槽位和回答形态，没有将库存数量、滞销名单及库存金额逐项对账权威库存快照；完整目录和数值准确性仍开放。粘贴日志中的 controller 测试旧参数断言在当前候选定向回归 4/4 通过，不再复现。详见[本轮 session](../../../../test-sessions/2026-11-14-ai-assistant-runtime-provenance-tenant-followup.md)。
 
+2026-11-14 全目录答案断言审计：旧 SKR 运行在源码/运行 SHA `eb7ed870` 下覆盖 402/402 问法，证明当时路由、槽位、确定性来源和只读断言通过；结果未保留答案正文。新增覆盖门禁后，目录中 208 条事实型意图有 151 条未配置正向答案断言，主要为 `report_adhoc` 36、`report_stock` 37、`report_sales` 24 和 `qa` 30。历史 402/402 不能用于证明这些回答内容或数值正确；当前目录接受状态为 BLOCKED，须先补权威答案预期，再做在线语义验收。评估器 Node 单测 18/18、脚本语法检查和 diff 检查通过，本轮未发在线请求、未调用模型、未产生 POS 业务写入。详见[本轮 session](../../../../test-sessions/2026-11-14-ai-assistant-runtime-provenance-tenant-followup.md)。
+
 2026-11-13 本轮高频话术迭代：补充“昨天营业额怎么样”等中文及英文口语表述；历史元数据测试改用 Orithos 当前来源，不再构造 `legacy_source` / `other_store`。UI 全量单测 207/207 PASS、typecheck PASS；Java router 独立编译及 JShell 行为探测 9 条正例、3 条歧义/提示注入负例 PASS。部署 SHA `584672d7` 后，SKR 与 Demo 各 9/9 个昨日销售问法及 1/1 个提示注入用例 PASS，`writeRequests=[]`；数据对账见 session。UAT runner 整体状态仍为 BLOCKED，因为本地工作树包含无关未提交改动；Maven JUnit 也被本地未提交采购报表服务编译错误阻断，未进入测试阶段。线上 provider 调用计数/费用端点未提供，但本批所有销售与注入请求均为 deterministic、`llmFallback=false`。详见[session](../../../../test-sessions/2026-11-13-ai-assistant-route-variants.md)。
 
 历史问题链：E-HISTORY-FINDING 记录列表 id=null → 详情 /threads/null HTTP 400；显式 mapper 映射修复后仍需上线证据。E-HISTORY 的 0d3d0bc3 记录数字 ID 和 session/timestamp 存在、报表产生 2 条消息（局部关闭）；旧会话 0 消息及 greeting/navigation 的 50210 未关闭。这是“发现→修复→测试→局部关闭”的样例，不能写成历史功能全面修复。

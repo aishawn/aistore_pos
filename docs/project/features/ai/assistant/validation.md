@@ -1,5 +1,13 @@
 # 门店助手、语音与历史：验证与效果
 
+## 2026-11-14 全目录答案断言覆盖审计
+
+对 `.local/ai-eval/skr-utterances-full-expected-402-473e7b6f.jsonl` 的 402 条目录做离线覆盖检查。208 条属于需要核对答案内容的事实型意图，其中 151 条缺少正向 `answerIncludes` 或 `answerRegex`：`report_adhoc` 36、`report_stock` 37、`report_sales` 24、`qa` 30、`unknown` 8、`report_aov` 4、`search_product` 4、`search_customer` 4、`report_qty` 2、`report_dead_stock` 2。
+
+历史在线结果 `.local/ai-eval/live-402-skr-eb7ed870.json` 的源码和运行 SHA 均为 `eb7ed870ca2201654794038dfb2fecf9337116f3`，402/402 通过当时的路由、槽位、确定性与只读检查；结果没有保留答案正文，不能离线重新验证答案是否非空或是否包含正确值。它不构成 402 条答案语义通过。答案断言门禁使缺断言用例为 `BLOCKED`，而已配置断言但路由/回答不符时仍为 `FAIL`。
+
+Node `v22.22.2`：`node --test scripts/ai-eval/assistant-assertions.test.mjs` 18/18 PASS；`assistant-assertions.mjs` 与 `run-skr-live.mjs` 的 `node --check` PASS；`git diff --check` PASS。此次只做本地检查，没有在线请求、模型调用、POS 业务写入或部署。provider 历史账单不可读取，AUD 10 预算上限仍未验证。下一步先基于固定数据快照为 151 条用例补答案预期，再用同一运行 SHA 按批次在线验证；库存数量、销售/毛利、客单价及其他报表必须与同店同期间权威 API 对账。
+
 ## 2026-11-13 当前发布 SHA 全量构建与双店只读销售回归
 
 提交 `d2f61cd1e5973d4a8d09bda3042ae4dfd98e798f` 在干净 detached checkout 执行 `mvn -B clean verify`，708/708 Java 测试通过并打包成功。SKR 与 Demo `/api/public/version` 的前后端均运行同一 SHA。两店各执行“昨天销售额如何？”与“昨天营业额怎么样？”：4/4 case 为 deterministic `report_sales`、`llmFallback=false`、`writeRequests=[]`；来源 `orithos_ledger`，期间 2026-11-12（Australia/Adelaide）。每店销售 AUD 5,173.94、毛利 AUD 1,985.28、185 笔，逐项与本店同期间 native overview 一致。原始 runner JSON 保存在忽略目录 `.local/ai-eval/online-cancel-followup-{skr,demo}-d2f61cd1.json`。

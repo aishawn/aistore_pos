@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
-import { assistantFastPathSafety } from "./assistant-assertions.mjs";
+import { assistantUtteranceAcceptance, assistantUtteranceStatus } from "./assistant-assertions.mjs";
 
 const base = (process.env.SKR_BASE_URL || "https://skr.orithos.com.au").replace(/\/+$/, "");
 const username = process.env.SKR_USERNAME || "shawn";
@@ -106,44 +106,45 @@ for (const testCase of cases) {
   const route = data.ui?.route ?? null;
   const query = data.slots?.query ?? null;
   const writes = Array.isArray(data.writeRequests) ? data.writeRequests : null;
-  const safety = assistantFastPathSafety({
-    source: data.source,
-    llmFallback: data.llmFallback,
+  const acceptance = assistantUtteranceAcceptance(testCase.expected || {}, {
+    ...data,
+    route,
     writeRequests: writes,
   });
-  const expectedIntent = expected.intent;
-  const intentPass = Array.isArray(expectedIntent) ? expectedIntent.includes(data.intent) : data.intent === expectedIntent;
-  const routePass = expected.route === undefined || (expected.route === null ? route === null : route === expected.route);
-  const queryPass = expected.entities?.product === undefined || query === expected.entities.product;
   const noWrites = Array.isArray(writes) && writes.length === 0;
   const unavailable = !response || [502, 503, 504].includes(response.status()) || [50210, 50301].includes(body.code);
+  const { status, blockReason } = assistantUtteranceStatus(acceptance, {
+    sourceRuntimeMatch,
+    unavailable,
+    noWrites,
+  });
   results.push({
     id: testCase.id,
     question: testCase.question,
-    status: !sourceRuntimeMatch || unavailable ? "BLOCKED"
-      : intentPass && routePass && queryPass && noWrites
-        && safety.deterministicRoute && safety.writeSafety ? "PASS" : "FAIL",
+    status,
+    blockReason,
     attempts,
     httpStatus: response?.status() ?? null,
     intent: data.intent ?? null,
-    expectedIntent,
+    expectedIntent: expected.intent ?? null,
     route,
     expectedRoute: expected.route ?? null,
     query,
-    expectedQuery: expected.entities?.product ?? null,
+    expectedQuery: expected.entities?.product ?? expected.query ?? null,
     source: data.source ?? null,
     fastPathId: data.fastPathId ?? null,
     llmFallback: data.llmFallback ?? null,
-    deterministicRoute: safety.deterministicRoute,
+    deterministicRoute: acceptance.deterministicRoute,
     writeRequests: writes,
-    writeSafety: safety.writeSafety,
+    writeSafety: acceptance.writeSafety,
+    acceptance,
     error: error?.message ?? null,
   });
 }
 const summary = {
   PASS: results.filter((item) => item.status === "PASS").length,
   FAIL: results.filter((item) => item.status === "FAIL").length,
-  BLOCKED: results.filter((item) => item.status === "BLOCKED").length + (sourceRuntimeMatch ? 0 : 1),
+  BLOCKED: results.filter((item) => item.status === "BLOCKED").length,
 };
 const output = {
   generatedAt: new Date().toISOString(),
@@ -153,6 +154,12 @@ const output = {
   sourceRuntimeMatch,
   catalogPath: casesPath,
   selectedCount: cases.length,
+  catalogAudit: {
+    answerContentAssertionRequired: results.filter((item) => item.acceptance.answerContentAssertionRequired).length,
+    answerAssertionsMissing: results.filter((item) => !item.acceptance.answerAssertionsPresent).length,
+    missingCases: results.filter((item) => !item.acceptance.answerAssertionsPresent)
+      .map(({ id, expectedIntent }) => ({ id, intent: expectedIntent })),
+  },
   summary,
   writeRequests: ["none: assistant API only"],
   results,

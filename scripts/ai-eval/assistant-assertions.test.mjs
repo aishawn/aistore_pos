@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   assistantTraceability,
   assistantFastPathSafety,
+  assistantUtteranceAcceptance,
+  assistantUtteranceStatus,
   replenishmentCardAcceptance,
   AUTHORITATIVE_ASSISTANT_DATA_SOURCE,
   readOnlyApiAcceptanceStatus,
@@ -60,6 +62,206 @@ test("dynamic read-only utterances require deterministic routing and an empty wr
     deterministicRoute: false,
     writeSafety: false,
   });
+});
+
+test("utterance acceptance checks answer content, language, routing, query and safety", () => {
+  const result = assistantUtteranceAcceptance({
+    intent: "report_sales",
+    route: null,
+    noRoute: true,
+    answerIncludes: ["营业额", "AUD"],
+    answerExcludes: ["Odoo"],
+    answerRegex: "2026-11-12.*AUD 1,234\\.50",
+    answerLanguage: "zh",
+  }, {
+    intent: "report_sales",
+    route: null,
+    slots: {},
+    answer: "2026-11-12 营业额 AUD 1,234.50。",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.deepEqual(result, {
+    intent: true,
+    route: true,
+    noRoute: true,
+    query: true,
+    answerNonEmpty: true,
+    answerContentAssertionRequired: true,
+    answerAssertionsPresent: true,
+    answerIncludes: true,
+    answerExcludes: true,
+    answerRegex: true,
+    answerLanguage: true,
+    deterministicRoute: true,
+    writeSafety: true,
+    passed: true,
+  });
+});
+
+test("utterance acceptance fails on wrong answer text, language, route, slot or safety", () => {
+  const result = assistantUtteranceAcceptance({
+    intent: "report_stock",
+    route: null,
+    noRoute: true,
+    query: "Shiraz",
+    answerIncludes: ["3"],
+    answerExcludes: ["0 units"],
+    answerRegex: "3 units",
+    answerLanguage: "zh",
+  }, {
+    intent: "report_stock",
+    route: "/products",
+    slots: { query: "Cabernet" },
+    answer: "3 units in stock",
+    source: "llm",
+    llmFallback: true,
+    writeRequests: [{ type: "update" }],
+  });
+
+  assert.deepEqual(result, {
+    intent: true,
+    route: false,
+    noRoute: false,
+    query: false,
+    answerNonEmpty: true,
+    answerContentAssertionRequired: true,
+    answerAssertionsPresent: true,
+    answerIncludes: true,
+    answerExcludes: true,
+    answerRegex: true,
+    answerLanguage: false,
+    deterministicRoute: false,
+    writeSafety: false,
+    passed: false,
+  });
+});
+
+test("factual answers require explicit positive content expectations", () => {
+  const result = assistantUtteranceAcceptance({ intent: "report_stock" }, {
+    intent: "report_stock",
+    answer: "No matching stock found.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.answerAssertionsPresent, false);
+  assert.equal(result.answerContentAssertionRequired, true);
+  assert.equal(result.passed, false);
+});
+
+test("empty expected snippets do not satisfy factual answer coverage", () => {
+  const result = assistantUtteranceAcceptance({ intent: "report_sales", answerIncludes: ["", "  "] }, {
+    intent: "report_sales",
+    answer: "Sales were AUD 1,234.50.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.answerAssertionsPresent, false);
+  assert.equal(result.answerIncludes, true);
+  assert.equal(result.passed, false);
+});
+
+test("empty responses fail even when the expected intent and route match", () => {
+  const result = assistantUtteranceAcceptance({ intent: "navigate", route: "/products" }, {
+    intent: "navigate",
+    route: "/products",
+    answer: "  ",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.answerNonEmpty, false);
+  assert.equal(result.answerContentAssertionRequired, false);
+  assert.equal(result.passed, false);
+});
+
+test("runner blocks missing answer contracts but keeps known behavior failures as failures", () => {
+  const missingAnswerContract = assistantUtteranceAcceptance({ intent: "report_stock" }, {
+    intent: "report_stock",
+    answer: "No matching stock found.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(assistantUtteranceStatus(missingAnswerContract, {
+    sourceRuntimeMatch: true,
+    unavailable: false,
+    noWrites: true,
+  }), { status: "BLOCKED", blockReason: "ANSWER_ASSERTIONS_MISSING" });
+
+  const wrongRoute = assistantUtteranceAcceptance({ intent: "report_stock", route: null }, {
+    intent: "navigate",
+    route: "/products",
+    answer: "No matching stock found.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(assistantUtteranceStatus(wrongRoute, {
+    sourceRuntimeMatch: true,
+    unavailable: false,
+    noWrites: true,
+  }), { status: "FAIL", blockReason: null });
+
+  const completeContract = assistantUtteranceAcceptance({ intent: "navigate" }, {
+    intent: "navigate",
+    answer: "Opened the products page.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(assistantUtteranceStatus(completeContract, {
+    sourceRuntimeMatch: true,
+    unavailable: false,
+    noWrites: false,
+  }), { status: "FAIL", blockReason: null });
+});
+
+test("runner marks environment mismatch and unavailable service as blocked", () => {
+  const acceptance = assistantUtteranceAcceptance({ intent: "navigate" }, {
+    intent: "navigate",
+    answer: "Opened the products page.",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+  assert.deepEqual(assistantUtteranceStatus(acceptance, {
+    sourceRuntimeMatch: false,
+    unavailable: false,
+    noWrites: true,
+  }), { status: "BLOCKED", blockReason: "SOURCE_RUNTIME_MISMATCH" });
+  assert.deepEqual(assistantUtteranceStatus(acceptance, {
+    sourceRuntimeMatch: true,
+    unavailable: true,
+    noWrites: true,
+  }), { status: "BLOCKED", blockReason: "SERVICE_UNAVAILABLE" });
+});
+
+test("invalid expected answer regex fails closed", () => {
+  assert.equal(assistantUtteranceAcceptance({ answerRegex: "[" }, {
+    answer: "anything",
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  }).answerRegex, false);
+});
+
+test("noRoute false does not require a navigation route", () => {
+  const result = assistantUtteranceAcceptance({ noRoute: false }, {
+    route: null,
+    source: "deterministic",
+    llmFallback: false,
+    writeRequests: [],
+  });
+
+  assert.equal(result.noRoute, true);
 });
 
 test("legacy source and mismatched metadata fail provenance acceptance", () => {

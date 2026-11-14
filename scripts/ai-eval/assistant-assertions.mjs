@@ -1,10 +1,91 @@
 export const AUTHORITATIVE_ASSISTANT_DATA_SOURCE = "orithos_ledger";
 
+const ANSWER_CONTENT_INTENTS = new Set([
+  "product_count",
+  "qa",
+  "report_adhoc",
+  "report_aov",
+  "report_dead_stock",
+  "report_qty",
+  "report_sales",
+  "report_stock",
+  "report_stock_value",
+  "search_customer",
+  "search_product",
+  "unknown",
+]);
+
+function requiresAnswerContent(intent) {
+  return Array.isArray(intent)
+    ? intent.some((item) => ANSWER_CONTENT_INTENTS.has(item))
+    : ANSWER_CONTENT_INTENTS.has(intent);
+}
+
 export function assistantFastPathSafety(assistant) {
   return {
     deterministicRoute: assistant.source === "deterministic" && assistant.llmFallback === false,
     writeSafety: Array.isArray(assistant.writeRequests) && assistant.writeRequests.length === 0,
   };
+}
+
+export function assistantUtteranceAcceptance(expected = {}, assistant = {}) {
+  const route = assistant.route ?? assistant.ui?.route ?? null;
+  const query = assistant.slots?.query ?? null;
+  const answer = typeof assistant.answer === "string" ? assistant.answer : "";
+  const expectedQuery = typeof expected.entities?.product === "string"
+    ? expected.entities.product
+    : typeof expected.query === "string" ? expected.query : null;
+  const expectedIntent = expected.intent;
+  const answerIncludes = Array.isArray(expected.answerIncludes)
+    ? expected.answerIncludes.filter((text) => typeof text === "string" && text.trim().length > 0)
+    : [];
+  const answerExcludes = Array.isArray(expected.answerExcludes) ? expected.answerExcludes : [];
+  const answerContentAssertionRequired = requiresAnswerContent(expectedIntent);
+  const answerAssertionsPresent = !answerContentAssertionRequired
+    || answerIncludes.length > 0
+    || (typeof expected.answerRegex === "string" && expected.answerRegex.trim().length > 0);
+  let answerRegex = true;
+  if (expected.answerRegex) {
+    try {
+      answerRegex = new RegExp(expected.answerRegex, "i").test(answer);
+    } catch {
+      answerRegex = false;
+    }
+  }
+  const safety = assistantFastPathSafety(assistant);
+  const result = {
+    intent: expectedIntent === undefined || (Array.isArray(expectedIntent)
+      ? expectedIntent.includes(assistant.intent) : expectedIntent === assistant.intent),
+    route: !Object.hasOwn(expected, "route") || expected.route === route,
+    noRoute: expected.noRoute !== true || route === null,
+    query: expectedQuery === null || query === expectedQuery,
+    answerNonEmpty: answer.trim().length > 0,
+    answerContentAssertionRequired,
+    answerAssertionsPresent,
+    answerIncludes: answerIncludes.every((text) => answer.includes(text)),
+    answerExcludes: answerExcludes.every((text) => !answer.includes(text)),
+    answerRegex,
+    answerLanguage: expected.answerLanguage === undefined
+      || (expected.answerLanguage === "zh"
+        ? /\p{Script=Han}/u.test(answer)
+        : !/\p{Script=Han}/u.test(answer)),
+    ...safety,
+  };
+  return { ...result, passed: Object.values(result).every(Boolean) };
+}
+
+export function assistantUtteranceStatus(acceptance, { sourceRuntimeMatch, unavailable, noWrites }) {
+  const missingAnswerAssertions = !acceptance.answerAssertionsPresent;
+  const behaviorPassed = Object.entries(acceptance)
+    .filter(([key]) => !["passed", "answerContentAssertionRequired", "answerAssertionsPresent"].includes(key))
+    .every(([, passed]) => passed === true);
+  const status = !sourceRuntimeMatch || unavailable ? "BLOCKED"
+    : !behaviorPassed || !noWrites ? "FAIL"
+      : missingAnswerAssertions ? "BLOCKED" : "PASS";
+  const blockReason = status !== "BLOCKED" ? null
+    : !sourceRuntimeMatch ? "SOURCE_RUNTIME_MISMATCH"
+      : unavailable ? "SERVICE_UNAVAILABLE" : "ANSWER_ASSERTIONS_MISSING";
+  return { status, blockReason };
 }
 
 export function assistantTraceability(assistant, expected) {
