@@ -18,5 +18,9 @@ public class SaleItemSalesLookupSchemaMigrator implements CommandLineRunner {
     public void run(String... args) {
         jdbc.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sale_item_sale_outlet "
                 + "ON sale_item (sale_id, outlet_id)");
+        jdbc.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sale_payment_sale_outlet "
+                + "ON sale_payment (sale_id, outlet_id)");
+        jdbc.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sale_outlet_source_external_id "
+                + "ON sale (outlet_id, source_system, external_id, id)");
     }
 }

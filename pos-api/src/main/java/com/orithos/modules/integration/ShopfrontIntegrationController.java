@@ -19,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.MessageDigest;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -1045,6 +1048,103 @@ public class ShopfrontIntegrationController {
     public ApiResult<Map<String, Object>> purchaseOrders(@RequestHeader("X-Shopfront-Integration-Token") String supplied,
                                                           @RequestBody JsonNode body) {
         return stage(supplied, "purchase_orders", body);
+    }
+
+    @PostMapping("/purchase-report-snapshots:upsert")
+    @Transactional
+    public ApiResult<Map<String, Object>> purchaseReportSnapshots(
+            @RequestHeader("X-Shopfront-Integration-Token") String supplied,
+            @RequestBody JsonNode body) {
+        authorize(supplied);
+        if (body == null || body.isNull()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A purchase report snapshot payload is required");
+        }
+        String storeKey = body.path("store_key").asText("").trim();
+        String businessDate = body.path("business_date").asText("").trim();
+        String groupBy = body.path("group_by").asText("").trim().toLowerCase(Locale.ROOT);
+        JsonNode rows = body.path("rows");
+        String fetchedAt = body.path("fetched_at").asText("").trim();
+        if (!STORE_KEY.matcher(storeKey).matches()
+                || !Set.of("outlet", "supplier").contains(groupBy)
+                || !rows.isArray()
+                || rows.size() > 2000
+                || !allObjects(rows)
+                || businessDate.isBlank()
+                || fetchedAt.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "store_key, business_date, group_by, fetched_at and an array of report rows are required");
+        }
+
+        LocalDate snapshotDate;
+        Timestamp snapshotFetchedAt;
+        String rowsJson;
+        try {
+            snapshotDate = LocalDate.parse(businessDate);
+            snapshotFetchedAt = Timestamp.from(OffsetDateTime.parse(fetchedAt).toInstant());
+            rowsJson = objectMapper.writeValueAsString(rows);
+        } catch (Exception invalidPayload) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "business_date, fetched_at or rows are invalid", invalidPayload);
+        }
+
+        ensureMappingTable();
+        List<Map<String, Object>> mappings = jdbc.queryForList(
+                "SELECT outlet_id FROM shopfront_store_mapping WHERE store_key=? AND enabled=?",
+                storeKey, isPostgres() ? Boolean.TRUE : 1);
+        if (mappings.size() != 1) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Enabled Shopfront outlet mapping was not found for " + storeKey);
+        }
+        long outletId = longValue(mappings.getFirst().get("outlet_id"));
+        if (outletId <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Shopfront mapping has no numeric POS outlet_id");
+        }
+
+        if (isPostgres()) {
+            jdbc.update("""
+                    INSERT INTO shopfront_purchase_report_snapshot
+                        (store_key, outlet_id, business_date, group_by, rows_json, fetched_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (store_key, outlet_id, business_date, group_by) DO UPDATE SET
+                        rows_json=EXCLUDED.rows_json, fetched_at=EXCLUDED.fetched_at
+                    """, storeKey, outletId, java.sql.Date.valueOf(snapshotDate), groupBy, rowsJson, snapshotFetchedAt);
+        } else {
+            jdbc.update("""
+                    INSERT INTO shopfront_purchase_report_snapshot
+                        (store_key, outlet_id, business_date, group_by, rows_json, fetched_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE rows_json=VALUES(rows_json), fetched_at=VALUES(fetched_at)
+                    """, storeKey, outletId, java.sql.Date.valueOf(snapshotDate), groupBy, rowsJson, snapshotFetchedAt);
+        }
+
+        String storedRows = jdbc.queryForObject("""
+                SELECT rows_json FROM shopfront_purchase_report_snapshot
+                WHERE store_key=? AND outlet_id=? AND business_date=? AND group_by=?
+                """, String.class, storeKey, outletId, java.sql.Date.valueOf(snapshotDate), groupBy);
+        int readbackCount;
+        try {
+            JsonNode stored = objectMapper.readTree(storedRows);
+            if (stored == null || !stored.isArray()) throw new IllegalStateException("Stored report rows are not an array");
+            readbackCount = stored.size();
+        } catch (Exception invalidStoredRows) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Stored purchase report snapshot could not be read back", invalidStoredRows);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "IMPORTED");
+        result.put("item_count", rows.size());
+        result.put("readback_count", readbackCount);
+        result.put("errors", List.of());
+        return ApiResult.ok(result);
+    }
+
+    private static boolean allObjects(JsonNode rows) {
+        for (JsonNode row : rows) {
+            if (!row.isObject()) return false;
+        }
+        return true;
     }
 
     /**

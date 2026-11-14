@@ -1,5 +1,6 @@
 package com.orithos.modules.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,36 @@ class ShopfrontIntegrationControllerTest {
 
         verify(jdbc).update(contains("enabled BOOLEAN NOT NULL DEFAULT TRUE"));
         verify(jdbc, never()).update(contains("enabled SMALLINT NOT NULL DEFAULT 1"));
+    }
+
+    @Test
+    void purchaseReportSnapshotUpsertUsesMappedOutletAndVerifiesStoredRows() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class)))
+                .thenReturn(List.of(Map.of("outlet_id", 87L)));
+        when(jdbc.queryForObject(contains("SELECT rows_json FROM shopfront_purchase_report_snapshot"),
+                eq(String.class), any(Object[].class))).thenReturn("[{\"Name\":\"Supplier A\",\"Orders\":1}]");
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        JsonNode body = new ObjectMapper().readTree("""
+                {"store_key":"skr","business_date":"2026-11-14","group_by":"supplier",
+                 "fetched_at":"2026-11-14T17:00:00Z","rows":[{"Name":"Supplier A","Orders":1}]}
+                """);
+
+        var response = controller.purchaseReportSnapshots("token", body);
+
+        assertEquals("IMPORTED", response.data().get("status"));
+        assertEquals(1, response.data().get("item_count"));
+        assertEquals(1, response.data().get("readback_count"));
+        verify(jdbc).update(contains("ON CONFLICT (store_key, outlet_id, business_date, group_by)"),
+                any(Object[].class));
+        verify(jdbc).queryForList(contains("SELECT outlet_id FROM shopfront_store_mapping"), any(Object[].class));
     }
 
     @Test
